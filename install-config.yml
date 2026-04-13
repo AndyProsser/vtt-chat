@@ -1,0 +1,43 @@
+# VTT-Chat installation configuration.
+# Edit these values before running ./install.sh setup.
+
+# Installation path for the VTT-Chat home server.
+install_dir: /opt/vtt-chat
+
+# HTTPS port for Caddy.
+# Use 8443 when ISP blocks 80 and 443.
+https_port: 8443
+
+# Backend and frontend ports inside the Docker network.
+backend_port: 3000
+frontend_port: 5173
+
+# Postgres and Redis ports for internal use.
+postgres_port: 5432
+redis_port: 6379
+
+# Postgres and Redis passwords.
+postgres_password: auto
+redis_password: auto
+
+# LiveKit ports.
+livekit_port: 7880
+livekit_udp_start: 7881
+livekit_udp_end: 7980
+
+# LiveKit API credentials.
+livekit_api_key: devkey
+livekit_api_secret: auto
+
+# JWT secret for backend authentication.
+jwt_secret: auto
+
+# Domain configuration.
+# Leave blank for self-signed TLS and direct IP access.
+domain: ""
+
+dns_provider: ""
+dns_token: ""
+
+# If set to true, the installer will generate self-signed certs by default.
+use_self_signed: true

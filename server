@@ -1,0 +1,364 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$INSTALL_DIR/install-config.yml"
+REPO_NAME="${REPO_NAME:-AndyProsser/vtt-chat}"
+BRANCH="${BRANCH:-main}"
+REPO_ARCHIVE_URL="${REPO_ARCHIVE_URL:-https://codeload.github.com/${REPO_NAME}/tar.gz/${BRANCH}}"
+
+function show_help() {
+  cat <<HELP
+Usage: $0 <command>
+
+Commands:
+  build     Generate config files and build the Docker stack
+  start     Start the Docker stack
+  restart   Restart the Docker stack and rebuild if needed
+  stop      Stop the Docker stack
+  update    Refresh the install from the repository and rebuild
+  status    Show Docker Compose service status
+  help      Show this help message
+
+Before running build, edit $CONFIG_FILE with your desired ports and credentials.
+HELP
+}
+
+function parse_yaml_value() {
+  local key="$1"
+  local value
+  value=$(grep -E "^[[:space:]]*${key}:" "$CONFIG_FILE" | head -n1 | cut -d':' -f2-)
+  value="${value#${value%%[![:space:]]*}}"
+  value="${value%${value##*[![:space:]]}}"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  printf '%s' "$value"
+}
+
+function ensure_config_exists() {
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "Error: $CONFIG_FILE is missing. Edit it before running this command."
+    exit 1
+  fi
+}
+
+function load_config() {
+  ensure_config_exists
+
+  HTTPS_PORT=$(parse_yaml_value https_port)
+  BACKEND_PORT=$(parse_yaml_value backend_port)
+  FRONTEND_PORT=$(parse_yaml_value frontend_port)
+  POSTGRES_PORT=$(parse_yaml_value postgres_port)
+  REDIS_PORT=$(parse_yaml_value redis_port)
+  POSTGRES_PASSWORD=$(parse_yaml_value postgres_password)
+  REDIS_PASSWORD=$(parse_yaml_value redis_password)
+  LIVEKIT_PORT=$(parse_yaml_value livekit_port)
+  LIVEKIT_UDP_START=$(parse_yaml_value livekit_udp_start)
+  LIVEKIT_UDP_END=$(parse_yaml_value livekit_udp_end)
+  LIVEKIT_API_KEY=$(parse_yaml_value livekit_api_key)
+  LIVEKIT_API_SECRET=$(parse_yaml_value livekit_api_secret)
+  JWT_SECRET=$(parse_yaml_value jwt_secret)
+  DOMAIN=$(parse_yaml_value domain)
+  DNS_PROVIDER=$(parse_yaml_value dns_provider)
+  DNS_TOKEN=$(parse_yaml_value dns_token)
+  USE_SELF_SIGNED=$(parse_yaml_value use_self_signed)
+
+  LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+  LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-auto}
+  JWT_SECRET=${JWT_SECRET:-auto}
+  POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-auto}
+  REDIS_PASSWORD=${REDIS_PASSWORD:-auto}
+  USE_SELF_SIGNED=${USE_SELF_SIGNED:-true}
+}
+
+function generate_secrets() {
+  if [[ -z "$LIVEKIT_API_SECRET" || "$LIVEKIT_API_SECRET" == "auto" ]]; then
+    LIVEKIT_API_SECRET=$(openssl rand -hex 32)
+  fi
+  if [[ -z "$JWT_SECRET" || "$JWT_SECRET" == "auto" ]]; then
+    JWT_SECRET=$(openssl rand -hex 32)
+  fi
+  if [[ -z "$POSTGRES_PASSWORD" || "$POSTGRES_PASSWORD" == "auto" ]]; then
+    POSTGRES_PASSWORD=$(openssl rand -hex 24)
+  fi
+  if [[ -z "$REDIS_PASSWORD" || "$REDIS_PASSWORD" == "auto" ]]; then
+    REDIS_PASSWORD=$(openssl rand -hex 24)
+  fi
+}
+
+function generate_root_env_file() {
+  cat <<EOF >"$INSTALL_DIR/.env"
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+REDIS_PASSWORD=${REDIS_PASSWORD}
+EOF
+}
+
+function generate_env_files() {
+  mkdir -p "$INSTALL_DIR/backend"
+  mkdir -p "$INSTALL_DIR/frontend"
+
+  cat <<EOF >"$INSTALL_DIR/backend/.env"
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+REDIS_PASSWORD=${REDIS_PASSWORD}
+JWT_SECRET=${JWT_SECRET}
+LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+FRONTEND_URL=https://127.0.0.1:${HTTPS_PORT}
+EOF
+
+  cat <<EOF >"$INSTALL_DIR/frontend/.env"
+VITE_API_URL=/api
+VITE_LIVEKIT_URL=/livekit
+VITE_ENV=production
+EOF
+}
+
+function generate_caddyfile() {
+  mkdir -p "$INSTALL_DIR/caddy/certs"
+
+  if [[ -z "$DOMAIN" ]]; then
+    if [[ "$USE_SELF_SIGNED" == "true" ]]; then
+      echo "Generating self-signed TLS certificates..."
+      openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "$INSTALL_DIR/caddy/certs/selfsigned.key" \
+        -out "$INSTALL_DIR/caddy/certs/selfsigned.crt" \
+        -subj "/CN=vtt-chat"
+    fi
+
+    cat <<EOF >"$INSTALL_DIR/Caddyfile"
+https://:${HTTPS_PORT} {
+  tls /certs/selfsigned.crt /certs/selfsigned.key
+  encode gzip
+
+  handle_path /api* {
+    reverse_proxy backend:${BACKEND_PORT}
+  }
+
+  handle_path /livekit* {
+    reverse_proxy livekit:${LIVEKIT_PORT}
+  }
+
+  handle {
+    reverse_proxy frontend:${FRONTEND_PORT}
+    try_files {path} /index.html
+  }
+}
+EOF
+  else
+    cat <<EOF >"$INSTALL_DIR/Caddyfile"
+https://${DOMAIN}:${HTTPS_PORT} {
+  tls {
+    dns ${DNS_PROVIDER}
+  }
+  encode gzip
+
+  handle_path /api* {
+    reverse_proxy backend:${BACKEND_PORT}
+  }
+
+  handle_path /livekit* {
+    reverse_proxy livekit:${LIVEKIT_PORT}
+  }
+
+  handle {
+    reverse_proxy frontend:${FRONTEND_PORT}
+    try_files {path} /index.html
+  }
+}
+EOF
+  fi
+}
+
+function generate_docker_compose() {
+  cat <<EOF >"$INSTALL_DIR/docker-compose.yml"
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: vttchat-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/vttchat"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      LIVEKIT_URL: "http://livekit:${LIVEKIT_PORT}"
+    depends_on:
+      - postgres
+      - redis
+      - livekit
+    networks:
+      - vttnet
+
+  frontend:
+    build: ./frontend
+    container_name: vttchat-frontend
+    restart: unless-stopped
+    networks:
+      - vttnet
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vttchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vttchat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vttnet
+
+  redis:
+    image: redis:7-alpine
+    container_name: vttchat-redis
+    restart: unless-stopped
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
+    networks:
+      - vttnet
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: vttchat-livekit
+    restart: unless-stopped
+    command: >
+      --dev --bind 0.0.0.0 --port ${LIVEKIT_PORT} --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
+    ports:
+      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
+      - "${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}:${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+    networks:
+      - vttnet
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: vttchat-caddy
+    restart: unless-stopped
+    ports:
+      - "${HTTPS_PORT}:${HTTPS_PORT}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/certs:/certs
+    depends_on:
+      - backend
+      - frontend
+      - livekit
+    networks:
+      - vttnet
+
+volumes:
+  postgres_data:
+
+
+networks:
+  vttnet:
+    driver: bridge
+EOF
+}
+
+function configure_ufw() {
+  echo "Configuring UFW for current install ports..."
+  sudo ufw allow OpenSSH
+  sudo ufw allow ${HTTPS_PORT}/tcp
+  sudo ufw allow ${LIVEKIT_PORT}/tcp
+  sudo ufw allow ${LIVEKIT_UDP_START}:${LIVEKIT_UDP_END}/udp
+  sudo ufw --force enable
+}
+
+function build() {
+  load_config
+  generate_secrets
+  generate_env_files
+  generate_root_env_file
+  generate_caddyfile
+  generate_docker_compose
+  configure_ufw
+  cd "$INSTALL_DIR"
+  echo "Building Docker images..."
+  docker compose pull || true
+  docker compose build --pull
+  echo "Build complete. Run '$0 start' to start the server."
+}
+
+function start() {
+  cd "$INSTALL_DIR"
+  docker compose up -d --build
+  echo "VTT-Chat stack started. Access the app at https://<server-ip>:${HTTPS_PORT}"
+}
+
+function restart() {
+  cd "$INSTALL_DIR"
+  docker compose up -d --build
+  echo "VTT-Chat stack restarted."
+}
+
+function stop() {
+  cd "$INSTALL_DIR"
+  docker compose down --remove-orphans
+  echo "VTT-Chat stack stopped."
+}
+
+function status() {
+  cd "$INSTALL_DIR"
+  docker compose ps
+}
+
+function update() {
+  cd "$INSTALL_DIR"
+  if [[ -d .git ]]; then
+    echo "Updating from git repository..."
+    git pull --ff-only
+  else
+    echo "Updating by downloading the latest archive..."
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' EXIT
+    curl -fsSL "$REPO_ARCHIVE_URL" | tar -xz --strip-components=1 -C "$tmpdir"
+    rsync -a --delete \
+      --exclude 'install-config.yml' \
+      --exclude '.env' \
+      --exclude 'Caddyfile' \
+      --exclude 'caddy/certs' \
+      --exclude 'backend/.env' \
+      --exclude 'frontend/.env' \
+      --exclude 'config.yml' \
+      "$tmpdir/" "$INSTALL_DIR/"
+  fi
+
+  echo "Rebuilding after update..."
+  build
+  start
+}
+
+case "${1:-help}" in
+  build)
+    build
+    ;;
+  start)
+    start
+    ;;
+  restart)
+    restart
+    ;;
+  stop)
+    stop
+    ;;
+  update)
+    update
+    ;;
+  status)
+    status
+    ;;
+  help|-h|--help)
+    show_help
+    ;;
+  *)
+    echo "Unknown command: $1"
+    show_help
+    exit 1
+    ;;
+esac

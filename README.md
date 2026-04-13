@@ -91,6 +91,55 @@ VTT‑Chat is designed for **technical home users** who want to self‑host:
   - Deploy backend, SPA, Postgres, Redis, LiveKit
   - Create `.env` files with sensible defaults
 
+## 🏠 Home Server Quick Start
+
+1. Download and bootstrap the installer from GitHub:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/AndyProsser/vtt-chat/main/install.sh | sudo bash -s setup
+   ```
+2. Edit `/opt/vtt-chat/install-config.yml` to confirm install directory, ports, and LiveKit settings.
+3. Build the stack:
+   ```bash
+   sudo /opt/vtt-chat/server build
+   ```
+4. Start the stack:
+   ```bash
+   sudo /opt/vtt-chat/server start
+   ```
+5. Stop the stack:
+   ```bash
+   sudo /opt/vtt-chat/server stop
+   ```
+6. Restart the stack:
+   ```bash
+   sudo /opt/vtt-chat/server restart
+   ```
+7. Update the server:
+   ```bash
+   sudo /opt/vtt-chat/server update
+   ```
+8. Check the running stack status:
+   ```bash
+   sudo /opt/vtt-chat/server status
+   ```
+
+### Home router port forwarding
+
+If your ISP blocks `80`/`443`, forward these ports instead:
+
+- TCP `8443` → server `8443`
+- UDP `7881-7980` → server `7881-7980`
+
+Then access the app at:
+
+```text
+https://<server-ip>:8443
+```
+
+For stable routing, reserve a static local IP or DHCP lease for your server in your router settings.
+
+If you want the public domain route later, set `domain`, `dns_provider`, and `dns_token` in `install-config.yml`.
+
 A separate **D&D Beyond VTT‑Chat Launcher Extension** will be developed to make launching the app seamless for players and DMs.
 
 👉 **`[DEPLOYMENT](./docs/DEPLOYMENT.md)`**

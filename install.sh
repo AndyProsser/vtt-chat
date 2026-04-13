@@ -1,251 +1,179 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-###############################################
-# VTT-Chat HomeLab Installer
-# ---------------------------------------------
-# This script installs:
-# - Docker Engine + Compose
-# - Caddy reverse proxy
-# - Self-signed TLS certificates (default)
-# - Optional DNS-01 ACME (domain mode)
-# - LiveKit native server
-# - Postgres + Redis
-# - Backend + Frontend containers
-# - Full directory structure under /opt/vtt-chat
-###############################################
-
-# Default values
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/vtt-chat"
-HTTPS_PORT=8443
-DOMAIN=""
-DNS_PROVIDER=""
-DNS_TOKEN=""
-NON_INTERACTIVE=false
+TARGET_USER="${SUDO_USER:-$USER}"
+REPO_NAME="${REPO_NAME:-AndyProsser/vtt-chat}"
+BRANCH="${BRANCH:-main}"
+REPO_ARCHIVE_URL="${REPO_ARCHIVE_URL:-https://codeload.github.com/${REPO_NAME}/tar.gz/${BRANCH}}"
+CONFIG_FILE="$INSTALL_DIR/install-config.yml"
 
-###############################################
-# Parse arguments
-###############################################
-while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --domain) DOMAIN="$2"; shift ;;
-        --dns-provider) DNS_PROVIDER="$2"; shift ;;
-        --dns-token) DNS_TOKEN="$2"; shift ;;
-        --port) HTTPS_PORT="$2"; shift ;;
-        --no-confirm) NON_INTERACTIVE=true ;;
-        *) echo "Unknown parameter: $1"; exit 1 ;;
-    esac
-    shift
-done
+function show_help() {
+  cat <<HELP
+Usage: $0 setup
 
-###############################################
-# Confirm installation
-###############################################
-if [ "$NON_INTERACTIVE" = false ]; then
-    echo "=============================================="
-    echo " VTT-Chat HomeLab Installer"
-    echo " Install directory: $INSTALL_DIR"
-    echo " HTTPS port: $HTTPS_PORT"
-    if [ -z "$DOMAIN" ]; then
-        echo " TLS Mode: Self-signed certificates"
-    else
-        echo " TLS Mode: DNS-01 ACME for domain $DOMAIN"
-        echo " DNS Provider: $DNS_PROVIDER"
-    fi
-    echo "=============================================="
-    read -p "Proceed with installation? (y/n): " CONFIRM
-    if [[ "$CONFIRM" != "y" ]]; then
-        echo "Installation cancelled."
-        exit 0
-    fi
-fi
+This installer bootstraps a VTT-Chat home server deployment at $INSTALL_DIR.
+It installs Docker, Caddy, UFW, downloads the repository contents, and writes a
+config file that you can edit before building and running the stack.
 
-###############################################
-# System preparation
-###############################################
-echo "[1/10] Updating system packages..."
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt install -y curl git ufw openssl
-
-###############################################
-# Install Docker
-###############################################
-echo "[2/10] Installing Docker..."
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker "$USER"
-
-###############################################
-# Install Caddy
-###############################################
-echo "[3/10] Installing Caddy..."
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo apt-key add -
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install -y caddy
-
-###############################################
-# Create directory structure
-###############################################
-echo "[4/10] Creating directory structure..."
-sudo mkdir -p $INSTALL_DIR/{backend,frontend,livekit,caddy/certs,postgres,redis}
-sudo mkdir -p $INSTALL_DIR/logs
-
-###############################################
-# Generate environment file
-###############################################
-echo "[5/10] Generating .env file..."
-
-POSTGRES_PASSWORD=$(openssl rand -hex 16)
-REDIS_PASSWORD=$(openssl rand -hex 16)
-JWT_SECRET=$(openssl rand -hex 32)
-LIVEKIT_SECRET=$(openssl rand -hex 32)
-
-cat <<EOF | sudo tee $INSTALL_DIR/.env >/dev/null
-VTTCHAT_PORT=$HTTPS_PORT
-
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-REDIS_PASSWORD=$REDIS_PASSWORD
-
-JWT_SECRET=$JWT_SECRET
-
-LIVEKIT_API_KEY=devkey
-LIVEKIT_API_SECRET=$LIVEKIT_SECRET
-
-LIVEKIT_WS_PORT=7880
-LIVEKIT_UDP_START=7881
-LIVEKIT_UDP_END=7980
-EOF
-
-###############################################
-# TLS configuration
-###############################################
-if [ -z "$DOMAIN" ]; then
-    echo "[6/10] Generating self-signed TLS certificates..."
-    sudo openssl req -x509 -nodes -days 365 \
-        -newkey rsa:2048 \
-        -keyout $INSTALL_DIR/caddy/certs/selfsigned.key \
-        -out $INSTALL_DIR/caddy/certs/selfsigned.crt \
-        -subj "/CN=vtt-chat"
-else
-    echo "[6/10] Configuring DNS-01 ACME for domain $DOMAIN..."
-    # DNS-01 ACME config will be added here later
-fi
-
-###############################################
-# Write Caddyfile
-###############################################
-echo "[7/10] Writing Caddyfile..."
-
-if [ -z "$DOMAIN" ]; then
-cat <<EOF | sudo tee $INSTALL_DIR/caddy/Caddyfile >/dev/null
-https://:${HTTPS_PORT} {
-    tls $INSTALL_DIR/caddy/certs/selfsigned.crt $INSTALL_DIR/caddy/certs/selfsigned.key
-    reverse_proxy /api* backend:3000
-    reverse_proxy /livekit* livekit:7880
-    reverse_proxy frontend:5173
-    encode gzip
+Commands:
+  setup    Install dependencies and populate $INSTALL_DIR
+  help     Show this help message
+HELP
 }
-EOF
-else
-cat <<EOF | sudo tee $INSTALL_DIR/caddy/Caddyfile >/dev/null
-https://$DOMAIN:${HTTPS_PORT} {
-    tls {
-        dns $DNS_PROVIDER $DNS_TOKEN
-    }
-    reverse_proxy /api* backend:3000
-    reverse_proxy /livekit* livekit:7880
-    reverse_proxy frontend:5173
-    encode gzip
+
+function install_prereqs() {
+  echo "[1/8] Installing base packages..."
+  sudo apt update -y
+  sudo apt upgrade -y
+  sudo apt install -y curl rsync ufw openssl apt-transport-https ca-certificates gnupg lsb-release
 }
+
+function install_docker() {
+  echo "[2/8] Installing Docker..."
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo systemctl enable docker
+  if [[ -n "${TARGET_USER:-}" ]]; then
+    sudo usermod -aG docker "$TARGET_USER" || true
+  fi
+}
+
+function install_caddy() {
+  echo "[3/8] Installing Caddy..."
+  sudo apt install -y debian-keyring debian-archive-keyring
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo tee /usr/share/keyrings/caddy-stable-archive-keyring.gpg >/dev/null
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+  sudo apt update
+  sudo apt install -y caddy
+}
+
+function configure_ufw() {
+  echo "[4/8] Configuring UFW firewall..."
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+  sudo ufw allow OpenSSH
+  sudo ufw allow 8443/tcp
+  sudo ufw allow 7880/tcp
+  sudo ufw allow 7881:7980/udp
+  sudo ufw --force enable
+  sudo ufw status verbose
+}
+
+function create_install_dir() {
+  echo "[5/8] Creating install directory at $INSTALL_DIR..."
+  sudo mkdir -p "$INSTALL_DIR"
+  sudo chown "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
+}
+
+function download_source() {
+  echo "[6/8] Installing VTT-Chat files..."
+  mkdir -p "$INSTALL_DIR"
+
+  if [[ -d "$SCRIPT_DIR/backend" && -d "$SCRIPT_DIR/frontend" && -f "$SCRIPT_DIR/install-config.yml" ]]; then
+    echo "Copying local repository files into $INSTALL_DIR..."
+    rsync -a --delete \
+      --exclude '.git' \
+      --exclude 'node_modules' \
+      --exclude 'backend/node_modules' \
+      --exclude 'frontend/node_modules' \
+      --exclude 'dist' \
+      --exclude 'caddy/certs' \
+      --exclude 'install-config.yml' \
+      --exclude 'config.yml' \
+      --exclude '.env' \
+      --exclude 'backend/.env' \
+      --exclude 'frontend/.env' \
+      "$SCRIPT_DIR/" "$INSTALL_DIR/"
+  else
+    echo "Downloading repository archive from $REPO_ARCHIVE_URL..."
+    tmpdir=$(mktemp -d)
+    curl -fsSL "$REPO_ARCHIVE_URL" | tar -xz --strip-components=1 -C "$tmpdir"
+    rsync -a --delete \
+      --exclude '.git' \
+      --exclude 'node_modules' \
+      --exclude 'backend/node_modules' \
+      --exclude 'frontend/node_modules' \
+      --exclude 'dist' \
+      --exclude 'caddy/certs' \
+      --exclude 'install-config.yml' \
+      --exclude 'config.yml' \
+      --exclude '.env' \
+      --exclude 'backend/.env' \
+      --exclude 'frontend/.env' \
+      "$tmpdir/" "$INSTALL_DIR/"
+    rm -rf "$tmpdir"
+  fi
+
+  sudo chown -R "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
+}
+
+function write_install_config() {
+  if [[ -f "$CONFIG_FILE" ]]; then
+    echo "[7/8] Preserving existing install-config.yml"
+    return
+  fi
+
+  echo "[7/8] Writing default install-config.yml..."
+  cat <<EOF >"$CONFIG_FILE"
+install_dir: $INSTALL_DIR
+https_port: 8443
+backend_port: 3000
+frontend_port: 5173
+postgres_port: 5432
+redis_port: 6379
+postgres_password: auto
+redis_password: auto
+livekit_port: 7880
+livekit_udp_start: 7881
+livekit_udp_end: 7980
+livekit_api_key: devkey
+livekit_api_secret: auto
+jwt_secret: auto
+domain: ""
+dns_provider: ""
+dns_token: ""
+use_self_signed: true
 EOF
+}
+
+function make_scripts_executable() {
+  echo "[8/8] Making server scripts executable..."
+  sudo chmod +x "$INSTALL_DIR/install.sh" "$INSTALL_DIR/server" "$INSTALL_DIR/scripts"/*.sh
+}
+
+function setup() {
+  install_prereqs
+  install_docker
+  install_caddy
+  configure_ufw
+  create_install_dir
+  download_source
+  write_install_config
+  make_scripts_executable
+
+  echo "[Done] Bootstrapping complete."
+  echo "Edit $CONFIG_FILE before running the stack."
+  echo "Then build and start with:"
+  echo "  sudo $INSTALL_DIR/server build"
+  echo "  sudo $INSTALL_DIR/server start"
+}
+
+if [[ $# -eq 0 ]]; then
+  show_help
+  exit 0
 fi
 
-###############################################
-# Install LiveKit
-###############################################
-echo "[8/10] Installing LiveKit..."
-
-sudo curl -L https://github.com/livekit/livekit/releases/latest/download/livekit-linux \
-    -o $INSTALL_DIR/livekit/livekit
-sudo chmod +x $INSTALL_DIR/livekit/livekit
-
-cat <<EOF | sudo tee $INSTALL_DIR/livekit/livekit.yaml >/dev/null
-port: 7880
-rtc:
-  port_range_start: 7881
-  port_range_end: 7980
-keys:
-  devkey: $LIVEKIT_SECRET
-EOF
-
-###############################################
-# Write docker-compose.yml
-###############################################
-echo "[9/10] Writing docker-compose.yml..."
-
-cat <<EOF | sudo tee $INSTALL_DIR/docker-compose.yml >/dev/null
-version: "3.9"
-
-services:
-  caddy:
-    image: caddy:latest
-    container_name: vttchat_caddy
-    ports:
-      - "${HTTPS_PORT}:${HTTPS_PORT}"
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/certs:/certs
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - ./postgres:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  redis:
-    image: redis:7
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-    restart: unless-stopped
-
-  livekit:
-    image: livekit/livekit-server:latest
-    command: ["--config", "/livekit/livekit.yaml"]
-    volumes:
-      - ./livekit:/livekit
-    ports:
-      - "7880:7880"
-      - "7881-7980:7881-7980/udp"
-    restart: unless-stopped
-
-  backend:
-    build: ./backend
-    env_file: .env
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    env_file: .env
-    restart: unless-stopped
-EOF
-
-###############################################
-# Start the stack
-###############################################
-echo "[10/10] Starting Docker stack..."
-cd $INSTALL_DIR
-sudo docker compose up -d
-
-echo "=============================================="
-echo " VTT-Chat installation complete!"
-echo " Access the app at:"
-echo "   https://<server-ip>:${HTTPS_PORT}"
-echo " (Accept the self-signed certificate)"
-echo "=============================================="
+case "$1" in
+  setup)
+    setup
+    ;;
+  help|-h|--help)
+    show_help
+    ;;
+  *)
+    echo "Unknown command: $1"
+    show_help
+    exit 1
+    ;;
+esac

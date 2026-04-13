@@ -1,91 +1,22 @@
 {
   # Global options
   email you@example.com
-
-  # Enable debug logs if needed
-  # debug
 }
 
-# ============================================================
-# 1. PRODUCTION MODE (default)
-# Triggered when CADDY_ENV != "dev"
-# ============================================================
+https://:8443 {
+  tls /certs/selfsigned.crt /certs/selfsigned.key
+  encode gzip
 
-@prod not env CADDY_ENV dev
-
-# -------------------------
-# Backend API
-# -------------------------
-vttchat.yourdomain.com @prod {
-  reverse_proxy backend:3000
-
-  # Friendly fallback if backend is down
-  handle_errors {
-    respond "Backend temporarily unavailable" 503
-  }
-}
-
-# -------------------------
-# Frontend SPA
-# -------------------------
-app.vttchat.yourdomain.com @prod {
-  reverse_proxy frontend:5173
-
-  # React Router fallback
-  try_files {path} /index.html
-}
-
-# -------------------------
-# LiveKit
-# -------------------------
-livekit.vttchat.yourdomain.com @prod {
-  reverse_proxy livekit:7880
-}
-
-# -------------------------
-# Root domain fallback → frontend
-# -------------------------
-yourdomain.com @prod {
-  redir https://app.vttchat.yourdomain.com{uri}
-}
-
-# -------------------------
-# Wildcard fallback → frontend
-# -------------------------
-*.vttchat.yourdomain.com @prod {
-  reverse_proxy frontend:5173
-  try_files {path} /index.html
-}
-
-# ============================================================
-# 2. LOCAL DEVELOPMENT MODE
-# Triggered when CADDY_ENV=dev
-# ============================================================
-
-@dev env CADDY_ENV dev
-
-:8080 @dev {
-  # Local backend
-  handle_path /api/* {
+  handle_path /api* {
     reverse_proxy backend:3000
   }
 
-  # Local LiveKit
-  handle_path /livekit/* {
+  handle_path /livekit* {
     reverse_proxy livekit:7880
   }
 
-  # Local frontend (Vite dev server)
   handle {
     reverse_proxy frontend:5173
+    try_files {path} /index.html
   }
 }
-
-# ============================================================
-# 3. OPTIONAL: Cloudflare DNS ACME
-# Uncomment if using Cloudflare orange-cloud proxy
-# ============================================================
-
-# tls {
-#   dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-# }
