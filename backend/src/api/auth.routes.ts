@@ -1,4 +1,12 @@
-/**
- * Placeholder file for VTT-Chat backend.
- * This file will be implemented in future development stages.
- */
+import { Router } from 'express'
+
+const router = Router()
+
+// TODO: Implement auth routes
+// - POST /register
+// - POST /login
+// - POST /logout
+// - POST /refresh-token
+// - GET /me
+
+export default router

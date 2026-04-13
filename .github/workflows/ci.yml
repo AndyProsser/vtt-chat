@@ -1,7 +1,8 @@
 name: Full CI
 
-on:
-  pull_request:
+# TEMPORARILY DISABLED - Will re-enable after DockerHub connections are complete
+# on:
+#   pull_request:
 
 jobs:
   backend:

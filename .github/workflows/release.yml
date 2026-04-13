@@ -1,9 +1,10 @@
 name: Release
 
-on:
-  push:
-    branches:
-      - main
+# TEMPORARILY DISABLED - Will re-enable after DockerHub connections are complete
+# on:
+#   push:
+#     branches:
+#       - main
 
 jobs:
   release:

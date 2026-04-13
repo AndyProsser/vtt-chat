@@ -1,9 +1,10 @@
 name: Frontend CI
 
-on:
-  pull_request:
-    paths:
-      - "frontend/**"
+# TEMPORARILY DISABLED - Will re-enable after repo is ready
+# on:
+#   pull_request:
+#     paths:
+#       - "frontend/**"
 
 jobs:
   frontend-ci:

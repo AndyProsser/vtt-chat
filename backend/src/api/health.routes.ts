@@ -1,4 +1,8 @@
-/**
- * Placeholder file for VTT-Chat backend.
- * This file will be implemented in future development stages.
- */
+import { Router } from 'express'
+
+const router = Router()
+
+// TODO: Implement health check endpoint
+// GET / - Returns 200 with health status
+
+export default router

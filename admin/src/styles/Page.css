@@ -1,0 +1,403 @@
+.page {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.page h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #e0e0e0;
+}
+
+.info-text {
+  color: #a0a0a0;
+  margin-bottom: 2rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #707070;
+}
+
+.error {
+  padding: 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #7f1d1d;
+  border-radius: 4px;
+  color: #fca5a5;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin: 2rem 0;
+  border: 1px solid #404040;
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #404040;
+}
+
+th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid #2a2a2a;
+  color: #e0e0e0;
+}
+
+tbody tr:hover {
+  background-color: #1a1a1a;
+}
+
+.role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.role-dm {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.role-player {
+  background-color: rgba(74, 222, 128, 0.2);
+  color: #86efac;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background-color: rgba(74, 222, 128, 0.2);
+  color: #86efac;
+}
+
+.status-badge.archived {
+  background-color: rgba(107, 114, 128, 0.2);
+  color: #d1d5db;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #2563eb;
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.btn-danger {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+.btn-danger:hover {
+  background-color: #991b1b;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #3b82f6;
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.link-btn:hover {
+  color: #2563eb;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background-color: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal h2 {
+  margin-bottom: 1rem;
+  color: #e0e0e0;
+}
+
+.modal p {
+  color: #a0a0a0;
+  margin-bottom: 1rem;
+}
+
+.modal-details {
+  background-color: #0f0f0f;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.modal-details div {
+  margin-bottom: 0.5rem;
+  color: #e0e0e0;
+}
+
+.modal-details strong {
+  color: #a0a0a0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* Analytics Page */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.metric-card {
+  padding: 1.5rem;
+  background-color: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.metric-card h3 {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+  color: #3b82f6;
+}
+
+.metric-card small {
+  color: #707070;
+  font-size: 0.85rem;
+}
+
+/* Status Page */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.status-card {
+  padding: 1.5rem;
+  background-color: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.status-header h3 {
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.status-indicator {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: white;
+}
+
+.status-details {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+}
+
+.status-details div {
+  margin-bottom: 0.5rem;
+}
+
+/* Logs Page */
+.filter-bar {
+  display: flex;
+  gap: 2rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.filter-bar>div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-bar label {
+  margin: 0;
+  font-weight: 500;
+}
+
+.logs-container {
+  margin: 2rem 0;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  background-color: #0f0f0f;
+}
+
+.log-entry {
+  padding: 1rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.log-level {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+.log-service {
+  background-color: #2a2a2a;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #b0b0b0;
+  font-family: monospace;
+}
+
+.log-time {
+  color: #707070;
+  font-size: 0.85rem;
+  font-family: monospace;
+  margin-left: auto;
+}
+
+.log-toggle {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.log-message {
+  color: #e0e0e0;
+  font-family: monospace;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.log-metadata {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+}
+
+.log-metadata pre {
+  margin: 0;
+  color: #86efac;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

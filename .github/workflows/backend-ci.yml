@@ -1,9 +1,10 @@
 name: Backend CI
 
-on:
-  pull_request:
-    paths:
-      - "backend/**"
+# TEMPORARILY DISABLED - Will re-enable after repo is ready
+# on:
+#   pull_request:
+#     paths:
+#       - "backend/**"
 
 jobs:
   backend-ci:

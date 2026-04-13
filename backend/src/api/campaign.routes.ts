@@ -1,4 +1,14 @@
-/**
- * Placeholder file for VTT-Chat backend.
- * This file will be implemented in future development stages.
- */
+import { Router } from 'express'
+
+const router = Router()
+
+// TODO: Implement campaign routes
+// - GET /
+// - POST /
+// - GET /:id
+// - PUT /:id
+// - DELETE /:id
+// - POST /:id/join
+// - POST /:id/leave
+
+export default router

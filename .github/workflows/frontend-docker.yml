@@ -1,13 +1,14 @@
 name: Frontend Docker Build
 
-on:
-  push:
-    branches: [ "main" ]
-    tags:
-      - "v*"
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-docker.yml"
+# TEMPORARILY DISABLED - Will re-enable after DockerHub connections are complete
+# on:
+#   push:
+#     branches: [ "main" ]
+#     tags:
+#       - "v*"
+#     paths:
+#       - "frontend/**"
+#       - ".github/workflows/frontend-docker.yml"
 
 jobs:
   build-frontend:
