@@ -1,0 +1,49 @@
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+
+# Room settings optimized for voice-only
+room:
+  # Auto-cleanup empty rooms
+  auto_cleanup: true
+  empty_timeout: 300  # 5 minutes
+
+# RTC Configuration for WebRTC
+rtc:
+  # Use both TCP and UDP for maximum compatibility
+  port_range_start: 7881
+  port_range_end: 7980
+  use_external_ip: true
+
+  # Codecs - optimize for voice only (no video)
+  audio_codec: opus
+
+  # Disable video-related settings
+  video_enabled: false
+
+  # ICE servers for NAT traversal
+  ice_servers:
+    - urls:
+        - "stun:stun.l.google.com:19302"
+        - "stun:stun1.l.google.com:19302"
+
+# Logging
+logging:
+  level: info
+  # Can be adjusted to debug for troubleshooting
+  sample: false
+
+# Development/test mode settings
+development: false  # Set to false for production
+
+# API configuration
+api:
+  # API keys will be passed via environment variables
+  # They're set via command-line flags for flexibility
+  bind_port: 7880
+
+# Session/Connection management
+session:
+  # Timeout for inactive connections
+  max_participant_metadata_size: 1000
+  max_participant_name_length: 256

@@ -25,6 +25,13 @@ services:
     networks:
       - vttnet
 
+  admin:
+    build: ./admin
+    container_name: vttchat-admin
+    restart: unless-stopped
+    networks:
+      - vttnet
+
   postgres:
     image: postgres:16-alpine
     container_name: vttchat-postgres
@@ -51,10 +58,13 @@ services:
     container_name: vttchat-livekit
     restart: unless-stopped
     command: >
-      --dev --bind 0.0.0.0 --port 7880 --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
+      --config /etc/livekit.yaml --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
     ports:
       - "7880:7880"
       - "7881-7980:7881-7980/udp"
+      - "7881-7980:7881-7980/tcp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
     networks:
       - vttnet
 
@@ -70,6 +80,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - admin
       - livekit
     networks:
       - vttnet

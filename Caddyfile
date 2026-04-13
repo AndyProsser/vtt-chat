@@ -15,6 +15,11 @@ https://:8443 {
     reverse_proxy livekit:7880
   }
 
+  handle_path /admin* {
+    reverse_proxy admin:5174
+    try_files {path} /index.html
+  }
+
   handle {
     reverse_proxy frontend:5173
     try_files {path} /index.html
