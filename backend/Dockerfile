@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -9,7 +9,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:25-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json* ./

@@ -1,11 +1,11 @@
-# VTT‑Chat  
+# VTT‑Chat
 *A DM‑grade, session‑aware tabletop voice & chat platform for D&D and other TTRPGs.*
 
-`https://img.shields.io/badge/build-pending-lightgrey`  
-`https://img.shields.io/badge/Docker-ready-blue`  
-`https://img.shields.io/badge/TypeScript-5.x-blue`  
-`https://img.shields.io/badge/React-18.x-61dafb`  
-`https://img.shields.io/badge/LiveKit-integrated-ff8800`  
+`https://img.shields.io/badge/build-pending-lightgrey`
+`https://img.shields.io/badge/Docker-ready-blue`
+`https://img.shields.io/badge/TypeScript-6.x-blue`
+`https://img.shields.io/badge/React-19.x-61dafb`
+`https://img.shields.io/badge/LiveKit-integrated-ff8800`
 `https://img.shields.io/badge/License-MIT-green`
 
 ---
@@ -52,7 +52,7 @@ The platform is designed so a DM (or any group member) can deploy the entire sys
 
 All architectural details, UX rules, audio behavior, session model, metadata system, and deployment assumptions are documented in:
 
-👉 **`[ARCHITECTURE](./docs/ARCHITECTURE.md)`**  
+👉 **`[ARCHITECTURE](./docs/ARCHITECTURE.md)`**
 *(This is the full knowledge pack used by GitHub AI to understand the project.)*
 
 ---
@@ -99,13 +99,13 @@ A separate **D&D Beyond VTT‑Chat Launcher Extension** will be developed to mak
 
 ## 🧱 Project Status
 
-This repository is currently in **active development**.  
+This repository is currently in **active development**.
 The architecture and UX have been fully defined, and implementation will proceed in structured stages.
 
 If you encounter issues, ideas, or feature requests:
 
-👉 **Please open an Issue:**  
-`https://github.com/AndyProsser/vtt-chat/issues` 
+👉 **Please open an Issue:**
+`https://github.com/AndyProsser/vtt-chat/issues`
 
 ---
 
@@ -119,9 +119,9 @@ This project is licensed under the **MIT License**.
 
 ## ⚠️ Trademarks & Legal
 
-- **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.  
-- **LiveKit** is a trademark of **LiveKit, Inc.**  
-- All other trademarks are property of their respective owners.  
+- **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
+- **LiveKit** is a trademark of **LiveKit, Inc.**
+- All other trademarks are property of their respective owners.
 - This project is **not affiliated** with Wizards of the Coast, LiveKit, or any other trademark holder.
 
 This repository is a **fan‑made, non‑commercial tool** intended to support tabletop role‑playing groups.
@@ -130,7 +130,7 @@ This repository is a **fan‑made, non‑commercial tool** intended to support t
 
 ## 🤝 Contributing
 
-Contributions, suggestions, and improvements are welcome.  
+Contributions, suggestions, and improvements are welcome.
 Please use the GitHub Issues page to discuss changes before submitting PRs.
 
 👉 **`[CONTRIBUTE](./CONTRIBUTING.md)`**

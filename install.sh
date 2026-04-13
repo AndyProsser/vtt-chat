@@ -200,7 +200,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15
+    image: postgres:16
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:

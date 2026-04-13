@@ -1,15 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
-    "lib": ["DOM", "DOM.Iterable", "ES2021"],
-    "module": "NodeNext",
+    "target": "ES2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "moduleResolution": "nodenext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
