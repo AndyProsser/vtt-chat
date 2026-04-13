@@ -1,0 +1,26 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.DS_Store": true
+  },
+
+  "typescript.tsdk": "node_modules/typescript/lib",
+
+  "terminal.integrated.defaultProfile.linux": "bash",
+
+  "search.exclude": {
+    "**/dist": true,
+    "**/node_modules": true
+  },
+
+  "eslint.workingDirectories": [
+    { "directory": "backend", "changeProcessCWD": true },
+    { "directory": "frontend", "changeProcessCWD": true }
+  ]
+}

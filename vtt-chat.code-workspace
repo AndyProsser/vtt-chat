@@ -1,13 +1,38 @@
 {
   "folders": [
+    { "path": "." },
     { "path": "backend" },
-    { "path": "frontend" }
+    { "path": "frontend" },
+    { "path": "docs" },
+    { "path": "scripts" }
   ],
   "settings": {
+    // Formatting & editor behavior
     "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // Hide build artifacts everywhere
     "files.exclude": {
       "**/dist": true,
-      "**/node_modules": true
-    }
+      "**/node_modules": true,
+      "**/.DS_Store": true
+    },
+
+    // TypeScript project awarenessmatthewpi.caddyfile-support
+    "js/ts.tsdk.path": "node_modules/typescript/lib",
+
+    // Recommended terminal defaults
+    "terminal.integrated.defaultProfile.linux": "bash",
+
+    // Workspace-specific extensions
+    "extensions.recommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "Prisma.prisma",
+      "ms-azuretools.vscode-docker",
+      "matthewpi.caddyfile-support"
+    ]
   }
 }

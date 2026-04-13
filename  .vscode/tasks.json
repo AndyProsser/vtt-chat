@@ -1,0 +1,79 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install All Dependencies",
+      "command": "npm install",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Backend: Install",
+      "command": "npm install",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
+    },
+    {
+      "label": "Frontend: Install",
+      "command": "npm install",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      }
+    },
+    {
+      "label": "Backend: Build",
+      "command": "npm run build",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
+    },
+    {
+      "label": "Frontend: Build",
+      "command": "npm run build",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      }
+    },
+    {
+      "label": "Dev: Backend",
+      "command": "npm run dev",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Frontend",
+      "command": "npm run dev",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Up",
+      "command": "docker compose up -d",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Docker: Down",
+      "command": "docker compose down",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    }
+  ]
+}
