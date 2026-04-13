@@ -1,2 +1,364 @@
-// * Placeholder for Prisma schema 
+generator client {
+  provider = "prisma-client-js"
+}
 
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Users & Authentication
+// ============================================================================
+
+model User {
+  id       String  @id @default(cuid())
+  username String  @unique
+  email    String?
+  password String // Hashed password
+  role     Role    @default(PLAYER)
+  isAdmin  Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // Relationships
+  sessions   SessionMember[]
+  messages   Message[]
+  notes      Note[]
+  metadata   Metadata[]
+  conditions PlayerCondition[]
+
+  // Audio preferences (persistent)
+  audioPreferences AudioPreferences?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([username])
+  @@index([isAdmin])
+}
+
+model AudioPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Persistent across sessions
+  micDeviceId     String?
+  speakerDeviceId String?
+  gain            Float   @default(1.0) // 0.0 - 2.0
+  gate            Float   @default(0.0) // Noise gate threshold
+  isMuted         Boolean @default(false) // Self-mute
+  theme           String  @default("dark")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model AdminUser {
+  id       String  @id @default(cuid())
+  username String  @unique
+  password String // Hashed
+  email    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([username])
+}
+
+// ============================================================================
+// Sessions & Rooms
+// ============================================================================
+
+model Session {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  dm          String // DM username
+  isActive    Boolean @default(true)
+  isArchived  Boolean @default(false)
+
+  // Relationships
+  members    SessionMember[]
+  rooms      Room[]
+  messages   Message[]
+  boundaries SessionBoundary[]
+  metadata   Metadata[]
+  notes      Note[]
+
+  createdAt DateTime  @default(now())
+  endedAt   DateTime?
+  updatedAt DateTime  @updatedAt
+
+  @@index([dm])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model SessionMember {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model SessionBoundary {
+  id        String    @id @default(cuid())
+  sessionId String
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  messageId String    @unique
+  message   Message   @relation("BoundaryTrigger", fields: [messageId], references: [id], onDelete: Cascade)
+  type      String    @default("SESSION_ENDED") // SESSION_ENDED, SESSION_STARTED
+  createdAt DateTime  @default(now())
+  messages  Message[] @relation("BoundaryMessage")
+
+  @@index([sessionId])
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  type      RoomType @default(MAIN)
+  isActive  Boolean  @default(true)
+
+  // Room state (session-scoped, reset at session end)
+  environmentId String?
+  environment   RoomEnvironment? @relation("RoomEnvironmentActive", fields: [environmentId], references: [id])
+
+  // Relationships
+  messages   Message[]
+  members    RoomMember[]
+  conditions RoomCondition[]
+  metadata   Metadata[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([type])
+}
+
+model RoomMember {
+  id     String @id @default(cuid())
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId String
+
+  joinedAt DateTime @default(now())
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+// ============================================================================
+// Audio & Conditions
+// ============================================================================
+
+model PlayerCondition {
+  id          String  @id @default(cuid())
+  sessionId   String
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condition   String // "POISONED", "CHARMED", "FRIGHTENED", "RESTRAINED", etc.
+  appliedByDm Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, userId, condition])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model RoomCondition {
+  id        String @id @default(cuid())
+  roomId    String
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  condition String // "SILENCED", "DEAF", etc.
+
+  createdAt DateTime @default(now())
+
+  @@unique([roomId, condition])
+  @@index([roomId])
+}
+
+model DmVoicePreset {
+  id    String @id @default(cuid())
+  name  String @unique // "Normal", "Whisper", "Shout", "Monster", etc.
+  type  String
+  audio String // URL or identifier for audio effect
+
+  createdAt DateTime @default(now())
+}
+
+model RoomEnvironment {
+  id    String @id @default(cuid())
+  name  String @unique // "Tavern", "Forest", "Dungeon", etc.
+  type  String
+  audio String // URL or identifier for ambient sound
+
+  // Which rooms have this active
+  activeInRooms Room[] @relation("RoomEnvironmentActive")
+
+  createdAt DateTime @default(now())
+}
+
+// ============================================================================
+// Chat & Messages
+// ============================================================================
+
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  content   String
+  type      MessageType @default(TEXT)
+
+  // DM-only fields
+  isDmOnly        Boolean @default(false)
+  isSystemMessage Boolean @default(false)
+
+  // Linking to boundary
+  boundary SessionBoundary? @relation("BoundaryMessage", fields: [sessionBoundaryId], references: [id])
+
+  // Metadata linkage (for inline cards)
+  metadata Metadata?
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  sessionBoundary   SessionBoundary? @relation("BoundaryTrigger")
+  sessionBoundaryId String?
+
+  @@index([sessionId])
+  @@index([roomId])
+  @@index([authorId])
+  @@index([type])
+}
+
+// ============================================================================
+// Metadata & Notes
+// ============================================================================
+
+model Metadata {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  messageId String?  @unique
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  type        MetadataType
+  title       String
+  description String?
+  data        String // JSON data for specific types
+
+  tags      Tag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([roomId])
+  @@index([type])
+  @@index([authorId])
+}
+
+model Note {
+  id         String         @id @default(cuid())
+  sessionId  String
+  title      String
+  content    String
+  authorId   String
+  author     User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  isDmOnly   Boolean        @default(true)
+  visibility NoteVisibility @default(DM_ONLY)
+
+  tags      Tag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  session   Session  @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([authorId])
+}
+
+model Tag {
+  id       String     @id @default(cuid())
+  name     String     @unique
+  metadata Metadata[]
+  notes    Note[]
+
+  createdAt DateTime @default(now())
+}
+
+// ============================================================================
+// Export & Import
+// ============================================================================
+
+model SessionExport {
+  id         String   @id @default(cuid())
+  sessionId  String
+  exportedBy String
+  data       String // Compressed JSON
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([exportedBy])
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum Role {
+  PLAYER
+  DM
+}
+
+enum RoomType {
+  MAIN
+  GROUP
+  PRIVATE
+}
+
+enum MessageType {
+  TEXT
+  SYSTEM
+  AUDIO_LOG
+}
+
+enum MetadataType {
+  REWARD
+  REST
+  XP_LEVEL_UP
+  KEY_ENCOUNTER
+  KEY_EVENT
+  COMBAT_START
+  COMBAT_END
+  RECAP
+  CUSTOM
+}
+
+enum NoteVisibility {
+  DM_ONLY
+  PLAYERS_VISIBLE
+  CUSTOM
+}

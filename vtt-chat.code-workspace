@@ -31,6 +31,7 @@
     // TypeScript project awarenessmatthewpi.caddyfile-support
     "js/ts.tsdk.path": "node_modules/typescript/lib",
     // Recommended terminal defaults
-    "terminal.integrated.defaultProfile.linux": "bash"
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "prisma.pinToPrisma6": false
   }
 }
