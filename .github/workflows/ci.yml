@@ -1,0 +1,11 @@
+name: Full CI
+
+on:
+  pull_request:
+
+jobs:
+  backend:
+    uses: ./.github/workflows/backend-ci.yml
+
+  frontend:
+    uses: ./.github/workflows/frontend-ci.yml

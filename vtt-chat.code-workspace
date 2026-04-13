@@ -1,0 +1,13 @@
+{
+  "folders": [
+    { "path": "backend" },
+    { "path": "frontend" }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "**/dist": true,
+      "**/node_modules": true
+    }
+  }
+}

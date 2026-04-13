@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: vttchat-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      LIVEKIT_URL: http://livekit:7880
+    depends_on:
+      - postgres
+      - redis
+      - livekit
+    networks:
+      - vttnet
+
+  frontend:
+    build: ./frontend
+    container_name: vttchat-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - vttnet
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vttchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vttchat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vttnet
+
+  redis:
+    image: redis:7-alpine
+    container_name: vttchat-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    networks:
+      - vttnet
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: vttchat-livekit
+    restart: unless-stopped
+    command: >
+      --dev
+      --bind 0.0.0.0
+      --port 7880
+      --node-ip livekit
+      --api-key ${LIVEKIT_API_KEY}
+      --api-secret ${LIVEKIT_API_SECRET}
+    networks:
+      - vttnet
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: vttchat-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+      - livekit
+    networks:
+      - vttnet
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  vttnet:
+    driver: bridge
