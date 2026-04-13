@@ -5,11 +5,15 @@
     "moduleResolution": "node",
     "rootDir": "src",
     "outDir": "dist",
+    "sourceMap": true,
+    "declaration": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false
   },
   "include": [
     "src"

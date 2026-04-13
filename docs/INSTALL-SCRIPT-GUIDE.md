@@ -1,11 +1,11 @@
-Absolutely, Andy — here is a clean, production‑ready **`docs/INSTALL-SCRIPT-GUIDE.md`** written specifically for your HomeLab deployment model.  
+Absolutely, Andy — here is a clean, production‑ready **`docs/INSTALL-SCRIPT-GUIDE.md`** written specifically for your HomeLab deployment model.
 It’s structured so a technical home user (or future you) can understand exactly what the install script will do, why it does it, and how to troubleshoot it.
 
 You can paste this directly into `docs/INSTALL-SCRIPT-GUIDE.md`.
 
 ---
 
-# VTT‑Chat Install Script Guide  
+# VTT‑Chat Install Script Guide
 *A HomeLab‑friendly automated installer for Ubuntu Server*
 
 This guide explains how the **VTT‑Chat install script** works, what it installs, how it configures your system, and how to customize or troubleshoot it.
@@ -16,18 +16,18 @@ The goal is simple:
 
 The install script handles everything:
 
-- Docker  
-- Caddy  
-- TLS (self‑signed or DNS‑01 ACME)  
-- LiveKit  
-- Backend  
-- SPA  
-- Postgres  
-- Redis  
-- Firewall rules  
-- Folder structure  
-- `.env` generation  
-- Docker Compose / Swarm deployment  
+- Docker
+- Caddy
+- TLS (self‑signed or DNS‑01 ACME)
+- LiveKit
+- Backend
+- SPA
+- Postgres
+- Redis
+- Firewall rules
+- Folder structure
+- `.env` generation
+- Docker Compose / Swarm deployment
 
 ---
 
@@ -36,21 +36,21 @@ The install script handles everything:
 The script performs the following tasks in order:
 
 1. **System preparation**
-   - Updates apt packages  
+   - Updates apt packages
    - Installs required dependencies (curl, git, openssl, ufw)
 
 2. **Docker installation**
-   - Installs Docker Engine  
-   - Installs Docker Compose plugin  
-   - Adds the current user to the `docker` group  
+   - Installs Docker Engine
+   - Installs Docker Compose plugin
+   - Adds the current user to the `docker` group
 
 3. **Caddy installation**
-   - Installs Caddy from the official repository  
-   - Creates a Caddy config directory  
+   - Installs Caddy from the official repository
+   - Creates a Caddy config directory
    - Writes a Caddyfile configured for:
-     - Non‑standard HTTPS ports (default: **8443**)  
-     - Self‑signed certificates (default)  
-     - Optional DNS‑01 ACME for domain owners  
+     - Non‑standard HTTPS ports (default: **8443**)
+     - Self‑signed certificates (default)
+     - Optional DNS‑01 ACME for domain owners
 
 4. **Directory structure creation**
    ```
@@ -71,28 +71,28 @@ The script performs the following tasks in order:
 
 6. **Environment file generation**
    - Creates `.env` with sensible defaults:
-     - Ports  
-     - Postgres password  
-     - Redis password  
-     - LiveKit keys  
-     - JWT secrets  
-     - SPA URL  
+     - Ports
+     - Postgres password
+     - Redis password
+     - LiveKit keys
+     - JWT secrets
+     - SPA URL
 
 7. **LiveKit installation**
-   - Downloads the native LiveKit binary  
-   - Writes a `livekit.yaml` config  
-   - Configures WebSocket + UDP ports  
+   - Downloads the native LiveKit binary
+   - Writes a `livekit.yaml` config
+   - Configures WebSocket + UDP ports
 
 8. **Docker Compose / Swarm deployment**
-   - Pulls images  
-   - Builds backend + SPA  
-   - Starts all services  
-   - Verifies health  
+   - Pulls images
+   - Builds backend + SPA
+   - Starts all services
+   - Verifies health
 
 9. **Final output**
-   - Shows access URL  
-   - Shows admin notes  
-   - Shows where logs are stored  
+   - Shows access URL
+   - Shows admin notes
+   - Shows where logs are stored
 
 ---
 
@@ -100,7 +100,7 @@ The script performs the following tasks in order:
 
 The install script assumes:
 
-- You are running **Ubuntu Server 22.04+**
+- You are running **Ubuntu Server 24.04+**
 - You have **sudo** access
 - You want to host VTT‑Chat on your **local network**
 - You may not have a domain
@@ -120,10 +120,10 @@ The script supports two TLS modes:
 
 Best for:
 
-- Local network hosting  
-- No domain  
-- No DNS configuration  
-- Quick setup  
+- Local network hosting
+- No domain
+- No DNS configuration
+- Quick setup
 
 The script generates:
 
@@ -148,17 +148,17 @@ You will need to accept the certificate in your browser.
 
 Best for:
 
-- Public access  
-- You own a domain  
-- You can create a DNS API token  
+- Public access
+- You own a domain
+- You can create a DNS API token
 
 The script will:
 
-- Ask for domain name  
-- Ask for DNS provider  
-- Ask for API token  
-- Configure Caddy for DNS‑01  
-- Obtain a valid certificate even if ports 80/443 are blocked  
+- Ask for domain name
+- Ask for DNS provider
+- Ask for API token
+- Configure Caddy for DNS‑01
+- Obtain a valid certificate even if ports 80/443 are blocked
 
 ---
 
@@ -229,10 +229,10 @@ sudo ./install.sh
 
 The script will:
 
-- Ask a few questions  
-- Install everything  
-- Start the stack  
-- Print your access URL  
+- Ask a few questions
+- Install everything
+- Start the stack
+- Print your access URL
 
 ---
 
@@ -271,23 +271,23 @@ Accept the self‑signed certificate.
 
 # 🛠️ 9. Troubleshooting
 
-### Browser rejects certificate  
+### Browser rejects certificate
 Add exception manually.
 
-### No audio  
+### No audio
 Check UDP ports 7881–7980.
 
-### SPA cannot connect to backend  
+### SPA cannot connect to backend
 Check Caddy reverse proxy config.
 
-### LiveKit errors  
+### LiveKit errors
 Check `livekit.yaml` and logs:
 
 ```
 docker logs livekit
 ```
 
-### DM voice/conditions not applying  
+### DM voice/conditions not applying
 Check WebSocket connection in browser dev tools.
 
 ---
@@ -321,18 +321,18 @@ sudo rm -rf /opt/vtt-chat
 
 # ⚠️ Trademark Disclaimer
 
-- **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.  
-- **LiveKit** is a trademark of **LiveKit, Inc.**  
-- All other trademarks belong to their respective owners.  
+- **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
+- **LiveKit** is a trademark of **LiveKit, Inc.**
+- All other trademarks belong to their respective owners.
 - VTT‑Chat is **not affiliated** with any trademark holder.
 
 ---
 
 If you want, I can now generate:
 
-- The **actual install script (`install.sh`)**  
-- The **Stage 1: Architecture Design**  
-- The **backend folder skeleton**  
+- The **actual install script (`install.sh`)**
+- The **Stage 1: Architecture Design**
+- The **backend folder skeleton**
 - The **SPA folder skeleton**
 
 Just tell me where you want to go next.

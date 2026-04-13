@@ -41,9 +41,9 @@ sudo usermod -aG docker $USER
 
 Log out and back in to apply group changes.
 
-### **Node.js 20 (LTS)**
+### **Node.js 25**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_25.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
@@ -123,6 +123,11 @@ Fill in:
 ---
 
 # 🧵 6. Install Dependencies
+
+### Root (Linting & Formatting Tools)
+```bash
+npm install
+```
 
 ### Backend
 ```bash
@@ -208,6 +213,14 @@ This project uses:
 - ESLint (linting)
 - EditorConfig (consistency)
 
+From the repo root, run:
+
+```bash
+npm run lint      # Check style issues
+npm run format    # Auto-format all files
+npm run check     # Run linting checks
+```
+
 VS Code will auto‑format on save.
 
 ---
@@ -228,19 +241,21 @@ npm run test
 
 # 🚀 12. Building for Production
 
-### Backend
+From the repo root, build both together:
+
 ```bash
-cd backend
 npm run build
 ```
 
-### Frontend
+Or build individually:
+
 ```bash
-cd frontend
-npm run build
+npm run build:backend
+npm run build:frontend
 ```
 
-### Full Docker Build
+Full Docker build:
+
 ```bash
 docker compose build
 ```
@@ -321,6 +336,12 @@ sudo pacman -Syu
 sudo pacman -S --needed git nodejs npm docker docker-compose make
 ```
 
+Verify Node.js version:
+
+```bash
+node --version  # Should be 25.x or later
+```
+
 ### **Enable Docker**
 ```bash
 sudo systemctl enable --now docker
@@ -392,6 +413,11 @@ Fill in:
 ---
 
 # 📦 6. Install Dependencies
+
+### Root (Linting & Formatting Tools)
+```bash
+npm install
+```
 
 ### Backend
 ```bash
@@ -466,21 +492,33 @@ Run → Dev: Backend + Frontend
 Arch users often have Prettier + ESLint globally installed, but the project uses local versions.
 VS Code will auto‑format on save.
 
+From the repo root, run:
+
+```bash
+npm run lint      # Check style issues
+npm run format    # Auto-format all files
+npm run check     # Run linting checks
+```
+
 ---
 
 # 🚀 11. Building for Production
 
-Backend:
+From the repo root, build both together:
+
 ```bash
 npm run build
 ```
 
-Frontend:
+Or build individually:
+
 ```bash
-npm run build
+npm run build:backend
+npm run build:frontend
 ```
 
-Docker:
+Full Docker build:
+
 ```bash
 docker compose build
 ```

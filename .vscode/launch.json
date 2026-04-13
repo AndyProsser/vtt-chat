@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: Debug",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/node_modules/.bin/ts-node-dev",
+      "args": [
+        "--respawn",
+        "--transpile-only",
+        "src/index.ts"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "restart": true
+    },
+    {
+      "name": "Frontend: Debug (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "sourceMaps": true,
+      "preLaunchTask": "Frontend: Dev"
+    },
+    {
+      "name": "Dev: Backend + Frontend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/node_modules/.bin/ts-node-dev",
+      "args": [
+        "--respawn",
+        "--transpile-only",
+        "src/index.ts"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "restart": true,
+      "preLaunchTask": "Frontend: Dev"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev: Backend + Frontend (Compound)",
+      "configurations": [
+        "Backend: Debug",
+        "Frontend: Debug (Chrome)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

@@ -2,7 +2,7 @@ FROM node:25-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
@@ -11,9 +11,8 @@ FROM node:25-alpine
 WORKDIR /app
 
 COPY --from=builder /app/dist ./dist
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install -g serve
 
 EXPOSE 5173
 
-CMD ["npm", "run", "preview"]
+CMD ["serve", "-s", "dist", "-l", "5173"]
