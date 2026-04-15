@@ -1,478 +1,414 @@
-# VTT‑Chat Deployment Guide
-*HomeLab‑friendly installation for Ubuntu Server + Docker + Caddy*
+# **DEPLOYMENT.md**
+
+# Deployment Guide
+
+_A production‑grade deployment strategy for HomeLab servers running Docker, Caddy, Postgres, Redis, and LiveKit._
 
 ---
 
 ## 📘 Overview
 
-This document explains how to deploy **VTT‑Chat** on a **fresh Ubuntu Server** using:
+This document describes how to deploy the **VTT‑Chat platform** on:
 
-- **Docker** (Engine + Compose or Swarm)
-- **Caddy** as the reverse proxy
-- **Self‑signed TLS certificates** for local IP access
-- **Optional ACME DNS‑01** for domain owners
-- **Non‑standard HTTPS ports** (e.g., 8443) to avoid ISP blocks
-- **LiveKit** running as a dedicated native server
+- A HomeLab mini‑server
+- Ubuntu Server (recommended)
+- Docker Engine + Docker Compose
+- Caddy for HTTPS
+- Postgres for persistence
+- Redis for presence
+- LiveKit for audio transport
+- Optional TURN server for NAT traversal
 
-The goal is to allow a DM (or any group member) to deploy the entire platform on a small home server in **a few hours**, with minimal technical overhead.
+This guide covers:
 
----
-
-# 🏡 1. System Requirements
-
-### Minimum Recommended Hardware
-
-- **CPU:** 2+ cores
-- **RAM:** 4 GB minimum (8 GB recommended)
-- **Storage:** 20 GB free
-- **Network:** Stable broadband connection
-- **OS:** Ubuntu Server 22.04 LTS or newer
-
-### Required Software
-
-- Docker Engine
-- Docker Compose or Docker Swarm
-- Caddy (reverse proxy + TLS)
-- Git
-- curl / wget
+- System requirements
+- Folder structure
+- Environment variables
+- Docker Compose stack
+- Caddy configuration
+- LiveKit integration
+- TURN server setup
+- Backup strategy
+- Upgrades & zero‑downtime deploys
 
 ---
 
-# 🔧 2. Network & Port Requirements
+# 🧩 1. System Requirements
 
-VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs block 80/443.
+### Minimum
 
-### Required Ports (default HomeLab configuration)
+| Component | Requirement          |
+| --------- | -------------------- |
+| CPU       | 2 cores              |
+| RAM       | 4 GB                 |
+| Disk      | 20 GB                |
+| OS        | Ubuntu Server 22.04+ |
+| Network   | Stable broadband     |
 
-| Service | Port | Protocol | Purpose |
-|--------|------|----------|---------|
-| Caddy HTTPS | **8443** | TCP | SPA + Backend |
-| Caddy HTTP (optional) | 8080 | TCP | Redirect only |
-| Backend API | internal | TCP | Behind Caddy |
-| LiveKit Signaling | **7880** | TCP/WebSocket | Control messages |
-| LiveKit Media | **7881–7980** | UDP + TCP | Voice transport (fallback) |
-| Postgres | internal | TCP | Database |
-| Redis | internal | TCP | Cache/presence |
+### Recommended (for 6–10 players)
 
-### Optional
-
-- TURN server (if needed for strict NAT environments)
-
----
-
-# 🔐 3. TLS Strategy
-
-### Default (No Domain)
-
-- Generate **self‑signed certificates**
-- Caddy terminates TLS on port **8443**
-- SPA accessed via:
-  ```
-  https://<server-ip>:8443
-  ```
-
-### With Domain (Optional)
-
-- Use **ACME DNS‑01** challenge
-- Works even if ports 80/443 are blocked
-- Requires DNS provider API token
+| Component | Requirement          |
+| --------- | -------------------- |
+| CPU       | 4–6 cores            |
+| RAM       | 8–16 GB              |
+| Disk      | 100+ GB (recordings) |
+| Network   | 20–50 Mbps up/down   |
 
 ---
 
-# 📦 4. Directory Structure
+# 🗂️ 2. Folder Structure
 
-A typical installation will look like:
+Recommended repo layout:
 
 ```
-/opt/vtt-chat/
-    backend/
-    frontend/
-    livekit/
-    caddy/
-    postgres/
-    redis/
-    docker-compose.yml
-    .env
+/vtt-chat
+  /backend
+  /frontend
+  /livekit
+  /caddy
+  /docker
+  /scripts
+  /docs
+```
+
+Deployment folder:
+
+```
+/opt/vtt-chat
+  docker-compose.yml
+  .env
+  Caddyfile
+  /data
+    /postgres
+    /redis
+    /recordings
+    /snapshots
 ```
 
 ---
 
-## 4.1 Docker Compose Setup
+# 🔐 3. Environment Variables
 
-VTT‑Chat provides two preconfigured Docker Compose files:
-
-| File | Use Case | Features |
-|------|----------|----------|
-| `docker-compose.dev.yml` | Local development | Hot-reload, verbose logging, HTTP on 8080 |
-| `docker-compose.yml` | Production | Optimized images, HTTPS only on 8443, persistent storage |
-
-Both files:
-- Use `livekit.yaml` configuration file
-- Set up the same network and services
-- Expose correct UDP/TCP ports
-- Connect via internal network
-
----
-
-# 🚀 5. Installation Steps (High-Level)
-
-Below is the high‑level flow.
-A full install script will automate these steps.
-
----
-
-## 5.1 Update System
+Create `.env`:
 
 ```
-sudo apt update && sudo apt upgrade -y
+POSTGRES_USER=vtt
+POSTGRES_PASSWORD=supersecret
+POSTGRES_DB=vtt
+
+REDIS_PASSWORD=anothersecret
+
+JWT_SECRET=changeme
+API_URL=https://yourdomain.com
+WS_URL=wss://yourdomain.com/ws
+
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=devsecret
+LIVEKIT_URL=https://yourdomain.com:7880
+
+TURN_URL=turn:yourdomain.com:3478
+TURN_USERNAME=turnuser
+TURN_PASSWORD=turnpass
 ```
 
 ---
 
-## 5.2 Install Docker
+# 🐳 4. Docker Compose Stack
 
-```
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
-```
+`docker-compose.yml`:
 
-Log out and back in.
+```yaml
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    volumes:
+      - ./data/redis:/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+
+  livekit:
+    image: livekit/livekit-server
+    restart: unless-stopped
+    command: >
+      --config /livekit.yaml
+    volumes:
+      - ./livekit/livekit.yaml:/livekit.yaml
+      - ./data/recordings:/recordings
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '7880:7880'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./data/caddy:/data
+      - ./data/caddy-config:/config
+```
 
 ---
 
-## 5.3 Install Caddy
+# 🔐 5. Caddy Configuration (HTTPS + Reverse Proxy)
+
+`Caddyfile`:
 
 ```
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo apt-key add -
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install caddy
+yourdomain.com {
+  encode gzip
+  tls you@example.com
+
+  handle_path /api/* {
+    reverse_proxy backend:3000
+  }
+
+  handle_path /ws/* {
+    reverse_proxy backend:3000
+  }
+
+  handle {
+    reverse_proxy frontend:4173
+  }
+}
+
+# LiveKit WebRTC
+:7880 {
+  reverse_proxy livekit:7880
+}
+```
+
+Caddy automatically:
+
+- Issues HTTPS certificates
+- Renews certificates
+- Handles HTTP/2 and HTTP/3
+- Proxies WebSocket traffic
+
+---
+
+# 🎧 6. LiveKit Configuration
+
+`livekit.yaml`:
+
+```yaml
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+keys:
+  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+recording:
+  enabled: true
+  output_directory: /recordings
+turn:
+  enabled: true
+  domain: yourdomain.com
+  tls_port: 5349
+  udp_port: 3478
 ```
 
 ---
 
-## 5.4 Clone the Repository
+# 🌐 7. TURN Server (Optional but Recommended)
+
+If your players are behind strict NAT:
 
 ```
-git clone https://github.com/AndyProsser/vtt-chat.git
+docker run -d \
+  --name coturn \
+  -p 3478:3478 \
+  -p 5349:5349 \
+  instrumentisto/coturn \
+  --no-auth \
+  --realm yourdomain.com \
+  --use-auth-secret \
+  --static-auth-secret=${TURN_PASSWORD}
+```
+
+Update `.env`:
+
+```
+TURN_URL=turn:yourdomain.com:3478
+TURN_USERNAME=turnuser
+TURN_PASSWORD=turnpass
+```
+
+---
+
+# 🔄 8. Deployment Steps
+
+### 1. Clone repo
+
+```
+git clone https://github.com/yourname/vtt-chat
 cd vtt-chat
 ```
 
----
-
-## 5.5 Create `.env` Files
-
-The install script will generate defaults, but manual setup looks like:
+### 2. Create `.env`
 
 ```
 cp .env.example .env
 nano .env
 ```
 
-Key variables:
-
-- `LIVEKIT_API_KEY=...` (arbitrary string for development)
-- `LIVEKIT_API_SECRET=...` (arbitrary string for development)
-- `POSTGRES_PASSWORD=...`
-- `REDIS_PASSWORD=...`
-
-For production, generate strong random values for API credentials.
-
----
-
-## 5.6 Configure LiveKit (Optional)
-
-The `livekit.yaml` file is already configured for voice-only with optimal settings.
-
-**Edit if you need to:**
-- Change port ranges (not recommended unless there are conflicts)
-- Adjust STUN servers
-- Enable debug logging (set `logging.level: debug`)
-
-**For production**, consider adding a TURN server if users are behind strict corporate firewalls.
-
----
-
-## 5.6.1 Generate Self‑Signed Certificates (No Domain)
+### 3. Build & start
 
 ```
-mkdir -p caddy/certs
-openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout caddy/certs/selfsigned.key \
-  -out caddy/certs/selfsigned.crt \
-  -subj "/CN=vtt-chat"
+docker compose up -d --build
 ```
 
-Caddyfile example:
+### 4. Run migrations
 
 ```
-https://:8443 {
-    tls /opt/vtt-chat/caddy/certs/selfsigned.crt /opt/vtt-chat/caddy/certs/selfsigned.key
-    reverse_proxy backend:3000
-    reverse_proxy /livekit livekit:7880
-    encode gzip
-}
+docker compose exec backend npx prisma migrate deploy
+```
+
+### 5. Verify services
+
+```
+docker compose ps
+```
+
+### 6. Access the app
+
+```
+https://yourdomain.com
 ```
 
 ---
 
-## 5.7 Start Docker Stack
-**Development:**
+# 🧪 9. Health Checks
+
+### Backend
 
 ```
-docker compose -f docker-compose.dev.yml up -d
+curl https://yourdomain.com/api/health
 ```
 
-**Production:**
+### LiveKit
 
 ```
-docker compose -f docker-compose.yml up -d
+curl https://yourdomain.com:7880
 ```
-
-Or for Docker Swarm (production):
-
-```
-docker swarm init
-docker stack deploy -c docker-compose.yml vttchat
-```
-
-The stack will start:
-- **postgres** (database)
-- **redis** (cache/presence)
-- **livekit** (voice signaling & media)
-- **backend** (API server)
-- **frontend** (web SPA)
-- **caddy** (reverse proxy + TLS)ker stack deploy -c docker-compose.yml vttchat
-```
-
----
-
-## 5.8 Access the App
-
-Open:
-
-```
-https://<server-ip>:8443
-```
-
-Accept the self‑signed certificate.
-
----
-
-## 5.9 (Optional) Add Server Control Script to PATH
-
-VTT‑Chat includes a `server` control script for easy management. To access it globally as `vtt-chat-server`:
-
-### Option 1: Symlink (Recommended)
-
-```bash
-sudo ln -s /opt/vtt-chat/server /usr/local/bin/vtt-chat-server
-chmod +x /opt/vtt-chat/server
-```
-
-### Option 2: Add to PATH
-
-Add to your shell profile (`.bashrc`, `.zshrc`, etc.):
-
-```bash
-export PATH="/opt/vtt-chat:$PATH"
-```
-
-Then reload your shell:
-
-```bash
-source ~/.bashrc
-```
-
-### Usage
-
-Once installed, you can control the stack:
-
-```bash
-vtt-chat-server build      # Configure and build stack
-vtt-chat-server start      # Start services
-vtt-chat-server stop       # Stop services
-vtt-chat-server restart    # Restart and rebuild if needed
-vtt-chat-server status     # Show service status
-vtt-chat-server update     # Pull latest from repo and rebuild
-vtt-chat-server help       # Show available commands
-```
-
----
-
-# 🎙️ 6. LiveKit Deployment
-containerized service** with configuration via `livekit.yaml`.
-
-### Configuration File
-
-A `livekit.yaml` file at the project root controls all LiveKit settings:
-
-- **Signaling port:** 7880 (TCP/WebSocket)
-- **Media ports:** 7881–7980 (UDP + TCP for NAT fallback)
-- **Voice-only optimization:** Video disabled, Opus codec configured
-- **NAT traversal:** STUN servers for clients behind firewalls
-- **Room auto-cleanup:** Empty rooms removed after 5 minutes
-- **API credentials:** Passed via environment variables (`LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`)
-
-### How It Works
-
-- Docker Compose mounts `livekit.yaml` into the container at `/etc/livekit.yaml`
-- Both dev and production compose files use the same config file approach
-- The backend communicates with LiveKit via internal network (`http://livekit:7880`)
-- Clients connect via the exposed ports
-
-### Voice-Only Optimization
-
-The current setup is optimized for **voice-only** communication:
-- `video_enabled: false` disables video codec overhead
-- Opus audio codec for excellent compression
-- Reduces bandwidth and CPU usage
-- Suitable for TTT/RPG chat applications
-
-For details, see `livekit.yaml` in the project root.
-
----
-
-# 🗄️ 7. Database & Redis
-
-### Postgres
-
-- Stores:
-  - Users
-  - Campaigns
-  - Messages
-  - Metadata cards
-  - Notes
-  - Session boundaries
-  - Player/DM settings
-  - Conditions & environments
 
 ### Redis
 
-- Stores:
-  - Presence
-  - Ping cooldowns
-  - Ephemeral audio overrides
-  - WebSocket session state
-
----
-
-# 🧪 8. Testing the Deployment
-
-### Verify services:
-
 ```
-docker ps
-docker logs -f vttchat-backend
-docker logs -f vttchat-livekit
-docker logs -f vttchat-caddy
+docker compose exec redis redis-cli -a $REDIS_PASSWORD ping
 ```
 
-### Verify ports:
+### Postgres
 
 ```
-# HTTPS proxy
-sudo ss -tulpn | grep 8443
-
-# LiveKit signaling
-sudo ss -tulpn | grep 7880
-
-# LiveKit media (UDP)
-sudo ss -tulpn | grep 7881
-```
-
-### Verify connectivity:
-
-```
-# Test backend API
-curl -k https://localhost:8443/api/health
-
-# Test WebSocket
-curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
-  wss://localhost:8443/ws
+docker compose exec postgres psql -U vtt -c "SELECT 1;"
 ```
 
 ---
 
-# 🛠️ 9. Troubleshooting
+# 💾 10. Backups
 
-### Browser refuses self‑signed cert
-Add exception manually or use a domain with proper ACME certificates.
+### Postgres
 
-### LiveKit audio not working
-1. Check both UDP AND TCP ports 7881–7980 are exposed:
-   ```
-   sudo ss -tulpn | grep 7881
-   ```
-2. Verify `livekit.yaml` is mounted correctly:
-   ```
-   docker exec vttchat-livekit cat /etc/livekit.yaml
-   ```
-3. Check LiveKit logs for configuration errors:
-   ```
-   docker logs vttchat-livekit | grep -i error
-   ```
+```
+pg_dump -U vtt vtt > backup.sql
+```
 
-### SPA cannot connect to backend
-1. Verify Caddy is routing correctly:
-   ```
-   docker logs vttchat-caddy | grep -i reverse_proxy
-   ```
-2. Check backend is healthy:
-   ```
-   curl -k https://localhost:8443/api/health
-   ```
+### Redis
 
-### LiveKit config not being read
-- Ensure `livekit.yaml` exists in project root
-- Verify it's a valid YAML file (check indentation)
-- Restart the container:
-  ```
-  docker compose restart livekit
-  ```
+```
+docker compose exec redis redis-cli -a $REDIS_PASSWORD save
+```
 
-### High audio latency or drops
-- Check if TCP fallback is being used (UDP may be blocked)
-- Monitor resource usage:
-  ```
-  docker stats vttchat-livekit
-  ```
-- Ensure minimum 4GB RAM available
+### Recordings
 
-### WebSocket connection fails
-- Check `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are set in `.env`
-- Verify backend can reach LiveKit:
-  ```
-  docker exec vttchat-backend curl http://livekit:7880/health
-  ```
+```
+rsync -av ./data/recordings /backup/
+```
+
+### Full campaign export
+
+```
+GET /api/campaigns/:id/export
+```
 
 ---
 
-# 🔐 10. Security Notes
+# 🔁 11. Upgrades & Zero‑Downtime Deploys
 
-- Self‑signed certs are fine for local networks
-- For remote access, use DNS‑01 ACME
-- Keep Postgres/Redis internal‑only
-- Use strong passwords in `.env`
-- Keep server updated
+### Pull latest
+
+```
+git pull
+```
+
+### Rebuild
+
+```
+docker compose up -d --build
+```
+
+### Migrate
+
+```
+docker compose exec backend npx prisma migrate deploy
+```
+
+### Restart LiveKit only (optional)
+
+```
+docker compose restart livekit
+```
 
 ---
 
-# 📦 11. Future Enhancements
+# 🧠 12. Design Principles
 
-- Automated install script
-- Optional TURN server
-- Admin dashboard
-- Monitoring & metrics
-- Backup/restore automation
+### 1. HomeLab‑friendly
 
----
+Runs on a single mini‑server.
 
-# ⚠️ Trademark Disclaimer
+### 2. Zero‑config HTTPS
 
-- **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
-- **LiveKit** is a trademark of **LiveKit, Inc.**
-- All other trademarks belong to their respective owners.
-- VTT‑Chat is **not affiliated** with any trademark holder.
+Caddy handles certificates automatically.
+
+### 3. Modular
+
+Backend, frontend, LiveKit, TURN, Redis, Postgres are isolated.
+
+### 4. Resilient
+
+Redis snapshots + Postgres backups + object storage.
+
+### 5. Scalable
+
+Can be moved to Swarm/Kubernetes later.
+
+### 6. Developer‑friendly
+
+Local dev uses the same Compose stack.

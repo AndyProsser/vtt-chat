@@ -1,421 +1,282 @@
-# VTT‑Chat — Knowledge Pack  
-*A complete architectural and behavioral reference for the project*
+# **ARCHITECTURE.md**
+
+# VTT‑Chat Platform Architecture
+
+_A scalable, real‑time virtual tabletop communication system_
 
 ---
 
-## 1. Project Overview
+## 📘 Overview
 
-**Repository:** https://github.com/AndyProsser/vtt-chat  
-**Goal:** Build a DM‑grade, privacy‑respecting, session‑aware tabletop **voice + chat** platform with advanced audio effects, metadata cards, notes, and LiveKit‑powered voice — deployable on a **home server** with minimal effort.
+This document provides a high‑level architectural overview of the VTT‑Chat platform.
+It describes the major subsystems, their responsibilities, and how they interact:
 
-**Core idea:**  
-A **voice‑first** tabletop communication system with optional messaging and powerful DM tools.  
-Players get simplicity.  
-DM gets control.
+- Backend (Node.js, Postgres, Redis, Prisma)
+- Real‑time layer (WebSockets + LiveKit)
+- Presence & session state machine
+- Audio engine (WebAudio + presets + DM controls)
+- Frontend architecture (Zustand stores + event reducer)
+- Browser extension integration
+- Long‑term storage, journaling, and search
+- Admin, accounting, and telemetry subsystems
 
----
-
-## 2. Roles & UX Philosophy
-
-### Roles
-- **DM**
-  - Full control over audio effects, conditions, environments
-  - Can manage sessions, metadata, notes, exports
-  - Sees all messages and system events
-- **Player**
-  - Simple audio controls (gain/gate/mute/devices)
-  - Can see conditions/environment applied to them
-  - Cannot change conditions/environment
-
-### UX Principles
-- All DM actions should be **1–2 clicks**
-- DM controls must never overwhelm the UI
-- Private chat is **clean** (no logs, no effects)
-- Players retain control over:
-  - Mic device
-  - Speaker device
-  - Self‑mute
-- DM overrides are **session‑scoped**
-- Player preferences are **persistent**
+This file serves as the **entry point** for developers.
+Each subsystem has its own dedicated document linked below.
 
 ---
 
-## 3. Core Concepts & Behavior
+## 🏗️ Core System Components
 
-### 3.1 Sessions & Session Boundaries
+### **1. Backend API (Node.js + Fastify/Express)**
 
-A **session** is a logical play segment (e.g., a game night).  
-DM can explicitly **end a session**.
+The backend exposes a modular API surface:
 
-When a session ends:
+- **Auth & Identity**
+- **Campaigns & Sessions**
+- **Rooms & Presence**
+- **Chat & Notes**
+- **Recordings & Journals**
+- **Audio Presets & DM Controls**
+- **Admin & Accounting**
+- **Telemetry & Status**
 
-- Insert a **session boundary marker** into main chat
-- Reset:
-  - DM voice preset → Normal
-  - Room environments → None
-  - Player conditions → cleared
-  - DM gain/gate overrides → cleared
-  - DM‑muted states → cleared
-  - Temporary audio effects → cleared
-  - Private/group rooms → closed
-  - Everyone returned to main room
-- Persist:
-  - Player audio preferences
-  - DM settings toggles
-  - Chat logs
-  - Notes
-  - Metadata cards
-  - Tags
+All APIs are stateless and authenticated via JWT or API keys.
 
-### Lazy‑Loading Chat History
-
-- When scrolling up and hitting a session boundary:
-  - User must explicitly request older messages
-- Messages load as a continuous log
+**See:** `API-SPEC.md`
 
 ---
 
-## 3.2 Rooms & Visibility
+### **2. Database Layer (Postgres + Prisma)**
 
-Room types:
+The relational schema supports:
 
-- **Main** — default room for everyone
-- **Group** — subset of players; DM sees all groups
-- **Private Chat** — intentionally silent
+- Users, characters, campaigns
+- Sessions, rooms, presence snapshots
+- Chat messages, notes, flags, shares
+- Recordings, transcripts, journals
+- Audio presets, DM overrides
+- Admin logs, accounting usage
+- Import/export & archival
 
-### Visibility Rules
-
-| Room | What Players See | What DM Sees |
-|------|------------------|--------------|
-| Main | Main chat + system messages | Everything |
-| Group | Group chat + group metadata | Everything |
-| Private | No system messages, no effects logs | Everything |
+**See:** `DATA-MODEL.md`
 
 ---
 
-## 3.3 System Messages (Strictly Limited)
+### **3. Redis Presence Layer**
 
-Only **three** system message types exist:
+Redis is the **source of truth for live state**, including:
 
-1. **Join session**
-2. **Leave session**
-3. **Session ended by DM**
+- User presence
+- Room membership
+- Private rooms
+- DM/assistant DM roles
+- Audio override state
+- Shout flags
+- Activity timestamps
+- WebSocket fan‑out channels
 
-All system messages appear in **main chat only**.
+A background job periodically snapshots Redis → Postgres for recovery and analytics.
 
-### DM Included in Join/Leave
-
-- “🟦 The DM (Andy) joined the session.”
-- “⬜ The DM (Andy) left the session.”
-- “🟥 Session ended by the DM.”
-
-### No system messages for:
-
-- Group joins/leaves  
-- Private chat transitions  
-- Conditions  
-- Environments  
-- Audio effects  
+**See:** `PRESENCE-STATE-MACHINE.md`
 
 ---
 
-## 4. Audio Model
+### **4. Real‑Time Transport (WebSockets)**
 
-### 4.1 High-Level
+All clients maintain a WebSocket connection per campaign:
 
-- LiveKit handles voice transport
-- Web Audio handles:
-  - DM voice presets
-  - Player conditions
-  - Room environments
-  - Gain/gate overrides
+```
+wss://server/ws/campaign/:campaignId
+```
 
----
+Events include:
 
-### 4.2 DM Audio Controls
+- Presence
+- Session lifecycle
+- Room changes
+- Chat & whispers
+- Notes published to chat
+- Audio presets & DM overrides
+- Private chat lifecycle
+- External logs (DDB/Roll20/FVTT)
+- Telemetry events
 
-DM Audio Panel includes:
+A central **event reducer** routes events into Zustand stores.
 
-- **DM Voice**  
-  Single button → hover to choose preset  
-- **Room Environment**  
-  Hover → click to apply  
-- **Clear Conditions**  
-  Clears all player conditions  
-- **Effects Panel** (optional)  
-  Popup grid of one‑click sound effects  
-- **Audio State Slide‑Out**  
-  Per‑user gain/gate/mute/condition view
-
-DM Settings Panel controls visibility of:
-
-- DM Voice
-- Room Environment
-- Player Conditions
-- Effects Panel
-- Audio State Panel
-- Whisper/Private Chat options
+**See:** `WEBSOCKETS.md`
+**See:** `EVENT-REDUCER.md`
 
 ---
 
-### 4.3 Player Conditions
+### **5. LiveKit Integration**
 
-- Applied **per player**
-- Only one active condition at a time
-- Applied via **right‑click → Conditions**
-- Tapping again clears it
-- Persist across reconnects and room changes
-- Disabled in private chat
-- Cleared at session end
+LiveKit handles:
 
-Conditions appear as:
+- Audio publishing
+- Room subscriptions
+- Track events
+- Private chat routing
+- Shout routing
+- DM broadcast
+- Room‑level audio separation
 
-- Avatar overlays
-- Player audio panel (read‑only)
-- DM audio state slide‑out
+A custom integration layer manages:
 
----
+- RoomManager
+- TrackRouter
+- Publisher
+- AudioGraph (WebAudio)
 
-### 4.4 Room Environments
-
-- Applied **per room**
-- Visible only to room members
-- DM can pre‑set environments before moving players
-- Cleared at session end
+**See:** `LIVEKIT-INTEGRATION.md`
 
 ---
 
-### 4.5 Gain/Gate & Mute Rules
+### **6. Audio Engine (WebAudio)**
 
-**Players:**
+The audio engine provides:
 
-- Can set:
-  - Gain
-  - Gate
-  - Mic device
-  - Speaker device
-  - Self‑mute
-- These persist across sessions
+- Per‑participant gain, mute, filters
+- Distance simulation
+- Environment acoustics (reverb IRs)
+- Condition effects (silenced, underwater, drunk, etc.)
+- DM voice presets (demon, narrator, whisper, etc.)
+- Player IC presets (DM‑only monitor)
+- Private room clean mode
+- DM push‑to‑talk override
+- Clear‑all effects
 
-**DM:**
+All presets are defined in a shared JSON library.
 
-- Can override gain/gate (session‑only)
-- Can mute/unmute only if **DM muted them**
-- Cannot unmute a player who self‑muted
-- Cannot change player mic/speaker devices
-
----
-
-### 4.6 Ping Behavior
-
-- Players can ping DM
-- DM hears soft chime
-- Ping cooldown per player (e.g., 10s)
-- Prevents spam
+**See:** `AUDIO-ENGINE.md`
+**See:** `PRESET-LIBRARY.md`
 
 ---
 
-## 5. Chat, Metadata, Notes, and Tags
+### **7. Frontend Architecture (React + Zustand)**
 
-### 5.1 Chat Messages
+The client uses a modular state architecture:
 
-- Standard text messages
-- Stored with:
-  - Author
-  - Room
-  - Timestamp
-  - Visibility
-  - Session ID
+- `usePresenceStore`
+- `useRoomStore`
+- `useAudioStore`
+- `useChatStore`
+- `useRoleStore`
+- `useNoteStore`
+- `useTelemetryStore`
 
----
+The WebSocket event reducer updates these stores deterministically.
 
-### 5.2 Metadata Cards (DM Templates)
-
-DM‑authored structured cards:
-
-- Rewards
-- Rest
-- XP / Level‑Up
-- Key Encounter
-- Key Event
-- Combat Start
-- Combat End
-- **Recap** (session summary)
-
-Metadata cards:
-
-- Are not system messages
-- Are timestamped
-- Are room‑scoped (main or group)
-- Can be tagged
-- Are searchable
-- Appear in timeline view
+**See:** `STATE-STORES.md`
 
 ---
 
-### 5.3 Tags & Search
+### **8. Chat & Notes System**
 
-Tags:
+Features include:
 
-- `#combat`, `#loot`, `#npc`, `#quest`, `#event`, `#xp`, `#recap`, etc.
-- Clickable
-- Filterable
-- DM can add/remove via right‑click
+- Room chat
+- Whispers
+- Green room ephemeral chat
+- Hashtags
+- Metagame notes
+- Notes with visibility rules
+- Per‑user flags (read, hidden, starred)
+- Notes published to chat
+- Search across sessions
 
-Search can filter by:
-
-- Text
-- Tags
-- Author
-- Date range
-- Session
-- Metadata subtype
-
----
-
-### 5.4 Timeline View
-
-A metadata‑only chronological view grouped by session.
-
-- Shows XP, Rest, Encounters, Events, Combat, Recaps
-- DM‑focused
-- Clicking a card jumps to original message
+**See:** `CHAT-SYSTEM.md`
+**See:** `NOTES-SYSTEM.md`
 
 ---
 
-### 5.5 Notes
+### **9. Sessions & Green Room**
 
-- DM can convert any message into a note
-- Notes have:
-  - Title
-  - Content
-  - Visibility rules
-- No “one‑time reveal” messages
-- Notes can be exported/imported
+Session lifecycle:
 
----
+- Players gather in green room
+- DM starts session → recap shown
+- Private rooms, group rooms, whispers
+- Session ends → return to green room
+- Green room messages restored
+- Cleanup when last user leaves
 
-## 6. Persistence Rules
-
-### Persist Across Sessions
-
-- Player gain/gate/mute/devices
-- Player theme/panel preferences
-- DM settings toggles
-- Player conditions
-- Room environments
-- Chat logs
-- Metadata cards
-- Notes
-- Tags
-
-### Reset at Session End
-
-- DM voice preset
-- Room environments
-- Player conditions
-- DM gain/gate overrides
-- DM‑muted states
-- Temporary effects
-- Private/group rooms
+**See:** `SESSIONS.md`
 
 ---
 
-## 7. Homelab Deployment Model
+### **10. Browser Extension Integration**
 
-Target environment:
+The extension supports:
 
-- **Ubuntu Server**
-- **Docker** (Engine + Compose or Swarm)
-- **Caddy** reverse proxy
-- Non‑standard HTTPS ports (80/443 may be blocked)
-- Self‑signed certificates for local IPs
-- Optional ACME DNS‑01 for domains
+- Quick connect
+- Character metadata injection
+- External logs (DDB/Roll20/FVTT)
+- Auto‑effects (conditions, spells, distance)
+- Map‑based distance → audio effects
+- Whisper/shout detection
 
-### Deployment Goals
-
-- A technical home user can deploy in a few hours
-- Single install script:
-  - Installs Docker
-  - Installs Caddy
-  - Generates self‑signed certs
-  - Configures non‑standard HTTPS ports
-  - Brings up:
-    - Backend
-    - SPA
-    - Postgres
-    - Redis
-    - LiveKit
-  - Writes `.env` files
-
-### Assumptions
-
-- No public domain required
-- Local network access (e.g., `https://192.168.1.50:8443`)
-- DDB VTT‑Chat Launcher Extension will open the SPA
+**See:** `EXTENSION-INTEGRATION.md`
 
 ---
 
-## 8. Tech Stack Expectations
+### **11. Admin & Accounting**
 
-### Backend
+Admin console supports:
 
-- TypeScript
-- WebSocket for realtime
-- REST for config/export
+- User management
+- Campaign management
+- Logs & telemetry
+- Backup, archive, restore
+- Usage tracking
+- Locking users/campaigns
+
+**See:** `BACKUP-RESTORE.md`
+**See:** `TELEMETRY.md`
+
+---
+
+### **12. Deployment & Scaling**
+
+The platform is containerized:
+
+- API
 - Postgres
 - Redis
-- LiveKit token generation
+- LiveKit
+- Worker queue
+- Admin console
+- SPA frontend
 
-### Frontend
+Horizontal scaling is supported via:
 
-- React SPA
-- TypeScript
-- WebSocket client
-- LiveKit client SDK
-- Web Audio pipeline
+- Stateless API
+- Redis presence
+- LiveKit SFU
+- Worker queues
 
-### Reverse Proxy
-
-- Caddy
-- TLS termination
-- Self‑signed or ACME DNS‑01
-- Non‑standard HTTPS ports
+**See:** `DEPLOYMENT.md`
 
 ---
 
-## 9. Admin App (Optional Future)
+## 🧭 Document Index
 
-- Campaign management
-- Archive/export/delete
-- User management
-- System performance dashboards
-- Historical logs
-- Stats from backend, SPA, LiveKit
-- Secure access
-- Audit logs
-
----
-
-## 10. Coding & Design Intent for AI
-
-When generating code, prefer:
-
-- Strong TypeScript typing
-- Clear separation of concerns:
-  - `core/`
-  - `api/`
-  - `infra/`
-  - `ui/`
-- Explicit handling of:
-  - Privacy rules
-  - Session boundaries
-  - Lazy‑load chat history
-  - DM vs player capabilities
-- Structured logging
-- Input validation & sanitization
-- Rate limiting (especially ping)
-- No assumptions about public domains
-- Deployment must work on a **home server** with **non‑standard ports**
-
----
+| Document                      | Description                           |
+| ----------------------------- | ------------------------------------- |
+| **ARCHITECTURE.md**           | High‑level overview (this file)       |
+| **API-SPEC.md**               | REST API endpoints                    |
+| **DATA-MODEL.md**             | Prisma schema + relationships         |
+| **PRESENCE-STATE-MACHINE.md** | Redis presence model                  |
+| **WEBSOCKETS.md**             | WebSocket event contract              |
+| **EVENT-REDUCER.md**          | Client event reducer                  |
+| **STATE-STORES.md**           | Zustand store architecture            |
+| **LIVEKIT-INTEGRATION.md**    | Room manager, track router, publisher |
+| **AUDIO-ENGINE.md**           | WebAudio graph + effects              |
+| **PRESET-LIBRARY.md**         | JSON preset definitions               |
+| **CHAT-SYSTEM.md**            | Chat, whispers, green room            |
+| **NOTES-SYSTEM.md**           | Notes, flags, visibility              |
+| **SESSIONS.md**               | Session lifecycle                     |
+| **EXTENSION-INTEGRATION.md**  | DDB/Roll20/FVTT hooks                 |
+| **DM-TOOLS.md**               | DM controls & UI                      |
+| **TELEMETRY.md**              | Analytics & logging                   |
+| **BACKUP-RESTORE.md**         | Admin workflows                       |
+| **DEPLOYMENT.md**             | Docker & scaling                      |
