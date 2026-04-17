@@ -1,5 +1,7 @@
 /**
- * Baseline placeholder module.
- * This implementation is intentionally disabled for staged rebuild.
+ * useStore Hook
+ * Provides access to the root Zustand store.
  */
-export const BASELINE_PLACEHOLDER = true
+
+export { useStore } from '../state/store'
+export type { Store } from '../state/store'

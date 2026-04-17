@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@shared': path.resolve(__dirname, '../shared'),
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -25,10 +31,16 @@ export default defineConfig({
     minify: 'terser',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-livekit': ['@livekit/components-react'],
-          'vendor-store': ['zustand'],
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react'
+          }
+          if (id.includes('node_modules/@livekit')) {
+            return 'vendor-livekit'
+          }
+          if (id.includes('node_modules/zustand')) {
+            return 'vendor-store'
+          }
         },
       },
     },
