@@ -8,6 +8,10 @@ It describes the user experience principles, interaction patterns, overlay behav
 - Non‑intrusive
 - Predictable
 - VTT‑agnostic
+
+**Note:** This document focuses on **user experience** and overlay behavior.
+For technical implementation details, see [EXTENSION-INTEGRATION.md](EXTENSION-INTEGRATION.md).
+
 - Privacy‑respecting
 - DM‑aware
 - Consistent with the core app

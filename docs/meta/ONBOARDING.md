@@ -47,6 +47,7 @@ Before contributing, you should be familiar with these foundational documents:
 ### **Extension**
 
 - `EXTENSION-UX.md`
+- `EXTENSION-INTEGRATION.md`
 - `THIRD-PARTY-INTEGRATIONS.md`
 
 ### **Meta**

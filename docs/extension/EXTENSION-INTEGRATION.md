@@ -4,6 +4,9 @@
 
 _A cross‑browser MV3 extension that injects UI, extracts metadata, syncs character/campaign context, and streams external logs into the platform._
 
+**Note:** This document covers **technical architecture** and implementation.
+For UX principles and overlay layout, see [EXTENSION-UX.md](EXTENSION-UX.md).
+
 ---
 
 ## 📘 Overview

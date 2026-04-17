@@ -30,14 +30,19 @@ This README serves as the **entry point** for the entire documentation suite.
 - [CHAT-SYSTEM.md](subsystems/CHAT-SYSTEM.md)
 - [NOTES-SYSTEM.md](subsystems/NOTES-SYSTEM.md)
 - [AUDIO-ENGINE.md](subsystems/AUDIO-ENGINE.md)
-- [PRESENCE-SYSTEM.md](subsystems/PRESENCE-SYSTEM.md)
-- [SESSIONS.md](subsystems/SESSIONS.md)
+- [PRESENCE-STATE-MACHINE.md](subsystems/PRESENCE-STATE-MACHINE.md)
+- [SESSIONS.md](dm-tools/SESSIONS.md)
+- [EVENT-REDUCER.md](subsystems/EVENT-REDUCER.md)
+- [LIVEKIT-INTEGRATION.md](subsystems/LIVEKIT-INTEGRATION.md)
+- [PRESET-LIBRARY.md](subsystems/PRESET-LIBRARY.md)
+- [STATE-STORES.md](subsystems/STATE-STORES.md)
+- [ZUSTAND-STORE-ARCHITECTURE.md](subsystems/ZUSTAND-STORE-ARCHITECTURE.md)
 
 ### **UI**
 
-- [COMPONENT-GUIDELINES.md](ui/COMPONENT-GUIDELINES.md)
-- [MOTION-SPEC.md](ui/MOTION-SPEC.md)
-- [OVERLAY-BEHAVIOUR.md](ui/OVERLAY-BEHAVIOUR.md)
+- [COMPONENT-INTERFACES.md](ui/COMPONENT-INTERFACES.md)
+- [ANIMATION-AND-MOTION-SPEC.md](ui/ANIMATION-AND-MOTION-SPEC.md)
+- [OVERLAY-BEHAVIOUR.md](extension/EXTENSION-UX.md)
 
 ### **Extension**
 
@@ -60,10 +65,13 @@ This README serves as the **entry point** for the entire documentation suite.
 - [CONTRIBUTING.md](meta/CONTRIBUTING.md)
 - [GLOSSARY.md](meta/GLOSSARY.md)
 
-### **AI (Optional)**
+### **AI**
 
-- [AI-GUIDELINES.md](ai/AI-GUIDELINES.md)
-- [PROMPTING-RULES.md](ai/PROMPTING-RULES.md)
+- [AI-CONTEXT.md](ai/AI-CONTEXT.md) — Main onboarding context
+- [PROMPTING-RULES.md](ai/PROMPTING-RULES.md) — Behavioral rules
+- [AI-CONTEXT-GITHUB.md](ai/AI-CONTEXT-GITHUB.md) — GitHub Copilot variant
+- [AI-CONTEXT-VSCODE.md](ai/AI-CONTEXT-VSCODE.md) — VS Code Copilot variant
+- [DESIGN.md](ai/DESIGN.md) — Deep architecture template
 
 ---
 

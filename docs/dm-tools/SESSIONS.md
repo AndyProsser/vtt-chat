@@ -19,6 +19,9 @@ Sessions provide:
 - Recording and transcription
 - Automatic cleanup and restoration
 
+**Note:** This document covers DM-centric session workflows.
+For the architectural state machine model, see [SESSION-LIFECYCLE.md](../architecture/SESSION-LIFECYCLE.md).
+
 This document defines:
 
 - Session lifecycle
