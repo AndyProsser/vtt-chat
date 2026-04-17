@@ -29,6 +29,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const server = createServer(app)
   const wsManager = new WebSocketManager(server)
 
+  // Make wsManager available to route handlers via req.app.locals
+  app.locals.wsManager = wsManager
+
   logger.info('bootstrap', 'Initializing VTT-Chat backend Stage 1')
 
   // ========================================================================
@@ -107,7 +110,10 @@ export async function bootstrap(): Promise<BootstrapResult> {
       try {
         // Close WebSocket connections first
         wsManager.close().then(() => {
-          logger.info('bootstrap', `WebSocket server closed (${wsManager.getConnectionCount()} connections closed)`)
+          logger.info(
+            'bootstrap',
+            `WebSocket server closed (${wsManager.getConnectionCount()} connections closed)`
+          )
         })
 
         server.close(() => {

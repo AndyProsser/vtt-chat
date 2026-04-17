@@ -77,7 +77,7 @@ export default function App() {
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>VTT-Chat</h1>
             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-              Stage 3: Session Lifecycle Vertical Slice
+              Stage 4: Chat Vertical Slice
             </p>
           </div>
 
@@ -118,9 +118,9 @@ export default function App() {
             >
               <h2 style={{ color: '#1f2937' }}>Welcome to VTT-Chat</h2>
               <p style={{ color: '#6b7280', maxWidth: '500px', margin: '0 auto' }}>
-                Stage 3 implements the first complete role-aware vertical slice. DMs can create,
-                start, pause, resume, end, and delete sessions while players and spectators can
-                observe lifecycle state safely.
+                Stage 4 adds the full chat pipeline: IC, OOC, and whisper messages with strict
+                visibility filtering. DMs see all messages. Whispers are visible only to the sender,
+                recipient, and DM. Start a session to unlock the chat panel.
               </p>
             </section>
 

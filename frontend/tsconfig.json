@@ -13,11 +13,12 @@
     "isolatedModules": true,
     "ignoreDeprecations": "6.0",
     "noEmit": true,
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
       "@shared": ["../shared/index.ts"],
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"]
 }

@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express'
 import authRoutes from './auth.routes'
 import sessionRoutes from './session.routes'
+import chatRoutes from './chat.routes'
 
 const router = Router()
 
@@ -21,6 +22,7 @@ router.get('/health', (_req: Request, res: Response) => {
  */
 router.use('/auth', authRoutes)
 router.use('/session', sessionRoutes)
+router.use('/chat', chatRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
@@ -40,7 +42,6 @@ function notImplemented(domain: string) {
 router.use('/admin', (_req: Request, res: Response) => notImplemented('admin')(_req, res))
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
 router.use('/notes', (_req: Request, res: Response) => notImplemented('notes')(_req, res))
-router.use('/chat', (_req: Request, res: Response) => notImplemented('chat')(_req, res))
 router.use('/audio', (_req: Request, res: Response) => notImplemented('audio')(_req, res))
 router.use('/presence', (_req: Request, res: Response) => notImplemented('presence')(_req, res))
 router.use('/rooms', (_req: Request, res: Response) => notImplemented('rooms')(_req, res))

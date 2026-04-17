@@ -9,6 +9,7 @@ import { SessionState } from '@shared'
 import type { UUID, Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
+import { ChatWindow } from '../chat/ChatWindow'
 
 interface SessionInitProps {
   apiUrl: string
@@ -177,12 +178,18 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
+  const showChat = currentSession !== null && currentSession.state === SessionState.ACTIVE
+
   return (
     <div
       style={{
-        maxWidth: '600px',
+        maxWidth: showChat ? '1100px' : '600px',
         margin: '0 auto',
         padding: '2rem 1rem',
+        display: showChat ? 'grid' : 'block',
+        gridTemplateColumns: showChat ? '1fr 1fr' : undefined,
+        gap: showChat ? '1.5rem' : undefined,
+        alignItems: 'start',
       }}
     >
       {/* User Info & WS Status */}
@@ -449,6 +456,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     Delete
                   </button>
                 )}
+                {!currentSession || currentSession.id !== session.id ? (
+                  <button
+                    onClick={() => store.setCurrentSession(session.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Select
+                  </button>
+                ) : null}
                 {user.role !== 'DM' && (
                   <span style={{ fontSize: '0.75rem', color: '#64748b' }}>DM-only controls</span>
                 )}
@@ -465,6 +488,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           }}
         >
           No sessions available yet.
+        </div>
+      )}
+
+      {/* Chat panel — only shown when a session is ACTIVE */}
+      {showChat && currentSession && (
+        <div style={{ position: 'sticky', top: '1rem' }}>
+          <ChatWindow apiUrl={apiUrl} token={token} sessionId={currentSession.id} user={user} />
         </div>
       )}
     </div>

@@ -277,7 +277,8 @@ export class WebSocketManager {
   }
 
   /**
-   * Broadcast event to all clients in a session
+   * Broadcast event to all clients in a session (used for WS-originated events).
+   * Excludes the sender.
    */
   private broadcastToSession(
     sessionId: UUID,
@@ -299,6 +300,35 @@ export class WebSocketManager {
           })
         )
       }
+    })
+  }
+
+  /**
+   * Broadcast an event to all clients in a session with optional visibility filtering.
+   * Used by REST route handlers to push server-originated events to clients.
+   *
+   * @param sessionId - Target session
+   * @param event - Event envelope to broadcast
+   * @param visibleTo - If set, only deliver to users in this list; otherwise deliver to all
+   */
+  broadcastEventToSession(sessionId: UUID, event: EventEnvelope, visibleTo?: UUID[]): void {
+    const OPEN_STATE = 1
+    this.wss.clients.forEach((client: any) => {
+      const ws = client as ExtendedWebSocket
+      if (
+        ws.readyState !== OPEN_STATE ||
+        !ws.authPayload ||
+        ws.connectionState?.sessionId !== sessionId
+      ) {
+        return
+      }
+
+      // Visibility check: if restricted, only deliver to listed users
+      if (visibleTo && !visibleTo.includes(ws.authPayload.userId as UUID)) {
+        return
+      }
+
+      ws.send(JSON.stringify({ type: 'WS:EVENT', event }))
     })
   }
 
