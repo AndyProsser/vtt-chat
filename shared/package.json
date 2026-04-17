@@ -1,0 +1,18 @@
+{
+  "name": "@vtt-chat/shared",
+  "version": "0.0.1",
+  "description": "Shared types, events, permissions, and validators for VTT-Chat",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "vtt-chat",
+    "shared",
+    "types",
+    "events",
+    "contracts"
+  ]
+}
