@@ -5,8 +5,9 @@ Copy/paste everything below into a new chat.
 ---
 
 ## **PROJECT IDENTITY**
+
 VTT‑Chat is a **DM‑grade, session‑aware, privacy‑respecting tabletop voice & chat platform** designed for real‑time TTRPG play.
-It is *not* a VTT map tool — it is the **communication layer**: audio, chat, metadata, DM controls, and session management.
+It is _not_ a VTT map tool — it is the **communication layer**: audio, chat, metadata, DM controls, and session management.
 
 The platform must feel:
 
@@ -22,7 +23,9 @@ The platform must feel:
 ---
 
 ## **CORE PILLARS**
+
 ### **1. DM‑Grade Control**
+
 The DM is a privileged actor with:
 
 - Full visibility into all rooms, notes, logs, metadata
@@ -39,7 +42,8 @@ Players never see:
 - System clutter
 
 ### **2. Privacy & Session Boundaries**
-Privacy is a *first‑class architectural constraint*:
+
+Privacy is a _first‑class architectural constraint_:
 
 - No cross‑session leakage
 - No global logs
@@ -50,6 +54,7 @@ Privacy is a *first‑class architectural constraint*:
 - Export/import is DM‑only
 
 ### **3. Minimal System Message Clutter**
+
 Only three system messages are allowed:
 
 - **Join**
@@ -59,6 +64,7 @@ Only three system messages are allowed:
 Everything else (conditions, effects, environment changes, group transitions, private chat transitions) **must not** generate system messages.
 
 ### **4. Clean, Predictable Architecture**
+
 - Shared TypeScript types across backend & frontend
 - Modular backend services
 - Predictable WebSocket event schemas
@@ -70,7 +76,9 @@ Everything else (conditions, effects, environment changes, group transitions, pr
 ---
 
 ## **ARCHITECTURE OVERVIEW**
+
 ### **Frontend**
+
 - React + Vite
 - Zustand for state
 - LiveKit Components for audio
@@ -85,6 +93,7 @@ Everything else (conditions, effects, environment changes, group transitions, pr
   - DM tools
 
 ### **Backend**
+
 - Node + Express 5
 - WebSocket server
 - Prisma + Postgres
@@ -100,6 +109,7 @@ Everything else (conditions, effects, environment changes, group transitions, pr
   - Export/Import
 
 ### **Infrastructure**
+
 - Docker Compose (prod + dev)
 - Caddy (HTTPS + routing + local dev mode)
 - LiveKit server (dev mode locally)
@@ -111,6 +121,7 @@ Everything else (conditions, effects, environment changes, group transitions, pr
 ---
 
 ## **DATA MODELING PRINCIPLES**
+
 - Everything is scoped to a **session**
 - Rooms belong to sessions
 - Users belong to rooms
@@ -123,6 +134,7 @@ Everything else (conditions, effects, environment changes, group transitions, pr
 ---
 
 ## **EVENT SCHEMA PRINCIPLES**
+
 Every WebSocket event must include:
 
 - `type`
@@ -142,7 +154,9 @@ Events must be:
 ---
 
 ## **UX PRINCIPLES**
+
 ### **DM Experience**
+
 - DM sees everything
 - DM can override visibility
 - DM can annotate, tag, export, import
@@ -151,6 +165,7 @@ Events must be:
 - DM can see join/leave logs across all rooms
 
 ### **Player Experience**
+
 - Clean, minimal UI
 - Only sees what they should
 - No system spam
@@ -158,6 +173,7 @@ Events must be:
 - No cross‑room leakage
 
 ### **Chat UX**
+
 - Fast, responsive
 - Room‑scoped
 - Supports metadata cards
@@ -166,6 +182,7 @@ Events must be:
 - Supports export
 
 ### **Audio UX**
+
 - LiveKit‑powered
 - Room‑scoped
 - DM can mute individuals
@@ -175,6 +192,7 @@ Events must be:
 ---
 
 ## **SESSION MANAGEMENT RULES**
+
 - Sessions have strict boundaries
 - History is lazy‑loaded
 - Export/import is DM‑only
@@ -185,6 +203,7 @@ Events must be:
 ---
 
 ## **METADATA SYSTEM**
+
 Metadata cards are:
 
 - Structured
@@ -208,6 +227,7 @@ Types include:
 ---
 
 ## **COLLABORATION STYLE (HOW I WANT THE AI TO WORK)**
+
 You should:
 
 - Provide **architectural reasoning**, not just code
@@ -230,6 +250,7 @@ You should:
 ---
 
 ## **CURRENT PROJECT STATUS**
+
 - Repo initialized
 - Frontend + backend skeletons created
 - Docker Compose (prod + dev) ready
@@ -242,6 +263,7 @@ You should:
 ---
 
 ## **WHAT I WANT FROM YOU**
+
 - Architecture guidance
 - Data modeling
 - Event schema design

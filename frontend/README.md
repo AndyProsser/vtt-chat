@@ -3,6 +3,7 @@
 This is the frontend SPA for **VTT-Chat**, a DM-grade, session-aware tabletop voice & chat platform.
 
 Technologies:
+
 - React + TypeScript
 - Vite
 - Zustand state management
@@ -11,6 +12,7 @@ Technologies:
 - Web Audio API
 
 This SPA provides:
+
 - Chat UI
 - Metadata timeline
 - Notes panel

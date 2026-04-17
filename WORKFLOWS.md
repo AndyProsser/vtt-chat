@@ -8,12 +8,12 @@ This document explains the GitHub Actions workflows used for CI/CD, testing, and
 
 VTT‑Chat uses the following workflows:
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| **Release** | Push to `main` | Semantic versioning & changelog |
-| **Backend CI** | PR to `backend/**` | Lint, type-check, build, Prisma validate |
-| **Frontend CI** | PR to `frontend/**` | Lint, type-check, Vite build |
-| **Backend Docker** | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub) |
+| Workflow            | Trigger                      | Purpose                                       |
+| ------------------- | ---------------------------- | --------------------------------------------- |
+| **Release**         | Push to `main`               | Semantic versioning & changelog               |
+| **Backend CI**      | PR to `backend/**`           | Lint, type-check, build, Prisma validate      |
+| **Frontend CI**     | PR to `frontend/**`          | Lint, type-check, Vite build                  |
+| **Backend Docker**  | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub) |
 | **Frontend Docker** | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub) |
 
 ---
@@ -43,10 +43,10 @@ To also push to **Docker Hub**, add these secrets to your repository:
 
 2. Click **New repository secret** for each:
 
-   | Secret Name | Description | Example |
-   |-------------|-------------|---------|
-   | `DOCKER_HUB_USERNAME` | Your Docker Hub username | `yourname` |
-   | `DOCKER_HUB_TOKEN` | Docker Hub Personal Access Token (PAT) | `dckr_pat_xxxx` |
+   | Secret Name           | Description                            | Example         |
+   | --------------------- | -------------------------------------- | --------------- |
+   | `DOCKER_HUB_USERNAME` | Your Docker Hub username               | `yourname`      |
+   | `DOCKER_HUB_TOKEN`    | Docker Hub Personal Access Token (PAT) | `dckr_pat_xxxx` |
 
 3. To create a Docker Hub PAT:
    - Log in to [Docker Hub](https://hub.docker.com)
@@ -258,7 +258,7 @@ name: My Workflow
 on:
   pull_request:
     paths:
-      - "backend/**"
+      - 'backend/**'
 
 jobs:
   my-job:
@@ -268,7 +268,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 25
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       - run: npm install
       - run: npm run build
@@ -285,4 +285,3 @@ jobs:
 5. Monitor GitHub Actions for success/failure
 
 ---
-

@@ -309,7 +309,7 @@ tbody tr:hover {
   flex-wrap: wrap;
 }
 
-.filter-bar>div {
+.filter-bar > div {
   display: flex;
   align-items: center;
   gap: 0.5rem;

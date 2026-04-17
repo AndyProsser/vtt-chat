@@ -34,10 +34,10 @@ jwt_secret: auto
 
 # Domain configuration.
 # Leave blank for self-signed TLS and direct IP access.
-domain: ""
+domain: ''
 
-dns_provider: ""
-dns_token: ""
+dns_provider: ''
+dns_token: ''
 
 # If set to true, the installer will generate self-signed certs by default.
 use_self_signed: true

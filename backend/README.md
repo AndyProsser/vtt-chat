@@ -3,6 +3,7 @@
 This is the backend service for **VTT-Chat**, a DM-grade, session-aware tabletop voice & chat platform.
 
 Technologies:
+
 - Node.js + Express
 - WebSocket (ws)
 - TypeScript
@@ -12,6 +13,7 @@ Technologies:
 - LiveKit token service
 
 This backend provides:
+
 - WebSocket realtime events
 - REST API endpoints
 - Session boundaries & chat persistence

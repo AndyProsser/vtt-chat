@@ -1,12 +1,12 @@
 port: 7880
 bind_addresses:
-  - "0.0.0.0"
+  - '0.0.0.0'
 
 # Room settings optimized for voice-only
 room:
   # Auto-cleanup empty rooms
   auto_cleanup: true
-  empty_timeout: 300  # 5 minutes
+  empty_timeout: 300 # 5 minutes
 
 # RTC Configuration for WebRTC
 rtc:
@@ -24,8 +24,8 @@ rtc:
   # ICE servers for NAT traversal
   ice_servers:
     - urls:
-        - "stun:stun.l.google.com:19302"
-        - "stun:stun1.l.google.com:19302"
+        - 'stun:stun.l.google.com:19302'
+        - 'stun:stun1.l.google.com:19302'
 
 # Logging
 logging:
@@ -34,7 +34,7 @@ logging:
   sample: false
 
 # Development/test mode settings
-development: false  # Set to false for production
+development: false # Set to false for production
 
 # API configuration
 api:

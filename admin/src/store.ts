@@ -11,41 +11,26 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem('admin_token'),
-  isAuthenticated: !!localStorage.getItem('admin_token'),
+  token: null,
+  isAuthenticated: false,
   loading: false,
   error: null,
 
-  login: async (username: string, password: string) => {
+  login: async (_username: string, _password: string) => {
     set({ loading: true, error: null })
-    try {
-      const response = await fetch('/admin/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Login failed')
-      }
-
-      const data = await response.json()
-      localStorage.setItem('admin_token', data.token)
-      set({ token: data.token, isAuthenticated: true, loading: false })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login failed'
-      set({ error: message, loading: false })
-      throw error
-    }
+    set({
+      loading: false,
+      error: 'Admin authentication is not enabled in the baseline stage.',
+      isAuthenticated: false,
+      token: null,
+    })
   },
 
   logout: () => {
-    localStorage.removeItem('admin_token')
     set({ token: null, isAuthenticated: false, error: null })
   },
 
   initializeAuth: () => {
-    const token = localStorage.getItem('admin_token')
-    set({ token, isAuthenticated: !!token })
+    set({ token: null, isAuthenticated: false, error: null, loading: false })
   },
 }))

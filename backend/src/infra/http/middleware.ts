@@ -20,11 +20,7 @@ declare global {
 // Authentication Middleware
 // ============================================================================
 
-export const authMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -45,11 +41,7 @@ export const authMiddleware = (
   }
 }
 
-export const optionalAuthMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -65,11 +57,7 @@ export const optionalAuthMiddleware = (
   }
 }
 
-export const adminAuthMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -127,11 +115,7 @@ export const errorHandler = (
 // Request Validation Middleware
 // ============================================================================
 
-export const validateJsonBody = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const validateJsonBody = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.is('application/json')) {
     res.status(400).json({
       error: 'Content-Type must be application/json',
@@ -146,11 +130,7 @@ export const validateJsonBody = (
 // Logging Middleware
 // ============================================================================
 
-export const requestLoggingMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const requestLoggingMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = Date.now()
 
   res.on('finish', () => {
@@ -170,11 +150,7 @@ export const requestLoggingMiddleware = (
 // ============================================================================
 
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:8443',
-  ]
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8443']
 
   const origin = req.headers.origin
 

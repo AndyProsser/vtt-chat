@@ -13,10 +13,7 @@ export default defineConfig({
         secure: false,
       },
       '/ws': {
-        target: (process.env.VITE_BACKEND_URL || 'http://localhost:3000').replace(
-          'http',
-          'ws'
-        ),
+        target: (process.env.VITE_BACKEND_URL || 'http://localhost:3000').replace('http', 'ws'),
         ws: true,
         rewriteWsOrigin: true,
       },

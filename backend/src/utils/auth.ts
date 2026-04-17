@@ -7,7 +7,12 @@ import { config } from '@/infra/config'
 // JWT Token Operations
 // ============================================================================
 
-export const createUserToken = (userId: string, username: string, role: string, sessionId: string): string => {
+export const createUserToken = (
+  userId: string,
+  username: string,
+  role: string,
+  sessionId: string
+): string => {
   const payload: Omit<AuthToken, 'iat' | 'exp'> = {
     userId,
     username,
@@ -59,10 +64,7 @@ export const hashPassword = async (password: string): Promise<string> => {
   return bcrypt.hash(password, SALT_ROUNDS)
 }
 
-export const verifyPassword = async (
-  password: string,
-  hash: string
-): Promise<boolean> => {
+export const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
   return bcrypt.compare(password, hash)
 }
 

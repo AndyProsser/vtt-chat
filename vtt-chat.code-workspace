@@ -1,19 +1,19 @@
 {
   "folders": [
     {
-      "path": "."
+      "path": ".",
     },
     {
-      "path": "backend"
+      "path": "backend",
     },
     {
-      "path": "frontend"
+      "path": "frontend",
     },
     {
-      "path": "admin"
+      "path": "admin",
     },
     {
-      "path": "docs"
+      "path": "docs",
     },
   ],
   "settings": {
@@ -26,12 +26,12 @@
     "files.exclude": {
       "**/dist": true,
       "**/node_modules": true,
-      "**/.DS_Store": true
+      "**/.DS_Store": true,
     },
     // TypeScript project awarenessmatthewpi.caddyfile-support
     "js/ts.tsdk.path": "node_modules/typescript/lib",
     // Recommended terminal defaults
     "terminal.integrated.defaultProfile.linux": "bash",
-    "prisma.pinToPrisma6": false
-  }
+    "prisma.pinToPrisma6": false,
+  },
 }

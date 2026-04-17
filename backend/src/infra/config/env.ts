@@ -73,10 +73,7 @@ export const config: AppConfig = {
 }
 
 // Validate required environment variables
-const requiredEnvVars = [
-  'JWT_SECRET',
-  'JWT_ADMIN_SECRET',
-]
+const requiredEnvVars = ['JWT_SECRET', 'JWT_ADMIN_SECRET']
 
 // Only validate in production
 if (config.isProduction) {

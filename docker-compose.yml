@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 
 services:
   backend:
@@ -49,7 +49,7 @@ services:
     image: redis:7-alpine
     container_name: vttchat-redis
     restart: unless-stopped
-    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
     networks:
       - vttnet
 
@@ -60,9 +60,9 @@ services:
     command: >
       --config /etc/livekit.yaml --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
     ports:
-      - "7880:7880"
-      - "7881-7980:7881-7980/udp"
-      - "7881-7980:7881-7980/tcp"
+      - '7880:7880'
+      - '7881-7980:7881-7980/udp'
+      - '7881-7980:7881-7980/tcp'
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     networks:
@@ -73,7 +73,7 @@ services:
     container_name: vttchat-caddy
     restart: unless-stopped
     ports:
-      - "8443:8443"
+      - '8443:8443'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./caddy/certs:/certs
@@ -87,7 +87,6 @@ services:
 
 volumes:
   postgres_data:
-
 
 networks:
   vttnet:

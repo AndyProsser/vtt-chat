@@ -1,5 +1,6 @@
 # VTT‑Chat Deployment Guide
-*HomeLab‑friendly installation for Ubuntu Server + Docker + Caddy*
+
+_HomeLab‑friendly installation for Ubuntu Server + Docker + Caddy_
 
 ---
 
@@ -44,15 +45,15 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 
 ### Required Ports (default HomeLab configuration)
 
-| Service | Port | Protocol | Purpose |
-|--------|------|----------|---------|
-| Caddy HTTPS | **8443** | TCP | SPA + Backend |
-| Caddy HTTP (optional) | 8080 | TCP | Redirect only |
-| Backend API | internal | TCP | Behind Caddy |
-| LiveKit Signaling | **7880** | TCP/WebSocket | Control messages |
-| LiveKit Media | **7881–7980** | UDP + TCP | Voice transport (fallback) |
-| Postgres | internal | TCP | Database |
-| Redis | internal | TCP | Cache/presence |
+| Service               | Port          | Protocol      | Purpose                    |
+| --------------------- | ------------- | ------------- | -------------------------- |
+| Caddy HTTPS           | **8443**      | TCP           | SPA + Backend              |
+| Caddy HTTP (optional) | 8080          | TCP           | Redirect only              |
+| Backend API           | internal      | TCP           | Behind Caddy               |
+| LiveKit Signaling     | **7880**      | TCP/WebSocket | Control messages           |
+| LiveKit Media         | **7881–7980** | UDP + TCP     | Voice transport (fallback) |
+| Postgres              | internal      | TCP           | Database                   |
+| Redis                 | internal      | TCP           | Cache/presence             |
 
 ### Optional
 
@@ -101,12 +102,13 @@ A typical installation will look like:
 
 VTT‑Chat provides two preconfigured Docker Compose files:
 
-| File | Use Case | Features |
-|------|----------|----------|
-| `docker-compose.dev.yml` | Local development | Hot-reload, verbose logging, HTTP on 8080 |
-| `docker-compose.yml` | Production | Optimized images, HTTPS only on 8443, persistent storage |
+| File                     | Use Case          | Features                                                 |
+| ------------------------ | ----------------- | -------------------------------------------------------- |
+| `docker-compose.dev.yml` | Local development | Hot-reload, verbose logging, HTTP on 8080                |
+| `docker-compose.yml`     | Production        | Optimized images, HTTPS only on 8443, persistent storage |
 
 Both files:
+
 - Use `livekit.yaml` configuration file
 - Set up the same network and services
 - Expose correct UDP/TCP ports
@@ -186,6 +188,7 @@ For production, generate strong random values for API credentials.
 The `livekit.yaml` file is already configured for voice-only with optimal settings.
 
 **Edit if you need to:**
+
 - Change port ranges (not recommended unless there are conflicts)
 - Adjust STUN servers
 - Enable debug logging (set `logging.level: debug`)
@@ -219,6 +222,7 @@ https://:8443 {
 ---
 
 ## 5.7 Start Docker Stack
+
 **Development:**
 
 ```
@@ -239,12 +243,14 @@ docker stack deploy -c docker-compose.yml vttchat
 ```
 
 The stack will start:
+
 - **postgres** (database)
 - **redis** (cache/presence)
 - **livekit** (voice signaling & media)
 - **backend** (API server)
 - **frontend** (web SPA)
 - **caddy** (reverse proxy + TLS)ker stack deploy -c docker-compose.yml vttchat
+
 ```
 
 ---
@@ -254,8 +260,10 @@ The stack will start:
 Open:
 
 ```
+
 https://<server-ip>:8443
-```
+
+````
 
 Accept the self‑signed certificate.
 
@@ -270,7 +278,7 @@ VTT‑Chat includes a `server` control script for easy management. To access it 
 ```bash
 sudo ln -s /opt/vtt-chat/server /usr/local/bin/vtt-chat-server
 chmod +x /opt/vtt-chat/server
-```
+````
 
 ### Option 2: Add to PATH
 
@@ -303,7 +311,8 @@ vtt-chat-server help       # Show available commands
 ---
 
 # 🎙️ 6. LiveKit Deployment
-containerized service** with configuration via `livekit.yaml`.
+
+containerized service\*\* with configuration via `livekit.yaml`.
 
 ### Configuration File
 
@@ -326,6 +335,7 @@ A `livekit.yaml` file at the project root controls all LiveKit settings:
 ### Voice-Only Optimization
 
 The current setup is optimized for **voice-only** communication:
+
 - `video_enabled: false` disables video codec overhead
 - Opus audio codec for excellent compression
 - Reduces bandwidth and CPU usage
@@ -399,9 +409,11 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 # 🛠️ 9. Troubleshooting
 
 ### Browser refuses self‑signed cert
+
 Add exception manually or use a domain with proper ACME certificates.
 
 ### LiveKit audio not working
+
 1. Check both UDP AND TCP ports 7881–7980 are exposed:
    ```
    sudo ss -tulpn | grep 7881
@@ -416,6 +428,7 @@ Add exception manually or use a domain with proper ACME certificates.
    ```
 
 ### SPA cannot connect to backend
+
 1. Verify Caddy is routing correctly:
    ```
    docker logs vttchat-caddy | grep -i reverse_proxy
@@ -426,6 +439,7 @@ Add exception manually or use a domain with proper ACME certificates.
    ```
 
 ### LiveKit config not being read
+
 - Ensure `livekit.yaml` exists in project root
 - Verify it's a valid YAML file (check indentation)
 - Restart the container:
@@ -434,6 +448,7 @@ Add exception manually or use a domain with proper ACME certificates.
   ```
 
 ### High audio latency or drops
+
 - Check if TCP fallback is being used (UDP may be blocked)
 - Monitor resource usage:
   ```
@@ -442,6 +457,7 @@ Add exception manually or use a domain with proper ACME certificates.
 - Ensure minimum 4GB RAM available
 
 ### WebSocket connection fails
+
 - Check `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are set in `.env`
 - Verify backend can reach LiveKit:
   ```

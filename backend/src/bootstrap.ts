@@ -8,13 +8,7 @@ import {
   errorHandler,
   validateJsonBody,
 } from '@/infra/http/middleware'
-import authRoutes from '@/api/auth.routes'
-import campaignRoutes from '@/api/campaign.routes'
-import adminRoutes from '@/api/admin.routes'
-import healthRoutes from '@/api/health.routes'
-import chatRoutes from '@/api/export.routes'
-import metadataRoutes from '@/api/metadata.routes'
-import notesRoutes from '@/api/notes.routes'
+import apiRouter from '@/api/index'
 
 export interface BootstrapResult {
   app: Express
@@ -30,7 +24,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const app = express()
   const server = createServer(app)
 
-  logger.info('bootstrap', 'Initializing VTT-Chat backend server')
+  logger.info('bootstrap', 'Initializing VTT-Chat backend baseline')
 
   // ========================================================================
   // Middleware Setup
@@ -59,16 +53,10 @@ export async function bootstrap(): Promise<BootstrapResult> {
   })
 
   // ========================================================================
-  // API Routes
+  // API Routes (baseline placeholders)
   // ========================================================================
 
-  app.use('/api/auth', authRoutes)
-  app.use('/api/campaigns', campaignRoutes)
-  app.use('/api/admin', adminRoutes)
-  app.use('/api/health', healthRoutes)
-  app.use('/api/chat', chatRoutes)
-  app.use('/api/metadata', metadataRoutes)
-  app.use('/api/notes', notesRoutes)
+  app.use('/api', apiRouter)
 
   // ========================================================================
   // 404 Handler

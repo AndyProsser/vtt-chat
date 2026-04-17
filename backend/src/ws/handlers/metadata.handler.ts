@@ -1,4 +1,5 @@
 /**
- * Placeholder file for VTT-Chat backend.
- * This file will be implemented in future development stages.
+ * Baseline placeholder module.
+ * This implementation is intentionally disabled for staged rebuild.
  */
+export const BASELINE_PLACEHOLDER = true

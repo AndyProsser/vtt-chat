@@ -16,11 +16,13 @@ It assumes you’re using:
 # 📦 1. System Requirements
 
 ### **Minimum**
+
 - 4 CPU cores
 - 8 GB RAM
 - 10 GB free disk space
 
 ### **Recommended**
+
 - 8+ CPU cores
 - 16+ GB RAM
 - SSD storage
@@ -33,6 +35,7 @@ It assumes you’re using:
 Install these first — they’re essential for backend, frontend, and Docker workflows.
 
 ### **Docker Engine + Docker Compose**
+
 ```bash
 sudo apt update
 sudo apt install docker.io docker-compose-plugin -y
@@ -42,17 +45,20 @@ sudo usermod -aG docker $USER
 Log out and back in to apply group changes.
 
 ### **Node.js 25**
+
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_25.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
 ### **Git**
+
 ```bash
 sudo apt install git -y
 ```
 
 ### **Make (optional but recommended)**
+
 ```bash
 sudo apt install make -y
 ```
@@ -62,6 +68,7 @@ sudo apt install make -y
 # 🧩 3. Recommended Developer Apps
 
 ### **VS Code**
+
 The primary editor for this project.
 
 ```bash
@@ -69,6 +76,7 @@ sudo snap install code --classic
 ```
 
 ### **DBeaver**
+
 GUI for Postgres.
 
 ```bash
@@ -76,6 +84,7 @@ sudo snap install dbeaver-ce
 ```
 
 ### **RedisInsight**
+
 GUI for Redis.
 
 ```bash
@@ -83,6 +92,7 @@ sudo snap install redisinsight
 ```
 
 ### **Insomnia or Postman**
+
 For API testing.
 
 ```bash
@@ -90,6 +100,7 @@ sudo snap install insomnia
 ```
 
 ### **Docker Desktop (optional)**
+
 If you prefer a GUI for containers.
 
 ---
@@ -125,17 +136,20 @@ Fill in:
 # 🧵 6. Install Dependencies
 
 ### Root (Linting & Formatting Tools)
+
 ```bash
 npm install
 ```
 
 ### Backend
+
 ```bash
 cd backend
 npm install
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -153,13 +167,13 @@ docker compose -f docker-compose.dev.yml up --build
 
 This gives you:
 
-| Service | URL |
-|--------|------|
-| Frontend | http://localhost:8080 |
-| Backend API | http://localhost:8080/api |
-| LiveKit | http://localhost:8080/livekit |
-| Postgres | localhost:5432 |
-| Redis | localhost:6379 |
+| Service     | URL                           |
+| ----------- | ----------------------------- |
+| Frontend    | http://localhost:8080         |
+| Backend API | http://localhost:8080/api     |
+| LiveKit     | http://localhost:8080/livekit |
+| Postgres    | localhost:5432                |
+| Redis       | localhost:6379                |
 
 Caddy handles routing automatically.
 
@@ -185,6 +199,7 @@ This gives you:
 # 🐞 9. Debugging
 
 ### Backend Debug
+
 Run from VS Code:
 
 ```
@@ -192,6 +207,7 @@ Run → "Backend: Debug"
 ```
 
 ### Frontend Debug
+
 Launch Chrome debugger:
 
 ```
@@ -199,6 +215,7 @@ Run → "Frontend: Debug"
 ```
 
 ### Combined Debug
+
 ```
 Run → "Dev: Backend + Frontend"
 ```
@@ -228,11 +245,13 @@ VS Code will auto‑format on save.
 # 🧪 11. Running Tests (if enabled later)
 
 Backend:
+
 ```bash
 npm test
 ```
 
 Frontend:
+
 ```bash
 npm run test
 ```
@@ -265,16 +284,19 @@ docker compose build
 # 🧭 13. Useful Commands
 
 ### Stop all dev containers
+
 ```bash
 docker compose -f docker-compose.dev.yml down
 ```
 
 ### View logs
+
 ```bash
 docker compose logs -f
 ```
 
 ### Rebuild everything
+
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
@@ -327,11 +349,13 @@ Same as Ubuntu:
 # 🧰 2. Required Packages
 
 ### **Update your system first**
+
 ```bash
 sudo pacman -Syu
 ```
 
 ### **Install core tools**
+
 ```bash
 sudo pacman -S --needed git nodejs npm docker docker-compose make
 ```
@@ -343,6 +367,7 @@ node --version  # Should be 25.x or later
 ```
 
 ### **Enable Docker**
+
 ```bash
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
@@ -355,6 +380,7 @@ Log out and back in to apply group changes.
 # 🧩 3. Recommended Developer Apps (Arch Versions)
 
 ### **VS Code (AUR)**
+
 If you want the official Microsoft build:
 
 ```bash
@@ -368,16 +394,19 @@ sudo pacman -S codium
 ```
 
 ### **DBeaver**
+
 ```bash
 sudo pacman -S dbeaver
 ```
 
 ### **RedisInsight (AUR)**
+
 ```bash
 paru -S redisinsight
 ```
 
 ### **Insomnia**
+
 ```bash
 sudo pacman -S insomnia
 ```
@@ -415,17 +444,20 @@ Fill in:
 # 📦 6. Install Dependencies
 
 ### Root (Linting & Formatting Tools)
+
 ```bash
 npm install
 ```
 
 ### Backend
+
 ```bash
 cd backend
 npm install
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -443,11 +475,11 @@ docker compose -f docker-compose.dev.yml up --build
 
 This gives you:
 
-| Service | URL |
-|--------|------|
-| Frontend | http://localhost:8080 |
-| Backend | http://localhost:8080/api |
-| LiveKit | http://localhost:8080/livekit |
+| Service  | URL                           |
+| -------- | ----------------------------- |
+| Frontend | http://localhost:8080         |
+| Backend  | http://localhost:8080/api     |
+| LiveKit  | http://localhost:8080/livekit |
 
 ---
 
@@ -471,16 +503,19 @@ You’ll get:
 # 🐞 9. Debugging
 
 Backend:
+
 ```
 Run → Backend: Debug
 ```
 
 Frontend:
+
 ```
 Run → Frontend: Debug
 ```
 
 Both:
+
 ```
 Run → Dev: Backend + Frontend
 ```
@@ -528,16 +563,19 @@ docker compose build
 # 🧭 12. Useful Commands
 
 Stop dev stack:
+
 ```bash
 docker compose -f docker-compose.dev.yml down
 ```
 
 Logs:
+
 ```bash
 docker compose logs -f
 ```
 
 Rebuild:
+
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
@@ -555,4 +593,3 @@ You now have a fully functional Arch‑based development environment with:
 - Docker‑based orchestration
 
 Arch users will feel right at home.
-

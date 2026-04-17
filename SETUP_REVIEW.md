@@ -23,6 +23,7 @@ The following areas have been reviewed and enhanced:
 ### 1. GitHub Workflows
 
 **Updated files:**
+
 - `.github/workflows/release.yml`
 - `.github/workflows/backend-ci.yml`
 - `.github/workflows/frontend-ci.yml`
@@ -38,6 +39,7 @@ The following areas have been reviewed and enhanced:
 ✅ **Docker Buildx** — Uses modern buildx for better image optimization
 
 **New documentation:**
+
 - `WORKFLOWS.md` — Complete guide to all workflows, Docker Hub setup, and troubleshooting
 
 ---
@@ -47,6 +49,7 @@ The following areas have been reviewed and enhanced:
 **New files created:**
 
 #### `.vscode/extensions.json`
+
 Recommended extensions for the project:
 
 - `vscode-eslint` — Real-time linting
@@ -61,6 +64,7 @@ Recommended extensions for the project:
 - `makefile-tools` — Makefile support
 
 #### `.vscode/settings.json`
+
 Project-wide settings:
 
 - **Auto-format on save** for TypeScript, JavaScript, JSON
@@ -70,6 +74,7 @@ Project-wide settings:
 - **TypeScript settings** for proper language support
 
 #### `.vscode/launch.json`
+
 Debug configurations:
 
 - **Backend Debug** — Debug Node.js backend with ts-node-dev
@@ -77,6 +82,7 @@ Debug configurations:
 - **Compound Config** — Run backend + frontend together
 
 #### `.vscode/tasks.json`
+
 Build and dev tasks:
 
 - **Backend tasks** — Install, build, dev
@@ -103,6 +109,7 @@ Enhancements:
 **Frontend (`frontend/tsconfig.json`)**
 
 ✅ Already excellent configuration:
+
 - `moduleResolution: "bundler"` (modern, Vite-compatible)
 - `jsx: "react-jsx"` (React 17+, no React import needed)
 - `noEmit: true` (let Vite handle compilation)
@@ -201,24 +208,28 @@ VITE_ENV=development
 The configuration now explicitly supports key architectural goals:
 
 ### Privacy & Security
+
 ✅ Strict TypeScript with `strict: true`
 ✅ Source maps for debugging (backend)
 ✅ No secrets in code (all in .env)
 ✅ JWT validation ready
 
 ### Home Server Deployment
+
 ✅ Non-standard port support in Vite proxy
 ✅ Caddy-based reverse proxy in docker-compose
 ✅ Self-signed cert support in Dockerfile comments
 ✅ Environment-based URL configuration
 
 ### Session Management & DM Controls
+
 ✅ Structured logging configuration
 ✅ Rate limiting hooks in backend setup
 ✅ WebSocket proxy in Vite configuration
 ✅ Proper DB/Redis separation
 
 ### Voice & Chat
+
 ✅ LiveKit URL configuration
 ✅ WebSocket support in dev server
 ✅ Code splitting for optimal loading
@@ -228,6 +239,7 @@ The configuration now explicitly supports key architectural goals:
 ## 🚀 Quick Start for Developers
 
 1. **Install dependencies:**
+
    ```bash
    npm install                    # Root (linting tools)
    npm --prefix backend install   # Backend
@@ -235,6 +247,7 @@ The configuration now explicitly supports key architectural goals:
    ```
 
 2. **Set up environment:**
+
    ```bash
    cp backend/.env.example backend/.env
    cp frontend/.env.example frontend/.env
@@ -242,6 +255,7 @@ The configuration now explicitly supports key architectural goals:
    ```
 
 3. **Open workspace:**
+
    ```bash
    code vtt-chat.code-workspace
    ```
@@ -252,6 +266,7 @@ The configuration now explicitly supports key architectural goals:
    - `Dev: Backend + Frontend (Compound)` — Both together
 
 5. **Or run with Docker:**
+
    ```bash
    docker compose -f docker-compose.dev.yml up --build
    ```
@@ -320,4 +335,3 @@ The project now has:
 Ready for development and production deployment!
 
 ---
-
