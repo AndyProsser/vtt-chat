@@ -9,7 +9,6 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:admin": "npm --prefix admin run build",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:ai": "node scripts/lint-ai-output.js ai-output.md",
     "format": "prettier --write .",
     "check": "npm run lint",
     "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update"
