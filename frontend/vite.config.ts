@@ -2,6 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+function getVendorChunk(id: string): string | undefined {
+  if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+    return 'vendor-react'
+  }
+  if (id.includes('node_modules/zustand')) {
+    return 'vendor-store'
+  }
+  if (id.includes('node_modules/@livekit')) {
+    return 'vendor-livekit'
+  }
+}
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -31,17 +43,7 @@ export default defineConfig({
     minify: 'terser',
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react'
-          }
-          if (id.includes('node_modules/@livekit')) {
-            return 'vendor-livekit'
-          }
-          if (id.includes('node_modules/zustand')) {
-            return 'vendor-store'
-          }
-        },
+        manualChunks: getVendorChunk,
       },
     },
   },
