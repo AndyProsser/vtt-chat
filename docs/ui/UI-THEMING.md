@@ -15,6 +15,9 @@ _Authoritative theming and color system for VTT‑Chat._
 - Support **light / dark** modes with the same token set
 - Be **CSS‑token driven**, not component‑local colors
 
+The same token model also applies to the Admin SPA; see [ADMIN-UI-DESIGN.md](ADMIN-UI-DESIGN.md)
+for admin-specific layout and interaction guidance.
+
 ---
 
 ## 2. Design language

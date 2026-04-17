@@ -65,6 +65,7 @@ This README serves as the **entry point** for the entire documentation suite.
 - [UI-THEMING-LIGHT-MODE.md](ui/UI-THEMING-LIGHT-MODE.md)
 - [UI-THEMING-DARK-MODE.md](ui/UI-THEMING-DARK-MODE.md)
 - [UI-THEMING-COMPONENT-TOKENS.md](ui/UI-THEMING-COMPONENT-TOKENS.md)
+- [ADMIN-UI-DESIGN.md](ui/ADMIN-UI-DESIGN.md)
 
 ### **Extension**
 
@@ -219,6 +220,7 @@ UI documentation lives under `docs/ui/` and covers:
 - Persona capability matrices and Figma-ready persona mockups
 - Motion & animation rules
 - Theming and token guidance
+- Admin SPA layout and operations-focused UX design
 - Role‑aware visibility
 - Non‑blocking overlay behaviour
 

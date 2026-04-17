@@ -44,13 +44,13 @@ Detailed persona companion docs:
 
 ```
 ┌──────────────────────────────────────────────┐
-│ Top Bar: Session Controls + Room Selector     │
+│ Top Bar: Session Controls + Room Selector    │
 ├──────────────────────────────────────────────┤
-│ Left Panel: Player List + Room Manager        │
+│ Left Panel: Player List + Room Manager       │
 ├──────────────────────────────────────────────┤
-│ Center: Chat + Metadata Cards + Notes         │
+│ Center: Chat + Metadata Cards + Notes        │
 ├──────────────────────────────────────────────┤
-│ Right Panel: Audio Control Panel              │
+│ Right Panel: Audio Control Panel             │
 └──────────────────────────────────────────────┘
 ```
 

@@ -19,6 +19,9 @@ Right Panel (Vertical Tabs + Slide‑In Panels)
 
 Persona differences are expressed through **visibility**, **permissions**, and **panel availability**, not through structural changes.
 
+Admin exception: the Admin SPA uses a dedicated two-column operations layout.
+See [ADMIN-UI-DESIGN.md](ADMIN-UI-DESIGN.md).
+
 ---
 
 # 🧱 2. Global Layout Structure

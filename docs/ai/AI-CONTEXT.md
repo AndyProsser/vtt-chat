@@ -73,6 +73,7 @@ docs/
 │   ├── UI-FLOWS.md
 │   ├── UI-EVENTS.md
 │   ├── UI-PERSONAS.md
+│   ├── ADMIN-UI-DESIGN.md
 │   ├── personas/
 │   │   ├── COMPARISION-SHEET.md
 │   │   ├── UI-PERSONA-DM.md
