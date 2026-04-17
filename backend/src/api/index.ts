@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express'
 import authRoutes from './auth.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
+import adminRoutes from './admin.routes'
 
 const router = Router()
 
@@ -23,6 +24,7 @@ router.get('/health', (_req: Request, res: Response) => {
 router.use('/auth', authRoutes)
 router.use('/session', sessionRoutes)
 router.use('/chat', chatRoutes)
+router.use('/admin', adminRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
@@ -39,7 +41,6 @@ function notImplemented(domain: string) {
 }
 
 // Stubs for future stages
-router.use('/admin', (_req: Request, res: Response) => notImplemented('admin')(_req, res))
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
 router.use('/notes', (_req: Request, res: Response) => notImplemented('notes')(_req, res))
 router.use('/audio', (_req: Request, res: Response) => notImplemented('audio')(_req, res))

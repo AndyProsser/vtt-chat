@@ -3,14 +3,30 @@ import Dashboard from './pages/Dashboard'
 import UserManagement from './pages/UserManagement'
 import CampaignManagement from './pages/CampaignManagement'
 import PlatformStatus from './pages/PlatformStatus'
-import Analytics from './pages/Analytics'
 import Logs from './pages/Logs'
+import Settings from './pages/Settings'
 import './styles/App.css'
 
-type AdminPage = 'dashboard' | 'users' | 'campaigns' | 'status' | 'analytics' | 'logs'
+type AdminPage = 'dashboard' | 'users' | 'campaigns' | 'status' | 'logs' | 'settings'
+
+interface NavItem {
+  key: AdminPage
+  label: string
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'users', label: 'Users' },
+  { key: 'campaigns', label: 'Rooms & Campaigns' },
+  { key: 'status', label: 'System Health' },
+  { key: 'logs', label: 'Logs & Activity' },
+  { key: 'settings', label: 'Settings' },
+]
 
 export default function App() {
   const [page, setPage] = useState<AdminPage>('dashboard')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false)
 
   const renderPage = () => {
     switch (page) {
@@ -20,37 +36,62 @@ export default function App() {
         return <CampaignManagement />
       case 'status':
         return <PlatformStatus />
-      case 'analytics':
-        return <Analytics />
       case 'logs':
         return <Logs />
+      case 'settings':
+        return <Settings />
       default:
         return <Dashboard />
     }
   }
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '980px', margin: '0 auto' }}>
-      <header style={{ marginBottom: '1rem' }}>
-        <h1 style={{ marginBottom: '0.4rem' }}>VTT-Chat Admin Baseline</h1>
-        <p style={{ margin: 0, color: '#475569' }}>
-          Non-functional scaffold for staged implementation.
-        </p>
+    <div className={`admin-app theme-${theme}`}>
+      <header className="admin-topbar">
+        <div>
+          <h1 className="admin-title">VTT-Chat Admin</h1>
+          <p className="admin-subtitle">Operations console</p>
+        </div>
+
+        <div className="admin-topbar-actions">
+          <button
+            className="admin-btn admin-btn-ghost"
+            onClick={() => setIsNavCollapsed((prev) => !prev)}
+            aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
+          </button>
+          <button
+            className="admin-btn"
+            onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+            aria-label="Toggle theme"
+          >
+            Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+          </button>
+        </div>
       </header>
 
-      <nav
-        style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}
-        aria-label="Admin baseline navigation"
-      >
-        <button onClick={() => setPage('dashboard')}>Dashboard</button>
-        <button onClick={() => setPage('users')}>Users</button>
-        <button onClick={() => setPage('campaigns')}>Campaigns</button>
-        <button onClick={() => setPage('status')}>Status</button>
-        <button onClick={() => setPage('analytics')}>Analytics</button>
-        <button onClick={() => setPage('logs')}>Logs</button>
-      </nav>
+      <div className="admin-layout">
+        <aside className={`admin-nav ${isNavCollapsed ? 'collapsed' : ''}`}>
+          <nav aria-label="Admin navigation">
+            <ul className="admin-nav-list">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.key}>
+                  <button
+                    className={`admin-nav-item ${page === item.key ? 'active' : ''}`}
+                    onClick={() => setPage(item.key)}
+                    title={item.label}
+                  >
+                    {isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
 
-      {renderPage()}
+        <main className="admin-main-content">{renderPage()}</main>
+      </div>
     </div>
   )
 }

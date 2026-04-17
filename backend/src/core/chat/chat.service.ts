@@ -26,6 +26,7 @@ export interface StoredMessage {
 
 // In-memory store: sessionId → message map
 const messageStore = new Map<UUID, Map<UUID, StoredMessage>>()
+const messageTimestamps: number[] = []
 
 function getSessionMessages(sessionId: UUID): Map<UUID, StoredMessage> {
   if (!messageStore.has(sessionId)) {
@@ -95,6 +96,7 @@ export function sendMessage(params: {
   }
 
   getSessionMessages(sessionId).set(id, message)
+  messageTimestamps.push(message.createdAt)
   return message
 }
 
@@ -166,4 +168,31 @@ export function deleteMessage(
  */
 export function clearSessionMessages(sessionId: UUID): void {
   messageStore.delete(sessionId)
+}
+
+/**
+ * Get lightweight telemetry for admin dashboard/status endpoints.
+ */
+export function getChatTelemetrySnapshot(): {
+  totalMessages: number
+  messagesLastMinute: number
+  activeChatSessions: number
+} {
+  const now = Date.now()
+  const oneMinuteAgo = now - 60_000
+
+  while (messageTimestamps.length > 0 && messageTimestamps[0] < oneMinuteAgo) {
+    messageTimestamps.shift()
+  }
+
+  let totalMessages = 0
+  for (const [, messages] of messageStore) {
+    totalMessages += messages.size
+  }
+
+  return {
+    totalMessages,
+    messagesLastMinute: messageTimestamps.length,
+    activeChatSessions: messageStore.size,
+  }
 }

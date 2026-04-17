@@ -28,6 +28,14 @@ const COLORS = {
 
 class Logger {
   private minLevel: LogLevel
+  private history: Array<{
+    timestamp: string
+    level: keyof typeof LogLevel
+    context: string
+    message: string
+    meta?: any
+  }> = []
+  private readonly maxHistory = 1000
 
   constructor(minLevel: LogLevel = LogLevel.INFO) {
     this.minLevel = minLevel
@@ -68,6 +76,17 @@ class Logger {
   }
 
   private log(level: LogLevel, context: string, message: string, meta?: any): void {
+    this.history.push({
+      timestamp: this.formatTimestamp(),
+      level: LOG_LEVEL_NAMES[level] as keyof typeof LogLevel,
+      context,
+      message,
+      meta,
+    })
+    if (this.history.length > this.maxHistory) {
+      this.history.shift()
+    }
+
     if (level < this.minLevel) {
       return
     }
@@ -102,6 +121,16 @@ class Logger {
 
   setMinLevel(level: LogLevel): void {
     this.minLevel = level
+  }
+
+  getHistory(): Array<{
+    timestamp: string
+    level: keyof typeof LogLevel
+    context: string
+    message: string
+    meta?: any
+  }> {
+    return [...this.history]
   }
 }
 
