@@ -1,0 +1,187 @@
+================================================================================
+                                VTT‑CHAT PLATFORM
+================================================================================
+
+                         A ROLE‑AWARE, PRIVACY‑FIRST,
+                     EVENT‑DRIVEN COMMUNICATION LAYER FOR VTTs
+--------------------------------------------------------------------------------
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 1 — CORE PHILOSOPHY
+████████████████████████████████████████████████████████████████████████████████
+
+ • Privacy‑First        • Role‑Aware (DM / Player / Spectator)
+ • Predictable UX       • Deterministic Architecture
+ • Non‑intrusive        • VTT‑Agnostic
+ • Subsystem‑Modular    • Event‑Driven Everything
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 2 — HIGH‑LEVEL SYSTEM OVERVIEW
+████████████████████████████████████████████████████████████████████████████████
+
+                         ┌──────────────────────────────┐
+                         │        VTT‑CHAT CORE          │
+                         │  (Browser App / Extension)    │
+                         └──────────────────────────────┘
+                                      │
+                                      ▼
+                         ┌──────────────────────────────┐
+                         │        EVENT BUS              │
+                         │  (Single Source of Truth)     │
+                         └──────────────────────────────┘
+                                      │
+                                      ▼
+                         ┌──────────────────────────────┐
+                         │         REDUCERS              │
+                         │  Pure, Deterministic Logic    │
+                         └──────────────────────────────┘
+                                      │
+                                      ▼
+                         ┌──────────────────────────────┐
+                         │          STORES               │
+                         │  Zustand, Selector‑Driven     │
+                         └──────────────────────────────┘
+                                      │
+                                      ▼
+                         ┌──────────────────────────────┐
+                         │            UI                 │
+                         │  Role‑Aware, Non‑Blocking     │
+                         └──────────────────────────────┘
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 3 — SUBSYSTEM MAP
+████████████████████████████████████████████████████████████████████████████████
+
+Each subsystem is isolated, documented, and event‑driven.
+
+ ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
+ │       CHAT           │   │       NOTES          │   │       AUDIO          │
+ │ IC/OOC/Whispers      │   │ Private/Shared/DM    │   │ Effects / Presets    │
+ └──────────────────────┘   └──────────────────────┘   └──────────────────────┘
+
+ ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
+ │     PRESENCE         │   │   SESSION STATE      │   │   PERMISSIONS        │
+ │ Typing/Speaking      │   │ Idle/Active/Paused   │   │ Role‑Based Rules     │
+ └──────────────────────┘   └──────────────────────┘   └──────────────────────┘
+
+ ┌──────────────────────┐
+ │     EXTENSION        │
+ │ Overlay / VTT Bridge │
+ └──────────────────────┘
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 4 — ROLE SYSTEM
+████████████████████████████████████████████████████████████████████████████████
+
+ ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+ │     DM        │   │    PLAYER    │   │  SPECTATOR   │
+ │ Full Control  │   │ Active User  │   │ Read‑Only    │
+ │ All Visibility│   │ Private Notes│   │ No Influence │
+ └──────────────┘   └──────────────┘   └──────────────┘
+
+ • DM sees whispers (safety)
+ • Players have private spaces
+ • Spectators never interfere
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 5 — PRIVACY MODEL
+████████████████████████████████████████████████████████████████████████████████
+
+ • Public
+ • Role‑Restricted
+ • Player‑Private
+ • DM‑Private
+ • System‑Private
+
+Privacy enforced at:
+ UI → Reducers → Validator → Server → Extension
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 6 — SESSION LIFECYCLE
+████████████████████████████████████████████████████████████████████████████████
+
+ ┌──────┐   start   ┌────────┐   pause   ┌────────┐   end   ┌──────┐
+ │ idle │──────────▶│ active │──────────▶│ paused │────────▶│ ended│
+ └──────┘           └────────┘           └────────┘         └──────┘
+                       ▲                         │
+                       └──────── resume ─────────┘
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 7 — STATE RECOVERY
+████████████████████████████████████████████████████████████████████████████████
+
+On reconnect:
+ 1. Server sends full snapshot
+ 2. Client hydrates state
+ 3. Reducers replace local state
+ 4. UI re-renders
+
+Hydration event:
+   `system.state.hydrate`
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 8 — EXTENSION ARCHITECTURE
+████████████████████████████████████████████████████████████████████████████████
+
+ ┌──────────────────────────────┐
+ │         OVERLAY UI           │
+ │ Dockable, Non‑Blocking, Safe │
+ └──────────────────────────────┘
+                 │
+                 ▼
+ ┌──────────────────────────────┐
+ │      EXTENSION BRIDGE        │
+ │  Normalizes VTT Interactions │
+ └──────────────────────────────┘
+                 │
+                 ▼
+ ┌──────────────────────────────┐
+ │         VTT PLATFORM         │
+ │ Foundry / Roll20 / Owlbear   │
+ └──────────────────────────────┘
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 9 — ERROR MODEL
+████████████████████████████████████████████████████████████████████████████████
+
+ • Validation Errors
+ • Permission Errors
+ • Reducer Errors
+ • Transport Errors
+ • System Errors
+
+Errors must be:
+ Non‑blocking • Sanitized • Role‑appropriate • Recoverable
+
+
+████████████████████████████████████████████████████████████████████████████████
+SECTION 10 — DEVELOPMENT RULES
+████████████████████████████████████████████████████████████████████████████████
+
+ ✔ Reducers are pure
+ ✔ Events are minimal
+ ✔ Stores are selector‑driven
+ ✔ UI is role‑aware
+ ✔ Extension is non‑intrusive
+ ✔ Privacy is sacred
+ ✔ Documentation is mandatory
+
+ ✘ No state mutation
+ ✘ No side effects in reducers
+ ✘ No DOM access in reducers
+ ✘ No bypassing the Event Bus
+ ✘ No leaking private data
+
+
+================================================================================
+                          END OF ARCHITECTURE MAP
+================================================================================

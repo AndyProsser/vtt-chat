@@ -1,12 +1,8 @@
-Absolutely, Andy — here is a clean, production‑ready **`docs/INSTALL-SCRIPT-GUIDE.md`** written specifically for your HomeLab deployment model.
-It’s structured so a technical home user (or future you) can understand exactly what the install script will do, why it does it, and how to troubleshoot it.
-
-You can paste this directly into `docs/INSTALL-SCRIPT-GUIDE.md`.
-
----
+# **INSTALL-SCRIPT-GUIDE.md**
 
 # VTT‑Chat Install Script Guide
-*A HomeLab‑friendly automated installer for Ubuntu Server*
+
+_A HomeLab‑friendly automated installer for Ubuntu Server_
 
 This guide explains how the **VTT‑Chat install script** works, what it installs, how it configures your system, and how to customize or troubleshoot it.
 
@@ -53,6 +49,7 @@ The script performs the following tasks in order:
      - Optional DNS‑01 ACME for domain owners
 
 4. **Directory structure creation**
+
    ```
    /opt/vtt-chat/
        backend/
@@ -166,13 +163,13 @@ The script will:
 
 The script supports optional flags:
 
-| Flag | Description |
-|------|-------------|
-| `--domain <domain>` | Enables DNS‑01 ACME |
-| `--dns-provider <provider>` | Cloudflare, Route53, etc. |
-| `--dns-token <token>` | API token for DNS updates |
-| `--port <port>` | Custom HTTPS port (default: 8443) |
-| `--no-confirm` | Run non‑interactive |
+| Flag                        | Description                       |
+| --------------------------- | --------------------------------- |
+| `--domain <domain>`         | Enables DNS‑01 ACME               |
+| `--dns-provider <provider>` | Cloudflare, Route53, etc.         |
+| `--dns-token <token>`       | API token for DNS updates         |
+| `--port <port>`             | Custom HTTPS port (default: 8443) |
+| `--no-confirm`              | Run non‑interactive               |
 
 Example:
 
@@ -186,14 +183,14 @@ Example:
 
 ### Docker Containers
 
-| Service | Purpose |
-|--------|---------|
-| **backend** | WebSocket + REST API |
-| **frontend** | React SPA |
-| **livekit** | Voice transport |
-| **postgres** | Primary database |
-| **redis** | Presence + caching |
-| **caddy** | Reverse proxy + TLS |
+| Service      | Purpose              |
+| ------------ | -------------------- |
+| **backend**  | WebSocket + REST API |
+| **frontend** | React SPA            |
+| **livekit**  | Voice transport      |
+| **postgres** | Primary database     |
+| **redis**    | Presence + caching   |
+| **caddy**    | Reverse proxy + TLS  |
 
 ---
 
@@ -272,15 +269,19 @@ Accept the self‑signed certificate.
 # 🛠️ 9. Troubleshooting
 
 ### Browser rejects certificate
+
 Add exception manually.
 
 ### No audio
+
 Check UDP ports 7881–7980.
 
 ### SPA cannot connect to backend
+
 Check Caddy reverse proxy config.
 
 ### LiveKit errors
+
 Check `livekit.yaml` and logs:
 
 ```
@@ -288,6 +289,7 @@ docker logs livekit
 ```
 
 ### DM voice/conditions not applying
+
 Check WebSocket connection in browser dev tools.
 
 ---

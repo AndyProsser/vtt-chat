@@ -1,0 +1,322 @@
+# **CONTRIBUTING.md**
+
+# Contributing Guide
+
+Thank you for your interest in contributing to VTT‑Chat!
+This project is built on clarity, modularity, and strong architectural principles.
+This guide explains how to contribute effectively and consistently.
+
+---
+
+# 1. Core Principles
+
+All contributions should follow these principles:
+
+### **1.1 Consistency Over Creativity**
+
+Follow established patterns unless there is a clear reason to introduce a new one.
+
+### **1.2 Deterministic Architecture**
+
+All new features must integrate cleanly with:
+
+- The Event Bus
+- Reducer/state model
+- Privacy model
+- Permissions matrix
+- Session lifecycle
+
+### **1.3 Documentation First**
+
+Every new subsystem, UI pattern, or architectural decision must be documented.
+
+### **1.4 Predictable UX**
+
+UI changes must follow the UX Principles and Motion/Animation Spec.
+
+### **1.5 Respect the Privacy Model**
+
+No contribution may violate:
+
+- Player privacy
+- DM authority
+- Role boundaries
+
+---
+
+# 2. How to Contribute
+
+### **2.1 Fork the repository**
+
+Create your own working copy.
+
+### **2.2 Create a feature branch**
+
+Use descriptive names:
+
+```
+feature/audio-presets
+fix/presence-race-condition
+docs/update-session-lifecycle
+
+```
+
+### **2.3 Make your changes**
+
+Follow the coding and architectural guidelines in this documentation suite.
+
+### **2.4 Add or update documentation**
+
+Every contribution must include:
+
+- Architecture updates (if relevant)
+- Subsystem docs (if adding/modifying a subsystem)
+- UI docs (if changing UI behaviour)
+- Glossary updates (if introducing new terminology)
+
+### **2.5 Submit a pull request**
+
+Include:
+
+- A clear description of the change
+- A list of affected subsystems
+- Any new events, reducers, or selectors
+- Screenshots or diagrams for UI changes
+- Notes on privacy or permission implications
+
+---
+
+# 3. Code Standards
+
+### **3.1 Event‑Driven Architecture**
+
+All state changes must originate from events.
+
+### **3.2 Reducer Purity**
+
+Reducers must be:
+
+- Pure
+- Deterministic
+- Side‑effect free
+
+### **3.3 Zustand Store Structure**
+
+Stores must:
+
+- Use selectors
+- Avoid deep nesting
+- Avoid storing derived state
+- Avoid storing UI‑only state (keep that in React)
+
+### **3.4 React Component Standards**
+
+Components must:
+
+- Be functional components
+- Use hooks
+- Use selectors for state
+- Avoid inline logic that belongs in reducers
+- Follow the Component Interface docs
+
+---
+
+# 4. Documentation Standards
+
+### **4.1 Every new feature must be documented**
+
+At minimum:
+
+- Architecture impact
+- Subsystem behaviour
+- UI changes
+- New events
+- New selectors
+- New permissions
+
+### **4.2 Use the existing folder structure**
+
+Documentation must be placed in:
+
+```
+docs/philosophy/
+docs/architecture/
+docs/subsystems/
+docs/ui/
+docs/extension/
+docs/operations/
+docs/dm-tools/
+docs/meta/
+docs/ai/
+
+```
+
+### **4.3 Use Mermaid for diagrams**
+
+All diagrams must be:
+
+- Mermaid
+- Self‑contained
+- Renderable in GitHub
+
+### **4.4 Keep documents modular**
+
+One concept per document.
+
+---
+
+# 5. Event & Reducer Standards
+
+### **5.1 Event Naming**
+
+Use:
+
+```
+<domain>.<subdomain>.<action>
+```
+
+Examples:
+
+- `chat.message.send`
+- `notes.shared.update`
+- `audio.effect.trigger`
+
+### **5.2 Reducer Rules**
+
+Reducers must:
+
+- Never throw
+- Never mutate state directly
+- Never perform async operations
+- Never access the DOM
+- Never access browser APIs
+
+### **5.3 Validation**
+
+All events must pass:
+
+- Schema validation
+- Permission checks
+- Privacy checks
+
+---
+
+# 6. UI Contribution Standards
+
+### **6.1 Follow the UX Principles**
+
+UI must:
+
+- Be predictable
+- Be role‑aware
+- Respect privacy boundaries
+- Use consistent motion and animation
+
+### **6.2 Follow the Component Trees**
+
+New components must fit into the existing hierarchy.
+
+### **6.3 Follow the Motion Spec**
+
+Animations must:
+
+- Be subtle
+- Be purposeful
+- Reinforce state changes
+
+---
+
+# 7. Extension Contribution Standards
+
+Extension contributions must:
+
+- Respect VTT boundaries
+- Avoid breaking the host DOM
+- Use the Extension Bridge
+- Follow the Extension UX guidelines
+- Never access private or DM‑only data
+
+---
+
+# 8. Testing Standards
+
+### **8.1 Manual Testing**
+
+Every PR must include:
+
+- Steps to reproduce
+- Steps to validate the fix/feature
+
+### **8.2 Automated Testing (future)**
+
+When test harness is added:
+
+- Reducers must have unit tests
+- Event validation must have tests
+- UI selectors must have tests
+
+---
+
+# 9. Communication Standards
+
+### **9.1 Be clear**
+
+Explain _why_ a change is needed.
+
+### **9.2 Be concise**
+
+Avoid unnecessary detail.
+
+### **9.3 Be respectful**
+
+Assume good intent.
+
+### **9.4 Be collaborative**
+
+Invite feedback.
+
+---
+
+# 10. Contributor Roles
+
+### **Maintainers**
+
+Responsible for:
+
+- Reviewing PRs
+- Approving architectural changes
+- Ensuring documentation consistency
+
+### **Contributors**
+
+Responsible for:
+
+- Implementing features
+- Fixing bugs
+- Improving documentation
+
+### **AI Assistants**
+
+Responsible for:
+
+- Generating drafts
+- Producing diagrams
+- Assisting with documentation
+- Supporting architectural reasoning
+
+AI output must always be reviewed by a human.
+
+---
+
+# 11. Summary
+
+This project values:
+
+- Clarity
+- Predictability
+- Strong architecture
+- Respect for player privacy
+- High‑quality documentation
+- Collaborative development
+
+Thank you for contributing to VTT‑Chat!
