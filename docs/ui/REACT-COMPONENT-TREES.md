@@ -1,32 +1,41 @@
 # **REACT-COMPONENT-TREES.md**
 
-_Persona‑specific component architecture for VTT‑Chat._
+_Authoritative persona‑specific component architecture for VTT‑Chat._
 
 ---
 
-# 🧱 **0. Shared Core Layout (All Personas)**
+# 🧱 **0. Shared Root Layout (All Personas)**
 
-Every persona uses the same **root layout**, but with different props, permissions, and visibility rules.
+All personas share the same structural skeleton.
+Visibility and props differ by persona.
 
 ```
-<App>
-  <TopBar />
+<App persona="dm|player|spectator">
+  <Toolbar />                     // audio devices, theme, connection
+  <CampaignInfo />                // campaign name, DM, session, time
+  <SystemToasts />                // dismissable, stacked
+
+  {persona === 'dm' && <DMVoiceBar />}
+
   <MainLayout>
     <LeftRail>
       <PlayerList />
     </LeftRail>
 
     <CenterPane>
-      <ChatWindow />
-      <MessageComposer />
-      <DMVoicePanel /> (DM only)
+      <RoomHeader />
+      <ChatNotesToggle />
+      <ChatWindow />              // or NotesList depending on toggle
+      <MessageComposer />         // hidden for spectator
     </CenterPane>
 
     <RightRail>
-      <RightTabBar />
-      <SlideInPanels />
+      <RightTabBar />             // persona‑specific tabs
+      <SlideInPanels />           // persona‑specific panels
     </RightRail>
   </MainLayout>
+
+  <NotePopout />                  // optional, appears when opened
 </App>
 ```
 
@@ -34,33 +43,33 @@ Every persona uses the same **root layout**, but with different props, permissio
 
 # 🎭 **1. DM Component Tree (Full Command Centre)**
 
-DM gets the **full cockpit** — all controls, all panels, all interactions.
+DM gets **all components**, including overrides, room management, audio routing, and full notes.
 
 ```
 <DMApp>
-  <TopBar
-    showSessionTimer
-    showConnectionStatus
-    showDMControls
-  />
+  <Toolbar />
+  <CampaignInfo />
+  <SystemToasts />
 
-  <DMVoicePanel />   // voice presets + clear
+  <DMVoiceBar />   // presets, env, conditions, distance, overrides, PTT
 
   <MainLayout>
     <LeftRail expanded>
-      <PlayerList mode="dm">
+      <PlayerList persona="dm">
         <PlayerItem>
           <Avatar />
           <PlayerInfo />
           <SpeakingIndicator />
           <MuteIndicator />
           <ConditionIcons />
-          <PlayerOverrides />   // gain/mute/distance/conditions
+          <PlayerOverrides />   // gain, mute, distance, conditions
         </PlayerItem>
       </PlayerList>
     </LeftRail>
 
     <CenterPane>
+      <RoomHeader />
+      <ChatNotesToggle />
       <ChatWindow persona="dm" />
       <MessageComposer persona="dm" />
     </CenterPane>
@@ -78,7 +87,7 @@ DM gets the **full cockpit** — all controls, all panels, all interactions.
         ]}
       />
 
-      <SlideInPanels>
+      <SlideInPanels persona="dm">
         <RoomsPanel />
         <AudioPanel />
         <SearchPanel />
@@ -89,35 +98,26 @@ DM gets the **full cockpit** — all controls, all panels, all interactions.
       </SlideInPanels>
     </RightRail>
   </MainLayout>
+
+  <NotePopout />   // DM can edit notes here
 </DMApp>
 ```
-
-### **DM‑Only Components**
-
-- `<DMVoicePanel />`
-- `<RoomsPanel />`
-- `<AudioPanel />`
-- `<PlayerOverrides />`
-- `<RoomEnvironmentMenu />`
-- `<BulkAudioActions />`
-- `<DMCommandAutocomplete />`
 
 ---
 
 # 🎮 **2. Player Component Tree (Immersive Cockpit)**
 
-Players get a **clean, minimal, immersive** UI.
+Players get a **clean, minimal** UI with chat, notes, and personal settings.
 
 ```
 <PlayerApp>
-  <TopBar
-    showSessionTimer
-    showConnectionStatus
-  />
+  <Toolbar />
+  <CampaignInfo />
+  <SystemToasts />
 
   <MainLayout>
     <LeftRail collapsed>
-      <PlayerList mode="player">
+      <PlayerList persona="player">
         <PlayerItem>
           <Avatar />
           <PlayerInfo />
@@ -129,6 +129,8 @@ Players get a **clean, minimal, immersive** UI.
     </LeftRail>
 
     <CenterPane>
+      <RoomHeader />
+      <ChatNotesToggle />
       <ChatWindow persona="player" />
       <MessageComposer persona="player" />
     </CenterPane>
@@ -144,40 +146,35 @@ Players get a **clean, minimal, immersive** UI.
         ]}
       />
 
-      <SlideInPanels>
+      <SlideInPanels persona="player">
         <NotesPanel />
         <JournalPanel readOnly />
         <SearchPanel />
         <HistoryPanel readOnly />
-        <SettingsPanel personalOnly />
+        <SettingsPanel />
       </SlideInPanels>
     </RightRail>
   </MainLayout>
+
+  <NotePopout />   // Player can view or edit depending on visibility
 </PlayerApp>
 ```
-
-### **Player‑Only Components**
-
-- `<PlayerNoteEditor />`
-- `<PlayerNoteShareMenu />`
-- `<PlayerCommandAutocomplete />`
 
 ---
 
 # 👁️ **3. Spectator Component Tree (Observation Deck)**
 
-Spectators get the **cleanest** UI — read‑only everything.
+Spectators get **read‑only everything**.
 
 ```
 <SpectatorApp>
-  <TopBar
-    showSessionTimer
-    showConnectionStatus
-  />
+  <Toolbar />
+  <CampaignInfo />
+  <SystemToasts />
 
   <MainLayout>
     <LeftRail collapsed>
-      <PlayerList mode="spectator">
+      <PlayerList persona="spectator">
         <PlayerItem>
           <Avatar />
           <PlayerInfo />
@@ -188,8 +185,10 @@ Spectators get the **cleanest** UI — read‑only everything.
     </LeftRail>
 
     <CenterPane>
+      <RoomHeader />
+      <ChatNotesToggle />
       <ChatWindow persona="spectator" readOnly />
-      <SpectatorMessageBlocker />
+      <SpectatorMessageBlocker />   // prevents input
     </CenterPane>
 
     <RightRail>
@@ -203,125 +202,63 @@ Spectators get the **cleanest** UI — read‑only everything.
         ]}
       />
 
-      <SlideInPanels>
+      <SlideInPanels persona="spectator">
         <NotesPanel readOnly globalOnly />
         <JournalPanel readOnly />
         <SearchPanel readOnly />
         <HistoryPanel readOnly />
-        <SettingsPanel personalOnly />
+        <SettingsPanel />
       </SlideInPanels>
     </RightRail>
   </MainLayout>
+
+  <NotePopout readOnly />   // global notes only
 </SpectatorApp>
 ```
 
-### **Spectator‑Only Components**
-
-- `<SpectatorMessageBlocker />`
-- `<ReadOnlyNoteViewer />`
-
 ---
 
-# 🧩 **4. Shared Component Library**
+# 🧩 **4. New/Updated Components (All Documented)**
 
-These are the **atoms**, **molecules**, and **organisms** used across all personas.
+These are **not new subsystems** — they are UI wrappers around existing behaviour.
 
-### **Atoms**
+### **4.1 `<SystemToasts />`**
 
-```
-<Avatar />
-<Icon />
-<Badge />
-<Button />
-<Toggle />
-<Slider />
-<Divider />
-<Timestamp />
-<Tooltip />
-```
+- Renders dismissable toasts
+- No state mutation
+- Driven by UI store events
 
-### **Molecules**
+### **4.2 `<NotePopout />`**
 
-```
-<PlayerItem />
-<PlayerInfo />
-<PlayerOverrides />
-<ConditionIcons />
-<SpeakingIndicator />
-<MessageBubble />
-<CommandAutocomplete />
-<RightTab />
-```
+- Reuses `<NotesPanel />` in isolated mode
+- Persona‑aware (DM edit, Player conditional, Spectator read‑only)
 
-### **Organisms**
+### **4.3 `<ChatNotesToggle />`**
 
-```
-<PlayerList />
-<ChatWindow />
-<MessageComposer />
-<DMVoicePanel />
-<RightTabBar />
-<SlideInPanels />
-<NotesPanel />
-<JournalPanel />
-<HistoryPanel />
-<SearchPanel />
-<SettingsPanel />
-<RoomsPanel />
-<AudioPanel />
-```
+- Simple UI toggle
+- No new logic
 
-### **Layouts**
+### **4.4 `<RoomHeader />`**
 
-```
-<TopBar />
-<MainLayout />
-<LeftRail />
-<CenterPane />
-<RightRail />
-```
+- Displays current room
+- Whisper target (if applicable)
+
+These components already exist conceptually in your docs — this is just their placement.
 
 ---
 
 # 🧠 **5. Persona Differences Summary**
 
-| Component       | DM   | Player              | Spectator  |
-| --------------- | ---- | ------------------- | ---------- |
-| PlayerList      | Full | Simplified          | Simplified |
-| PlayerOverrides | ✔    | ✖                   | ✖          |
-| DMVoicePanel    | ✔    | ✖                   | ✖          |
-| RoomsPanel      | ✔    | ✖                   | ✖          |
-| AudioPanel      | ✔    | ✖                   | ✖          |
-| NotesPanel      | Full | Editable + sharable | Read‑only  |
-| JournalPanel    | Full | Read‑only           | Read‑only  |
-| HistoryPanel    | Full | Read‑only           | Read‑only  |
-| MessageComposer | Full | Full                | ✖          |
-| Commands        | Full | Partial             | ✖          |
-
----
-
-# 🚀 Next Step Options
-
-We can now go deeper in any direction:
-
-### **A. Component Props & Interfaces**
-
-Define TypeScript interfaces for every component.
-
-### **B. Zustand Store → Component Mapping**
-
-Which store drives which component.
-
-### **C. Animation & Motion Spec**
-
-Slide‑in panels, hover states, drag‑drop micro‑interactions.
-
-### **D. Command System Specification**
-
-Full grammar, autocomplete, error handling.
-
-### **E. File/Folder Structure**
-
-Organize the entire SPA into a clean, scalable directory tree.
-
-Which one do you want to tackle next?
+| Component       | DM   | Player  | Spectator |
+| --------------- | ---- | ------- | --------- |
+| Toolbar         | ✔    | ✔       | ✔         |
+| CampaignInfo    | ✔    | ✔       | ✔         |
+| SystemToasts    | ✔    | ✔       | ✔         |
+| DMVoiceBar      | ✔    | ✖       | ✖         |
+| PlayerOverrides | ✔    | ✖       | ✖         |
+| MessageComposer | ✔    | ✔       | ✖         |
+| NotesPanel      | Full | Partial | RO        |
+| NotePopout      | Full | Partial | RO        |
+| RoomsPanel      | ✔    | ✖       | ✖         |
+| AudioPanel      | ✔    | ✖       | ✖         |
+| SettingsPanel   | ✔    | ✔       | ✔         |

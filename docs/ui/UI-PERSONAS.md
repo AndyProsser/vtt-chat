@@ -20,6 +20,14 @@ The SPA dynamically adapts based on:
 - Room state (green room, main room, group room, private room)
 - Session state (pre‑session, in‑session, post‑session)
 
+Detailed persona companion docs:
+
+- [Combined Persona Comparison Sheet](personas/COMPARISION-SHEET.md)
+- [DM Persona High-Fidelity Wireframe](personas/UI-PERSONA-DM.md)
+- [Figma Mockup DM](personas/FIGMA-MOCKUP-DM.md)
+- [Figma Mockup Player](personas/FIGMA-MOCKUP-PLAYER.md)
+- [Figma Mockup Spectator](personas/FIGMA-MOCKUP-SPECTATOR.md)
+
 ---
 
 # 🎭 Persona 1: **DM UI**

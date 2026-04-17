@@ -17,6 +17,12 @@ Stage 0 defines and freezes all event contracts, permission rules, and error mod
 
 All subsequent work must conform to these contracts. No breaking changes without explicit re-lock.
 
+### Compatibility Scope
+
+This document is the implementation contract for Stage 0 and currently matches `/shared`.
+Some subsystem and UI docs include richer product terminology that is planned or conceptual.
+Where names differ, treat this file as canonical for current runtime behavior.
+
 ---
 
 ## Location
@@ -55,6 +61,9 @@ Role.SPECTATOR // Read-only: observe, no actions
 Role.SYSTEM // Autonomous events (not user-triggered)
 ```
 
+Compatibility note: `ASSISTANT_DM` appears in some product-level docs as a delegated authority persona.
+Until a contract re-lock, runtime authorization still resolves to the locked roles above.
+
 ### Session States
 
 ```typescript
@@ -70,6 +79,12 @@ SessionState.ENDED // Frozen, read-only for all
 - `NoteVisibility`: DM_ONLY, PLAYERS_VISIBLE, CUSTOM
 - `MessageType`: IC, OOC, WHISPER, SYSTEM
 - `PresenceState`: ONLINE, TYPING, SPEAKING, IDLE, OFFLINE
+
+Compatibility note:
+
+- Product docs may refer to `GREEN_ROOM` as a presence/location state rather than a `RoomType` enum value.
+- Product docs may use `PARTY`/`INDIVIDUALS`/`GLOBAL` as note-visibility language; Stage 0 uses `PLAYERS_VISIBLE`/`CUSTOM`.
+- Product docs may use broader chat taxonomies (for example `METAGAME`); Stage 0 chat contracts currently lock to the four values above.
 
 ### Domain Objects
 
@@ -91,7 +106,7 @@ All events conform to `EventEnvelope<T>`:
 ```typescript
 interface EventEnvelope<T = Record<string, any>> {
   id: UUID // Unique, for idempotency
-  type: string // DOMAIN:ACTION format (e.g., CHAT:MESSAGE_SENT)
+  type: string // Canonical Stage 0 format: DOMAIN:ACTION (e.g., CHAT:MESSAGE_SENT)
   version: 1 // Forward compatibility
   userId: UUID // Who triggered it (or SYSTEM)
   userRole: Role // For permission checks
@@ -113,6 +128,10 @@ interface EventEnvelope<T = Record<string, any>> {
 - ✅ User must have permission to perform action
 - ✅ Payload must match subsystem schema
 - ✅ Timestamp must be within ±5 minute skew window
+
+Naming compatibility note: UI-local docs may describe interaction intents using slash-style names,
+and conceptual architecture docs may show dotted names. Runtime transport contracts are the
+`DOMAIN:ACTION` event names listed below.
 
 ### Event Categories
 

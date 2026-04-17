@@ -40,9 +40,31 @@ This README serves as the **entry point** for the entire documentation suite.
 
 ### **UI**
 
-- [COMPONENT-INTERFACES.md](ui/COMPONENT-INTERFACES.md)
+- [UI-COMPONENTS.md](ui/UI-COMPONENTS.md)
+- [UI-COMPONENT-INTERFACES.md](ui/UI-COMPONENT-INTERFACES.md)
+- [UI-COMPONENT-PROPS.md](ui/UI-COMPONENT-PROPS.md)
+- [REACT-COMPONENT-TREES.md](ui/REACT-COMPONENT-TREES.md)
+- [UI-LAYOUT.md](ui/UI-LAYOUT.md)
+- [UI-WIREFRAMES.md](ui/UI-WIREFRAMES.md)
+- [UI-FLOWS.md](ui/UI-FLOWS.md)
+- [UI-EVENTS.md](ui/UI-EVENTS.md)
+- [UI-STATE-MAP.md](ui/UI-STATE-MAP.md)
+- [UI-STATE-RECOVERY.md](ui/UI-STATE-RECOVERY.md)
+- [UI-LOADING-STATES.md](ui/UI-LOADING-STATES.md)
+- [UI-ERROR-HANDLING.md](ui/UI-ERROR-HANDLING.md)
+- [UI-PERSONAS.md](ui/UI-PERSONAS.md)
+- [COMBINED PERSONA COMPARISON SHEET](ui/personas/COMPARISION-SHEET.md)
+- [UI PERSONA DM WIREFRAME](ui/personas/UI-PERSONA-DM.md)
+- [FIGMA MOCKUP DM](ui/personas/FIGMA-MOCKUP-DM.md)
+- [FIGMA MOCKUP PLAYER](ui/personas/FIGMA-MOCKUP-PLAYER.md)
+- [FIGMA MOCKUP SPECTATOR](ui/personas/FIGMA-MOCKUP-SPECTATOR.md)
 - [ANIMATION-AND-MOTION-SPEC.md](ui/ANIMATION-AND-MOTION-SPEC.md)
-- [OVERLAY-BEHAVIOUR.md](extension/EXTENSION-UX.md)
+- [UI-MOTION.md](ui/UI-MOTION.md)
+- [UI-THEMING.md](ui/UI-THEMING.md)
+- [UI-THEMING-GUIDELINES.md](ui/UI-THEMING-GUIDELINES.md)
+- [UI-THEMING-LIGHT-MODE.md](ui/UI-THEMING-LIGHT-MODE.md)
+- [UI-THEMING-DARK-MODE.md](ui/UI-THEMING-DARK-MODE.md)
+- [UI-THEMING-COMPONENT-TOKENS.md](ui/UI-THEMING-COMPONENT-TOKENS.md)
 
 ### **Extension**
 
@@ -188,9 +210,15 @@ These cover:
 
 UI documentation lives under `docs/ui/` and covers:
 
+- Component responsibilities, interfaces, and props
 - Component trees
+- Layout rules and wireframes
+- UX flows and event mappings
+- State maps, recovery, loading, and error handling
 - Interaction patterns
+- Persona capability matrices and Figma-ready persona mockups
 - Motion & animation rules
+- Theming and token guidance
 - Role‑aware visibility
 - Non‑blocking overlay behaviour
 

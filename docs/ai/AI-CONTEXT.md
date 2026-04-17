@@ -66,9 +66,21 @@ docs/
 │   └── (future subsystem docs)
 │
 ├── ui/
-│   ├── COMPONENT-INTERFACES.md
+│   ├── UI-COMPONENTS.md
+│   ├── UI-COMPONENT-INTERFACES.md
+│   ├── UI-COMPONENT-PROPS.md
+│   ├── UI-LAYOUT.md
+│   ├── UI-FLOWS.md
+│   ├── UI-EVENTS.md
+│   ├── UI-PERSONAS.md
+│   ├── personas/
+│   │   ├── COMPARISION-SHEET.md
+│   │   ├── UI-PERSONA-DM.md
+│   │   ├── FIGMA-MOCKUP-DM.md
+│   │   ├── FIGMA-MOCKUP-PLAYER.md
+│   │   └── FIGMA-MOCKUP-SPECTATOR.md
 │   ├── ANIMATION-AND-MOTION-SPEC.md
-│   └── (future UI docs)
+│   └── UI-THEMING.md
 │
 ├── extension/
 │   ├── EXTENSION-UX.md

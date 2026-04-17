@@ -26,6 +26,17 @@ Presence is **authoritative in Redis**, with **periodic snapshots** stored in Po
 - Analytics
 - Session history
 
+### Dual-State Clarification
+
+This document describes session/location presence (for example `GREEN_ROOM`, `IN_SESSION_PRIMARY`).
+It is separate from the user activity presence enum used in Stage 0 contracts
+(`ONLINE`, `TYPING`, `SPEAKING`, `IDLE`, `OFFLINE`).
+
+Both dimensions may coexist:
+
+- Location presence: where the user is in the session topology.
+- Activity presence: what the user is currently doing.
+
 ---
 
 # 🧩 Presence State Machine (Client-Level)

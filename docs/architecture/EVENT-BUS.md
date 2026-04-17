@@ -72,17 +72,24 @@ All events follow a strict schema:
 ### **Event Type Naming Convention**
 
 ```
-<domain>.<subdomain>.<action>
+Canonical runtime: DOMAIN:ACTION
+Conceptual notation (used in some design docs): <domain>.<subdomain>.<action>
 ```
 
-Examples:
+Runtime contract note:
 
-- `chat.message.send`
-- `notes.shared.update`
-- `audio.effect.trigger`
-- `presence.status.update`
-- `session.start`
-- `extension.overlay.inject`
+- Transported events in the current implementation use the Stage 0 `DOMAIN:ACTION` names
+  defined in [CONTRACTS.md](../CONTRACTS.md).
+- Dotted names in this document are conceptual aliases for readability.
+
+Examples (conceptual alias → runtime contract):
+
+- `chat.message.send` → `CHAT:MESSAGE_SENT`
+- `notes.shared.update` → `NOTES:UPDATED`
+- `audio.effect.trigger` → `AUDIO:EFFECT_APPLIED`
+- `presence.status.update` → `PRESENCE:STATE_CHANGED`
+- `session.start` → `SESSION:STARTED`
+- `extension.overlay.inject` → extension-specific integration event
 
 ---
 
@@ -134,6 +141,9 @@ sequenceDiagram
 # 4. Event Domains
 
 The Event Bus is organized into domains that map to subsystems.
+
+Note: Event labels in the tables below are conceptual aliases. For contract and payload authority,
+use [CONTRACTS.md](../CONTRACTS.md) and the `/shared/events` definitions.
 
 ### **4.1 Chat Events**
 
