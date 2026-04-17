@@ -5,6 +5,7 @@ import { logger } from '@/utils'
 import {
   requestLoggingMiddleware,
   corsMiddleware,
+  securityHeadersMiddleware,
   errorHandler,
   validateJsonBody,
 } from '@/infra/http/middleware'
@@ -24,6 +25,7 @@ export interface BootstrapResult {
  */
 export async function bootstrap(): Promise<BootstrapResult> {
   const app = express()
+  app.set('trust proxy', 1)
   const server = createServer(app)
   const wsManager = new WebSocketManager(server)
 
@@ -39,6 +41,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // CORS
   app.use(corsMiddleware)
 
+  // Security headers
+  app.use(securityHeadersMiddleware)
+
   // Body parsing
   app.use(express.json({ limit: '10mb' }))
   app.use(express.urlencoded({ limit: '10mb', extended: true }))
@@ -49,14 +54,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
 
   app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
-      status: 'healthy',
-      stage: 'stage-1',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      websocket: {
-        connections: wsManager.getConnectionCount(),
-        sessions: wsManager.getSessionCount(),
-      },
+      status: 'ok',
     })
   })
 
@@ -74,7 +72,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     res.status(404).json({
       error: 'Not found',
       code: 'NOT_FOUND',
-      path: req.path,
     })
   })
 

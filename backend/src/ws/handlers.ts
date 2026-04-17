@@ -5,6 +5,16 @@
  */
 
 import type { EventEnvelope } from '@shared'
+import { logger } from '@/utils'
+
+function logHandled(eventType: string, event: EventEnvelope): void {
+  logger.debug('ws.handlers', `Handled ${eventType}`, {
+    eventId: event.id,
+    sessionId: event.sessionId,
+    userId: event.userId,
+    roomId: event.roomId,
+  })
+}
 
 /**
  * Event handler function signature
@@ -16,24 +26,23 @@ export type EventHandler = (event: EventEnvelope) => Promise<void>
  */
 export const sessionHandlers = {
   async handleSessionCreated(event: EventEnvelope) {
-    // Stage 1: Log event, no state changes
-    console.log('[SESSION:CREATED]', event.payload)
+    logHandled('SESSION:CREATED', event)
   },
 
   async handleSessionStarted(event: EventEnvelope) {
-    console.log('[SESSION:STARTED]', event.payload)
+    logHandled('SESSION:STARTED', event)
   },
 
   async handleSessionPaused(event: EventEnvelope) {
-    console.log('[SESSION:PAUSED]', event.payload)
+    logHandled('SESSION:PAUSED', event)
   },
 
   async handleSessionResumed(event: EventEnvelope) {
-    console.log('[SESSION:RESUMED]', event.payload)
+    logHandled('SESSION:RESUMED', event)
   },
 
   async handleSessionEnded(event: EventEnvelope) {
-    console.log('[SESSION:ENDED]', event.payload)
+    logHandled('SESSION:ENDED', event)
   },
 }
 
@@ -42,23 +51,23 @@ export const sessionHandlers = {
  */
 export const chatHandlers = {
   async handleMessageSent(event: EventEnvelope) {
-    console.log('[CHAT:MESSAGE_SENT]', event.payload)
+    logHandled('CHAT:MESSAGE_SENT', event)
   },
 
   async handleMessageEdited(event: EventEnvelope) {
-    console.log('[CHAT:MESSAGE_EDITED]', event.payload)
+    logHandled('CHAT:MESSAGE_EDITED', event)
   },
 
   async handleMessageDeleted(event: EventEnvelope) {
-    console.log('[CHAT:MESSAGE_DELETED]', event.payload)
+    logHandled('CHAT:MESSAGE_DELETED', event)
   },
 
   async handleTypingStarted(event: EventEnvelope) {
-    console.log('[CHAT:TYPING_STARTED]', event.payload)
+    logHandled('CHAT:TYPING_STARTED', event)
   },
 
   async handleTypingStopped(event: EventEnvelope) {
-    console.log('[CHAT:TYPING_STOPPED]', event.payload)
+    logHandled('CHAT:TYPING_STOPPED', event)
   },
 }
 
@@ -67,19 +76,19 @@ export const chatHandlers = {
  */
 export const roomHandlers = {
   async handleRoomCreated(event: EventEnvelope) {
-    console.log('[ROOM:CREATED]', event.payload)
+    logHandled('ROOM:CREATED', event)
   },
 
   async handleUserJoined(event: EventEnvelope) {
-    console.log('[ROOM:USER_JOINED]', event.payload)
+    logHandled('ROOM:USER_JOINED', event)
   },
 
   async handleUserLeft(event: EventEnvelope) {
-    console.log('[ROOM:USER_LEFT]', event.payload)
+    logHandled('ROOM:USER_LEFT', event)
   },
 
   async handlePresenceStateChanged(event: EventEnvelope) {
-    console.log('[PRESENCE:STATE_CHANGED]', event.payload)
+    logHandled('PRESENCE:STATE_CHANGED', event)
   },
 }
 
@@ -88,15 +97,15 @@ export const roomHandlers = {
  */
 export const notesHandlers = {
   async handleNoteCreated(event: EventEnvelope) {
-    console.log('[NOTES:CREATED]', event.payload)
+    logHandled('NOTES:CREATED', event)
   },
 
   async handleNoteUpdated(event: EventEnvelope) {
-    console.log('[NOTES:UPDATED]', event.payload)
+    logHandled('NOTES:UPDATED', event)
   },
 
   async handleNoteDeleted(event: EventEnvelope) {
-    console.log('[NOTES:DELETED]', event.payload)
+    logHandled('NOTES:DELETED', event)
   },
 }
 
@@ -105,14 +114,14 @@ export const notesHandlers = {
  */
 export const audioHandlers = {
   async handleEffectApplied(event: EventEnvelope) {
-    console.log('[AUDIO:EFFECT_APPLIED]', event.payload)
+    logHandled('AUDIO:EFFECT_APPLIED', event)
   },
 
   async handleEnvironmentSet(event: EventEnvelope) {
-    console.log('[AUDIO:ENVIRONMENT_SET]', event.payload)
+    logHandled('AUDIO:ENVIRONMENT_SET', event)
   },
 
   async handleDMOverrideApplied(event: EventEnvelope) {
-    console.log('[AUDIO:DM_OVERRIDE_APPLIED]', event.payload)
+    logHandled('AUDIO:DM_OVERRIDE_APPLIED', event)
   },
 }

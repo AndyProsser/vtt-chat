@@ -34,7 +34,6 @@ export default function App() {
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
 
   const handleLoginSuccess = (token: string, user: { id: UUID; username: string; role: Role }) => {
-    console.log('Login successful:', user)
     setAuth({
       token,
       user,
@@ -120,8 +119,8 @@ export default function App() {
               <h2 style={{ color: '#1f2937' }}>Welcome to VTT-Chat</h2>
               <p style={{ color: '#6b7280', maxWidth: '500px', margin: '0 auto' }}>
                 Stage 2 implements the transport spine: WebSocket client, event dispatcher, and
-                Zustand store with reducers. This demonstrates the complete UI → Event → Reducer
-                → Store → UI pipeline.
+                Zustand store with reducers. This demonstrates the complete UI → Event → Reducer →
+                Store → UI pipeline.
               </p>
             </section>
 
@@ -164,7 +163,7 @@ export default function App() {
             token={auth.token}
             user={auth.user}
             onSessionCreated={(sessionId) => {
-              console.log('Session created:', sessionId)
+              void sessionId
             }}
           />
         )}

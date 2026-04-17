@@ -23,7 +23,18 @@ import {
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
 import { ErrorCode, createError } from '@shared'
+import type { TokenPayload } from '@/services/auth.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
+import { logger } from '@/utils'
+
+const AUTH_TIMEOUT_MS = 5000
+const MAX_WS_MESSAGE_SIZE = 64 * 1024
+const UNASSIGNED_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
+
+interface AuthMessage {
+  type: 'WS:AUTH'
+  token: string
+}
 
 // Create WebSocket server class if needed
 let WebSocketServer: typeof WSServer
@@ -41,6 +52,8 @@ try {
 interface ExtendedWebSocket extends WebSocket {
   connectionState?: ConnectionState
   isAlive?: boolean
+  authPayload?: TokenPayload
+  authTimeoutId?: ReturnType<typeof setTimeout>
 }
 
 /**
@@ -80,7 +93,10 @@ export class WebSocketManager {
     this.dispatcher.registerHandler('ROOM:CREATED', roomHandlers.handleRoomCreated)
     this.dispatcher.registerHandler('ROOM:USER_JOINED', roomHandlers.handleUserJoined)
     this.dispatcher.registerHandler('ROOM:USER_LEFT', roomHandlers.handleUserLeft)
-    this.dispatcher.registerHandler('PRESENCE:STATE_CHANGED', roomHandlers.handlePresenceStateChanged)
+    this.dispatcher.registerHandler(
+      'PRESENCE:STATE_CHANGED',
+      roomHandlers.handlePresenceStateChanged
+    )
 
     // Notes events
     this.dispatcher.registerHandler('NOTES:CREATED', notesHandlers.handleNoteCreated)
@@ -90,7 +106,10 @@ export class WebSocketManager {
     // Audio events
     this.dispatcher.registerHandler('AUDIO:EFFECT_APPLIED', audioHandlers.handleEffectApplied)
     this.dispatcher.registerHandler('AUDIO:ENVIRONMENT_SET', audioHandlers.handleEnvironmentSet)
-    this.dispatcher.registerHandler('AUDIO:DM_OVERRIDE_APPLIED', audioHandlers.handleDMOverrideApplied)
+    this.dispatcher.registerHandler(
+      'AUDIO:DM_OVERRIDE_APPLIED',
+      audioHandlers.handleDMOverrideApplied
+    )
   }
 
   /**
@@ -118,45 +137,19 @@ export class WebSocketManager {
    * Handle new WebSocket connection
    */
   private handleConnection(ws: ExtendedWebSocket, req: any): void {
-    // Extract auth token from URL query params or headers
+    // Tokens in query params leak via logs/history. Reject and require WS auth message.
     const url = new URL(req.url || '/', `http://${req.headers.host}`)
-    const token = url.searchParams.get('token') || extractTokenFromHeader(req.headers.authorization)
-
-    if (!token) {
-      ws.close(1008, 'Missing authentication token')
+    if (url.searchParams.get('token')) {
+      ws.close(1008, 'Token in query string is not allowed')
       return
     }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      ws.close(1008, 'Invalid or expired token')
-      return
-    }
-
-    // Create connection state
-    const connectionId = `conn-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const connectionState = createConnectionState(
-      payload.userId as UUID,
-      payload.sessionId || ('' as UUID),
-      connectionId
-    )
-
-    ws.connectionState = connectionState
     ws.isAlive = true
-    this.connections.set(connectionId, ws)
-
-    console.log(`[WS] Client connected: ${payload.username} (${connectionId})`)
-
-    // Send welcome message with connection info
-    ws.send(
-      JSON.stringify({
-        type: 'WS:CONNECTED',
-        connectionId,
-        userId: payload.userId,
-        username: payload.username,
-        role: payload.role,
-      })
-    )
+    ws.authTimeoutId = setTimeout(() => {
+      if (!ws.authPayload) {
+        ws.close(1008, 'Authentication timeout')
+      }
+    }, AUTH_TIMEOUT_MS)
 
     // Set up message handler
     ws.on('message', (data: any) => {
@@ -174,8 +167,44 @@ export class WebSocketManager {
     })
 
     ws.on('error', (err: Error) => {
-      console.error(`[WS] Error on ${connectionId}:`, err)
+      logger.error('ws', 'Connection error', err)
     })
+  }
+
+  private authenticateConnection(ws: ExtendedWebSocket, token: string): void {
+    const payload = verifyToken(token)
+    if (!payload) {
+      ws.close(1008, 'Invalid or expired token')
+      return
+    }
+
+    const connectionId = `conn-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const connectionState = createConnectionState(
+      payload.userId as UUID,
+      (payload.sessionId || UNASSIGNED_SESSION_ID) as UUID,
+      connectionId
+    )
+
+    ws.authPayload = payload
+    ws.connectionState = connectionState
+    this.connections.set(connectionId, ws)
+
+    if (ws.authTimeoutId) {
+      clearTimeout(ws.authTimeoutId)
+      ws.authTimeoutId = undefined
+    }
+
+    logger.info('ws', `Client authenticated: ${payload.username} (${connectionId})`)
+
+    ws.send(
+      JSON.stringify({
+        type: 'WS:CONNECTED',
+        connectionId,
+        userId: payload.userId,
+        username: payload.username,
+        role: payload.role,
+      })
+    )
   }
 
   /**
@@ -183,8 +212,35 @@ export class WebSocketManager {
    */
   private async handleMessage(ws: ExtendedWebSocket, data: any): Promise<void> {
     try {
-      const message = typeof data === 'string' ? JSON.parse(data) : data
+      const raw = Buffer.isBuffer(data) ? data.toString('utf8') : String(data)
+      if (raw.length > MAX_WS_MESSAGE_SIZE) {
+        ws.close(1009, 'Message too large')
+        return
+      }
+      const message = JSON.parse(raw)
+
+      if (!ws.authPayload) {
+        const auth = message as Partial<AuthMessage>
+        if (auth.type !== 'WS:AUTH' || typeof auth.token !== 'string') {
+          ws.close(1008, 'Authenticate first using WS:AUTH')
+          return
+        }
+        this.authenticateConnection(ws, auth.token)
+        return
+      }
+
       const event = message as EventEnvelope
+
+      // Never trust client-supplied identity data.
+      if (event.userId !== ws.authPayload.userId || event.userRole !== ws.authPayload.role) {
+        throw createError(ErrorCode.PERMISSION_DENIED, {
+          message: 'Event identity does not match authenticated user',
+        })
+      }
+
+      if (ws.connectionState && ws.connectionState.sessionId === UNASSIGNED_SESSION_ID) {
+        ws.connectionState.sessionId = event.sessionId
+      }
 
       // Dispatch event
       await this.dispatcher.dispatch(event)
@@ -207,12 +263,14 @@ export class WebSocketManager {
       // Broadcast to other clients in same session (simple implementation)
       this.broadcastToSession(event.sessionId, event, ws)
     } catch (err: any) {
-      console.error('[WS] Error processing message:', err)
+      logger.warn('ws', 'Error processing message', {
+        code: err.code || ErrorCode.INTERNAL_ERROR,
+      })
       ws.send(
         JSON.stringify({
           type: 'WS:ERROR',
           code: err.code || ErrorCode.INTERNAL_ERROR,
-          message: err.message,
+          message: 'Unable to process WebSocket message',
         })
       )
     }
@@ -221,11 +279,16 @@ export class WebSocketManager {
   /**
    * Broadcast event to all clients in a session
    */
-  private broadcastToSession(sessionId: UUID, event: EventEnvelope, sender: ExtendedWebSocket): void {
+  private broadcastToSession(
+    sessionId: UUID,
+    event: EventEnvelope,
+    sender: ExtendedWebSocket
+  ): void {
     const OPEN_STATE = 1 // WebSocket.OPEN
     this.wss.clients.forEach((client: any) => {
       if (
         client.readyState === OPEN_STATE &&
+        client.authPayload &&
         client.connectionState?.sessionId === sessionId &&
         client !== sender
       ) {
@@ -243,10 +306,15 @@ export class WebSocketManager {
    * Handle client disconnection
    */
   private handleDisconnection(ws: ExtendedWebSocket): void {
+    if (ws.authTimeoutId) {
+      clearTimeout(ws.authTimeoutId)
+      ws.authTimeoutId = undefined
+    }
+
     if (!ws.connectionState) return
 
     const connectionId = ws.connectionState.connectionId
-    console.log(`[WS] Client disconnected: ${connectionId}`)
+    logger.info('ws', `Client disconnected: ${connectionId}`)
 
     // Keep connection state for reconnection recovery (timeout after 30 mins)
     // For now, just remove it

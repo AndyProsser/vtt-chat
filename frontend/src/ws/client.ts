@@ -4,8 +4,7 @@
  * Reference: docs/architecture/EVENT-BUS.md
  */
 
-import type { EventEnvelope, UUID } from '@shared'
-import { Role } from '@shared'
+import type { EventEnvelope } from '@shared'
 import { isValidUUID } from '@shared'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
@@ -52,11 +51,6 @@ export class WebSocketClient {
   private reconnectDelayMs = 1000
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
 
-  // Heartbeat state
-  private heartbeatIntervalMs = 30000
-  private heartbeatTimeoutId: ReturnType<typeof setInterval> | null = null
-  private lastHeartbeatAckAt = Date.now()
-
   // Event queue for offline handling
   private eventQueue: EventEnvelope[] = []
 
@@ -82,9 +76,6 @@ export class WebSocketClient {
     if (options.reconnectDelayMs !== undefined) {
       this.reconnectDelayMs = options.reconnectDelayMs
     }
-    if (options.heartbeatIntervalMs !== undefined) {
-      this.heartbeatIntervalMs = options.heartbeatIntervalMs
-    }
   }
 
   /**
@@ -100,15 +91,17 @@ export class WebSocketClient {
 
     return new Promise((resolve, reject) => {
       try {
-        const wsUrl = new URL(this.url)
-        wsUrl.searchParams.set('token', this.token)
-
-        this.socket = new WebSocket(wsUrl.toString())
+        this.socket = new WebSocket(this.url)
 
         this.socket.onopen = () => {
+          this.socket?.send(
+            JSON.stringify({
+              type: 'WS:AUTH',
+              token: this.token,
+            })
+          )
           this.reconnectAttempts = 0
           this.setState('connected')
-          this.startHeartbeat()
           this.flushEventQueue()
           resolve()
         }
@@ -124,7 +117,6 @@ export class WebSocketClient {
         }
 
         this.socket.onclose = () => {
-          this.stopHeartbeat()
           this.setState('disconnected')
           this.scheduleReconnect()
         }
@@ -140,7 +132,6 @@ export class WebSocketClient {
    * Disconnect from server.
    */
   disconnect(): void {
-    this.stopHeartbeat()
     this.clearReconnectTimeout()
 
     if (this.socket) {
@@ -212,58 +203,12 @@ export class WebSocketClient {
     try {
       const event = JSON.parse(data) as EventEnvelope
 
-      // Handle internal events
-      if (event.type === 'WS:HEARTBEAT_ACK') {
-        this.lastHeartbeatAckAt = Date.now()
-        return
-      }
-
       // Dispatch to callbacks
       this.callbacks.onEvent?.(event)
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
       console.error('Failed to parse message:', err)
       this.callbacks.onError?.(err)
-    }
-  }
-
-  private startHeartbeat(): void {
-    this.stopHeartbeat()
-
-    this.heartbeatTimeoutId = setInterval(() => {
-      if (this.socket && this.state === 'connected') {
-        const heartbeatEvent: EventEnvelope = {
-          id: this.generateId(),
-          type: 'WS:HEARTBEAT',
-          version: 1,
-          userId: this.generateId(),
-          userRole: Role.SYSTEM,
-          sessionId: this.generateId(),
-          roomId: null,
-          timestamp: Date.now(),
-          payload: {},
-        }
-
-        try {
-          this.socket.send(JSON.stringify(heartbeatEvent))
-        } catch (error) {
-          console.warn('Heartbeat send failed, reconnecting...')
-          this.disconnect()
-        }
-
-        // Check if we got ack within the interval
-        if (Date.now() - this.lastHeartbeatAckAt > this.heartbeatIntervalMs * 2) {
-          console.warn('No heartbeat ack, reconnecting...')
-          this.disconnect()
-        }
-      }
-    }, this.heartbeatIntervalMs)
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatTimeoutId) {
-      clearInterval(this.heartbeatTimeoutId)
-      this.heartbeatTimeoutId = null
     }
   }
 
@@ -310,12 +255,4 @@ export class WebSocketClient {
     }
   }
 
-  private generateId(): UUID {
-    // Simple UUID v4 generator
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0
-      const v = c === 'x' ? r : (r & 0x3) | 0x8
-      return v.toString(16)
-    }) as UUID
-  }
 }

@@ -60,9 +60,9 @@ export const config: AppConfig = {
     url: process.env.REDIS_URL || REDIS_URL,
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+    secret: process.env.JWT_SECRET || 'dev-secret-key',
     expiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_JWT_EXPIRES_IN,
-    adminSecret: process.env.JWT_ADMIN_SECRET || 'your-admin-secret-key-change-in-production',
+    adminSecret: process.env.JWT_ADMIN_SECRET || 'dev-admin-secret-key',
     adminExpiresIn: process.env.JWT_ADMIN_EXPIRES_IN || DEFAULT_ADMIN_JWT_EXPIRES_IN,
   },
   livekit: {
@@ -81,5 +81,21 @@ if (config.isProduction) {
 
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
+  }
+
+  const insecureJwtValues = new Set([
+    'dev-secret-key',
+    'dev-admin-secret-key',
+    'your-secret-key-change-in-production',
+    'your-admin-secret-key-change-in-production',
+  ])
+
+  if (insecureJwtValues.has(config.jwt.secret) || insecureJwtValues.has(config.jwt.adminSecret)) {
+    throw new Error('Refusing to start in production with default JWT secrets')
+  }
+
+  const insecureLiveKitValues = new Set(['devkey', 'secret'])
+  if (insecureLiveKitValues.has(config.livekit.apiKey) || insecureLiveKitValues.has(config.livekit.apiSecret)) {
+    throw new Error('Refusing to start in production with default LiveKit credentials')
   }
 }

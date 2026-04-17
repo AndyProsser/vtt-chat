@@ -7,11 +7,25 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
+import { randomUUID } from 'crypto'
 import { createToken, verifyToken, extractTokenFromHeader } from '@/services/auth.service'
+import { createRateLimit } from '@/infra/http/rate-limit'
 import type { UUID, Role } from '@shared'
 import { createError, ErrorCode, isValidUsername } from '@shared'
 
 const router = Router()
+
+const loginRateLimit = createRateLimit({
+  windowMs: 5 * 60 * 1000,
+  maxRequests: 10,
+  message: 'Too many login attempts. Please try again later.',
+})
+
+const tokenRefreshRateLimit = createRateLimit({
+  windowMs: 60 * 1000,
+  maxRequests: 60,
+  message: 'Too many token refresh attempts. Please slow down.',
+})
 
 /**
  * Middleware: Extract and verify token from Authorization header
@@ -45,7 +59,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
  * Stage 1: No password validation, just accept username.
  * Returns JWT token.
  */
-router.post('/login', (req: Request, res: Response) => {
+router.post('/login', loginRateLimit, (req: Request, res: Response) => {
   const { username, role } = req.body
 
   // Validate input
@@ -67,7 +81,7 @@ router.post('/login', (req: Request, res: Response) => {
 
   // Stage 1: Deterministic user ID based on username (for testing)
   // Later stages will use actual user database
-  const userId = `user-${username}-${Date.now()}` as UUID
+  const userId = randomUUID() as UUID
   const token = createToken({
     userId,
     username,
@@ -89,7 +103,7 @@ router.post('/login', (req: Request, res: Response) => {
  * Refresh an expired token.
  * Requires valid current token in Authorization header.
  */
-router.post('/refresh', authMiddleware, (req: Request, res: Response) => {
+router.post('/refresh', tokenRefreshRateLimit, authMiddleware, (req: Request, res: Response) => {
   const user = (req as any).user
   if (!user) {
     return res.status(401).json({

@@ -7,10 +7,10 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import type { UUID } from '@shared'
+import { config } from '@/infra/config'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key'
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h'
 const BCRYPT_ROUNDS = 10
+const JWT_ISSUER = 'vtt-chat'
 
 /**
  * JWT token payload shape
@@ -42,7 +42,6 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
  * Create a JWT token for a user
  */
 export function createToken(payload: TokenPayload): string {
-  const secret = JWT_SECRET || 'fallback-secret-key'
   return jwt.sign(
     {
       userId: payload.userId,
@@ -50,9 +49,10 @@ export function createToken(payload: TokenPayload): string {
       role: payload.role,
       sessionId: payload.sessionId,
     } as any,
-    secret,
+    config.jwt.secret,
     {
-      expiresIn: JWT_EXPIRY,
+      expiresIn: config.jwt.expiresIn,
+      issuer: JWT_ISSUER,
     } as any
   )
 }
@@ -62,8 +62,9 @@ export function createToken(payload: TokenPayload): string {
  */
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    const secret = JWT_SECRET || 'fallback-secret-key'
-    const decoded = jwt.verify(token, secret) as TokenPayload
+    const decoded = jwt.verify(token, config.jwt.secret, {
+      issuer: JWT_ISSUER,
+    }) as TokenPayload
     return decoded
   } catch {
     return null

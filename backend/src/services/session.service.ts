@@ -5,6 +5,7 @@
  */
 
 import type { UUID, Session, SessionState, User } from '@shared'
+import { randomUUID } from 'crypto'
 import { SessionState as SessionStateEnum } from '@shared'
 import { createError, ErrorCode } from '@shared'
 
@@ -19,7 +20,7 @@ const sessions = new Map<UUID, Session & { users: Map<UUID, User> }>()
  * (In production, use a real UUID library)
  */
 function generateUUID(): UUID {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}` as UUID
+  return randomUUID() as UUID
 }
 
 /**

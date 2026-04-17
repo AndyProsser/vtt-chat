@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
-import { verifyUserToken, verifyAdminToken, extractTokenFromHeader } from '@/utils'
+import { verifyAdminToken } from '@/utils'
+import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
 import { AuthToken, AdminAuthToken, AuthError, AppError } from '@/types'
 import { logger } from '@/utils/logger'
+import { randomUUID } from 'crypto'
 
 // ============================================================================
 // Extended Express Types
@@ -12,6 +14,7 @@ declare global {
     interface Request {
       user?: AuthToken
       admin?: AdminAuthToken
+      requestId?: string
     }
   }
 }
@@ -28,8 +31,19 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
       throw new AuthError('Missing authorization token')
     }
 
-    const decoded = verifyUserToken(token)
-    req.user = decoded
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      throw new AuthError('Invalid token')
+    }
+
+    req.user = {
+      userId: decoded.userId,
+      username: decoded.username,
+      role: decoded.role,
+      sessionId: decoded.sessionId || '',
+      iat: decoded.iat || 0,
+      exp: decoded.exp || 0,
+    }
 
     next()
   } catch (error) {
@@ -46,8 +60,17 @@ export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFu
     const token = extractTokenFromHeader(req.headers.authorization)
 
     if (token) {
-      const decoded = verifyUserToken(token)
-      req.user = decoded
+      const decoded = verifyToken(token)
+      if (decoded) {
+        req.user = {
+          userId: decoded.userId,
+          username: decoded.username,
+          role: decoded.role,
+          sessionId: decoded.sessionId || '',
+          iat: decoded.iat || 0,
+          exp: decoded.exp || 0,
+        }
+      }
     }
 
     next()
@@ -132,6 +155,8 @@ export const validateJsonBody = (req: Request, res: Response, next: NextFunction
 
 export const requestLoggingMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = Date.now()
+  req.requestId = req.headers['x-request-id']?.toString() || randomUUID()
+  res.setHeader('X-Request-Id', req.requestId)
 
   res.on('finish', () => {
     const duration = Date.now() - startTime
@@ -139,8 +164,38 @@ export const requestLoggingMiddleware = (req: Request, res: Response, next: Next
     const status = `${res.statusCode}`
     const path = req.path
 
-    logger.debug('http', `${method} ${path} [${status}] ${duration}ms`)
+    logger.debug('http', `${method} ${path} [${status}] ${duration}ms`, {
+      requestId: req.requestId,
+    })
   })
+
+  next()
+}
+
+// ============================================================================
+// Security Headers Middleware
+// ============================================================================
+
+export const securityHeadersMiddleware = (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
+
+  if (isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; connect-src 'self' https: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
+  }
 
   next()
 }
@@ -150,7 +205,13 @@ export const requestLoggingMiddleware = (req: Request, res: Response, next: Next
 // ============================================================================
 
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8443']
+  const allowedOrigins = (
+    process.env.CORS_ALLOWED_ORIGINS ||
+    'http://localhost:5173,http://localhost:5174,http://localhost:8443'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
 
   const origin = req.headers.origin
 

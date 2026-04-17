@@ -225,8 +225,8 @@ model Message {
   session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   roomId    String
   room      Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String?
+  author    User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
   content   String
   type      MessageType @default(TEXT)
 
@@ -263,8 +263,8 @@ model Metadata {
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   messageId String?  @unique
   message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   type        MetadataType
   title       String

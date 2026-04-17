@@ -24,7 +24,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [error, setError] = useState<string | null>(null)
 
   // WebSocket connection
-  const { state: wsState, isConnected, error: wsError, send } = useWebSocket({
+  const {
+    state: wsState,
+    isConnected,
+    error: wsError,
+  } = useWebSocket({
     url: wsUrl,
     token,
     enabled: !!token,
@@ -60,7 +64,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       const session = await response.json()
-      console.log('Session created:', session)
 
       // Set as current session
       store.setCurrentSession(session.id)
@@ -71,7 +74,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
-      console.error('Session creation error:', err)
     } finally {
       setIsCreating(false)
     }
@@ -98,12 +100,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       const updatedSession = await response.json()
-      console.log('Session started:', updatedSession)
       store.updateSession(sessionId, { state: updatedSession.state })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
-      console.error('Session start error:', err)
     }
   }
 
@@ -246,8 +246,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             border: 'none',
             borderRadius: '4px',
             fontWeight: '500',
-            cursor:
-              isCreating || !sessionName.trim() || !isConnected ? 'not-allowed' : 'pointer',
+            cursor: isCreating || !sessionName.trim() || !isConnected ? 'not-allowed' : 'pointer',
             fontSize: '0.875rem',
           }}
         >

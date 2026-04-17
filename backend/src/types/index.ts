@@ -184,7 +184,7 @@ export interface PlayerConditionDTO {
 export interface AuthToken {
   userId: string
   username: string
-  role: 'PLAYER' | 'DM'
+  role: 'PLAYER' | 'DM' | 'SPECTATOR'
   sessionId: string
   iat: number
   exp: number

@@ -14,6 +14,7 @@ import {
   addUserToSession,
   getSessionUsers,
 } from '@/services/session.service'
+import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { UUID, SessionState } from '@shared'
@@ -24,14 +25,31 @@ const router = Router()
  * Middleware: Verify auth token exists
  */
 function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const user = (req as any).user
+  const token = extractTokenFromHeader(req.headers.authorization)
+  if (!token) {
+    return res.status(401).json({
+      code: ErrorCode.UNAUTHORIZED,
+      message: 'Missing or invalid Authorization header',
+    })
+  }
+
+  const user = verifyToken(token)
   if (!user) {
     return res.status(401).json({
       code: ErrorCode.UNAUTHORIZED,
       message: 'Authentication required',
     })
   }
+
+  ;(req as any).user = user
   next()
+}
+
+function internalErrorResponse(res: Response) {
+  return res.status(500).json({
+    code: ErrorCode.INTERNAL_ERROR,
+    message: 'Internal server error',
+  })
 }
 
 /**
@@ -54,10 +72,7 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
     const session = createSession(name, user.userId, description)
     res.status(201).json(session)
   } catch (err: any) {
-    res.status(500).json({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: err.message,
-    })
+    return internalErrorResponse(res)
   }
 })
 
@@ -70,10 +85,7 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
     const sessions = getAllSessions()
     res.status(200).json(sessions)
   } catch (err: any) {
-    res.status(500).json({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: err.message,
-    })
+    return internalErrorResponse(res)
   }
 })
 
@@ -107,10 +119,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
       userCount: users.length,
     })
   } catch (err: any) {
-    res.status(500).json({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: err.message,
-    })
+    return internalErrorResponse(res)
   }
 })
 
@@ -157,10 +166,7 @@ router.put('/:id/state', requireAuth, (req: Request, res: Response) => {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
     }
-    res.status(500).json({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: err.message,
-    })
+    return internalErrorResponse(res)
   }
 })
 
@@ -194,10 +200,7 @@ router.delete('/:id', requireAuth, (req: Request, res: Response) => {
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }
-    res.status(500).json({
-      code: ErrorCode.INTERNAL_ERROR,
-      message: err.message,
-    })
+    return internalErrorResponse(res)
   }
 })
 

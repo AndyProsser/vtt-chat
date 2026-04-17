@@ -52,7 +52,6 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
-      console.error('Login error:', err)
     } finally {
       setIsLoading(false)
     }
