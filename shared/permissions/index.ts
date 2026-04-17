@@ -11,10 +11,12 @@
 
 import type { Role } from '../types'
 
+export type RoleKey = 'DM' | 'PLAYER' | 'SPECTATOR'
+
 export interface PermissionRule {
   domain: string
   action: string
-  allowedRoles: Role[]
+  allowedRoles: RoleKey[]
   description: string
 }
 
@@ -328,16 +330,16 @@ export const PERMISSION_MATRIX: PermissionRule[] = [
 /**
  * Helper function to check if a role can perform an action.
  */
-export function canPerformAction(role: Role, domain: string, action: string): boolean {
+export function canPerformAction(role: Role | RoleKey, domain: string, action: string): boolean {
   const rule = PERMISSION_MATRIX.find((r) => r.domain === domain && r.action === action)
-  return rule?.allowedRoles.includes(role) ?? false
+  return rule?.allowedRoles.includes(role as RoleKey) ?? false
 }
 
 /**
  * Get all allowed actions for a specific role.
  */
-export function getAllowedActions(role: Role): string[] {
-  return PERMISSION_MATRIX.filter((rule) => rule.allowedRoles.includes(role)).map(
+export function getAllowedActions(role: Role | RoleKey): string[] {
+  return PERMISSION_MATRIX.filter((rule) => rule.allowedRoles.includes(role as RoleKey)).map(
     (rule) => `${rule.domain}:${rule.action}`
   )
 }

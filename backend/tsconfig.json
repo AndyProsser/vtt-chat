@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "bundler",
-    "rootDir": "src",
+    "rootDir": "..",
     "outDir": "dist",
     "sourceMap": true,
     "declaration": true,
@@ -15,15 +15,18 @@
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "ignoreDeprecations": "6.0",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["src/*"],
+      "@shared": ["../shared/index.ts"]
     }
   },
   "include": [
     "src/index.ts",
     "src/bootstrap.ts",
-    "src/api/index.ts",
+    "src/api/**/*.ts",
+    "src/services/**/*.ts",
+    "src/ws/**/*.ts",
     "src/infra/config/**/*.ts",
     "src/infra/http/middleware.ts",
     "src/utils/**/*.ts"

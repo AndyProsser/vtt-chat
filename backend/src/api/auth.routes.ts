@@ -1,5 +1,146 @@
 /**
- * Baseline placeholder module.
- * This implementation is intentionally disabled for staged rebuild.
+ * Authentication Routes
+ * POST /auth/login - Login with username (for testing: always succeeds)
+ * POST /auth/refresh - Refresh JWT token
+ * GET /auth/validate - Validate token
+ * GET /auth/me - Get current user info
  */
-export const BASELINE_PLACEHOLDER = true
+
+import { Router, Request, Response, NextFunction } from 'express'
+import { createToken, verifyToken, extractTokenFromHeader } from '@/services/auth.service'
+import type { UUID, Role } from '@shared'
+import { createError, ErrorCode, isValidUsername } from '@shared'
+
+const router = Router()
+
+/**
+ * Middleware: Extract and verify token from Authorization header
+ */
+function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = extractTokenFromHeader(req.headers.authorization)
+  if (!token) {
+    return res.status(401).json({
+      code: ErrorCode.UNAUTHORIZED,
+      message: 'Missing or invalid Authorization header',
+    })
+  }
+
+  const payload = verifyToken(token)
+  if (!payload) {
+    return res.status(401).json({
+      code: ErrorCode.TOKEN_EXPIRED,
+      message: 'Token is invalid or expired',
+    })
+  }
+
+  // Attach to request for downstream handlers
+  ;(req as any).user = payload
+
+  next()
+}
+
+/**
+ * POST /api/auth/login
+ * Login with username and optional role.
+ * Stage 1: No password validation, just accept username.
+ * Returns JWT token.
+ */
+router.post('/login', (req: Request, res: Response) => {
+  const { username, role } = req.body
+
+  // Validate input
+  if (!username || !isValidUsername(username)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid username',
+      field: 'username',
+    })
+  }
+
+  if (!role || !['DM', 'PLAYER', 'SPECTATOR'].includes(role)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid role',
+      field: 'role',
+    })
+  }
+
+  // Stage 1: Deterministic user ID based on username (for testing)
+  // Later stages will use actual user database
+  const userId = `user-${username}-${Date.now()}` as UUID
+  const token = createToken({
+    userId,
+    username,
+    role: role as 'DM' | 'PLAYER' | 'SPECTATOR',
+  })
+
+  res.status(200).json({
+    token,
+    user: {
+      id: userId,
+      username,
+      role,
+    },
+  })
+})
+
+/**
+ * POST /api/auth/refresh
+ * Refresh an expired token.
+ * Requires valid current token in Authorization header.
+ */
+router.post('/refresh', authMiddleware, (req: Request, res: Response) => {
+  const user = (req as any).user
+  if (!user) {
+    return res.status(401).json({
+      code: ErrorCode.UNAUTHORIZED,
+      message: 'User not attached to request',
+    })
+  }
+
+  const newToken = createToken({
+    userId: user.userId,
+    username: user.username,
+    role: user.role,
+    sessionId: user.sessionId,
+  })
+
+  res.status(200).json({
+    token: newToken,
+  })
+})
+
+/**
+ * GET /api/auth/validate
+ * Check if the current token is valid.
+ */
+router.get('/validate', authMiddleware, (req: Request, res: Response) => {
+  const user = (req as any).user
+
+  res.status(200).json({
+    valid: true,
+    user: {
+      id: user.userId,
+      username: user.username,
+      role: user.role,
+      sessionId: user.sessionId || null,
+    },
+  })
+})
+
+/**
+ * GET /api/auth/me
+ * Get current user info from token.
+ */
+router.get('/me', authMiddleware, (req: Request, res: Response) => {
+  const user = (req as any).user
+
+  res.status(200).json({
+    id: user.userId,
+    username: user.username,
+    role: user.role,
+    sessionId: user.sessionId || null,
+  })
+})
+
+export default router

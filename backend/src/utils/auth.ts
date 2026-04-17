@@ -20,10 +20,10 @@ export const createUserToken = (
     sessionId,
   }
 
-  return jwt.sign(payload, config.jwt.secret, {
+  return jwt.sign(payload as any, config.jwt.secret as string, {
     expiresIn: config.jwt.expiresIn as string,
     issuer: 'vtt-chat',
-  })
+  } as any)
 }
 
 export const createAdminToken = (adminId: string): string => {
@@ -31,10 +31,10 @@ export const createAdminToken = (adminId: string): string => {
     adminId,
   }
 
-  return jwt.sign(payload, config.jwt.adminSecret, {
+  return jwt.sign(payload as any, config.jwt.adminSecret as string, {
     expiresIn: config.jwt.adminExpiresIn as string,
     issuer: 'vtt-chat-admin',
-  })
+  } as any)
 }
 
 export const verifyUserToken = (token: string): AuthToken => {

@@ -9,10 +9,12 @@ import {
   validateJsonBody,
 } from '@/infra/http/middleware'
 import apiRouter from '@/api/index'
+import { WebSocketManager } from '@/ws'
 
 export interface BootstrapResult {
   app: Express
   server: HTTPServer
+  wsManager: WebSocketManager
   start: () => Promise<void>
   stop: () => Promise<void>
 }
@@ -23,8 +25,9 @@ export interface BootstrapResult {
 export async function bootstrap(): Promise<BootstrapResult> {
   const app = express()
   const server = createServer(app)
+  const wsManager = new WebSocketManager(server)
 
-  logger.info('bootstrap', 'Initializing VTT-Chat backend baseline')
+  logger.info('bootstrap', 'Initializing VTT-Chat backend Stage 1')
 
   // ========================================================================
   // Middleware Setup
@@ -47,8 +50,13 @@ export async function bootstrap(): Promise<BootstrapResult> {
   app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
       status: 'healthy',
+      stage: 'stage-1',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      websocket: {
+        connections: wsManager.getConnectionCount(),
+        sessions: wsManager.getSessionCount(),
+      },
     })
   })
 
@@ -100,6 +108,11 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const stop = async (): Promise<void> => {
     return new Promise((resolve, reject) => {
       try {
+        // Close WebSocket connections first
+        wsManager.close().then(() => {
+          logger.info('bootstrap', `WebSocket server closed (${wsManager.getConnectionCount()} connections closed)`)
+        })
+
         server.close(() => {
           logger.info('bootstrap', 'Server stopped gracefully')
           resolve()
@@ -117,7 +130,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     })
   }
 
-  return { app, server, start, stop }
+  return { app, server, wsManager, start, stop }
 }
 
 /**
