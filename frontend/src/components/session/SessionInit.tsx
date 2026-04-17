@@ -4,7 +4,8 @@
  * Tests the full UI → Event → Store pipeline.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { SessionState } from '@shared'
 import type { UUID, Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
@@ -21,6 +22,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [sessionName, setSessionName] = useState('')
   const [sessionDescription, setSessionDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // WebSocket connection
@@ -39,6 +41,36 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const { sessions, currentSessionId } = store
   const sessionList = Object.values(sessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] : null
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      setIsLoadingSessions(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/session`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || 'Failed to load sessions')
+        }
+
+        const data = await response.json()
+        store.replaceSessions(data)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      } finally {
+        setIsLoadingSessions(false)
+      }
+    }
+
+    void loadSessions()
+  }, [apiUrl, token, store])
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,6 +97,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       const session = await response.json()
 
+      store.createSession(session)
       // Set as current session
       store.setCurrentSession(session.id)
       onSessionCreated?.(session.id)
@@ -80,6 +113,45 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const handleStartSession = async (sessionId: UUID) => {
+    await handleTransitionSession(sessionId, SessionState.ACTIVE)
+  }
+
+  const handlePauseSession = async (sessionId: UUID) => {
+    await handleTransitionSession(sessionId, SessionState.PAUSED)
+  }
+
+  const handleResumeSession = async (sessionId: UUID) => {
+    await handleTransitionSession(sessionId, SessionState.ACTIVE)
+  }
+
+  const handleEndSession = async (sessionId: UUID) => {
+    await handleTransitionSession(sessionId, SessionState.ENDED)
+  }
+
+  const handleDeleteSession = async (sessionId: UUID) => {
+    setError(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to delete session')
+      }
+
+      store.removeSession(sessionId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred'
+      setError(message)
+    }
+  }
+
+  const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
     setError(null)
 
     try {
@@ -89,18 +161,16 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          state: 'ACTIVE',
-        }),
+        body: JSON.stringify({ state }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to start session')
+        throw new Error(errorData.message || `Failed to transition session to ${state}`)
       }
 
       const updatedSession = await response.json()
-      store.updateSession(sessionId, { state: updatedSession.state })
+      store.updateSession(sessionId, updatedSession)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -255,7 +325,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       </form>
 
       {/* Session List */}
-      {sessionList.length > 0 && (
+      {isLoadingSessions ? (
+        <div
+          style={{
+            padding: '1rem',
+            color: '#64748b',
+            fontSize: '0.875rem',
+          }}
+        >
+          Loading sessions...
+        </div>
+      ) : sessionList.length > 0 ? (
         <div
           style={{
             padding: '1.5rem',
@@ -289,7 +369,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </p>
               )}
               <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
-                {session.state === 'IDLE' && user.role === 'DM' && (
+                {session.state === SessionState.IDLE && user.role === 'DM' && (
                   <button
                     onClick={() => handleStartSession(session.id)}
                     style={{
@@ -305,8 +385,57 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     Start Session
                   </button>
                 )}
+                {session.state === SessionState.ACTIVE && user.role === 'DM' && (
+                  <button
+                    onClick={() => handlePauseSession(session.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Pause Session
+                  </button>
+                )}
+                {session.state === SessionState.PAUSED && user.role === 'DM' && (
+                  <button
+                    onClick={() => handleResumeSession(session.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Resume Session
+                  </button>
+                )}
+                {session.state !== SessionState.ENDED && user.role === 'DM' && (
+                  <button
+                    onClick={() => handleEndSession(session.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#7c3aed',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    End Session
+                  </button>
+                )}
                 {user.role === 'DM' && (
                   <button
+                    onClick={() => handleDeleteSession(session.id)}
                     style={{
                       padding: '0.5rem 1rem',
                       backgroundColor: '#ef4444',
@@ -320,9 +449,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     Delete
                   </button>
                 )}
+                {user.role !== 'DM' && (
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>DM-only controls</span>
+                )}
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: '1rem',
+            color: '#64748b',
+            fontSize: '0.875rem',
+          }}
+        >
+          No sessions available yet.
         </div>
       )}
     </div>

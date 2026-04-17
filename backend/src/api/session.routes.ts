@@ -45,6 +45,17 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
+function requireDM(req: Request, res: Response, next: NextFunction) {
+  const user = (req as any).user
+  if (!user || user.role !== 'DM') {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'DM role required',
+    })
+  }
+  next()
+}
+
 function internalErrorResponse(res: Response) {
   return res.status(500).json({
     code: ErrorCode.INTERNAL_ERROR,
@@ -56,7 +67,7 @@ function internalErrorResponse(res: Response) {
  * POST /api/session
  * Create a new session (DM-only)
  */
-router.post('/', requireAuth, (req: Request, res: Response) => {
+router.post('/', requireAuth, requireDM, (req: Request, res: Response) => {
   const user = (req as any).user
   const { name, description } = req.body
 
@@ -128,7 +139,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
  * Change session state (start, pause, resume, end)
  * DM-only operation.
  */
-router.put('/:id/state', requireAuth, (req: Request, res: Response) => {
+router.put('/:id/state', requireAuth, requireDM, (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
   const { state } = req.body
@@ -174,7 +185,7 @@ router.put('/:id/state', requireAuth, (req: Request, res: Response) => {
  * DELETE /api/session/:id
  * Delete a session (DM-only)
  */
-router.delete('/:id', requireAuth, (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, requireDM, (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
 

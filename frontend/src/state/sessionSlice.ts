@@ -28,7 +28,9 @@ export interface SessionSlice {
 
   // Actions
   createSession: (session: Session) => void
+  replaceSessions: (sessions: Session[]) => void
   updateSession: (sessionId: UUID, updates: Partial<Session>) => void
+  removeSession: (sessionId: UUID) => void
   setCurrentSession: (sessionId: UUID | null) => void
   clearSessions: () => void
 
@@ -53,6 +55,17 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       },
     })),
 
+  replaceSessions: (sessions) =>
+    set(() => ({
+      sessions: sessions.reduce(
+        (acc, session) => {
+          acc[session.id] = session
+          return acc
+        },
+        {} as Record<UUID, Session>
+      ),
+    })),
+
   updateSession: (sessionId, updates) =>
     set((state) => {
       const session = state.sessions[sessionId]
@@ -63,6 +76,17 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...state.sessions,
           [sessionId]: { ...session, ...updates },
         },
+      }
+    }),
+
+  removeSession: (sessionId) =>
+    set((state) => {
+      const nextSessions = { ...state.sessions }
+      delete nextSessions[sessionId]
+
+      return {
+        sessions: nextSessions,
+        currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
       }
     }),
 
@@ -104,9 +128,13 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...state.sessions[event.sessionId]!,
           state: payload.state,
           startedAt:
-            payload.state === 'ACTIVE' ? event.timestamp : state.sessions[event.sessionId]?.startedAt,
+            payload.state === 'ACTIVE'
+              ? event.timestamp
+              : state.sessions[event.sessionId]?.startedAt,
           pausedAt:
-            payload.state === 'PAUSED' ? event.timestamp : state.sessions[event.sessionId]?.pausedAt,
+            payload.state === 'PAUSED'
+              ? event.timestamp
+              : state.sessions[event.sessionId]?.pausedAt,
           endedAt:
             payload.state === 'ENDED' ? event.timestamp : state.sessions[event.sessionId]?.endedAt,
         },

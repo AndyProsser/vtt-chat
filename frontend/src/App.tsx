@@ -5,7 +5,7 @@ import { SessionInit } from './components/session/SessionInit'
 
 /**
  * App Component
- * Stage 2: Frontend Transport Spine
+ * Stage 3: Session Lifecycle Vertical Slice
  * - Login form to get JWT
  * - WebSocket connection with event dispatcher
  * - Session creation and state transitions
@@ -77,7 +77,7 @@ export default function App() {
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>VTT-Chat</h1>
             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-              Stage 2: Frontend Transport Spine
+              Stage 3: Session Lifecycle Vertical Slice
             </p>
           </div>
 
@@ -118,9 +118,9 @@ export default function App() {
             >
               <h2 style={{ color: '#1f2937' }}>Welcome to VTT-Chat</h2>
               <p style={{ color: '#6b7280', maxWidth: '500px', margin: '0 auto' }}>
-                Stage 2 implements the transport spine: WebSocket client, event dispatcher, and
-                Zustand store with reducers. This demonstrates the complete UI → Event → Reducer →
-                Store → UI pipeline.
+                Stage 3 implements the first complete role-aware vertical slice. DMs can create,
+                start, pause, resume, end, and delete sessions while players and spectators can
+                observe lifecycle state safely.
               </p>
             </section>
 
@@ -182,7 +182,7 @@ export default function App() {
         }}
       >
         <p style={{ margin: 0 }}>
-          Stage 2 Complete: Transport Spine (WebSocket + Event Dispatcher + Zustand Store)
+          Stage 3 Active: Session Lifecycle (IDLE → ACTIVE → PAUSED → ENDED with DM-only controls)
         </p>
       </footer>
     </div>

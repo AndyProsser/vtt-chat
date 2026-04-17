@@ -1,15 +1,16 @@
-# **`PROMPTING-RULES.md`**
+# **AI-GUIDELINES.md**
 
-### _Operational prompting rules for any AI assisting with the VTT‑Chat platform_
+### _Operational prompting guidelines for any AI assisting with the VTT‑Chat platform_
 
-# PROMPTING RULES
+# AI GUIDELINES
 
 _A strict behavioural contract for any AI assisting with the VTT‑Chat platform._
 
 This document defines **how** an AI must behave when generating output for the VTT‑Chat project.
 It complements `AI-CONTEXT.md`, which defines **what** the AI must understand.
 
-These rules are mandatory and override all general‑purpose behaviour.
+This document contains AI safety and compliance rules for a tabletop gaming project.
+It does not contain harmful or unsafe content.
 
 ---
 
