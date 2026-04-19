@@ -51,9 +51,9 @@ Stage 6 implements the **presence and room membership** subsystem, providing Red
 ### Testing & Validation
 
 - **Integration Tests**:
-  - `room-service-recovery-integration.test.ts`: Redis-empty recovery from snapshots, repeated transition sequencing under load-like state flips
-  - `session-room-transition.test.ts`: transition orchestration invocation and WS broadcast validation
-  - `presence-rooms-authz.test.ts`: session-member access control enforcement
+  - `tests/integration/room-service-recovery.integration.test.ts`: Redis-empty recovery from snapshots, repeated transition sequencing under load-like state flips
+  - `tests/integration/session-room-transition.integration.test.ts`: transition orchestration invocation and WS broadcast validation
+  - `tests/api/presence-rooms-authz.test.ts`: session-member access control enforcement
 
 - **Build & Schema Validation**:
   - Backend build: ✅ passed
@@ -106,7 +106,7 @@ The following items are intentionally deferred to post-Stage-6 hardening:
 - `src/api/presence.routes.ts` — session-member authz, recovery endpoint
 - `src/api/rooms.routes.ts` — session-member authz on list/join/leave/members
 - `src/core/rooms/room.service.ts` — Redis-first state, snapshots, transition orchestration
-- `tests/presence-rooms-authz.test.ts` — new authz validation tests
+- `tests/api/presence-rooms-authz.test.ts` — new authz validation tests
 
 **Frontend**:
 

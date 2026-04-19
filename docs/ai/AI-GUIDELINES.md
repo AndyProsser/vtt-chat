@@ -129,6 +129,26 @@ AI must treat:
 
 as equivalent transport layers.
 
+### **3.5 Testing Is Required For Key Systems**
+
+AI must create or update tests whenever it changes a key system.
+
+Key systems include:
+
+- API routes and request validation
+- Core services and repositories
+- WebSocket dispatcher/handlers/state recovery
+- Reducer/store/integration-hook flows
+- Role, permission, and privacy enforcement paths
+
+Required minimum coverage for each changed key system:
+
+- Happy path behavior
+- Permission/privacy boundary behavior
+- Error or recovery behavior
+
+If an implementation does not exist yet, AI may use `it.todo(...)` placeholders only with explicit module path and expected behavior.
+
 ---
 
 # 4. UI & UX Compliance

@@ -55,13 +55,13 @@ const { loggerMock, mockUseStore, MockRoom, roomInstances } = vi.hoisted(() => {
   }
 })
 
-vi.mock('./useStore', () => ({
+vi.mock('../../hooks/useStore', () => ({
   useStore: (
     selector: (state: { currentUser: { id: string; username: string; role: string } }) => unknown
   ) => mockUseStore(selector),
 }))
 
-vi.mock('../utils/logger', () => ({
+vi.mock('../../utils/logger', () => ({
   logger: loggerMock,
 }))
 
@@ -117,7 +117,7 @@ describe('useLiveKit', () => {
   })
 
   it('ignores a completed connect after disconnect is requested', async () => {
-    const { useLiveKit } = await import('./useLiveKit')
+    const { useLiveKit } = await import('../../hooks/useLiveKit')
 
     const { result } = renderHook(() => useLiveKit('session-1', 'room-1'))
 
@@ -143,7 +143,7 @@ describe('useLiveKit', () => {
   })
 
   it('keeps the latest room when an earlier connect resolves late', async () => {
-    const { useLiveKit } = await import('./useLiveKit')
+    const { useLiveKit } = await import('../../hooks/useLiveKit')
 
     const { result, rerender } = renderHook(
       ({ sessionId, roomId }) => useLiveKit(sessionId, roomId),

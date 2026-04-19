@@ -91,7 +91,7 @@ import {
   getRoomMemberIds,
   getSessionPresence,
   updatePresenceState,
-} from '../src/core/rooms/room.service'
+} from '../../src/core/rooms/room.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const DM_ID = '22222222-2222-4222-8222-222222222222'

@@ -18,7 +18,7 @@ type NoteRow = {
 
 const notes = new Map<string, NoteRow>()
 
-vi.mock('../src/repositories/notes.repository', () => ({
+vi.mock('../../../src/repositories/notes.repository', () => ({
   createNoteRecord: vi.fn(async (params: any) => {
     notes.set(params.id, {
       id: params.id,
@@ -60,7 +60,7 @@ vi.mock('../src/repositories/notes.repository', () => ({
   }),
 }))
 
-import { createNote, getVisibleNotes, updateNote } from '../src/core/notes/notes.service'
+import { createNote, getVisibleNotes, updateNote } from '../../../src/core/notes/notes.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as any
 const DM_ID = '22222222-2222-4222-8222-222222222222' as any

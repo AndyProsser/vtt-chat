@@ -34,8 +34,8 @@ vi.mock('@/core/rooms/room.service', () => ({
   leaveRoom: vi.fn(),
 }))
 
-import presenceRoutes from '../src/api/presence.routes'
-import roomsRoutes from '../src/api/rooms.routes'
+import presenceRoutes from '../../src/api/presence.routes'
+import roomsRoutes from '../../src/api/rooms.routes'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const USER_ID = '22222222-2222-4222-8222-222222222222'

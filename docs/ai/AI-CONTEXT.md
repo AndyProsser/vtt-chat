@@ -354,7 +354,12 @@ AI should:
 - Provide structured, maintainable output
 - Use the same naming conventions as the repo
 - Generate events, reducers, selectors, and UI consistent with subsystem patterns
+- Create or update tests whenever a key system is created or modified
 - Ask clarifying questions when needed
+
+Key systems requiring tests include API routes, core services/repositories, WebSocket dispatcher/handlers/recovery, reducer/store/integration-hook flows, and permission/privacy enforcement paths.
+
+For each changed key system, tests should cover happy path, permission/privacy boundaries, and at least one error or recovery path.
 
 ---
 

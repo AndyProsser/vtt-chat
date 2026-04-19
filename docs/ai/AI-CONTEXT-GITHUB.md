@@ -156,6 +156,8 @@ Copilot must enforce:
 - Use reducer namespaces correctly
 - Use integration layers for LiveKit/WebAudio
 - Never bypass the audio priority stack
+- Create or update tests for each changed key system (API, service/repository, WS dispatcher/handlers/recovery, reducer/store/hook integration, permission/privacy paths)
+- Include at least happy path + permission/privacy boundary + one error/recovery case per changed key system
 
 ### **When generating backend logic**
 
