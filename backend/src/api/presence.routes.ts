@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode, PresenceState, isValidPresenceState, isValidUUID } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
+import { getSession, getSessionUsers } from '@/services/session.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
   getSessionPresence,
@@ -37,7 +38,20 @@ function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
+async function canAccessSessionPresence(sessionId: UUID, user: any): Promise<boolean> {
+  const session = await getSession(sessionId)
+  if (!session) return false
+
+  if (user.role === 'DM' || session.dmId === (user.userId as UUID)) {
+    return true
+  }
+
+  const members = await getSessionUsers(sessionId)
+  return members.some((member) => member.id === (user.userId as UUID))
+}
+
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
   const { sessionId } = req.params
 
   if (!isValidUUID(sessionId)) {
@@ -45,6 +59,11 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    const allowed = await canAccessSessionPresence(sessionId as UUID, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
     const presence = await getSessionPresence(sessionId as UUID)
     return res.status(200).json({ presence })
   } catch {
@@ -76,6 +95,11 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
   }
 
   try {
+    const allowed = await canAccessSessionPresence(sessionId as UUID, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
     if (roomId) {
       const room = await getRoom(roomId as UUID)
       if (!room) {
@@ -135,6 +159,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
 })
 
 router.post('/:sessionId/recover', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
   const { sessionId } = req.params
 
   if (!isValidUUID(sessionId)) {
@@ -142,6 +167,11 @@ router.post('/:sessionId/recover', requireAuth, async (req: Request, res: Respon
   }
 
   try {
+    const allowed = await canAccessSessionPresence(sessionId as UUID, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
     const recovered = await ensurePresenceRecoveredFromSnapshots(sessionId as UUID)
     const snapshotCount = await snapshotSessionPresence(sessionId as UUID)
     const presence = await getSessionPresence(sessionId as UUID)

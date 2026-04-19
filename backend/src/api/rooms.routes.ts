@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode, PresenceState, Role, RoomType, isValidRoomName, isValidUUID } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession } from '@/services/session.service'
+import { getSession, getSessionUsers } from '@/services/session.service'
 import {
   createRoom,
   getRoom,
@@ -47,18 +47,30 @@ function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
+async function canAccessSessionRooms(sessionId: UUID, user: any): Promise<boolean> {
+  const session = await getSession(sessionId)
+  if (!session) return false
+
+  if (user.role === Role.DM || session.dmId === (user.userId as UUID)) {
+    return true
+  }
+
+  const members = await getSessionUsers(sessionId)
+  return members.some((member) => member.id === (user.userId as UUID))
+}
+
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
   const { sessionId } = req.params
+
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
   }
 
   try {
-    const session = await getSession(sessionId as UUID)
-    if (!session) {
-      return res
-        .status(404)
-        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    const allowed = await canAccessSessionRooms(sessionId as UUID, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
     }
 
     const rooms = await getRooms(sessionId as UUID)
@@ -147,6 +159,11 @@ router.post('/:roomId/join', requireAuth, async (req: Request, res: Response) =>
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
+    const allowed = await canAccessSessionRooms(room.sessionId, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
     const presence = await joinRoom({
       sessionId: room.sessionId,
       roomId: room.id,
@@ -201,6 +218,11 @@ router.post('/:roomId/leave', requireAuth, async (req: Request, res: Response) =
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
+    const allowed = await canAccessSessionRooms(room.sessionId, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
     const presence = await leaveRoom({
       sessionId: room.sessionId,
       roomId: room.id,
@@ -238,6 +260,7 @@ router.post('/:roomId/leave', requireAuth, async (req: Request, res: Response) =
 })
 
 router.get('/:roomId/members', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
   const { roomId } = req.params
 
   if (!isValidUUID(roomId)) {
@@ -248,6 +271,11 @@ router.get('/:roomId/members', requireAuth, async (req: Request, res: Response) 
     const room = await getRoom(roomId as UUID)
     if (!room) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    const allowed = await canAccessSessionRooms(room.sessionId, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
     }
 
     const members = await getRoomMemberIds(room.sessionId, room.id)

@@ -60,6 +60,7 @@ export interface RoomSlice {
   updateMemberPresence: (roomId: UUID, userId: UUID, presence: PresenceState) => void
   replaceSessionRooms: (sessionId: UUID, rooms: Room[]) => void
   replaceSessionPresence: (sessionId: UUID, presence: SessionPresence[]) => void
+  replaceSessionTopology: (sessionId: UUID, rooms: Room[], presence: SessionPresence[]) => void
   clearSessionTransitionNotice: (sessionId: UUID) => void
   clearRooms: (sessionId?: UUID) => void
 
@@ -194,6 +195,54 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
       }
 
       return {
+        roomMembers: nextMembers,
+        sessionPresence: {
+          ...state.sessionPresence,
+          [sessionId]: nextPresenceByUser,
+        },
+      }
+    }),
+
+  replaceSessionTopology: (sessionId, rooms, presence) =>
+    set((state) => {
+      const nextBySession = rooms.reduce(
+        (acc, room) => {
+          acc[room.id] = room
+          return acc
+        },
+        {} as Record<UUID, Room>
+      )
+
+      const nextPresenceByUser = presence.reduce(
+        (acc, entry) => {
+          acc[entry.userId] = entry
+          return acc
+        },
+        {} as Record<UUID, SessionPresence>
+      )
+
+      const nextMembers = { ...state.roomMembers }
+      for (const room of rooms) {
+        nextMembers[room.id] = []
+      }
+
+      for (const entry of presence) {
+        if (!entry.primaryRoomId) continue
+        const roomId = entry.primaryRoomId
+        const existing = nextMembers[roomId] || []
+        nextMembers[roomId] = upsertMember(existing, {
+          userId: entry.userId,
+          username: entry.username,
+          presenceState: entry.state,
+          joinedAt: entry.lastSeenAt,
+        })
+      }
+
+      return {
+        rooms: {
+          ...state.rooms,
+          [sessionId]: nextBySession,
+        },
         roomMembers: nextMembers,
         sessionPresence: {
           ...state.sessionPresence,

@@ -10,7 +10,12 @@
 import type { UUID, PresenceState } from '../types'
 import type { EventEnvelope } from './base'
 
-export type RoomEventType = 'ROOM:CREATED' | 'ROOM:USER_JOINED' | 'ROOM:USER_LEFT' | 'ROOM:DELETED'
+export type RoomEventType =
+  | 'ROOM:CREATED'
+  | 'ROOM:USER_JOINED'
+  | 'ROOM:USER_LEFT'
+  | 'ROOM:DELETED'
+  | 'ROOM:SESSION_TRANSITION_APPLIED'
 
 export type PresenceEventType =
   | 'PRESENCE:STATE_CHANGED'
@@ -78,6 +83,35 @@ export interface RoomDeleted {
 export type RoomDeletedEvent = EventEnvelope<RoomDeleted>
 
 /**
+ * ROOM:SESSION_TRANSITION_APPLIED
+ * Server-originated event emitted after bulk session room transition orchestration.
+ */
+export interface RoomSessionTransitionApplied {
+  previousState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+  nextState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+  movedUsers: number
+  targetState: PresenceState
+  mainRoom: {
+    id: UUID
+    name: string
+    roomType: 'MAIN'
+  }
+  greenRoom: {
+    id: UUID
+    name: string
+    roomType: 'GROUP'
+  }
+  targetRoomId: UUID
+  targetRoomName: string
+  users: Array<{
+    userId: UUID
+    username: string
+  }>
+}
+
+export type RoomSessionTransitionAppliedEvent = EventEnvelope<RoomSessionTransitionApplied>
+
+/**
  * PRESENCE:STATE_CHANGED
  * User presence state changed: ONLINE, TYPING, SPEAKING, IDLE, OFFLINE.
  * Ephem eral, updates every state change.
@@ -132,6 +166,7 @@ export type RoomEvent =
   | RoomUserJoinedEvent
   | RoomUserLeftEvent
   | RoomDeletedEvent
+  | RoomSessionTransitionAppliedEvent
 
 export type PresenceEvent =
   | PresenceStateChangedEvent

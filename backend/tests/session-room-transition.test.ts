@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockUpdateSessionState: vi.fn(),
   mockApplySessionStateRoomTransition: vi.fn(),
   mockEmitSessionBoundarySystemMessage: vi.fn(),
+  mockLogSessionStateChange: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -33,6 +34,13 @@ vi.mock('@/core/rooms/room.service', () => ({
 
 vi.mock('@/core/chat/system-messages', () => ({
   emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
+}))
+
+vi.mock('@/services/session-logs.service', () => ({
+  logSessionStateChange: mocks.mockLogSessionStateChange,
+  logSessionJoin: vi.fn(),
+  logSessionLeave: vi.fn(),
+  getSessionEventHistory: vi.fn(),
 }))
 
 import sessionRoutes from '../src/api/session.routes'

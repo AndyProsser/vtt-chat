@@ -19,6 +19,7 @@ model Session {
   presence    PresenceSnapshot[]
   messages    ChatMessage[]
   notes       Note[]
+  logs        SessionLog[]
   createdAt   DateTime           @default(now())
   startedAt   DateTime?
   endedAt     DateTime?
@@ -191,6 +192,22 @@ model Note {
   @@index([createdAt])
 }
 
+model SessionLog {
+  id        String              @id @default(uuid()) @db.Uuid
+  sessionId String              @db.Uuid
+  session   Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String?             @db.Uuid
+  username  String
+  eventType SessionLogEventType
+  detail    String?
+  createdAt DateTime            @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
 enum Role {
   DM
   PLAYER
@@ -237,4 +254,10 @@ enum PresenceState {
   SPEAKING
   IDLE
   OFFLINE
+}
+
+enum SessionLogEventType {
+  JOINED
+  LEFT
+  STATE_CHANGED
 }

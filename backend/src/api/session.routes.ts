@@ -12,14 +12,21 @@ import {
   updateSessionState,
   deleteSession,
   addUserToSession,
+  removeUserFromSession,
   getSessionUsers,
 } from '@/services/session.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
-import { ErrorCode, createError } from '@shared'
+import { ErrorCode, createError, Role } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/core/chat/system-messages'
 import { applySessionStateRoomTransition } from '@/core/rooms/room.service'
+import {
+  logSessionJoin,
+  logSessionLeave,
+  logSessionStateChange,
+  getSessionEventHistory,
+} from '@/services/session-logs.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -290,6 +297,15 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
         dmUsername: user.username,
         wsManager,
       })
+
+      // Log the state change
+      await logSessionStateChange(
+        session.id,
+        user.userId as UUID,
+        user.username,
+        previousSession?.state || 'UNKNOWN',
+        state
+      )
     }
 
     res.status(200).json(session)
@@ -300,6 +316,246 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
     }
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * POST /api/session/:id/join
+ * Add a user to a session
+ * Players can join at any time, including after session has started.
+ */
+router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    // Check if user is already in session
+    const currentUsers = await getSessionUsers(id as UUID)
+    const alreadyMember = currentUsers.some((u) => u.id === user.userId)
+    if (alreadyMember) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'User is already a member of this session',
+      })
+    }
+
+    // Add user to session
+    const success = await addUserToSession(id as UUID, {
+      id: user.userId as UUID,
+      username: user.username,
+      role: user.role,
+      createdAt: Date.now(),
+    })
+
+    if (!success) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    // Log the join event
+    await logSessionJoin(id as UUID, user.userId as UUID, user.username)
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      // Broadcast a system message that user joined
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CHAT:MESSAGE_CREATED',
+        version: 1,
+        userId: session.dmId,
+        userRole: Role.DM,
+        sessionId: id as UUID,
+        roomId: null as any,
+        timestamp: Date.now(),
+        payload: {
+          messageId: crypto.randomUUID() as UUID,
+          authorId: session.dmId,
+          authorUsername: 'System',
+          sessionId: id as UUID,
+          roomId: null as any,
+          content: `${user.username} joined the session`,
+          type: 'SYSTEM',
+          isEdited: false,
+          createdAt: Date.now(),
+          whisperTo: null,
+        },
+      })
+    }
+
+    const updatedUsers = await getSessionUsers(id as UUID)
+    res.status(200).json({
+      session,
+      users: updatedUsers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+      })),
+    })
+  } catch (err: any) {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * POST /api/session/:id/leave
+ * Remove a user from a session
+ */
+router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    // Check if DM is trying to leave (not allowed)
+    if (session.dmId === (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'DM cannot leave their own session',
+      })
+    }
+
+    // Check if user is in session
+    const currentUsers = await getSessionUsers(id as UUID)
+    const isMember = currentUsers.some((u) => u.id === user.userId)
+    if (!isMember) {
+      return res.status(404).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'User is not a member of this session',
+      })
+    }
+
+    // Remove user from session
+    const success = await removeUserFromSession(id as UUID, user.userId as UUID)
+
+    if (!success) {
+      return res.status(500).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Failed to remove user from session',
+      })
+    }
+
+    // Log the leave event
+    await logSessionLeave(id as UUID, user.userId as UUID, user.username)
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      // Broadcast a system message that user left
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CHAT:MESSAGE_CREATED',
+        version: 1,
+        userId: session.dmId,
+        userRole: Role.DM,
+        sessionId: id as UUID,
+        roomId: null as any,
+        timestamp: Date.now(),
+        payload: {
+          messageId: crypto.randomUUID() as UUID,
+          authorId: session.dmId,
+          authorUsername: 'System',
+          sessionId: id as UUID,
+          roomId: null as any,
+          content: `${user.username} left the session`,
+          type: 'SYSTEM',
+          isEdited: false,
+          createdAt: Date.now(),
+          whisperTo: null,
+        },
+      })
+    }
+
+    const updatedUsers = await getSessionUsers(id as UUID)
+    res.status(200).json({
+      session,
+      users: updatedUsers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+      })),
+    })
+  } catch (err: any) {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * GET /api/session/:id/logs
+ * Get session event logs
+ */
+router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200)
+  const offset = parseInt(req.query.offset as string) || 0
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    // Check if user can read logs (DM or session member)
+    const users = await getSessionUsers(id as UUID)
+    const canReadLogs =
+      user.role === 'DM' ||
+      session.dmId === (user.userId as UUID) ||
+      users.some((u) => u.id === user.userId)
+
+    if (!canReadLogs) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Not authorized to view session logs',
+      })
+    }
+
+    const logs = await getSessionEventHistory(id as UUID, limit, offset)
+    res.status(200).json({ logs })
+  } catch (err: any) {
     return internalErrorResponse(res)
   }
 })

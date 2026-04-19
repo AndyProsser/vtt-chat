@@ -263,29 +263,25 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
         const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
 
-        store.replaceSessionRooms(
-          currentSession.id,
-          (roomsPayload.rooms || []).map((room) => ({
-            id: room.id,
-            sessionId: room.sessionId,
-            name: room.name,
-            type: room.type,
-            createdAt: room.createdAt,
-            createdBy: room.createdBy,
-          }))
-        )
+        const nextRooms = (roomsPayload.rooms || []).map((room) => ({
+          id: room.id,
+          sessionId: room.sessionId,
+          name: room.name,
+          type: room.type,
+          createdAt: room.createdAt,
+          createdBy: room.createdBy,
+        }))
 
-        store.replaceSessionPresence(
-          currentSession.id,
-          (presencePayload.presence || []).map((entry) => ({
-            userId: entry.userId,
-            username: entry.username,
-            state: entry.state,
-            primaryRoomId: entry.primaryRoomId,
-            privateRoomId: entry.privateRoomId,
-            lastSeenAt: entry.lastSeenAt,
-          }))
-        )
+        const nextPresence = (presencePayload.presence || []).map((entry) => ({
+          userId: entry.userId,
+          username: entry.username,
+          state: entry.state,
+          primaryRoomId: entry.primaryRoomId,
+          privateRoomId: entry.privateRoomId,
+          lastSeenAt: entry.lastSeenAt,
+        }))
+
+        store.replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
       } catch {
         // Event-driven websocket updates continue to flow even if this refresh fails.
       }
