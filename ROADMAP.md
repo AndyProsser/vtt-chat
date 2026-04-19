@@ -15,7 +15,7 @@ Last updated: 2026-04-19
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete**.
+Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete, Stages 9-13 now defined as planned remaining scope**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -24,6 +24,7 @@ Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, St
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice now includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
 - Audio/livekit vertical slice is now partially implemented (token issuance route + client/audio hooks), with runtime integration and hardening still pending.
+- Frontend command-center UI and admin operations UI scope are now explicitly tracked as post-Stage 8 delivery stages.
 
 Latest verification:
 
@@ -274,6 +275,180 @@ Exit criteria:
 
 ---
 
+### Stage 9: Frontend UI Command-Center Completion
+
+Status: **Planned (not started as a consolidated stage)**
+
+Goal:
+
+- Deliver the full persona-aware command-center UX (DM, Player, Spectator) described in UI specifications.
+
+Completed so far:
+
+- Core transport/store flow exists and supports live session/chat/notes/presence updates.
+- Notes/chat baseline surfaces exist and are connected to backend APIs/events.
+- Presence indicators and transition notifications are implemented.
+
+Remaining scope:
+
+- Implement complete three-panel layout shell and supporting components (`Toolbar`, `CampaignInfo`, `SystemToasts`, `LeftRail`, `CenterPane`, `RightRail`).
+- Implement persona-specific right-panel tab sets and slide-in panel behavior (Rooms, Audio, Search, Notes, Journal, History, Settings).
+- Implement DM-only control surfaces from UI specs (`DMVoiceBar`, advanced `PlayerOverrides`, room drag/drop workflow polish).
+- Implement metadata/timeline/tags and environment indicator surfaces defined in the implementation plan and UI docs.
+- Implement complete UI event/reducer coverage for search, journal, history, and settings panel flows.
+- Implement deterministic loading, UI-error, and UI-state-recovery behaviors from dedicated UI specs.
+- Implement full theming token application (dark/light parity), persona accents, and motion-spec conformance.
+
+Milestone checkpoints:
+
+- **Stage 9.1: Layout and Persona Shell Parity**
+  - Scope: three-panel shell completion (`Toolbar`, `CampaignInfo`, `SystemToasts`, `LeftRail`, `CenterPane`, `RightRail`) and persona tab availability/visibility.
+  - Target validation tests:
+    - Frontend component tests for persona visibility matrix (DM/Player/Spectator) across left rail, center controls, and right-tab sets.
+    - Frontend interaction tests for right-panel open/close lifecycle and center chat/notes toggle consistency.
+    - Basic responsive layout checks for desktop/tablet breakpoints used by current app shell.
+
+- **Stage 9.2: DM Control Surfaces and Realtime Flows**
+  - Scope: `DMVoiceBar`, advanced `PlayerOverrides`, room drag/drop UX polish, and environment indicators.
+  - Target validation tests:
+    - Reducer/store tests for DM-only event handling (`players/dragDrop`, `audio/setCondition`, `audio/setDistance`, bulk audio actions).
+    - Frontend integration tests asserting DM controls are unavailable to Player/Spectator personas.
+    - Backend/frontend contract tests ensuring emitted events map to existing permission and WS dispatch behavior.
+
+- **Stage 9.3: Recovery, Loading, Error, Theming, and Motion Compliance**
+  - Scope: spec-conformant loading states, non-blocking error toasts, atomic reconnect hydration UX, theme-token parity, and motion rules.
+  - Target validation tests:
+    - Reconnect/hydration integration tests validating atomic domain snapshot application and UI-only state restoration.
+    - UI error-handling tests validating deterministic toast rendering and persona-safe message exposure.
+    - Theme/motion regression tests (visual or snapshot-based) covering dark/light token parity and critical transitions (toasts, rails, slide-in panels).
+  - Implementation checklist (logging/telemetry alignment):
+    - Adopt frontend logger control model and level precedence from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L102).
+    - Ensure frontend telemetry emission remains privacy-safe and decoupled from console verbosity as defined in [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L174).
+    - Validate Stage 9.3 deliverables against the logging+telemetry quality gates in [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
+
+Exit criteria:
+
+- DM, Player, and Spectator command-center journeys match documented layout, behavior, and permission boundaries end-to-end.
+
+---
+
+### Stage 10: Admin UI Feature Completion and Secure Operations
+
+Status: **Planned (builds on Stage 8 baseline)**
+
+Goal:
+
+- Complete admin UI from readonly telemetry baseline to secure operational control center.
+
+Completed so far:
+
+- Admin shell/navigation and primary pages exist.
+- Dashboard/status/logs telemetry views are wired (with logs filtering/pagination/sorting).
+- Baseline action affordances exist in Users/Rooms/Settings pages.
+
+Remaining scope:
+
+- Enforce admin authentication and role guardrails on all admin API routes and UI routes.
+- Implement working user operations (suspend, force logout, detail panel with recent activity/warnings).
+- Implement working room/campaign operations (view/close/move players/archive/export/delete) with confirmations.
+- Implement settings workflows (feature flags, maintenance mode, API key handling, backup/restore).
+- Add log detail expansion UX and drill-down panels with audit-friendly context.
+- Ensure all admin actions are auditable, persisted, and queryable via telemetry/log pipelines.
+
+Milestone checkpoints:
+
+- **Stage 10.1: Authentication and Route Guard Closure**
+  - Scope: enforce admin auth on admin APIs/UI routes and complete baseline login/session lifecycle.
+  - Target validation tests:
+    - Backend API authz tests proving unauthenticated/invalid-token requests are rejected for all admin telemetry and action endpoints.
+    - Admin SPA integration tests for login, protected navigation, token expiry handling, and logout.
+    - Security regression checks confirming no admin data is exposed prior to auth.
+
+- **Stage 10.2: User and Campaign Operations Activation**
+  - Scope: operational actions for users/rooms/campaigns (suspend, force logout, view/close/move/archive/export/delete) with confirmations.
+  - Target validation tests:
+    - Backend endpoint tests for role-gated moderation/action routes with success/failure path coverage.
+    - Admin UI interaction tests for action dialogs, optimistic/loading states, and rollback behavior on errors.
+    - Audit-log assertions verifying each action emits durable structured audit entries.
+
+- **Stage 10.3: Settings, Drill-Down UX, and Durable Telemetry**
+  - Scope: settings workflows, logs detail drill-down, persistent telemetry signals, and audit queryability.
+  - Target validation tests:
+    - Backend persistence tests for telemetry/audit durability across process restarts.
+    - Admin logs tests for filter/sort/pagination + expandable detail content integrity.
+    - End-to-end ops journey tests (authenticate -> perform action -> verify audit trail -> verify dashboard/log reflection).
+  - Implementation checklist (admin observability/log streams):
+    - Implement backend stream separation and sink strategy from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L235).
+    - Align admin telemetry/audit endpoint behavior with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437).
+    - Verify admin filterability, audit trace completeness, and telemetry durability against [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
+
+Exit criteria:
+
+- Admin UI provides authenticated, auditable, least-privilege operational actions and reliable telemetry workflows.
+
+---
+
+### Stage 11: Metadata, Journal, History, and Search Surfaces
+
+Status: **Planned**
+
+Goal:
+
+- Deliver long-term campaign knowledge surfaces and cross-session discoverability.
+
+Remaining scope:
+
+- Implement metadata cards/timeline/tag flows defined in architecture and UI docs.
+- Implement journal and history panel data pipelines and role-aware read/write behavior.
+- Implement search services and UI for messages, notes, and recording metadata.
+- Align API endpoints and store slices with documented contracts for journal/history/search.
+
+Exit criteria:
+
+- Campaign knowledge surfaces are role-safe, searchable, and integrated into primary UX flows.
+
+---
+
+### Stage 12: Import/Export, Recordings Metadata, and Archival Workflows
+
+Status: **Planned**
+
+Goal:
+
+- Support durable campaign portability and long-term operational retention workflows.
+
+Remaining scope:
+
+- Implement campaign import/export endpoints and UI dialogs with validation and audit trails.
+- Implement recordings metadata and journal linkage paths described in architecture specs.
+- Add admin archival workflows for campaign/session assets and operational logs.
+
+Exit criteria:
+
+- Campaigns can be safely exported/imported, and long-term records are traceable and recoverable.
+
+---
+
+### Stage 13: Extension and Overlay Integration (VTT Bridge)
+
+Status: **Planned**
+
+Goal:
+
+- Deliver documented browser-extension/overlay integration for supported VTT environments.
+
+Remaining scope:
+
+- Implement extension bridge contracts for Foundry/Roll20/Owlbear interaction normalization.
+- Implement overlay UX and event synchronization with core app state/privacy constraints.
+- Validate extension-side role/privacy enforcement and reconnection/state recovery behavior.
+
+Exit criteria:
+
+- Extension workflows integrate cleanly with core state/event architecture without privacy regressions.
+
+---
+
 ## 3) Current Priority Queue
 
 Priority 1:
@@ -288,6 +463,18 @@ Priority 3:
 
 - Stage 7 runtime integration: mount livekit/audio hooks in UI, complete WS handler registration, and add e2e validation.
 
+Priority 4:
+
+- Stage 9 frontend UI command-center completion: persona layouts, right-rail tools, theming/motion/loading/error/recovery compliance.
+
+Priority 5:
+
+- Stage 10 admin UI feature completion: authenticated ops actions, detail panels, and durable auditability.
+
+Priority 6:
+
+- Stage 11/12 knowledge and portability surfaces: metadata/journal/history/search plus import/export and recordings metadata.
+
 ---
 
 ## 4) Risks and Dependencies
@@ -297,6 +484,8 @@ Key risks:
 - Admin telemetry endpoints are mounted without admin auth enforcement; internet-facing deployment risk until route guards are applied.
 - Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
 - In-memory admin log history and WS recovery state are not durable across process restarts.
+- UI specification breadth is large (layout, motion, theming, loading, recovery, error handling) and may drift without stage-specific delivery checkpoints.
+- Several documented domains (metadata timeline, journal/history/search, import/export, recordings metadata, extension bridge) are defined in docs but not yet represented as complete runtime slices.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
 - Custom-share recipient UX depends on session membership hydration (users appear after joining session).
 - Prisma schema is updated, but migration history is not yet committed; DB rollout consistency risk remains.
@@ -318,6 +507,8 @@ The following references support the corrected stage labels and current model te
 | Stage 8 (Admin and Ops) security closure    | In progress (guardrails not yet enforced) | Telemetry endpoints are implemented and mounted: [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Admin auth primitives exist: [backend/src/infra/http/middleware.ts](backend/src/infra/http/middleware.ts), [backend/src/utils/auth.ts](backend/src/utils/auth.ts). Current gap: admin middleware is not applied to mounted admin telemetry routes and frontend auth remains baseline-disabled: [admin/src/store.ts](admin/src/store.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Stage 4 chat boundary/system behavior       | Complete                                  | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/chat-system-messages.test.ts](backend/tests/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Character status field terminology          | Aligned                                   | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/campaign-users-api.test.ts](backend/tests/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Frontend command-center UI scope            | Planned and now explicitly tracked        | UI layout/components/flows/recovery/theming/motion specs define broader SPA surface than currently closed stages: [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [docs/ui/UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md), [docs/ui/UI-STATE-RECOVERY.md](docs/ui/UI-STATE-RECOVERY.md), [docs/ui/UI-LOADING-STATES.md](docs/ui/UI-LOADING-STATES.md), [docs/ui/UI-ERROR-HANDLING.md](docs/ui/UI-ERROR-HANDLING.md), [docs/ui/UI-THEMING.md](docs/ui/UI-THEMING.md), [docs/ui/UI-MOTION.md](docs/ui/UI-MOTION.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Post-Stage knowledge/portability domains    | Planned and now explicitly tracked        | Implementation/architecture docs include metadata timeline, journal/history, search, import/export, and recordings metadata domains: [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md), [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md), [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md). Backend still includes not-implemented placeholders for some mapped domains: [backend/src/api/index.ts](backend/src/api/index.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ---
 
@@ -340,6 +531,7 @@ The following references support the corrected stage labels and current model te
 - 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.
 - 2026-04: Stage 7 moved from scaffolded to partial implementation: LiveKit token route/service and frontend livekit/audio hooks are now present; runtime UI mounting and full WS audio registration remain pending.
 - 2026-04: Backend circular dependency refactoring completed: `SessionLogsService` extracted, `RoomService`/`RoomRecoveryService`/`PresenceService` converted to dependency injection pattern. Latest backend verification: 8 test files / 29 tests passing; monorepo builds cleanly. Infrastructure hardening improves testability and maintainability.
+- 2026-04: Roadmap expanded to track remaining full-project scope beyond Stage 8, including frontend command-center completion, admin feature completion, knowledge surfaces (metadata/journal/history/search), import/export + recordings metadata, and extension bridge integration.
 
 ---
 
@@ -347,6 +539,6 @@ The following references support the corrected stage labels and current model te
 
 Roadmap complete when:
 
-- Stages 0-8 all meet their exit criteria.
+- Stages 0-13 all meet their exit criteria.
 - Security and auditability requirements are met for internet-facing operation.
 - Monorepo builds cleanly and stage-critical user journeys are test-covered.

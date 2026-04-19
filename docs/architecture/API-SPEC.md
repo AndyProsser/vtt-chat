@@ -434,9 +434,41 @@ Restore a campaign.
 
 ---
 
+## `GET /api/admin/telemetry/dashboard`
+
+Get dashboard telemetry summary cards.
+
+## `GET /api/admin/telemetry/status`
+
+Get platform status metrics and chart data.
+
+## `GET /api/admin/telemetry/logs`
+
+Get admin logs with filtering, sorting, and pagination.
+
+Query params (current):
+
+- `timeRange` (`1h` | `24h` | `7d`)
+- `severity`
+- `source`
+- `userId`
+- `roomId`
+- `page`
+- `pageSize`
+- `sortBy` (`timestamp` | `severity` | `source` | `message`)
+- `sortDir` (`asc` | `desc`)
+
 ## `GET /api/admin/telemetry`
 
-Query aggregated telemetry.
+Planned aggregate telemetry query endpoint for higher-level analytics views.
+
+## `GET /api/admin/telemetry/performance`
+
+Planned endpoint for performance-series metrics (latency/throughput/resource).
+
+## `GET /api/admin/audit/logs`
+
+Planned endpoint for audit-specific action history (moderation/security/config changes).
 
 ---
 
@@ -445,6 +477,12 @@ Query aggregated telemetry.
 ## `POST /api/telemetry/client`
 
 Client → server telemetry events.
+
+Expected usage:
+
+- frontend clients send batched, privacy-safe telemetry events
+- backend aggregates/stores events for dashboard and operational analytics
+- payloads must exclude raw chat/note/private content
 
 ---
 

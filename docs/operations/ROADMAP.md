@@ -15,7 +15,7 @@ Last updated: 2026-04-19
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete**.
+Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete, Stages 9-13 planned**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -24,6 +24,7 @@ Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, St
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
 - Audio/livekit vertical slice is partially implemented (token issuance route + client/audio hooks), with runtime integration and hardening still pending.
+- Remaining full-project scope now explicitly includes frontend command-center completion, admin feature completion, knowledge surfaces, portability workflows, and extension bridge integration.
 
 Latest verification:
 
@@ -168,6 +169,78 @@ Exit criteria:
 
 ---
 
+### Stage 9: Frontend UI Command-Center Completion
+
+Status: **Planned**
+
+Operational impact:
+
+- Completes persona-aware DM/Player/Spectator UI surfaces and documented panel/tooling behavior.
+- Brings UI theming/motion/loading/error/recovery specs into enforceable delivery scope.
+
+Milestone checkpoints and target validation:
+
+- **Stage 9.1: Layout and Persona Shell Parity**
+  - Validation targets: persona visibility tests, right-panel interaction tests, responsive shell checks.
+- **Stage 9.2: DM Controls and Realtime UX**
+  - Validation targets: DM-only reducer/event tests, persona restriction tests, WS contract alignment checks.
+- **Stage 9.3: UX Reliability and Spec Compliance**
+  - Validation targets: reconnect/hydration integration tests, deterministic error-toast tests, theme/motion regression checks.
+  - Implementation checklist: adopt frontend log-level controls and telemetry separation per [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L102), [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L174), and validation gates in [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
+
+---
+
+### Stage 10: Admin UI Feature Completion and Secure Operations
+
+Status: **Planned**
+
+Operational impact:
+
+- Converts admin shell from readonly baseline to authenticated, auditable operations workflows.
+- Closes remaining action and detail-panel gaps for users/rooms/settings/logs.
+
+Milestone checkpoints and target validation:
+
+- **Stage 10.1: Authentication and Guardrail Enforcement**
+  - Validation targets: admin API authz tests, protected-route UI tests, pre-auth data exposure checks.
+- **Stage 10.2: Operational Actions Activation**
+  - Validation targets: moderation/action endpoint tests, action-dialog UX tests, audit-entry assertions per action.
+- **Stage 10.3: Durable Telemetry and Drill-Down Workflows**
+  - Validation targets: telemetry/audit persistence tests, logs detail/filter/sort/pagination integrity tests, end-to-end operator journey tests.
+  - Implementation checklist: implement backend log stream/sink model from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L235), align endpoints with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437), and verify admin observability outcomes using [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
+
+---
+
+### Stage 11: Metadata, Journal, History, and Search Surfaces
+
+Status: **Planned**
+
+Operational impact:
+
+- Adds long-term campaign knowledge surfaces and discoverability workflows across sessions.
+
+---
+
+### Stage 12: Import/Export, Recordings Metadata, and Archival Workflows
+
+Status: **Planned**
+
+Operational impact:
+
+- Enables campaign portability, retention, and durable archival operations.
+
+---
+
+### Stage 13: Extension and Overlay Integration (VTT Bridge)
+
+Status: **Planned**
+
+Operational impact:
+
+- Integrates extension/overlay workflows with core event/state/privacy model for supported VTT platforms.
+
+---
+
 ## 3) Current Priority Queue
 
 Priority 1:
@@ -182,6 +255,18 @@ Priority 3:
 
 - Stage 7 runtime integration: mount livekit/audio hooks in UI, complete WS handler registration, and add e2e validation.
 
+Priority 4:
+
+- Stage 9 frontend UI command-center completion and UI-spec conformance.
+
+Priority 5:
+
+- Stage 10 admin UI secure action workflows and durable auditability.
+
+Priority 6:
+
+- Stage 11/12 knowledge and portability domains (metadata/journal/history/search + import/export/recordings metadata).
+
 ---
 
 ## 4) Risks and Dependencies
@@ -191,6 +276,8 @@ Key risks:
 - Admin telemetry endpoints are mounted without admin auth enforcement; internet-facing deployment risk until route guards are applied.
 - Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
 - In-memory admin log history and WS recovery state are not durable across process restarts.
+- UI specification breadth creates delivery/consistency risk without stage-specific checkpoints (layout, theming, motion, loading, error handling, recovery).
+- Several documented domains (metadata timeline, journal/history/search, import/export, recordings metadata, extension bridge) remain planned rather than closed runtime slices.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
 - Custom-share recipient UX depends on session membership hydration (users appear after joining session).
 - Prisma schema is updated, but migration history is not yet committed; DB rollout consistency risk remains.
@@ -211,6 +298,7 @@ Dependencies before later stages:
 - 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.
 - 2026-04: Stage 7 moved from scaffolded to partial implementation: LiveKit token route/service and frontend livekit/audio hooks are now present; runtime UI mounting and full WS audio registration remain pending.
 - 2026-04: Latest backend verification: 8 test files / 29 tests passing.
+- 2026-04: Roadmap scope expanded beyond Stage 8 to include Stages 9-13 for full UI/admin completion and remaining platform domains.
 
 ---
 
@@ -218,7 +306,7 @@ Dependencies before later stages:
 
 Operations roadmap complete when:
 
-- Stages 0-8 all meet their exit criteria.
+- Stages 0-13 all meet their exit criteria.
 - Security and auditability requirements are met for internet-facing operation.
 - Monorepo builds cleanly and stage-critical journeys are test-covered.
 - Admin telemetry and moderation controls are authenticated, role-gated, and durably auditable.
