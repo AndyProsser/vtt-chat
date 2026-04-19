@@ -124,11 +124,20 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('AUDIO:EFFECT_APPLIED', (event) => {
       store.handleEffectApplied(event)
     })
+    dispatcher.register('AUDIO:EFFECT_REMOVED', (event) => {
+      store.handleEffectRemoved(event)
+    })
+    dispatcher.register('AUDIO:PRESET_LOADED', (event) => {
+      store.handlePresetLoaded(event)
+    })
     dispatcher.register('AUDIO:ENVIRONMENT_SET', (event) => {
       store.handleEnvironmentSet(event)
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {
-      store.handleDmOverrideApplied(event)
+      store.handleDMOverrideApplied(event)
+    })
+    dispatcher.register('AUDIO:DM_OVERRIDE_REMOVED', (event) => {
+      store.handleDMOverrideRemoved(event)
     })
 
     // Metadata events (WS internal)

@@ -27,6 +27,7 @@ import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'
+import eventBroadcaster from '@/services/event-broadcaster.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
   snapshotSessionPresence,
@@ -76,6 +77,9 @@ export class WebSocketManager {
     this.dispatcher = new EventDispatcher()
     this.setupDispatchers()
     this.setupServer()
+
+    // Initialize event broadcaster
+    eventBroadcaster.setWebSocketManager(this)
 
     this.snapshotIntervalId = setInterval(() => {
       void this.persistPresenceSnapshots()

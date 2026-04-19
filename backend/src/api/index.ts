@@ -8,6 +8,7 @@ import campaignRoutes from './campaign.routes'
 import usersRoutes from './users.routes'
 import roomsRoutes from './rooms.routes'
 import presenceRoutes from './presence.routes'
+import liveKitRoutes from './livekit.routes'
 
 const router = Router()
 
@@ -35,6 +36,7 @@ router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
 router.use('/rooms', roomsRoutes)
 router.use('/presence', presenceRoutes)
+router.use('/livekit', liveKitRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
