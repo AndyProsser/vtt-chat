@@ -217,6 +217,49 @@ describe('campaign routes', () => {
       role: 'PLAYER',
     })
   })
+
+  it('creates a character with persisted status', async () => {
+    const app = buildAppForCampaigns()
+    mocks.mockIsUserInCampaign.mockResolvedValue(true)
+    mocks.mockCreateCharacterForCampaign.mockResolvedValue({
+      id: '55555555-5555-4555-8555-555555555555',
+      campaignId: CAMPAIGN_ID,
+      userId: USER_ID,
+      name: 'Thorn',
+      status: 'DEAD',
+      race: 'Human',
+      class: 'Fighter',
+      subclass: 'Champion',
+      avatarUrl: null,
+      metadata: null,
+      isActive: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const response = await request(app)
+      .post(`/api/campaigns/${CAMPAIGN_ID}/characters`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Thorn', status: 'dead' })
+
+    expect(response.status).toBe(201)
+    expect(mocks.mockCreateCharacterForCampaign).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'DEAD' })
+    )
+  })
+
+  it('rejects invalid character status', async () => {
+    const app = buildAppForCampaigns()
+    mocks.mockIsUserInCampaign.mockResolvedValue(true)
+
+    const response = await request(app)
+      .post(`/api/campaigns/${CAMPAIGN_ID}/characters`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Thorn', status: 'UNKNOWNISH' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.field).toBe('status')
+  })
 })
 
 describe('users routes', () => {

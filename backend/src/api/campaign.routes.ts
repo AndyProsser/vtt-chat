@@ -119,6 +119,7 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
   const { campaignId } = req.params
   const {
     name,
+    status,
     race,
     class: characterClass,
     subclass,
@@ -139,6 +140,17 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Character name is required', field: 'name' })
   }
 
+  if (
+    status !== undefined &&
+    !['ALIVE', 'DEAD', 'LEFT', 'UNKNOWN'].includes(String(status).toUpperCase())
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid character status',
+      field: 'status',
+    })
+  }
+
   const member = await isUserInCampaign({
     campaignId: campaignId as UUID,
     userId: user.userId as UUID,
@@ -151,6 +163,10 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
     campaignId: campaignId as UUID,
     userId: user.userId as UUID,
     name: name.trim(),
+    status:
+      typeof status === 'string'
+        ? (status.trim().toUpperCase() as 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN')
+        : undefined,
     race: typeof race === 'string' ? race.trim() : undefined,
     class: typeof characterClass === 'string' ? characterClass.trim() : undefined,
     subclass: typeof subclass === 'string' ? subclass.trim() : undefined,

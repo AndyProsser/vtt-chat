@@ -86,7 +86,7 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messageList.length])
 
-  const handleSend = async (content: string, type: MessageType) => {
+  const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
     setError(null)
     try {
       const res = await fetch(`${apiUrl}/api/chat/message`, {
@@ -95,7 +95,7 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ sessionId, content, type }),
+        body: JSON.stringify({ sessionId, content, type, recipientId }),
       })
 
       if (!res.ok) {

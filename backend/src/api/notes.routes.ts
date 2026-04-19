@@ -22,6 +22,7 @@ import {
 import { MessageType } from '@shared'
 import { sendMessage } from '@/core/chat/chat.service'
 import type { WebSocketManager } from '@/ws'
+import { logger } from '@/utils/logger'
 
 const router = Router()
 
@@ -297,6 +298,19 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   if (!published) {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
+
+  logger.info('ADMIN:NOTE_PUBLISHED', 'Note published to chat', {
+    action: 'NOTE_PUBLISHED',
+    noteId: published.id,
+    sessionId: published.sessionId,
+    campaignId: (session as any).campaignId ?? null,
+    actorUserId: user.userId,
+    actorUsername: user.username,
+    actorRole: user.role,
+    noteOwnerId: published.authorId,
+    noteVisibility: published.visibility,
+    publishedAt: published.publishedAt,
+  })
 
   const snippet =
     published.content.length > 280 ? `${published.content.slice(0, 280)}...` : published.content

@@ -35,6 +35,30 @@ export interface ConnectionOptions {
   heartbeatIntervalMs?: number
 }
 
+type IncomingWsMessage =
+  | EventEnvelope
+  | {
+      type: 'WS:EVENT'
+      event: EventEnvelope
+    }
+  | {
+      type: 'WS:CONNECTED'
+      connectionId: string
+      userId: string
+      username: string
+      role: string
+    }
+  | {
+      type: 'WS:ACK'
+      eventId: string
+      status: string
+    }
+  | {
+      type: 'WS:ERROR'
+      code: string
+      message: string
+    }
+
 /**
  * WebSocket client for event-based communication.
  * Handles connection, authentication, event transport, and automatic reconnection.
@@ -201,10 +225,53 @@ export class WebSocketClient {
 
   private handleMessage(data: string): void {
     try {
-      const event = JSON.parse(data) as EventEnvelope
+      const incoming = JSON.parse(data) as IncomingWsMessage
 
-      // Dispatch to callbacks
-      this.callbacks.onEvent?.(event)
+      if ((incoming as any).type === 'WS:EVENT' && (incoming as any).event) {
+        this.callbacks.onEvent?.((incoming as any).event)
+        return
+      }
+
+      if ((incoming as any).type === 'WS:CONNECTED') {
+        const msg = incoming as {
+          type: 'WS:CONNECTED'
+          connectionId: string
+          userId: string
+          username: string
+          role: string
+        }
+        const normalized: EventEnvelope = {
+          id: crypto.randomUUID(),
+          type: 'WS:CONNECTED',
+          version: 1,
+          userId: msg.userId,
+          userRole: msg.role as any,
+          sessionId: '00000000-0000-4000-8000-000000000000',
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            userId: msg.userId,
+            username: msg.username,
+            userRole: msg.role,
+            connectionId: msg.connectionId,
+          },
+        }
+        this.callbacks.onEvent?.(normalized)
+        return
+      }
+
+      if ((incoming as any).type === 'WS:ACK') {
+        return
+      }
+
+      if ((incoming as any).type === 'WS:ERROR') {
+        const msg = incoming as { type: 'WS:ERROR'; message: string }
+        this.callbacks.onError?.(new Error(msg.message || 'WebSocket server error'))
+        return
+      }
+
+      // Backward compatibility: raw event envelope payload
+      this.callbacks.onEvent?.(incoming as EventEnvelope)
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
       console.error('Failed to parse message:', err)
@@ -254,5 +321,4 @@ export class WebSocketClient {
       }
     }
   }
-
 }

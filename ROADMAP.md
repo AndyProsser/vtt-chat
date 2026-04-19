@@ -15,17 +15,19 @@ Last updated: 2026-04-19
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-4 complete, Stage 8 partially complete, Stages 5-7 scaffolded (implementation incomplete)**.
+Current overall status: **Stages 0-5 complete, Stage 8 partially complete, Stages 6-7 scaffolded (implementation incomplete)**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
 - Session lifecycle and chat vertical slices are implemented and building.
 - Admin shell and readonly telemetry baseline are now implemented.
-- Notes, presence/rooms, and audio/livekit vertical slices have contract/store/handler scaffolding in place, but core services, mounted APIs, and production UX are incomplete.
+- Notes vertical slice is now operational with persisted CRUD + visibility controls.
+- Presence/rooms and audio/livekit vertical slices have contract/store/handler scaffolding in place, but core services, mounted APIs, and production UX remain incomplete.
 
 Latest verification:
 
 - Monorepo build passes (`backend`, `frontend`, `admin`).
+- Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, and campaign/users API coverage.
 
 ---
 
@@ -114,7 +116,7 @@ Exit criteria:
 
 ### Stage 4: Chat Vertical Slice
 
-Status: **Complete (baseline)**
+Status: **Complete**
 
 Goal:
 
@@ -123,13 +125,17 @@ Goal:
 Completed:
 
 - Chat REST endpoints for send/edit/delete/history.
-- In-memory chat service with whisper visibility filtering.
+- Prisma-backed chat service with whisper visibility filtering and soft-delete/edit support.
+- Session boundary system messages (started/paused/resumed/ended) are persisted and broadcast.
+- System messages are immutable (not editable/deletable).
 - WS broadcast support with optional recipient filtering.
 - Frontend chat window/input/list wired to backend telemetry and event flow.
+- Frontend WS client now supports backend wrapper messages (`WS:EVENT`, `WS:CONNECTED`, `WS:ACK`, `WS:ERROR`).
+- Frontend whisper flow supports recipient targeting via `recipientId`.
 
 Notes:
 
-- Current implementation is baseline-complete for privacy-safe chat behavior.
+- Current implementation is complete for privacy-safe chat behavior and transport compatibility.
 - Advanced UX and moderation enhancements may be added in later polish passes.
 
 Exit criteria:
@@ -140,29 +146,28 @@ Exit criteria:
 
 ### Stage 5: Notes Vertical Slice
 
-Status: **Scaffolded (not implemented)**
+Status: **Complete**
 
 Goal:
 
 - Private notes, then shared/DM notes with role-filtered selectors.
 
-Completed so far:
+Completed:
 
-- Notes event types are wired through WS dispatcher registration and frontend store handlers.
-- Notes slice scaffolding exists in frontend state.
-- Placeholder modules exist for notes route/service/UI surfaces.
-
-Remaining scope:
-
-- Notes CRUD routes and role visibility enforcement.
-- Notes publish-to-chat path consistent with contracts.
-- Frontend notes panels and selectors by visibility mode.
-- Store/reducer handlers for notes events.
-- Replace placeholder notes route/service/UI modules with functional implementations.
+- Notes CRUD routes are implemented and mounted.
+- Notes visibility model is enforced (DM_ONLY, PLAYERS_VISIBLE, CUSTOM).
+- Notes publish-to-chat flow is implemented.
+- Frontend notes panel/card UX is implemented and connected to APIs/store.
+- Notes custom-share UX now supports session-user selection with username labels (manual ID fallback retained).
+- Notes persistence is backed by Prisma repository/service layers.
+- Notes visibility transition tests are in place.
+- Notes route-level websocket propagation tests are in place for create/publish flows.
+- Notes publish actions are logged for admin telemetry/audit workflows.
 
 Exit criteria:
 
 - Privacy model validated for note ownership and visibility transitions.
+- Persisted notes flow is productionized with websocket propagation coverage and publish audit hooks.
 
 ---
 
@@ -260,11 +265,11 @@ Priority 1:
 
 Priority 2:
 
-- Begin Stage 5 notes vertical slice (backend visibility model first, then UI/store).
+- Stage 6 presence/rooms state machine and room membership semantics.
 
 Priority 3:
 
-- Stage 6 presence/rooms state machine and room membership semantics.
+- Stage 7 audio/livekit token + control lifecycle integration.
 
 ---
 
@@ -273,26 +278,27 @@ Priority 3:
 Key risks:
 
 - Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
-- In-memory components (chat telemetry/log buffer) are not durable across process restarts.
+- In-memory admin log history and WS recovery state are not durable across process restarts.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
-- WS protocol mismatch risk: backend emits wrapper messages (`WS:EVENT`, `WS:ACK`, `WS:CONNECTED`) while frontend currently parses inbound payloads as raw event envelopes; this can break live reducer updates.
+- Custom-share recipient UX depends on session membership hydration (users appear after joining session).
+- Prisma schema is updated, but migration history is not yet committed; DB rollout consistency risk remains.
 
 Dependencies before later stages:
 
-- Stage 5 depends on finalized notes visibility semantics and event payload decisions.
 - Stage 6 depends on authoritative presence state model and reconnection strategy.
 - Stage 7 depends on stable room/presence semantics and token lifecycle reliability.
 
 ## 4.1) Validation Notes
 
-The following references support the corrected stage labels and WS risk note.
+The following references support the corrected stage labels and current model terminology.
 
-| Claim                                                            | Status                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Stage 5 (Notes) vertical slice                                   | Scaffolded, not implemented | WS notes handler registration: [backend/src/ws/index.ts](backend/src/ws/index.ts). Frontend notes wiring: [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Placeholder modules: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts), [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx). |
-| Stage 6 (Presence and Rooms) vertical slice                      | Scaffolded, not implemented | WS room/presence wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Recovery/heartbeat scaffolding: [backend/src/ws/state-recovery.ts](backend/src/ws/state-recovery.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Incomplete REST/service layers: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts).                                             |
-| Stage 7 (Audio and LiveKit) vertical slice                       | Scaffolded, not implemented | Audio WS wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Placeholder LiveKit/audio modules: [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts), [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts), [backend/src/ws/handlers/audio.handler.ts](backend/src/ws/handlers/audio.handler.ts).                |
-| WS protocol compatibility between backend and frontend transport | Risk identified             | Backend sends wrapper WS message types: [backend/src/ws/index.ts](backend/src/ws/index.ts). Frontend parses inbound payloads as raw event envelopes and validates envelope fields directly: [frontend/src/ws/client.ts](frontend/src/ws/client.ts), [frontend/src/ws/dispatcher.ts](frontend/src/ws/dispatcher.ts).                                                                                                                                                                                                                  |
+| Claim                                       | Status                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Stage 5 (Notes) vertical slice              | Complete                    | Notes routes mounted: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts). Persisted service/repository flow: [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [backend/src/repositories/notes.repository.ts](backend/src/repositories/notes.repository.ts). Frontend panel/card wiring and custom-share selector UX: [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx), [frontend/src/components/notes/NoteCard.tsx](frontend/src/components/notes/NoteCard.tsx), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Tests: [backend/tests/notes-visibility.test.ts](backend/tests/notes-visibility.test.ts), [backend/tests/notes-routes-ws.test.ts](backend/tests/notes-routes-ws.test.ts). Publish audit hook: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts). |
+| Stage 6 (Presence and Rooms) vertical slice | Scaffolded, not implemented | WS room/presence wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Recovery/heartbeat scaffolding: [backend/src/ws/state-recovery.ts](backend/src/ws/state-recovery.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Incomplete REST/service layers: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Stage 7 (Audio and LiveKit) vertical slice  | Scaffolded, not implemented | Audio WS wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Placeholder LiveKit/audio modules: [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts), [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts), [backend/src/ws/handlers/audio.handler.ts](backend/src/ws/handlers/audio.handler.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Stage 4 chat boundary/system behavior       | Complete                    | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/chat-system-messages.test.ts](backend/tests/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                 |
+| Character status field terminology          | Aligned                     | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/campaign-users-api.test.ts](backend/tests/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                              |
 
 ---
 
@@ -300,6 +306,11 @@ The following references support the corrected stage labels and WS risk note.
 
 - 2026-04: Stage 3 session lifecycle implemented and validated.
 - 2026-04: Stage 4 chat baseline implemented (privacy-safe whisper filtering).
+- 2026-04: Chat/session/notes services moved to Prisma-backed persistence.
+- 2026-04: User/campaign/character persistence and campaign-scoped session APIs implemented.
+- 2026-04: Character model expanded with persisted status field (data-model terms: alive/dead/left/unknown; persisted via `CharacterStatus` enum in schema).
+- 2026-04: Stage 4 completed for session-boundary system messages, system-message immutability, frontend WS wrapper compatibility, and whisper recipient targeting.
+- 2026-04: Stage 5 notes vertical slice closed with visibility controls, custom-share selector UX, websocket propagation tests, and publish audit logging hooks.
 - 2026-04: UI and architecture docs consolidated, expanded, and cross-linked.
 - 2026-04: Admin UI design integrated into documentation set.
 - 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.

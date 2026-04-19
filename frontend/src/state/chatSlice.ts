@@ -27,7 +27,7 @@ export interface TypingIndicator {
 
 export interface ChatSlice {
   // State
-  messages: Record<UUID, Message> // keyed by sessionId, then messageId
+  messages: Record<UUID, Record<UUID, Message>> // keyed by sessionId, then messageId
   typingIndicators: Record<UUID, TypingIndicator[]> // keyed by sessionId
   isLoading: boolean
 

@@ -18,6 +18,8 @@ import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { UUID, SessionState } from '@shared'
+import { emitSessionBoundarySystemMessage } from '@/core/chat/system-messages'
+import type { WebSocketManager } from '@/ws'
 
 const router = Router()
 
@@ -135,6 +137,56 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
 })
 
 /**
+ * GET /api/session/:id/users
+ * List users currently associated with a session.
+ */
+router.get('/:id/users', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    const users = await getSessionUsers(id as UUID)
+    const canReadUsers =
+      user.role === 'DM' ||
+      session.dmId === (user.userId as UUID) ||
+      users.some((u) => u.id === user.userId)
+
+    if (!canReadUsers) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Not a session member',
+      })
+    }
+
+    return res.status(200).json({
+      users: users.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+      })),
+    })
+  } catch (err: any) {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
  * PUT /api/session/:id/state
  * Change session state (start, pause, resume, end)
  * DM-only operation.
@@ -161,11 +213,35 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
   }
 
   try {
+    const previousSession = await getSession(id as UUID)
     const session = await updateSessionState(id as UUID, state as SessionState, user.userId)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
         message: 'Session not found',
+      })
+    }
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    const boundaryType =
+      state === 'ACTIVE'
+        ? previousSession?.state === 'PAUSED'
+          ? 'SESSION_RESUMED'
+          : 'SESSION_STARTED'
+        : state === 'PAUSED'
+          ? 'SESSION_PAUSED'
+          : state === 'ENDED'
+            ? 'SESSION_ENDED'
+            : null
+
+    if (boundaryType) {
+      await emitSessionBoundarySystemMessage({
+        sessionId: session.id,
+        sessionName: session.name,
+        boundaryType,
+        dmId: user.userId as UUID,
+        dmUsername: user.username,
+        wsManager,
       })
     }
 

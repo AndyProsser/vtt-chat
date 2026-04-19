@@ -12,6 +12,12 @@ interface NotesPanelProps {
   user: { id: UUID; username: string; role: Role | string }
 }
 
+interface SessionUserSummary {
+  id: UUID
+  username: string
+  role: Role | string
+}
+
 export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) {
   const store = useStore()
   const notesBySession = (store.notes as any)[sessionId] as Record<UUID, Note> | undefined
@@ -29,7 +35,8 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.PLAYERS_VISIBLE)
   const [tagsText, setTagsText] = useState('')
-  const [shareWithInput, setShareWithInput] = useState('')
+  const [shareUsers, setShareUsers] = useState<SessionUserSummary[]>([])
+  const [selectedShareUserId, setSelectedShareUserId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showPublishedOnly, setShowPublishedOnly] = useState(false)
@@ -88,6 +95,37 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     }
   }, [apiUrl, token, sessionId, store])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadShareUsers = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/session/${sessionId}/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!res.ok) {
+          return
+        }
+
+        const data = await res.json()
+        if (!cancelled) {
+          const users = Array.isArray(data.users) ? data.users : []
+          setShareUsers(users.filter((u: SessionUserSummary) => u.id !== user.id))
+        }
+      } catch {
+        if (!cancelled) {
+          setShareUsers([])
+        }
+      }
+    }
+
+    void loadShareUsers()
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl, token, sessionId, user.id])
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -140,7 +178,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       setContent('')
       setTagsText('')
       setAllowedUsers([])
-      setShareWithInput('')
+      setSelectedShareUserId('')
       setVisibility(NoteVisibility.PLAYERS_VISIBLE)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
@@ -196,13 +234,19 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     }
   }
 
-  const addAllowedUser = () => {
-    const candidate = shareWithInput.trim()
-    if (!candidate) return
-    if (!allowedUsers.includes(candidate)) {
-      setAllowedUsers((prev) => [...prev, candidate])
+  const addAllowedUser = (candidate: string) => {
+    const next = candidate.trim()
+    if (!next) return
+    if (!allowedUsers.includes(next)) {
+      setAllowedUsers((prev) => [...prev, next])
     }
-    setShareWithInput('')
+  }
+
+  const handleAddSelectedUser = () => {
+    const candidate = selectedShareUserId.trim()
+    if (!candidate) return
+    addAllowedUser(candidate)
+    setSelectedShareUserId('')
   }
 
   const removeAllowedUser = (userId: string) => {
@@ -284,16 +328,32 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
         {visibility === NoteVisibility.CUSTOM && (
           <div style={{ marginBottom: '0.5rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
-              <input
-                value={shareWithInput}
-                onChange={(e) => setShareWithInput(e.target.value)}
-                placeholder="Share with user ID"
+              <select
+                value={selectedShareUserId}
+                onChange={(e) => setSelectedShareUserId(e.target.value)}
                 style={{ flex: 1, padding: '0.5rem' }}
-              />
-              <button type="button" onClick={addAllowedUser} style={{ padding: '0.4rem 0.75rem' }}>
+              >
+                <option value="">Select player to share with</option>
+                {shareUsers.map((shareUser) => (
+                  <option key={shareUser.id} value={shareUser.id}>
+                    {shareUser.username}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleAddSelectedUser}
+                disabled={!selectedShareUserId}
+                style={{ padding: '0.4rem 0.75rem' }}
+              >
                 Add
               </button>
             </div>
+            {shareUsers.length === 0 && (
+              <p style={{ margin: '0 0 0.35rem 0', color: '#64748b', fontSize: '0.8rem' }}>
+                No session users available yet. Users appear here after joining the session.
+              </p>
+            )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
               {allowedUsers.map((userId) => (
                 <button
@@ -309,7 +369,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
                   }}
                   title="Click to remove"
                 >
-                  {userId} x
+                  {shareUsers.find((u) => u.id === userId)?.username || userId} x
                 </button>
               ))}
             </div>
@@ -358,6 +418,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
             <NoteCard
               key={note.id}
               note={note}
+              shareUsers={shareUsers}
               canEdit={user.role === 'DM' || note.ownerId === user.id}
               canPublish={user.role === 'DM' || note.ownerId === user.id}
               onSave={handleSave}

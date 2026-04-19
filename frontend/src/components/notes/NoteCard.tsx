@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { NoteVisibility } from '@shared'
+import type { UUID, Role } from '@shared'
 import type { Note } from '../../state/notesSlice'
 
 interface NoteCardProps {
   note: Note
   canEdit: boolean
   canPublish: boolean
+  shareUsers?: Array<{ id: UUID; username: string; role: Role | string }>
   onSave: (
     noteId: string,
     updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
@@ -24,6 +26,7 @@ export function NoteCard({
   note,
   canEdit,
   canPublish,
+  shareUsers = [],
   onSave,
   onDelete,
   onPublish,
@@ -34,6 +37,7 @@ export function NoteCard({
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
   const [tagsText, setTagsText] = useState(note.tags.join(', '))
   const [shareWithInput, setShareWithInput] = useState('')
+  const [selectedShareUserId, setSelectedShareUserId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>(note.allowedUsers || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +49,7 @@ export function NoteCard({
     setTagsText(note.tags.join(', '))
     setAllowedUsers(note.allowedUsers || [])
     setShareWithInput('')
+    setSelectedShareUserId('')
     setError(null)
     setIsEditing(false)
   }
@@ -98,12 +103,25 @@ export function NoteCard({
     }
   }
 
-  const addAllowedUser = () => {
+  const addAllowedUser = (candidate: string) => {
+    const next = candidate.trim()
+    if (!next) return
+    if (!allowedUsers.includes(next)) {
+      setAllowedUsers((prev) => [...prev, next])
+    }
+  }
+
+  const handleAddSelectedUser = () => {
+    const candidate = selectedShareUserId.trim()
+    if (!candidate) return
+    addAllowedUser(candidate)
+    setSelectedShareUserId('')
+  }
+
+  const handleAddManualUser = () => {
     const candidate = shareWithInput.trim()
     if (!candidate) return
-    if (!allowedUsers.includes(candidate)) {
-      setAllowedUsers((prev) => [...prev, candidate])
-    }
+    addAllowedUser(candidate)
     setShareWithInput('')
   }
 
@@ -157,15 +175,37 @@ export function NoteCard({
           {visibility === NoteVisibility.CUSTOM && (
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <select
+                  value={selectedShareUserId}
+                  onChange={(e) => setSelectedShareUserId(e.target.value)}
+                  style={{ flex: 1, padding: '0.5rem' }}
+                >
+                  <option value="">Select player to share with</option>
+                  {shareUsers.map((shareUser) => (
+                    <option key={shareUser.id} value={shareUser.id}>
+                      {shareUser.username}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddSelectedUser}
+                  disabled={!selectedShareUserId}
+                  style={{ padding: '0.4rem 0.75rem' }}
+                >
+                  Add
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
                 <input
                   value={shareWithInput}
                   onChange={(e) => setShareWithInput(e.target.value)}
-                  placeholder="Add user ID"
+                  placeholder="Or paste user ID"
                   style={{ flex: 1, padding: '0.5rem' }}
                 />
                 <button
                   type="button"
-                  onClick={addAllowedUser}
+                  onClick={handleAddManualUser}
                   style={{ padding: '0.4rem 0.75rem' }}
                 >
                   Add
@@ -186,7 +226,7 @@ export function NoteCard({
                     }}
                     title="Click to remove"
                   >
-                    {userId} x
+                    {shareUsers.find((u) => u.id === userId)?.username || userId} x
                   </button>
                 ))}
               </div>

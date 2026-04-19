@@ -215,6 +215,7 @@ export async function createCharacterForCampaign(params: {
   campaignId: string
   userId: string
   name: string
+  status?: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
   race?: string
   class?: string
   subclass?: string
@@ -226,6 +227,7 @@ export async function createCharacterForCampaign(params: {
   campaignId: string
   userId: string
   name: string
+  status: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
   race: string | null
   class: string | null
   subclass: string | null
@@ -251,6 +253,7 @@ export async function createCharacterForCampaign(params: {
         campaignId: params.campaignId,
         userId: params.userId,
         name: params.name,
+        status: params.status || 'ALIVE',
         race: params.race,
         class: params.class,
         subclass: params.subclass,
@@ -265,6 +268,7 @@ export async function createCharacterForCampaign(params: {
       campaignId: created.campaignId,
       userId: created.userId,
       name: created.name,
+      status: created.status,
       race: created.race,
       class: created.class,
       subclass: created.subclass,
@@ -283,6 +287,7 @@ export async function listCharactersForUser(userId: string): Promise<
     campaignId: string
     userId: string
     name: string
+    status: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
     race: string | null
     class: string | null
     subclass: string | null
@@ -303,6 +308,7 @@ export async function listCharactersForUser(userId: string): Promise<
     campaignId: row.campaignId,
     userId: row.userId,
     name: row.name,
+    status: row.status,
     race: row.race,
     class: row.class,
     subclass: row.subclass,

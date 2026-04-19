@@ -151,6 +151,7 @@ export async function editMessage(
 
   const message = mapStoredMessage(row)
   if (message.deletedAt !== undefined) return null
+  if (message.type === MessageType.SYSTEM) return null
   if (requesterRole !== 'DM' && message.authorId !== requesterId) return null
 
   const editedAt = Date.now()
@@ -177,6 +178,7 @@ export async function deleteMessage(
 
   const message = mapStoredMessage(row)
   if (message.deletedAt !== undefined) return null
+  if (message.type === MessageType.SYSTEM) return null
   if (requesterRole !== 'DM' && message.authorId !== requesterId) return null
 
   const deletedAt = Date.now()

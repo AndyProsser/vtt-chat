@@ -9,7 +9,7 @@ import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
 interface MessageInputProps {
-  onSend: (content: string, type: MessageType) => Promise<void>
+  onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
   disabled?: boolean
   role: Role | string
 }
@@ -31,6 +31,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
   const allowedTypes = ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC]
   const [type, setType] = useState<MessageType>(allowedTypes[0])
   const [content, setContent] = useState('')
+  const [recipientId, setRecipientId] = useState('')
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -43,12 +44,17 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
 
   const handleSend = async () => {
     const trimmed = content.trim()
+    const trimmedRecipient = recipientId.trim()
     if (!trimmed || isSending) return
+    if (type === MessageType.WHISPER && !trimmedRecipient) return
 
     setIsSending(true)
     try {
-      await onSend(trimmed, type)
+      await onSend(trimmed, type, type === MessageType.WHISPER ? trimmedRecipient : undefined)
       setContent('')
+      if (type !== MessageType.WHISPER) {
+        setRecipientId('')
+      }
       textareaRef.current?.focus()
     } finally {
       setIsSending(false)
@@ -99,6 +105,23 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
 
       {/* Input row */}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+        {type === MessageType.WHISPER && (
+          <input
+            value={recipientId}
+            onChange={(e) => setRecipientId(e.target.value)}
+            disabled={disabled || isSending}
+            placeholder="Recipient user ID"
+            style={{
+              width: '220px',
+              padding: '0.5rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              fontFamily: 'inherit',
+              backgroundColor: disabled ? '#f9fafb' : '#fff',
+            }}
+          />
+        )}
         <textarea
           ref={textareaRef}
           value={content}
@@ -125,7 +148,12 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
         />
         <button
           onClick={() => void handleSend()}
-          disabled={!content.trim() || disabled || isSending}
+          disabled={
+            !content.trim() ||
+            disabled ||
+            isSending ||
+            (type === MessageType.WHISPER && !recipientId.trim())
+          }
           style={{
             padding: '0.5rem 1rem',
             backgroundColor: content.trim() && !disabled ? '#3b82f6' : '#9ca3af',

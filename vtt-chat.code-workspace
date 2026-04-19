@@ -33,5 +33,9 @@
     // Recommended terminal defaults
     "terminal.integrated.defaultProfile.linux": "bash",
     "prisma.pinToPrisma6": false,
+    "chat.tools.terminal.autoApprove": {
+      "npx prisma": true,
+      "npm test": true,
+    },
   },
 }
