@@ -1,32 +1,44 @@
-version: '3.9'
-
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: vttchat-backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - .env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LIVEKIT_URL: http://livekit:7880
+      NODE_ENV: production
     depends_on:
-      - postgres
-      - redis
-      - livekit
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      livekit:
+        condition: service_started
     networks:
       - vttnet
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://localhost:8443}
+        VITE_WS_URL: ${VITE_WS_URL:-wss://localhost:8443}
+        VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL:-wss://localhost:7880}
     container_name: vttchat-frontend
     restart: unless-stopped
     networks:
       - vttnet
 
   admin:
-    build: ./admin
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
     container_name: vttchat-admin
     restart: unless-stopped
     networks:
@@ -42,6 +54,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - vttnet
 
@@ -49,7 +66,9 @@ services:
     image: redis:8-alpine
     container_name: vttchat-redis
     restart: unless-stopped
-    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
     networks:
       - vttnet
 
@@ -57,8 +76,10 @@ services:
     image: livekit/livekit-server:latest
     container_name: vttchat-livekit
     restart: unless-stopped
-    command: >
-      --config /etc/livekit.yaml --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
+    command: ['--config', '/etc/livekit.yaml']
+    environment:
+      # LIVEKIT_KEYS format: "<key>: <secret>" (YAML map, one entry per line for multiple)
+      LIVEKIT_KEYS: '${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
     ports:
       - '7880:7880'
       - '7881-7980:7881-7980/udp'
@@ -77,6 +98,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./caddy/certs:/certs
+      - caddy_data:/data
     depends_on:
       - backend
       - frontend
@@ -87,6 +109,8 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
+  caddy_data:
 
 networks:
   vttnet:

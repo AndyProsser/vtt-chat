@@ -32,6 +32,27 @@ Latest verification:
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
 - Current backend verification: `8` test files / `29` tests passing.
 
+### Stage Completion Checklist (At a Glance)
+
+| Stage | Area                                | Status      | Completion                | Immediate focus                                       |
+| ----- | ----------------------------------- | ----------- | ------------------------- | ----------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline          |
+| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                       |
+| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                    |
+| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work           |
+| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                     |
+| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                   |
+| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                       |
+| 7     | Audio + LiveKit                     | In progress | 🟨 Partial                | Runtime UI integration + full WS handler registration |
+| 8     | Admin + ops baseline                | In progress | 🟨 Partial                | Enforce admin auth + durable telemetry/audit          |
+| 9     | Frontend command-center completion  | Planned     | ⬜ Not started (as stage) | Persona shell/tooling completion                      |
+| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows             |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                  |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                      |
+| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync              |
+
+Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
+
 ---
 
 ## 2) Stage-by-Stage Progress

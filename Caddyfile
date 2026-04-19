@@ -7,21 +7,29 @@ https://:8443 {
   tls /certs/selfsigned.crt /certs/selfsigned.key
   encode gzip
 
-  handle_path /api* {
+  # WebSocket connections to backend (must appear before the /api block)
+  handle /ws/* {
     reverse_proxy backend:3000
   }
 
-  handle_path /livekit* {
+  # REST API — preserve the full /api/* prefix (backend mounts router at /api)
+  handle /api/* {
+    reverse_proxy backend:3000
+  }
+
+  # LiveKit HTTP signalling (WebRTC peers connect directly on port 7880/UDP)
+  handle /livekit/* {
     reverse_proxy livekit:7880
   }
 
+  # Admin SPA — strip /admin prefix; http-server serves dist/ from its root
+  # Assets are baked with base=/admin/ so browser re-requests go through Caddy again
   handle_path /admin* {
     reverse_proxy admin:5174
-    try_files {path} /index.html
   }
 
+  # Frontend SPA — catch-all; `serve -s` handles HTML5 routing internally
   handle {
     reverse_proxy frontend:5173
-    try_files {path} /index.html
   }
 }

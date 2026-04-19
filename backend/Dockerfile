@@ -1,21 +1,31 @@
 FROM node:25-alpine AS builder
-WORKDIR /app
+# Context is the project root so shared/ is accessible alongside backend/
+WORKDIR /workspace
 
-COPY package.json package-lock.json* ./
+# Copy shared types (referenced via @shared alias in tsconfig)
+COPY shared ./shared
+
+# Install backend dependencies
+COPY backend/package.json backend/package-lock.json* ./backend/
+COPY backend/prisma ./backend/prisma
+WORKDIR /workspace/backend
 RUN npm install
+RUN npx prisma generate
 
-COPY tsconfig.json ./
-COPY src ./src
-
+# Build TypeScript (rootDir is .., so the compiler sees /workspace as root)
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
 RUN npm run build
 
 FROM node:25-alpine
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY --from=builder /workspace/backend/package.json /workspace/backend/package-lock.json* ./
+COPY --from=builder /workspace/backend/prisma ./prisma
 RUN npm install --omit=dev
+RUN npx prisma generate
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /workspace/backend/dist ./dist
 
 EXPOSE 3000
 

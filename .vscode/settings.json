@@ -21,6 +21,14 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[dockercompose]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
   "eslint.validate": [
     "javascript",
     "javascriptreact",
@@ -35,6 +43,7 @@
   "prettier.semi": false,
   "prettier.singleQuote": true,
   "prettier.trailingComma": "es5",
+  "prettier.enableDebugLogs": false,
   "files.exclude": {
     "node_modules": true,
     "**/node_modules": true,
@@ -47,6 +56,7 @@
     "**/dist": true,
     "**/.vitepress": true
   },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "editor.trimAutoWhitespace": true,

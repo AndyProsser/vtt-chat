@@ -1,0 +1,28 @@
+:8080 {
+  encode gzip
+
+  # WebSocket connections to backend (must appear before the /api block)
+  handle /ws/* {
+    reverse_proxy backend:3000
+  }
+
+  # REST API — preserve the full /api/* prefix (backend mounts router at /api)
+  handle /api/* {
+    reverse_proxy backend:3000
+  }
+
+  # LiveKit HTTP signalling
+  handle /livekit/* {
+    reverse_proxy livekit:7880
+  }
+
+  # Admin SPA — Vite dev server has base=/admin/ so keep the full path prefix
+  handle /admin* {
+    reverse_proxy admin:5174
+  }
+
+  # Frontend SPA — Vite dev server with HMR (catch-all)
+  handle {
+    reverse_proxy frontend:5173
+  }
+}

@@ -13,6 +13,9 @@
       "path": "admin",
     },
     {
+      "path": "shared",
+    },
+    {
       "path": "docs",
     },
   ],
