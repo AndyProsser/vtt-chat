@@ -172,11 +172,23 @@ export const audioHandlers = {
     logHandled('AUDIO:EFFECT_APPLIED', event)
   },
 
+  async handleEffectRemoved(event: EventEnvelope) {
+    logHandled('AUDIO:EFFECT_REMOVED', event)
+  },
+
+  async handlePresetLoaded(event: EventEnvelope) {
+    logHandled('AUDIO:PRESET_LOADED', event)
+  },
+
   async handleEnvironmentSet(event: EventEnvelope) {
     logHandled('AUDIO:ENVIRONMENT_SET', event)
   },
 
   async handleDMOverrideApplied(event: EventEnvelope) {
     logHandled('AUDIO:DM_OVERRIDE_APPLIED', event)
+  },
+
+  async handleDMOverrideRemoved(event: EventEnvelope) {
+    logHandled('AUDIO:DM_OVERRIDE_REMOVED', event)
   },
 }

@@ -39,6 +39,8 @@
     "chat.tools.terminal.autoApprove": {
       "npx prisma": true,
       "npm test": true,
+      "npx tsc": true,
+      "npx vitest": true,
     },
   },
 }

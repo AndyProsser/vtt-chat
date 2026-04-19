@@ -1,18 +1,19 @@
 /**
- * useLiveKit Hook
  * Manages LiveKit room connection, token exchange, and track lifecycle.
- *
- * Reference: docs/architecture/LIVEKIT-INTEGRATION.md
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AudioPresets, Room, RoomEvent, LocalAudioTrack, LocalVideoTrack } from 'livekit-client'
+import {
+  AudioPresets,
+  Room,
+  RoomEvent,
+  LocalAudioTrack,
+  LocalVideoTrack,
+  type RemoteParticipant,
+} from 'livekit-client'
 import { useStore } from './useStore'
 import { logger } from '../utils/logger'
 
-/**
- * Track subscription info
- */
 interface TrackSubscription {
   participantId: string
   trackSid: string
@@ -20,40 +21,97 @@ interface TrackSubscription {
   trackKind: 'audio' | 'video'
 }
 
-/**
- * Room connection state
- */
 export interface UseLiveKitReturn {
   isConnected: boolean
   isConnecting: boolean
-  error?: string
-  room?: Room
-  localAudioTrack?: LocalAudioTrack
-  localVideoTrack?: LocalVideoTrack
-  remoteParticipants: Map<string, any>
+  error: string | null
+  room: Room | null
+  localAudioTrack: LocalAudioTrack | null
+  localVideoTrack: LocalVideoTrack | null
+  remoteParticipants: ReadonlyMap<string, RemoteParticipant>
   publishAudio: () => Promise<void>
   unpublishAudio: () => Promise<void>
   disconnect: () => Promise<void>
 }
 
-export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn {
+export interface UseLiveKitOptions {
+  /** Called when a remote audio MediaStream is subscribed */
+  onTrackSubscribed?: (trackSid: string, mediaStream: MediaStream) => void
+  /** Called when a remote audio track is unsubscribed */
+  onTrackUnsubscribed?: (trackSid: string) => void
+}
+
+export function useLiveKit(
+  sessionId: string,
+  roomId: string,
+  options: UseLiveKitOptions = {}
+): UseLiveKitReturn {
+  const { onTrackSubscribed, onTrackUnsubscribed } = options
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [error, setError] = useState<string>()
-  const [remoteParticipants, setRemoteParticipants] = useState(new Map<string, unknown>())
+  const [error, setError] = useState<string | null>(null)
+  const [room, setRoom] = useState<Room | null>(null)
+  const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null)
+  const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null)
+  const [remoteParticipants, setRemoteParticipants] = useState<Map<string, RemoteParticipant>>(
+    () => new Map()
+  )
 
-  const roomRef = useRef<Room | undefined>(undefined)
-  const localAudioRef = useRef<LocalAudioTrack | undefined>(undefined)
-  const localVideoRef = useRef<LocalVideoTrack | undefined>(undefined)
+  const roomRef = useRef<Room | null>(null)
+  const localAudioRef = useRef<LocalAudioTrack | null>(null)
+  const localVideoRef = useRef<LocalVideoTrack | null>(null)
+  const isMountedRef = useRef(true)
+  const isConnectingRef = useRef(false)
+  const connectionAttemptRef = useRef(0)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
+  const onTrackSubscribedRef = useRef(onTrackSubscribed)
+  const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
 
-  const { user } = useStore((state) => ({
-    user: state.currentUser,
-  }))
+  const setRoomState = useCallback((nextRoom: Room | null) => {
+    roomRef.current = nextRoom
+    if (isMountedRef.current) {
+      setRoom(nextRoom)
+    }
+  }, [])
+
+  const setLocalAudioTrackState = useCallback((nextTrack: LocalAudioTrack | null) => {
+    localAudioRef.current = nextTrack
+    if (isMountedRef.current) {
+      setLocalAudioTrack(nextTrack)
+    }
+  }, [])
+
+  const setLocalVideoTrackState = useCallback((nextTrack: LocalVideoTrack | null) => {
+    localVideoRef.current = nextTrack
+    if (isMountedRef.current) {
+      setLocalVideoTrack(nextTrack)
+    }
+  }, [])
+
+  const clearRemoteAudioElements = useCallback(() => {
+    remoteAudioElementsRef.current.forEach((element) => element.remove())
+    remoteAudioElementsRef.current.clear()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // Keep callback refs up to date without triggering reconnects
+  useEffect(() => {
+    onTrackSubscribedRef.current = onTrackSubscribed
+  }, [onTrackSubscribed])
+  useEffect(() => {
+    onTrackUnsubscribedRef.current = onTrackUnsubscribed
+  }, [onTrackUnsubscribed])
+
+  const user = useStore((state) => state.currentUser)
 
   /**
-   * Fetch LiveKit token from backend
+   * Fetch a room-scoped LiveKit token from the backend.
    */
   const fetchToken = useCallback(async (): Promise<{ token: string; url: string } | null> => {
     try {
@@ -85,10 +143,20 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
    * Connect to LiveKit room
    */
   const connect = useCallback(async () => {
-    if (isConnecting || isConnected) return
+    if (isConnectingRef.current || roomRef.current) {
+      return
+    }
 
-    setIsConnecting(true)
-    setError(undefined)
+    const attemptId = connectionAttemptRef.current + 1
+    connectionAttemptRef.current = attemptId
+    isConnectingRef.current = true
+
+    if (isMountedRef.current) {
+      setIsConnecting(true)
+      setError(null)
+    }
+
+    let nextRoom: Room | null = null
 
     try {
       const tokenData = await fetchToken()
@@ -96,26 +164,50 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
         throw new Error('Failed to fetch LiveKit token')
       }
 
-      const room = new Room()
+      nextRoom = new Room()
+      roomRef.current = nextRoom
 
       // Event handlers
-      room.on(RoomEvent.Connected, () => {
+      nextRoom.on(RoomEvent.Connected, () => {
+        if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
+          return
+        }
+
         logger.info('useLiveKit', `Connected to room ${roomId}`)
-        setIsConnected(true)
-        setIsConnecting(false)
+        if (isMountedRef.current) {
+          setIsConnected(true)
+          setIsConnecting(false)
+        }
+        isConnectingRef.current = false
       })
 
-      room.on(RoomEvent.Disconnected, () => {
+      nextRoom.on(RoomEvent.Disconnected, () => {
+        if (roomRef.current !== nextRoom) {
+          return
+        }
+
         logger.info('useLiveKit', `Disconnected from room ${roomId}`)
-        setIsConnected(false)
+        isConnectingRef.current = false
+        if (isMountedRef.current) {
+          setIsConnected(false)
+          setIsConnecting(false)
+        }
       })
 
-      room.on(RoomEvent.ParticipantConnected, (participant) => {
+      nextRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+        if (roomRef.current !== nextRoom || !isMountedRef.current) {
+          return
+        }
+
         logger.info('useLiveKit', `Participant connected: ${participant.identity}`)
         setRemoteParticipants((prev) => new Map(prev).set(participant.sid, participant))
       })
 
-      room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      nextRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        if (roomRef.current !== nextRoom || !isMountedRef.current) {
+          return
+        }
+
         logger.info('useLiveKit', `Participant disconnected: ${participant.identity}`)
         setRemoteParticipants((prev) => {
           const updated = new Map(prev)
@@ -124,7 +216,11 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
         })
       })
 
-      room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      nextRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (roomRef.current !== nextRoom) {
+          return
+        }
+
         logger.info('useLiveKit', `Track subscribed: ${track.kind} from ${participant.identity}`)
         trackSubscriptionsRef.current.push({
           participantId: participant.sid,
@@ -134,22 +230,36 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
         })
 
         if (track.kind === 'audio') {
-          // Audio track will be processed by useAudioEngine
-          const audioElement = track.attach()
-          audioElement.autoplay = true
-          audioElement.setAttribute('playsinline', 'true')
-          audioElement.style.display = 'none'
-          document.body.appendChild(audioElement)
-          remoteAudioElementsRef.current.set(publication.trackSid, audioElement)
+          const mediaStream = new MediaStream([track.mediaStreamTrack])
+          // Hand off to audio engine for DSP processing if consumer provided a callback,
+          // otherwise fall back to direct DOM attachment for passthrough playback.
+          if (onTrackSubscribedRef.current) {
+            onTrackSubscribedRef.current(publication.trackSid, mediaStream)
+          } else {
+            const audioElement = track.attach()
+            audioElement.autoplay = true
+            audioElement.setAttribute('playsinline', 'true')
+            audioElement.style.display = 'none'
+            document.body.appendChild(audioElement)
+            remoteAudioElementsRef.current.set(publication.trackSid, audioElement)
+          }
         }
       })
 
-      room.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
+      nextRoom.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
+        if (roomRef.current !== nextRoom) {
+          return
+        }
+
         logger.info('useLiveKit', `Track unsubscribed: ${track.kind}`)
         trackSubscriptionsRef.current = trackSubscriptionsRef.current.filter(
           (t) => t.trackSid !== publication.trackSid
         )
         track.detach()
+
+        if (onTrackUnsubscribedRef.current) {
+          onTrackUnsubscribedRef.current(publication.trackSid)
+        }
 
         const audioElement = remoteAudioElementsRef.current.get(publication.trackSid)
         if (audioElement) {
@@ -159,24 +269,47 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
       })
 
       // Connect to room
-      await room.connect(tokenData.url, tokenData.token, {
+      await nextRoom.connect(tokenData.url, tokenData.token, {
         autoSubscribe: true,
       })
 
-      roomRef.current = room
+      if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
+        await nextRoom.disconnect()
+        return
+      }
+
+      setRoomState(nextRoom)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
+
+      if (nextRoom && roomRef.current === nextRoom) {
+        roomRef.current = null
+      }
+
+      if (nextRoom) {
+        try {
+          await nextRoom.disconnect()
+        } catch {
+          // Ignore cleanup failures after a failed connection attempt.
+        }
+      }
+
       logger.error('useLiveKit', `Connection failed: ${errorMsg}`)
-      setError(errorMsg)
-      setIsConnecting(false)
+      isConnectingRef.current = false
+      if (isMountedRef.current && connectionAttemptRef.current === attemptId) {
+        setError(errorMsg)
+        setIsConnecting(false)
+        setIsConnected(false)
+      }
     }
-  }, [fetchToken, isConnecting, isConnected, roomId])
+  }, [fetchToken, roomId, setRoomState])
 
   /**
-   * Publish local audio track
+   * Publish the local microphone to the active room.
    */
   const publishAudio = useCallback(async () => {
-    if (!roomRef.current) {
+    const activeRoom = roomRef.current
+    if (!activeRoom) {
       throw new Error('Room not connected')
     }
 
@@ -190,11 +323,10 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
       })
 
       const audioTrack = new LocalAudioTrack(stream.getAudioTracks()[0])
-
-      await roomRef.current.localParticipant.publishTrack(audioTrack, {
+      await activeRoom.localParticipant.publishTrack(audioTrack, {
         audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
       })
-      localAudioRef.current = audioTrack
+      setLocalAudioTrackState(audioTrack)
 
       logger.info('useLiveKit', 'Audio track published')
     } catch (err) {
@@ -204,51 +336,77 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
       )
       throw err
     }
-  }, [])
+  }, [setLocalAudioTrackState])
 
   /**
    * Unpublish local audio track
    */
   const unpublishAudio = useCallback(async () => {
-    if (localAudioRef.current && roomRef.current) {
-      await roomRef.current.localParticipant.unpublishTrack(localAudioRef.current)
-      localAudioRef.current.stop()
-      localAudioRef.current = undefined
+    const activeRoom = roomRef.current
+    const activeAudioTrack = localAudioRef.current
+
+    if (activeRoom && activeAudioTrack) {
+      await activeRoom.localParticipant.unpublishTrack(activeAudioTrack)
+      activeAudioTrack.stop()
+      setLocalAudioTrackState(null)
       logger.info('useLiveKit', 'Audio track unpublished')
     }
-  }, [])
+  }, [setLocalAudioTrackState])
 
   /**
-   * Disconnect from room
+   * Disconnect from the current room and clear local state.
    */
   const disconnect = useCallback(async () => {
-    if (roomRef.current) {
-      if (localAudioRef.current) {
-        localAudioRef.current.stop()
-      }
+    connectionAttemptRef.current += 1
+    isConnectingRef.current = false
 
-      await roomRef.current.disconnect()
-      roomRef.current = undefined
-      localAudioRef.current = undefined
-      localVideoRef.current = undefined
-      trackSubscriptionsRef.current = []
-      remoteAudioElementsRef.current.forEach((element) => element.remove())
-      remoteAudioElementsRef.current.clear()
+    const activeRoom = roomRef.current
+    const activeAudioTrack = localAudioRef.current
+
+    if (activeAudioTrack) {
+      activeAudioTrack.stop()
+    }
+
+    if (activeRoom) {
+      await activeRoom.disconnect()
+    }
+
+    setRoomState(null)
+    setLocalAudioTrackState(null)
+    setLocalVideoTrackState(null)
+    trackSubscriptionsRef.current = []
+    clearRemoteAudioElements()
+
+    if (isMountedRef.current) {
       setRemoteParticipants(new Map())
       setIsConnected(false)
+      setIsConnecting(false)
       logger.info('useLiveKit', 'Disconnected from room')
     }
-  }, [])
+  }, [clearRemoteAudioElements, setLocalAudioTrackState, setLocalVideoTrackState, setRoomState])
 
   /**
-   * Initialize connection on mount
+   * Start a connection when session, room, and user context are all present.
    */
   useEffect(() => {
-    if (sessionId && roomId && user) {
-      void connect()
+    if (!sessionId || !roomId || !user) {
+      void disconnect()
+      return
     }
 
+    let cancelled = false
+
+    const startConnection = async () => {
+      await Promise.resolve()
+      if (!cancelled) {
+        await connect()
+      }
+    }
+
+    void startConnection()
+
     return () => {
+      cancelled = true
       void disconnect()
     }
   }, [sessionId, roomId, user, connect, disconnect])
@@ -257,9 +415,9 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
     isConnected,
     isConnecting,
     error,
-    room: roomRef.current,
-    localAudioTrack: localAudioRef.current,
-    localVideoTrack: localVideoRef.current,
+    room,
+    localAudioTrack,
+    localVideoTrack,
     remoteParticipants,
     publishAudio,
     unpublishAudio,

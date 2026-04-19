@@ -142,10 +142,16 @@ export class WebSocketManager {
 
     // Audio events
     this.dispatcher.registerHandler('AUDIO:EFFECT_APPLIED', audioHandlers.handleEffectApplied)
+    this.dispatcher.registerHandler('AUDIO:EFFECT_REMOVED', audioHandlers.handleEffectRemoved)
+    this.dispatcher.registerHandler('AUDIO:PRESET_LOADED', audioHandlers.handlePresetLoaded)
     this.dispatcher.registerHandler('AUDIO:ENVIRONMENT_SET', audioHandlers.handleEnvironmentSet)
     this.dispatcher.registerHandler(
       'AUDIO:DM_OVERRIDE_APPLIED',
       audioHandlers.handleDMOverrideApplied
+    )
+    this.dispatcher.registerHandler(
+      'AUDIO:DM_OVERRIDE_REMOVED',
+      audioHandlers.handleDMOverrideRemoved
     )
   }
 

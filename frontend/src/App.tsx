@@ -1,15 +1,19 @@
 import { useState } from 'react'
+import { RoomType } from '@shared'
 import type { UUID, Role } from '@shared'
 import { LoginForm } from './components/auth/LoginForm'
 import { SessionInit } from './components/session/SessionInit'
+import { AudioPanel } from './components/audio/AudioPanel'
+import { useStore } from './hooks/useStore'
 
 /**
  * App Component
- * Stage 3: Session Lifecycle Vertical Slice
+ * Stage 7: Audio & LiveKit Integration
  * - Login form to get JWT
  * - WebSocket connection with event dispatcher
  * - Session creation and state transitions
  * - Zustand store integration
+ * - LiveKit audio connection + DSP engine mounted when a session room is active
  *
  * The pipeline: UI → Event → Dispatcher → Store → UI
  */
@@ -32,6 +36,18 @@ export default function App() {
   // API and WebSocket URLs (configurable via env or hardcoded for testing)
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
+
+  // Derive active session + primary room from store to know when to mount AudioPanel
+  const { currentSessionId, rooms } = useStore((s) => ({
+    currentSessionId: s.currentSessionId,
+    rooms: s.rooms,
+  }))
+
+  // Prefer the session's primary room when audio is mounted.
+  const activeRoomId = currentSessionId
+    ? Object.values(rooms[currentSessionId] ?? {}).find((room) => room.type === RoomType.MAIN)
+        ?.id || (Object.keys(rooms[currentSessionId] ?? {})[0] as UUID | undefined)
+    : undefined
 
   const handleLoginSuccess = (token: string, user: { id: UUID; username: string; role: Role }) => {
     setAuth({
@@ -77,7 +93,7 @@ export default function App() {
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>VTT-Chat</h1>
             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-              Stage 4: Chat Vertical Slice
+              Stage 7: Audio &amp; LiveKit Integration
             </p>
           </div>
 
@@ -118,9 +134,8 @@ export default function App() {
             >
               <h2 style={{ color: '#1f2937' }}>Welcome to VTT-Chat</h2>
               <p style={{ color: '#6b7280', maxWidth: '500px', margin: '0 auto' }}>
-                Stage 4 adds the full chat pipeline: IC, OOC, and whisper messages with strict
-                visibility filtering. DMs see all messages. Whispers are visible only to the sender,
-                recipient, and DM. Start a session to unlock the chat panel.
+                Stage 7 adds room voice, LiveKit transport, and the client audio engine. Start a
+                session to unlock chat, room state, and the mounted audio controls.
               </p>
             </section>
 
@@ -152,7 +167,7 @@ export default function App() {
               </ul>
               <p style={{ margin: '0.5rem 0 0 0' }}>
                 After login, you&apos;ll be able to create sessions and see real-time WebSocket
-                updating the store.
+                state, room updates, and audio controls activate together.
               </p>
             </section>
           </>
@@ -169,6 +184,11 @@ export default function App() {
         )}
       </main>
 
+      {/* Audio bar — mounted once a session room is active */}
+      {auth.token && currentSessionId && activeRoomId && (
+        <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
+      )}
+
       {/* Footer */}
       <footer
         style={{
@@ -182,7 +202,7 @@ export default function App() {
         }}
       >
         <p style={{ margin: 0 }}>
-          Stage 3 Active: Session Lifecycle (IDLE → ACTIVE → PAUSED → ENDED with DM-only controls)
+          Stage 7 Active: Audio &amp; LiveKit Integration (voice rooms, DSP engine, DM overrides)
         </p>
       </footer>
     </div>
