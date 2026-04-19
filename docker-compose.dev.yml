@@ -105,7 +105,7 @@ services:
       - '7881-7980:7881-7980/udp'
       - '7881-7980:7881-7980/tcp'
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
+      - ./livekit.dev.yaml:/etc/livekit.yaml
     networks:
       - vttnet
 

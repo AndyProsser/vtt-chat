@@ -1,0 +1,35 @@
+port: 7880
+bind_addresses:
+  - '0.0.0.0'
+
+# Room settings
+room:
+  auto_cleanup: true
+  empty_timeout: 300 # 5 minutes
+
+# RTC — dev supports up to 100 simultaneous audio streams (100 ports)
+# One UDP port is consumed per media track per participant.
+rtc:
+  port_range_start: 7881
+  port_range_end: 7980 # 100 ports → 100 concurrent streams
+  # Do NOT use external IP in dev — clients connect via localhost so ICE
+  # candidates must advertise 127.0.0.1, not a cloud-detected public IP.
+  use_external_ip: false
+  tcp_port: 7881
+
+  audio_codec: opus
+  # Enable video in dev so the UI can be tested end-to-end if needed.
+  # Set to false to mirror production voice-only mode.
+  video_enabled: false
+
+  ice_servers:
+    - urls:
+        - 'stun:stun.l.google.com:19302'
+
+# Logging — verbose in dev
+logging:
+  level: debug
+  sample: false
+
+# Enable LiveKit development mode (relaxed auth checks, additional diagnostics)
+development: true

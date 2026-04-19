@@ -4,24 +4,24 @@ bind_addresses:
 
 # Room settings optimized for voice-only
 room:
-  # Auto-cleanup empty rooms
   auto_cleanup: true
   empty_timeout: 300 # 5 minutes
 
-# RTC Configuration for WebRTC
+# RTC — production supports 1100 simultaneous audio streams (ports 7881-8980).
+# One UDP port is consumed per media track per participant.
+# To scale beyond 1100 concurrent streams, expand port_range_end and the
+# matching `ports:` mapping in docker-compose.yml accordingly.
 rtc:
-  # Use both TCP and UDP for maximum compatibility
   port_range_start: 7881
-  port_range_end: 7980
+  port_range_end: 8980 # 1100 ports → 1100 concurrent streams
+  # use_external_ip causes LiveKit to auto-detect its public IP via STUN.
+  # Override with LIVEKIT_NODE_IP env var to pin a specific address instead.
   use_external_ip: true
+  tcp_port: 7881
 
-  # Codecs - optimize for voice only (no video)
   audio_codec: opus
-
-  # Disable video-related settings
   video_enabled: false
 
-  # ICE servers for NAT traversal
   ice_servers:
     - urls:
         - 'stun:stun.l.google.com:19302'
@@ -30,20 +30,11 @@ rtc:
 # Logging
 logging:
   level: info
-  # Can be adjusted to debug for troubleshooting
   sample: false
 
-# Development/test mode settings
-development: false # Set to false for production
-
-# API configuration
-api:
-  # API keys will be passed via environment variables
-  # They're set via command-line flags for flexibility
-  bind_port: 7880
+development: false
 
 # Session/Connection management
 session:
-  # Timeout for inactive connections
   max_participant_metadata_size: 1000
   max_participant_name_length: 256

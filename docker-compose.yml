@@ -80,10 +80,16 @@ services:
     environment:
       # LIVEKIT_KEYS format: "<key>: <secret>" (YAML map, one entry per line for multiple)
       LIVEKIT_KEYS: '${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
+      # Pin the public IP that LiveKit advertises in ICE candidates.
+      # If unset, LiveKit auto-detects via STUN (requires outbound internet).
+      LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
     ports:
       - '7880:7880'
-      - '7881-7980:7881-7980/udp'
-      - '7881-7980:7881-7980/tcp'
+      # 1100 ports → up to 1100 concurrent audio streams.
+      # Each WebRTC media track consumes one UDP port.
+      # Expand range and update livekit.yaml port_range_end to scale further.
+      - '7881-8980:7881-8980/udp'
+      - '7881:7881/tcp' # TCP fallback for clients that can't use UDP
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     networks:
