@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './useStore'
+import type { UUID } from '@shared'
 
 // ============================================================================
 // WebAudio Node Types
@@ -146,7 +147,7 @@ export function useAudioEngine(): UseAudioEngineReturn {
       }
 
       // Create participant nodes
-      const sourceNode = graph.audioContext.createMediaStreamAudioSource(mediaStream)
+      const sourceNode = graph.audioContext.createMediaStreamSource(mediaStream)
       const trackGain = graph.audioContext.createGain()
       trackGain.gain.value = 1.0
 
@@ -235,7 +236,7 @@ export function useAudioEngine(): UseAudioEngineReturn {
       }
 
       // Priority 3: DM Override (gain/mute)
-      const dmOverride = dmOverrides?.get(trackId)
+      const dmOverride = dmOverrides?.get(trackId as UUID)
       if (dmOverride) {
         if (dmOverride.overrideType === 'MUTE') {
           node.trackGainNode.gain.value = 0

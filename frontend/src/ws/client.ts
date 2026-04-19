@@ -4,7 +4,7 @@
  * Reference: docs/architecture/EVENT-BUS.md
  */
 
-import type { EventEnvelope } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
 import { isValidUUID } from '@shared'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
@@ -240,13 +240,18 @@ export class WebSocketClient {
           username: string
           role: string
         }
+        if (!isValidUUID(msg.userId)) {
+          this.callbacks.onError?.(new Error(`Invalid WS:CONNECTED userId: ${msg.userId}`))
+          return
+        }
+
         const normalized: EventEnvelope = {
-          id: crypto.randomUUID(),
+          id: crypto.randomUUID() as UUID,
           type: 'WS:CONNECTED',
           version: 1,
           userId: msg.userId,
           userRole: msg.role as any,
-          sessionId: '00000000-0000-4000-8000-000000000000',
+          sessionId: '00000000-0000-4000-8000-000000000000' as UUID,
           roomId: null,
           timestamp: Date.now(),
           payload: {

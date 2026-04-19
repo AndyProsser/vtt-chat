@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react'
-import type { UUID, Role } from '@shared'
+import { Role } from '@shared'
+import type { UUID } from '@shared'
 
 interface LoginFormProps {
   apiUrl: string
@@ -14,11 +15,11 @@ interface LoginFormProps {
 
 export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   const [username, setUsername] = useState('')
-  const [role, setRole] = useState<Role>('PLAYER')
+  const [role, setRole] = useState<Role>(Role.PLAYER)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
     setError(null)
     setIsLoading(true)

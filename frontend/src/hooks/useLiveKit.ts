@@ -6,16 +6,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  Room,
-  RoomEvent,
-  RemoteAudioTrack,
-  RemoteVideoTrack,
-  LocalAudioTrack,
-  LocalVideoTrack,
-} from 'livekit-client'
+import { AudioPresets, Room, RoomEvent, LocalAudioTrack, LocalVideoTrack } from 'livekit-client'
 import { useStore } from './useStore'
-import { logger } from '@/utils/logger'
+import { logger } from '../utils/logger'
 
 /**
  * Track subscription info
@@ -47,15 +40,16 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string>()
-  const [remoteParticipants, setRemoteParticipants] = useState(new Map())
+  const [remoteParticipants, setRemoteParticipants] = useState(new Map<string, unknown>())
 
-  const roomRef = useRef<Room>()
-  const localAudioRef = useRef<LocalAudioTrack>()
-  const localVideoRef = useRef<LocalVideoTrack>()
+  const roomRef = useRef<Room | undefined>(undefined)
+  const localAudioRef = useRef<LocalAudioTrack | undefined>(undefined)
+  const localVideoRef = useRef<LocalVideoTrack | undefined>(undefined)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
+  const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
 
   const { user } = useStore((state) => ({
-    user: state.auth.user,
+    user: state.currentUser,
   }))
 
   /**
@@ -102,9 +96,7 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
         throw new Error('Failed to fetch LiveKit token')
       }
 
-      const room = new Room({
-        autoSubscribe: true,
-      })
+      const room = new Room()
 
       // Event handlers
       room.on(RoomEvent.Connected, () => {
@@ -136,30 +128,40 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
         logger.info('useLiveKit', `Track subscribed: ${track.kind} from ${participant.identity}`)
         trackSubscriptionsRef.current.push({
           participantId: participant.sid,
-          trackSid: track.sid,
-          trackName: track.name,
+          trackSid: publication.trackSid,
+          trackName: publication.trackName,
           trackKind: track.kind as 'audio' | 'video',
         })
 
         if (track.kind === 'audio') {
           // Audio track will be processed by useAudioEngine
-          const audioElement = document.createElement('audio')
+          const audioElement = track.attach()
           audioElement.autoplay = true
-          audioElement.playsInline = true
-          audioElement.append(track.attach())
+          audioElement.setAttribute('playsinline', 'true')
+          audioElement.style.display = 'none'
+          document.body.appendChild(audioElement)
+          remoteAudioElementsRef.current.set(publication.trackSid, audioElement)
         }
       })
 
-      room.on(RoomEvent.TrackUnsubscribed, (track) => {
+      room.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
         logger.info('useLiveKit', `Track unsubscribed: ${track.kind}`)
         trackSubscriptionsRef.current = trackSubscriptionsRef.current.filter(
-          (t) => t.trackSid !== track.sid
+          (t) => t.trackSid !== publication.trackSid
         )
         track.detach()
+
+        const audioElement = remoteAudioElementsRef.current.get(publication.trackSid)
+        if (audioElement) {
+          audioElement.remove()
+          remoteAudioElementsRef.current.delete(publication.trackSid)
+        }
       })
 
       // Connect to room
-      await room.connect(tokenData.url, tokenData.token)
+      await room.connect(tokenData.url, tokenData.token, {
+        autoSubscribe: true,
+      })
 
       roomRef.current = room
     } catch (err) {
@@ -190,8 +192,7 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
       const audioTrack = new LocalAudioTrack(stream.getAudioTracks()[0])
 
       await roomRef.current.localParticipant.publishTrack(audioTrack, {
-        codec: 'opus',
-        maxBitrate: 128000,
+        audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
       })
       localAudioRef.current = audioTrack
 
@@ -211,6 +212,7 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
   const unpublishAudio = useCallback(async () => {
     if (localAudioRef.current && roomRef.current) {
       await roomRef.current.localParticipant.unpublishTrack(localAudioRef.current)
+      localAudioRef.current.stop()
       localAudioRef.current = undefined
       logger.info('useLiveKit', 'Audio track unpublished')
     }
@@ -221,11 +223,18 @@ export function useLiveKit(sessionId: string, roomId: string): UseLiveKitReturn 
    */
   const disconnect = useCallback(async () => {
     if (roomRef.current) {
+      if (localAudioRef.current) {
+        localAudioRef.current.stop()
+      }
+
       await roomRef.current.disconnect()
       roomRef.current = undefined
       localAudioRef.current = undefined
       localVideoRef.current = undefined
       trackSubscriptionsRef.current = []
+      remoteAudioElementsRef.current.forEach((element) => element.remove())
+      remoteAudioElementsRef.current.clear()
+      setRemoteParticipants(new Map())
       setIsConnected(false)
       logger.info('useLiveKit', 'Disconnected from room')
     }

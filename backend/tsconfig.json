@@ -18,7 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@shared": ["../shared/index.ts"]
+      "@shared": ["../shared/index.ts"],
+      "@shared/*": ["../shared/*"]
     }
   },
   "include": [
@@ -32,7 +33,10 @@
     "src/infra/db/**/*.ts",
     "src/infra/config/**/*.ts",
     "src/infra/http/middleware.ts",
-    "src/utils/**/*.ts"
+    "src/utils/**/*.ts",
+    "tests/**/*.ts",
+    "../shared/**/*.ts",
+    "vitest.config.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

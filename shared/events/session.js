@@ -1,4 +1,4 @@
-"use strict";
+'use strict'
 /**
  * Session Lifecycle Events
  * Reference: docs/architecture/SESSION-LIFECYCLE.md
@@ -7,5 +7,5 @@
  * Only DM can transition session state.
  * Visibility: All state changes are visible to all session participants.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, '__esModule', { value: true })
 //# sourceMappingURL=session.js.map

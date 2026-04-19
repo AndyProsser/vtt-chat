@@ -18,13 +18,13 @@ export interface MetadataSlice {
   currentUser: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  error: string | null
+  error?: string
 
   // Actions
   setCurrentUser: (user: User | null) => void
   setIsAuthenticated: (authenticated: boolean) => void
   setIsLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
+  setError: (error?: string) => void
   clearMetadata: () => void
 
   // Event handlers
@@ -36,7 +36,7 @@ export const createMetadataSlice: StateCreator<MetadataSlice> = (set) => ({
   currentUser: null,
   isAuthenticated: false,
   isLoading: false,
-  error: null,
+  error: undefined,
 
   // Actions
   setCurrentUser: (user) =>
@@ -64,7 +64,7 @@ export const createMetadataSlice: StateCreator<MetadataSlice> = (set) => ({
       currentUser: null,
       isAuthenticated: false,
       isLoading: false,
-      error: null,
+      error: undefined,
     }),
 
   // Event handlers
@@ -83,7 +83,7 @@ export const createMetadataSlice: StateCreator<MetadataSlice> = (set) => ({
         role: payload.userRole,
       },
       isAuthenticated: true,
-      error: null,
+      error: undefined,
     })
   },
 })
