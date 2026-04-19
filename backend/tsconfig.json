@@ -25,8 +25,11 @@
     "src/index.ts",
     "src/bootstrap.ts",
     "src/api/**/*.ts",
+    "src/core/**/*.ts",
+    "src/repositories/**/*.ts",
     "src/services/**/*.ts",
     "src/ws/**/*.ts",
+    "src/infra/db/**/*.ts",
     "src/infra/config/**/*.ts",
     "src/infra/http/middleware.ts",
     "src/utils/**/*.ts"

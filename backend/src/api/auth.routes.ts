@@ -7,11 +7,11 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
-import { randomUUID } from 'crypto'
 import { createToken, verifyToken, extractTokenFromHeader } from '@/services/auth.service'
 import { createRateLimit } from '@/infra/http/rate-limit'
-import type { UUID, Role } from '@shared'
-import { createError, ErrorCode, isValidUsername } from '@shared'
+import type { UUID } from '@shared'
+import { ErrorCode, isValidUsername } from '@shared'
+import { upsertUserAccount } from '@/repositories/campaign.repository'
 
 const router = Router()
 
@@ -59,8 +59,8 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
  * Stage 1: No password validation, just accept username.
  * Returns JWT token.
  */
-router.post('/login', loginRateLimit, (req: Request, res: Response) => {
-  const { username, role } = req.body
+router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
+  const { username, role, displayName, avatarUrl } = req.body
 
   // Validate input
   if (!username || !isValidUsername(username)) {
@@ -79,12 +79,17 @@ router.post('/login', loginRateLimit, (req: Request, res: Response) => {
     })
   }
 
-  // Stage 1: Deterministic user ID based on username (for testing)
-  // Later stages will use actual user database
-  const userId = randomUUID() as UUID
+  const persistedUser = await upsertUserAccount({
+    username,
+    role: role as 'DM' | 'PLAYER' | 'SPECTATOR',
+    displayName: typeof displayName === 'string' ? displayName : undefined,
+    avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
+  })
+
+  const userId = persistedUser.id as UUID
   const token = createToken({
     userId,
-    username,
+    username: persistedUser.username,
     role: role as 'DM' | 'PLAYER' | 'SPECTATOR',
   })
 
@@ -92,8 +97,10 @@ router.post('/login', loginRateLimit, (req: Request, res: Response) => {
     token,
     user: {
       id: userId,
-      username,
-      role,
+      username: persistedUser.username,
+      displayName: persistedUser.displayName,
+      avatarUrl: persistedUser.avatarUrl,
+      role: persistedUser.role,
     },
   })
 })

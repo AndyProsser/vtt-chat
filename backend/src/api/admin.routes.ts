@@ -17,10 +17,10 @@ function parseTimeRange(value: string | undefined): number {
   }
 }
 
-router.get('/telemetry/dashboard', (_req: Request, res: Response) => {
-  const sessions = getAllSessions()
+router.get('/telemetry/dashboard', async (_req: Request, res: Response) => {
+  const sessions = await getAllSessions()
   const wsManager = _req.app.locals.wsManager as { getConnectionCount?: () => number } | undefined
-  const chat = getChatTelemetrySnapshot()
+  const chat = await getChatTelemetrySnapshot()
   const memory = process.memoryUsage()
   const activeSessions = sessions.filter((s) => s.state === 'ACTIVE').length
   const memoryUsedMb = Math.round(memory.heapUsed / 1024 / 1024)
@@ -44,11 +44,11 @@ router.get('/telemetry/dashboard', (_req: Request, res: Response) => {
   })
 })
 
-router.get('/telemetry/status', (_req: Request, res: Response) => {
+router.get('/telemetry/status', async (_req: Request, res: Response) => {
   const memory = process.memoryUsage()
   const load = os.loadavg()
   const uptimeSec = process.uptime()
-  const chat = getChatTelemetrySnapshot()
+  const chat = await getChatTelemetrySnapshot()
 
   res.status(200).json({
     cards: {

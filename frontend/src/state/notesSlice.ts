@@ -16,13 +16,15 @@ export interface Note {
   content: string
   visibility: NoteVisibility
   tags: string[]
+  allowedUsers?: UUID[]
+  publishedAt?: number
   createdAt: number
   updatedAt: number
 }
 
 export interface NotesSlice {
   // State
-  notes: Record<UUID, Note> // keyed by sessionId, then noteId
+  notes: Record<UUID, Record<UUID, Note>> // keyed by sessionId, then noteId
   isLoading: boolean
 
   // Actions
@@ -109,6 +111,8 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       content: string
       visibility: NoteVisibility
       tags: string[]
+      allowedUsers?: UUID[]
+      publishedAt?: number
     }
 
     const note: Note = {
@@ -119,6 +123,8 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       content: payload.content,
       visibility: payload.visibility,
       tags: payload.tags,
+      allowedUsers: payload.allowedUsers,
+      publishedAt: payload.publishedAt,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
     }
@@ -141,6 +147,8 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       content?: string
       visibility?: NoteVisibility
       tags?: string[]
+      allowedUsers?: UUID[]
+      publishedAt?: number
     }
 
     set((state) => {
@@ -159,6 +167,10 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
               content: payload.content !== undefined ? payload.content : note.content,
               visibility: payload.visibility !== undefined ? payload.visibility : note.visibility,
               tags: payload.tags !== undefined ? payload.tags : note.tags,
+              allowedUsers:
+                payload.allowedUsers !== undefined ? payload.allowedUsers : note.allowedUsers,
+              publishedAt:
+                payload.publishedAt !== undefined ? payload.publishedAt : note.publishedAt,
               updatedAt: event.timestamp,
             },
           },

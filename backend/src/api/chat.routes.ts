@@ -127,7 +127,7 @@ function buildMessageDeletedEvent(
  * - WHISPER: DM and PLAYER only; requires recipientId
  * - Session must be ACTIVE
  */
-router.post('/message', requireAuth, (req: Request, res: Response) => {
+router.post('/message', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
     const { sessionId, content, type, recipientId } = req.body
@@ -171,7 +171,7 @@ router.post('/message', requireAuth, (req: Request, res: Response) => {
     }
 
     // Validate session exists and is ACTIVE
-    const session = getSession(sessionId as UUID)
+    const session = await getSession(sessionId as UUID)
     if (!session) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
@@ -193,7 +193,7 @@ router.post('/message', requireAuth, (req: Request, res: Response) => {
       }
     }
 
-    const stored = sendMessage({
+    const stored = await sendMessage({
       sessionId: sessionId as UUID,
       authorId: user.userId as UUID,
       authorUsername: user.username,
@@ -220,7 +220,7 @@ router.post('/message', requireAuth, (req: Request, res: Response) => {
  * GET /api/chat/messages/:sessionId
  * Retrieve message history for a session (visibility-filtered).
  */
-router.get('/messages/:sessionId', requireAuth, (req: Request, res: Response) => {
+router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
     const { sessionId } = req.params
@@ -229,12 +229,12 @@ router.get('/messages/:sessionId', requireAuth, (req: Request, res: Response) =>
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
     }
 
-    const session = getSession(sessionId as UUID)
+    const session = await getSession(sessionId as UUID)
     if (!session) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
-    const messages = getMessages(sessionId as UUID, user.userId as UUID, user.role)
+    const messages = await getMessages(sessionId as UUID, user.userId as UUID, user.role)
     return res.status(200).json({ messages })
   } catch {
     return internalErrorResponse(res)
@@ -245,7 +245,7 @@ router.get('/messages/:sessionId', requireAuth, (req: Request, res: Response) =>
  * PUT /api/chat/message/:id
  * Edit a message (author or DM only).
  */
-router.put('/message/:id', requireAuth, (req: Request, res: Response) => {
+router.put('/message/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
     const { id } = req.params
@@ -263,7 +263,7 @@ router.put('/message/:id', requireAuth, (req: Request, res: Response) => {
       })
     }
 
-    const updated = editMessage(id as UUID, user.userId as UUID, user.role, content)
+    const updated = await editMessage(id as UUID, user.userId as UUID, user.role, content)
     if (!updated) {
       return res
         .status(403)
@@ -287,7 +287,7 @@ router.put('/message/:id', requireAuth, (req: Request, res: Response) => {
  * DELETE /api/chat/message/:id
  * Soft-delete a message (author or DM only).
  */
-router.delete('/message/:id', requireAuth, (req: Request, res: Response) => {
+router.delete('/message/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
     const { id } = req.params
@@ -296,7 +296,7 @@ router.delete('/message/:id', requireAuth, (req: Request, res: Response) => {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid message id' })
     }
 
-    const deleted = deleteMessage(id as UUID, user.userId as UUID, user.role)
+    const deleted = await deleteMessage(id as UUID, user.userId as UUID, user.role)
     if (!deleted) {
       return res
         .status(403)

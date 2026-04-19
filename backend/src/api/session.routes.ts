@@ -67,7 +67,7 @@ function internalErrorResponse(res: Response) {
  * POST /api/session
  * Create a new session (DM-only)
  */
-router.post('/', requireAuth, requireDM, (req: Request, res: Response) => {
+router.post('/', requireAuth, requireDM, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { name, description } = req.body
 
@@ -80,7 +80,7 @@ router.post('/', requireAuth, requireDM, (req: Request, res: Response) => {
   }
 
   try {
-    const session = createSession(name, user.userId, description)
+    const session = await createSession(name, user.userId, description)
     res.status(201).json(session)
   } catch (err: any) {
     return internalErrorResponse(res)
@@ -91,9 +91,9 @@ router.post('/', requireAuth, requireDM, (req: Request, res: Response) => {
  * GET /api/session
  * List all sessions
  */
-router.get('/', requireAuth, (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const sessions = getAllSessions()
+    const sessions = await getAllSessions()
     res.status(200).json(sessions)
   } catch (err: any) {
     return internalErrorResponse(res)
@@ -104,7 +104,7 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
  * GET /api/session/:id
  * Get a specific session
  */
-router.get('/:id', requireAuth, (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   const { id } = req.params
 
   if (!isValidUUID(id)) {
@@ -116,7 +116,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
   }
 
   try {
-    const session = getSession(id as UUID)
+    const session = await getSession(id as UUID)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
@@ -124,7 +124,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
       })
     }
 
-    const users = getSessionUsers(id as UUID)
+    const users = await getSessionUsers(id as UUID)
     res.status(200).json({
       ...session,
       userCount: users.length,
@@ -139,7 +139,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
  * Change session state (start, pause, resume, end)
  * DM-only operation.
  */
-router.put('/:id/state', requireAuth, requireDM, (req: Request, res: Response) => {
+router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
   const { state } = req.body
@@ -161,7 +161,7 @@ router.put('/:id/state', requireAuth, requireDM, (req: Request, res: Response) =
   }
 
   try {
-    const session = updateSessionState(id as UUID, state as SessionState, user.userId)
+    const session = await updateSessionState(id as UUID, state as SessionState, user.userId)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
@@ -185,7 +185,7 @@ router.put('/:id/state', requireAuth, requireDM, (req: Request, res: Response) =
  * DELETE /api/session/:id
  * Delete a session (DM-only)
  */
-router.delete('/:id', requireAuth, requireDM, (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, requireDM, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
 
@@ -198,7 +198,7 @@ router.delete('/:id', requireAuth, requireDM, (req: Request, res: Response) => {
   }
 
   try {
-    const deleted = deleteSession(id as UUID, user.userId)
+    const deleted = await deleteSession(id as UUID, user.userId)
     if (!deleted) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,

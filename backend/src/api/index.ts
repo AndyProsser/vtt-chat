@@ -3,6 +3,9 @@ import authRoutes from './auth.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
 import adminRoutes from './admin.routes'
+import notesRoutes from './notes.routes'
+import campaignRoutes from './campaign.routes'
+import usersRoutes from './users.routes'
 
 const router = Router()
 
@@ -25,6 +28,9 @@ router.use('/auth', authRoutes)
 router.use('/session', sessionRoutes)
 router.use('/chat', chatRoutes)
 router.use('/admin', adminRoutes)
+router.use('/notes', notesRoutes)
+router.use('/campaigns', campaignRoutes)
+router.use('/users', usersRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
@@ -42,7 +48,6 @@ function notImplemented(domain: string) {
 
 // Stubs for future stages
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
-router.use('/notes', (_req: Request, res: Response) => notImplemented('notes')(_req, res))
 router.use('/audio', (_req: Request, res: Response) => notImplemented('audio')(_req, res))
 router.use('/presence', (_req: Request, res: Response) => notImplemented('presence')(_req, res))
 router.use('/rooms', (_req: Request, res: Response) => notImplemented('rooms')(_req, res))

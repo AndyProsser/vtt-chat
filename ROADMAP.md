@@ -9,19 +9,19 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-04-17
+Last updated: 2026-04-19
 
 ---
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-4 complete, Stage 8 partially complete, Stages 5-7 pending**.
+Current overall status: **Stages 0-4 complete, Stage 8 partially complete, Stages 5-7 scaffolded (implementation incomplete)**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
 - Session lifecycle and chat vertical slices are implemented and building.
 - Admin shell and readonly telemetry baseline are now implemented.
-- Notes, presence/rooms, and audio/livekit vertical slices remain the primary product gaps.
+- Notes, presence/rooms, and audio/livekit vertical slices have contract/store/handler scaffolding in place, but core services, mounted APIs, and production UX are incomplete.
 
 Latest verification:
 
@@ -140,11 +140,17 @@ Exit criteria:
 
 ### Stage 5: Notes Vertical Slice
 
-Status: **Not started**
+Status: **Scaffolded (not implemented)**
 
 Goal:
 
 - Private notes, then shared/DM notes with role-filtered selectors.
+
+Completed so far:
+
+- Notes event types are wired through WS dispatcher registration and frontend store handlers.
+- Notes slice scaffolding exists in frontend state.
+- Placeholder modules exist for notes route/service/UI surfaces.
 
 Remaining scope:
 
@@ -152,6 +158,7 @@ Remaining scope:
 - Notes publish-to-chat path consistent with contracts.
 - Frontend notes panels and selectors by visibility mode.
 - Store/reducer handlers for notes events.
+- Replace placeholder notes route/service/UI modules with functional implementations.
 
 Exit criteria:
 
@@ -161,17 +168,24 @@ Exit criteria:
 
 ### Stage 6: Presence and Rooms
 
-Status: **Not started**
+Status: **Scaffolded (not implemented)**
 
 Goal:
 
 - Presence state machine and room membership transitions.
+
+Completed so far:
+
+- Room/presence event handler registration exists in backend and frontend WS dispatch paths.
+- WS heartbeat and reconnection scaffolding is present.
+- Placeholder room service modules are present.
 
 Remaining scope:
 
 - Room lifecycle APIs and membership transitions.
 - Presence state updates, heartbeat/recovery semantics.
 - Frontend presence indicators and room-scoped state sync.
+- Replace placeholder room/presence service layers with authoritative state transitions.
 
 Exit criteria:
 
@@ -181,17 +195,24 @@ Exit criteria:
 
 ### Stage 7: Audio and LiveKit Integration
 
-Status: **Not started**
+Status: **Scaffolded (not implemented)**
 
 Goal:
 
 - Token flow, room connect/disconnect, controlled audio states and DM overrides.
+
+Completed so far:
+
+- Audio event types are registered in backend/frontend WS dispatcher flows.
+- Audio and LiveKit hook/service files exist as staged placeholders.
+- Environment configuration keys exist for LiveKit integration.
 
 Remaining scope:
 
 - LiveKit token issuance and client lifecycle integration.
 - Room-scoped audio controls and DM override behaviors.
 - Frontend audio engine alignment with role constraints.
+- Replace placeholder audio/livekit modules with functional token, transport, and control flows.
 
 Exit criteria:
 
@@ -254,12 +275,24 @@ Key risks:
 - Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
 - In-memory components (chat telemetry/log buffer) are not durable across process restarts.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
+- WS protocol mismatch risk: backend emits wrapper messages (`WS:EVENT`, `WS:ACK`, `WS:CONNECTED`) while frontend currently parses inbound payloads as raw event envelopes; this can break live reducer updates.
 
 Dependencies before later stages:
 
 - Stage 5 depends on finalized notes visibility semantics and event payload decisions.
 - Stage 6 depends on authoritative presence state model and reconnection strategy.
 - Stage 7 depends on stable room/presence semantics and token lifecycle reliability.
+
+## 4.1) Validation Notes
+
+The following references support the corrected stage labels and WS risk note.
+
+| Claim                                                            | Status                      | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Stage 5 (Notes) vertical slice                                   | Scaffolded, not implemented | WS notes handler registration: [backend/src/ws/index.ts](backend/src/ws/index.ts). Frontend notes wiring: [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Placeholder modules: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts), [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx). |
+| Stage 6 (Presence and Rooms) vertical slice                      | Scaffolded, not implemented | WS room/presence wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Recovery/heartbeat scaffolding: [backend/src/ws/state-recovery.ts](backend/src/ws/state-recovery.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Incomplete REST/service layers: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts).                                             |
+| Stage 7 (Audio and LiveKit) vertical slice                       | Scaffolded, not implemented | Audio WS wiring: [backend/src/ws/index.ts](backend/src/ws/index.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts). Placeholder LiveKit/audio modules: [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts), [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts), [backend/src/ws/handlers/audio.handler.ts](backend/src/ws/handlers/audio.handler.ts).                |
+| WS protocol compatibility between backend and frontend transport | Risk identified             | Backend sends wrapper WS message types: [backend/src/ws/index.ts](backend/src/ws/index.ts). Frontend parses inbound payloads as raw event envelopes and validates envelope fields directly: [frontend/src/ws/client.ts](frontend/src/ws/client.ts), [frontend/src/ws/dispatcher.ts](frontend/src/ws/dispatcher.ts).                                                                                                                                                                                                                  |
 
 ---
 
@@ -280,10 +313,3 @@ Roadmap complete when:
 - Stages 0-8 all meet their exit criteria.
 - Security and auditability requirements are met for internet-facing operation.
 - Monorepo builds cleanly and stage-critical user journeys are test-covered.
-
----
-
-## 7) Naming Note
-
-This file remains `STAGED-BUILD.md` for continuity with existing references.
-If desired, it can be renamed to `ROADMAP.md` in a future cleanup once all links are updated.
