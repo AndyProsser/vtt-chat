@@ -1,283 +1,224 @@
-# VTT‑Chat Roadmap
+# VTT Chat Operations Roadmap and Progress Record
 
-_A staged implementation plan for the full platform_
+This document is the operations-focused roadmap snapshot for VTT Chat.
+It is intentionally aligned with the root roadmap and tracks:
 
-This roadmap outlines the complete development sequence for **VTT‑Chat**, from architecture to deployment.  
-It is designed to guide contributors, GitHub AI, and future maintainers through a clear, structured build process.
+- What has been completed
+- What is currently in progress
+- What remains for each stage
+- Operational exit criteria
+- Immediate next operational milestones
 
-The roadmap is divided into **phases**, each containing **stages** that should be completed in order to avoid rework and ensure architectural consistency.
-
----
-
-# 🧱 Phase 1 — Foundations
-
-## **1. Architecture Design**
-
-- Define backend, SPA, LiveKit, database, and Redis topology
-- Finalize session model, room model, audio model
-- Define privacy rules (DM vs player)
-- Define metadata, notes, tags, and timeline behavior
-- Document all in `docs/ARCHITECTURE.md`
-
-## **2. Repository Structure**
-
-- Establish monorepo layout
-- Create folders for backend, frontend, livekit, docker, docs, scripts
-- Add initial `.env.example` files
-- Add LICENSE, README, CONTRIBUTING, CODE_OF_CONDUCT
-
-## **3. Shared Framework & Types**
-
-- Create shared TypeScript interfaces for:
-  - WebSocket events
-  - System messages
-  - Metadata cards
-  - Notes
-  - Audio state
-  - Conditions & environments
-  - Session boundaries
-- Establish coding conventions
+Last updated: 2026-04-19
 
 ---
 
-# 🏗️ Phase 2 — Deployment Infrastructure
+## 1) Executive Status
 
-## **4. Docker Build Automation**
+Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete**.
 
-- Backend Dockerfile
-- SPA Dockerfile
-- LiveKit container
-- Postgres + Redis containers
-- Build scripts
-- GitHub Actions CI (optional)
+- Contract and architecture baseline are in place.
+- Core backend/frontend spine is operational.
+- Session lifecycle and chat vertical slices are implemented and building.
+- Admin shell and readonly telemetry baseline are now implemented.
+- Notes vertical slice is now operational with persisted CRUD + visibility controls.
+- Presence/rooms vertical slice includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
+- Audio/livekit vertical slice is partially implemented (token issuance route + client/audio hooks), with runtime integration and hardening still pending.
 
-## **5. Docker Swarm Stack (HomeLab‑friendly)**
+Latest verification:
 
-- Compose → Swarm conversion
-- Redundant backend nodes (optional)
-- Postgres volume + backup strategy
-- Redis persistence
-- Traefik or Caddy routing (Caddy preferred)
-
-## **6. LiveKit Server Build**
-
-- Native LiveKit binary
-- `livekit.yaml` configuration
-- Token server integration
-- UDP port range configuration
-
-## **7. Firewall & NAT Configuration**
-
-- Non‑standard HTTPS ports (e.g., 8443)
-- LiveKit WS (7880)
-- LiveKit UDP (7881–7980)
-- Optional TURN server
-- Document router port forwarding
+- Monorepo build passes (`backend`, `frontend`, `admin`).
+- Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
+- Current backend verification: `8` test files / `29` tests passing.
 
 ---
 
-# 🗄️ Phase 3 — Data & Realtime Layers
+## 2) Stage-by-Stage Progress (Operations View)
 
-## **8. Database Schema**
+### Stage 0: Contract Lock
 
-- Users
-- Campaigns
-- Rooms
-- Messages
-- Metadata cards
-- Notes
-- Player settings
-- DM settings
-- Conditions
-- Environments
-- Session boundaries
-- Ping cooldowns
-- Admin audit logs
+Status: **Complete**
 
-## **9. WebSocket Event Schema**
+Operational impact:
 
-- Chat events
-- Room events
-- Audio events
-- Condition events
-- Environment events
-- Metadata events
-- Notes events
-- Session events
-- Presence events
-- Ping events
-
-## **10. Backend API Design**
-
-- Auth
-- Campaign join
-- Room join/leave
-- Message send
-- Metadata create
-- Notes CRUD
-- Player/DM settings
-- Export logs
-- Export/import notes
-- Health endpoints
-- Admin endpoints (future)
-
-## **11. Backend Implementation**
-
-- Full TypeScript backend
-- WebSocket server
-- REST API
-- LiveKit token generation
-- Redis presence & rate limiting
-- Error handling & logging
-- Privacy enforcement
-- Session boundary logic
-- Lazy‑load chat history
-- Audio override logic
-- DM override rules
-- Player privacy rules
+- Shared contracts are the canonical runtime/API agreement for backend/frontend.
+- Permission and error models are stable enough for infra hardening and monitoring.
 
 ---
 
-# 🎨 Phase 4 — Frontend Application
+### Stage 1: Backend Foundation
 
-## **12. SPA UI/UX Design**
+Status: **Complete**
 
-- DM panel
-- Player panel
-- Audio state slide‑out
-- Notes panel
-- Metadata timeline
-- Chat layout
-- Room layout
-- Avatar overlays
-- Environment icons
-- Session boundary UI
-- Search + tags
-- Settings panel
-- Effects panel
-- Admin panel (optional)
+Operational impact:
 
-## **13. SPA Core Framework**
-
-- React + TypeScript setup
-- Routing
-- Global state management
-- WebSocket client
-- LiveKit client
-- Audio engine wrapper
-- Theme system
-- Persistence layer
-
-## **14. SPA UI Components**
-
-- Chat
-- Message cards
-- Metadata cards
-- Notes
-- DM audio panel
-- Player audio panel
-- Effects popup
-- Timeline view
-- Search bar
-- Tag chips
-- Avatar overlays
-- Environment indicators
-- Right‑click menus
-- Session boundary markers
-- Export dialogs
-
-## **15. CSS & Styling**
-
-- Theme variables
-- Light/dark mode
-- DM vs player styling
-- Metadata card styling
-- Timeline styling
-- Audio panel styling
-- Responsive layout
+- Middleware baseline (security headers, CORS, request IDs) is active.
+- REST and WS transport foundations are running and observable.
 
 ---
 
-# 🔊 Phase 5 — Audio & Realtime Integration
+### Stage 2: Frontend Transport Spine
 
-## **16. LiveKit Integration**
+Status: **Complete**
 
-- Token server
-- Room join/leave
-- Track subscription
-- Audio pipeline creation
-- DM voice presets
-- Player conditions
-- Room environments
-- Gain/gate overrides
-- Private chat audio rules
-- Reapply effects on reconnect
-- Audio state slide‑out integration
+Operational impact:
+
+- WebSocket client/store pipeline is stable for realtime operations.
+- Reconnect and reducer flow exists for operational recovery behavior.
 
 ---
 
-# 📊 Phase 6 — Platform Health & Admin
+### Stage 3: Session Lifecycle Vertical Slice
 
-## **17. System Status / Health Page**
+Status: **Complete**
 
-- Backend health
-- Redis health
-- Postgres health
-- LiveKit health
-- Active rooms
-- Active users
-- Audio pipeline status
-- Ping latency
-- Error logs
-- CPU/memory usage
+Operational impact:
 
-## **18. Documentation & User Guides**
-
-- README
-- Deployment guide
-- Install script guide
-- Architecture doc
-- Admin app guide (future)
-- Troubleshooting guide
+- DM-only lifecycle mutations reduce unintended state transitions.
+- Session transitions can now be monitored and audited as first-class state changes.
 
 ---
 
-# 🛡️ Optional Phase — Admin App
+### Stage 4: Chat Vertical Slice
 
-## **Admin App Features**
+Status: **Complete**
 
-- Campaign management
-- Archive/export/delete
-- User management
-- System performance dashboards
-- Historical logs
-- Stats from backend, SPA, LiveKit
-- Secure access
-- Audit logs
+Operational impact:
+
+- Privacy-safe chat and whisper behavior is productionized.
+- System messages are immutable, reducing moderation ambiguity and audit drift.
 
 ---
 
-# 🚀 Development Flow Summary
+### Stage 5: Notes Vertical Slice
 
-1. **Design first**
-2. **Infrastructure second**
-3. **Data + realtime third**
-4. **Frontend fourth**
-5. **Audio integration fifth**
-6. **Health/admin last**
+Status: **Complete**
 
-This order minimizes rework and ensures a stable foundation at every stage.
+Operational impact:
+
+- Notes visibility/privacy model is enforced server-side.
+- Publish-to-chat actions are logged for admin telemetry and audit workflows.
 
 ---
 
-# 📝 Notes for Contributors
+### Stage 6: Presence and Rooms
 
-- Follow the architecture doc
-- Respect privacy rules
-- DM overrides are session‑scoped
-- Player audio settings persist
-- Only three system message types exist
-- Metadata cards are structured messages
-- Private chat is silent
-- Session boundaries divide chat history
-- Deployment must work on a HomeLab with non‑standard ports
+Status: **Complete**
+
+Operational impact:
+
+- Redis-first realtime state with DB snapshot recovery is in place.
+- Session transitions now drive bulk room reassignment with websocket transition events.
+- Reconnect hydration is atomic for room/presence topology.
+
+Remaining scope:
+
+- Broader multi-client e2e/load coverage for reconnect/recovery and transition fanout behavior.
+
+---
+
+### Stage 7: Audio and LiveKit Integration
+
+Status: **In progress (partial implementation)**
+
+Completed so far:
+
+- Audio event types are registered in backend/frontend WS dispatcher flows.
+- LiveKit token issuance endpoint is implemented (`POST /api/livekit/token`) with auth/session-membership checks.
+- LiveKit token generation service is implemented (server SDK integration + token grant construction).
+- Frontend LiveKit connection hook is implemented (token fetch, connect/disconnect, participant/track lifecycle).
+- Frontend audio engine hook is implemented with WebAudio graph setup and effect stack application logic.
+- Environment configuration keys exist for LiveKit integration.
+
+Remaining scope:
+
+- Wire LiveKit/audio hooks into active frontend session UI flow (currently implemented but not mounted in runtime UI path).
+- Complete backend WS audio handler registration for the full audio event set (`EFFECT_REMOVED`, `PRESET_LOADED`, `DM_OVERRIDE_REMOVED` are not currently dispatcher-registered).
+- Implement room-scoped audio controls + DM override enforcement with persistent state/audit semantics.
+- Add end-to-end integration tests for token flow and multi-client audio behavior beyond event-envelope shape validation.
+
+---
+
+### Stage 8: Admin and Ops Layer
+
+Status: **In progress (partial completion)**
+
+Completed so far:
+
+- Admin SPA shell and section scaffolding are implemented.
+- Backend telemetry endpoints are implemented:
+  - `/api/admin/telemetry/dashboard`
+  - `/api/admin/telemetry/status`
+  - `/api/admin/telemetry/logs`
+- Logs endpoint supports server-side filtering, pagination, and sorting.
+- Admin logs table is wired to server-side pagination and sorting.
+- Backend admin auth primitives exist (`createAdminToken`/`verifyAdminToken` + `adminAuthMiddleware`) but are not yet enforced on telemetry routes.
+- Admin frontend auth store remains baseline-disabled (login returns "not enabled").
+
+Remaining scope:
+
+- Enforce admin authentication/authorization on admin API routes (telemetry is currently accessible without admin auth middleware).
+- Moderation actions with audit trail (suspend/force logout/etc).
+- Persistent telemetry sources (currently in-memory/baseline metrics in parts).
+- Detail panels replacing placeholder actions (for example log entry expand UX).
+
+Exit criteria:
+
+- Authenticated admin workflows with readonly telemetry and controlled actions, fully auditable.
+
+---
+
+## 3) Current Priority Queue
+
+Priority 1:
+
+- Complete Stage 8 security closure: enforce admin auth on routes + role-gated ops actions + audit logging UX.
+
+Priority 2:
+
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+
+Priority 3:
+
+- Stage 7 runtime integration: mount livekit/audio hooks in UI, complete WS handler registration, and add e2e validation.
+
+---
+
+## 4) Risks and Dependencies
+
+Key risks:
+
+- Admin telemetry endpoints are mounted without admin auth enforcement; internet-facing deployment risk until route guards are applied.
+- Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
+- In-memory admin log history and WS recovery state are not durable across process restarts.
+- Contract-vs-concept terminology drift in docs must continue to be managed carefully.
+- Custom-share recipient UX depends on session membership hydration (users appear after joining session).
+- Prisma schema is updated, but migration history is not yet committed; DB rollout consistency risk remains.
+
+Dependencies before later stages:
+
+- Stage 6 depends on authoritative presence state model and reconnection strategy (complete).
+- Stage 7 depends on stable room/presence semantics and token lifecycle reliability (ready).
+
+---
+
+## 5) Progress Log (Condensed)
+
+- 2026-04: Stage 3 session lifecycle implemented and validated.
+- 2026-04: Stage 4 chat baseline implemented (privacy-safe whisper filtering).
+- 2026-04: Stage 5 notes vertical slice closed with visibility controls, custom-share selector UX, websocket propagation tests, and publish audit logging hooks.
+- 2026-04: Stage 6 finalized with Redis-first presence/rooms, snapshot recovery, transition orchestration, authz hardening, and reconnect topology hydration.
+- 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.
+- 2026-04: Stage 7 moved from scaffolded to partial implementation: LiveKit token route/service and frontend livekit/audio hooks are now present; runtime UI mounting and full WS audio registration remain pending.
+- 2026-04: Latest backend verification: 8 test files / 29 tests passing.
+
+---
+
+## 6) Definition of Done for Operations Roadmap
+
+Operations roadmap complete when:
+
+- Stages 0-8 all meet their exit criteria.
+- Security and auditability requirements are met for internet-facing operation.
+- Monorepo builds cleanly and stage-critical journeys are test-covered.
+- Admin telemetry and moderation controls are authenticated, role-gated, and durably auditable.

@@ -151,7 +151,7 @@ export default function App() {
                 </li>
               </ul>
               <p style={{ margin: '0.5rem 0 0 0' }}>
-                After login, you'll be able to create sessions and see real-time WebSocket events
+                After login, you&apos;ll be able to create sessions and see real-time WebSocket
                 updating the store.
               </p>
             </section>
