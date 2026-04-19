@@ -111,6 +111,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('ROOM:USER_LEFT', (event) => {
       store.handleUserLeft(event)
     })
+    dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
+      store.handleSessionRoomTransitionApplied(event)
+    })
 
     // Presence events
     dispatcher.register('PRESENCE:STATE_CHANGED', (event) => {

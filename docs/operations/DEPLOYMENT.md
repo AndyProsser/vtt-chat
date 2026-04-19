@@ -122,7 +122,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -132,7 +132,7 @@ services:
       - ./data/postgres:/var/lib/postgresql/data
 
   redis:
-    image: redis:7
+    image: redis:8
     restart: unless-stopped
     command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
     volumes:

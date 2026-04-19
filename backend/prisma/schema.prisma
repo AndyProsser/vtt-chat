@@ -7,25 +7,63 @@ datasource db {
 }
 
 model Session {
-  id          String          @id @default(uuid()) @db.Uuid
-  campaignId  String?         @db.Uuid
-  campaign    Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  id          String             @id @default(uuid()) @db.Uuid
+  campaignId  String?            @db.Uuid
+  campaign    Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   name        String
   description String?
-  dmId        String          @db.Uuid
-  state       SessionState    @default(IDLE)
+  dmId        String             @db.Uuid
+  state       SessionState       @default(IDLE)
   members     SessionMember[]
+  rooms       Room[]
+  presence    PresenceSnapshot[]
   messages    ChatMessage[]
   notes       Note[]
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime           @default(now())
   startedAt   DateTime?
   endedAt     DateTime?
-  updatedAt   DateTime        @updatedAt
+  updatedAt   DateTime           @updatedAt
 
   @@index([dmId])
   @@index([campaignId])
   @@index([state])
   @@index([createdAt])
+}
+
+model Room {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @db.Uuid
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  type      RoomType @default(MAIN)
+  createdBy String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model PresenceSnapshot {
+  id            String        @id @default(uuid()) @db.Uuid
+  sessionId     String        @db.Uuid
+  session       Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  campaignId    String?       @db.Uuid
+  userId        String        @db.Uuid
+  username      String
+  primaryRoomId String?       @db.Uuid
+  privateRoomId String?       @db.Uuid
+  state         PresenceState @default(ONLINE)
+  lastSeenAt    DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([lastSeenAt])
 }
 
 model User {
@@ -99,9 +137,9 @@ model Character {
 
 model SessionMember {
   id        String  @id @default(uuid()) @db.Uuid
-  sessionId String
+  sessionId String  @db.Uuid
   session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId    String
+  userId    String  @db.Uuid
   username  String
   role      Role
 
@@ -114,7 +152,7 @@ model SessionMember {
 
 model ChatMessage {
   id             String      @id @default(uuid()) @db.Uuid
-  sessionId      String
+  sessionId      String      @db.Uuid
   session        Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   authorId       String      @db.Uuid
   authorUsername String
@@ -134,7 +172,7 @@ model ChatMessage {
 
 model Note {
   id             String         @id @default(uuid()) @db.Uuid
-  sessionId      String
+  sessionId      String         @db.Uuid
   session        Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   authorId       String         @db.Uuid
   authorUsername String
@@ -185,4 +223,18 @@ enum CharacterStatus {
   DEAD
   LEFT
   UNKNOWN
+}
+
+enum RoomType {
+  MAIN
+  GROUP
+  PRIVATE
+}
+
+enum PresenceState {
+  ONLINE
+  TYPING
+  SPEAKING
+  IDLE
+  OFFLINE
 }

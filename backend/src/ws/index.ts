@@ -22,10 +22,16 @@ import {
   audioHandlers,
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
+import { PresenceState } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'
+import {
+  ensurePresenceRecoveredFromSnapshots,
+  snapshotSessionPresence,
+  updatePresenceState,
+} from '@/core/rooms/room.service'
 
 const AUTH_TIMEOUT_MS = 5000
 const MAX_WS_MESSAGE_SIZE = 64 * 1024
@@ -63,12 +69,39 @@ export class WebSocketManager {
   private wss: any
   private dispatcher: EventDispatcher
   private connections: Map<string, ExtendedWebSocket> = new Map()
+  private snapshotIntervalId: ReturnType<typeof setInterval>
 
   constructor(httpServer: HTTPServer) {
     this.wss = new WebSocketServer({ server: httpServer })
     this.dispatcher = new EventDispatcher()
     this.setupDispatchers()
     this.setupServer()
+
+    this.snapshotIntervalId = setInterval(() => {
+      void this.persistPresenceSnapshots()
+    }, 30000)
+  }
+
+  private async persistPresenceSnapshots(): Promise<void> {
+    const sessions = new Set<UUID>()
+
+    this.connections.forEach((ws) => {
+      const sessionId = ws.connectionState?.sessionId
+      if (sessionId && sessionId !== UNASSIGNED_SESSION_ID) {
+        sessions.add(sessionId)
+      }
+    })
+
+    for (const sessionId of sessions) {
+      try {
+        await snapshotSessionPresence(sessionId)
+      } catch (error) {
+        logger.warn('ws', 'Failed to persist presence snapshot', {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
   }
 
   /**
@@ -205,6 +238,28 @@ export class WebSocketManager {
         role: payload.role,
       })
     )
+
+    if (connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
+      void this.recoverAndMarkConnected(connectionState.sessionId, payload)
+    }
+  }
+
+  private async recoverAndMarkConnected(sessionId: UUID, payload: TokenPayload): Promise<void> {
+    try {
+      await ensurePresenceRecoveredFromSnapshots(sessionId)
+      await updatePresenceState({
+        sessionId,
+        userId: payload.userId as UUID,
+        username: payload.username,
+        state: PresenceState.ONLINE,
+      })
+    } catch (error) {
+      logger.warn('ws', 'Failed to recover presence for connection', {
+        sessionId,
+        userId: payload.userId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
   /**
@@ -240,6 +295,7 @@ export class WebSocketManager {
 
       if (ws.connectionState && ws.connectionState.sessionId === UNASSIGNED_SESSION_ID) {
         ws.connectionState.sessionId = event.sessionId
+        void this.recoverAndMarkConnected(event.sessionId, ws.authPayload)
       }
 
       // Dispatch event
@@ -346,6 +402,15 @@ export class WebSocketManager {
     const connectionId = ws.connectionState.connectionId
     logger.info('ws', `Client disconnected: ${connectionId}`)
 
+    if (ws.authPayload && ws.connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
+      void updatePresenceState({
+        sessionId: ws.connectionState.sessionId,
+        userId: ws.authPayload.userId as UUID,
+        username: ws.authPayload.username,
+        state: PresenceState.OFFLINE,
+      })
+    }
+
     // Keep connection state for reconnection recovery (timeout after 30 mins)
     // For now, just remove it
     this.connections.delete(connectionId)
@@ -376,6 +441,7 @@ export class WebSocketManager {
    */
   close(): Promise<void> {
     return new Promise((resolve) => {
+      clearInterval(this.snapshotIntervalId)
       this.wss.close(() => {
         resolve()
       })

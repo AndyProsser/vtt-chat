@@ -19,6 +19,7 @@ import { isValidSessionName, isValidUUID } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/core/chat/system-messages'
+import { applySessionStateRoomTransition } from '@/core/rooms/room.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -222,7 +223,53 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
       })
     }
 
+    const users = await getSessionUsers(id as UUID)
+    const transition = await applySessionStateRoomTransition({
+      sessionId: session.id,
+      dmId: session.dmId,
+      nextState: state as SessionState,
+      users: users.map((member) => ({
+        id: member.id,
+        username: member.username,
+      })),
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'ROOM:SESSION_TRANSITION_APPLIED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: transition.targetRoomId,
+        timestamp: Date.now(),
+        payload: {
+          previousState: previousSession?.state || null,
+          nextState: state,
+          movedUsers: transition.movedUsers,
+          targetState: transition.targetState,
+          mainRoom: {
+            id: transition.mainRoomId,
+            name: transition.mainRoomName,
+            roomType: 'MAIN',
+          },
+          greenRoom: {
+            id: transition.greenRoomId,
+            name: transition.greenRoomName,
+            roomType: 'GROUP',
+          },
+          targetRoomId: transition.targetRoomId,
+          targetRoomName: transition.targetRoomName,
+          users: users.map((member) => ({
+            userId: member.id,
+            username: member.username,
+          })),
+        },
+      })
+    }
+
     const boundaryType =
       state === 'ACTIVE'
         ? previousSession?.state === 'PAUSED'

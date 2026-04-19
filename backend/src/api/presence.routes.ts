@@ -1,0 +1,159 @@
+import { Router, Request, Response, NextFunction } from 'express'
+import { ErrorCode, PresenceState, isValidPresenceState, isValidUUID } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
+import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
+import {
+  ensurePresenceRecoveredFromSnapshots,
+  getSessionPresence,
+  getRoom,
+  joinRoom,
+  snapshotSessionPresence,
+  updatePresenceState,
+} from '@/core/rooms/room.service'
+import type { WebSocketManager } from '@/ws'
+
+const router = Router()
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const token = extractTokenFromHeader(req.headers.authorization)
+  if (!token) {
+    return res
+      .status(401)
+      .json({ code: ErrorCode.UNAUTHORIZED, message: 'Missing Authorization header' })
+  }
+
+  const user = verifyToken(token)
+  if (!user) {
+    return res
+      .status(401)
+      .json({ code: ErrorCode.UNAUTHORIZED, message: 'Authentication required' })
+  }
+
+  ;(req as any).user = user
+  next()
+}
+
+function internalErrorResponse(res: Response) {
+  return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
+}
+
+router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId } = req.params
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  try {
+    const presence = await getSessionPresence(sessionId as UUID)
+    return res.status(200).json({ presence })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { sessionId } = req.params
+  const { state, roomId, privateRoomId } = req.body || {}
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  if (!isValidPresenceState(state)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid presence state' })
+  }
+
+  if (roomId !== undefined && roomId !== null && !isValidUUID(roomId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
+  }
+
+  if (privateRoomId !== undefined && privateRoomId !== null && !isValidUUID(privateRoomId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid privateRoomId' })
+  }
+
+  try {
+    if (roomId) {
+      const room = await getRoom(roomId as UUID)
+      if (!room) {
+        return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+      }
+
+      await joinRoom({
+        sessionId: sessionId as UUID,
+        roomId: room.id,
+        userId: user.userId as UUID,
+        username: user.username,
+        state,
+      })
+    }
+
+    const previousPresence = await getSessionPresence(sessionId as UUID)
+    const previous = previousPresence.find((p) => p.userId === (user.userId as UUID))
+
+    const updated = await updatePresenceState({
+      sessionId: sessionId as UUID,
+      userId: user.userId as UUID,
+      username: user.username,
+      state,
+      primaryRoomId: roomId as UUID | undefined,
+      privateRoomId: privateRoomId as UUID | undefined,
+    })
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'PRESENCE:STATE_CHANGED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: sessionId as UUID,
+        roomId: updated.primaryRoomId || null,
+        timestamp: updated.lastSeenAt,
+        payload: {
+          roomId: updated.primaryRoomId || null,
+          userId: updated.userId,
+          username: updated.username,
+          presence: updated.state,
+          previousState: previous?.state || PresenceState.OFFLINE,
+          newState: updated.state,
+          changedAt: updated.lastSeenAt,
+        },
+      }
+
+      wsManager.broadcastEventToSession(sessionId as UUID, event)
+    }
+
+    return res.status(200).json({ presence: updated })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+router.post('/:sessionId/recover', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId } = req.params
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  try {
+    const recovered = await ensurePresenceRecoveredFromSnapshots(sessionId as UUID)
+    const snapshotCount = await snapshotSessionPresence(sessionId as UUID)
+    const presence = await getSessionPresence(sessionId as UUID)
+
+    return res.status(200).json({
+      recoveredFromSnapshots: recovered,
+      snapshotCount,
+      presence,
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+export default router

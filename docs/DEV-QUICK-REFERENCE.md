@@ -159,6 +159,61 @@ Before submitting a PR:
 
 ---
 
+## 🛠 Prisma Local Recovery (Copy-Paste)
+
+Use this when local Prisma migrations fail with `P1010` (access denied) or `P3018` (failed migration / drift).
+
+Warning:
+
+- Local/dev only.
+- This will drop and recreate local DB `vtt-chat`.
+- All local DB data is lost.
+
+1. Verify local postgres login:
+
+```bash
+export PGPASSWORD='<postgres-password>'
+psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
+```
+
+2. Ensure Prisma CLI reads env:
+
+```ts
+// backend/prisma.config.ts
+import 'dotenv/config'
+```
+
+3. Set backend DB URL:
+
+```dotenv
+# backend/.env
+DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
+```
+
+4. Reset local DB:
+
+```bash
+dropdb -h localhost -U postgres --if-exists vtt-chat
+createdb -h localhost -U postgres -O postgres vtt-chat
+```
+
+5. Apply migrations:
+
+```bash
+cd backend
+npx prisma migrate dev --name stage6_rooms_presence_snapshots
+```
+
+6. Verify:
+
+```bash
+npx prisma migrate status
+npm run build
+npm test -- --run
+```
+
+---
+
 ## 📁 File & Folder Conventions
 
 ### **Events**

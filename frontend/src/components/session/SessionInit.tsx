@@ -7,10 +7,17 @@
 import { useEffect, useState } from 'react'
 import { SessionState } from '@shared'
 import type { UUID, Role } from '@shared'
+import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
+import type { Session as SessionRecord } from '../../state/sessionSlice'
+import type {
+  Room as RoomRecord,
+  RoomUser as RoomMember,
+  SessionPresence as PresenceRecord,
+} from '../../state/roomSlice'
 
 interface SessionInitProps {
   apiUrl: string
@@ -28,6 +35,37 @@ interface CampaignSummary {
   currentDmId: UUID
 }
 
+interface ApiRoom {
+  id: UUID
+  sessionId: UUID
+  name: string
+  type: RoomType
+  createdBy: UUID
+  createdAt: number
+}
+
+interface ApiPresence {
+  sessionId: UUID
+  userId: UUID
+  username: string
+  primaryRoomId?: UUID
+  privateRoomId?: UUID
+  state: PresenceState
+  lastSeenAt: number
+}
+
+function formatTransitionNotice(params: {
+  nextState: SessionState
+  movedUsers: number
+  targetRoomName: string
+  targetState: PresenceState
+}): string {
+  const stateLabel = params.nextState.toLowerCase()
+  const usersLabel = params.movedUsers === 1 ? '1 user' : `${params.movedUsers} users`
+  const targetStateLabel = params.targetState.toLowerCase()
+  return `Session ${stateLabel}: moved ${usersLabel} to ${params.targetRoomName} (${targetStateLabel}).`
+}
+
 export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: SessionInitProps) {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState<UUID | ''>('')
@@ -43,6 +81,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [isCreating, setIsCreating] = useState(false)
   const [isLoadingSessions, setIsLoadingSessions] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
+  const [activeTransitionEventId, setActiveTransitionEventId] = useState<string | null>(null)
+  const [isTransitionToastVisible, setIsTransitionToastVisible] = useState(false)
 
   // WebSocket connection
   const {
@@ -58,8 +99,68 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   // Store
   const store = useStore()
   const { sessions, currentSessionId } = store
-  const sessionList = Object.values(sessions)
+  const typedSessions = sessions as Record<UUID, SessionRecord>
+  const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] : null
+  const typedRoomsBySession = store.rooms as Record<UUID, Record<UUID, RoomRecord>>
+  const typedPresenceBySession = store.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
+  const typedRoomMembers = store.roomMembers as Record<UUID, RoomMember[]>
+  const currentRooms: RoomRecord[] = currentSession
+    ? Object.values(typedRoomsBySession[currentSession.id] || {})
+    : []
+  const currentPresence: PresenceRecord[] = currentSession
+    ? Object.values(typedPresenceBySession[currentSession.id] || {})
+    : []
+  const currentTransitionNotice = currentSession
+    ? store.sessionTransitionNotice[currentSession.id]
+    : undefined
+
+  const activeTransitionNotice =
+    currentTransitionNotice && currentTransitionNotice.eventId === activeTransitionEventId
+      ? currentTransitionNotice
+      : undefined
+
+  const hideTransitionToast = () => {
+    setIsTransitionToastVisible(false)
+
+    const closingEventId = activeTransitionEventId
+    if (!closingEventId) {
+      return
+    }
+
+    setTimeout(() => {
+      setDismissedTransitionEventId(closingEventId)
+      setActiveTransitionEventId((prev) => (prev === closingEventId ? null : prev))
+    }, 180)
+  }
+
+  useEffect(() => {
+    if (!currentTransitionNotice) {
+      return
+    }
+
+    if (currentTransitionNotice.eventId === dismissedTransitionEventId) {
+      return
+    }
+
+    setDismissedTransitionEventId((prev) =>
+      prev === currentTransitionNotice.eventId ? prev : null
+    )
+    setActiveTransitionEventId(currentTransitionNotice.eventId)
+
+    const enterId = requestAnimationFrame(() => {
+      setIsTransitionToastVisible(true)
+    })
+
+    const timeoutId = setTimeout(() => {
+      hideTransitionToast()
+    }, 6000)
+
+    return () => {
+      cancelAnimationFrame(enterId)
+      clearTimeout(timeoutId)
+    }
+  }, [currentTransitionNotice, dismissedTransitionEventId, activeTransitionEventId])
 
   useEffect(() => {
     const loadCampaigns = async () => {
@@ -134,6 +235,64 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     void loadCampaignSessions()
   }, [apiUrl, selectedCampaignId, token, store])
+
+  useEffect(() => {
+    if (!currentSession || wsState !== 'connected') {
+      return
+    }
+
+    const loadPresenceAndRooms = async () => {
+      try {
+        const [roomsResponse, presenceResponse] = await Promise.all([
+          fetch(`${apiUrl}/api/rooms/${currentSession.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${apiUrl}/api/presence/${currentSession.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ])
+
+        if (!roomsResponse.ok || !presenceResponse.ok) {
+          return
+        }
+
+        const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
+        const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
+
+        store.replaceSessionRooms(
+          currentSession.id,
+          (roomsPayload.rooms || []).map((room) => ({
+            id: room.id,
+            sessionId: room.sessionId,
+            name: room.name,
+            type: room.type,
+            createdAt: room.createdAt,
+            createdBy: room.createdBy,
+          }))
+        )
+
+        store.replaceSessionPresence(
+          currentSession.id,
+          (presencePayload.presence || []).map((entry) => ({
+            userId: entry.userId,
+            username: entry.username,
+            state: entry.state,
+            primaryRoomId: entry.primaryRoomId,
+            privateRoomId: entry.privateRoomId,
+            lastSeenAt: entry.lastSeenAt,
+          }))
+        )
+      } catch {
+        // Event-driven websocket updates continue to flow even if this refresh fails.
+      }
+    }
+
+    void loadPresenceAndRooms()
+  }, [apiUrl, currentSession, token, wsState, store])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -370,6 +529,61 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             <strong>WS Error:</strong> {wsError.message}
           </p>
         )}
+
+        <div
+          style={{
+            marginTop: '0.75rem',
+            height: '52px',
+            position: 'relative',
+          }}
+        >
+          {activeTransitionNotice && (
+            <div
+              role="status"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                padding: '0.65rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid #7dd3fc',
+                backgroundColor: '#e0f2fe',
+                color: '#0c4a6e',
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                alignItems: 'center',
+                fontSize: '0.82rem',
+                opacity: isTransitionToastVisible ? 1 : 0,
+                transform: isTransitionToastVisible ? 'translateY(0px)' : 'translateY(-6px)',
+                transition: 'opacity 180ms ease, transform 180ms ease',
+              }}
+            >
+              <span>
+                {formatTransitionNotice({
+                  nextState: activeTransitionNotice.nextState,
+                  movedUsers: activeTransitionNotice.movedUsers,
+                  targetRoomName: activeTransitionNotice.targetRoomName,
+                  targetState: activeTransitionNotice.targetState,
+                })}
+              </span>
+              <button
+                type="button"
+                onClick={hideTransitionToast}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#0c4a6e',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  padding: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div
@@ -820,6 +1034,89 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           }}
         >
           No sessions available yet.
+        </div>
+      )}
+
+      {currentSession && (
+        <div
+          style={{
+            padding: '1.5rem',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            backgroundColor: '#fff',
+            marginTop: '1rem',
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Presence and Rooms</h3>
+          <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+            Live updates from room/presence websocket events. Auto-refresh runs when WS reconnects.
+          </p>
+
+          <div
+            style={{
+              display: 'grid',
+              gap: '0.75rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            }}
+          >
+            {currentRooms.map((room) => {
+              const members: RoomMember[] = typedRoomMembers[room.id] || []
+              return (
+                <div
+                  key={room.id}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    padding: '0.75rem',
+                    backgroundColor: '#f8fafc',
+                  }}
+                >
+                  <p style={{ margin: 0, fontWeight: '600' }}>
+                    {room.name}{' '}
+                    <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({room.type})</span>
+                  </p>
+                  <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    Members: {members.length}
+                  </p>
+                  {members.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>No members</p>
+                  ) : (
+                    members.map((member) => (
+                      <p
+                        key={`${room.id}:${member.userId}`}
+                        style={{ margin: '0.2rem 0', fontSize: '0.8rem' }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            marginRight: '0.4rem',
+                            backgroundColor:
+                              member.presenceState === PresenceState.ONLINE
+                                ? '#22c55e'
+                                : member.presenceState === PresenceState.SPEAKING
+                                  ? '#0ea5e9'
+                                  : member.presenceState === PresenceState.TYPING
+                                    ? '#f59e0b'
+                                    : member.presenceState === PresenceState.OFFLINE
+                                      ? '#ef4444'
+                                      : '#94a3b8',
+                          }}
+                        />
+                        {member.username || member.userId} - {member.presenceState}
+                      </p>
+                    ))
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
+            Total tracked users: {currentPresence.length}
+          </p>
         </div>
       )}
 

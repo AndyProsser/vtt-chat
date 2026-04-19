@@ -464,6 +464,58 @@ Add exception manually or use a domain with proper ACME certificates.
   docker exec vttchat-backend curl http://livekit:7880/health
   ```
 
+### Prisma local migration failure recovery (P1010 / P3018)
+
+Use this flow when Prisma cannot access the DB (`P1010`) or a migration failed and drift was detected (`P3018`) in local development.
+
+Important:
+
+- This reset flow is for local/dev only.
+- It drops and recreates the local `vtt-chat` database.
+- All local DB data will be lost.
+
+1. Confirm Postgres access with your local superuser password:
+
+```
+export PGPASSWORD='<postgres-password>'
+psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
+```
+
+2. Ensure backend Prisma CLI can read `DATABASE_URL` from backend env:
+
+```
+# backend/prisma.config.ts should include:
+# import 'dotenv/config'
+```
+
+3. Set local backend DB URL in `backend/.env`:
+
+```
+DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
+```
+
+4. Reset local DB and recreate it cleanly:
+
+```
+dropdb -h localhost -U postgres --if-exists vtt-chat
+createdb -h localhost -U postgres -O postgres vtt-chat
+```
+
+5. Apply migrations:
+
+```
+cd backend
+npx prisma migrate dev --name stage6_rooms_presence_snapshots
+```
+
+6. Verify schema/tooling health:
+
+```
+npx prisma migrate status
+npm run build
+npm test -- --run
+```
+
 ---
 
 # 🔐 10. Security Notes

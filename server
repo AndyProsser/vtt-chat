@@ -202,7 +202,7 @@ services:
       - vttnet
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: vttchat-postgres
     restart: unless-stopped
     environment:
@@ -215,7 +215,7 @@ services:
       - vttnet
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: vttchat-redis
     restart: unless-stopped
     command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]

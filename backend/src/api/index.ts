@@ -6,6 +6,8 @@ import adminRoutes from './admin.routes'
 import notesRoutes from './notes.routes'
 import campaignRoutes from './campaign.routes'
 import usersRoutes from './users.routes'
+import roomsRoutes from './rooms.routes'
+import presenceRoutes from './presence.routes'
 
 const router = Router()
 
@@ -31,6 +33,8 @@ router.use('/admin', adminRoutes)
 router.use('/notes', notesRoutes)
 router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
+router.use('/rooms', roomsRoutes)
+router.use('/presence', presenceRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
@@ -49,8 +53,6 @@ function notImplemented(domain: string) {
 // Stubs for future stages
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
 router.use('/audio', (_req: Request, res: Response) => notImplemented('audio')(_req, res))
-router.use('/presence', (_req: Request, res: Response) => notImplemented('presence')(_req, res))
-router.use('/rooms', (_req: Request, res: Response) => notImplemented('rooms')(_req, res))
 router.use('/export', (_req: Request, res: Response) => notImplemented('export')(_req, res))
 
 export default router
