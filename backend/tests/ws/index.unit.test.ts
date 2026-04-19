@@ -67,9 +67,7 @@ vi.mock('ws', () => {
         cb?.()
       })
 
-      constructor(_opts: any) {
-        serverInstances.push(this)
-      }
+      constructor(_opts: any) {}
 
       on(event: string, handler: (...args: any[]) => void) {
         this.handlers.set(event, handler)

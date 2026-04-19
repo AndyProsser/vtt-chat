@@ -9,6 +9,7 @@ import usersRoutes from './users.routes'
 import roomsRoutes from './rooms.routes'
 import presenceRoutes from './presence.routes'
 import liveKitRoutes from './livekit.routes'
+import audioRoutes from './audio.routes'
 
 const router = Router()
 
@@ -37,6 +38,7 @@ router.use('/users', usersRoutes)
 router.use('/rooms', roomsRoutes)
 router.use('/presence', presenceRoutes)
 router.use('/livekit', liveKitRoutes)
+router.use('/audio', audioRoutes)
 
 /**
  * Placeholder routes (not yet implemented)
@@ -54,7 +56,6 @@ function notImplemented(domain: string) {
 
 // Stubs for future stages
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
-router.use('/audio', (_req: Request, res: Response) => notImplemented('audio')(_req, res))
 router.use('/export', (_req: Request, res: Response) => notImplemented('export')(_req, res))
 
 export default router

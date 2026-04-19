@@ -15,7 +15,7 @@ Last updated: 2026-04-20
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, Stage 8 partially complete, Stages 9-13 now defined as planned remaining scope**.
+Current overall status: **Stages 0-7 complete (baseline), Stage 8 partially complete, Stages 9-13 now defined as planned remaining scope**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -23,7 +23,7 @@ Current overall status: **Stages 0-6 complete, Stage 7 partially implemented, St
 - Admin shell and readonly telemetry baseline are now implemented.
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice now includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
-- Audio/livekit vertical slice is now partially implemented (token issuance route + client/audio hooks), with runtime integration and hardening still pending.
+- Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), with advanced hardening/e2e still pending.
 - Frontend command-center UI and admin operations UI scope are now explicitly tracked as post-Stage 8 delivery stages.
 
 Latest verification:
@@ -32,26 +32,26 @@ Latest verification:
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, and store system wiring.
 - Current frontend verification: `6` test files / `15` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `12` passed + `1` skipped test files; `48` passing tests + `6` todo markers (`54` total).
+- Current backend verification: `13` passed + `1` skipped test files; `53` passing tests + `6` todo markers (`59` total).
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion                | Immediate focus                                       |
-| ----- | ----------------------------------- | ----------- | ------------------------- | ----------------------------------------------------- |
-| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline          |
-| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                       |
-| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                    |
-| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work           |
-| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                     |
-| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                   |
-| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                       |
-| 7     | Audio + LiveKit                     | In progress | 🟨 Partial                | Runtime UI integration + full WS handler registration |
-| 8     | Admin + ops baseline                | In progress | 🟨 Partial                | Enforce admin auth + durable telemetry/audit          |
-| 9     | Frontend command-center completion  | Planned     | ⬜ Not started (as stage) | Persona shell/tooling completion                      |
-| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows             |
-| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                  |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                      |
-| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync              |
+| Stage | Area                                | Status      | Completion                | Immediate focus                              |
+| ----- | ----------------------------------- | ----------- | ------------------------- | -------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline |
+| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability              |
+| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity           |
+| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work  |
+| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up            |
+| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish          |
+| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening              |
+| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening     |
+| 8     | Admin + ops baseline                | In progress | 🟨 Partial                | Enforce admin auth + durable telemetry/audit |
+| 9     | Frontend command-center completion  | Planned     | ⬜ Not started (as stage) | Persona shell/tooling completion             |
+| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows    |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability         |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows             |
+| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync     |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -236,7 +236,7 @@ Exit criteria:
 
 ### Stage 7: Audio and LiveKit Integration
 
-Status: **In progress (partial implementation)**
+Status: **Complete (baseline)**
 
 Goal:
 
@@ -249,18 +249,20 @@ Completed so far:
 - LiveKit token generation service is implemented (server SDK integration + token grant construction).
 - Frontend LiveKit connection hook is implemented (token fetch, connect/disconnect, participant/track lifecycle).
 - Frontend audio engine hook is implemented with WebAudio graph setup and effect stack application logic.
+- Frontend runtime mounts audio/livekit integration through `AudioPanel` in the active session room path.
 - Environment configuration keys exist for LiveKit integration.
+- Backend audio control API routes are now implemented and mounted (`/api/audio/presets`, `/api/audio/environment`, `/api/audio/dm-override/apply`, `/api/audio/dm-override/remove`, `/api/audio/state/:sessionId`).
+- Backend API tests now cover role gating and websocket event emission for audio control routes.
 
 Remaining scope:
 
-- Wire LiveKit/audio hooks into active frontend session UI flow (currently implemented but not mounted in runtime UI path).
-- Complete backend WS audio handler registration for the full audio event set (`EFFECT_REMOVED`, `PRESET_LOADED`, `DM_OVERRIDE_REMOVED` are not currently dispatcher-registered).
-- Implement room-scoped audio controls + DM override enforcement with persistent state/audit semantics.
-- Add end-to-end integration tests for token flow and multi-client audio behavior beyond event-envelope shape validation.
+- Persist room-scoped audio control state and DM overrides for durable restart recovery.
+- Add multi-client end-to-end validation for token flow, audio event fanout, and override behavior.
+- Expand audit/telemetry detail for audio control mutations.
 
 Exit criteria:
 
-- Stable audio baseline without advanced effects dependency.
+- Stable audio baseline without advanced effects dependency. ✅
 
 ---
 
@@ -526,7 +528,7 @@ The following references support the corrected stage labels and current model te
 | ------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Stage 5 (Notes) vertical slice              | Complete                                  | Notes routes mounted: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts). Persisted service/repository flow: [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [backend/src/repositories/notes.repository.ts](backend/src/repositories/notes.repository.ts). Frontend panel/card wiring and custom-share selector UX: [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx), [frontend/src/components/notes/NoteCard.tsx](frontend/src/components/notes/NoteCard.tsx), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Tests: [backend/tests/core/notes/notes-visibility.test.ts](backend/tests/core/notes/notes-visibility.test.ts), [backend/tests/integration/notes-routes-ws.integration.test.ts](backend/tests/integration/notes-routes-ws.integration.test.ts). Publish audit hook: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Stage 6 (Presence and Rooms) vertical slice | Complete                                  | Mounted APIs: [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts), [backend/src/api/presence.routes.ts](backend/src/api/presence.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Redis-first room/presence service + transition orchestration: [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts), [backend/src/infra/redis/index.ts](backend/src/infra/redis/index.ts). DB snapshots + schema: [backend/src/repositories/room.repository.ts](backend/src/repositories/room.repository.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Frontend sync/indicators and atomic reconnect hydration: [frontend/src/state/roomSlice.ts](frontend/src/state/roomSlice.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx). Tests: [backend/tests/integration/room-service-recovery.integration.test.ts](backend/tests/integration/room-service-recovery.integration.test.ts), [backend/tests/integration/session-room-transition.integration.test.ts](backend/tests/integration/session-room-transition.integration.test.ts), [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Validation: `prisma migrate status` reports "Database schema is up to date". |
-| Stage 7 (Audio and LiveKit) vertical slice  | In progress (partial implementation)      | Token route and service are implemented: [backend/src/api/livekit.routes.ts](backend/src/api/livekit.routes.ts), [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts). Frontend lifecycle/audio hooks are implemented: [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts). WS audio handlers exist, but dispatcher registration is partial: [backend/src/ws/handlers/audio.handler.ts](backend/src/ws/handlers/audio.handler.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Tests currently validate event envelope coverage: [backend/tests/contracts/audio-livekit-integration.test.ts](backend/tests/contracts/audio-livekit-integration.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Stage 7 (Audio and LiveKit) vertical slice  | Complete (baseline)                       | Token route and service are implemented: [backend/src/api/livekit.routes.ts](backend/src/api/livekit.routes.ts), [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts). Frontend lifecycle/audio hooks are implemented and runtime-mounted via [frontend/src/components/audio/AudioPanel.tsx](frontend/src/components/audio/AudioPanel.tsx) and [frontend/src/App.tsx](frontend/src/App.tsx): [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts). WS audio handlers are dispatcher-registered: [backend/src/ws/handlers.ts](backend/src/ws/handlers.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Audio control API routes are implemented and mounted: [backend/src/api/audio.routes.ts](backend/src/api/audio.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Tests validate envelope + route role gating/emission behavior: [backend/tests/contracts/audio-livekit-integration.test.ts](backend/tests/contracts/audio-livekit-integration.test.ts), [backend/tests/api/audio-routes.test.ts](backend/tests/api/audio-routes.test.ts).                                                                                                                                                                                                                                                                                      |
 | Stage 8 (Admin and Ops) security closure    | In progress (guardrails not yet enforced) | Telemetry endpoints are implemented and mounted: [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Admin auth primitives exist: [backend/src/infra/http/middleware.ts](backend/src/infra/http/middleware.ts), [backend/src/utils/auth.ts](backend/src/utils/auth.ts). Current gap: admin middleware is not applied to mounted admin telemetry routes and frontend auth remains baseline-disabled: [admin/src/store.ts](admin/src/store.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Stage 4 chat boundary/system behavior       | Complete                                  | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/core/chat/chat-system-messages.test.ts](backend/tests/core/chat/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Character status field terminology          | Aligned                                   | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/api/campaign-users-api.test.ts](backend/tests/api/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -552,10 +554,10 @@ The following references support the corrected stage labels and current model te
 - 2026-04: UI and architecture docs consolidated, expanded, and cross-linked.
 - 2026-04: Admin UI design integrated into documentation set.
 - 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.
-- 2026-04: Stage 7 moved from scaffolded to partial implementation: LiveKit token route/service and frontend livekit/audio hooks are now present; runtime UI mounting and full WS audio registration remain pending.
+- 2026-04: Stage 7 baseline completed: LiveKit token route/service, runtime-mounted frontend livekit/audio hooks, dispatcher-registered WS audio handlers, and concrete `/api/audio` control routes with role-gated event emission tests.
 - 2026-04: Frontend test baseline expanded and centralized under `frontend/src/tests` with real suites for app shell, websocket dispatcher wiring, useWebSocket, useLiveKit race-safety behavior, and useAudioEngine behavior.
 - 2026-04: Backend test coverage expanded and reorganized into `api`, `integration`, `core`, `ws`, and `contracts` domains with normalized `*.integration.test.ts` naming for integration suites.
-- 2026-04: Backend circular dependency refactoring completed: `SessionLogsService` extracted, `RoomService`/`RoomRecoveryService`/`PresenceService` converted to dependency injection pattern. Latest verification now reports frontend `6` files / `15` tests passing and backend `12` passed + `1` skipped files with `48` passing tests + `6` todo markers; monorepo builds cleanly. Infrastructure hardening improves testability and maintainability.
+- 2026-04: Backend circular dependency refactoring completed: `SessionLogsService` extracted, `RoomService`/`RoomRecoveryService`/`PresenceService` converted to dependency injection pattern. Latest verification now reports frontend `6` files / `15` tests passing and backend `13` passed + `1` skipped files with `53` passing tests + `6` todo markers; monorepo builds cleanly. Infrastructure hardening improves testability and maintainability.
 - 2026-04: Roadmap expanded to track remaining full-project scope beyond Stage 8, including frontend command-center completion, admin feature completion, knowledge surfaces (metadata/journal/history/search), import/export + recordings metadata, and extension bridge integration.
 
 ---
