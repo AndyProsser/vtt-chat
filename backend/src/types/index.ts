@@ -191,7 +191,9 @@ export interface AuthToken {
 }
 
 export interface AdminAuthToken {
-  adminId: string
+  userId: string
+  username: string
+  adminRole: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
   iat: number
   exp: number
 }

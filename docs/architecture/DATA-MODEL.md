@@ -36,7 +36,7 @@ The schema is designed for:
 
 ## **User**
 
-Represents a real person.
+Represents a real person. A unified record for game users and system admins.
 
 Key points:
 
@@ -45,15 +45,35 @@ Key points:
 - Users may have global and per‑campaign settings
 - Users may be **guest accounts** created via the browser extension invite flow
 - Guest users can be upgraded to full accounts without losing any campaign history
+- Users may have **admin roles** for system operations. All DMs automatically have `adminRole: CAMPAIGN_DM`
+- Admin roles are independent of game roles and are set via promotion by Super Admins or automatic assignment for DMs
 
 **Fields include:**
 
-- `id`, `email`, `displayName`, `avatarUrl`
+- `id`, `email`, `username`, `displayName`, `avatarUrl`
+- `role` — enum: `DM` | `PLAYER` | `SPECTATOR` | `SYSTEM` (game role, independent of admin privileges)
 - `authType` — enum: `FULL` (has password) | `GUEST` (no password, created via extension)
-- `passwordHash` — null for guest accounts
+- `password` — bcrypt hash; null for guest accounts; required for admin operations
+- `adminRole` — enum (nullable): `SUPER_ADMIN` | `ADMIN` | `CAMPAIGN_DM` | `READ_ONLY` | null
+  - **`SUPER_ADMIN`**: Full system access. Create/manage admins, delete users/campaigns, access all telemetry, system settings.
+  - **`ADMIN`**: Moderate users, manage campaigns, view telemetry, manage settings. Cannot perform destructive ops (permanent deletes).
+  - **`CAMPAIGN_DM`**: Auto-granted to all DMs. Campaign-level ops only (backup, export, import, member management, campaign telemetry). Cannot access system-wide operations.
+  - **`READ_ONLY`**: View all data (users, campaigns, telemetry, logs) but cannot modify anything.
+  - **null**: No admin privileges (regular user).
+- `isActive` — boolean; if false, user cannot login and loses admin access
 - `createdAt`, `updatedAt`
 
-See [../extension/GUEST-AUTH.md](../extension/GUEST-AUTH.md) for the auth flow that creates and manages guest users.
+**Admin Access Model:**
+
+- First user to call `/api/admin/setup` becomes `SUPER_ADMIN` (only allowed if no admins exist)
+- Super Admins can promote any existing User to any admin role via `POST /api/admin/users/:userId/promote`
+- All users with `role: DM` automatically have `adminRole: CAMPAIGN_DM` (no promotion needed)
+- DMs see admin console after first DM session; access scoped to their campaigns only
+- Admins authenticate via `POST /api/admin/login` using username + password; receive admin JWT token
+- Admin token includes `adminRole` claim for permission checking on protected routes
+
+See [./ADMIN-ARCHITECTURE.md](./ADMIN-ARCHITECTURE.md) for full admin role permissions and access model.
+See [../extension/GUEST-AUTH.md](../extension/GUEST-AUTH.md) for the guest auth flow that creates guest users.
 
 ---
 

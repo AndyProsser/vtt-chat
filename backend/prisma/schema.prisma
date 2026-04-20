@@ -73,7 +73,10 @@ model User {
   username      String               @unique
   displayName   String
   avatarUrl     String?
+  password      String?              // null for guest accounts; required for admin operations
   role          Role                 @default(PLAYER)
+  adminRole     AdminRole?           // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive      Boolean              @default(true)
   campaignsDm   Campaign[]           @relation("CampaignCurrentDm")
   campaignLinks CampaignMembership[]
   characters    Character[]
@@ -81,6 +84,8 @@ model User {
   updatedAt     DateTime             @updatedAt
 
   @@index([username])
+  @@index([email])
+  @@index([adminRole])
 }
 
 model Campaign {
@@ -208,17 +213,12 @@ model SessionLog {
   @@index([createdAt])
 }
 
-model AdminUser {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  username  String   @unique
-  password  String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@index([email])
-  @@index([username])
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  CAMPAIGN_DM
+  READ_ONLY
 }
 
 enum Role {

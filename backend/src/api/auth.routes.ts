@@ -12,8 +12,11 @@ import { createRateLimit } from '@/infra/http/rate-limit'
 import type { UUID } from '@shared'
 import { ErrorCode, isValidUsername } from '@shared'
 import { upsertUserAccount } from '@/repositories/campaign.repository'
+import { getPrismaClient } from '@/infra/db'
+import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 const loginRateLimit = createRateLimit({
   windowMs: 5 * 60 * 1000,
@@ -51,6 +54,37 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
   ;(req as any).user = payload
 
   next()
+}
+
+async function getUserAuthContext(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      adminRole: true,
+      isActive: true,
+      password: true,
+      displayName: true,
+      avatarUrl: true,
+      email: true,
+    },
+  })
+
+  if (!user) {
+    return null
+  }
+
+  const isFullAccount = Boolean(user.password)
+  const hasAdminAccess = Boolean(user.adminRole) || user.role === 'DM'
+
+  return {
+    ...user,
+    isFullAccount,
+    hasAdminAccess,
+    requiresUpgradeForAdmin: !isFullAccount,
+  }
 }
 
 /**
@@ -156,11 +190,158 @@ router.get('/validate', authMiddleware, (req: Request, res: Response) => {
 router.get('/me', authMiddleware, (req: Request, res: Response) => {
   const user = (req as any).user
 
+  getUserAuthContext(user.userId)
+    .then((dbUser) => {
+      if (!dbUser) {
+        res.status(404).json({
+          code: 'USER_NOT_FOUND',
+          message: 'User not found',
+        })
+        return
+      }
+
+      res.status(200).json({
+        id: dbUser.id,
+        username: dbUser.username,
+        role: dbUser.role,
+        sessionId: user.sessionId || null,
+        adminRole: dbUser.adminRole,
+        hasAdminAccess: dbUser.hasAdminAccess,
+        isFullAccount: dbUser.isFullAccount,
+        requiresUpgradeForAdmin: dbUser.requiresUpgradeForAdmin,
+      })
+    })
+    .catch(() => {
+      res.status(500).json({
+        code: 'ME_LOOKUP_FAILED',
+        message: 'Failed to load current user profile',
+      })
+    })
+})
+
+/**
+ * POST /api/auth/handoff/admin
+ * Creates a short-lived one-time handoff token for frontend -> admin launch.
+ */
+router.post('/handoff/admin', authMiddleware, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const context = await getUserAuthContext(user.userId)
+
+  if (!context) {
+    res.status(404).json({
+      code: 'USER_NOT_FOUND',
+      message: 'User not found',
+    })
+    return
+  }
+
+  if (!context.isActive) {
+    res.status(403).json({
+      code: 'ACCOUNT_DEACTIVATED',
+      message: 'Account is deactivated',
+    })
+    return
+  }
+
+  if (!context.hasAdminAccess) {
+    res.status(403).json({
+      code: 'ADMIN_ACCESS_REQUIRED',
+      message: 'User does not have admin access',
+    })
+    return
+  }
+
+  if (!context.isFullAccount) {
+    res.status(403).json({
+      code: 'GUEST_UPGRADE_REQUIRED',
+      message: 'Upgrade to a full account before accessing admin',
+    })
+    return
+  }
+
+  const { handoffToken, expiresInSec } = issueHandoffToken({
+    userId: context.id,
+    username: context.username,
+    target: 'admin',
+  })
+
   res.status(200).json({
-    id: user.userId,
+    handoffToken,
+    expiresInSec,
+    redirectUrl: `/admin/launch?handoff=${handoffToken}`,
+  })
+})
+
+/**
+ * POST /api/auth/handoff/exchange
+ * Exchanges one-time handoff token for a user JWT (admin -> frontend launch).
+ */
+router.post('/handoff/exchange', async (req: Request, res: Response) => {
+  const handoffToken = String(req.body?.handoffToken || '').trim()
+  if (!handoffToken) {
+    res.status(400).json({
+      code: 'MISSING_HANDOFF_TOKEN',
+      message: 'handoffToken is required',
+    })
+    return
+  }
+
+  const consumed = consumeHandoffToken(handoffToken, 'app')
+  if (!consumed) {
+    res.status(401).json({
+      code: 'INVALID_HANDOFF_TOKEN',
+      message: 'Handoff token is invalid, expired, or already used',
+    })
+    return
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: consumed.userId },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      displayName: true,
+      avatarUrl: true,
+      isActive: true,
+      adminRole: true,
+      password: true,
+    },
+  })
+
+  if (!user || !user.isActive) {
+    res.status(403).json({
+      code: 'ACCOUNT_NOT_ALLOWED',
+      message: 'Account is unavailable for handoff',
+    })
+    return
+  }
+
+  if (!['DM', 'PLAYER', 'SPECTATOR'].includes(user.role)) {
+    res.status(403).json({
+      code: 'INVALID_ROLE',
+      message: 'Unsupported role for frontend authentication',
+    })
+    return
+  }
+
+  const token = createToken({
+    userId: user.id as UUID,
     username: user.username,
-    role: user.role,
-    sessionId: user.sessionId || null,
+    role: user.role as 'DM' | 'PLAYER' | 'SPECTATOR',
+  })
+
+  res.status(200).json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+      adminRole: user.adminRole,
+      isFullAccount: Boolean(user.password),
+    },
   })
 })
 

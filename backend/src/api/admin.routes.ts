@@ -7,8 +7,11 @@ import { AdminService } from '@/services/admin.service'
 import { createAdminToken } from '@/utils/auth'
 import { validatePassword } from '@/utils/password'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
+import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
+import { getPrismaClient } from '@/infra/db'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 // Apply admin auth middleware to all telemetry routes
 router.use('/telemetry', adminAuthMiddleware)
@@ -104,7 +107,7 @@ router.post('/setup', async (req: Request, res: Response) => {
     const admin = await AdminService.createInitialAdmin(email, username, password)
 
     // Create and return admin token
-    const token = createAdminToken(admin.id)
+    const token = createAdminToken(admin.id, admin.username, 'SUPER_ADMIN')
 
     logger.info('admin', 'Initial admin user created', {
       adminId: admin.id,
@@ -148,7 +151,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const admin = await AdminService.authenticateAdmin(username, password)
 
     // Create and return admin token
-    const token = createAdminToken(admin.id)
+    const token = createAdminToken(admin.id, admin.username, admin.adminRole)
 
     logger.info('admin', 'Admin login successful', {
       adminId: admin.id,
@@ -161,8 +164,184 @@ router.post('/login', async (req: Request, res: Response) => {
         id: admin.id,
         username: admin.username,
         email: admin.email,
+        adminRole: admin.adminRole,
       },
       token,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.get('/me', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const admin = await AdminService.getAdminById(req.admin!.userId)
+    if (!admin) {
+      res.status(404).json({
+        error: 'Admin account not found',
+        code: 'NOT_FOUND',
+      })
+      return
+    }
+
+    res.status(200).json({
+      admin,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.post('/users/:userId/promote', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        code: 'UNAUTHORIZED',
+      })
+      return
+    }
+
+    const userId = String(req.params.userId || '')
+    const { adminRole } = req.body as {
+      adminRole?: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
+    }
+
+    if (!adminRole) {
+      res.status(400).json({
+        error: 'adminRole is required',
+        code: 'MISSING_ADMIN_ROLE',
+      })
+      return
+    }
+
+    const promoted = await AdminService.promoteUserAdminRole({
+      actorUserId: actor.userId,
+      targetUserId: userId,
+      adminRole,
+    })
+
+    logger.info('admin', 'User admin role updated', {
+      actorUserId: actor.userId,
+      actorRole: actor.adminRole,
+      targetUserId: promoted.id,
+      targetUsername: promoted.username,
+      adminRole: promoted.adminRole,
+    })
+
+    res.status(200).json({
+      message: 'Admin role updated successfully',
+      user: promoted,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+/**
+ * POST /admin/handoff/app
+ * Creates one-time handoff token for admin -> frontend launch.
+ */
+router.post('/handoff/app', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        code: 'UNAUTHORIZED',
+      })
+      return
+    }
+
+    const { handoffToken, expiresInSec } = issueHandoffToken({
+      userId: actor.userId,
+      username: actor.username,
+      target: 'app',
+    })
+
+    res.status(200).json({
+      handoffToken,
+      expiresInSec,
+      redirectUrl: `/launch?handoff=${handoffToken}`,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+/**
+ * POST /admin/auth/handoff/exchange
+ * Exchanges one-time handoff token for admin JWT (frontend -> admin launch).
+ */
+router.post('/auth/handoff/exchange', async (req: Request, res: Response) => {
+  try {
+    const handoffToken = String(req.body?.handoffToken || '').trim()
+    if (!handoffToken) {
+      res.status(400).json({
+        error: 'handoffToken is required',
+        code: 'MISSING_HANDOFF_TOKEN',
+      })
+      return
+    }
+
+    const consumed = consumeHandoffToken(handoffToken, 'admin')
+    if (!consumed) {
+      res.status(401).json({
+        error: 'Handoff token is invalid, expired, or already used',
+        code: 'INVALID_HANDOFF_TOKEN',
+      })
+      return
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: consumed.userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        adminRole: true,
+        password: true,
+        isActive: true,
+      },
+    })
+
+    if (!user || !user.isActive) {
+      res.status(403).json({
+        error: 'Account is unavailable for admin access',
+        code: 'ACCOUNT_NOT_ALLOWED',
+      })
+      return
+    }
+
+    const effectiveAdminRole = user.adminRole || (user.role === 'DM' ? 'CAMPAIGN_DM' : null)
+    if (!effectiveAdminRole) {
+      res.status(403).json({
+        error: 'User does not have admin access',
+        code: 'ADMIN_ACCESS_REQUIRED',
+      })
+      return
+    }
+
+    if (!user.password) {
+      res.status(403).json({
+        error: 'Upgrade to a full account before accessing admin',
+        code: 'GUEST_UPGRADE_REQUIRED',
+      })
+      return
+    }
+
+    const token = createAdminToken(user.id, user.username, effectiveAdminRole)
+
+    res.status(200).json({
+      token,
+      admin: {
+        id: user.id,
+        username: user.username,
+        email: user.email || '',
+        adminRole: effectiveAdminRole,
+      },
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})

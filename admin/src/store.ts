@@ -4,6 +4,7 @@ interface AdminUser {
   id: string
   username: string
   email: string
+  adminRole?: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
 }
 
 interface AuthState {

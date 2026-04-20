@@ -20,21 +20,35 @@ export const createUserToken = (
     sessionId,
   }
 
-  return jwt.sign(payload as any, config.jwt.secret as string, {
-    expiresIn: config.jwt.expiresIn as string,
-    issuer: 'vtt-chat',
-  } as any)
+  return jwt.sign(
+    payload as any,
+    config.jwt.secret as string,
+    {
+      expiresIn: config.jwt.expiresIn as string,
+      issuer: 'vtt-chat',
+    } as any
+  )
 }
 
-export const createAdminToken = (adminId: string): string => {
+export const createAdminToken = (
+  userId: string,
+  username: string,
+  adminRole: AdminAuthToken['adminRole']
+): string => {
   const payload: Omit<AdminAuthToken, 'iat' | 'exp'> = {
-    adminId,
+    userId,
+    username,
+    adminRole,
   }
 
-  return jwt.sign(payload as any, config.jwt.adminSecret as string, {
-    expiresIn: config.jwt.adminExpiresIn as string,
-    issuer: 'vtt-chat-admin',
-  } as any)
+  return jwt.sign(
+    payload as any,
+    config.jwt.adminSecret as string,
+    {
+      expiresIn: config.jwt.adminExpiresIn as string,
+      issuer: 'vtt-chat-admin',
+    } as any
+  )
 }
 
 export const verifyUserToken = (token: string): AuthToken => {

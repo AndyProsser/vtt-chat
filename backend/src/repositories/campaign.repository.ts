@@ -35,6 +35,18 @@ export async function upsertUserAccount(params: {
     },
   })
 
+  if (params.role === 'DM') {
+    await prisma.user.updateMany({
+      where: {
+        id: user.id,
+        adminRole: null,
+      },
+      data: {
+        adminRole: 'CAMPAIGN_DM',
+      },
+    })
+  }
+
   return {
     id: user.id,
     username: user.username,
@@ -112,6 +124,25 @@ export async function createCampaignForUser(params: {
   const inviteCode = generateInviteCode()
 
   const campaign = await prisma.$transaction(async (tx) => {
+    await tx.user.updateMany({
+      where: {
+        id: params.currentDmId,
+      },
+      data: {
+        role: 'DM',
+      },
+    })
+
+    await tx.user.updateMany({
+      where: {
+        id: params.currentDmId,
+        adminRole: null,
+      },
+      data: {
+        adminRole: 'CAMPAIGN_DM',
+      },
+    })
+
     const created = await tx.campaign.create({
       data: {
         name: params.name,

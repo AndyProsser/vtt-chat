@@ -20,12 +20,12 @@ Roles define capabilities; capabilities unlock features.
 
 # 1. Roles Overview
 
-| Role          | Description                                                                                                                                                                                                                                          |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DM**        | Full control of the table, players, audio, and session state. DM role is assigned automatically from external system campaign ownership data — no separate DM invite required. Guest DMs can manage sessions via the extension. A full account is required only to generate spectator invite links. |
-| **Player**    | Active participant with character‑level interactions.                                                                                                                                                                                                |
-| **Spectator** | Read‑only observer. Cannot access the green room. Subject to DM-controlled access policy, slot limits, and waitlist rules.                                                                                                                           |
-| **System**    | Internal actor used for automated events and system messages.                                                                                                                                                                                        |
+| Role          | Description                                                                                                                                                                                                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **DM**        | Full control of the table, players, audio, and session state. DM role is assigned automatically from external system campaign ownership data — no separate DM invite required. Guest DMs can manage sessions via the extension. A full account is required to generate spectator invite links and to access the admin console. |
+| **Player**    | Active participant with character‑level interactions.                                                                                                                                                                                                                                                                          |
+| **Spectator** | Read‑only observer. Cannot access the green room. Subject to DM-controlled access policy, slot limits, and waitlist rules.                                                                                                                                                                                                     |
+| **System**    | Internal actor used for automated events and system messages.                                                                                                                                                                                                                                                                  |
 
 ### Account Type vs Table Role
 
@@ -180,6 +180,31 @@ These are **not** role-based capabilities — they are structural constraints th
 | Slot retention  | A disconnected spectator retains their slot for the reconnect grace period (sysadmin-controlled). After expiry the slot is released and the next waitlist entry is auto-promoted. |
 | Session end     | Spectator view shows "Session ended" state; slot released immediately.                                                                                                            |
 | Campaign browse | Guest player accounts cannot browse campaigns. Only full-account users and guest spectators (via spectator invite) can discover campaigns.                                        |
+
+---
+
+## 3.9 Admin Roles
+
+The **Admin system** is orthogonal to game roles (DM, Player, Spectator). Any user can become an admin by being promoted. All DMs automatically have `adminRole: CAMPAIGN_DM`. Admins authenticate separately with their password, and guest users must upgrade to full accounts before admin login is allowed.
+
+### Admin Role Hierarchy
+
+| Admin Role      | Description                                                                                         | Automatic Assignment |
+| --------------- | --------------------------------------------------------------------------------------------------- | -------------------- |
+| **SUPER_ADMIN** | Full system access: create/delete/suspend users, manage admins, view all campaigns/telemetry        | No (promoted only)   |
+| **ADMIN**       | Moderate users, manage campaigns, view telemetry, manage settings. No destructive ops.              | No (promoted only)   |
+| **CAMPAIGN_DM** | Campaign-level ops (backup, export, import, members, campaign telemetry). System view is read-only. | Yes (all DMs)        |
+| **READ_ONLY**   | View-only access to all data. Cannot modify anything.                                               | No (promoted only)   |
+
+### Admin Permissions
+
+See [./ADMIN-ARCHITECTURE.md](./ADMIN-ARCHITECTURE.md#3-admin-permissions-matrix) for the complete admin permissions matrix covering:
+
+- User Management (view, suspend, promote, create, delete)
+- Campaign Management (create, view, edit, backup, export, import, delete)
+- Session Management (view, force-end, view recordings)
+- Telemetry & Reporting (dashboard, health, logs, analytics)
+- System Administration (settings, API keys, feature flags, audit logs)
 
 ---
 

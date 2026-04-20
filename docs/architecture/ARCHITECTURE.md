@@ -221,15 +221,29 @@ The extension supports:
 
 ### **11. Admin & Accounting**
 
+The Admin system is built on a **unified User model** with role-based access control (RBAC). Admins are users with special `adminRole` privileges.
+
+**Key features:**
+
+- **Role Hierarchy**: Super Admin (full access) → Admin (moderation + management) → Campaign DM (campaign-level ops, auto-granted to all DMs) → Read-only (view-only)
+- **DM Auto-Access**: All DMs automatically have `adminRole: CAMPAIGN_DM` and can access campaign-level admin functions (backup, export, import, member management, telemetry)
+- **Role Promotion**: Super Admins can promote any existing User to any admin role
+- **Initial Setup**: First user to call `/api/admin/setup` becomes Super Admin (only allowed if no admins exist)
+- **Admin Authentication**: Admins authenticate with username + password; receive admin JWT token for protected routes
+- **Audit Logging**: All admin actions are logged with user ID, timestamp, action type, and affected resource
+
 Admin console supports:
 
-- User management
-- Campaign management
-- Logs & telemetry
-- Backup, archive, restore
-- Usage tracking
-- Locking users/campaigns
+- User management (view, suspend, promote, create, delete per role)
+- Campaign management (create, view, edit, backup, export, import)
+- Session management (view, force-end sessions)
+- Logs & telemetry (dashboard, health, activity, analytics)
+- System settings (feature flags, API keys, integrations, etc.)
+- Audit logs (system-wide or campaign-scoped based on admin role)
+- Backup, archive, restore workflows
+- Usage tracking and quotas
 
+**See:** `ADMIN-ARCHITECTURE.md`
 **See:** `BACKUP-RESTORE.md`
 **See:** `TELEMETRY.md`
 
@@ -277,6 +291,8 @@ Horizontal scaling is supported via:
 | **SESSIONS.md**               | Session lifecycle                     |
 | **EXTENSION-INTEGRATION.md**  | DDB/Roll20/FVTT hooks                 |
 | **DM-TOOLS.md**               | DM controls & UI                      |
+| **PERMISSIONS-MATRIX.md**     | Capability access control             |
+| **ADMIN-ARCHITECTURE.md**     | Admin roles, permissions, workflows   |
 | **TELEMETRY.md**              | Analytics & logging                   |
 | **BACKUP-RESTORE.md**         | Admin workflows                       |
 | **DEPLOYMENT.md**             | Docker & scaling                      |

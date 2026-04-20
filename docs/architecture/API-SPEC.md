@@ -103,6 +103,107 @@ Baseline logout behavior is intentionally minimal; refresh-token invalidation re
 
 ---
 
+## Cross-App Auth Handoff (Planned Stage 8 Follow-up)
+
+These endpoints define linked authentication between the user frontend and admin console so users do not need to log in twice when they already have a valid session.
+
+### `POST /api/auth/handoff/admin`
+
+Requires authenticated user token.
+
+Purpose: exchange a frontend-authenticated user session for a one-time token that boots admin authentication.
+
+Rules:
+
+- Caller must be a **full account**.
+- Caller must have effective admin access (`adminRole` or equivalent DM admin eligibility).
+- Guest accounts return `403 GUEST_UPGRADE_REQUIRED`.
+
+**Response**
+
+```json
+{
+  "handoffToken": "one-time-token",
+  "expiresInSec": 60,
+  "redirectUrl": "/admin/launch?handoff=one-time-token"
+}
+```
+
+### `POST /api/admin/auth/handoff/exchange`
+
+Purpose: admin app exchanges one-time handoff token for admin JWT.
+
+**Body**
+
+```json
+{
+  "handoffToken": "one-time-token"
+}
+```
+
+**Response**
+
+```json
+{
+  "token": "admin-jwt",
+  "admin": {
+    "id": "uuid",
+    "username": "andy",
+    "adminRole": "CAMPAIGN_DM"
+  }
+}
+```
+
+### `POST /api/admin/handoff/app`
+
+Requires authenticated admin token.
+
+Purpose: exchange an admin-authenticated session for a one-time token that boots frontend user authentication.
+
+**Response**
+
+```json
+{
+  "handoffToken": "one-time-token",
+  "expiresInSec": 60,
+  "redirectUrl": "/app/launch?handoff=one-time-token"
+}
+```
+
+### `POST /api/auth/handoff/exchange`
+
+Purpose: frontend app exchanges one-time handoff token for user JWT.
+
+**Body**
+
+```json
+{
+  "handoffToken": "one-time-token"
+}
+```
+
+**Response**
+
+```json
+{
+  "token": "user-jwt",
+  "user": {
+    "id": "uuid",
+    "username": "andy",
+    "authType": "FULL"
+  }
+}
+```
+
+Handoff security requirements:
+
+- One-time use only; immediate invalidation after exchange.
+- Very short TTL (recommended 30-60 seconds).
+- Bound to user identity + target application (`admin` or `app`).
+- Logged for audit (issuer, consumer app, timestamp, success/failure).
+
+---
+
 ## `GET /api/platform/status`
 
 Public endpoint. Returns platform health and activity snapshot for the extension pre-flight check.

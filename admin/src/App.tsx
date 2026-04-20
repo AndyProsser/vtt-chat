@@ -35,8 +35,14 @@ export default function App() {
   const [setupRequired, setSetupRequired] = useState(false)
   const [setupLoading, setSetupLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [launchLoading, setLaunchLoading] = useState(false)
 
-  const { isAuthenticated, logout, setToken, initializeAuth } = useAuthStore()
+  const { isAuthenticated, logout, setToken, initializeAuth, token } = useAuthStore()
+
+  const frontendUrl =
+    (import.meta as any).env?.VITE_FRONTEND_URL ||
+    (import.meta as any).env?.VITE_APP_URL ||
+    'http://localhost:5173'
 
   // Check if setup is required and restore auth on mount
   useEffect(() => {
@@ -56,6 +62,43 @@ export default function App() {
 
     checkSetup()
   }, [initializeAuth])
+
+  useEffect(() => {
+    const handoff = new URLSearchParams(window.location.search).get('handoff')
+    if (!handoff || setupRequired) {
+      return
+    }
+
+    const exchange = async () => {
+      setLaunchLoading(true)
+      try {
+        const response = await fetch(`${API_BASE}/admin/auth/handoff/exchange`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ handoffToken: handoff }),
+        })
+
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Failed to launch admin session')
+        }
+
+        setToken(data.token, data.admin)
+        setAuthError(null)
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to complete admin launch handoff'
+        setAuthError(message)
+      } finally {
+        setLaunchLoading(false)
+      }
+    }
+
+    void exchange()
+  }, [setToken, setupRequired])
 
   const handleSetupComplete = (
     token: string,
@@ -80,6 +123,42 @@ export default function App() {
 
   const handleAuthError = (error: string) => {
     setAuthError(error)
+  }
+
+  const handleOpenFrontend = async () => {
+    if (!token) {
+      setAuthError('Missing admin session token')
+      return
+    }
+
+    setLaunchLoading(true)
+    setAuthError(null)
+
+    try {
+      const response = await fetch(`${API_BASE}/admin/handoff/app`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to open frontend')
+      }
+
+      const handoffToken = String(data.handoffToken || '').trim()
+      if (!handoffToken) {
+        throw new Error('Missing handoff token in response')
+      }
+
+      window.location.href = `${frontendUrl}/launch?handoff=${encodeURIComponent(handoffToken)}`
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to open frontend app'
+      setAuthError(message)
+      setLaunchLoading(false)
+    }
   }
 
   if (setupLoading) {
@@ -158,6 +237,14 @@ export default function App() {
             aria-label="Toggle theme"
           >
             Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+          </button>
+          <button
+            className="admin-btn admin-btn-ghost"
+            onClick={handleOpenFrontend}
+            disabled={launchLoading}
+            aria-label="Open frontend"
+          >
+            {launchLoading ? 'Opening App...' : 'Open App'}
           </button>
           <button className="admin-btn admin-btn-danger" onClick={handleLogout} aria-label="Logout">
             Logout

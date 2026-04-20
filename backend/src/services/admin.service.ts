@@ -2,19 +2,44 @@ import { getPrismaClient } from '@/infra/db'
 import { hashPassword, verifyPassword } from '@/utils/auth'
 import { isPasswordValid } from '@/utils/password'
 import { AppError } from '@/types'
+import type { AdminRole, Role } from '@prisma/client'
 
 const prisma = getPrismaClient()
 
+const ADMIN_ASSIGNABLE_ROLES: AdminRole[] = ['SUPER_ADMIN', 'ADMIN', 'CAMPAIGN_DM', 'READ_ONLY']
+
+type AdminPrincipal = {
+  id: string
+  username: string
+  email: string
+  adminRole: AdminRole
+}
+
+function getEffectiveAdminRole(user: {
+  role: Role
+  adminRole: AdminRole | null
+}): AdminRole | null {
+  if (user.adminRole) {
+    return user.adminRole
+  }
+  if (user.role === 'DM') {
+    return 'CAMPAIGN_DM'
+  }
+  return null
+}
+
 /**
- * Admin user service for managing admin accounts
+ * Admin service for managing admin capabilities on top of unified User accounts.
  */
 
 export class AdminService {
   /**
-   * Check if any admin users exist in the system
+   * Setup should only be required until the first SUPER_ADMIN exists.
    */
   static async adminUsersExist(): Promise<boolean> {
-    const count = await prisma.adminUser.count()
+    const count = await prisma.user.count({
+      where: { adminRole: 'SUPER_ADMIN' },
+    })
     return count > 0
   }
 
@@ -27,7 +52,7 @@ export class AdminService {
     username: string,
     password: string
   ): Promise<{ id: string; email: string; username: string }> {
-    // Check if admin users already exist
+    // Setup closes as soon as a SUPER_ADMIN exists.
     const adminsExist = await this.adminUsersExist()
     if (adminsExist) {
       throw new AppError(403, 'Admin user already exists. Cannot create another.', 'ADMIN_EXISTS')
@@ -38,38 +63,47 @@ export class AdminService {
       throw new AppError(400, 'Password does not meet security requirements', 'INVALID_PASSWORD')
     }
 
-    // Check if email or username already exists
-    const existingEmail = await prisma.adminUser.findUnique({
-      where: { email },
-    })
-
-    if (existingEmail) {
-      throw new AppError(409, 'Email already in use', 'EMAIL_IN_USE')
+    // Promote existing user if present, otherwise create a new user.
+    const existingByUsername = await prisma.user.findUnique({ where: { username } })
+    const existingByEmail = await prisma.user.findFirst({ where: { email } })
+    if (existingByUsername && existingByEmail && existingByUsername.id !== existingByEmail.id) {
+      throw new AppError(
+        409,
+        'Email and username belong to different users. Resolve conflict before setup.',
+        'SETUP_IDENTITY_CONFLICT'
+      )
     }
 
-    const existingUsername = await prisma.adminUser.findUnique({
-      where: { username },
-    })
-
-    if (existingUsername) {
-      throw new AppError(409, 'Username already in use', 'USERNAME_IN_USE')
-    }
-
-    // Hash password
+    const targetUser = existingByUsername || existingByEmail
     const hashedPassword = await hashPassword(password)
 
-    // Create admin user
-    const admin = await prisma.adminUser.create({
-      data: {
-        email,
-        username,
-        password: hashedPassword,
-      },
-    })
+    const admin = targetUser
+      ? await prisma.user.update({
+          where: { id: targetUser.id },
+          data: {
+            email,
+            username,
+            displayName: targetUser.displayName || username,
+            password: hashedPassword,
+            adminRole: 'SUPER_ADMIN',
+            isActive: true,
+          },
+        })
+      : await prisma.user.create({
+          data: {
+            email,
+            username,
+            displayName: username,
+            password: hashedPassword,
+            role: 'PLAYER',
+            adminRole: 'SUPER_ADMIN',
+            isActive: true,
+          },
+        })
 
     return {
       id: admin.id,
-      email: admin.email,
+      email: admin.email || email,
       username: admin.username,
     }
   }
@@ -80,28 +114,42 @@ export class AdminService {
   static async authenticateAdmin(
     username: string,
     password: string
-  ): Promise<{ id: string; username: string; email: string }> {
-    const admin = await prisma.adminUser.findUnique({
+  ): Promise<{ id: string; username: string; email: string; adminRole: AdminRole }> {
+    const user = await prisma.user.findUnique({
       where: { username },
     })
 
-    if (!admin) {
+    if (!user) {
       throw new AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS')
     }
 
-    if (!admin.isActive) {
+    const effectiveAdminRole = getEffectiveAdminRole(user)
+    if (!effectiveAdminRole) {
+      throw new AppError(403, 'User does not have admin access', 'ADMIN_ACCESS_REQUIRED')
+    }
+
+    if (!user.isActive) {
       throw new AppError(403, 'Admin account is deactivated', 'ACCOUNT_DEACTIVATED')
     }
 
-    const passwordValid = await verifyPassword(password, admin.password)
+    if (!user.password) {
+      throw new AppError(
+        403,
+        'Account does not have a password set. Complete account setup first.',
+        'PASSWORD_NOT_SET'
+      )
+    }
+
+    const passwordValid = await verifyPassword(password, user.password)
     if (!passwordValid) {
       throw new AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS')
     }
 
     return {
-      id: admin.id,
-      username: admin.username,
-      email: admin.email,
+      id: user.id,
+      username: user.username,
+      email: user.email || '',
+      adminRole: effectiveAdminRole,
     }
   }
 
@@ -112,10 +160,11 @@ export class AdminService {
     id: string
     username: string
     email: string
+    adminRole: AdminRole
     isActive: boolean
     createdAt: Date
   } | null> {
-    const admin = await prisma.adminUser.findUnique({
+    const admin = await prisma.user.findUnique({
       where: { id: adminId },
     })
 
@@ -123,10 +172,16 @@ export class AdminService {
       return null
     }
 
+    const effectiveAdminRole = getEffectiveAdminRole(admin)
+    if (!effectiveAdminRole) {
+      return null
+    }
+
     return {
       id: admin.id,
       username: admin.username,
-      email: admin.email,
+      email: admin.email || '',
+      adminRole: effectiveAdminRole,
       isActive: admin.isActive,
       createdAt: admin.createdAt,
     }
@@ -140,12 +195,21 @@ export class AdminService {
     currentPassword: string,
     newPassword: string
   ): Promise<void> {
-    const admin = await prisma.adminUser.findUnique({
+    const admin = await prisma.user.findUnique({
       where: { id: adminId },
     })
 
     if (!admin) {
       throw new AppError(404, 'Admin user not found', 'NOT_FOUND')
+    }
+
+    if (!admin.password) {
+      throw new AppError(400, 'Account does not have a password set', 'PASSWORD_NOT_SET')
+    }
+
+    const effectiveAdminRole = getEffectiveAdminRole(admin)
+    if (!effectiveAdminRole) {
+      throw new AppError(403, 'User does not have admin access', 'ADMIN_ACCESS_REQUIRED')
     }
 
     // Verify current password
@@ -175,9 +239,61 @@ export class AdminService {
 
     const hashedPassword = await hashPassword(newPassword)
 
-    await prisma.adminUser.update({
+    await prisma.user.update({
       where: { id: adminId },
       data: { password: hashedPassword },
+    })
+  }
+
+  static async promoteUserAdminRole(params: {
+    actorUserId: string
+    targetUserId: string
+    adminRole: AdminRole
+  }): Promise<AdminPrincipal> {
+    const { actorUserId, targetUserId, adminRole } = params
+
+    if (!ADMIN_ASSIGNABLE_ROLES.includes(adminRole)) {
+      throw new AppError(400, 'Invalid admin role', 'INVALID_ADMIN_ROLE')
+    }
+
+    const actor = await prisma.user.findUnique({ where: { id: actorUserId } })
+    if (!actor) {
+      throw new AppError(404, 'Actor not found', 'NOT_FOUND')
+    }
+
+    const actorRole = getEffectiveAdminRole(actor)
+    if (actorRole !== 'SUPER_ADMIN') {
+      throw new AppError(403, 'Only SUPER_ADMIN can grant admin roles', 'FORBIDDEN')
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: targetUserId } })
+    if (!target) {
+      throw new AppError(404, 'Target user not found', 'NOT_FOUND')
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: { adminRole },
+    })
+
+    return {
+      id: updated.id,
+      username: updated.username,
+      email: updated.email || '',
+      adminRole: getEffectiveAdminRole(updated) || adminRole,
+    }
+  }
+
+  static async ensureDmAdminRole(userId: string): Promise<void> {
+    await prisma.user.updateMany({
+      where: {
+        id: userId,
+        role: 'DM',
+        adminRole: null,
+      },
+      data: {
+        adminRole: 'CAMPAIGN_DM',
+      },
     })
   }
 }

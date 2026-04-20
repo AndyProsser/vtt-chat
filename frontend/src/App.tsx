@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID, Role } from '@shared'
 import { LoginForm } from './components/auth/LoginForm'
@@ -27,15 +27,26 @@ interface AuthState {
   } | null
 }
 
+interface AuthProfile {
+  adminRole: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY' | null
+  hasAdminAccess: boolean
+  isFullAccount: boolean
+  requiresUpgradeForAdmin: boolean
+}
+
 export default function App() {
   const [auth, setAuth] = useState<AuthState>({
     token: null,
     user: null,
   })
+  const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null)
+  const [authMessage, setAuthMessage] = useState<string | null>(null)
+  const [adminLaunchLoading, setAdminLaunchLoading] = useState(false)
 
   // API and WebSocket URLs (configurable via env or hardcoded for testing)
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
+  const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
 
   // Derive active session + primary room from store to know when to mount AudioPanel
   const { currentSessionId, rooms } = useStore((s) => ({
@@ -54,6 +65,7 @@ export default function App() {
       token,
       user,
     })
+    setAuthMessage(null)
   }
 
   const handleLogout = () => {
@@ -61,9 +73,139 @@ export default function App() {
       token: null,
       user: null,
     })
+    setAuthProfile(null)
+    setAuthMessage(null)
     sessionStorage.removeItem('authToken')
     sessionStorage.removeItem('user')
   }
+
+  useEffect(() => {
+    const handoff = new URLSearchParams(window.location.search).get('handoff')
+
+    const bootstrap = async () => {
+      if (handoff) {
+        try {
+          const response = await fetch(`${apiUrl}/api/auth/handoff/exchange`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ handoffToken: handoff }),
+          })
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}))
+            throw new Error(data.message || data.error || 'Failed to launch app session')
+          }
+
+          const data = await response.json()
+          sessionStorage.setItem('authToken', data.token)
+          sessionStorage.setItem('user', JSON.stringify(data.user))
+          setAuth({ token: data.token, user: data.user })
+          setAuthMessage(null)
+          window.history.replaceState({}, document.title, window.location.pathname)
+          return
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to complete handoff'
+          setAuthMessage(message)
+        }
+      }
+
+      const existingToken = sessionStorage.getItem('authToken')
+      const existingUser = sessionStorage.getItem('user')
+      if (existingToken && existingUser) {
+        try {
+          setAuth({ token: existingToken, user: JSON.parse(existingUser) })
+        } catch {
+          sessionStorage.removeItem('authToken')
+          sessionStorage.removeItem('user')
+        }
+      }
+    }
+
+    void bootstrap()
+  }, [apiUrl])
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!auth.token) {
+        setAuthProfile(null)
+        return
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        })
+
+        if (!response.ok) {
+          setAuthProfile(null)
+          return
+        }
+
+        const data = await response.json()
+        setAuthProfile({
+          adminRole: data.adminRole || null,
+          hasAdminAccess: Boolean(data.hasAdminAccess),
+          isFullAccount: Boolean(data.isFullAccount),
+          requiresUpgradeForAdmin: Boolean(data.requiresUpgradeForAdmin),
+        })
+      } catch {
+        setAuthProfile(null)
+      }
+    }
+
+    void loadProfile()
+  }, [auth.token, apiUrl])
+
+  const handleOpenAdmin = async () => {
+    if (!auth.token || !auth.user) {
+      return
+    }
+
+    setAdminLaunchLoading(true)
+    setAuthMessage(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/handoff/admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+        },
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        if (data.code === 'GUEST_UPGRADE_REQUIRED') {
+          setAuthMessage('Upgrade to a full account before opening the admin console.')
+          return
+        }
+        throw new Error(data.message || data.error || 'Failed to open admin')
+      }
+
+      const handoffToken = String(data.handoffToken || '').trim()
+      if (!handoffToken) {
+        throw new Error('Missing handoff token in response')
+      }
+
+      window.location.href = `${adminUrl}/launch?handoff=${encodeURIComponent(handoffToken)}`
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'Failed to open admin console')
+    } finally {
+      setAdminLaunchLoading(false)
+    }
+  }
+
+  const showAdminButton = Boolean(
+    auth.user && (auth.user.role === 'DM' || authProfile?.hasAdminAccess)
+  )
+  const adminButtonDisabled =
+    adminLaunchLoading ||
+    Boolean(authProfile?.requiresUpgradeForAdmin) ||
+    !authProfile?.hasAdminAccess
 
   return (
     <div
@@ -98,23 +240,64 @@ export default function App() {
           </div>
 
           {auth.user && (
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
-            >
-              Logout
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {showAdminButton && (
+                <button
+                  onClick={handleOpenAdmin}
+                  disabled={adminButtonDisabled}
+                  title={
+                    authProfile?.requiresUpgradeForAdmin
+                      ? 'Upgrade to full account to access admin'
+                      : undefined
+                  }
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: adminButtonDisabled ? '#94a3b8' : '#0f766e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: adminButtonDisabled ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {adminLaunchLoading ? 'Opening Admin...' : 'Open Admin'}
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Logout
+              </button>
+            </div>
           )}
         </div>
       </header>
+
+      {authMessage && (
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '1rem auto 0',
+            padding: '0.75rem 1rem',
+            border: '1px solid #f59e0b',
+            backgroundColor: '#fffbeb',
+            color: '#92400e',
+            borderRadius: '6px',
+            fontSize: '0.875rem',
+          }}
+        >
+          {authMessage}
+        </div>
+      )}
 
       {/* Main Content */}
       <main
