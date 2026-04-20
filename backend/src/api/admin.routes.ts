@@ -3,8 +3,177 @@ import os from 'os'
 import { getAllSessions } from '@/services/session.service'
 import { getChatTelemetrySnapshot } from '@/core/chat/chat.service'
 import { logger } from '@/utils/logger'
+import { AdminService } from '@/services/admin.service'
+import { createAdminToken } from '@/utils/auth'
+import { validatePassword } from '@/utils/password'
+import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 
 const router = Router()
+
+// Apply admin auth middleware to all telemetry routes
+router.use('/telemetry', adminAuthMiddleware)
+
+/**
+ * ============================================================================
+ * Setup Endpoints - Only available if no admin users exist
+ * ============================================================================
+ */
+
+/**
+ * GET /admin/setup-status
+ * Check if admin setup is required and if a sysadmin account exists
+ * Public endpoint - no auth required
+ */
+router.get('/setup-status', async (_req: Request, res: Response) => {
+  try {
+    const adminExists = await AdminService.adminUsersExist()
+    res.status(200).json({
+      setupRequired: !adminExists,
+      adminExists,
+    })
+  } catch (error) {
+    logger.error('admin', 'Failed to check admin setup status', error)
+    res.status(500).json({
+      error: 'Failed to check setup status',
+      code: 'SETUP_STATUS_CHECK_FAILED',
+    })
+  }
+})
+
+/**
+ * POST /admin/setup
+ * Create the initial sysadmin account
+ * Only available if no admin users exist
+ * Public endpoint - no auth required (first-run only)
+ */
+router.post('/setup', async (req: Request, res: Response) => {
+  try {
+    const { email, username, password, passwordConfirm } = req.body
+
+    // Validate required fields
+    if (!email || !username || !password) {
+      res.status(400).json({
+        error: 'Email, username, and password are required',
+        code: 'MISSING_FIELDS',
+      })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      res.status(400).json({
+        error: 'Invalid email format',
+        code: 'INVALID_EMAIL',
+      })
+      return
+    }
+
+    // Validate username (alphanumeric, underscore, hyphen)
+    if (!/^[a-zA-Z0-9_-]{3,}$/.test(username)) {
+      res.status(400).json({
+        error:
+          'Username must be at least 3 characters and contain only letters, numbers, underscores, and hyphens',
+        code: 'INVALID_USERNAME',
+      })
+      return
+    }
+
+    // Verify password confirmation
+    if (password !== passwordConfirm) {
+      res.status(400).json({
+        error: 'Passwords do not match',
+        code: 'PASSWORD_MISMATCH',
+      })
+      return
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.isValid) {
+      res.status(400).json({
+        error: 'Password does not meet security requirements',
+        code: 'INVALID_PASSWORD',
+        feedback: passwordValidation.feedback,
+        suggestions: passwordValidation.suggestions,
+      })
+      return
+    }
+
+    // Create the initial admin user
+    const admin = await AdminService.createInitialAdmin(email, username, password)
+
+    // Create and return admin token
+    const token = createAdminToken(admin.id)
+
+    logger.info('admin', 'Initial admin user created', {
+      adminId: admin.id,
+      username: admin.username,
+      email: admin.email,
+    })
+
+    res.status(201).json({
+      message: 'Admin account created successfully',
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        email: admin.email,
+      },
+      token,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+/**
+ * POST /admin/login
+ * Authenticate an admin user and issue a token
+ * Public endpoint - no admin auth required
+ */
+router.post('/login', async (req: Request, res: Response) => {
+  try {
+    const { username, password } = req.body
+
+    // Validate required fields
+    if (!username || !password) {
+      res.status(400).json({
+        error: 'Username and password are required',
+        code: 'MISSING_CREDENTIALS',
+      })
+      return
+    }
+
+    // Authenticate the admin user
+    const admin = await AdminService.authenticateAdmin(username, password)
+
+    // Create and return admin token
+    const token = createAdminToken(admin.id)
+
+    logger.info('admin', 'Admin login successful', {
+      adminId: admin.id,
+      username: admin.username,
+    })
+
+    res.status(200).json({
+      message: 'Login successful',
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        email: admin.email,
+      },
+      token,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+/**
+ * ============================================================================
+ * Telemetry Endpoints - Requires admin authentication
+ * ============================================================================
+ */
 
 function parseTimeRange(value: string | undefined): number {
   switch (value) {

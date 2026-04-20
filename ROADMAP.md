@@ -272,7 +272,7 @@ Exit criteria:
 
 ### Stage 8: Admin and Ops Layer
 
-Status: **In progress (partial completion)**
+Status: **In progress (auth closure and setup complete, ops actions pending)**
 
 Goal:
 
@@ -288,19 +288,34 @@ Completed so far:
   - `/api/admin/telemetry/logs`
 - Logs endpoint now supports server-side filtering, pagination, and sorting.
 - Admin logs table wired to server-side pagination and sorting.
-- Backend admin auth primitives exist (`createAdminToken`/`verifyAdminToken` + `adminAuthMiddleware`) but are not yet enforced on telemetry routes.
-- Admin frontend auth store remains intentionally baseline-disabled (login returns "not enabled"), preserving read-only shell behavior.
+- Backend admin auth primitives implemented and now enforced (`createAdminToken`/`verifyAdminToken` + `adminAuthMiddleware` applied to all telemetry routes).
+- **Initial sysadmin setup process now complete**:
+  - `AdminUser` Prisma model created with email/username/password/isActive fields and migration applied.
+  - `POST /api/admin/setup` endpoint allows first-time admin registration (blocked after first admin exists).
+  - `GET /api/admin/setup-status` endpoint checks if setup is required (public, no auth).
+  - `POST /api/admin/login` endpoint for admin authentication with JWT token issuance.
+  - Password validation utility enforces 12+ character length, uppercase, lowercase, numbers, and special characters.
+  - Support for password managers and password strength indicator component.
+- **Frontend setup and auth now complete**:
+  - `Setup` page with welcome wizard and form validation.
+  - `PasswordStrengthIndicator` component with real-time feedback.
+  - `Login` page with credential validation and remember-me toggle.
+  - Updated `useAuthStore` to manage admin tokens in sessionStorage/localStorage.
+  - `App.tsx` now routes through setup → login → dashboard based on auth state.
+  - Complete CSS styling for login, setup, and password validation UI.
+- Admin frontend now properly routes: setup (if needed) → login (if not auth) → dashboard (if authenticated).
+- Both backend and frontend build successfully with full TypeScript type coverage.
 
 Remaining scope:
 
-- Enforce admin authentication/authorization on admin API routes (telemetry is currently accessible without admin auth middleware).
 - Moderation actions with audit trail (suspend/force logout/etc).
 - Persistent telemetry sources (currently in-memory/baseline metrics in parts).
 - Detail panels replacing placeholder actions (for example log entry expand UX).
 
 Exit criteria:
 
-- Authenticated admin workflows with readonly telemetry and controlled actions, fully auditable.
+- Authenticated admin workflows with readonly telemetry and admin-gated access. ✅ (auth closure complete)
+- Controlled moderation actions with full audit trail (pending next iteration).
 
 ---
 
@@ -665,6 +680,7 @@ The following references support the corrected stage labels and current model te
 
 ## 5) Progress Log (Condensed)
 
+- 2026-04: Stage 8 admin auth closure and initial sysadmin setup process completed. Implemented `AdminUser` Prisma model, `/api/admin/setup` endpoint, `/api/admin/login` endpoint, admin authentication middleware enforcement on telemetry routes, password validation utility with 12+ char + uppercase/lowercase/number/special requirements, frontend Setup wizard with `PasswordStrengthIndicator` component, Login form with remember-me support, updated `useAuthStore` for real auth (sessionStorage/localStorage), and updated `App.tsx` routing through setup→login→dashboard based on auth state. Backend and admin frontend builds pass with full TypeScript coverage. All components styled and ready for ops action implementation.
 - 2026-04: Stage 3 session lifecycle implemented and validated.
 - 2026-04: Stage 4 chat baseline implemented (privacy-safe whisper filtering).
 - 2026-04: Chat/session/notes services moved to Prisma-backed persistence.

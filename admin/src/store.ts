@@ -1,36 +1,117 @@
 import { create } from 'zustand'
 
+interface AdminUser {
+  id: string
+  username: string
+  email: string
+}
+
 interface AuthState {
   token: string | null
+  admin: AdminUser | null
   isAuthenticated: boolean
   loading: boolean
   error: string | null
   login: (username: string, password: string) => Promise<void>
   logout: () => void
+  setToken: (token: string, admin: AdminUser) => void
   initializeAuth: () => void
+  clearError: () => void
 }
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: null,
+  admin: null,
   isAuthenticated: false,
   loading: false,
   error: null,
 
-  login: async (_username: string, _password: string) => {
+  login: async (username: string, password: string) => {
     set({ loading: true, error: null })
-    set({
-      loading: false,
-      error: 'Admin authentication is not enabled in the baseline stage.',
-      isAuthenticated: false,
-      token: null,
-    })
+    try {
+      const response = await fetch(`${API_BASE}/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Login failed')
+      }
+
+      const data = await response.json()
+
+      // Store token in sessionStorage
+      sessionStorage.setItem('admin-token', data.token)
+
+      set({
+        token: data.token,
+        admin: data.admin,
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Login failed'
+      set({
+        loading: false,
+        error: message,
+        isAuthenticated: false,
+        token: null,
+        admin: null,
+      })
+      throw error
+    }
   },
 
   logout: () => {
-    set({ token: null, isAuthenticated: false, error: null })
+    sessionStorage.removeItem('admin-token')
+    localStorage.removeItem('admin-token')
+    set({
+      token: null,
+      admin: null,
+      isAuthenticated: false,
+      error: null,
+    })
+  },
+
+  setToken: (token: string, admin: AdminUser) => {
+    sessionStorage.setItem('admin-token', token)
+    set({
+      token,
+      admin,
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+    })
   },
 
   initializeAuth: () => {
-    set({ token: null, isAuthenticated: false, error: null, loading: false })
+    // Try to restore token from storage
+    const token = sessionStorage.getItem('admin-token') || localStorage.getItem('admin-token')
+
+    if (token) {
+      set({
+        token,
+        isAuthenticated: true,
+        loading: false,
+      })
+    } else {
+      set({
+        token: null,
+        admin: null,
+        isAuthenticated: false,
+        loading: false,
+      })
+    }
+  },
+
+  clearError: () => {
+    set({ error: null })
   },
 }))
