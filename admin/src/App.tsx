@@ -7,6 +7,7 @@ import Logs from './pages/Logs'
 import Settings from './pages/Settings'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
+import InviteOnboarding from './pages/InviteOnboarding'
 import { useAuthStore } from './store'
 import './styles/App.css'
 
@@ -43,6 +44,7 @@ export default function App() {
     (import.meta as any).env?.VITE_FRONTEND_URL ||
     (import.meta as any).env?.VITE_APP_URL ||
     'http://localhost:5173'
+  const inviteToken = new URLSearchParams(window.location.search).get('invite')
 
   // Check if setup is required and restore auth on mount
   useEffect(() => {
@@ -190,6 +192,19 @@ export default function App() {
 
   // Show login if not authenticated
   if (!isAuthenticated) {
+    if (!setupRequired && inviteToken) {
+      return (
+        <div className="admin-app">
+          <InviteOnboarding
+            inviteToken={inviteToken}
+            onComplete={handleLoginSuccess}
+            onError={handleAuthError}
+          />
+          {authError && <div className="error-alert">{authError}</div>}
+        </div>
+      )
+    }
+
     return (
       <div className="admin-app">
         <Login onLoginSuccess={handleLoginSuccess} onError={handleAuthError} />

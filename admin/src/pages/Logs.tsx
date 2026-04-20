@@ -38,6 +38,7 @@ export default function Logs() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -135,6 +136,7 @@ export default function Logs() {
           <option value="livekit">LiveKit</option>
           <option value="db">DB</option>
           <option value="frontend">Frontend</option>
+          <option value="admin-audit">Admin Audit</option>
         </select>
         <input
           type="text"
@@ -209,7 +211,7 @@ export default function Logs() {
                   <td>
                     <button
                       className="admin-btn admin-btn-ghost"
-                      onClick={() => window.alert(JSON.stringify(row.details ?? {}, null, 2))}
+                      onClick={() => setSelectedLog(row)}
                     >
                       Expand
                     </button>
@@ -240,6 +242,34 @@ export default function Logs() {
           Next
         </button>
       </div>
+
+      {selectedLog && (
+        <section className="admin-card">
+          <div className="admin-detail-header">
+            <h3>Log Details</h3>
+            <button className="admin-btn admin-btn-ghost" onClick={() => setSelectedLog(null)}>
+              Close
+            </button>
+          </div>
+          <div className="kv-grid">
+            <div>
+              <strong>Timestamp:</strong> {new Date(selectedLog.timestamp).toLocaleString()}
+            </div>
+            <div>
+              <strong>Severity:</strong> {selectedLog.severity}
+            </div>
+            <div>
+              <strong>Source:</strong> {selectedLog.source}
+            </div>
+            <div>
+              <strong>Message:</strong> {selectedLog.message}
+            </div>
+          </div>
+          <pre className="admin-log-details-json">
+            {JSON.stringify(selectedLog.details ?? {}, null, 2)}
+          </pre>
+        </section>
+      )}
     </section>
   )
 }

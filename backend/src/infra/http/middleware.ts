@@ -4,18 +4,37 @@ import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
 import { AuthToken, AdminAuthToken, AuthError, AppError } from '@/types'
 import { logger } from '@/utils/logger'
 import { randomUUID } from 'crypto'
+import { getPrismaClient } from '@/infra/db'
+
+const prisma = getPrismaClient()
+
+async function validateUserAuthState(userId: string, tokenIat?: number): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isActive: true, tokenInvalidBefore: true },
+  })
+
+  if (!user || !user.isActive) {
+    return false
+  }
+
+  if (!user.tokenInvalidBefore) {
+    return true
+  }
+
+  const issuedAtMs = (tokenIat || 0) * 1000
+  return issuedAtMs >= user.tokenInvalidBefore.getTime()
+}
 
 // ============================================================================
 // Extended Express Types
 // ============================================================================
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthToken
-      admin?: AdminAuthToken
-      requestId?: string
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: AuthToken
+    admin?: AdminAuthToken
+    requestId?: string
   }
 }
 
@@ -23,7 +42,11 @@ declare global {
 // Authentication Middleware
 // ============================================================================
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const authMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -34,6 +57,11 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
     const decoded = verifyToken(token)
     if (!decoded) {
       throw new AuthError('Invalid token')
+    }
+
+    const allowed = await validateUserAuthState(decoded.userId, decoded.iat)
+    if (!allowed) {
+      throw new AuthError('Session is no longer valid')
     }
 
     req.user = {
@@ -55,7 +83,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
   }
 }
 
-export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -74,13 +102,17 @@ export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFu
     }
 
     next()
-  } catch (error) {
+  } catch (_error) {
     // Silently fail - authentication is optional
     next()
   }
 }
 
-export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const adminAuthMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const token = extractTokenFromHeader(req.headers.authorization)
 
@@ -89,6 +121,12 @@ export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunct
     }
 
     const decoded = verifyAdminToken(token)
+
+    const allowed = await validateUserAuthState(decoded.userId, decoded.iat)
+    if (!allowed) {
+      throw new AuthError('Session is no longer valid')
+    }
+
     req.admin = decoded
 
     next()
@@ -111,6 +149,8 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  void next
+
   if (error instanceof AppError) {
     logger.warn('handlers', 'Application error', {
       statusCode: error.statusCode,

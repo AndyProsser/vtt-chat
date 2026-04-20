@@ -8,6 +8,10 @@ interface DashboardTelemetry {
   systemLoadPercent: number
   messageThroughputPerMinute: number
   storageUsagePercent: number
+  totalUsers: number
+  suspendedUsers: number
+  activeCampaigns: number
+  recentModerationActions: number
 }
 
 export default function Dashboard() {
@@ -91,6 +95,24 @@ export default function Dashboard() {
             {typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'}
           </p>
           <small>Heap usage proxy</small>
+        </article>
+
+        <article className="admin-card metric">
+          <h3>Total Users</h3>
+          <p className="metric-value">{data?.totalUsers ?? '--'}</p>
+          <small>Persisted user records</small>
+        </article>
+
+        <article className="admin-card metric">
+          <h3>Suspended Users</h3>
+          <p className="metric-value">{data?.suspendedUsers ?? '--'}</p>
+          <small>Currently inactive by moderation</small>
+        </article>
+
+        <article className="admin-card metric">
+          <h3>Moderation Actions</h3>
+          <p className="metric-value">{data?.recentModerationActions ?? '--'}</p>
+          <small>Last 24 hours</small>
         </article>
       </div>
 

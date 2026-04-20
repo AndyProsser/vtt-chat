@@ -68,20 +68,21 @@ model PresenceSnapshot {
 }
 
 model User {
-  id            String               @id @default(uuid()) @db.Uuid
-  email         String?              @unique
-  username      String               @unique
-  displayName   String
-  avatarUrl     String?
-  password      String?              // null for guest accounts; required for admin operations
-  role          Role                 @default(PLAYER)
-  adminRole     AdminRole?           // null if not an admin; automatically set to CAMPAIGN_DM for DMs
-  isActive      Boolean              @default(true)
-  campaignsDm   Campaign[]           @relation("CampaignCurrentDm")
-  campaignLinks CampaignMembership[]
-  characters    Character[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                 String               @id @default(uuid()) @db.Uuid
+  email              String?              @unique
+  username           String               @unique
+  displayName        String
+  avatarUrl          String?
+  password           String? // null for guest accounts; required for admin operations
+  role               Role                 @default(PLAYER)
+  adminRole          AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive           Boolean              @default(true)
+  tokenInvalidBefore DateTime?
+  campaignsDm        Campaign[]           @relation("CampaignCurrentDm")
+  campaignLinks      CampaignMembership[]
+  characters         Character[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([username])
   @@index([email])
@@ -213,6 +214,40 @@ model SessionLog {
   @@index([createdAt])
 }
 
+model AdminAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  actorName   String
+  actorRole   String?
+  action      String
+  targetType  String
+  targetId    String?
+  outcome     String   @default("SUCCESS")
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+model AdminInvite {
+  id              String    @id @default(uuid()) @db.Uuid
+  token           String    @unique
+  invitedRole     AdminRole
+  email           String?
+  invitedByUserId String    @db.Uuid
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedByUserId    String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+
+  @@index([token])
+  @@index([invitedByUserId])
+  @@index([expiresAt])
+}
 
 enum AdminRole {
   SUPER_ADMIN

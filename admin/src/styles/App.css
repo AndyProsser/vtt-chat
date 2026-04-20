@@ -286,6 +286,26 @@ body {
   margin-top: 10px;
 }
 
+.admin-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-log-details-json {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  margin: 12px 0 0;
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  font-size: 12px;
+}
+
 .admin-pagination {
   display: flex;
   align-items: center;

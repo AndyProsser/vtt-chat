@@ -50,10 +50,37 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
     })
   }
 
-  // Attach to request for downstream handlers
-  ;(req as any).user = payload
+  getUserAuthContext(payload.userId)
+    .then((user) => {
+      if (!user || !user.isActive) {
+        res.status(401).json({
+          code: ErrorCode.UNAUTHORIZED,
+          message: 'Account is inactive or unavailable',
+        })
+        return
+      }
 
-  next()
+      if (user.tokenInvalidBefore) {
+        const issuedAtMs = (payload.iat || 0) * 1000
+        if (issuedAtMs < user.tokenInvalidBefore.getTime()) {
+          res.status(401).json({
+            code: ErrorCode.UNAUTHORIZED,
+            message: 'Session is no longer valid',
+          })
+          return
+        }
+      }
+
+      // Attach to request for downstream handlers
+      ;(req as any).user = payload
+      next()
+    })
+    .catch(() => {
+      res.status(500).json({
+        code: 'AUTH_CONTEXT_LOOKUP_FAILED',
+        message: 'Failed to validate authentication context',
+      })
+    })
 }
 
 async function getUserAuthContext(userId: string) {
@@ -69,6 +96,7 @@ async function getUserAuthContext(userId: string) {
       displayName: true,
       avatarUrl: true,
       email: true,
+      tokenInvalidBefore: true,
     },
   })
 

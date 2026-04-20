@@ -272,7 +272,7 @@ Exit criteria:
 
 ### Stage 8: Admin and Ops Layer
 
-Status: **In progress (unified user-admin model + role hierarchy implemented, ops actions pending)**
+Status: **Complete**
 
 Goal:
 
@@ -318,17 +318,27 @@ Completed so far:
 - Admin frontend now properly routes: setup (if needed) → login (if not auth) → dashboard (if authenticated).
 - Both backend and frontend build successfully with full TypeScript type coverage.
 
-Remaining scope:
+Stage completion updates:
 
-- Moderation actions with audit trail (suspend/force logout/etc).
-- Invite-link based admin onboarding for non-existing users.
-- Persistent telemetry sources (currently in-memory/baseline metrics in parts).
-- Detail panels replacing placeholder actions (for example log entry expand UX).
+- Moderation workflows implemented with permission gates:
+  - `PATCH /api/admin/users/:userId/suspend`
+  - `PATCH /api/admin/users/:userId/restore`
+  - `POST /api/admin/users/:userId/force-logout`
+- Persistent audit trail implemented via `AdminAuditLog` (Prisma model + migration), and moderation actions now write auditable entries.
+- Invite-link admin onboarding implemented for non-existing users:
+  - `POST /api/admin/invites`
+  - `GET /api/admin/invites/validate`
+  - `POST /api/admin/invites/redeem`
+  - Admin UI invite onboarding route at `/admin/onboard?invite=...`.
+- Token invalidation support added (`User.tokenInvalidBefore`) and now enforced in auth middleware for both user and admin JWTs.
+- Admin telemetry/logs now include persisted admin audit events (`admin-audit` source) and dashboard surfaces moderation/user aggregate metrics.
+- Admin users page now supports real backend-driven moderation actions and invite generation.
+- Admin logs page now uses an inline detail panel instead of placeholder alert dialogs.
 
 Exit criteria:
 
-- Authenticated admin workflows with readonly telemetry and admin-gated access. ✅ (auth closure complete)
-- Controlled moderation actions with full audit trail (pending next iteration).
+- Authenticated admin workflows with readonly telemetry and admin-gated access. ✅
+- Controlled moderation actions with full audit trail. ✅
 
 ---
 
