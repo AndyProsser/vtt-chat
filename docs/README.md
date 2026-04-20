@@ -7,6 +7,19 @@ The documentation is intentionally modular, deterministic, and deeply aligned wi
 
 This README serves as the **entry point** for the entire documentation suite.
 
+## Runtime Source of Truth
+
+When roadmap, architecture, and implementation docs diverge, treat the shipped runtime contract as authoritative.
+
+Use these sources first when updating docs or stage status:
+
+- `shared/events/*` and `shared/events/base.ts` for websocket/domain event contracts
+- `backend/src/api/index.ts` for mounted REST route families
+- `backend/src/ws/index.ts` and `frontend/src/ws/client.ts` for current websocket transport behavior
+- `ROADMAP.md` for stage labels and shipped-baseline wording
+
+Architecture and API docs may include target-architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
+
 ## 📚 Documentation Index
 
 ### **Philosophy**

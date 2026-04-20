@@ -4,6 +4,12 @@
 
 _A unified control surface for audio, rooms, notes, metadata, private chats, and session flow._
 
+Status:
+
+- This document describes intended DM workflows and capability surfaces, not just the currently mounted runtime APIs/events.
+- Legacy lowercase event names in tables and examples should be read as conceptual workflow labels unless they match the shared runtime contract.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

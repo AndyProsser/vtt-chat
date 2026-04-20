@@ -4,6 +4,12 @@
 
 _A Redis‑first real‑time presence model with DB‑backed recovery and analytics._
 
+Status:
+
+- This document mixes shipped Stage 6 presence behavior with older target-architecture location-state examples.
+- Lowercase websocket event names and campaign-scoped publish examples in this file should be read as conceptual legacy flow descriptions, not the shipped runtime contract.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

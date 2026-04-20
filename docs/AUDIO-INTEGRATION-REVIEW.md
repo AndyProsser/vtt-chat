@@ -1,8 +1,14 @@
 # Audio Integration Review (Stage 7)
 
-**Review Date:** 2026-04-19  
-**Status:** Pre-implementation gap analysis  
+**Review Date:** 2026-04-19
+**Status:** Pre-implementation gap analysis
 **Scope:** Design vs. Current Implementation Assessment
+
+Historical note:
+
+- This review predates the current Stage 7 baseline implementation and should be read as a historical gap-analysis snapshot.
+- References to placeholder token issuance, missing LiveKit docs, or lowercase event-driven token flows are not a description of the current shipped runtime.
+- For current runtime contracts, see [README.md](README.md#runtime-source-of-truth).
 
 ---
 
@@ -26,15 +32,15 @@ Stage 7 (Audio/LiveKit) is currently **scaffolded with baseline placeholders**. 
 
 ### 1.1 Core Audio Engine Components
 
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| **AudioGraph** | WebAudio DSP engine with gain/compressor chains | 📝 Design only |
-| **RoomBus** | Per-room gain + environment presets | 📝 Design only |
-| **ParticipantAudioNode** | Per-user DSP with distance/effects | 📝 Design only |
-| **DM Voice Chain** | DM's voice preset processing | 📝 Design only |
-| **DM Monitor Chain** | DM-only player IC effects | 📝 Design only |
-| **Private Room Clean Mode** | Effects bypass for private rooms | 📝 Design only |
-| **Push-To-Talk (PTT)** | Temporary clean voice override | 📝 Design only |
+| Component                   | Purpose                                         | Status         |
+| --------------------------- | ----------------------------------------------- | -------------- |
+| **AudioGraph**              | WebAudio DSP engine with gain/compressor chains | 📝 Design only |
+| **RoomBus**                 | Per-room gain + environment presets             | 📝 Design only |
+| **ParticipantAudioNode**    | Per-user DSP with distance/effects              | 📝 Design only |
+| **DM Voice Chain**          | DM's voice preset processing                    | 📝 Design only |
+| **DM Monitor Chain**        | DM-only player IC effects                       | 📝 Design only |
+| **Private Room Clean Mode** | Effects bypass for private rooms                | 📝 Design only |
+| **Push-To-Talk (PTT)**      | Temporary clean voice override                  | 📝 Design only |
 
 ### 1.2 Effect Priority Stack
 
@@ -82,7 +88,7 @@ export type AudioEventType =
 
 ### 2.1 Backend
 
-**Location:** `backend/src/infra/livekit/token.service.ts`  
+**Location:** `backend/src/infra/livekit/token.service.ts`
 **Status:** ❌ Placeholder only
 
 ```typescript
@@ -93,12 +99,13 @@ export type AudioEventType =
 ```
 
 **What's needed:**
+
 - LiveKit server SDK (not in package.json)
 - Token generation logic
 - Room/participant validation
 - TTL/permission enforcement
 
-**Location:** `backend/src/ws/handlers/audio.handler.ts`  
+**Location:** `backend/src/ws/handlers/audio.handler.ts`
 **Status:** ❌ Placeholder only
 
 ```typescript
@@ -106,6 +113,7 @@ export const BASELINE_PLACEHOLDER = true
 ```
 
 **What's needed:**
+
 - Handler implementations for all 6 audio event types
 - Authorization checks (DM-only operations)
 - Effect/preset validation
@@ -113,19 +121,20 @@ export const BASELINE_PLACEHOLDER = true
 
 ### 2.2 Frontend
 
-**Location:** `frontend/src/hooks/useLiveKit.ts`  
+**Location:** `frontend/src/hooks/useLiveKit.ts`
 **Status:** ❌ Placeholder only
 
-**Location:** `frontend/src/hooks/useAudioEngine.ts`  
+**Location:** `frontend/src/hooks/useAudioEngine.ts`
 **Status:** ❌ Placeholder only
 
 **What's needed:**
+
 - WebAudio context initialization
 - AudioGraph implementation
 - Track source/sink management
 - Real-time effect application
 
-**Location:** `frontend/src/state/audioSlice.ts`  
+**Location:** `frontend/src/state/audioSlice.ts`
 **Status:** ⚠️ Partially implemented
 
 ```typescript
@@ -137,8 +146,9 @@ export interface AudioState {
 }
 ```
 
-**What's there:** Basic state shape + three handler stubs  
+**What's there:** Basic state shape + three handler stubs
 **What's missing:**
+
 - Effect presets state (environment, voice, condition, distance, IC)
 - PTT state
 - Private room clean mode state
@@ -178,9 +188,9 @@ this.dispatcher.registerHandler('AUDIO:DM_OVERRIDE_APPLIED', audioHandlers.handl
 
 ```typescript
 // Audio events
-dispatcher.register('AUDIO:EFFECT_APPLIED', (event) => { })
-dispatcher.register('AUDIO:ENVIRONMENT_SET', (event) => { })
-dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
+dispatcher.register('AUDIO:EFFECT_APPLIED', (event) => {})
+dispatcher.register('AUDIO:ENVIRONMENT_SET', (event) => {})
+dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {})
 ```
 
 **Status:** Event types registered, but handlers do nothing.
@@ -192,10 +202,12 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 ### 3.1 Package Dependencies
 
 **Backend:** Missing LiveKit server SDK
+
 - Need to add: `livekit`
 - For: Token generation, room management, access control
 
 **Frontend:** LiveKit dependencies present
+
 - ✅ `@livekit/components-react`: ^2.9.20
 - ✅ `@livekit/components-styles`: ^1.2.0
 - Missing: `livekit-client` (SDK, not just components)
@@ -203,10 +215,11 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 
 ### 3.2 Architecture Documentation
 
-**Missing file:** `docs/architecture/LIVEKIT-INTEGRATION.md`  
+**Missing file:** `docs/architecture/LIVEKIT-INTEGRATION.md`
 **Referenced in:** `docs/architecture/ARCHITECTURE.md` line 130
 
 **Should cover:**
+
 - Token issuance workflow
 - Room/participant lifecycle
 - Track routing
@@ -216,6 +229,7 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 ### 3.3 API Endpoints
 
 **Needed but not yet documented:**
+
 - `POST /api/livekit/token` - Generate LiveKit access token
 - `GET /api/livekit/room/:roomId` - Get room info (optional)
 - `POST /api/audio/effect` - Apply audio effect (broadcasts to WS)
@@ -290,6 +304,7 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 ### 5.1 Event Payload Mismatch
 
 **WEBSOCKETS.md shows:**
+
 ```json
 {
   "type": "presence.joinRoom",
@@ -306,6 +321,7 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 ### 5.2 Audio Event Handler Response
 
 **Design expectation:** When `AUDIO:EFFECT_APPLIED` broadcast arrives, frontend:
+
 1. Updates audioSlice
 2. Applies effect to AudioGraph
 3. Updates UI indicator
@@ -316,8 +332,8 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => { })
 
 ### 5.3 Missing Audio/DM Coordination
 
-**Design:** DM overrides silence/adjust individual users' audio  
-**Current:** No mechanism to apply user-specific audio adjustments  
+**Design:** DM overrides silence/adjust individual users' audio
+**Current:** No mechanism to apply user-specific audio adjustments
 **Action:** Implement per-user override state in audioSlice
 
 ---
@@ -373,13 +389,13 @@ Stage 7 is complete when:
 
 ## 8. Documentation Gaps Found
 
-| Document | Issue | Action |
-|----------|-------|--------|
-| LIVEKIT-INTEGRATION.md | Referenced but missing | Create before implementation |
-| API-SPEC.md | No audio endpoint specs | Add token + effect endpoints |
-| ERROR-MODEL.md | No audio-specific errors | Document audio error cases |
-| PERMISSIONS-MATRIX.md | Audio perms defined ✅ | No action needed |
-| ARCHITECTURE.md | References missing doc | Update cross-reference after creation |
+| Document               | Issue                    | Action                                |
+| ---------------------- | ------------------------ | ------------------------------------- |
+| LIVEKIT-INTEGRATION.md | Referenced but missing   | Create before implementation          |
+| API-SPEC.md            | No audio endpoint specs  | Add token + effect endpoints          |
+| ERROR-MODEL.md         | No audio-specific errors | Document audio error cases            |
+| PERMISSIONS-MATRIX.md  | Audio perms defined ✅   | No action needed                      |
+| ARCHITECTURE.md        | References missing doc   | Update cross-reference after creation |
 
 ---
 
@@ -387,7 +403,8 @@ Stage 7 is complete when:
 
 **Current Gap:** ~90% of Stage 7 implementation is missing (audio engine, token service, event handlers, full state management).
 
-**Recommended Next:** 
+**Recommended Next:**
+
 1. Approve this review
 2. Add dependencies (livekit, livekit-client)
 3. Create LIVEKIT-INTEGRATION.md

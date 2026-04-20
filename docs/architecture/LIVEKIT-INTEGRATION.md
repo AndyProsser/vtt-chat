@@ -4,6 +4,12 @@
 
 _How VTT-Chat uses LiveKit for real-time audio distribution and room management._
 
+Status:
+
+- This architecture document includes shipped Stage 7 baseline behavior plus broader target-architecture reconnect and authorization flows.
+- Legacy references in this file to `presence.joinRoom`-style runtime flow should be read as conceptual design shorthand, not the shipped websocket contract.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## Overview

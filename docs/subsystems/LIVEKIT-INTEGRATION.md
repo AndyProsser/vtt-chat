@@ -4,6 +4,12 @@
 
 _A modular, deterministic audio transport layer for real‑time tabletop communication._
 
+Status:
+
+- This subsystem document includes target-architecture examples that go beyond the shipped Stage 7 baseline.
+- Lowercase event references in this file should be read as conceptual design shorthand rather than the shipped websocket contract.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

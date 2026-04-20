@@ -2,6 +2,12 @@
 
 # Event Bus Architecture
 
+Status:
+
+- This document explains the event model conceptually and still contains older dotted/lowercase event-name examples.
+- The shipped Stage 0-7 runtime contract uses the shared event envelope and uppercase event families defined in `shared/events/*`.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 The Event Bus is the **central communication backbone** of the VTT‑Chat platform.
 It defines how state changes, user actions, system events, and extension events flow through the system in a predictable, observable, and debuggable way.
 

@@ -4,6 +4,12 @@
 
 _A modular, versioned REST API for real‑time virtual tabletop communication._
 
+Status:
+
+- This document includes both shipped runtime endpoints and broader planned API surface.
+- Through Stage 7, the shared runtime contract and mounted backend routes are the source of truth for what is actually implemented.
+- Endpoints described here that are not mounted in the current backend should be treated as planned architecture, not shipped behavior.
+
 ---
 
 ## 📘 Overview
@@ -22,6 +28,40 @@ It covers:
 - Admin & telemetry
 
 All endpoints are **JSON‑based**, **stateless**, and **authenticated** via JWT or API keys.
+
+Current shipped runtime baseline through Stage 7 includes mounted route families for:
+
+- `/api/auth`
+- `/api/session`
+- `/api/chat`
+- `/api/notes`
+- `/api/campaigns`
+- `/api/users`
+- `/api/rooms`
+- `/api/presence`
+- `/api/livekit`
+- `/api/audio`
+
+Placeholder route families such as metadata and export remain planned follow-up work.
+
+When this document describes broader campaign-scoped or future-state endpoints that are not mounted in the current backend, those sections should be read as target architecture.
+
+---
+
+# Runtime Baseline vs Planned Surface
+
+Shipped baseline through Stage 7:
+
+- Auth, campaign, user, session, chat, notes, rooms, presence, LiveKit token issuance, and baseline audio control routes.
+- Route-level authorization for session membership and DM-only controls where implemented.
+- Stable baseline audio control API surface, including an audio state endpoint that is not yet backed by durable persisted recovery.
+
+Still planned or partially implemented beyond Stage 7:
+
+- Full refresh-token lifecycle reflected in docs.
+- Complete campaign-scoped REST normalization for every conceptual endpoint in this file.
+- Search, recordings, journal/history, metadata, import/export, and other later-stage domains.
+- Durable audio-state recovery and richer admin/ops workflows.
 
 ---
 
@@ -53,13 +93,13 @@ Authenticate a user.
 
 ## `POST /api/auth/refresh`
 
-Refresh JWT.
+Planned / not part of the verified Stage 0-7 shipped baseline.
 
 ---
 
 ## `POST /api/auth/logout`
 
-Invalidate refresh token (optional).
+Baseline logout behavior is intentionally minimal; refresh-token invalidation remains planned.
 
 ---
 
@@ -283,15 +323,31 @@ Share note with specific users.
 
 # 🎙️ Audio Presets & DM Controls
 
+The audio section below mixes shipped baseline routes with broader target architecture.
+
+Shipped runtime baseline routes:
+
+- `GET /api/audio/presets`
+- `POST /api/audio/environment`
+- `POST /api/audio/dm-override/apply`
+- `POST /api/audio/dm-override/remove`
+- `GET /api/audio/state/:sessionId`
+
+Current baseline notes:
+
+- Audio control events are authoritative in realtime.
+- `GET /api/audio/state/:sessionId` exists as a stable API surface for later expansion, but does not yet provide durable persisted room/environment/override recovery.
+- Broader preset, distance, PTT, and clear-all workflows described below remain target architecture until mounted and verified.
+
 ## `GET /api/audio-presets`
 
-Return preset library (voice, distance, environment, condition, IC).
+Conceptual legacy endpoint. Current shipped baseline uses `GET /api/audio/presets`.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/apply`
 
-Apply an audio preset.
+Planned target-architecture endpoint; not part of the verified shipped Stage 7 baseline.
 
 **Body**
 
@@ -307,146 +363,64 @@ Apply an audio preset.
 
 ## `POST /api/campaigns/:campaignId/audio/clear`
 
-Clear a preset.
+Planned target-architecture endpoint.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/clear-all`
 
-DM clears all effects.
+Planned target-architecture endpoint.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/environment`
 
-Apply environment preset to a room.
+Target-architecture path. Current shipped baseline uses `POST /api/audio/environment`.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/distance`
 
-Set distance for a user.
+Planned target-architecture endpoint.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/ptt/start`
 
-Start PTT override.
+Planned target-architecture endpoint.
 
 ---
 
 ## `POST /api/campaigns/:campaignId/audio/ptt/end`
 
-End PTT override.
+Planned target-architecture endpoint.
 
 ---
 
-# 🔊 Recordings & Journals
+# Planned Later-Stage Domains
 
-## `GET /api/campaigns/:campaignId/recordings`
+The following endpoint groups remain target architecture and are intentionally summarized here rather than documented as if they were part of the shipped Stage 0-7 surface:
 
-List recordings.
+- recordings and journal endpoints
+- search endpoints for messages, notes, and recordings
+- external log ingestion endpoints
+- import/export workflows
+- broader campaign-admin action endpoints
+- client telemetry ingestion and richer dependency/status endpoints
 
----
-
-## `GET /api/campaigns/:campaignId/recordings/:recordingId`
-
-Get recording metadata.
-
----
-
-## `GET /api/campaigns/:campaignId/sessions/:sessionId/journal`
-
-Get session journal.
+These domains should be expanded into full API documentation only when the routes are mounted and validated in the runtime.
 
 ---
 
-# 🔍 Search
+# 🛠️ Admin Telemetry Baseline
 
-## `GET /api/search/messages`
+Partially shipped admin baseline endpoints currently include:
 
-Search messages across sessions.
+- `GET /api/admin/telemetry/dashboard`
+- `GET /api/admin/telemetry/status`
+- `GET /api/admin/telemetry/logs`
 
----
-
-## `GET /api/search/notes`
-
-Search notes.
-
----
-
-## `GET /api/search/recordings`
-
-Search recordings.
-
----
-
-# 🔌 External Log Ingestion
-
-## `POST /api/integrations/logs/ingest`
-
-Ingest logs from DDB/Roll20/FVTT.
-
-**Body**
-
-```json
-{
-  "source": "DDB",
-  "campaignExternalId": "ddb-123",
-  "userExternalId": "ddb-user-456",
-  "rawPayload": { ... }
-}
-```
-
----
-
-# 📦 Import / Export
-
-## `GET /api/campaigns/:campaignId/export`
-
-Export campaign data.
-
----
-
-## `POST /api/campaigns/import`
-
-Import campaign data.
-
----
-
-# 🛠️ Admin
-
-## `GET /api/admin/campaigns`
-
-List all campaigns.
-
----
-
-## `POST /api/admin/campaigns/:campaignId/archive`
-
-Archive a campaign.
-
----
-
-## `POST /api/admin/campaigns/:campaignId/restore`
-
-Restore a campaign.
-
----
-
-## `GET /api/admin/telemetry/dashboard`
-
-Get dashboard telemetry summary cards.
-
-## `GET /api/admin/telemetry/status`
-
-Get platform status metrics and chart data.
-
-## `GET /api/admin/telemetry/logs`
-
-Get admin logs with filtering, sorting, and pagination.
-
-Query params (current):
+Current logs query parameters:
 
 - `timeRange` (`1h` | `24h` | `7d`)
 - `severity`
@@ -458,42 +432,9 @@ Query params (current):
 - `sortBy` (`timestamp` | `severity` | `source` | `message`)
 - `sortDir` (`asc` | `desc`)
 
-## `GET /api/admin/telemetry`
+Still planned beyond the current baseline:
 
-Planned aggregate telemetry query endpoint for higher-level analytics views.
-
-## `GET /api/admin/telemetry/performance`
-
-Planned endpoint for performance-series metrics (latency/throughput/resource).
-
-## `GET /api/admin/audit/logs`
-
-Planned endpoint for audit-specific action history (moderation/security/config changes).
-
----
-
-# 📡 Telemetry
-
-## `POST /api/telemetry/client`
-
-Client → server telemetry events.
-
-Expected usage:
-
-- frontend clients send batched, privacy-safe telemetry events
-- backend aggregates/stores events for dashboard and operational analytics
-- payloads must exclude raw chat/note/private content
-
----
-
-# 🩺 Status & Health
-
-## `GET /api/status`
-
-Basic health check.
-
----
-
-## `GET /api/status/dependencies`
-
-Check DB, Redis, LiveKit, queue.
+- aggregate telemetry query endpoints
+- performance-series metrics endpoints
+- audit-log query endpoints
+- authenticated operational action endpoints beyond readonly telemetry

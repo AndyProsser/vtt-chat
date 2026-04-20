@@ -17,13 +17,13 @@ Last updated: 2026-04-20
 
 Current overall status: **Stages 0-7 complete (baseline), Stage 8 partially complete, Stages 9-13 now defined as planned remaining scope**.
 
-- Contract and architecture baseline are in place.
+- Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
 - Session lifecycle and chat vertical slices are implemented and building.
 - Admin shell and readonly telemetry baseline are now implemented.
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice now includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
-- Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), with advanced hardening/e2e still pending.
+- Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), while durable audio-state recovery and broader reconnect/e2e hardening remain pending.
 - Frontend command-center UI and admin operations UI scope are now explicitly tracked as post-Stage 8 delivery stages.
 
 Latest verification:
@@ -71,11 +71,13 @@ Completed:
 
 - Shared package contracts established under `shared/`.
 - Core event envelope, validators, permission matrix, and error model implemented.
-- Documentation alignment pass completed, with compatibility notes added where conceptual docs differ from runtime contracts.
+- Backend/frontend runtime now consume the shared contract package as the canonical source of truth.
+- Documentation source-of-truth guidance is indexed in [docs/README.md](docs/README.md#runtime-source-of-truth) to keep roadmap, architecture, and runtime references aligned.
+- Contract-facing roadmap references are aligned to the shipped runtime baseline; broader architecture/API docs still include conceptual or future-state material that requires continued follow-up.
 
 Exit criteria:
 
-- Shared contract package is canonical and consumed by backend/frontend.
+- Shared contract package is canonical and consumed by backend/frontend, even where higher-level architecture docs still describe future-state behavior beyond the shipped runtime.
 
 ---
 
@@ -240,7 +242,7 @@ Status: **Complete (baseline)**
 
 Goal:
 
-- Token flow, room connect/disconnect, controlled audio states and DM overrides.
+- Token flow, room connect/disconnect, realtime audio control events, and DM overrides at baseline scope.
 
 Completed so far:
 
@@ -252,17 +254,19 @@ Completed so far:
 - Frontend runtime mounts audio/livekit integration through `AudioPanel` in the active session room path.
 - Environment configuration keys exist for LiveKit integration.
 - Backend audio control API routes are now implemented and mounted (`/api/audio/presets`, `/api/audio/environment`, `/api/audio/dm-override/apply`, `/api/audio/dm-override/remove`, `/api/audio/state/:sessionId`).
+- `/api/audio/state/:sessionId` currently provides a stable baseline API surface, but not yet durable persisted room/environment/override recovery.
 - Backend API tests now cover role gating and websocket event emission for audio control routes.
 
 Remaining scope:
 
 - Persist room-scoped audio control state and DM overrides for durable restart recovery.
+- Align LiveKit/recovery documentation to distinguish shipped baseline behavior from future-state reconnect and hydration flows.
 - Add multi-client end-to-end validation for token flow, audio event fanout, and override behavior.
 - Expand audit/telemetry detail for audio control mutations.
 
 Exit criteria:
 
-- Stable audio baseline without advanced effects dependency. ✅
+- Stable realtime audio baseline without advanced effects dependency or durable persisted recovery. ✅
 
 ---
 

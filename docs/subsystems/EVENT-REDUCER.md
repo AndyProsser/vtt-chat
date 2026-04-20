@@ -4,6 +4,12 @@
 
 _A deterministic, modular dispatcher that synchronizes client state with the real‑time backend._
 
+Status:
+
+- This document still includes legacy reducer examples built around lowercase namespace events.
+- The shipped runtime reducer path uses the shared event envelope and uppercase event families such as `SESSION:*`, `CHAT:*`, `ROOM:*`, `PRESENCE:*`, `NOTES:*`, and `AUDIO:*`.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

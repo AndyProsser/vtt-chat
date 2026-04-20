@@ -4,6 +4,12 @@
 
 _A deterministic WebAudio processing pipeline for real‑time tabletop communication._
 
+Status:
+
+- This document describes the target audio architecture in more detail than the shipped Stage 7 baseline.
+- The shipped runtime includes LiveKit token issuance, mounted frontend hooks, realtime audio control events, and baseline override handling; some preset and control flows described here remain future-state design.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

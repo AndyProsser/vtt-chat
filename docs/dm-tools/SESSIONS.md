@@ -4,6 +4,12 @@
 
 _A structured, stateful lifecycle for tabletop play, with green room staging, recaps, private rooms, and journaling._
 
+Status:
+
+- This workflow document includes DM-facing lifecycle concepts that are broader than the shipped runtime naming conventions.
+- Campaign-scoped endpoint examples and lowercase websocket event names in this file should be read as workflow shorthand or target architecture, not the canonical Stage 0-7 contract.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

@@ -4,6 +4,12 @@
 
 _A lightweight, persistent, DM‑controlled knowledge system for handouts, maps, summaries, and metagame notes._
 
+Status:
+
+- This document includes shipped Stage 5 notes behavior plus planned search and import/export surfaces.
+- Endpoint examples for cross-session search or broader import/export should be treated as target architecture unless they match mounted runtime routes.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

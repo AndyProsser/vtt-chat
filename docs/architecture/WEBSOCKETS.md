@@ -4,6 +4,12 @@
 
 _A versioned, event‑driven real‑time protocol for presence, chat, audio, and DM controls._
 
+Status:
+
+- This document now distinguishes the shipped Stage 0-7 runtime protocol from broader conceptual protocol design.
+- The canonical runtime contract is the shared event package under `shared/events` and the current backend/frontend transport implementation.
+- Any older lowercase namespace examples in this file should be treated as conceptual legacy design notes until they are fully rewritten.
+
 ---
 
 ## 📘 Overview
@@ -20,13 +26,64 @@ It covers:
 - Reconnect protocol
 - Versioning strategy
 
-This is the **authoritative reference** for all client and server WebSocket behavior.
+For shipped runtime behavior through Stage 7, the source of truth is:
+
+- `shared/events/*`
+- `shared/events/base.ts`
+- `backend/src/ws/index.ts`
+- `frontend/src/ws/client.ts`
+- `frontend/src/hooks/useWebSocket.ts`
+
+This document also contains conceptual and future-state material for later stages.
 
 ---
 
 # 🔌 Connection Model
 
-Each client opens **one WebSocket connection per campaign**:
+Current shipped baseline:
+
+- Each client opens one authenticated WebSocket connection to the backend transport.
+- The connection is authenticated immediately after socket open via a `WS:AUTH` message carrying the bearer token.
+- After authentication, the server responds with transport wrapper messages such as `WS:CONNECTED`, `WS:EVENT`, `WS:ACK`, and `WS:ERROR`.
+- Domain events delivered inside `WS:EVENT` use the shared uppercase event contract such as `SESSION:*`, `CHAT:*`, `NOTES:*`, `ROOM:*`, `PRESENCE:*`, and `AUDIO:*`.
+
+Illustrative runtime shape:
+
+```json
+{
+  "type": "WS:AUTH",
+  "token": "jwt-token"
+}
+```
+
+```json
+{
+  "type": "WS:CONNECTED",
+  "connectionId": "conn-123",
+  "userId": "u123",
+  "username": "dm-user",
+  "role": "DM"
+}
+```
+
+```json
+{
+  "type": "WS:EVENT",
+  "event": {
+    "id": "8d7d3a4d-0d3d-4f07-bff7-8d0d3c0a1111",
+    "type": "CHAT:MESSAGE_SENT",
+    "version": 1,
+    "userId": "u123",
+    "userRole": "DM",
+    "sessionId": "s123",
+    "roomId": "r123",
+    "timestamp": 1713123123,
+    "payload": {}
+  }
+}
+```
+
+Conceptual legacy connection model retained below for future architecture discussion:
 
 ```
 wss://server/ws/campaign/:campaignId
@@ -43,7 +100,15 @@ The connection is:
 
 # 🔐 Authentication
 
-Clients authenticate by sending a **connection init message** immediately after opening the socket:
+Current shipped baseline:
+
+- The client sends `WS:AUTH` after `onopen`.
+- The server verifies the JWT and associates the connection with the authenticated user and current session context when present.
+- Query-string token auth is explicitly rejected.
+
+Earlier `client.init` / `server.ready` examples below are conceptual legacy transport design and are not the shipped Stage 0-7 handshake.
+
+Legacy conceptual example:
 
 ```json
 {
@@ -84,25 +149,52 @@ If authentication fails:
 
 # 📦 Event Envelope Format
 
-All events follow this structure:
+Shipped domain events follow the shared event envelope:
 
 ```json
 {
-  "v": 1,
-  "type": "namespace.eventName",
+  "id": "uuid",
+  "type": "DOMAIN:ACTION",
+  "version": 1,
+  "userId": "uuid",
+  "userRole": "DM",
+  "sessionId": "uuid",
+  "roomId": "uuid-or-null",
+  "timestamp": 1713123123,
   "payload": { ... }
 }
 ```
 
-- `v` = protocol version
-- `type` = namespaced event name
-- `payload` = event data
+- `version` = event schema version
+- `type` = shared uppercase event type
+- `payload` = subsystem-specific event data
+
+Transport wrappers around domain events are separate from the domain envelope and currently include:
+
+- `WS:CONNECTED`
+- `WS:EVENT`
+- `WS:ACK`
+- `WS:ERROR`
 
 ---
 
 # 🧩 Namespaces
 
-Events are grouped into namespaces:
+Current shipped runtime event families are grouped by uppercase domains:
+
+| Domain       | Purpose                                   |
+| ------------ | ----------------------------------------- |
+| `SESSION:*`  | Session lifecycle                         |
+| `CHAT:*`     | Chat messages and typing                  |
+| `NOTES:*`    | Note create/update/delete propagation     |
+| `ROOM:*`     | Room lifecycle and room transition events |
+| `PRESENCE:*` | Presence state changes                    |
+| `AUDIO:*`    | Audio control and override events         |
+| `WS:*`       | Transport wrapper and connection metadata |
+
+Legacy lowercase namespace examples below remain conceptual and are not the shipped contract.
+
+Conceptual namespace list:
 
 | Namespace     | Purpose                                        |
 | ------------- | ---------------------------------------------- |
@@ -120,467 +212,52 @@ Events are grouped into namespaces:
 
 ---
 
-# 🟢 Presence Events
+# Reconnect Baseline
 
-## **presence.joinCampaign**
+Current shipped Stage 6-7 reconnect behavior is intentionally narrower than a full hydrate protocol:
 
-Sent when a user enters the campaign (green room).
-
-```json
-{
-  "type": "presence.joinCampaign",
-  "payload": {
-    "userId": "u123",
-    "characterId": "char456",
-    "role": "PLAYER",
-    "state": "GREEN_ROOM",
-    "timestamp": 1713123123
-  }
-}
-```
+- The WebSocket client retries with exponential backoff.
+- Queued outbound events are flushed after reconnect.
+- The backend re-associates the authenticated user and restores presence snapshots when needed.
+- The frontend applies targeted room and presence refresh on reconnect.
+- Full cross-domain hydration for chat, notes, audio, permissions, and extension context is not yet the shipped runtime behavior.
 
 ---
 
-## **presence.leaveCampaign**
+# Legacy Conceptual Event Families
 
-```json
-{
-  "type": "presence.leaveCampaign",
-  "payload": {
-    "userId": "u123",
-    "timestamp": 1713123123
-  }
-}
-```
+The following lowercase event families are retained only as compact architecture notes for later-stage protocol design. They are not the shipped Stage 0-7 contract.
 
----
+Conceptual families still referenced in older docs:
 
-## **presence.joinRoom**
+- `presence.*` for campaign and room join/leave flows
+- `session.*` for session lifecycle broadcasts
+- `room.*` for room creation and deletion
+- `chat.*` for messages, whispers, and external log ingestion
+- `private.*` and `dm.*` for private-room and DM-authority flows
+- `audio.*` for preset application, environment changes, distance, and PTT
+- `note.*`, `external.*`, `telemetry.*`, and `error.*` for later-stage integration and observability flows
 
-```json
-{
-  "type": "presence.joinRoom",
-  "payload": {
-    "userId": "u123",
-    "roomId": "main",
-    "isPrimary": true,
-    "livekitToken": "lk-token",
-    "timestamp": 1713123123
-  }
-}
-```
+When updating runtime-facing documentation, prefer the shipped uppercase contract in `shared/events/*` instead of expanding these legacy examples.
 
 ---
 
-## **presence.leaveRoom**
+# Legacy Reconnect Concept
 
-```json
-{
-  "type": "presence.leaveRoom",
-  "payload": {
-    "userId": "u123",
-    "roomId": "main"
-  }
-}
-```
+Earlier protocol sketches described reconnect as an explicit `client.reconnect` request followed by state replay. That is still useful as target architecture, but it is not the shipped runtime behavior.
 
----
+Current shipped baseline instead uses:
 
-# 🎭 Session Events
-
-## **session.started**
-
-```json
-{
-  "type": "session.started",
-  "payload": {
-    "sessionId": "s789",
-    "recap": {
-      "manual": "...",
-      "ai": "..."
-    },
-    "livekitToken": "lk-token"
-  }
-}
-```
-
----
-
-## **session.ended**
-
-```json
-{
-  "type": "session.ended",
-  "payload": {
-    "sessionId": "s789"
-  }
-}
-```
-
----
-
-# 🏠 Room Events
-
-## **room.created**
-
-```json
-{
-  "type": "room.created",
-  "payload": {
-    "roomId": "group-1",
-    "name": "Scouting Party"
-  }
-}
-```
-
----
-
-## **room.deleted**
-
-```json
-{
-  "type": "room.deleted",
-  "payload": {
-    "roomId": "group-1"
-  }
-}
-```
-
----
-
-# 💬 Chat Events
-
-## **chat.newMessage**
-
-```json
-{
-  "type": "chat.newMessage",
-  "payload": {
-    "messageId": "m123",
-    "roomId": "main",
-    "fromUserId": "u123",
-    "markdown": "Hello!",
-    "attachments": [],
-    "timestamp": 1713123123
-  }
-}
-```
-
----
-
-## **chat.whisper**
-
-```json
-{
-  "type": "chat.whisper",
-  "payload": {
-    "messageId": "m124",
-    "fromUserId": "u123",
-    "toUserId": "u999",
-    "markdown": "psst..."
-  }
-}
-```
-
----
-
-## **chat.externalLog**
-
-```json
-{
-  "type": "chat.externalLog",
-  "payload": {
-    "source": "DDB",
-    "action": "ATTACK",
-    "metadata": {
-      "roll": "1d20+5",
-      "result": 17
-    }
-  }
-}
-```
-
----
-
-# 🔐 Private Chat Events
-
-## **private.started**
-
-```json
-{
-  "type": "private.started",
-  "payload": {
-    "privateRoomId": "p123",
-    "participants": ["u123", "u456"],
-    "livekitToken": "lk-token"
-  }
-}
-```
-
----
-
-## **private.ended**
-
-```json
-{
-  "type": "private.ended",
-  "payload": {
-    "privateRoomId": "p123"
-  }
-}
-```
-
----
-
-# 🧙 DM Authority Events
-
-## **dm.promoted**
-
-```json
-{
-  "type": "dm.promoted",
-  "payload": {
-    "userId": "u456",
-    "role": "ASSISTANT_DM"
-  }
-}
-```
-
----
-
-## **dm.demoted**
-
-```json
-{
-  "type": "dm.demoted",
-  "payload": {
-    "userId": "u456",
-    "role": "PLAYER"
-  }
-}
-```
-
----
-
-# 🎙️ Audio Events
-
-## **audio.applyPreset**
-
-```json
-{
-  "type": "audio.applyPreset",
-  "payload": {
-    "targetUserId": "u123",
-    "presetType": "CONDITION",
-    "presetId": "SILENCED",
-    "parameters": { "mute": true }
-  }
-}
-```
-
----
-
-## **audio.clearPreset**
-
-```json
-{
-  "type": "audio.clearPreset",
-  "payload": {
-    "targetUserId": "u123",
-    "presetType": "DISTANCE"
-  }
-}
-```
-
----
-
-## **audio.clearAll**
-
-```json
-{
-  "type": "audio.clearAll",
-  "payload": {}
-}
-```
-
----
-
-## **audio.environmentChanged**
-
-```json
-{
-  "type": "audio.environmentChanged",
-  "payload": {
-    "roomId": "main",
-    "presetId": "CAVE",
-    "parameters": { "reverbSend": 0.4 }
-  }
-}
-```
-
----
-
-## **audio.distanceChanged**
-
-```json
-{
-  "type": "audio.distanceChanged",
-  "payload": {
-    "targetUserId": "u123",
-    "distance": 0.7
-  }
-}
-```
-
----
-
-## **audio.icPreset**
-
-```json
-{
-  "type": "audio.icPreset",
-  "payload": {
-    "fromUserId": "u123",
-    "presetId": "WHISPER",
-    "parameters": { "lowpass": 8000 }
-  }
-}
-```
-
----
-
-## **audio.privateRoomCleanMode**
-
-```json
-{
-  "type": "audio.privateRoomCleanMode",
-  "payload": {
-    "enabled": true
-  }
-}
-```
-
----
-
-## **audio.pttStart / audio.pttEnd**
-
-```json
-{
-  "type": "audio.pttStart",
-  "payload": {}
-}
-```
-
-```json
-{
-  "type": "audio.pttEnd",
-  "payload": {}
-}
-```
-
----
-
-# 📝 Notes Events
-
-## **note.publishedToChat**
-
-```json
-{
-  "type": "note.publishedToChat",
-  "payload": {
-    "noteId": "n123",
-    "roomId": "main",
-    "markdown": "You find 50 gold pieces."
-  }
-}
-```
-
----
-
-# 🔌 External Events
-
-## **external.log**
-
-```json
-{
-  "type": "external.log",
-  "payload": {
-    "source": "FVTT",
-    "raw": { ... }
-  }
-}
-```
-
----
-
-# 📡 Telemetry Events
-
-## **telemetry.clientEvent**
-
-```json
-{
-  "type": "telemetry.clientEvent",
-  "payload": {
-    "event": "ROOM_SWITCH",
-    "properties": {
-      "from": "main",
-      "to": "group-1"
-    }
-  }
-}
-```
-
----
-
-# ❗ Error Events
-
-## **error.invalidAction**
-
-```json
-{
-  "type": "error.invalidAction",
-  "payload": {
-    "reason": "Cannot join private room while in green room",
-    "code": "INVALID_STATE"
-  }
-}
-```
-
----
-
-# 🔄 Reconnect Protocol
-
-When reconnecting, client sends:
-
-```json
-{
-  "type": "client.reconnect",
-  "payload": {
-    "campaignId": "c123",
-    "characterId": "char456",
-    "lastKnownState": "IN_SESSION_PRIMARY",
-    "primaryRoomId": "main",
-    "privateRoomId": null
-  }
-}
-```
-
-Server responds with a **state replay**:
-
-- `presence.joinCampaign`
-- `presence.joinRoom`
-- `private.started` (if needed)
-- `dm.promoted` (if needed)
-- `audio.applyPreset` (if needed)
-- `audio.environmentChanged` (if needed)
-
-This ensures deterministic restoration.
+- websocket reconnect with `WS:AUTH`
+- transport reconnection backoff and queue flushing
+- backend presence restoration when realtime state is empty
+- targeted frontend room/presence refresh after reconnect
 
 ---
 
 # 🧠 Versioning Strategy
 
-- Every event includes `"v": 1`
+- Shipped runtime domain events include `version: 1`
 - New fields → bump minor version
 - Breaking changes → bump major version
 - Clients ignore unknown fields

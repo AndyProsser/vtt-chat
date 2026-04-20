@@ -4,6 +4,12 @@
 
 _A real‑time, room‑aware chat architecture for tabletop sessions, whispers, green room, and system events._
 
+Status:
+
+- This document includes shipped Stage 4 chat behavior plus broader planned search/export/import surfaces.
+- Any lowercase event names or search endpoint examples in this file should be treated as conceptual or later-stage architecture unless they match mounted runtime routes.
+- For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
+
 ---
 
 ## 📘 Overview

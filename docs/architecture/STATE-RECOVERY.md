@@ -2,6 +2,12 @@
 
 # State Recovery
 
+Status:
+
+- This document describes both the recovery target architecture and the currently shipped Stage 6-7 baseline.
+- The shipped runtime currently provides targeted reconnect recovery for room and presence topology plus continued event-driven updates.
+- Full cross-domain hydration for chat, notes, audio, permissions, and extension context remains planned architecture rather than verified shipped behavior.
+
 State Recovery defines how a VTT‑Chat client reconstructs its full application state after:
 
 - A network interruption
@@ -19,6 +25,12 @@ State Recovery is a foundational part of the platform’s reliability model.
 
 # 1. Core Principles
 
+Current implementation note:
+
+- These principles remain the design target for the platform.
+- The shipped baseline currently satisfies them most concretely for transport reconnect, room topology recovery, and presence restoration.
+- Full deterministic cross-domain rehydration is not yet implemented.
+
 ### **1.1 Recovery must be automatic**
 
 Users should never need to manually refresh or reset.
@@ -33,7 +45,9 @@ Given the same server state, all clients reconstruct the same local state.
 
 ### **1.4 Recovery must be complete**
 
-All subsystems must restore:
+Target architecture:
+
+- All subsystems should eventually restore:
 
 - Chat
 - Notes
@@ -41,6 +55,13 @@ All subsystems must restore:
 - Presence
 - Session state
 - Extension context
+
+Current shipped baseline:
+
+- Presence and room topology are explicitly refreshed and recovered.
+- WebSocket reconnect resumes event-driven updates.
+- Audio reconnect behavior is baseline-only and does not yet restore durable persisted room/environment/override state.
+- Full chat/notes/audio/permissions/extension hydration is still future-state work.
 
 ### **1.5 Recovery must be safe**
 
@@ -54,7 +75,7 @@ Recovery must not:
 
 # 2. Recovery Triggers
 
-State Recovery is triggered when:
+Recovery may be triggered when:
 
 - WebSocket reconnects
 - Extension bridge reconnects
@@ -63,9 +84,17 @@ State Recovery is triggered when:
 - Server requests a rehydrate
 - Local state becomes inconsistent
 
+Current shipped baseline most directly covers:
+
+- WebSocket reconnects
+- Client reconnect-driven room/presence refresh
+- Redis-empty presence restoration from persisted snapshots on the backend
+
 ---
 
 # 3. Recovery Lifecycle
+
+Target architecture lifecycle:
 
 ```mermaid
 sequenceDiagram
@@ -83,6 +112,23 @@ sequenceDiagram
     Reducer->>Store: Replace local state
     Store->>Client: UI updates
 ```
+
+Current shipped Stage 6-7 baseline is narrower:
+
+1. **Reconnect detected**
+   Transport layer reconnects with backoff.
+
+2. **Server re-associates connection**
+   Authentication and connection state are restored.
+
+3. **Backend restores presence if needed**
+   Presence snapshots may be used when realtime state is empty.
+
+4. **Frontend refreshes targeted topology**
+   Room and presence state are reloaded and atomically replaced.
+
+5. **Domain events continue flowing**
+   Normal websocket event dispatch resumes after reconnect.
 
 ### **Lifecycle Stages**
 
@@ -105,7 +151,10 @@ sequenceDiagram
 
 # 4. Hydration Payload Structure
 
-The hydration payload is a complete snapshot of all relevant state.
+Target architecture:
+
+- A future full hydration payload may provide a complete snapshot of all relevant state.
+- This is not yet the shipped Stage 6-7 runtime contract.
 
 ```json
 {
@@ -118,6 +167,11 @@ The hydration payload is a complete snapshot of all relevant state.
   "extension": { ... }
 }
 ```
+
+Current shipped baseline:
+
+- No general `system.state.hydrate` event contract is currently shipped.
+- Recovery today is composed from reconnect handling, room/presence API refresh, and ongoing websocket domain events.
 
 ### **4.1 Session State**
 
@@ -163,7 +217,10 @@ The hydration payload is a complete snapshot of all relevant state.
 
 # 5. Reducer Behaviour During Hydration
 
-Hydration is handled by a dedicated reducer:
+Target architecture:
+
+- Full hydration is intended to be handled by a dedicated reducer.
+- That reducer contract is not yet the shipped runtime baseline.
 
 ```
 systemReducer.hydrate(payload)
@@ -181,6 +238,12 @@ If hydration fails:
 
 - Local state resets
 - Client requests a new hydration payload
+
+Current shipped baseline instead relies on:
+
+- reconnect-safe websocket dispatch
+- targeted API refresh for room and presence state
+- store-level atomic replacement for room/presence topology
 
 ---
 
@@ -204,27 +267,49 @@ Each subsystem has specific recovery behaviour.
 
 ## 7.1 Chat Recovery
 
+Target architecture:
+
 - Loads recent messages
 - Restores whisper visibility
 - Restores system messages
 - Does not replay old messages
 
+Current shipped baseline:
+
+- Chat continues as an event-driven domain after reconnect.
+- Full chat snapshot hydration is not yet the shipped contract.
+
 ---
 
 ## 7.2 Notes Recovery
+
+Target architecture:
 
 - Restores shared notes
 - Restores private notes (creator only)
 - Ensures visibility rules are enforced
 
+Current shipped baseline:
+
+- Notes remain governed by runtime visibility rules.
+- Full notes snapshot hydration is not yet the shipped contract.
+
 ---
 
 ## 7.3 Audio Recovery
+
+Target architecture:
 
 - Restores active effects
 - Restores mute states
 - Restores preset state
 - Does not replay sound effects
+
+Current shipped baseline:
+
+- LiveKit token issuance, connection hooks, and realtime audio control events are implemented.
+- Durable persisted recovery of room-scoped environment state and DM overrides is not yet implemented.
+- Audio reconnect/recovery remains baseline-only and is not yet a full snapshot-based restore flow.
 
 ---
 
@@ -234,21 +319,32 @@ Each subsystem has specific recovery behaviour.
 - Resets speaking/typing indicators
 - Re-establishes heartbeat
 
+Current shipped baseline:
+
+- Presence recovery is the most complete shipped subsystem recovery path.
+- Backend can recover session presence from persisted snapshots when realtime state is empty.
+- Frontend reconnect refresh replaces room and presence topology atomically.
+
 ---
 
 ## 7.5 Session Recovery
+
+Target architecture:
 
 - Restores session state
 - Restores pause state
 - Restores lock state
 
+Current shipped baseline:
+
+- Session lifecycle continues through normal APIs and event dispatch.
+- Full session snapshot hydration is not yet a general recovery contract.
+
 ---
 
 ## 7.6 Extension Recovery
 
-- Re-injects overlay
-- Re-establishes bridge connection
-- Re-syncs scene/token context (if supported)
+Planned future-state behavior; not part of the shipped Stage 0-7 runtime baseline.
 
 ---
 
