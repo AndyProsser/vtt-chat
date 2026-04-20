@@ -41,6 +41,10 @@
       "npm test": true,
       "npx tsc": true,
       "npx vitest": true,
+      "/^python3 -c \"\ncontent = open\\('/home/andy/Development/vtt-chat/README\\.md', 'rb'\\)\\.read\\(\\)\nprint\\(repr\\(content\\[:200\\]\\)\\)\n\"$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
     },
   },
 }

@@ -42,9 +42,10 @@ The overlay adapts to:
 
 - DM
 - Player
-- Spectator
 
 Each role sees only what they are allowed to see.
+
+> **Note:** Spectators do not use the browser extension. Spectators access the session through the web-based spectator invite page (`/watch/:code`). The extension is for players and DMs only.
 
 ### **1.4 Privacy‑Respecting**
 
@@ -201,20 +202,10 @@ Players do **not** see:
 
 ---
 
-## 4.3 Spectator UX
-
-Spectators see:
-
-- Chat (read‑only)
-- Presence
-- Audio (listen‑only)
-
-Spectators do **not** see:
-
-- Notes
-- DM tools
-- Player tools
-- Session controls
+> **Spectators** are not extension users. They connect via the web-based spectator invite page (`/watch/:code`). A user who started as a spectator may transition to a player or DM by:
+>
+> - **Registering a full account** using the same email address provided when joining as a spectator. Email verification confirms ownership and links the existing session history to the new account.
+> - **Joining via a player invite link** — the backend matches on email; if the email on the player invite matches an existing spectator account, the accounts are merged after email verification.
 
 ---
 

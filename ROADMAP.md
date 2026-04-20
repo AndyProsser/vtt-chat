@@ -36,22 +36,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion                | Immediate focus                              |
-| ----- | ----------------------------------- | ----------- | ------------------------- | -------------------------------------------- |
-| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline |
-| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability              |
-| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity           |
-| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work  |
-| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up            |
-| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish          |
-| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening              |
-| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening     |
-| 8     | Admin + ops baseline                | In progress | 🟨 Partial                | Enforce admin auth + durable telemetry/audit |
-| 9     | Frontend command-center completion  | Planned     | ⬜ Not started (as stage) | Persona shell/tooling completion             |
-| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows    |
-| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability         |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows             |
-| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync     |
+| Stage | Area                                | Status      | Completion                | Immediate focus                                        |
+| ----- | ----------------------------------- | ----------- | ------------------------- | ------------------------------------------------------ |
+| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline           |
+| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                        |
+| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                     |
+| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work            |
+| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                      |
+| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                    |
+| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                        |
+| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening               |
+| 8     | Admin + ops baseline                | In progress | 🟨 Partial                | Enforce admin auth + durable telemetry/audit           |
+| 9     | Frontend command-center completion  | Planned     | ⬜ Not started (as stage) | Persona shell/tooling completion                       |
+| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows              |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                   |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                       |
+| 13    | Extension + guest auth integration  | Planned     | ⬜ Not started            | Guest auth, invite flow, external identity, VTT bridge |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -411,9 +411,19 @@ Milestone checkpoints:
     - Align admin telemetry/audit endpoint behavior with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437).
     - Verify admin filterability, audit trace completeness, and telemetry durability against [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
 
+- **Stage 10.4: External System Authorization Panel**
+  - Scope: Admin UI panel for authorizing, restricting, or blocking third-party VTT systems that are permitted to authenticate users or ingest logs.
+  - This is a prerequisite for Stage 13 guest auth to be safely enabled in production.
+  - Target validation tests:
+    - Backend tests for `GET/POST/PATCH /api/admin/integrations/systems` route authorization and state transitions.
+    - Tests asserting blocked/unauthorized systems are rejected at guest-login and log-ingestion endpoints.
+    - Audit-log assertions verifying all authorization state changes are persisted with admin user ID, system key, old/new state, and timestamp.
+    - Admin UI interaction tests for authorize/block/restrict-to-log-only actions with confirmation dialogs.
+
 Exit criteria:
 
 - Admin UI provides authenticated, auditable, least-privilege operational actions and reliable telemetry workflows.
+- External system authorization panel is functional and guards Stage 13 guest auth endpoints.
 
 ---
 
@@ -458,22 +468,133 @@ Exit criteria:
 
 ---
 
-### Stage 13: Extension and Overlay Integration (VTT Bridge)
+### Stage 13: Extension and Guest Auth Integration
 
 Status: **Planned**
 
 Goal:
 
-- Deliver documented browser-extension/overlay integration for supported VTT environments.
+- Deliver the browser extension integration with the vtt-chat backend: guest/invite-link authentication, external identity management, data sync, pre-flight validation, and VTT overlay contracts.
+- The extension front-end and D&D Beyond scraping layer already exist at https://github.com/AndyProsser/vtt-chat-extension. This stage delivers the backend integration surface and wires the extension to the vtt-chat platform.
 
-Remaining scope:
+Design reference: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md), [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md)
 
-- Implement extension bridge contracts for Foundry/Roll20/Owlbear interaction normalization.
-- Implement overlay UX and event synchronization with core app state/privacy constraints.
-- Validate extension-side role/privacy enforcement and reconnection/state recovery behavior.
+---
+
+**Stage 13.1: Backend Guest Auth, Spectator Access, and Invite Flow**
+
+- Scope: All backend endpoints required for player guest auth (extension) and spectator access (web). Includes spectator policy enforcement, slot management, and waitlist.
+- Prerequisite: Stage 10.4 external system authorization panel must be complete so production systems are gated from day one.
+- Endpoints to implement (player path):
+  - `GET /api/platform/status` — public, returns platform health + active users/campaigns/sessions
+  - `GET /api/campaigns/invite/:code/validate` — public, validates player invite code + returns campaign display info
+  - `POST /api/auth/extension/preflight` — public, account status check for email without issuing token
+  - `POST /api/auth/extension/guest-login` — creates or resumes guest player account from extension-scraped identity; validates invite code and authorized external system
+  - `POST /api/auth/upgrade` — guest token required; sets password and converts account to FULL
+- Endpoints to implement (spectator path):
+  - `GET /api/campaigns/watch/:code/validate` — public, validates spectator invite code + returns campaign info, character roster, slot availability
+  - `POST /api/auth/spectator/guest-join` — public, creates guest spectator account and issues token (or waitlist position)
+  - `GET /api/campaigns/:id/spectator/waitlist-status` — poll for waitlist promotion using `waitlistToken`
+  - `GET /api/campaigns/browse` — authenticated (full account only), lists discoverable campaigns with spectator slots
+- Data changes required:
+  - `User.authType` enum: add `GUEST` variant
+  - `ExternalIdentity` table: `(userId, externalSystem, externalUserId, email, lastSeenAt)`
+  - `Campaign.inviteActive`, `Campaign.spectatorInviteCode`, `Campaign.spectatorInviteActive`
+  - `Campaign.spectatorPolicy` (`NONE | GUESTS | USERS`), `spectatorMax`, `spectatorWaitlistEnabled`, `spectatorReconnectGraceSecs`, `discoverable`
+  - `Campaign.extensionSyncPolicy` (`NONE | DM_ONLY | DM_AND_PLAYERS`)
+  - `SpectatorWaitlist` table: `(campaignId, userId, joinedAt, waitlistToken, promoted, promotedAt)`
+  - `ExternalSystem` registry table (links to Stage 10.4 admin controls)
+- Target validation tests:
+  - Unit tests for guest-login: new user creation, returning guest match by email+system, invite code validation, blocked system rejection.
+  - Unit tests for preflight: all four `accountStatus` variants and correct `suggestedFlow` mapping.
+  - Unit tests for spectator guest-join: slot available → token issued; at capacity + waitlist enabled → waitlist entry created; `spectatorPolicy = NONE` → 403; `spectatorPolicy = USERS` + guest account → 403.
+  - Tests for waitlist auto-promotion: slot released (disconnect + grace period) → first waitlist entry promoted → token issued.
+  - Tests for reconnect grace period: disconnected spectator slot not released until grace period expires.
+  - Integration tests for invite/watch validate endpoints: valid/expired/nonexistent codes.
+  - Integration tests for campaign browse: only discoverable campaigns returned; private campaigns excluded; guest player accounts rejected.
+  - Tests asserting guest token has reduced lifetime and `authType: GUEST` claim.
+  - Tests for account upgrade: password set, `authType` change, token reissued, campaign/character history preserved.
+  - Tests asserting DMs with guest accounts cannot call invite-link generation endpoints.
+
+---
+
+**Stage 13.2: External Identity and Campaign Linking**
+
+- Scope: Persistence and retrieval of external identities and campaign-to-external-system links.
+- Endpoints to implement:
+  - `POST /api/integrations/external/sync` — push character or campaign updates from extension; applies per `extensionSyncPolicy` and caller role
+  - `GET /api/campaigns/:campaignId/external-links` — DM-only; list linked external systems
+  - `POST /api/campaigns/:campaignId/external-links` — DM-only; manually link an external campaign ID
+- Data changes required:
+  - `CampaignExternalLink` table: `(campaignId, externalSystem, externalId, linkedAt, linkedBy)`
+  - `Character.externalSystem`, `Character.externalId` fields
+- Target validation tests:
+  - Tests for sync endpoint respecting `NONE`, `DM_ONLY`, and `DM_AND_PLAYERS` policy variants.
+  - Tests asserting campaign-level fields (name, structure) can only be updated by DM-role callers regardless of sync policy.
+  - Tests preventing duplicate `ExternalIdentity` records for same (email, system) pair.
+  - Tests preventing duplicate character records for same `(externalSystem, externalId)` pair.
+  - Tests asserting email-based user matching links identities from different external systems to the same vtt-chat user.
+
+---
+
+**Stage 13.3: Frontend Guest Auth UX, Spectator Invite Page, and Account Upgrade**
+
+- Scope: SPA-side support for guest player sessions, the spectator invite/watch page, campaign browse, and account upgrade flow.
+- Changes required:
+  - Auth store must handle `authType: GUEST` tokens (player and spectator) and expose upgrade affordance.
+  - App header/profile panel: persistent (but dismissible) upgrade prompt for guest users, hidden during active session play.
+  - Account upgrade flow: email pre-filled (read-only), password entry, `POST /api/auth/upgrade`, token swap.
+  - **Player invite route** (`/join/:code`): initiates extension pre-flight or falls back to standard invite join for non-extension users.
+  - **Spectator invite page** (`/watch/:code`): no extension required. Shows campaign name, DM display name, character roster with connection status, session status, slot count, and waitlist position. Provides name + email form for guest spectators. Full-account users see login prompt if not already authenticated.
+  - **Campaign browse page** (`/browse`): lists active discoverable campaigns for full-account users. Shows campaign name, DM, session status, slot availability. Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear as private (no join option). Guest player accounts cannot access this page.
+  - **Waitlist UX**: guest spectators placed on the waitlist see their position and a live status indicator. Auto-promoted when a slot opens (no user action required); JWT issued and session view loads.
+  - **Invite link management UI** in Campaign Settings: separate controls for player invite and spectator invite. Spectator controls include: spectatorPolicy selector (None / Guests / Full Accounts Only), max spectator count input, waitlist toggle, and discoverable toggle.
+- Target validation tests:
+  - Frontend store tests for guest token handling and `authType` awareness (player and spectator variants).
+  - Component tests for upgrade prompt visibility (shown outside active session, hidden during play, dismissible).
+  - Integration tests for `/join/:code`: valid invite → correct auth branch; invalid invite → user-friendly error.
+  - Integration tests for `/watch/:code`: valid spectator invite → invite page render; slots available → guest join; at capacity + waitlist → waitlist UX; `spectatorPolicy = NONE` → "spectators not enabled" message.
+  - Frontend tests for campaign browse: discoverable campaigns visible; private campaigns shown but join disabled; guest player accounts redirected away.
+  - Frontend tests for spectator controls visibility (DM only; full-account DM only for invite generation).
+
+---
+
+**Stage 13.4: Extension Backend Contract Integration (D&D Beyond)**
+
+- Scope: Wire the existing https://github.com/AndyProsser/vtt-chat-extension front-end and scraping layer to the vtt-chat backend endpoints implemented in 13.1–13.3.
+- Extension changes required (in extension repo):
+  - Background script: implement pre-flight sequence (`/api/platform/status` → `/api/campaigns/invite/:code/validate` → `/api/auth/extension/preflight`).
+  - Background script: implement guest-login call and in-memory JWT storage with silent renewal.
+  - Background script: implement sync update calls on character level-up/class change events.
+  - Popup UI: display pre-flight results (platform status, invite validity, account status branch).
+  - Popup UI: login form for full-account users (email pre-filled, password entry).
+  - Popup UI: display "platform not enabled" message for blocked systems.
+- Backend contract requirements (already specified in Stage 13.1–13.3, no new endpoints).
+- Target validation tests:
+  - Contract tests asserting extension-submitted payloads match backend schema (character fields, invite code format, externalSystem enum).
+  - Integration tests for the full pre-flight → guest-login → token storage sequence against a local backend.
+  - Tests for silent token renewal behavior when guest JWT is within renewal window.
+  - Tests asserting extension handles backend errors gracefully (platform offline, invite expired, system blocked).
+
+---
+
+**Stage 13.5: VTT Overlay Bridge Contracts (Roll20, Foundry, Others)**
+
+- Scope: Extend the integration layer to Roll20 and Foundry VTT once D&D Beyond integration is validated. Add platform-level support for additional external systems via the ExternalSystem registry.
+- Remaining scope:
+  - Register Roll20 and Foundry as systems in the ExternalSystem registry (initially in `LOG_ONLY` or `BLOCKED` state).
+  - Implement bridge contracts for Roll20/Foundry log ingestion normalization.
+  - Implement overlay UX and event synchronization with core app state/privacy constraints for those platforms.
+  - Validate extension-side role/privacy enforcement and reconnection/state recovery behavior for each new system.
+- This milestone is intentionally deferred until Stage 13.4 (D&D Beyond end-to-end) is validated.
 
 Exit criteria:
 
+- Platform status, invite validation, pre-flight, guest login, and account upgrade endpoints are implemented and tested.
+- External identity and campaign linking persistence is in place with correct sync policy enforcement.
+- SPA handles guest tokens, shows the upgrade prompt, and provides invite-link management for DMs.
+- The existing D&D Beyond extension is wired end-to-end to the vtt-chat backend.
+- All new endpoints are guarded by external system authorization checks (ExternalSystem registry from Stage 10.4).
 - Extension workflows integrate cleanly with core state/event architecture without privacy regressions.
 
 ---
@@ -523,6 +644,7 @@ Dependencies before later stages:
 
 - Stage 6 depends on authoritative presence state model and reconnection strategy (✓ complete).
 - Stage 7 depends on stable room/presence semantics and token lifecycle reliability (✓ ready).
+- Stage 13 depends on Stage 10.4 (external system authorization panel) being in place before guest auth endpoints are safely deployable to production.
 
 ## 4.1) Validation Notes
 
@@ -563,6 +685,7 @@ The following references support the corrected stage labels and current model te
 - 2026-04: Backend test coverage expanded and reorganized into `api`, `integration`, `core`, `ws`, and `contracts` domains with normalized `*.integration.test.ts` naming for integration suites.
 - 2026-04: Backend circular dependency refactoring completed: `SessionLogsService` extracted, `RoomService`/`RoomRecoveryService`/`PresenceService` converted to dependency injection pattern. Latest verification now reports frontend `6` files / `15` tests passing and backend `13` passed + `1` skipped files with `53` passing tests + `6` todo markers; monorepo builds cleanly. Infrastructure hardening improves testability and maintainability.
 - 2026-04: Roadmap expanded to track remaining full-project scope beyond Stage 8, including frontend command-center completion, admin feature completion, knowledge surfaces (metadata/journal/history/search), import/export + recordings metadata, and extension bridge integration.
+- 2026-04: Extension/guest auth system fully designed and documented: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md) created covering invite links, pre-flight sequence, four auth path variants, external identity model, data sync policy, and account upgrade flow. [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md), [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md), [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md), and [docs/architecture/PERMISSIONS-MATRIX.md](docs/architecture/PERMISSIONS-MATRIX.md) updated to reflect `ExternalIdentity`, `CampaignExternalLink`, `ExternalSystem` registry, guest `authType`, `extensionSyncPolicy`, and all new endpoints. Stage 10 expanded with Stage 10.4 (external system authorization panel as prerequisite for Stage 13). Stage 13 expanded from a placeholder into five concrete sub-milestones (13.1 backend guest auth, 13.2 external identity/linking, 13.3 frontend guest UX, 13.4 D&D Beyond extension wiring, 13.5 Roll20/Foundry bridge). Extension repository noted: https://github.com/AndyProsser/vtt-chat-extension.
 
 ---
 

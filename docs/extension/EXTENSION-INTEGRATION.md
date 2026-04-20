@@ -6,6 +6,11 @@ _A cross‑browser MV3 extension that injects UI, extracts metadata, syncs chara
 
 **Note:** This document covers **technical architecture** and implementation.
 For UX principles and overlay layout, see [EXTENSION-UX.md](EXTENSION-UX.md).
+For guest auth, invite links, and pre-flight validation, see [GUEST-AUTH.md](GUEST-AUTH.md).
+For third-party system separation and admin authorization, see [THIRD-PARTY-INTEGRATIONS.md](THIRD-PARTY-INTEGRATIONS.md).
+
+**Extension repository:** https://github.com/AndyProsser/vtt-chat-extension
+The existing extension has a functional D&D Beyond front-end and data-scraping layer. The integration contract with the vtt-chat backend is defined in [GUEST-AUTH.md](GUEST-AUTH.md) and this document.
 
 ---
 
@@ -20,10 +25,12 @@ The browser extension provides deep integration between the VTT‑Chat platform 
 
 The extension enables:
 
+- **Guest / invite-link authentication** — join without creating an account; identity delegated to the external VTT
 - Automatic detection of character/campaign pages
-- Injected “Launch Chat” button
-- Character metadata extraction
-- Campaign metadata extraction
+- Injected "Launch Chat" button
+- Pre-flight validation (platform status, invite validity, existing account check)
+- Character metadata extraction and sync
+- Campaign metadata extraction (DM-controlled sync policy)
 - External log ingestion (attacks, rolls, spells, movement)
 - Auto‑effects (conditions, distance, whispers)
 - Quick‑connect to the platform
@@ -162,10 +169,17 @@ The extension communicates with the backend via the **background script**.
 
 ### API Calls
 
-- `/auth/extension-login`
-- `/campaigns/:id/characters`
-- `/integrations/logs/ingest`
-- `/livekit/token`
+| Endpoint                                   | Auth required | Purpose                                         |
+| ------------------------------------------ | ------------- | ----------------------------------------------- |
+| `GET /api/platform/status`                 | None          | Pre-flight: platform online + activity stats    |
+| `GET /api/campaigns/invite/:code/validate` | None          | Pre-flight: invite validity + campaign name     |
+| `POST /api/auth/extension/preflight`       | None          | Pre-flight: existing account check for email    |
+| `POST /api/auth/extension/guest-login`     | None          | Guest auth: create or resume guest session      |
+| `POST /api/auth/login`                     | None          | Full account auth (if user has password)        |
+| `POST /api/auth/upgrade`                   | Guest token   | Upgrade guest → full account                    |
+| `POST /api/integrations/external/sync`     | Token         | Push character/campaign updates per sync policy |
+| `POST /api/integrations/logs/ingest`       | Token         | External log ingestion (rolls, attacks, etc.)   |
+| `GET /api/livekit/token`                   | Token         | LiveKit room token                              |
 
 ### Flow
 
@@ -179,6 +193,9 @@ content.js → background.js → backend API → background.js → content.js
 - No localStorage/sessionStorage
 - No cookies
 - No persistent tokens
+- Guest tokens have a reduced lifetime (24 hours) and are silently renewed by the background script
+
+See [GUEST-AUTH.md](GUEST-AUTH.md) for the full authentication flow specification.
 
 ---
 
@@ -317,7 +334,48 @@ The popup allows:
 
 ---
 
-# 🧠 12. Design Principles
+# 🔍 12. Pre-flight Validation
+
+Before showing any join UI or requesting a token, the background script runs the pre-flight sequence:
+
+```
+1. GET /api/platform/status
+     → Is the platform reachable and not in maintenance mode?
+
+2. GET /api/campaigns/invite/:code/validate
+     → Is the invite code valid? What campaign is this?
+
+3. POST /api/auth/extension/preflight
+     → Does this email have an existing account? Guest, full, or none?
+```
+
+Results determine which UI branch to show in the extension popup. See [GUEST-AUTH.md § 3. Pre-flight Validation](GUEST-AUTH.md) for full response shapes and UI outcome mapping.
+
+---
+
+# 🪪 13. Guest Auth & Identity
+
+The extension supports a guest authentication model where the external VTT (e.g. D&D Beyond) acts as the identity provider.
+
+**Key behaviours:**
+
+- New users get a guest account created automatically — no registration required.
+- Returning guests are matched by `(email + externalSystem)` and their data is updated per the campaign's sync policy.
+- Users with an existing full vtt-chat account must log in with their password.
+- Guest users can upgrade to a full account from within the platform UI.
+
+See [GUEST-AUTH.md](GUEST-AUTH.md) for the complete specification covering:
+
+- Invite link generation and validation
+- All four authentication path variants
+- External identity tracking (`ExternalIdentity` record)
+- Data sync policy (`NONE | DM_ONLY | DM_AND_PLAYERS`)
+- Account upgrade flow
+- Security model
+
+---
+
+# 🧠 14. Design Principles
 
 ### 1. Non‑intrusive
 
@@ -327,18 +385,22 @@ Extension injects UI only where appropriate.
 
 Tokens live only in memory.
 
-### 3. Declarative auto‑effects
+### 3. Trust delegation
+
+Authentication is delegated to the third-party VTT — vtt-chat trusts that the external system has already validated the user's identity and campaign membership.
+
+### 4. Declarative auto‑effects
 
 Extension sends events; backend decides effects.
 
-### 4. Cross‑browser
+### 5. Cross‑browser
 
 Chrome, Edge, Firefox supported.
 
-### 5. SPA‑friendly
+### 6. SPA‑friendly
 
 Handles React/SPA navigation via MutationObserver.
 
-### 6. Fail‑safe
+### 7. Fail‑safe
 
-If extension fails, platform still works.
+If extension fails, platform still works. Guest auth is only one of two supported auth paths.

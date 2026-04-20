@@ -1,6 +1,6 @@
 {
   "name": "vtt-chat-backend",
-  "version": "0.1.1",
+  "version": "0.5.2",
   "description": "Backend service for VTT-Chat: a DM-grade, session-aware tabletop voice & chat platform.",
   "main": "dist/index.js",
   "scripts": {

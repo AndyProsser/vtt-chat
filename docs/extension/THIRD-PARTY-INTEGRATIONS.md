@@ -2,8 +2,13 @@
 
 # Third‑Party Integrations
 
-This document defines how VTT‑Chat integrates with external Virtual Tabletops (VTTs) such as Foundry VTT, Roll20, Fantasy Grounds, Owlbear Rodeo, and others.
-It describes the integration model, extension behaviour, DOM interaction rules, event flow, and safety boundaries.
+This document defines how VTT‑Chat integrates with external Virtual Tabletops (VTTs) such as D&D Beyond, Roll20, Foundry VTT, Fantasy Grounds, Owlbear Rodeo, and others.
+It describes the integration model, extension behaviour, DOM interaction rules, event flow, safety boundaries, third-party system separation, and platform admin authorization controls.
+
+**Related docs:**
+
+- [GUEST-AUTH.md](GUEST-AUTH.md) — guest/invite-link auth flow and external identity model
+- [EXTENSION-INTEGRATION.md](EXTENSION-INTEGRATION.md) — extension architecture and communication
 
 The goal is to provide a **consistent, VTT‑agnostic integration layer** that:
 
@@ -12,6 +17,7 @@ The goal is to provide a **consistent, VTT‑agnostic integration layer** that:
 - Avoids breaking the host VTT
 - Provides predictable behaviour
 - Is easy to extend
+- Keeps each external system isolated from others
 
 ---
 
@@ -314,7 +320,106 @@ Planned enhancements:
 
 ---
 
-# 10. Summary
+# 10. Third-Party System Separation
+
+Each external system is treated as an isolated identity namespace. Data from one system cannot bleed into another system's identity records.
+
+### 10.1 System Isolation Model
+
+- A vtt-chat user may have identity records from multiple external systems (e.g. both D&D Beyond and Roll20).
+- External identities are linked at the user level by **email address** — the same email across two systems resolves to the same vtt-chat user.
+- Campaign links from different external systems are stored separately. One vtt-chat campaign may be linked to a DDB campaign **and** a Roll20 campaign simultaneously, but each link is scoped to its originating system.
+- Character records carry their `externalSystem` and `externalId` tags and are never merged across systems.
+
+### 10.2 Supported Systems
+
+| System              | Identifier       | Auth-capable | Log ingestion | Metadata sync |
+| ------------------- | ---------------- | ------------ | ------------- | ------------- |
+| **D&D Beyond**      | `dndbeyond`      | Yes          | Yes           | Yes           |
+| **Roll20**          | `roll20`         | Planned      | Yes           | Planned       |
+| **Foundry VTT**     | `foundry`        | Planned      | Yes           | Planned       |
+| **Fantasy Grounds** | `fantasygrounds` | No           | Planned       | No            |
+| **Owlbear Rodeo**   | `owlbear`        | No           | Planned       | No            |
+
+"Auth-capable" means the system can be used for guest login via the extension. Systems that are not auth-capable can still contribute log ingestion.
+
+### 10.3 System Identifiers
+
+Each system uses a stable lowercase string identifier (the `externalSystem` enum value). These identifiers appear in:
+
+- `ExternalIdentity.externalSystem`
+- `Character.externalSystem`
+- `CampaignExternalLink.externalSystem`
+- API request bodies (`externalSystem` field)
+
+Adding a new system requires adding to the enum and registering the system in the platform admin panel.
+
+---
+
+# 11. Platform Admin: System Authorization
+
+The platform admin (system operator) controls which external systems are permitted to authenticate users or ingest data. This is independent of the DM's per-campaign sync policy.
+
+### 11.1 Authorization States
+
+| State        | Label              | Effect                                                   |
+| ------------ | ------------------ | -------------------------------------------------------- |
+| `AUTHORIZED` | Authorized         | System can be used for guest auth and data ingestion     |
+| `LOG_ONLY`   | Log ingestion only | System can submit logs but cannot be used for guest auth |
+| `BLOCKED`    | Blocked            | All requests from this system are rejected               |
+
+Default for new registered systems: `BLOCKED` (must be explicitly authorized).
+
+### 11.2 Admin API
+
+```
+GET  /api/admin/integrations/systems
+POST /api/admin/integrations/systems/:system/authorize
+POST /api/admin/integrations/systems/:system/block
+PATCH /api/admin/integrations/systems/:system
+```
+
+`GET` returns all registered systems and their current authorization state.
+
+`PATCH` allows updating:
+
+- `authorizationState`
+- `displayName`
+- `notes` (admin-visible only)
+- `allowedScopes` (e.g. `auth`, `log_ingestion`, `metadata_sync`)
+
+### 11.3 Admin Panel
+
+The admin panel (in the `admin/` application) exposes a **Integrations** section showing:
+
+- All registered external systems
+- Current authorization state
+- Activity metrics (total users from each system, last seen)
+- Controls to authorize, restrict to log-only, or block each system
+
+### 11.4 Request Rejection
+
+When the extension submits a request from a blocked or unrecognized system:
+
+```
+POST /api/auth/extension/guest-login
+  → 403 { "code": "INTEGRATION_NOT_AUTHORIZED", "message": "..." }
+```
+
+The extension popup must display a user-friendly message such as: "This platform has not enabled [System Name] integration."
+
+### 11.5 Audit Logging
+
+All authorization state changes are logged in the platform audit log with:
+
+- Admin user ID
+- System identifier
+- Previous state → new state
+- Timestamp
+
+---
+
+# 12. Summary
 
 The third‑party integration model is:
 
@@ -324,5 +429,7 @@ The third‑party integration model is:
 - Extensible
 - Privacy‑respecting
 - DM‑aware
+- System-isolated (each external VTT is a separate namespace)
+- Admin-controlled (platform operator authorizes or blocks systems)
 
 It ensures VTT‑Chat can integrate with any VTT without compromising stability or trust.

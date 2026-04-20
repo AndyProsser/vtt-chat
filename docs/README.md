@@ -82,8 +82,10 @@ Architecture and API docs may include target-architecture material for later sta
 
 ### **Extension**
 
-- [EXTENSION-UX.md](extension/EXTENSION-UX.md)
-- [THIRD-PARTY-INTEGRATIONS.md](extension/THIRD-PARTY-INTEGRATIONS.md)
+- [EXTENSION-INTEGRATION.md](extension/EXTENSION-INTEGRATION.md) — architecture, pre-flight, communication
+- [GUEST-AUTH.md](extension/GUEST-AUTH.md) — guest/invite-link auth, external identity, sync policy, account upgrade
+- [EXTENSION-UX.md](extension/EXTENSION-UX.md) — overlay UX and role-aware UI
+- [THIRD-PARTY-INTEGRATIONS.md](extension/THIRD-PARTY-INTEGRATIONS.md) — system separation and admin authorization
 
 ### **DM Tools**
 
