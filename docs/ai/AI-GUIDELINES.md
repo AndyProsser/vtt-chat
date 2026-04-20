@@ -347,3 +347,25 @@ These prompting rules ensure that any AI assisting with VTT‑Chat:
 - Never violates system constraints
 
 This file, together with `AI-CONTEXT.md`, forms the **complete AI onboarding and behaviour contract** for the VTT‑Chat platform.
+
+---
+
+# 13. Release Documentation Hygiene (Required)
+
+When AI work changes delivery status, release scope, or user-facing behavior, AI must keep release-facing docs synchronized in the same change set.
+
+Minimum sync requirements:
+
+- Update `ROADMAP.md` when stage status, milestone scope, dependencies, or progress notes change.
+- Update `CHANGELOG.md` when shipped behavior, staged scope, or release buckets are introduced or revised.
+- Keep version fields aligned across `package.json`, `backend/package.json`, `frontend/package.json`, `admin/package.json`, and `shared/package.json` when versions are bumped.
+- Ensure the version line in `README.md` matches the current release version.
+
+Before finalizing output, AI should perform a release-hygiene check:
+
+1. Are roadmap stage labels/statuses still accurate?
+2. Does changelog content reflect the same scope and terminology?
+3. Are all package versions aligned?
+4. Does README show the same version?
+
+AI must not leave these artifacts inconsistent after making release-significant changes.

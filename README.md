@@ -10,8 +10,9 @@ Build and release status badges will be enabled once CI workflows are activated.
 [![Release](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml/badge.svg)](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml)
 -->
 
-**Version:** 0.1.0 — active development, not yet production-ready
-**Status:** Stages 0–7 complete · Stage 8 in progress · Stages 9–13 planned — see [ROADMAP.md](ROADMAP.md)
+**Version:** 0.5.2 — active development, not yet production-ready\
+**Status:** Stages 0–7 complete · Stage 8 in progress · Stages 9–13 planned — see [ROADMAP.md](ROADMAP.md)\
+**Release notes:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -203,6 +204,24 @@ For larger changes or new features, open a discussion issue first so the design 
 **[Open a pull request →](https://github.com/AndyProsser/vtt-chat/pulls)**
 
 See [docs/meta/CONTRIBUTING.md](docs/meta/CONTRIBUTING.md) for the full contribution guide and [docs/meta/ONBOARDING.md](docs/meta/ONBOARDING.md) for new contributor onboarding.
+
+---
+
+## Release and Versioning
+
+This repository uses semantic-release with Conventional Commits to determine version bumps and generate release notes.
+
+- Feature commits (`feat`) trigger minor releases.
+- Fix/documentation/refactor commits (scoped) trigger patch releases.
+- Release notes are written to [CHANGELOG.md](CHANGELOG.md).
+
+Version maintenance rules:
+
+1. `package.json` is the canonical project version.
+2. `backend/package.json`, `frontend/package.json`, `admin/package.json`, and `shared/package.json` must match the root version.
+3. The version line in this README must match the latest released version.
+
+See [docs/meta/RELEASE-PLAN.md](docs/meta/RELEASE-PLAN.md) for commit scopes, release buckets, and message templates.
 
 ---
 

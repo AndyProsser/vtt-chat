@@ -178,6 +178,13 @@ Copilot must enforce:
 - No direct DB access
 - All data flows through backend APIs
 
+### **When changes affect release/status docs**
+
+- Keep `ROADMAP.md` and `CHANGELOG.md` synchronized.
+- Keep versions aligned across root and all package manifests.
+- Keep the version line in `README.md` current.
+- Do not finalize release-significant edits with mismatched roadmap/changelog/version content.
+
 ---
 
 # 🧭 File Map (Copilot should use these as anchors)

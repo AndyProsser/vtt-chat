@@ -169,6 +169,13 @@ You must enforce:
 - Only DOM scraping, MutationObserver, backend APIs
 - No direct DB access
 
+### **When changes affect release/status docs**
+
+- Keep `ROADMAP.md` and `CHANGELOG.md` synchronized.
+- Keep versions aligned across root and all package manifests.
+- Keep the version line in `README.md` current.
+- Do not finalize release-significant edits with mismatched roadmap/changelog/version content.
+
 ---
 
 ## 🧭 **Document Map (Use these as anchors)**

@@ -390,3 +390,28 @@ This file defines:
 - The AI behavioural rules
 
 Any AI assisting with VTT‑Chat must operate **strictly within these boundaries** and treat this file as the authoritative onboarding context.
+
+---
+
+# 13. Release Consistency Rules
+
+In addition to architecture and privacy compliance, AI assistants must preserve release-document consistency.
+
+When making release-significant changes, always keep these files aligned:
+
+- `ROADMAP.md`
+- `CHANGELOG.md`
+- `package.json`
+- `backend/package.json`
+- `frontend/package.json`
+- `admin/package.json`
+- `shared/package.json`
+- `README.md` (version line)
+
+Required behavior:
+
+- If roadmap scope/status changes, update roadmap and changelog together.
+- If versions are incremented, align all package versions and README version text.
+- If changelog buckets are revised, ensure roadmap terminology and README status summary remain compatible.
+
+AI should treat this as a mandatory closing checklist before finalizing release-facing edits.
