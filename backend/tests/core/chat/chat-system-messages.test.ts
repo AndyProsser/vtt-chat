@@ -17,7 +17,7 @@ const repositoryMocks = vi.hoisted(() => ({
   updateMessageRecord: vi.fn(async (_params: any) => {}),
 }))
 
-vi.mock('../src/repositories/chat.repository', () => ({
+vi.mock('@/repositories/chat.repository', () => ({
   createChatMessageRecord: repositoryMocks.createChatMessageRecord,
   deleteSessionMessages: repositoryMocks.deleteSessionMessages,
   findMessageById: repositoryMocks.findMessageById,

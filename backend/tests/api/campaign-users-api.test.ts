@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
+  mockUserFindUnique: vi.fn(),
   mockListCampaignsForUser: vi.fn(),
   mockCreateCampaignForUser: vi.fn(),
   mockGetCampaignForUser: vi.fn(),
@@ -20,6 +21,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: mocks.mockExtractTokenFromHeader,
   verifyToken: mocks.mockVerifyToken,
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    user: {
+      findUnique: mocks.mockUserFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/repositories/campaign.repository', () => ({
@@ -69,6 +78,10 @@ beforeEach(() => {
     userId: USER_ID,
     username: 'tester',
     role: 'DM',
+  })
+  mocks.mockUserFindUnique.mockResolvedValue({
+    isActive: true,
+    tokenInvalidBefore: null,
   })
 })
 
