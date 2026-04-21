@@ -4,17 +4,17 @@ import { MessageType } from '@shared'
 const store = new Map<string, any>()
 
 const repositoryMocks = vi.hoisted(() => ({
-  createChatMessageRecord: vi.fn(async (_params: any) => {}),
-  deleteSessionMessages: vi.fn(async (_sessionId: string) => {}),
+  createChatMessageRecord: vi.fn(async () => {}),
+  deleteSessionMessages: vi.fn(async () => {}),
   findMessageById: vi.fn(async (messageId: string) => store.get(messageId) ?? null),
   getChatCounts: vi.fn(async () => ({
     totalMessages: store.size,
     messagesLastMinute: store.size,
     activeChatSessions: 1,
   })),
-  listSessionMessages: vi.fn(async (_sessionId: string) => Array.from(store.values())),
-  softDeleteMessageRecord: vi.fn(async (_params: any) => {}),
-  updateMessageRecord: vi.fn(async (_params: any) => {}),
+  listSessionMessages: vi.fn(async () => Array.from(store.values())),
+  softDeleteMessageRecord: vi.fn(async () => {}),
+  updateMessageRecord: vi.fn(async () => {}),
 }))
 
 vi.mock('@/repositories/chat.repository', () => ({

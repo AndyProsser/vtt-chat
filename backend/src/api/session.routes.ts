@@ -17,7 +17,7 @@ import {
 } from '@/services/session.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
-import { ErrorCode, createError, Role } from '@shared'
+import { ErrorCode, Role } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/core/chat/system-messages'
 import { applySessionStateRoomTransition } from '@/core/rooms/room.service'
@@ -92,7 +92,7 @@ router.post('/', requireAuth, requireDM, async (req: Request, res: Response) => 
   try {
     const session = await createSession(name, user.userId, description)
     res.status(201).json(session)
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -105,7 +105,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const sessions = await getAllSessions()
     res.status(200).json(sessions)
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -139,7 +139,7 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       ...session,
       userCount: users.length,
     })
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -189,7 +189,7 @@ router.get('/:id/users', requireAuth, async (req: Request, res: Response) => {
         role: u.role,
       })),
     })
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -410,7 +410,7 @@ router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
         role: u.role,
       })),
     })
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -507,7 +507,7 @@ router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
         role: u.role,
       })),
     })
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })
@@ -555,7 +555,7 @@ router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
 
     const logs = await getSessionEventHistory(id as UUID, limit, offset)
     res.status(200).json({ logs })
-  } catch (err: any) {
+  } catch {
     return internalErrorResponse(res)
   }
 })

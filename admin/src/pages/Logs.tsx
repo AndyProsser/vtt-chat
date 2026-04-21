@@ -56,10 +56,6 @@ export default function Logs() {
   }, [timeRange, severity, source, userId, roomId, page, pageSize, sortBy, sortDir])
 
   useEffect(() => {
-    setPage(1)
-  }, [timeRange, severity, source, userId, roomId, pageSize])
-
-  useEffect(() => {
     const controller = new AbortController()
 
     const load = async () => {
@@ -113,7 +109,10 @@ export default function Logs() {
       <div className="admin-toolbar-row wrap">
         <select
           value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
+          onChange={(e) => {
+            setTimeRange(e.target.value)
+            setPage(1)
+          }}
           aria-label="Time range"
         >
           <option value="1h">Last hour</option>
@@ -122,7 +121,10 @@ export default function Logs() {
         </select>
         <select
           value={severity}
-          onChange={(e) => setSeverity(e.target.value)}
+          onChange={(e) => {
+            setSeverity(e.target.value)
+            setPage(1)
+          }}
           aria-label="Severity"
         >
           <option value="all">All severities</option>
@@ -130,7 +132,14 @@ export default function Logs() {
           <option value="warn">Warn</option>
           <option value="error">Error</option>
         </select>
-        <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Source">
+        <select
+          value={source}
+          onChange={(e) => {
+            setSource(e.target.value)
+            setPage(1)
+          }}
+          aria-label="Source"
+        >
           <option value="all">All sources</option>
           <option value="api">API</option>
           <option value="livekit">LiveKit</option>
@@ -143,18 +152,27 @@ export default function Logs() {
           placeholder="User ID"
           aria-label="User ID"
           value={userId}
-          onChange={(e) => setUserId(e.target.value)}
+          onChange={(e) => {
+            setUserId(e.target.value)
+            setPage(1)
+          }}
         />
         <input
           type="text"
           placeholder="Room ID"
           aria-label="Room ID"
           value={roomId}
-          onChange={(e) => setRoomId(e.target.value)}
+          onChange={(e) => {
+            setRoomId(e.target.value)
+            setPage(1)
+          }}
         />
         <select
           value={String(pageSize)}
-          onChange={(e) => setPageSize(Number(e.target.value))}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value))
+            setPage(1)
+          }}
           aria-label="Rows per page"
         >
           <option value="10">10 / page</option>

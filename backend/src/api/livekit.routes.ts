@@ -9,7 +9,6 @@ import { getSession, isUserInSession } from '@/services/session.service'
 import { LiveKitTokenService } from '@/infra/livekit/token.service'
 import { config } from '@/infra/config'
 import { ErrorCode, isValidUUID } from '@shared'
-import type { UUID } from '@shared'
 import { logger } from '@/utils'
 
 const router = Router()

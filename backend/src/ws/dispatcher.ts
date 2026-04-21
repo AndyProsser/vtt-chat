@@ -40,7 +40,9 @@ export class EventDispatcher {
     const eventType = ev.type
 
     // Check permissions
-    if (!canPerformAction(ev.userRole, this.extractDomain(eventType), this.extractAction(eventType))) {
+    if (
+      !canPerformAction(ev.userRole, this.extractDomain(eventType), this.extractAction(eventType))
+    ) {
       throw createError(ErrorCode.PERMISSION_DENIED, {
         context: {
           eventType,

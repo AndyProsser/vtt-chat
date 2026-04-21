@@ -102,7 +102,7 @@ export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextF
     }
 
     next()
-  } catch (_error) {
+  } catch {
     // Silently fail - authentication is optional
     next()
   }

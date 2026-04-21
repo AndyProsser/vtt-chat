@@ -25,7 +25,8 @@ const { registerHandlerSpy, setWebSocketManagerMock, setIntervalMock, clearInter
         cb?.()
       })
 
-      constructor(_opts: any) {
+      constructor(opts: any) {
+        void opts
         instances.push(this as unknown as MockWSServer)
       }
 
@@ -67,7 +68,9 @@ vi.mock('ws', () => {
         cb?.()
       })
 
-      constructor(_opts: any) {}
+      constructor(opts: any) {
+        void opts
+      }
 
       on(event: string, handler: (...args: any[]) => void) {
         this.handlers.set(event, handler)

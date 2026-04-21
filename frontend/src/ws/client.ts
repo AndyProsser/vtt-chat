@@ -318,7 +318,7 @@ export class WebSocketClient {
       if (event) {
         try {
           this.socket.send(JSON.stringify(event))
-        } catch (error) {
+        } catch {
           // Put it back and give up
           this.eventQueue.unshift(event)
           break

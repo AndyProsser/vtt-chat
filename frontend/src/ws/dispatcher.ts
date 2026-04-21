@@ -96,9 +96,7 @@ export class EventDispatcher {
    * Validate event envelope structure.
    * This is a basic schema validation; detailed payload validation happens in individual handlers.
    */
-  private validateEvent(
-    event: EventEnvelope
-  ): { valid: boolean; errors: string[] } {
+  private validateEvent(event: EventEnvelope): { valid: boolean; errors: string[] } {
     const errors: string[] = []
 
     // Check required fields

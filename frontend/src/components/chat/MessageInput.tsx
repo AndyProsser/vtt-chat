@@ -4,7 +4,7 @@
  * Spectators are restricted to OOC only.
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
@@ -29,18 +29,12 @@ const TYPE_LABELS: Record<MessageType, string> = {
 
 export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
   const allowedTypes = ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC]
-  const [type, setType] = useState<MessageType>(allowedTypes[0])
+  const [selectedType, setSelectedType] = useState<MessageType>(allowedTypes[0])
   const [content, setContent] = useState('')
   const [recipientId, setRecipientId] = useState('')
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Keep selected type in sync when role changes
-  useEffect(() => {
-    if (!allowedTypes.includes(type)) {
-      setType(allowedTypes[0])
-    }
-  }, [role])
+  const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
 
   const handleSend = async () => {
     const trimmed = content.trim()
@@ -85,7 +79,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
         {allowedTypes.map((t) => (
           <button
             key={t}
-            onClick={() => setType(t)}
+            onClick={() => setSelectedType(t)}
             style={{
               padding: '0.2rem 0.6rem',
               borderRadius: '9999px',

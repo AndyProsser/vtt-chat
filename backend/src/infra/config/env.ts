@@ -95,7 +95,10 @@ if (config.isProduction) {
   }
 
   const insecureLiveKitValues = new Set(['devkey', 'secret'])
-  if (insecureLiveKitValues.has(config.livekit.apiKey) || insecureLiveKitValues.has(config.livekit.apiSecret)) {
+  if (
+    insecureLiveKitValues.has(config.livekit.apiKey) ||
+    insecureLiveKitValues.has(config.livekit.apiSecret)
+  ) {
     throw new Error('Refusing to start in production with default LiveKit credentials')
   }
 }

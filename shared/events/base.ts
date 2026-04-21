@@ -4,7 +4,7 @@
  * Reference: docs/architecture/EVENT-BUS.md
  */
 
-import type { UUID, SessionState, Role } from '../types'
+import type { UUID, Role } from '../types'
 
 /**
  * Standard event envelope that wraps all domain events.

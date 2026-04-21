@@ -3,8 +3,6 @@
  * Simple console-based logging for frontend
  */
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug'
-
 class Logger {
   private isDevelopment = import.meta.env.DEV
 

@@ -79,7 +79,7 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
     return () => {
       cancelled = true
     }
-  }, [sessionId])
+  }, [apiUrl, sessionId, store, token])
 
   // Auto-scroll to newest message
   useEffect(() => {

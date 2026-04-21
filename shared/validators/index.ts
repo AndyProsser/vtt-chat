@@ -5,7 +5,7 @@
  */
 
 import type { UUID, MessageType, NoteVisibility, PresenceState } from '../types'
-import type { EventEnvelope, ValidationResult, ValidationError } from '../events/base'
+import type { ValidationResult, ValidationError } from '../events/base'
 import { ErrorCode } from '../errors'
 
 /**

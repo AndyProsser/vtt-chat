@@ -47,6 +47,7 @@ export default function UserManagement() {
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'>('ADMIN')
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [creatingInvite, setCreatingInvite] = useState(false)
+  const [reloadToken, setReloadToken] = useState(0)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -60,29 +61,25 @@ export default function UserManagement() {
   }, [search, roleFilter, statusFilter, page, pageSize])
 
   useEffect(() => {
-    setPage(1)
-  }, [search, roleFilter, statusFilter, pageSize])
-
-  const loadUsers = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await requestJson<UserListResponse>(`/users?${queryString}`, {
-        method: 'GET',
-      })
-      setRows(result.users)
-      setTotal(result.total)
-      setTotalPages(result.totalPages)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users')
-    } finally {
-      setLoading(false)
+    const loadUsers = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await requestJson<UserListResponse>(`/users?${queryString}`, {
+          method: 'GET',
+        })
+        setRows(result.users)
+        setTotal(result.total)
+        setTotalPages(result.totalPages)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load users')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  useEffect(() => {
     void loadUsers()
-  }, [queryString])
+  }, [queryString, reloadToken])
 
   const runAction = async (
     userId: string,
@@ -100,7 +97,7 @@ export default function UserManagement() {
         method,
         body: JSON.stringify({ reason }),
       })
-      await loadUsers()
+      setReloadToken((current) => current + 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Moderation action failed')
     } finally {
@@ -142,12 +139,18 @@ export default function UserManagement() {
           placeholder="Search username, email, or display name"
           aria-label="Search users"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
         />
         <select
           aria-label="Filter by role"
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
+          onChange={(e) => {
+            setRoleFilter(e.target.value)
+            setPage(1)
+          }}
         >
           <option value="all">All roles</option>
           <option value="dm">DM</option>
@@ -158,7 +161,10 @@ export default function UserManagement() {
         <select
           aria-label="Filter by status"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value)
+            setPage(1)
+          }}
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -167,7 +173,10 @@ export default function UserManagement() {
         <select
           aria-label="Rows per page"
           value={String(pageSize)}
-          onChange={(e) => setPageSize(Number(e.target.value))}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value))
+            setPage(1)
+          }}
         >
           <option value="10">10 / page</option>
           <option value="25">25 / page</option>

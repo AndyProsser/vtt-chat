@@ -3,12 +3,10 @@
  * Handles WebSocket connections, event routing, and client lifecycle.
  */
 
-import { WebSocket } from 'ws'
-import type { Server as WSServer } from 'ws'
+import { WebSocket, WebSocketServer } from 'ws'
 import { Server as HTTPServer } from 'http'
 import { EventDispatcher } from './dispatcher'
 import {
-  handleReconnect,
   registerEventForRecovery,
   updateConnectionState,
   createConnectionState,
@@ -23,9 +21,9 @@ import {
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
 import { PresenceState } from '@shared'
-import { ErrorCode, createError } from '@shared'
+import { ErrorCode } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
-import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
+import { verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import {
@@ -41,16 +39,6 @@ const UNASSIGNED_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
 interface AuthMessage {
   type: 'WS:AUTH'
   token: string
-}
-
-// Create WebSocket server class if needed
-let WebSocketServer: typeof WSServer
-
-try {
-  const ws = require('ws')
-  WebSocketServer = ws.Server
-} catch {
-  WebSocketServer = require('ws').WebSocketServer
 }
 
 /**

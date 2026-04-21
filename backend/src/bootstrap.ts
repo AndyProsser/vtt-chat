@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from 'express'
+import express, { Express, Request, Response } from 'express'
 import { Server as HTTPServer, createServer } from 'http'
 import { config } from '@/infra/config'
 import { logger } from '@/utils'
@@ -7,7 +7,6 @@ import {
   corsMiddleware,
   securityHeadersMiddleware,
   errorHandler,
-  validateJsonBody,
 } from '@/infra/http/middleware'
 import apiRouter from '@/api/index'
 import { WebSocketManager } from '@/ws'

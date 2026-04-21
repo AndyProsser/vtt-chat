@@ -127,7 +127,8 @@ class MockAudioContext {
     return node
   }
 
-  createMediaStreamSource(_stream: MediaStream) {
+  createMediaStreamSource(stream: MediaStream) {
+    void stream
     const node = makeNode()
     this.mediaSources.push(node)
     return node

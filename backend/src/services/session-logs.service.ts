@@ -5,10 +5,9 @@
 
 import type { UUID } from '@shared'
 import {
+  countSessionLogs,
   createSessionLog,
   getSessionLogs,
-  getSessionLogsByType,
-  countSessionLogs,
 } from '@/repositories/session-logs.repository'
 
 export interface SessionLogData {

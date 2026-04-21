@@ -4,7 +4,7 @@
  * Tests the full UI → Event → Store pipeline.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { SessionState } from '@shared'
 import type { UUID, Role } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -82,8 +82,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [isLoadingSessions, setIsLoadingSessions] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
-  const [activeTransitionEventId, setActiveTransitionEventId] = useState<string | null>(null)
-  const [isTransitionToastVisible, setIsTransitionToastVisible] = useState(false)
 
   // WebSocket connection
   const {
@@ -116,51 +114,31 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     : undefined
 
   const activeTransitionNotice =
-    currentTransitionNotice && currentTransitionNotice.eventId === activeTransitionEventId
+    currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
       ? currentTransitionNotice
       : undefined
 
-  const hideTransitionToast = () => {
-    setIsTransitionToastVisible(false)
-
-    const closingEventId = activeTransitionEventId
-    if (!closingEventId) {
+  const hideTransitionToast = useCallback(() => {
+    if (!activeTransitionNotice) {
       return
     }
 
-    setTimeout(() => {
-      setDismissedTransitionEventId(closingEventId)
-      setActiveTransitionEventId((prev) => (prev === closingEventId ? null : prev))
-    }, 180)
-  }
+    setDismissedTransitionEventId(activeTransitionNotice.eventId)
+  }, [activeTransitionNotice])
 
   useEffect(() => {
-    if (!currentTransitionNotice) {
+    if (!activeTransitionNotice) {
       return
     }
-
-    if (currentTransitionNotice.eventId === dismissedTransitionEventId) {
-      return
-    }
-
-    setDismissedTransitionEventId((prev) =>
-      prev === currentTransitionNotice.eventId ? prev : null
-    )
-    setActiveTransitionEventId(currentTransitionNotice.eventId)
-
-    const enterId = requestAnimationFrame(() => {
-      setIsTransitionToastVisible(true)
-    })
 
     const timeoutId = setTimeout(() => {
       hideTransitionToast()
     }, 6000)
 
     return () => {
-      cancelAnimationFrame(enterId)
       clearTimeout(timeoutId)
     }
-  }, [currentTransitionNotice, dismissedTransitionEventId, activeTransitionEventId])
+  }, [activeTransitionNotice, hideTransitionToast])
 
   useEffect(() => {
     const loadCampaigns = async () => {

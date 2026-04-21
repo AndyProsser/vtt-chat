@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator'
 
 interface SetupWizardProps {
@@ -31,15 +31,6 @@ export default function SetupWizard({ onComplete, onError }: SetupWizardProps) {
     suggestions: [],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  // Validate password as user types
-  useEffect(() => {
-    if (formData.password) {
-      fetch(`${API_BASE}/admin/setup-status`)
-        .then((res) => res.json())
-        .catch(() => {})
-    }
-  }, [])
 
   const validatePasswordStrength = async (password: string) => {
     // Local validation
@@ -167,7 +158,7 @@ export default function SetupWizard({ onComplete, onError }: SetupWizardProps) {
         <div className="setup-welcome">
           <h1>Welcome to VTT-Chat Admin</h1>
           <p>
-            This is your first time setting up the admin console. Let's create your sysadmin
+            This is your first time setting up the admin console. Let&apos;s create your sysadmin
             account.
           </p>
           <p className="setup-note">
@@ -188,7 +179,7 @@ export default function SetupWizard({ onComplete, onError }: SetupWizardProps) {
         <div className="setup-confirm">
           <div className="confirm-icon">✓</div>
           <h1>Account Created Successfully</h1>
-          <p>Your sysadmin account has been created and you're now authenticated.</p>
+          <p>Your sysadmin account has been created and you&apos;re now authenticated.</p>
           <p className="confirm-subtitle">Redirecting to dashboard...</p>
         </div>
       </div>

@@ -6,7 +6,7 @@
  * Reference: docs/subsystems/AUDIO-ENGINE.md
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useStore } from './useStore'
 import type { UUID } from '@shared'
 
@@ -369,14 +369,14 @@ export function useAudioEngine(): UseAudioEngineReturn {
     }
   }
 
-  const setPTT = (_active: boolean): void => {
+  const setPTT = (): void => {
     // Update reapplies effects via effect stack
     graphRef.current.participantNodes.forEach((_, trackId) => {
       applyEffectStack(trackId)
     })
   }
 
-  const setPrivateRoomCleanMode = (_enabled: boolean): void => {
+  const setPrivateRoomCleanMode = (): void => {
     // Update reapplies effects via effect stack
     graphRef.current.participantNodes.forEach((_, trackId) => {
       applyEffectStack(trackId)
@@ -406,20 +406,34 @@ export function useAudioEngine(): UseAudioEngineReturn {
   // Lifecycle
   // =========================================================================
 
-  useEffect(() => {
+  const ensureAudioGraphInitialized = useEffectEvent(() => {
     if (!isReady && device.enabled) {
       const success = initializeAudioGraph()
       setIsReady(success)
     }
+  })
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      ensureAudioGraphInitialized()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
   }, [device.enabled, isReady])
 
   // Re-apply effects when state changes
-  useEffect(() => {
+  const reapplyCurrentEffects = useEffectEvent(() => {
     if (isReady && graphRef.current.isInitialized) {
       graphRef.current.participantNodes.forEach((_, trackId) => {
         applyEffectStack(trackId)
       })
     }
+  })
+
+  useEffect(() => {
+    reapplyCurrentEffects()
   }, [
     pttActive,
     privateRoomCleanMode,

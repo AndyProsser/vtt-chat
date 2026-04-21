@@ -4,35 +4,35 @@ import { ValidationError } from '@/types'
 // Validation Schemas
 // ============================================================================
 
-export namespace Validators {
-  export const isValidUsername = (username: string): boolean => {
+export const Validators = {
+  isValidUsername(username: string): boolean {
     return /^[a-zA-Z0-9_-]{3,32}$/.test(username)
-  }
+  },
 
-  export const isValidPassword = (password: string): boolean => {
+  isValidPassword(password: string): boolean {
     // At least 8 chars, 1 uppercase, 1 lowercase, 1 number
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)
-  }
+  },
 
-  export const isValidEmail = (email: string): boolean => {
+  isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  }
+  },
 
-  export const isValidUUID = (uuid: string): boolean => {
+  isValidUUID(uuid: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)
-  }
+  },
 
-  export const isValidSessionName = (name: string): boolean => {
+  isValidSessionName(name: string): boolean {
     return !!(name && name.length >= 1 && name.length <= 255)
-  }
+  },
 
-  export const isValidMessageContent = (content: string): boolean => {
+  isValidMessageContent(content: string): boolean {
     return !!(content && content.length > 0 && content.length <= 2000)
-  }
+  },
 
-  export const isValidConditionName = (condition: string): boolean => {
+  isValidConditionName(condition: string): boolean {
     return /^[a-zA-Z0-9\s\-_]+$/.test(condition) && condition.length <= 100
-  }
+  },
 }
 
 // ============================================================================

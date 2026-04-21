@@ -87,7 +87,12 @@ export function handleReconnect(
   connectionState: ConnectionState,
   events: EventEnvelope[]
 ): EventEnvelope[] {
-  const recoveredEvents = eventLog.getEventsSince(connectionState.sessionId, connectionState.lastEventId)
+  void events
+
+  const recoveredEvents = eventLog.getEventsSince(
+    connectionState.sessionId,
+    connectionState.lastEventId
+  )
 
   // Mark reconnection complete
   connectionState.isReconnecting = false
@@ -105,10 +110,7 @@ export function registerEventForRecovery(sessionId: UUID, event: EventEnvelope):
 /**
  * Update last seen event for a connection
  */
-export function updateConnectionState(
-  connectionState: ConnectionState,
-  lastEventId: string
-): void {
+export function updateConnectionState(connectionState: ConnectionState, lastEventId: string): void {
   connectionState.lastEventId = lastEventId
 }
 

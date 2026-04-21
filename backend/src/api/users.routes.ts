@@ -47,12 +47,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
       next()
     })
     .catch(() => {
-      return res
-        .status(500)
-        .json({
-          code: ErrorCode.INTERNAL_ERROR,
-          message: 'Failed to validate authentication state',
-        })
+      return res.status(500).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Failed to validate authentication state',
+      })
     })
 }
 

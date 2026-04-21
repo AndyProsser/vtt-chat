@@ -7,7 +7,7 @@
  * Visibility: All state changes are visible to all session participants.
  */
 
-import type { UUID, SessionState } from '../types'
+import type { UUID } from '../types'
 import type { EventEnvelope } from './base'
 
 export type SessionEventType =
