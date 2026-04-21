@@ -45,6 +45,7 @@
         "approve": true,
         "matchCommandLine": true,
       },
+      "npm --prefix frontend": true,
     },
   },
 }

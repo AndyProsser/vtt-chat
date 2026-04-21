@@ -12,6 +12,7 @@ import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
+import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
 import type { Session as SessionRecord } from '../../state/sessionSlice'
 import type {
   Room as RoomRecord,
@@ -527,8 +528,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 gap: '0.75rem',
                 alignItems: 'center',
                 fontSize: '0.82rem',
-                opacity: isTransitionToastVisible ? 1 : 0,
-                transform: isTransitionToastVisible ? 'translateY(0px)' : 'translateY(-6px)',
+                opacity: 1,
+                transform: 'translateY(0px)',
                 transition: 'opacity 180ms ease, transform 180ms ease',
               }}
             >
@@ -1011,96 +1012,179 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         </div>
       )}
 
-      {currentSession && (
-        <div
-          style={{
-            padding: '1.5rem',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-            marginTop: '1rem',
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Presence and Rooms</h3>
-          <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
-            Live updates from room/presence websocket events. Auto-refresh runs when WS reconnects.
-          </p>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: '0.75rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            }}
-          >
-            {currentRooms.map((room) => {
-              const members: RoomMember[] = typedRoomMembers[room.id] || []
-              return (
-                <div
-                  key={room.id}
-                  style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    padding: '0.75rem',
-                    backgroundColor: '#f8fafc',
-                  }}
-                >
-                  <p style={{ margin: 0, fontWeight: '600' }}>
-                    {room.name}{' '}
-                    <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({room.type})</span>
-                  </p>
-                  <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Members: {members.length}
-                  </p>
-                  {members.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>No members</p>
-                  ) : (
-                    members.map((member) => (
-                      <p
-                        key={`${room.id}:${member.userId}`}
-                        style={{ margin: '0.2rem 0', fontSize: '0.8rem' }}
-                      >
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            marginRight: '0.4rem',
-                            backgroundColor:
-                              member.presenceState === PresenceState.ONLINE
-                                ? '#22c55e'
-                                : member.presenceState === PresenceState.SPEAKING
-                                  ? '#0ea5e9'
-                                  : member.presenceState === PresenceState.TYPING
-                                    ? '#f59e0b'
-                                    : member.presenceState === PresenceState.OFFLINE
-                                      ? '#ef4444'
-                                      : '#94a3b8',
-                          }}
-                        />
-                        {member.username || member.userId} - {member.presenceState}
-                      </p>
-                    ))
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
-            Total tracked users: {currentPresence.length}
-          </p>
-        </div>
-      )}
-
       {/* Chat panel — only shown when a session is ACTIVE */}
       {showChat && currentSession && (
-        <div style={{ position: 'sticky', top: '1rem' }}>
-          <ChatWindow apiUrl={apiUrl} token={token} sessionId={currentSession.id} user={user} />
-          <div style={{ marginTop: '1rem' }}>
-            <NotesPanel apiUrl={apiUrl} token={token} sessionId={currentSession.id} user={user} />
-          </div>
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            backgroundColor: '#f8fafc',
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Command Center (Stage 9.1)</h3>
+          <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+            Role-aware panel shell with center chat/notes switching and right-rail tools.
+          </p>
+
+          <CommandCenterFrame
+            role={user.role}
+            renderLeftRail={() => (
+              <div>
+                <h4 style={{ margin: '0 0 0.5rem 0' }}>Left Rail</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                  Persona: <strong>{user.role}</strong>
+                </p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  Current session: <strong>{currentSession.name}</strong>
+                </p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  State: <strong>{currentSession.state}</strong>
+                </p>
+
+                <div
+                  style={{
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e2e8f0',
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
+                    Quick counts
+                  </p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Sessions in campaign: {sessionList.length}
+                  </p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Rooms tracked: {currentRooms.length}
+                  </p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Presence tracked: {currentPresence.length}
+                  </p>
+                </div>
+              </div>
+            )}
+            renderCenterPane={(view) => (
+              <div style={{ position: 'sticky', top: '1rem' }}>
+                {view === 'chat' ? (
+                  <ChatWindow
+                    apiUrl={apiUrl}
+                    token={token}
+                    sessionId={currentSession.id}
+                    user={user}
+                  />
+                ) : (
+                  <NotesPanel
+                    apiUrl={apiUrl}
+                    token={token}
+                    sessionId={currentSession.id}
+                    user={user}
+                  />
+                )}
+              </div>
+            )}
+            renderRightRailTab={(tab) => {
+              if (tab === 'rooms') {
+                return (
+                  <div>
+                    <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Presence and Rooms</p>
+                    <p style={{ marginTop: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                      Live updates from room/presence websocket events.
+                    </p>
+
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {currentRooms.map((room) => {
+                        const members: RoomMember[] = typedRoomMembers[room.id] || []
+                        return (
+                          <div
+                            key={room.id}
+                            style={{
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              padding: '0.6rem',
+                              backgroundColor: '#fff',
+                            }}
+                          >
+                            <p style={{ margin: 0, fontWeight: '600' }}>
+                              {room.name}{' '}
+                              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>
+                                ({room.type})
+                              </span>
+                            </p>
+                            <p
+                              style={{
+                                margin: '0.25rem 0 0.4rem 0',
+                                fontSize: '0.75rem',
+                                color: '#64748b',
+                              }}
+                            >
+                              Members: {members.length}
+                            </p>
+                            {members.length === 0 ? (
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
+                                No members
+                              </p>
+                            ) : (
+                              members.map((member) => (
+                                <p
+                                  key={`${room.id}:${member.userId}`}
+                                  style={{ margin: '0.2rem 0', fontSize: '0.75rem' }}
+                                >
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      width: '8px',
+                                      height: '8px',
+                                      borderRadius: '50%',
+                                      marginRight: '0.4rem',
+                                      backgroundColor:
+                                        member.presenceState === PresenceState.ONLINE
+                                          ? '#22c55e'
+                                          : member.presenceState === PresenceState.SPEAKING
+                                            ? '#0ea5e9'
+                                            : member.presenceState === PresenceState.TYPING
+                                              ? '#f59e0b'
+                                              : member.presenceState === PresenceState.OFFLINE
+                                                ? '#ef4444'
+                                                : '#94a3b8',
+                                    }}
+                                  />
+                                  {member.username || member.userId} - {member.presenceState}
+                                </p>
+                              ))
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
+                      Total tracked users: {currentPresence.length}
+                    </p>
+                  </div>
+                )
+              }
+
+              const placeholderByTab: Record<Exclude<RightRailTab, 'rooms'>, string> = {
+                audio:
+                  'Audio room tools are mounted in the bottom audio panel and will move into this rail in Stage 9.2.',
+                notes:
+                  'Shared notes shortcuts and filters will be expanded in a dedicated right-rail notes tool.',
+                search: 'Cross-session search tools are planned for Stage 11.',
+                journal: 'Journal surfaces are planned for Stage 11.',
+                history: 'History timeline tools are planned for Stage 11.',
+                settings:
+                  'Session-level command center settings are planned in later Stage 9 milestones.',
+              }
+
+              return (
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
+                  {placeholderByTab[tab as Exclude<RightRailTab, 'rooms'>]}
+                </p>
+              )
+            }}
+          />
         </div>
       )}
     </div>

@@ -11,11 +11,13 @@ It tracks:
 
 Last updated: 2026-04-21
 
+Mirror reference: Keep this file in sync with operations snapshot [docs/operations/ROADMAP.md](docs/operations/ROADMAP.md).
+
 ---
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-8 complete (baseline), Stages 9-13 now defined as planned remaining scope**.
+Current overall status: **Stages 0-8 complete (baseline), Stage 9 now in progress (9.1 started), Stages 10-13 planned remaining scope**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -24,36 +26,36 @@ Current overall status: **Stages 0-8 complete (baseline), Stages 9-13 now define
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice now includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
 - Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), while durable audio-state recovery and broader reconnect/e2e hardening remain pending.
-- Frontend command-center UI completion and deeper admin operations workflows are now explicitly tracked in Stages 9-10.
+- Frontend command-center Stage 9 is now underway with an initial 9.1 shell slice delivered (explicit left/center/right panel frame, persona-aware right-rail tab matrix, and panel toggle behavior).
 
 Latest verification:
 
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
-- Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, and store system wiring.
-- Current frontend verification: `6` test files / `15` tests passing.
+- Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
+- Current frontend verification: `7` test files / `21` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
 - Current backend verification: `13` passed + `1` skipped test files; `53` passing tests + `6` todo markers (`59` total).
 - Admin test coverage gap: current automated coverage is still centered on shared backend/frontend runtime slices; there are not yet dedicated admin route suites or admin SPA interaction suites covering Stage 8/10 workflows end-to-end.
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status   | Completion                | Immediate focus                                        |
-| ----- | ----------------------------------- | -------- | ------------------------- | ------------------------------------------------------ |
-| 0     | Contract lock                       | Complete | ✅                        | Maintain contract/source-of-truth discipline           |
-| 1     | Backend foundation                  | Complete | ✅                        | Ongoing hardening + reliability                        |
-| 2     | Frontend transport spine            | Complete | ✅                        | Keep reducer/event contract parity                     |
-| 3     | Session lifecycle                   | Complete | ✅                        | Regression coverage during later stage work            |
-| 4     | Chat vertical slice                 | Complete | ✅                        | UX/moderation polish as follow-up                      |
-| 5     | Notes vertical slice                | Complete | ✅                        | Advanced workflows and audit polish                    |
-| 6     | Presence and rooms                  | Complete | ✅                        | Multi-client e2e/load hardening                        |
-| 7     | Audio + LiveKit                     | Complete | ✅                        | Multi-client e2e + persistence hardening               |
-| 8     | Admin + ops baseline                | Complete | ✅                        | Stage 10 secure ops workflows + durable telemetry      |
-| 9     | Frontend command-center completion  | Planned  | ⬜ Not started (as stage) | Persona shell/tooling completion                       |
-| 10    | Admin UI feature completion         | Planned  | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows              |
-| 11    | Metadata/journal/history/search     | Planned  | ⬜ Not started            | Knowledge surfaces + discoverability                   |
-| 12    | Import/export + recordings metadata | Planned  | ⬜ Not started            | Portability + archival workflows                       |
-| 13    | Extension + guest auth integration  | Planned  | ⬜ Not started            | Guest auth, invite flow, external identity, VTT bridge |
+| Stage | Area                                | Status      | Completion                | Immediate focus                                         |
+| ----- | ----------------------------------- | ----------- | ------------------------- | ------------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline            |
+| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                         |
+| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                      |
+| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work             |
+| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                       |
+| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                     |
+| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                         |
+| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening                |
+| 8     | Admin + ops baseline                | Complete    | ✅                        | Stage 10 secure ops workflows + durable telemetry       |
+| 9     | Frontend command-center completion  | In progress | 🟨 9.1 started            | Complete 9.1 parity, then begin 9.2 DM control surfaces |
+| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows               |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                    |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                        |
+| 13    | Extension + guest auth integration  | Planned     | ⬜ Not started            | Guest auth, invite flow, external identity, VTT bridge  |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -352,7 +354,7 @@ Exit criteria:
 
 ### Stage 9: Frontend UI Command-Center Completion
 
-Status: **Planned (not started as a consolidated stage)**
+Status: **In progress (Stage 9.1 started)**
 
 Goal:
 
@@ -363,11 +365,17 @@ Completed so far:
 - Core transport/store flow exists and supports live session/chat/notes/presence updates.
 - Notes/chat baseline surfaces exist and are connected to backend APIs/events.
 - Presence indicators and transition notifications are implemented.
+- Stage 9.1 initial shell implementation is now in runtime:
+  - Explicit three-panel command-center frame (left rail + center pane + right rail) mounted in active sessions.
+  - Center pane toggle between chat and notes is implemented.
+  - Persona-specific right-rail tab visibility matrix is implemented (DM/Player/Spectator).
+  - Right-rail open/close lifecycle is implemented.
+  - Component tests now cover tab visibility matrix and panel toggle behavior.
 
 Remaining scope:
 
-- Implement complete three-panel layout shell and supporting components (`Toolbar`, `CampaignInfo`, `SystemToasts`, `LeftRail`, `CenterPane`, `RightRail`).
-- Implement persona-specific right-panel tab sets and slide-in panel behavior (Rooms, Audio, Search, Notes, Journal, History, Settings).
+- Complete Stage 9.1 parity around the shipped shell: promote initial left rail into full `Toolbar` + `CampaignInfo` + `SystemToasts` structure and finish responsive behavior across target breakpoints.
+- Evolve persona-specific right-panel tabs from baseline visibility gating to full tool-panel UX (including slide-in behavior where specified).
 - Implement DM-only control surfaces from UI specs (`DMVoiceBar`, advanced `PlayerOverrides`, room drag/drop workflow polish).
 - Implement metadata/timeline/tags and environment indicator surfaces defined in the implementation plan and UI docs.
 - Implement complete UI event/reducer coverage for search, journal, history, and settings panel flows.
@@ -378,6 +386,7 @@ Milestone checkpoints:
 
 - **Stage 9.1: Layout and Persona Shell Parity**
   - Scope: three-panel shell completion (`Toolbar`, `CampaignInfo`, `SystemToasts`, `LeftRail`, `CenterPane`, `RightRail`) and persona tab availability/visibility.
+  - Current status: explicit three-panel frame, center chat/notes toggle, and persona tab visibility matrix are implemented; full toolbar/campaign/toast composition and responsive parity remain.
   - Target validation tests:
     - Frontend component tests for persona visibility matrix (DM/Player/Spectator) across left rail, center controls, and right-tab sets.
     - Frontend interaction tests for right-panel open/close lifecycle and center chat/notes toggle consistency.
@@ -654,27 +663,27 @@ Exit criteria:
 
 Priority 1:
 
-- Stage 9 frontend UI command-center completion: persona layouts, right-rail tools, theming/motion/loading/error/recovery compliance.
+- Stage 9.1 completion: finish toolbar/campaign/toast parity and responsive behavior on top of the shipped three-panel command-center shell.
 
 Priority 2:
 
-- Stage 10 admin UI feature completion: secure room/campaign/settings operations, durable telemetry, and drill-down workflows.
+- Stage 9.2 DM control surfaces and realtime flows: DM voice bar, advanced overrides, and room drag/drop polish.
 
 Priority 3:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+- Stage 10 admin UI feature completion: secure room/campaign/settings operations, durable telemetry, and drill-down workflows.
 
 Priority 4:
 
-- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
 
 Priority 5:
 
-- Stage 11/12 knowledge and portability surfaces: metadata/journal/history/search plus import/export and recordings metadata.
+- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
 Priority 6:
 
-- Stage 13 extension and guest auth integration after Stage 10.4 external system authorization is complete.
+- Stage 11/12 knowledge and portability surfaces, then Stage 13 extension and guest auth integration after Stage 10.4 external system authorization.
 
 ---
 
@@ -708,6 +717,7 @@ The following references support the corrected stage labels and current model te
 | Stage 6 (Presence and Rooms) vertical slice | Complete                           | Mounted APIs: [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts), [backend/src/api/presence.routes.ts](backend/src/api/presence.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Redis-first room/presence service + transition orchestration: [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts), [backend/src/infra/redis/index.ts](backend/src/infra/redis/index.ts). DB snapshots + schema: [backend/src/repositories/room.repository.ts](backend/src/repositories/room.repository.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Frontend sync/indicators and atomic reconnect hydration: [frontend/src/state/roomSlice.ts](frontend/src/state/roomSlice.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx). Tests: [backend/tests/integration/room-service-recovery.integration.test.ts](backend/tests/integration/room-service-recovery.integration.test.ts), [backend/tests/integration/session-room-transition.integration.test.ts](backend/tests/integration/session-room-transition.integration.test.ts), [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Validation: `prisma migrate status` reports "Database schema is up to date". |
 | Stage 7 (Audio and LiveKit) vertical slice  | Complete (baseline)                | Token route and service are implemented: [backend/src/api/livekit.routes.ts](backend/src/api/livekit.routes.ts), [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts). Frontend lifecycle/audio hooks are implemented and runtime-mounted via [frontend/src/components/audio/AudioPanel.tsx](frontend/src/components/audio/AudioPanel.tsx) and [frontend/src/App.tsx](frontend/src/App.tsx): [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts). WS audio handlers are dispatcher-registered: [backend/src/ws/handlers.ts](backend/src/ws/handlers.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Audio control API routes are implemented and mounted: [backend/src/api/audio.routes.ts](backend/src/api/audio.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Tests validate envelope + route role gating/emission behavior: [backend/tests/contracts/audio-livekit-integration.test.ts](backend/tests/contracts/audio-livekit-integration.test.ts), [backend/tests/api/audio-routes.test.ts](backend/tests/api/audio-routes.test.ts).                                                                                                                                                                                                                                                                                      |
 | Stage 8 (Admin and Ops) baseline            | Complete (baseline)                | Authenticated admin routes, invite onboarding, moderation actions, audit logging, and telemetry are implemented in [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/infra/http/middleware.ts](backend/src/infra/http/middleware.ts), [backend/src/services/admin.service.ts](backend/src/services/admin.service.ts), and [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Admin SPA setup/login/handoff and operational pages are wired in [admin/src/App.tsx](admin/src/App.tsx), [admin/src/pages/UserManagement.tsx](admin/src/pages/UserManagement.tsx), [admin/src/pages/InviteOnboarding.tsx](admin/src/pages/InviteOnboarding.tsx), [admin/src/pages/Logs.tsx](admin/src/pages/Logs.tsx), [admin/src/pages/Dashboard.tsx](admin/src/pages/Dashboard.tsx), and [admin/src/pages/PlatformStatus.tsx](admin/src/pages/PlatformStatus.tsx). Remaining gaps are Stage 10 concerns: scaffold-only room/settings surfaces, more durable telemetry, and deeper admin-specific automated coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Stage 9 (Command-center UI)                 | In progress (9.1 started)          | Initial command-center shell is implemented with explicit left/center/right structure and persona-specific right-rail tab visibility in [frontend/src/components/session/CommandCenterFrame.tsx](frontend/src/components/session/CommandCenterFrame.tsx) and [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx). Current automated coverage for this slice is in [frontend/src/tests/components/CommandCenterFrame.test.tsx](frontend/src/tests/components/CommandCenterFrame.test.tsx). Remaining 9.1 work includes full toolbar/campaign/toast composition and responsive parity, with deeper tool workflows deferred to 9.2/9.3.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Stage 4 chat boundary/system behavior       | Complete                           | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/core/chat/chat-system-messages.test.ts](backend/tests/core/chat/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Character status field terminology          | Aligned                            | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/api/campaign-users-api.test.ts](backend/tests/api/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Frontend command-center UI scope            | Planned and now explicitly tracked | UI layout/components/flows/recovery/theming/motion specs define broader SPA surface than currently closed stages: [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [docs/ui/UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md), [docs/ui/UI-STATE-RECOVERY.md](docs/ui/UI-STATE-RECOVERY.md), [docs/ui/UI-LOADING-STATES.md](docs/ui/UI-LOADING-STATES.md), [docs/ui/UI-ERROR-HANDLING.md](docs/ui/UI-ERROR-HANDLING.md), [docs/ui/UI-THEMING.md](docs/ui/UI-THEMING.md), [docs/ui/UI-MOTION.md](docs/ui/UI-MOTION.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -717,6 +727,7 @@ The following references support the corrected stage labels and current model te
 
 ## 5) Progress Log (Condensed)
 
+- 2026-04: Stage 9.1 started in frontend runtime. Added explicit three-panel command-center shell (left rail + center pane + right rail), role-aware right-rail tab visibility for DM/Player/Spectator, and right-rail open/close behavior. Added component coverage for persona matrix and panel toggles via `frontend/src/tests/components/CommandCenterFrame.test.tsx`; frontend verification now reports `7` files / `21` tests passing.
 - 2026-04: Bidirectional frontend/admin authentication handoff is now implemented end-to-end. Added one-time token endpoints (`/api/auth/handoff/admin`, `/api/admin/auth/handoff/exchange`, `/api/admin/handoff/app`, `/api/auth/handoff/exchange`), frontend/admin launch-route exchange handling (`/launch?handoff=...`), `Open Admin` and `Open App` UI actions, and guest-DM admin launch blocking via `GUEST_UPGRADE_REQUIRED` until full-account upgrade.
 - 2026-04: Roadmap Stage 8 status reviewed against shipped code. Stage 8 is now treated as complete baseline because admin auth, moderation, invite onboarding, audit logging, telemetry pages, and app/admin handoff flows are implemented; remaining scaffolded admin operations and telemetry durability concerns are tracked under Stage 10 rather than Stage 8 blockers.
 - 2026-04: Stage 8 admin architecture redesign implemented in backend runtime: `AdminUser` table merged into `User` (`password`, `isActive`, `adminRole`), new `AdminRole` enum added, migration applied (`20260420033808_merge_admin_user_into_user`), admin JWT claims expanded (`userId`, `username`, `adminRole`), admin service refactored to unified user accounts, DM auto-assignment to `CAMPAIGN_DM` added for DM user write paths, and `POST /api/admin/users/:userId/promote` + `GET /api/admin/me` endpoints added. Backend/frontend/admin builds pass.
