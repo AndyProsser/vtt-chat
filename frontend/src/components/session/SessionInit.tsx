@@ -12,7 +12,14 @@ import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
-import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
+import {
+  CommandCenterFrame,
+  type RightRailTab,
+  type ToolbarActionModel,
+} from './CommandCenterFrame'
+import { CampaignInfo } from './CampaignInfo'
+import { LeftRailSummary } from './LeftRailSummary'
+import { SystemToasts } from './SystemToasts'
 import type { Session as SessionRecord } from '../../state/sessionSlice'
 import type {
   Room as RoomRecord,
@@ -504,61 +511,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             <strong>WS Error:</strong> {wsError.message}
           </p>
         )}
-
-        <div
-          style={{
-            marginTop: '0.75rem',
-            height: '52px',
-            position: 'relative',
-          }}
-        >
-          {activeTransitionNotice && (
-            <div
-              role="status"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                padding: '0.65rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #7dd3fc',
-                backgroundColor: '#e0f2fe',
-                color: '#0c4a6e',
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '0.75rem',
-                alignItems: 'center',
-                fontSize: '0.82rem',
-                opacity: 1,
-                transform: 'translateY(0px)',
-                transition: 'opacity 180ms ease, transform 180ms ease',
-              }}
-            >
-              <span>
-                {formatTransitionNotice({
-                  nextState: activeTransitionNotice.nextState,
-                  movedUsers: activeTransitionNotice.movedUsers,
-                  targetRoomName: activeTransitionNotice.targetRoomName,
-                  targetState: activeTransitionNotice.targetState,
-                })}
-              </span>
-              <button
-                type="button"
-                onClick={hideTransitionToast}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#0c4a6e',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  padding: 0,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
       <div
@@ -1030,40 +982,93 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
           <CommandCenterFrame
             role={user.role}
-            renderLeftRail={() => (
+            renderToolbar={(actions: ToolbarActionModel) => (
               <div>
-                <h4 style={{ margin: '0 0 0.5rem 0' }}>Left Rail</h4>
+                <h4 style={{ margin: '0 0 0.5rem 0' }}>Toolbar</h4>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                  Persona: <strong>{user.role}</strong>
+                  Stage 9.1 action model
                 </p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Current session: <strong>{currentSession.name}</strong>
-                </p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  State: <strong>{currentSession.state}</strong>
-                </p>
+
+                <div style={{ marginTop: '0.5rem', display: 'inline-flex', gap: '0.45rem' }}>
+                  <button
+                    type="button"
+                    aria-label="Center Chat"
+                    aria-pressed={actions.centerPaneView === 'chat'}
+                    onClick={() => actions.setCenterPaneView('chat')}
+                  >
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Center Notes"
+                    aria-pressed={actions.centerPaneView === 'notes'}
+                    onClick={() => actions.setCenterPaneView('notes')}
+                  >
+                    Notes
+                  </button>
+                  <button type="button" onClick={actions.toggleRightRail}>
+                    {actions.rightRailOpen ? 'Hide Tools' : 'Show Tools'}
+                  </button>
+                </div>
 
                 <div
                   style={{
-                    marginTop: '0.75rem',
-                    paddingTop: '0.75rem',
-                    borderTop: '1px solid #e2e8f0',
+                    marginTop: '0.5rem',
+                    display: 'inline-flex',
+                    gap: '0.35rem',
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
-                    Quick counts
-                  </p>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                    Sessions in campaign: {sessionList.length}
-                  </p>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                    Rooms tracked: {currentRooms.length}
-                  </p>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                    Presence tracked: {currentPresence.length}
-                  </p>
+                  {actions.placeholderActions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      disabled
+                      title="Planned in future Stage 9 work"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
+            renderCampaignInfo={() => {
+              const selectedCampaign = campaigns.find(
+                (campaign) => campaign.id === selectedCampaignId
+              )
+              return (
+                <CampaignInfo
+                  campaignName={selectedCampaign?.name || 'Not selected'}
+                  sessionName={currentSession.name}
+                  sessionState={currentSession.state}
+                />
+              )
+            }}
+            renderSystemToasts={() => (
+              <SystemToasts
+                message={
+                  activeTransitionNotice
+                    ? formatTransitionNotice({
+                        nextState: activeTransitionNotice.nextState,
+                        movedUsers: activeTransitionNotice.movedUsers,
+                        targetRoomName: activeTransitionNotice.targetRoomName,
+                        targetState: activeTransitionNotice.targetState,
+                      })
+                    : undefined
+                }
+                onDismiss={activeTransitionNotice ? hideTransitionToast : undefined}
+              />
+            )}
+            renderLeftRail={() => (
+              <LeftRailSummary
+                role={user.role}
+                username={user.username}
+                sessionName={currentSession.name}
+                sessionState={currentSession.state}
+                sessionCount={sessionList.length}
+                roomCount={currentRooms.length}
+                presenceCount={currentPresence.length}
+              />
             )}
             renderCenterPane={(view) => (
               <div style={{ position: 'sticky', top: '1rem' }}>

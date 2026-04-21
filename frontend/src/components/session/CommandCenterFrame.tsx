@@ -1,7 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
+import { useStore } from '../../hooks/useStore'
+import type { ToolbarCenterPaneView } from '../../state/commandCenterSlice'
+import './CommandCenterFrame.css'
 
-export type CenterPaneView = 'chat' | 'notes'
+export type CenterPaneView = ToolbarCenterPaneView
 export type RightRailTab =
   | 'rooms'
   | 'audio'
@@ -10,6 +13,20 @@ export type RightRailTab =
   | 'journal'
   | 'history'
   | 'settings'
+
+export interface ToolbarPlaceholderAction {
+  id: string
+  label: string
+  comingSoon: boolean
+}
+
+export interface ToolbarActionModel {
+  centerPaneView: CenterPaneView
+  setCenterPaneView: (view: CenterPaneView) => void
+  rightRailOpen: boolean
+  toggleRightRail: () => void
+  placeholderActions: ToolbarPlaceholderAction[]
+}
 
 const DM_TABS: RightRailTab[] = [
   'rooms',
@@ -52,6 +69,9 @@ function formatTabLabel(tab: RightRailTab): string {
 
 interface CommandCenterFrameProps {
   role: Role
+  renderToolbar: (model: ToolbarActionModel) => ReactNode
+  renderCampaignInfo: () => ReactNode
+  renderSystemToasts?: () => ReactNode
   renderLeftRail: () => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
@@ -59,12 +79,21 @@ interface CommandCenterFrameProps {
 
 export function CommandCenterFrame({
   role,
+  renderToolbar,
+  renderCampaignInfo,
+  renderSystemToasts,
   renderLeftRail,
   renderCenterPane,
   renderRightRailTab,
 }: CommandCenterFrameProps) {
-  const [centerPaneView, setCenterPaneView] = useState<CenterPaneView>('chat')
-  const [rightRailOpen, setRightRailOpen] = useState(true)
+  const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
+  const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)
+  const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
+  const toggleToolbarRightRail = useStore((state) => state.toggleToolbarRightRail)
+
+  const [isCompactLayout, setIsCompactLayout] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
+  )
 
   const tabs = useMemo(() => getRightRailTabsForRole(role), [role])
   const [selectedRightRailTab, setSelectedRightRailTab] = useState<RightRailTab>(tabs[0] || 'rooms')
@@ -72,84 +101,67 @@ export function CommandCenterFrame({
     ? selectedRightRailTab
     : tabs[0] || 'rooms'
 
-  return (
-    <section
-      aria-label="Command Center"
-      style={{
-        display: 'grid',
-        gap: '1rem',
-      }}
-    >
-      <header
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-          <button
-            type="button"
-            aria-label="Center Chat"
-            aria-pressed={centerPaneView === 'chat'}
-            onClick={() => setCenterPaneView('chat')}
-          >
-            Chat
-          </button>
-          <button
-            type="button"
-            aria-label="Center Notes"
-            aria-pressed={centerPaneView === 'notes'}
-            onClick={() => setCenterPaneView('notes')}
-          >
-            Notes
-          </button>
-        </div>
+  const placeholderActions: ToolbarPlaceholderAction[] = useMemo(
+    () => [
+      { id: 'filters', label: 'Filters', comingSoon: true },
+      { id: 'timeline', label: 'Timeline', comingSoon: true },
+      { id: 'quick-tools', label: 'Quick Tools', comingSoon: true },
+    ],
+    []
+  )
 
-        <button type="button" onClick={() => setRightRailOpen((open) => !open)}>
-          {rightRailOpen ? 'Hide Tools' : 'Show Tools'}
-        </button>
-      </header>
+  const toolbarModel: ToolbarActionModel = {
+    centerPaneView: toolbarCenterPaneView,
+    setCenterPaneView: setToolbarCenterPaneView,
+    rightRailOpen: toolbarRightRailOpen,
+    toggleRightRail: toggleToolbarRightRail,
+    placeholderActions,
+  }
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsCompactLayout(window.innerWidth <= 1100)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  return (
+    <section aria-label="Command Center" className="command-center-frame">
+      <div className="command-center-meta-grid">
+        <section data-testid="toolbar" className="command-center-surface">
+          {renderToolbar(toolbarModel)}
+        </section>
+        <section data-testid="campaign-info" className="command-center-surface">
+          {renderCampaignInfo()}
+        </section>
+      </div>
+
+      {renderSystemToasts && (
+        <section data-testid="system-toasts" className="command-center-surface">
+          {renderSystemToasts()}
+        </section>
+      )}
 
       <div
-        style={{
-          display: 'grid',
-          gap: '1rem',
-          gridTemplateColumns: rightRailOpen
-            ? 'minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 320px)'
-            : 'minmax(220px, 280px) minmax(0, 1fr)',
-          alignItems: 'start',
-        }}
+        data-testid="rails-layout"
+        data-layout={isCompactLayout ? 'compact' : 'desktop'}
+        className={`command-center-rails ${toolbarRightRailOpen ? 'open' : 'closed'} ${
+          isCompactLayout ? 'compact' : 'desktop'
+        }`}
       >
-        <aside
-          data-testid="left-rail"
-          style={{
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-            padding: '0.75rem',
-          }}
-        >
+        <aside data-testid="left-rail" className="command-center-surface">
           {renderLeftRail()}
         </aside>
 
-        <div data-testid="center-pane">{renderCenterPane(centerPaneView)}</div>
+        <div data-testid="center-pane">{renderCenterPane(toolbarCenterPaneView)}</div>
 
-        {rightRailOpen && (
-          <aside
-            data-testid="right-rail"
-            style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              backgroundColor: '#fff',
-              padding: '0.75rem',
-            }}
-          >
-            <div
-              style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}
-            >
+        {toolbarRightRailOpen && (
+          <aside data-testid="right-rail" className="command-center-surface">
+            <div className="command-center-tools-tabs">
               {tabs.map((tab) => (
                 <button
                   key={tab}
