@@ -473,13 +473,13 @@ Remaining scope:
 - Add dedicated admin backend authz/action tests and admin SPA interaction coverage for login, moderation, invites, logs, and future secure-ops workflows.
 - Promote Stage 10.3 durability hardening from initial implementation to production-grade operations controls (stream rotation jobs, archival/export policy hooks, restart/e2e verification).
 - Admin component extraction and placeholder closure tasks from latest review:
-  - Decompose oversized admin pages into reusable blocks and hooks, starting with `admin/src/pages/CampaignManagement.tsx` (~588 LOC), `admin/src/pages/Settings.tsx` (~388 LOC), `admin/src/pages/UserManagement.tsx` (~331 LOC), and `admin/src/pages/Logs.tsx` (~322 LOC).
   - Remaining extraction/debt focus: split oversized pages into reusable hooks/components while preserving existing operation coverage.
 
 - Stage 10 UI completion delivered (current increment):
   - `admin/src/pages/Analytics.tsx` now provides telemetry-backed analytics workflows with live loading/error handling.
   - `admin/src/pages/Dashboard.tsx` scaffold-note debt removed and data provenance explicitly documented against telemetry contract.
   - `admin/src/pages/PlatformStatus.tsx` now renders real telemetry trend charts instead of placeholder text.
+  - `admin/src/pages/CampaignManagement.tsx`, `admin/src/pages/Settings.tsx`, `admin/src/pages/UserManagement.tsx`, and `admin/src/pages/Logs.tsx` have been decomposed into focused feature hooks/components to reduce page-level orchestration complexity without changing behavior.
 
 Milestone checkpoints:
 

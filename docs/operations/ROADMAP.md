@@ -276,13 +276,13 @@ Milestone checkpoints and target validation:
     - Keep logs UI interaction coverage green for filter/sort/pagination/detail surfaces.
 
   - Admin review findings now tracked as explicit Stage 10 tasks:
-    - Extract oversized admin pages into focused components/hooks: `CampaignManagement.tsx`, `Settings.tsx`, `UserManagement.tsx`, `Logs.tsx`.
     - Remaining extraction/debt focus: split oversized pages into focused components/hooks while preserving existing operation coverage.
 
   - Stage 10 UI completion delivered (current increment):
     - `admin/src/pages/Analytics.tsx` placeholder replaced with telemetry-backed analytics workflows and route-level loading/error handling.
     - `admin/src/pages/Dashboard.tsx` scaffold note removed with explicit telemetry data-provenance messaging.
     - `admin/src/pages/PlatformStatus.tsx` chart placeholders replaced by real telemetry trend chart components.
+    - `CampaignManagement.tsx`, `Settings.tsx`, `UserManagement.tsx`, and `Logs.tsx` decomposed into focused feature hooks/components while preserving validated behavior.
 
 - **Stage 10.5: UI Style Externalization Workstream (Ongoing)**
   - Scope: progressively migrate inline styles to external stylesheet files (`styles/`) where practical, starting with Stage 10 admin surfaces and all newly touched components.
