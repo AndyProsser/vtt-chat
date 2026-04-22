@@ -9,6 +9,15 @@ import { validatePassword } from '@/utils/password'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import { getPrismaClient } from '@/infra/db'
+import {
+  findDiagnosticEventById,
+  findTelemetryEventById,
+  loadDiagnosticEvents,
+  loadLogRetentionSettings,
+  loadTelemetryEvents,
+  persistDiagnosticEvents,
+  updateLogRetentionSettings,
+} from '@/infra/telemetry-store'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { hashPassword } from '@/services/auth.service'
@@ -90,6 +99,12 @@ const runtimeSettingsDefaults = {
   chatPipelineEnabled: true,
   audioOverridesEnabled: true,
   logRetentionDays: 30,
+  telemetryRetentionDays: 30,
+  telemetryMaxFileSizeMb: 10,
+  telemetryMaxFiles: 7,
+  diagnosticRetentionDays: 14,
+  diagnosticMaxFileSizeMb: 10,
+  diagnosticMaxFiles: 7,
   backupWindow: '02:00 UTC',
 }
 
@@ -1055,43 +1070,49 @@ router.post(
         const timestamp = Date.now()
 
         if (previousPresence?.primaryRoomId && previousPresence.primaryRoomId !== room.id) {
-          wsManager.broadcastEventToSession(session.id as any, {
+          wsManager.broadcastEventToSession(
+            session.id as any,
+            {
+              id: randomBytes(16).toString('hex'),
+              type: 'ROOM:USER_LEFT',
+              version: 1,
+              userId: actor.userId,
+              userRole: 'SYSTEM',
+              sessionId: session.id,
+              roomId: previousPresence.primaryRoomId,
+              timestamp,
+              payload: {
+                roomId: previousPresence.primaryRoomId,
+                userId: sessionMember.userId,
+                username: sessionMember.username,
+                leftAt: timestamp,
+                reason: 'ADMIN_MOVE',
+                movedBy: actor.userId,
+              },
+            } as any
+          )
+        }
+
+        wsManager.broadcastEventToSession(
+          session.id as any,
+          {
             id: randomBytes(16).toString('hex'),
-            type: 'ROOM:USER_LEFT',
+            type: 'ROOM:USER_JOINED',
             version: 1,
             userId: actor.userId,
             userRole: 'SYSTEM',
             sessionId: session.id,
-            roomId: previousPresence.primaryRoomId,
+            roomId: room.id,
             timestamp,
             payload: {
-              roomId: previousPresence.primaryRoomId,
+              roomId: room.id,
               userId: sessionMember.userId,
               username: sessionMember.username,
-              leftAt: timestamp,
-              reason: 'ADMIN_MOVE',
+              joinedAt: timestamp,
               movedBy: actor.userId,
             },
-          } as any)
-        }
-
-        wsManager.broadcastEventToSession(session.id as any, {
-          id: randomBytes(16).toString('hex'),
-          type: 'ROOM:USER_JOINED',
-          version: 1,
-          userId: actor.userId,
-          userRole: 'SYSTEM',
-          sessionId: session.id,
-          roomId: room.id,
-          timestamp,
-          payload: {
-            roomId: room.id,
-            userId: sessionMember.userId,
-            username: sessionMember.username,
-            joinedAt: timestamp,
-            movedBy: actor.userId,
-          },
-        } as any)
+          } as any
+        )
       }
 
       await writeAudit({
@@ -1134,8 +1155,18 @@ router.get('/settings', adminAuthMiddleware, async (req: Request, res: Response)
       return
     }
 
+    const retention = await loadLogRetentionSettings()
+
     res.status(200).json({
-      settings: runtimeSettingsState,
+      settings: {
+        ...runtimeSettingsState,
+        telemetryRetentionDays: retention.telemetryRetentionDays,
+        telemetryMaxFileSizeMb: retention.telemetryMaxFileSizeMb,
+        telemetryMaxFiles: retention.telemetryMaxFiles,
+        diagnosticRetentionDays: retention.diagnosticRetentionDays,
+        diagnosticMaxFileSizeMb: retention.diagnosticMaxFileSizeMb,
+        diagnosticMaxFiles: retention.diagnosticMaxFiles,
+      },
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
@@ -1188,16 +1219,35 @@ router.put('/settings', adminAuthMiddleware, async (req: Request, res: Response)
       updatedAt: new Date().toISOString(),
     }
 
+    const retention = await updateLogRetentionSettings({
+      telemetryRetentionDays: body.telemetryRetentionDays,
+      telemetryMaxFileSizeMb: body.telemetryMaxFileSizeMb,
+      telemetryMaxFiles: body.telemetryMaxFiles,
+      diagnosticRetentionDays: body.diagnosticRetentionDays,
+      diagnosticMaxFileSizeMb: body.diagnosticMaxFileSizeMb,
+      diagnosticMaxFiles: body.diagnosticMaxFiles,
+    })
+
+    const mergedSettings = {
+      ...runtimeSettingsState,
+      telemetryRetentionDays: retention.telemetryRetentionDays,
+      telemetryMaxFileSizeMb: retention.telemetryMaxFileSizeMb,
+      telemetryMaxFiles: retention.telemetryMaxFiles,
+      diagnosticRetentionDays: retention.diagnosticRetentionDays,
+      diagnosticMaxFileSizeMb: retention.diagnosticMaxFileSizeMb,
+      diagnosticMaxFiles: retention.diagnosticMaxFiles,
+    }
+
     await writeAudit({
       actor,
       action: 'SETTINGS_UPDATE',
       targetType: 'ADMIN_SETTINGS',
-      metadata: runtimeSettingsState,
+      metadata: mergedSettings,
     })
 
     res.status(200).json({
       message: 'Settings updated successfully',
-      settings: runtimeSettingsState,
+      settings: mergedSettings,
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
@@ -1842,15 +1892,15 @@ router.get('/telemetry/dashboard', async (_req: Request, res: Response) => {
       (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 24 * 60 * 60 * 1000
     ).length
 
-  const clientTelemetryLastHour = logger
-    .getHistory()
-    .filter((entry) => entry.context === 'telemetry.client')
-    .filter((entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000)
+  const telemetryEvents = await loadTelemetryEvents()
+  const clientTelemetryLastHour = telemetryEvents.filter(
+    (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000
+  )
 
   const topClientEvents = Object.entries(
     clientTelemetryLastHour.reduce(
       (acc, entry) => {
-        const eventName = String((entry.meta as any)?.event || 'unknown')
+        const eventName = String(entry.message || 'unknown')
         acc[eventName] = (acc[eventName] || 0) + 1
         return acc
       },
@@ -1894,10 +1944,10 @@ router.get('/telemetry/status', async (_req: Request, res: Response) => {
   const load = os.loadavg()
   const uptimeSec = process.uptime()
   const chat = await getChatTelemetrySnapshot()
-  const clientTelemetryLastHour = logger
-    .getHistory()
-    .filter((entry) => entry.context === 'telemetry.client')
-    .filter((entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000)
+  const telemetryEvents = await loadTelemetryEvents()
+  const clientTelemetryLastHour = telemetryEvents.filter(
+    (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000
+  )
 
   res.status(200).json({
     cards: {
@@ -1923,6 +1973,94 @@ router.get('/telemetry/status', async (_req: Request, res: Response) => {
     },
     uptimeSec,
     clientTelemetryEventsLastHour: clientTelemetryLastHour.length,
+  })
+})
+
+router.get('/telemetry/logs/:logId', async (req: Request, res: Response) => {
+  const logId = String(req.params.logId || '').trim()
+
+  if (!logId) {
+    res.status(400).json({ error: 'logId is required', code: 'INVALID_LOG_ID' })
+    return
+  }
+
+  if (logId.startsWith('diagnostic-')) {
+    const diagnosticId = logId.slice('diagnostic-'.length)
+    const row = await findDiagnosticEventById(diagnosticId)
+
+    if (!row) {
+      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
+      return
+    }
+
+    res.status(200).json({
+      log: {
+        id: `diagnostic-${row.id}`,
+        timestamp: row.timestamp,
+        severity: row.severity,
+        source: row.source,
+        message: row.message,
+        details: row.details,
+      },
+    })
+    return
+  }
+
+  if (logId.startsWith('audit-')) {
+    const auditId = logId.slice('audit-'.length)
+    const row = await prisma.adminAuditLog.findUnique({ where: { id: auditId } })
+
+    if (!row) {
+      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
+      return
+    }
+
+    res.status(200).json({
+      log: {
+        id: `audit-${row.id}`,
+        timestamp: row.createdAt.toISOString(),
+        severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
+        source: 'admin-audit',
+        message: `${row.action} ${row.outcome}`,
+        details: {
+          actorUserId: row.actorUserId,
+          actorName: row.actorName,
+          actorRole: row.actorRole,
+          targetType: row.targetType,
+          targetId: row.targetId,
+          reason: row.reason,
+          metadata: row.metadata,
+        },
+      },
+    })
+    return
+  }
+
+  if (logId.startsWith('telemetry-')) {
+    const telemetryId = logId.slice('telemetry-'.length)
+    const row = await findTelemetryEventById(telemetryId)
+
+    if (!row) {
+      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
+      return
+    }
+
+    res.status(200).json({
+      log: {
+        id: `telemetry-${row.id}`,
+        timestamp: row.timestamp,
+        severity: row.severity,
+        source: row.source,
+        message: row.message,
+        details: row.details,
+      },
+    })
+    return
+  }
+
+  res.status(400).json({
+    error: 'This log source does not support durable drill-down',
+    code: 'DRILLDOWN_NOT_SUPPORTED',
   })
 })
 
@@ -1957,25 +2095,41 @@ router.get('/telemetry/logs', async (req: Request, res: Response) => {
     ERROR: 3,
   }
 
-  const runtimeLogs = logger
-    .getHistory()
+  const runtimeHistory = logger.getHistory().map((entry) => ({
+    timestamp: entry.timestamp,
+    severity: entry.level,
+    source: entry.context,
+    message: entry.message,
+    details: (entry.meta || {}) as Record<string, unknown>,
+  }))
+
+  await persistDiagnosticEvents(runtimeHistory)
+
+  const runtimeLogs = (await loadDiagnosticEvents())
     .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
-    .filter((entry) => (severity && severity !== 'ALL' ? entry.level === severity : true))
+    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
     .filter((entry) =>
-      source && source !== 'all' ? entry.context.toLowerCase().includes(source) : true
+      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
     )
     .filter((entry) => {
       if (!userId) return true
-      return JSON.stringify(entry.meta || {})
+      return JSON.stringify(entry.details || {})
         .toLowerCase()
         .includes(userId.toLowerCase())
     })
+    .filter((entry) => {
+      if (!roomId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(roomId.toLowerCase())
+    })
     .map((entry) => ({
+      id: `diagnostic-${entry.id}`,
       timestamp: entry.timestamp,
-      severity: entry.level,
-      source: entry.context,
+      severity: entry.severity,
+      source: entry.source,
       message: entry.message,
-      details: entry.meta,
+      details: entry.details,
     }))
 
   const auditRows = await prisma.adminAuditLog.findMany({
@@ -1988,6 +2142,7 @@ router.get('/telemetry/logs', async (req: Request, res: Response) => {
 
   const auditLogs = auditRows
     .map((row) => ({
+      id: `audit-${row.id}`,
       timestamp: row.createdAt.toISOString(),
       severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
       source: 'admin-audit',
@@ -2019,7 +2174,34 @@ router.get('/telemetry/logs', async (req: Request, res: Response) => {
         .includes(roomId.toLowerCase())
     })
 
-  const filtered = [...runtimeLogs, ...auditLogs]
+  const telemetryLogs = (await loadTelemetryEvents())
+    .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
+    .map((entry) => ({
+      id: `telemetry-${entry.id}`,
+      timestamp: entry.timestamp,
+      severity: entry.severity,
+      source: entry.source,
+      message: entry.message,
+      details: entry.details,
+    }))
+    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
+    .filter((entry) =>
+      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
+    )
+    .filter((entry) => {
+      if (!userId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(userId.toLowerCase())
+    })
+    .filter((entry) => {
+      if (!roomId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(roomId.toLowerCase())
+    })
+
+  const filtered = [...runtimeLogs, ...auditLogs, ...telemetryLogs]
 
   const sorted = [...filtered].sort((a, b) => {
     let cmp = 0

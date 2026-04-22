@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminApiBase, getJson } from '../utils/api'
 
 interface LogEntry {
+  id: string
   timestamp: string
   severity: string
   source: string
   message: string
   details?: unknown
+}
+
+interface LogDetailResponse {
+  log: LogEntry
 }
 
 interface LogResponse {
@@ -39,6 +44,7 @@ export default function Logs() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -98,6 +104,27 @@ export default function Logs() {
     return sortDir === 'asc' ? ' ▲' : ' ▼'
   }
 
+  const openLogDetail = async (row: LogEntry) => {
+    if (!row.id) {
+      setSelectedLog(row)
+      return
+    }
+
+    setDetailLoadingId(row.id)
+    setError(null)
+
+    try {
+      const response = await getJson<LogDetailResponse>(
+        `/telemetry/logs/${encodeURIComponent(row.id)}`
+      )
+      setSelectedLog(response.log)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load log detail')
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
+
   return (
     <section className="admin-page">
       <h2 className="admin-page-title">Logs & Activity</h2>
@@ -145,6 +172,7 @@ export default function Logs() {
           <option value="livekit">LiveKit</option>
           <option value="db">DB</option>
           <option value="frontend">Frontend</option>
+          <option value="telemetry">Telemetry</option>
           <option value="admin-audit">Admin Audit</option>
         </select>
         <input
@@ -220,8 +248,8 @@ export default function Logs() {
                 <td colSpan={5}>No log entries match the current filter.</td>
               </tr>
             ) : (
-              rows.map((row, idx) => (
-                <tr key={`${row.timestamp}-${idx}`}>
+              rows.map((row) => (
+                <tr key={row.id}>
                   <td>{new Date(row.timestamp).toLocaleString()}</td>
                   <td>{row.severity}</td>
                   <td>{row.source}</td>
@@ -229,9 +257,10 @@ export default function Logs() {
                   <td>
                     <button
                       className="admin-btn admin-btn-ghost"
-                      onClick={() => setSelectedLog(row)}
+                      onClick={() => void openLogDetail(row)}
+                      disabled={detailLoadingId === row.id}
                     >
-                      Expand
+                      {detailLoadingId === row.id ? 'Loading...' : 'Expand'}
                     </button>
                   </td>
                 </tr>

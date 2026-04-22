@@ -8,6 +8,12 @@ interface RuntimeSettings {
   chatPipelineEnabled: boolean
   audioOverridesEnabled: boolean
   logRetentionDays: number
+  telemetryRetentionDays: number
+  telemetryMaxFileSizeMb: number
+  telemetryMaxFiles: number
+  diagnosticRetentionDays: number
+  diagnosticMaxFileSizeMb: number
+  diagnosticMaxFiles: number
   backupWindow: string
   updatedAt: string
 }
@@ -60,6 +66,12 @@ export default function Settings() {
             chatPipelineEnabled: settings.chatPipelineEnabled,
             audioOverridesEnabled: settings.audioOverridesEnabled,
             logRetentionDays: settings.logRetentionDays,
+            telemetryRetentionDays: settings.telemetryRetentionDays,
+            telemetryMaxFileSizeMb: settings.telemetryMaxFileSizeMb,
+            telemetryMaxFiles: settings.telemetryMaxFiles,
+            diagnosticRetentionDays: settings.diagnosticRetentionDays,
+            diagnosticMaxFileSizeMb: settings.diagnosticMaxFileSizeMb,
+            diagnosticMaxFiles: settings.diagnosticMaxFiles,
             backupWindow: settings.backupWindow,
           }),
         }
@@ -224,6 +236,121 @@ export default function Settings() {
                       ? {
                           ...current,
                           backupWindow: event.target.value,
+                        }
+                      : current
+                  )
+                }
+              />
+            </article>
+
+            <article className="admin-card settings-card">
+              <h3>Log Sink Policies</h3>
+              <p className="settings-help-text">
+                Controls rotation and retention for durable telemetry and diagnostic streams.
+              </p>
+
+              <label htmlFor="telemetryRetentionDays">Telemetry Retention (days)</label>
+              <input
+                id="telemetryRetentionDays"
+                type="number"
+                min={1}
+                value={settings.telemetryRetentionDays}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          telemetryRetentionDays: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="telemetryMaxFileSizeMb">Telemetry Max File Size (MB)</label>
+              <input
+                id="telemetryMaxFileSizeMb"
+                type="number"
+                min={1}
+                value={settings.telemetryMaxFileSizeMb}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          telemetryMaxFileSizeMb: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="telemetryMaxFiles">Telemetry Rotated Files</label>
+              <input
+                id="telemetryMaxFiles"
+                type="number"
+                min={1}
+                value={settings.telemetryMaxFiles}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          telemetryMaxFiles: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="diagnosticRetentionDays">Diagnostic Retention (days)</label>
+              <input
+                id="diagnosticRetentionDays"
+                type="number"
+                min={1}
+                value={settings.diagnosticRetentionDays}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          diagnosticRetentionDays: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="diagnosticMaxFileSizeMb">Diagnostic Max File Size (MB)</label>
+              <input
+                id="diagnosticMaxFileSizeMb"
+                type="number"
+                min={1}
+                value={settings.diagnosticMaxFileSizeMb}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          diagnosticMaxFileSizeMb: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="diagnosticMaxFiles">Diagnostic Rotated Files</label>
+              <input
+                id="diagnosticMaxFiles"
+                type="number"
+                min={1}
+                value={settings.diagnosticMaxFiles}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          diagnosticMaxFiles: Math.max(1, Number(event.target.value || 1)),
                         }
                       : current
                   )

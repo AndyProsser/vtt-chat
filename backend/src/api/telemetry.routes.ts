@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { authMiddleware } from '@/infra/http/middleware'
+import { persistTelemetryEvents } from '@/infra/telemetry-store'
 import { logger } from '@/utils/logger'
 
 const router = Router()
@@ -16,7 +17,8 @@ interface ClientTelemetryEvent {
 function sanitizeProperties(input: Record<string, unknown> | undefined): Record<string, unknown> {
   if (!input) return {}
 
-  const sensitive = /(message|content|chat|note|body|password|token|email|playername|charactername)/i
+  const sensitive =
+    /(message|content|chat|note|body|password|token|email|playername|charactername)/i
   const output: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(input)) {
@@ -41,7 +43,7 @@ function sanitizeProperties(input: Record<string, unknown> | undefined): Record<
   return output
 }
 
-router.post('/client-events', authMiddleware, (req: Request, res: Response) => {
+router.post('/client-events', authMiddleware, async (req: Request, res: Response) => {
   const payload = req.body as { events?: ClientTelemetryEvent[] }
   const events = Array.isArray(payload?.events) ? payload.events.slice(0, MAX_BATCH_SIZE) : []
 
@@ -53,18 +55,39 @@ router.post('/client-events', authMiddleware, (req: Request, res: Response) => {
   }
 
   const user = req.user
+  const persistedEvents: Array<{
+    event: string
+    timestampMs: number
+    userId?: string
+    role?: string
+    properties?: Record<string, unknown>
+  }> = []
+
   for (const raw of events) {
     const eventName = String(raw.event || '').slice(0, MAX_EVENT_NAME_LEN)
     if (!eventName) continue
 
-    logger.info('telemetry.client', 'Client telemetry event', {
+    const ts = typeof raw.ts === 'number' ? raw.ts : Date.now()
+    const properties = sanitizeProperties(raw.properties)
+
+    persistedEvents.push({
       event: eventName,
-      properties: sanitizeProperties(raw.properties),
+      timestampMs: ts,
       userId: user?.userId,
       role: user?.role,
-      ts: typeof raw.ts === 'number' ? raw.ts : Date.now(),
+      properties,
+    })
+
+    logger.info('telemetry.client', 'Client telemetry event', {
+      event: eventName,
+      properties,
+      userId: user?.userId,
+      role: user?.role,
+      ts,
     })
   }
+
+  await persistTelemetryEvents(persistedEvents)
 
   return res.status(202).json({ ok: true, accepted: events.length })
 })

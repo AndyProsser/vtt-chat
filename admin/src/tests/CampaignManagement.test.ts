@@ -45,6 +45,14 @@ const CAMPAIGN_LIST_RESPONSE = {
   totalPages: 1,
 }
 
+const ARCHIVED_CAMPAIGN_LIST_RESPONSE = {
+  ...CAMPAIGN_LIST_RESPONSE,
+  campaigns: CAMPAIGN_LIST_RESPONSE.campaigns.map((campaign) => ({
+    ...campaign,
+    isArchived: true,
+  })),
+}
+
 const ROOMS_RESPONSE = {
   campaign: { id: 'campaign-1', name: 'Ashfall' },
   session: {
@@ -104,6 +112,9 @@ describe('CampaignManagement interactions', () => {
       if (path.startsWith('/campaigns?')) return Promise.resolve(CAMPAIGN_LIST_RESPONSE)
       if (path.includes('/campaigns/campaign-1/rooms')) return Promise.resolve(ROOMS_RESPONSE)
       if (path.includes('/sessions/session-1/end')) return Promise.resolve({ message: 'ok' })
+      if (path.endsWith('/archive')) return Promise.resolve({ message: 'archived' })
+      if (path.endsWith('/restore')) return Promise.resolve({ message: 'restored' })
+      if (path.includes('/move-player')) return Promise.resolve({ message: 'moved' })
       return Promise.resolve({})
     })
 
@@ -201,5 +212,102 @@ describe('CampaignManagement interactions', () => {
     await flush()
 
     expect(container.textContent).toContain('end failed')
+  })
+
+  it('executes archive action and refreshes campaign list', async () => {
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const archiveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Archive'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      archiveButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith('/campaigns/campaign-1/archive', {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Admin operation: archive campaign' }),
+    })
+    expect(
+      requestJsonMock.mock.calls.some(
+        ([path, init]: [string, { method?: string }]) =>
+          path === '/campaigns?search=&status=all&page=1&pageSize=20' && init?.method === 'GET'
+      )
+    ).toBe(true)
+  })
+
+  it('executes restore action for archived campaign', async () => {
+    requestJsonMock.mockImplementation((path: string) => {
+      if (path.startsWith('/campaigns?')) return Promise.resolve(ARCHIVED_CAMPAIGN_LIST_RESPONSE)
+      if (path.includes('/campaigns/campaign-1/rooms')) return Promise.resolve(ROOMS_RESPONSE)
+      if (path.endsWith('/restore')) return Promise.resolve({ message: 'restored' })
+      return Promise.resolve({})
+    })
+
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const restoreButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Restore'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      restoreButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith('/campaigns/campaign-1/restore', {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Admin operation: restore campaign' }),
+    })
+  })
+
+  it('moves player to selected room and refreshes room occupancy', async () => {
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const destinationRoomSelect = container.querySelector(
+      'select[aria-label="Select destination room"]'
+    ) as HTMLSelectElement
+
+    await act(async () => {
+      destinationRoomSelect.value = 'room-2'
+      destinationRoomSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    const moveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Move Player'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      moveButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith(
+      '/campaigns/campaign-1/sessions/session-1/rooms/room-2/move-player',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId: 'member-1',
+          reason: 'Admin operation: move player from campaign control panel',
+        }),
+      }
+    )
+    expect(requestJsonMock).toHaveBeenCalledWith(
+      '/campaigns/campaign-1/rooms?sessionId=session-1',
+      {
+        method: 'GET',
+      }
+    )
   })
 })

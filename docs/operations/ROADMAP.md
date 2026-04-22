@@ -266,6 +266,7 @@ Milestone checkpoints and target validation:
   - Current status: in execution. `Rooms & Campaigns` now uses authenticated live data/actions, with campaign archive/restore and room move-player operations added as the next active surface.
   - Validation targets: moderation/action endpoint tests, action-dialog UX tests, audit-entry assertions per action.
 - **Stage 10.3: Durable Telemetry and Drill-Down Workflows**
+  - Current status: kickoff started. Durable telemetry ingest persistence and persisted log-detail drill-down are now in initial implementation.
   - Validation targets: telemetry/audit persistence tests, logs detail/filter/sort/pagination integrity tests, end-to-end operator journey tests.
   - Implementation checklist: implement backend log stream/sink model from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L235), align endpoints with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437), and verify admin observability outcomes using [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
 
@@ -359,6 +360,7 @@ Dependencies before later stages:
 
 - 2026-04: Stage 10.2 kickoff delivered. Activated `Rooms & Campaigns` with live backend campaign/session/room data and authenticated session-end action path; style externalization rule applied through a dedicated page stylesheet.
 - 2026-04: Stage 10.2 expansion delivered. Added backend campaign archive/restore + room move-player admin actions with audit hooks and authz coverage, added dedicated admin interaction tests for live Rooms & Campaigns flows (filters, selection, end-session success/failure), and activated Settings with authenticated backend save/backup workflows plus externalized page styling.
+- 2026-04: Stage 10.3 kickoff started with durable telemetry ingest sink persistence plus persisted log drill-down route (`GET /api/admin/telemetry/logs/:logId`) for telemetry and admin-audit entries.
 - 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression tests for public vs protected route boundaries and invalid-token rejection, plus admin SPA guard tests covering login routing, authenticated dashboard rendering, and forced logout when session validation returns unauthorized.
 - 2026-04: Stage 10 commenced. Added Stage 10.5 as a tracked workstream for incremental CSS externalization (`styles/`) and began first-pass admin inline-style extraction to separate visuals from component logic.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
