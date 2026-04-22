@@ -4,7 +4,12 @@ import { roleLabel } from './types'
 interface UserTableProps {
   rows: AdminUserRow[]
   actionBusyUserId: string | null
-  onRunAction: (userId: string, method: 'PATCH' | 'POST', path: string, defaultReason: string) => void
+  onRunAction: (
+    userId: string,
+    method: 'PATCH' | 'POST',
+    path: string,
+    defaultReason: string
+  ) => void
 }
 
 export function UserTable({ rows, actionBusyUserId, onRunAction }: UserTableProps) {
@@ -59,7 +64,12 @@ export function UserTable({ rows, actionBusyUserId, onRunAction }: UserTableProp
                           className="admin-btn"
                           disabled={busy}
                           onClick={() =>
-                            onRunAction(row.id, 'PATCH', `/users/${row.id}/restore`, 'Issue resolved')
+                            onRunAction(
+                              row.id,
+                              'PATCH',
+                              `/users/${row.id}/restore`,
+                              'Issue resolved'
+                            )
                           }
                         >
                           {busy ? 'Working...' : 'Restore'}

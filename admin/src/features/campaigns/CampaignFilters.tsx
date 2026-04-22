@@ -37,7 +37,10 @@ export function CampaignFilters({
         <option value="no_session">No sessions yet</option>
       </select>
 
-      <select value={String(pageSize)} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
+      <select
+        value={String(pageSize)}
+        onChange={(event) => onPageSizeChange(Number(event.target.value))}
+      >
         <option value="10">10 / page</option>
         <option value="20">20 / page</option>
         <option value="50">50 / page</option>

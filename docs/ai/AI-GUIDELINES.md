@@ -360,6 +360,7 @@ Minimum sync requirements:
 - Update `CHANGELOG.md` when shipped behavior, staged scope, or release buckets are introduced or revised.
 - Keep version fields aligned across `package.json`, `backend/package.json`, `frontend/package.json`, `admin/package.json`, and `shared/package.json` when versions are bumped.
 - Ensure the version line in `README.md` matches the current release version.
+- After any change set, run a quick doc-impact check and update `ROADMAP.md`, `CHANGELOG.md`, and `README.md` when required.
 
 Before finalizing output, AI should perform a release-hygiene check:
 

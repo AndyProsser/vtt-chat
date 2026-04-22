@@ -174,6 +174,7 @@ You must enforce:
 - Keep `ROADMAP.md` and `CHANGELOG.md` synchronized.
 - Keep versions aligned across root and all package manifests.
 - Keep the version line in `README.md` current.
+- After any change set, run a quick doc-impact check and update `ROADMAP.md`, `CHANGELOG.md`, and `README.md` when required.
 - Do not finalize release-significant edits with mismatched roadmap/changelog/version content.
 
 ---

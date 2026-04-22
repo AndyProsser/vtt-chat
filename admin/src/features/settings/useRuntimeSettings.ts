@@ -40,23 +40,26 @@ export function useRuntimeSettings() {
     setStatusMessage(null)
 
     try {
-      const response = await requestJson<{ message: string; settings: RuntimeSettings }>('/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          primaryRegion: settings.primaryRegion,
-          maintenanceMode: settings.maintenanceMode,
-          chatPipelineEnabled: settings.chatPipelineEnabled,
-          audioOverridesEnabled: settings.audioOverridesEnabled,
-          logRetentionDays: settings.logRetentionDays,
-          telemetryRetentionDays: settings.telemetryRetentionDays,
-          telemetryMaxFileSizeMb: settings.telemetryMaxFileSizeMb,
-          telemetryMaxFiles: settings.telemetryMaxFiles,
-          diagnosticRetentionDays: settings.diagnosticRetentionDays,
-          diagnosticMaxFileSizeMb: settings.diagnosticMaxFileSizeMb,
-          diagnosticMaxFiles: settings.diagnosticMaxFiles,
-          backupWindow: settings.backupWindow,
-        }),
-      })
+      const response = await requestJson<{ message: string; settings: RuntimeSettings }>(
+        '/settings',
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            primaryRegion: settings.primaryRegion,
+            maintenanceMode: settings.maintenanceMode,
+            chatPipelineEnabled: settings.chatPipelineEnabled,
+            audioOverridesEnabled: settings.audioOverridesEnabled,
+            logRetentionDays: settings.logRetentionDays,
+            telemetryRetentionDays: settings.telemetryRetentionDays,
+            telemetryMaxFileSizeMb: settings.telemetryMaxFileSizeMb,
+            telemetryMaxFiles: settings.telemetryMaxFiles,
+            diagnosticRetentionDays: settings.diagnosticRetentionDays,
+            diagnosticMaxFileSizeMb: settings.diagnosticMaxFileSizeMb,
+            diagnosticMaxFiles: settings.diagnosticMaxFiles,
+            backupWindow: settings.backupWindow,
+          }),
+        }
+      )
 
       setSettings(response.settings)
       setStatusMessage(response.message)
@@ -73,9 +76,12 @@ export function useRuntimeSettings() {
     setStatusMessage(null)
 
     try {
-      const response = await requestJson<{ message: string; queuedAt: string }>('/settings/backup', {
-        method: 'POST',
-      })
+      const response = await requestJson<{ message: string; queuedAt: string }>(
+        '/settings/backup',
+        {
+          method: 'POST',
+        }
+      )
       setStatusMessage(`${response.message} (${new Date(response.queuedAt).toLocaleString()})`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to trigger backup')

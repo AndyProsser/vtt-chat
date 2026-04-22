@@ -413,5 +413,6 @@ Required behavior:
 - If roadmap scope/status changes, update roadmap and changelog together.
 - If versions are incremented, align all package versions and README version text.
 - If changelog buckets are revised, ensure roadmap terminology and README status summary remain compatible.
+- After any change set, run a quick doc-impact check and update ROADMAP.md, CHANGELOG.md, and README.md when required by the change.
 
 AI should treat this as a mandatory closing checklist before finalizing release-facing edits.

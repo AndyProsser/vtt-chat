@@ -235,7 +235,7 @@ describe('CampaignManagement interactions', () => {
     })
     expect(
       requestJsonMock.mock.calls.some(
-        ([path, init]: [string, { method?: string }]) =>
+        ([path, init]) =>
           path === '/campaigns?search=&status=all&page=1&pageSize=20' && init?.method === 'GET'
       )
     ).toBe(true)

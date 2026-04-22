@@ -72,13 +72,20 @@ export function CampaignTable({
                   <td>{campaign.latestSession?._count.rooms || 0}</td>
                   <td>
                     <div className="cell-actions">
-                      <button className="admin-btn admin-btn-ghost" onClick={() => onSelectCampaign(campaign.id)}>
+                      <button
+                        className="admin-btn admin-btn-ghost"
+                        onClick={() => onSelectCampaign(campaign.id)}
+                      >
                         View
                       </button>
                       <button
                         className="admin-btn admin-btn-ghost"
                         onClick={() => onEndSession(campaign)}
-                        disabled={!campaign.latestSession || campaign.latestSession.state === 'ENDED' || isBusy}
+                        disabled={
+                          !campaign.latestSession ||
+                          campaign.latestSession.state === 'ENDED' ||
+                          isBusy
+                        }
                       >
                         {isBusy ? 'Ending...' : 'End Session'}
                       </button>

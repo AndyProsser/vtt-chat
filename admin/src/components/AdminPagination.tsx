@@ -15,7 +15,11 @@ export function AdminPagination({
 }: AdminPaginationProps) {
   return (
     <div className="admin-pagination">
-      <button className="admin-btn admin-btn-ghost" disabled={page <= 1 || loading} onClick={onPrevious}>
+      <button
+        className="admin-btn admin-btn-ghost"
+        disabled={page <= 1 || loading}
+        onClick={onPrevious}
+      >
         Previous
       </button>
       <span>

@@ -95,7 +95,9 @@ export default function PlatformStatus() {
         <TelemetryMetricCard
           title="Network"
           value={
-            typeof data?.cards.networkLatencyMs === 'number' ? `${data.cards.networkLatencyMs}ms` : '--'
+            typeof data?.cards.networkLatencyMs === 'number'
+              ? `${data.cards.networkLatencyMs}ms`
+              : '--'
           }
           subtitle="Status: Healthy"
         />

@@ -31,7 +31,10 @@ export function UserInvitePanel({
           value={inviteEmail}
           onChange={(event) => onInviteEmailChange(event.target.value)}
         />
-        <select value={inviteRole} onChange={(event) => onInviteRoleChange(event.target.value as InviteRole)}>
+        <select
+          value={inviteRole}
+          onChange={(event) => onInviteRoleChange(event.target.value as InviteRole)}
+        >
           <option value="ADMIN">ADMIN</option>
           <option value="CAMPAIGN_DM">CAMPAIGN_DM</option>
           <option value="READ_ONLY">READ_ONLY</option>

@@ -140,7 +140,11 @@ export function useCampaignManagement() {
       return
     }
 
-    if (!window.confirm(`End session "${campaign.latestSession.name}" for campaign "${campaign.name}"?`)) {
+    if (
+      !window.confirm(
+        `End session "${campaign.latestSession.name}" for campaign "${campaign.name}"?`
+      )
+    ) {
       return
     }
 
@@ -190,7 +194,12 @@ export function useCampaignManagement() {
   }
 
   const movePlayer = async () => {
-    if (!selectedCampaign || !selectedCampaignRooms?.session || !selectedMemberId || !targetRoomId) {
+    if (
+      !selectedCampaign ||
+      !selectedCampaignRooms?.session ||
+      !selectedMemberId ||
+      !targetRoomId
+    ) {
       return
     }
 

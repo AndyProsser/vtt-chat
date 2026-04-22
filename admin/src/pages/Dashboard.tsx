@@ -85,7 +85,9 @@ export default function Dashboard() {
         />
         <TelemetryMetricCard
           title="Storage Usage"
-          value={typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'}
+          value={
+            typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'
+          }
           subtitle="Heap usage proxy"
         />
         <TelemetryMetricCard
@@ -108,8 +110,8 @@ export default function Dashboard() {
       <section className="admin-card">
         <h3>Data Provenance</h3>
         <p>
-          Metrics on this page are sourced from the authenticated <strong>/telemetry/dashboard</strong>{' '}
-          endpoint and refresh automatically every 15 seconds.
+          Metrics on this page are sourced from the authenticated{' '}
+          <strong>/telemetry/dashboard</strong> endpoint and refresh automatically every 15 seconds.
         </p>
       </section>
     </section>
