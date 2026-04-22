@@ -34,6 +34,7 @@
   /* Border */
   --color-border: #e2e8f0;
   --color-border-focus: #0284c7;
+  --color-border-soft: #cbd5e1;
 
   /* Text */
   --color-text-primary: #1e293b;
@@ -105,6 +106,7 @@
 
     --color-border: #334155;
     --color-border-focus: #38bdf8;
+    --color-border-soft: #475569;
 
     --color-text-primary: #f1f5f9;
     --color-text-secondary: #94a3b8;

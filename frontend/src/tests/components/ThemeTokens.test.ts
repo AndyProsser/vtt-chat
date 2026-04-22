@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const CSS_PATH = resolve(__dirname, '../../components/session/theme.css')
+const CSS_PATH = resolve(__dirname, '../../styles/components/session/theme.css')
 
 let cssSource: string
 

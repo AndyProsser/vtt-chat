@@ -3,7 +3,7 @@ import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import type { ToolbarCenterPaneView } from '../../state/commandCenterSlice'
 import { telemetryClient } from '../../utils/telemetry'
-import './CommandCenterFrame.css'
+import '../../styles/components/session/CommandCenterFrame.css'
 
 export type CenterPaneView = ToolbarCenterPaneView
 export type RightRailTab =

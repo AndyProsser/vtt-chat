@@ -1,0 +1,103 @@
+.avatar-overlay {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.avatar-glyph {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--color-border-soft);
+}
+
+.avatar-meta {
+  display: grid;
+  gap: 3px;
+}
+
+.avatar-meta-headline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatar-name {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.avatar-role-chip {
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.avatar-meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.avatar-presence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.avatar-presence-online {
+  background: #22c55e;
+}
+
+.avatar-presence-speaking {
+  background: #0ea5e9;
+}
+
+.avatar-presence-typing {
+  background: #f59e0b;
+}
+
+.avatar-presence-idle {
+  background: #94a3b8;
+}
+
+.avatar-presence-offline {
+  background: #ef4444;
+}
+
+.avatar-state-chip {
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.avatar-state-chip.speaking {
+  border-color: rgba(14, 165, 233, 0.6);
+  color: #0369a1;
+}
+
+.avatar-state-chip.muted {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #b91c1c;
+}
+
+.avatar-state-chip.condition {
+  border-color: rgba(124, 58, 237, 0.45);
+  color: #6d28d9;
+}

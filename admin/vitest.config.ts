@@ -13,12 +13,7 @@ export default defineConfig({
       reporter: ['text', 'html', 'json-summary'],
       reportsDirectory: './coverage',
       include: ['src/**/*.ts', 'src/**/*.tsx'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/main.tsx',
-        'src/vite-env.d.ts',
-        'src/tests/**',
-      ],
+      exclude: ['src/**/*.d.ts', 'src/main.tsx', 'src/vite-env.d.ts', 'src/tests/**'],
       thresholds: {
         branches: 6,
         functions: 7,

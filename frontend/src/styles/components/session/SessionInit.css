@@ -1,0 +1,359 @@
+.session-init-shell {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.session-init-shell-wide {
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.session-status-card {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: var(--color-surface-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.session-status-copy {
+  margin: 0.5rem 0;
+}
+
+.session-ws-state {
+  font-weight: 500;
+}
+
+.session-ws-state-connected {
+  color: var(--color-ws-connected);
+}
+
+.session-ws-state-connecting {
+  color: var(--color-ws-connecting);
+}
+
+.session-ws-state-reconnecting {
+  color: var(--color-ws-reconnecting);
+}
+
+.session-ws-state-disconnected {
+  color: var(--color-ws-disconnected);
+}
+
+.session-ws-error {
+  margin: 0.5rem 0;
+  color: var(--color-error);
+}
+
+.session-card {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+}
+
+.session-card-title {
+  margin-top: 0;
+}
+
+.session-card-subtitle {
+  margin-top: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.session-field {
+  margin-bottom: 1rem;
+}
+
+.session-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.session-select,
+.session-input,
+.session-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.session-textarea {
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.session-split-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.session-inline-form-title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.session-button {
+  padding: 0.5rem 0.75rem;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.session-button[disabled] {
+  background-color: var(--color-border-soft);
+  cursor: not-allowed;
+}
+
+.session-button-brand {
+  background-color: #0284c7;
+}
+
+.session-button-indigo {
+  background-color: #6366f1;
+}
+
+.session-button-success {
+  background-color: #10b981;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.session-button-primary {
+  background-color: #3b82f6;
+}
+
+.session-button-warn {
+  background-color: #f59e0b;
+}
+
+.session-button-violet {
+  background-color: #7c3aed;
+}
+
+.session-button-danger {
+  background-color: #ef4444;
+}
+
+.session-button-neutral {
+  background-color: #6b7280;
+}
+
+.session-status-message {
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.session-error-banner {
+  margin-bottom: 1rem;
+}
+
+.session-list-item {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: #f9fafb;
+}
+
+.session-list-item.current {
+  background-color: #dbeafe;
+}
+
+.session-list-title {
+  margin: 0.25rem 0;
+  font-weight: 500;
+}
+
+.session-list-meta,
+.session-list-description,
+.session-dm-copy,
+.session-placeholder-copy {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.session-action-row {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-action-row .session-button {
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.session-command-center {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background-color: #f8fafc;
+}
+
+.session-command-center-title {
+  margin-top: 0;
+}
+
+.session-command-center-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.session-command-center-pane {
+  position: sticky;
+  top: 1rem;
+}
+
+.session-toolbar-title {
+  margin: 0 0 0.5rem 0;
+}
+
+.session-toolbar-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.session-toolbar-primary-actions {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.session-toolbar-secondary-actions {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.session-left-rail {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.session-rooms-panel-title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.session-rooms-panel-subtitle {
+  margin-top: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.session-rooms-panel-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.session-room-card {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  background-color: var(--color-surface);
+}
+
+.session-room-card-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.session-room-card-title span {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.session-room-card-count {
+  margin: 0.25rem 0 0.4rem 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.session-room-card-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.session-room-card-member {
+  margin: 0.2rem 0;
+  font-size: 0.75rem;
+}
+
+.session-rooms-panel-footer {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.session-presence-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+}
+
+.session-presence-dot-online {
+  background: #22c55e;
+}
+
+.session-presence-dot-speaking {
+  background: #0ea5e9;
+}
+
+.session-presence-dot-typing {
+  background: #f59e0b;
+}
+
+.session-presence-dot-offline {
+  background: #ef4444;
+}
+
+.session-presence-dot-idle {
+  background: #94a3b8;
+}
+
+@media (max-width: 760px) {
+  .session-init-shell-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-action-row {
+    flex-direction: column;
+  }
+
+  .session-action-row .session-button,
+  .session-toolbar-primary-actions,
+  .session-toolbar-secondary-actions {
+    width: 100%;
+  }
+
+  .session-toolbar-primary-actions,
+  .session-toolbar-secondary-actions {
+    display: grid;
+  }
+}

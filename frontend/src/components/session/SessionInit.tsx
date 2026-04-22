@@ -4,7 +4,7 @@
  * Tests the full UI → Event → Store pipeline.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState } from '@shared'
 import type { UUID, Role } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -13,15 +13,13 @@ import { useWebSocket } from '../../hooks/useWebSocket'
 import type { ConnectionState } from '../../ws/client'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
-import {
-  CommandCenterFrame,
-  type RightRailTab,
-  type ToolbarActionModel,
-} from './CommandCenterFrame'
+import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
 import { CampaignInfo } from './CampaignInfo'
-import { LeftRailSummary } from './LeftRailSummary'
 import { SystemToasts } from './SystemToasts'
 import { DMAudioControls } from './DMAudioControls'
+import { SessionLeftRailPanel } from './SessionLeftRailPanel'
+import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
+import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { Toast } from '../ui/Toast'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
@@ -31,6 +29,7 @@ import type {
   RoomUser as RoomMember,
   SessionPresence as PresenceRecord,
 } from '../../state/roomSlice'
+import '../../styles/components/session/SessionInit.css'
 
 interface SessionInitProps {
   apiUrl: string
@@ -93,6 +92,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [sessionDescription, setSessionDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [isLoadingSessions, setIsLoadingSessions] = useState(true)
+  const [selectedRoomIdOverride, setSelectedRoomIdOverride] = useState<UUID | ''>('')
   const [error, setError] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
   const [isHydrating, setIsHydrating] = useState(false)
@@ -119,15 +119,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const typedRoomsBySession = store.rooms as Record<UUID, Record<UUID, RoomRecord>>
   const typedPresenceBySession = store.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
   const typedRoomMembers = store.roomMembers as Record<UUID, RoomMember[]>
-  const currentRooms: RoomRecord[] = currentSession
-    ? Object.values(typedRoomsBySession[currentSession.id] || {})
-    : []
-  const currentPresence: PresenceRecord[] = currentSession
-    ? Object.values(typedPresenceBySession[currentSession.id] || {})
-    : []
+  const currentRooms = useMemo<RoomRecord[]>(
+    () => (currentSession ? Object.values(typedRoomsBySession[currentSession.id] || {}) : []),
+    [currentSession, typedRoomsBySession]
+  )
+  const currentPresence = useMemo<PresenceRecord[]>(
+    () => (currentSession ? Object.values(typedPresenceBySession[currentSession.id] || {}) : []),
+    [currentSession, typedPresenceBySession]
+  )
   const currentTransitionNotice = currentSession
     ? store.sessionTransitionNotice[currentSession.id]
     : undefined
+  const selectedRoomId = useMemo<UUID | ''>(() => {
+    if (!currentRooms.length) {
+      return ''
+    }
+
+    if (selectedRoomIdOverride && currentRooms.some((room) => room.id === selectedRoomIdOverride)) {
+      return selectedRoomIdOverride
+    }
+
+    return currentRooms[0].id
+  }, [currentRooms, selectedRoomIdOverride])
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -529,68 +542,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       {/* Reconnect / hydration banner — sits above the main surface */}
       <ReconnectBanner wsState={wsState} isHydrating={isHydrating} />
 
-      <div
-        style={{
-          maxWidth: showChat ? '1100px' : '600px',
-          margin: '0 auto',
-          padding: '2rem 1rem',
-          display: showChat ? 'grid' : 'block',
-          gridTemplateColumns: showChat ? '1fr 1fr' : undefined,
-          gap: showChat ? '1.5rem' : undefined,
-          alignItems: 'start',
-        }}
-      >
+      <div className={`session-init-shell ${showChat ? 'session-init-shell-wide' : ''}`}>
         {/* User Info & WS Status */}
-        <div
-          style={{
-            marginBottom: '2rem',
-            padding: '1rem',
-            backgroundColor: 'var(--color-surface-subtle)',
-            borderRadius: 'var(--radius-lg)',
-          }}
-        >
-          <p style={{ margin: '0.5rem 0' }}>
+        <div className="session-status-card">
+          <p className="session-status-copy">
             <strong>User:</strong> {user.username} ({user.role})
           </p>
-          <p style={{ margin: '0.5rem 0' }}>
+          <p className="session-status-copy">
             <strong>WebSocket:</strong>{' '}
-            <span
-              style={{
-                color: `var(--color-ws-${wsState})`,
-                fontWeight: '500',
-              }}
-            >
-              {wsState}
-            </span>
+            <span className={`session-ws-state session-ws-state-${wsState}`}>{wsState}</span>
           </p>
           {wsError && (
-            <p style={{ margin: '0.5rem 0', color: 'var(--color-error)' }}>
+            <p className="session-ws-error">
               <strong>WS Error:</strong> {wsError.message}
             </p>
           )}
         </div>
 
-        <div
-          style={{
-            marginBottom: '2rem',
-            padding: '1.5rem',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Campaign Context</h3>
+        <div className="session-card">
+          <h3 className="session-card-title">Campaign Context</h3>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label
-              htmlFor="campaignSelect"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-              }}
-            >
+          <div className="session-field">
+            <label htmlFor="campaignSelect" className="session-label">
               Active Campaign
             </label>
             <select
@@ -598,14 +571,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               value={selectedCampaignId}
               onChange={(e) => setSelectedCampaignId(e.target.value as UUID)}
               disabled={isLoadingCampaigns || campaigns.length === 0}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '4px',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-              }}
+              className="session-select"
             >
               {campaigns.length === 0 ? (
                 <option value="">No campaigns yet</option>
@@ -619,31 +585,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             </select>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gap: '0.75rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            }}
-          >
+          <div className="session-split-grid">
             <form onSubmit={handleCreateCampaign}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500', fontSize: '0.875rem' }}>
-                Create Campaign
-              </p>
+              <p className="session-inline-form-title">Create Campaign</p>
               <input
                 type="text"
                 value={newCampaignName}
                 onChange={(e) => setNewCampaignName(e.target.value)}
                 placeholder="Campaign name"
-                style={{
-                  width: '100%',
-                  marginBottom: '0.5rem',
-                  padding: '0.5rem',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  boxSizing: 'border-box',
-                }}
+                className="session-input"
                 disabled={isCreatingCampaign}
                 required
               />
@@ -652,53 +602,26 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 value={newCampaignDescription}
                 onChange={(e) => setNewCampaignDescription(e.target.value)}
                 placeholder="Description (optional)"
-                style={{
-                  width: '100%',
-                  marginBottom: '0.5rem',
-                  padding: '0.5rem',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  boxSizing: 'border-box',
-                }}
+                className="session-input"
                 disabled={isCreatingCampaign}
               />
               <button
                 type="submit"
                 disabled={isCreatingCampaign || !newCampaignName.trim()}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor:
-                    isCreatingCampaign || !newCampaignName.trim() ? '#cbd5e1' : '#0284c7',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: isCreatingCampaign || !newCampaignName.trim() ? 'not-allowed' : 'pointer',
-                  fontSize: '0.8rem',
-                }}
+                className="session-button session-button-brand"
               >
                 {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
               </button>
             </form>
 
             <form onSubmit={handleJoinCampaign}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500', fontSize: '0.875rem' }}>
-                Join Campaign
-              </p>
+              <p className="session-inline-form-title">Join Campaign</p>
               <input
                 type="text"
                 value={joinCampaignId}
                 onChange={(e) => setJoinCampaignId(e.target.value)}
                 placeholder="Campaign ID"
-                style={{
-                  width: '100%',
-                  marginBottom: '0.5rem',
-                  padding: '0.5rem',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  boxSizing: 'border-box',
-                }}
+                className="session-input"
                 disabled={isJoiningCampaign}
                 required
               />
@@ -707,36 +630,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 value={joinInviteCode}
                 onChange={(e) => setJoinInviteCode(e.target.value)}
                 placeholder="Invite code"
-                style={{
-                  width: '100%',
-                  marginBottom: '0.5rem',
-                  padding: '0.5rem',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '4px',
-                  fontSize: '0.875rem',
-                  boxSizing: 'border-box',
-                }}
+                className="session-input"
                 disabled={isJoiningCampaign}
                 required
               />
               <button
                 type="submit"
                 disabled={isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor:
-                    isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()
-                      ? '#cbd5e1'
-                      : '#6366f1',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor:
-                    isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()
-                      ? 'not-allowed'
-                      : 'pointer',
-                  fontSize: '0.8rem',
-                }}
+                className="session-button session-button-indigo"
               >
                 {isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
               </button>
@@ -745,37 +646,20 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         </div>
 
         {/* Create Session Form */}
-        <form
-          onSubmit={handleCreateSession}
-          style={{
-            marginBottom: '2rem',
-            padding: '1.5rem',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Create New Session</h3>
-          <p style={{ marginTop: '0.25rem', color: '#64748b', fontSize: '0.875rem' }}>
+        <form onSubmit={handleCreateSession} className="session-card">
+          <h3 className="session-card-title">Create New Session</h3>
+          <p className="session-card-subtitle">
             Sessions are created inside the selected campaign.
           </p>
 
           {error && (
-            <div style={{ marginBottom: '1rem' }}>
+            <div className="session-error-banner">
               <Toast variant="error" message={error} onDismiss={() => setError(null)} />
             </div>
           )}
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label
-              htmlFor="sessionName"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-              }}
-            >
+          <div className="session-field">
+            <label htmlFor="sessionName" className="session-label">
               Session Name *
             </label>
             <input
@@ -784,29 +668,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               value={sessionName}
               onChange={(e) => setSessionName(e.target.value)}
               placeholder="e.g., Dragon's Lair Campaign"
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '4px',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-              }}
+              className="session-input"
               disabled={isCreating}
               required
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label
-              htmlFor="sessionDescription"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-              }}
-            >
+          <div className="session-field">
+            <label htmlFor="sessionDescription" className="session-label">
               Description (optional)
             </label>
             <textarea
@@ -814,16 +683,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               value={sessionDescription}
               onChange={(e) => setSessionDescription(e.target.value)}
               placeholder="Add session details..."
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '4px',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-                minHeight: '80px',
-                fontFamily: 'inherit',
-              }}
+              className="session-textarea"
               disabled={isCreating}
             />
           </div>
@@ -831,22 +691,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           <button
             type="submit"
             disabled={isCreating || !sessionName.trim() || !isConnected || !selectedCampaignId}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor:
-                isCreating || !sessionName.trim() || !isConnected || !selectedCampaignId
-                  ? '#cbd5e1'
-                  : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontWeight: '500',
-              cursor:
-                isCreating || !sessionName.trim() || !isConnected || !selectedCampaignId
-                  ? 'not-allowed'
-                  : 'pointer',
-              fontSize: '0.875rem',
-            }}
+            className="session-button session-button-success"
           >
             {isCreating ? 'Creating...' : 'Create Session'}
           </button>
@@ -854,61 +699,30 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         {/* Session List */}
         {isLoadingSessions ? (
-          <div
-            style={{
-              padding: '1rem',
-              color: '#64748b',
-              fontSize: '0.875rem',
-            }}
-          >
-            Loading sessions...
-          </div>
+          <div className="session-status-message">Loading sessions...</div>
         ) : sessionList.length > 0 ? (
-          <div
-            style={{
-              padding: '1.5rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              backgroundColor: '#fff',
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>Sessions ({sessionList.length})</h3>
+          <div className="session-card">
+            <h3 className="session-card-title">Sessions ({sessionList.length})</h3>
 
             {sessionList.map((session) => (
               <div
                 key={session.id}
-                style={{
-                  marginBottom: '1rem',
-                  padding: '1rem',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  backgroundColor: currentSession?.id === session.id ? '#dbeafe' : '#f9fafb',
-                }}
+                className={`session-list-item ${currentSession?.id === session.id ? 'current' : ''}`}
               >
-                <p style={{ margin: '0.25rem 0', fontWeight: '500' }}>
+                <p className="session-list-title">
                   {session.name} {currentSession?.id === session.id && '(current)'}
                 </p>
-                <p style={{ margin: '0.25rem 0', fontSize: '0.875rem', color: '#64748b' }}>
+                <p className="session-list-meta">
                   Status: <strong>{session.state}</strong>
                 </p>
                 {session.description && (
-                  <p style={{ margin: '0.25rem 0', fontSize: '0.875rem', color: '#64748b' }}>
-                    {session.description}
-                  </p>
+                  <p className="session-list-description">{session.description}</p>
                 )}
-                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                <div className="session-action-row">
                   {session.state === SessionState.IDLE && user.role === 'DM' && (
                     <button
                       onClick={() => handleStartSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-primary"
                     >
                       Start Session
                     </button>
@@ -916,15 +730,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {session.state === SessionState.ACTIVE && user.role === 'DM' && (
                     <button
                       onClick={() => handlePauseSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#f59e0b',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-warn"
                     >
                       Pause Session
                     </button>
@@ -932,15 +738,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {session.state === SessionState.PAUSED && user.role === 'DM' && (
                     <button
                       onClick={() => handleResumeSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-primary"
                     >
                       Resume Session
                     </button>
@@ -948,15 +746,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {session.state !== SessionState.ENDED && user.role === 'DM' && (
                     <button
                       onClick={() => handleEndSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#7c3aed',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-violet"
                     >
                       End Session
                     </button>
@@ -964,15 +754,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {user.role === 'DM' && (
                     <button
                       onClick={() => handleDeleteSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-danger"
                     >
                       Delete
                     </button>
@@ -980,112 +762,31 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {!currentSession || currentSession.id !== session.id ? (
                     <button
                       onClick={() => store.setCurrentSession(session.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#6b7280',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                      }}
+                      className="session-button session-button-neutral"
                     >
                       Select
                     </button>
                   ) : null}
-                  {user.role !== 'DM' && (
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>DM-only controls</span>
-                  )}
+                  {user.role !== 'DM' && <span className="session-dm-copy">DM-only controls</span>}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div
-            style={{
-              padding: '1rem',
-              color: '#64748b',
-              fontSize: '0.875rem',
-            }}
-          >
-            No sessions available yet.
-          </div>
+          <div className="session-status-message">No sessions available yet.</div>
         )}
 
         {/* Chat panel — only shown when a session is ACTIVE */}
         {showChat && currentSession && (
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              backgroundColor: '#f8fafc',
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>Command Center (Stage 9.1)</h3>
-            <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+          <div className="session-command-center">
+            <h3 className="session-command-center-title">Command Center (Stage 9.1)</h3>
+            <p className="session-command-center-subtitle">
               Role-aware panel shell with center chat/notes switching and right-rail tools.
             </p>
 
             <CommandCenterFrame
               role={user.role}
-              renderToolbar={(actions: ToolbarActionModel) => (
-                <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0' }}>Toolbar</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                    Stage 9.1 action model
-                  </p>
-
-                  <div
-                    style={{
-                      marginTop: '0.5rem',
-                      display: 'inline-flex',
-                      gap: '0.45rem',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      aria-label="Center Chat"
-                      aria-pressed={actions.centerPaneView === 'chat'}
-                      onClick={() => actions.setCenterPaneView('chat')}
-                    >
-                      Chat
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Center Notes"
-                      aria-pressed={actions.centerPaneView === 'notes'}
-                      onClick={() => actions.setCenterPaneView('notes')}
-                    >
-                      Notes
-                    </button>
-                    <button type="button" onClick={actions.toggleRightRail}>
-                      {actions.rightRailOpen ? 'Hide Tools' : 'Show Tools'}
-                    </button>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: '0.5rem',
-                      display: 'inline-flex',
-                      gap: '0.35rem',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {actions.placeholderActions.map((action) => (
-                      <button
-                        key={action.id}
-                        type="button"
-                        disabled
-                        title="Planned in future Stage 9 work"
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              renderToolbar={(actions) => <SessionToolbar actions={actions} />}
               renderCampaignInfo={() => {
                 const selectedCampaign = campaigns.find(
                   (campaign) => campaign.id === selectedCampaignId
@@ -1114,7 +815,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 />
               )}
               renderLeftRail={() => (
-                <LeftRailSummary
+                <SessionLeftRailPanel
                   role={user.role}
                   username={user.username}
                   sessionName={currentSession.name}
@@ -1122,10 +823,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   sessionCount={sessionList.length}
                   roomCount={currentRooms.length}
                   presenceCount={currentPresence.length}
+                  dmUserId={currentSession.dmId}
+                  currentUserId={user.id}
+                  rooms={currentRooms.map((room) => ({
+                    id: room.id,
+                    name: room.name,
+                    type: room.type,
+                  }))}
+                  roomMembersByRoomId={typedRoomMembers}
+                  selectedRoomId={selectedRoomId}
+                  onSelectRoom={setSelectedRoomIdOverride}
+                  dmOverrides={store.dmOverrides}
+                  currentConditionName={store.currentCondition?.name}
                 />
               )}
               renderCenterPane={(view) => (
-                <div style={{ position: 'sticky', top: '1rem' }}>
+                <div className="session-command-center-pane">
                   {view === 'chat' ? (
                     <ChatWindow
                       apiUrl={apiUrl}
@@ -1146,82 +859,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               renderRightRailTab={(tab) => {
                 if (tab === 'rooms') {
                   return (
-                    <div>
-                      <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Presence and Rooms</p>
-                      <p style={{ marginTop: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                        Live updates from room/presence websocket events.
-                      </p>
-
-                      <div style={{ display: 'grid', gap: '0.5rem' }}>
-                        {currentRooms.map((room) => {
-                          const members: RoomMember[] = typedRoomMembers[room.id] || []
-                          return (
-                            <div
-                              key={room.id}
-                              style={{
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '6px',
-                                padding: '0.6rem',
-                                backgroundColor: '#fff',
-                              }}
-                            >
-                              <p style={{ margin: 0, fontWeight: '600' }}>
-                                {room.name}{' '}
-                                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>
-                                  ({room.type})
-                                </span>
-                              </p>
-                              <p
-                                style={{
-                                  margin: '0.25rem 0 0.4rem 0',
-                                  fontSize: '0.75rem',
-                                  color: '#64748b',
-                                }}
-                              >
-                                Members: {members.length}
-                              </p>
-                              {members.length === 0 ? (
-                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
-                                  No members
-                                </p>
-                              ) : (
-                                members.map((member) => (
-                                  <p
-                                    key={`${room.id}:${member.userId}`}
-                                    style={{ margin: '0.2rem 0', fontSize: '0.75rem' }}
-                                  >
-                                    <span
-                                      style={{
-                                        display: 'inline-block',
-                                        width: '8px',
-                                        height: '8px',
-                                        borderRadius: '50%',
-                                        marginRight: '0.4rem',
-                                        backgroundColor:
-                                          member.presenceState === PresenceState.ONLINE
-                                            ? '#22c55e'
-                                            : member.presenceState === PresenceState.SPEAKING
-                                              ? '#0ea5e9'
-                                              : member.presenceState === PresenceState.TYPING
-                                                ? '#f59e0b'
-                                                : member.presenceState === PresenceState.OFFLINE
-                                                  ? '#ef4444'
-                                                  : '#94a3b8',
-                                      }}
-                                    />
-                                    {member.username || member.userId} - {member.presenceState}
-                                  </p>
-                                ))
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
-                        Total tracked users: {currentPresence.length}
-                      </p>
-                    </div>
+                    <SessionRoomsStatusPanel
+                      rooms={currentRooms.map((room) => ({
+                        id: room.id,
+                        name: room.name,
+                        type: room.type,
+                      }))}
+                      roomMembersByRoomId={typedRoomMembers}
+                      presenceCount={currentPresence.length}
+                    />
                   )
                 }
 
@@ -1260,7 +906,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 }
 
                 return (
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
+                  <p className="session-placeholder-copy">
                     {placeholderByTab[tab as Exclude<RightRailTab, 'rooms' | 'audio'>]}
                   </p>
                 )
