@@ -8,7 +8,6 @@ interface PasswordStrengthIndicatorProps {
   isValid: boolean
 }
 
-const STRENGTH_COLORS = ['#dc2626', '#f59e0b', '#eab308', '#84cc16', '#22c55e']
 const STRENGTH_LABELS = ['Weak', 'Fair', 'Good', 'Strong', 'Very Strong']
 
 export default function PasswordStrengthIndicator({
@@ -18,6 +17,9 @@ export default function PasswordStrengthIndicator({
   score,
   isValid,
 }: PasswordStrengthIndicatorProps) {
+  const normalizedScore = Math.max(0, Math.min(score, 5))
+  const strengthLevel = Math.min(normalizedScore, 4)
+
   if (!password) {
     return (
       <div className="password-strength">
@@ -33,15 +35,12 @@ export default function PasswordStrengthIndicator({
     <div className="password-strength">
       <div className="password-meter">
         <div
-          className="password-meter-bar"
-          style={{
-            width: `${(score / 5) * 100}%`,
-            backgroundColor: STRENGTH_COLORS[Math.min(score, 4)],
-          }}
+          className={`password-meter-bar fill-${normalizedScore} strength-${strengthLevel}`}
+          aria-hidden="true"
         />
       </div>
-      <p className="password-strength-label" style={{ color: STRENGTH_COLORS[Math.min(score, 4)] }}>
-        Strength: {STRENGTH_LABELS[Math.min(score, 4)]}
+      <p className={`password-strength-label strength-${strengthLevel}`}>
+        Strength: {STRENGTH_LABELS[strengthLevel]}
       </p>
 
       {feedback.length > 0 && (

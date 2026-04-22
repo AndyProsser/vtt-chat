@@ -37,6 +37,13 @@ body {
   flex-direction: column;
 }
 
+.admin-loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
 .admin-app.theme-light {
   --bg-app: #f3f5f8;
   --bg-surface: #ffffff;
@@ -179,6 +186,10 @@ body {
   border-radius: 10px;
   padding: 14px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.admin-card-nested {
+  margin-top: 10px;
 }
 
 .admin-card h3 {
@@ -565,10 +576,65 @@ label {
     background-color 200ms ease;
 }
 
+.password-meter-bar.fill-0 {
+  width: 0%;
+}
+
+.password-meter-bar.fill-1 {
+  width: 20%;
+}
+
+.password-meter-bar.fill-2 {
+  width: 40%;
+}
+
+.password-meter-bar.fill-3 {
+  width: 60%;
+}
+
+.password-meter-bar.fill-4 {
+  width: 80%;
+}
+
+.password-meter-bar.fill-5 {
+  width: 100%;
+}
+
+.password-meter-bar.strength-0,
+.password-strength-label.strength-0 {
+  color: #dc2626;
+  background-color: #dc2626;
+}
+
+.password-meter-bar.strength-1,
+.password-strength-label.strength-1 {
+  color: #f59e0b;
+  background-color: #f59e0b;
+}
+
+.password-meter-bar.strength-2,
+.password-strength-label.strength-2 {
+  color: #eab308;
+  background-color: #eab308;
+}
+
+.password-meter-bar.strength-3,
+.password-strength-label.strength-3 {
+  color: #84cc16;
+  background-color: #84cc16;
+}
+
+.password-meter-bar.strength-4,
+.password-strength-label.strength-4 {
+  color: #22c55e;
+  background-color: #22c55e;
+}
+
 .password-strength-label {
   font-size: 12px;
   font-weight: 500;
   margin: 0 0 8px;
+  background: transparent;
 }
 
 .password-help-text {

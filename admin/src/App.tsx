@@ -9,6 +9,7 @@ import Setup from './pages/Setup'
 import Login from './pages/Login'
 import InviteOnboarding from './pages/InviteOnboarding'
 import { useAuthStore } from './store'
+import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
 import './styles/App.css'
 
 type AdminPage = 'dashboard' | 'users' | 'campaigns' | 'status' | 'logs' | 'settings'
@@ -102,6 +103,56 @@ export default function App() {
     void exchange()
   }, [setToken, setupRequired])
 
+  useEffect(() => {
+    const onSessionExpired = () => {
+      logout()
+      setAuthError('Admin session expired. Please sign in again.')
+    }
+
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, onSessionExpired)
+    return () => {
+      window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, onSessionExpired)
+    }
+  }, [logout])
+
+  useEffect(() => {
+    if (!isAuthenticated || !token || setupRequired || setupLoading) {
+      return
+    }
+
+    let cancelled = false
+
+    const validateSession = async () => {
+      try {
+        await getJson<{ admin: { id: string } }>('/me')
+
+        if (cancelled) {
+          return
+        }
+
+        setAuthError(null)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        if (error instanceof SessionExpiredError) {
+          return
+        }
+
+        const message =
+          error instanceof Error ? error.message : 'Unable to validate admin session state'
+        setAuthError(message)
+      }
+    }
+
+    void validateSession()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, setupLoading, setupRequired, token])
+
   const handleSetupComplete = (
     token: string,
     admin: { id: string; username: string; email: string }
@@ -166,14 +217,7 @@ export default function App() {
   if (setupLoading) {
     return (
       <div className="admin-app">
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',
-          }}
-        >
+        <div className="admin-loading-screen">
           <p>Loading...</p>
         </div>
       </div>

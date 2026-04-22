@@ -1,0 +1,135 @@
+.campaign-page .admin-toolbar-row input,
+.campaign-page .admin-toolbar-row select {
+  min-width: 180px;
+}
+
+.campaign-name {
+  font-weight: 600;
+}
+
+.campaign-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.campaign-row-selected {
+  background: var(--accent-primary-soft);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.archived-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #be123c;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  margin-right: 6px;
+}
+
+.status-pill.status-active {
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #16a34a;
+}
+
+.status-pill.status-paused,
+.status-pill.status-idle {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #d97706;
+}
+
+.status-pill.status-ended,
+.status-pill.status-none {
+  border-color: rgba(148, 163, 184, 0.55);
+  color: #64748b;
+}
+
+.campaign-detail-card {
+  margin-top: 14px;
+}
+
+.campaign-detail-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.campaign-kv-grid {
+  margin-bottom: 12px;
+}
+
+.campaign-room-error {
+  margin-top: 8px;
+}
+
+.campaign-rooms-block {
+  margin-top: 10px;
+}
+
+.campaign-rooms-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.campaign-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.campaign-room-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg-surface-alt);
+}
+
+.campaign-room-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.campaign-room-card-header span {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.campaign-room-card p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.campaign-move-player-block {
+  margin-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.campaign-move-player-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.campaign-move-player-controls select {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  padding: 8px 10px;
+}

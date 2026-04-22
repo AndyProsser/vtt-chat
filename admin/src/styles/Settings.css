@@ -1,0 +1,39 @@
+.settings-page .settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-page .settings-card label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.settings-page .settings-card select,
+.settings-page .settings-card input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+}
+
+.settings-page .settings-card select:focus,
+.settings-page .settings-card input:focus {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+.settings-status-message {
+  margin: 0 0 12px;
+  color: var(--accent-success);
+  font-size: 13px;
+}
+
+.settings-runtime-line {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

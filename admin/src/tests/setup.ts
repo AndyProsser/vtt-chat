@@ -38,3 +38,9 @@ Object.defineProperty(globalThis, 'sessionStorage', {
   configurable: true,
   writable: true,
 })
+
+Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+  value: true,
+  configurable: true,
+  writable: true,
+})

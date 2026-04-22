@@ -17,7 +17,7 @@ Mirror reference: Keep this operations snapshot in sync with primary roadmap [RO
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-9 complete (baseline + command-center), Stages 10-13 planned remaining scope**.
+Current overall status: **Stages 0-9 complete (baseline + command-center), Stage 10 in progress, Stages 11-13 planned remaining scope**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -43,22 +43,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status   | Completion                | Immediate focus                                    |
-| ----- | ----------------------------------- | -------- | ------------------------- | -------------------------------------------------- |
-| 0     | Contract lock                       | Complete | ✅                        | Maintain contract/source-of-truth discipline       |
-| 1     | Backend foundation                  | Complete | ✅                        | Ongoing hardening + reliability                    |
-| 2     | Frontend transport spine            | Complete | ✅                        | Keep reducer/event contract parity                 |
-| 3     | Session lifecycle                   | Complete | ✅                        | Regression coverage during later stage work        |
-| 4     | Chat vertical slice                 | Complete | ✅                        | UX/moderation polish as follow-up                  |
-| 5     | Notes vertical slice                | Complete | ✅                        | Advanced workflows and audit polish                |
-| 6     | Presence and rooms                  | Complete | ✅                        | Multi-client e2e/load hardening                    |
-| 7     | Audio + LiveKit                     | Complete | ✅                        | Multi-client e2e + persistence hardening           |
-| 8     | Admin + ops baseline                | Complete | ✅                        | Stage 10 secure ops workflows + durable telemetry  |
-| 9     | Frontend command-center completion  | Complete | ✅                        | Maintain regression coverage during Stage 10+ work |
-| 10    | Admin UI feature completion         | Planned  | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows          |
-| 11    | Metadata/journal/history/search     | Planned  | ⬜ Not started            | Knowledge surfaces + discoverability               |
-| 12    | Import/export + recordings metadata | Planned  | ⬜ Not started            | Portability + archival workflows                   |
-| 13    | Extension/overlay integration       | Planned  | ⬜ Not started            | VTT bridge contracts + privacy-safe sync           |
+| Stage | Area                                | Status      | Completion         | Immediate focus                                    |
+| ----- | ----------------------------------- | ----------- | ------------------ | -------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅                 | Maintain contract/source-of-truth discipline       |
+| 1     | Backend foundation                  | Complete    | ✅                 | Ongoing hardening + reliability                    |
+| 2     | Frontend transport spine            | Complete    | ✅                 | Keep reducer/event contract parity                 |
+| 3     | Session lifecycle                   | Complete    | ✅                 | Regression coverage during later stage work        |
+| 4     | Chat vertical slice                 | Complete    | ✅                 | UX/moderation polish as follow-up                  |
+| 5     | Notes vertical slice                | Complete    | ✅                 | Advanced workflows and audit polish                |
+| 6     | Presence and rooms                  | Complete    | ✅                 | Multi-client e2e/load hardening                    |
+| 7     | Audio + LiveKit                     | Complete    | ✅                 | Multi-client e2e + persistence hardening           |
+| 8     | Admin + ops baseline                | Complete    | ✅                 | Stage 10 secure ops workflows + durable telemetry  |
+| 9     | Frontend command-center completion  | Complete    | ✅                 | Maintain regression coverage during Stage 10+ work |
+| 10    | Admin UI feature completion         | In progress | 🟨 Stage commenced | Secure ops actions + drill-down workflows          |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started     | Knowledge surfaces + discoverability               |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started     | Portability + archival workflows                   |
+| 13    | Extension/overlay integration       | Planned     | ⬜ Not started     | VTT bridge contracts + privacy-safe sync           |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -250,7 +250,7 @@ Milestone checkpoints and target validation:
 
 ### Stage 10: Admin UI Feature Completion and Secure Operations
 
-Status: **Planned**
+Status: **In progress**
 
 Operational impact:
 
@@ -260,12 +260,19 @@ Operational impact:
 Milestone checkpoints and target validation:
 
 - **Stage 10.1: Authentication and Guardrail Enforcement**
+  - Current status: in execution. Initial backend and admin SPA guardrail coverage is now in place.
   - Validation targets: admin API authz tests, protected-route UI tests, pre-auth data exposure checks.
 - **Stage 10.2: Operational Actions Activation**
+  - Current status: in execution. `Rooms & Campaigns` now uses authenticated live data/actions, with campaign archive/restore and room move-player operations added as the next active surface.
   - Validation targets: moderation/action endpoint tests, action-dialog UX tests, audit-entry assertions per action.
 - **Stage 10.3: Durable Telemetry and Drill-Down Workflows**
   - Validation targets: telemetry/audit persistence tests, logs detail/filter/sort/pagination integrity tests, end-to-end operator journey tests.
   - Implementation checklist: implement backend log stream/sink model from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L235), align endpoints with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437), and verify admin observability outcomes using [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
+
+- **Stage 10.5: UI Style Externalization Workstream (Ongoing)**
+  - Scope: progressively migrate inline styles to external stylesheet files (`styles/`) where practical, starting with Stage 10 admin surfaces and all newly touched components.
+  - Validation targets: new/updated Stage 10 components avoid inline `style={{ ... }}` unless styles must be computed dynamically at runtime; preserve visual parity for theme/responsive/interaction states; run lint/build/test checks after extraction batches.
+  - Delivery note: this is an incremental, non-blocking stream that continues across Stage 10+.
 
 ---
 
@@ -303,11 +310,11 @@ Operational impact:
 
 Priority 1:
 
-- Stage 9.2 DM control surfaces and realtime flows: DM voice bar, advanced overrides, and room drag/drop polish.
+- Stage 10 secure ops workflows and telemetry durability.
 
 Priority 2:
 
-- Stage 10 admin UI secure action workflows and durable telemetry hardening.
+- Stage 10.5 incremental UI style externalization into `styles/` for admin and newly touched Stage 10 surfaces.
 
 Priority 3:
 
@@ -323,7 +330,7 @@ Priority 5:
 
 Priority 6:
 
-- Stage 9.3 UX reliability and spec compliance (loading/error/recovery/theming/motion) after 9.2 control-surface delivery stabilizes.
+- Stage 9 regression hardening while Stage 10 scope expands.
 
 ---
 
@@ -350,6 +357,10 @@ Dependencies before later stages:
 
 ## 5) Progress Log (Condensed)
 
+- 2026-04: Stage 10.2 kickoff delivered. Activated `Rooms & Campaigns` with live backend campaign/session/room data and authenticated session-end action path; style externalization rule applied through a dedicated page stylesheet.
+- 2026-04: Stage 10.2 expansion delivered. Added backend campaign archive/restore + room move-player admin actions with audit hooks and authz coverage, added dedicated admin interaction tests for live Rooms & Campaigns flows (filters, selection, end-session success/failure), and activated Settings with authenticated backend save/backup workflows plus externalized page styling.
+- 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression tests for public vs protected route boundaries and invalid-token rejection, plus admin SPA guard tests covering login routing, authenticated dashboard rendering, and forced logout when session validation returns unauthorized.
+- 2026-04: Stage 10 commenced. Added Stage 10.5 as a tracked workstream for incremental CSS externalization (`styles/`) and began first-pass admin inline-style extraction to separate visuals from component logic.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
 - 2026-04: Stage 9.3 started in frontend runtime. Added reconnect/hydration status banner UX, variant-based non-blocking toast rendering, tokenized theming foundation with motion keyframes, and Stage 9.3 regression tests for reconnect lifecycle, toast semantics, and theme-token parity. Frontend verification now reports `13` passed test files / `106` passing tests.
 - 2026-04: Full verification snapshot: build ✅ (`npm run build` at repo root), lint ✅ (`npm run lint` at repo root), tests ✅ (backend `57` passing + `6` todo, frontend `36` passing, admin `9` passing).

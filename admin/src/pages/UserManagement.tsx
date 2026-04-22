@@ -212,7 +212,7 @@ export default function UserManagement() {
           </button>
         </div>
         {inviteUrl && (
-          <div className="admin-card" style={{ marginTop: 10 }}>
+          <div className="admin-card admin-card-nested">
             <p className="admin-page-subtitle">Invite URL</p>
             <p>{inviteUrl}</p>
           </div>

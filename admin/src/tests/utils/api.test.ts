@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminApiBase, getJson, requestJson } from '../../utils/api'
+import {
+  ADMIN_SESSION_EXPIRED_EVENT,
+  SessionExpiredError,
+  adminApiBase,
+  getJson,
+  requestJson,
+} from '../../utils/api'
 
 describe('admin utils api', () => {
   beforeEach(() => {
@@ -60,6 +66,29 @@ describe('admin utils api', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(requestJson('/telemetry/logs')).rejects.toThrow('Forbidden access')
+  })
+
+  it('clears tokens, dispatches session-expired event, and throws SessionExpiredError on 401', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Session is no longer valid' }),
+    })
+
+    sessionStorage.setItem('admin-token', 'expired-session-token')
+    localStorage.setItem('admin-token', 'expired-local-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    const eventHandler = vi.fn()
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, eventHandler)
+
+    await expect(requestJson('/users')).rejects.toBeInstanceOf(SessionExpiredError)
+
+    expect(sessionStorage.getItem('admin-token')).toBeNull()
+    expect(localStorage.getItem('admin-token')).toBeNull()
+    expect(eventHandler).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, eventHandler)
   })
 
   it('calls request using GET via getJson helper', async () => {

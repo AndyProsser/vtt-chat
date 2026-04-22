@@ -1,65 +1,261 @@
+import { useEffect, useState } from 'react'
+import { requestJson } from '../utils/api'
+import '../styles/Settings.css'
+
+interface RuntimeSettings {
+  primaryRegion: string
+  maintenanceMode: 'off' | 'read-only' | 'full'
+  chatPipelineEnabled: boolean
+  audioOverridesEnabled: boolean
+  logRetentionDays: number
+  backupWindow: string
+  updatedAt: string
+}
+
 export default function Settings() {
+  const [settings, setSettings] = useState<RuntimeSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await requestJson<{ settings: RuntimeSettings }>('/settings', {
+          method: 'GET',
+        })
+        setSettings(response.settings)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load settings')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadSettings()
+  }, [])
+
+  const updateSettings = async () => {
+    if (!settings) {
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    setStatusMessage(null)
+
+    try {
+      const response = await requestJson<{ message: string; settings: RuntimeSettings }>(
+        '/settings',
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            primaryRegion: settings.primaryRegion,
+            maintenanceMode: settings.maintenanceMode,
+            chatPipelineEnabled: settings.chatPipelineEnabled,
+            audioOverridesEnabled: settings.audioOverridesEnabled,
+            logRetentionDays: settings.logRetentionDays,
+            backupWindow: settings.backupWindow,
+          }),
+        }
+      )
+
+      setSettings(response.settings)
+      setStatusMessage(response.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const triggerBackup = async () => {
+    setBackupBusy(true)
+    setError(null)
+    setStatusMessage(null)
+
+    try {
+      const response = await requestJson<{ message: string; queuedAt: string }>(
+        '/settings/backup',
+        {
+          method: 'POST',
+        }
+      )
+      setStatusMessage(`${response.message} (${new Date(response.queuedAt).toLocaleString()})`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to trigger backup')
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
   return (
-    <section className="admin-page">
+    <section className="admin-page settings-page">
       <h2 className="admin-page-title">Settings</h2>
       <p className="admin-page-subtitle">System configuration and maintenance controls.</p>
 
-      <div className="admin-card-grid two-col">
-        <article className="admin-card">
-          <h3>System Configuration</h3>
-          <label htmlFor="region">Primary Region</label>
-          <select id="region" defaultValue="us-east-1">
-            <option value="us-east-1">us-east-1</option>
-            <option value="eu-west-1">eu-west-1</option>
-            <option value="ap-southeast-1">ap-southeast-1</option>
-          </select>
+      {loading && <p className="admin-inline-status">Loading settings...</p>}
+      {error && <p className="admin-inline-error">{error}</p>}
+      {statusMessage && <p className="settings-status-message">{statusMessage}</p>}
 
-          <label htmlFor="maintenance">Maintenance Mode</label>
-          <select id="maintenance" defaultValue="off">
-            <option value="off">Off</option>
-            <option value="read-only">Read-only</option>
-            <option value="full">Full maintenance</option>
-          </select>
-        </article>
+      {settings && (
+        <>
+          <div className="admin-card-grid two-col">
+            <article className="admin-card settings-card">
+              <h3>System Configuration</h3>
 
-        <article className="admin-card">
-          <h3>Feature Flags</h3>
-          <label htmlFor="chatFlag">Chat Pipeline</label>
-          <select id="chatFlag" defaultValue="enabled">
-            <option value="enabled">Enabled</option>
-            <option value="disabled">Disabled</option>
-          </select>
+              <label htmlFor="region">Primary Region</label>
+              <select
+                id="region"
+                value={settings.primaryRegion}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          primaryRegion: event.target.value,
+                        }
+                      : current
+                  )
+                }
+              >
+                <option value="us-east-1">us-east-1</option>
+                <option value="eu-west-1">eu-west-1</option>
+                <option value="ap-southeast-1">ap-southeast-1</option>
+              </select>
 
-          <label htmlFor="audioFlag">Audio Overrides</label>
-          <select id="audioFlag" defaultValue="enabled">
-            <option value="enabled">Enabled</option>
-            <option value="disabled">Disabled</option>
-          </select>
-        </article>
+              <label htmlFor="maintenance">Maintenance Mode</label>
+              <select
+                id="maintenance"
+                value={settings.maintenanceMode}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          maintenanceMode: event.target.value as RuntimeSettings['maintenanceMode'],
+                        }
+                      : current
+                  )
+                }
+              >
+                <option value="off">Off</option>
+                <option value="read-only">Read-only</option>
+                <option value="full">Full maintenance</option>
+              </select>
+            </article>
 
-        <article className="admin-card">
-          <h3>Storage</h3>
-          <label htmlFor="retention">Log Retention (days)</label>
-          <input id="retention" type="number" min={1} defaultValue={30} />
+            <article className="admin-card settings-card">
+              <h3>Feature Flags</h3>
 
-          <label htmlFor="backupWindow">Backup Window</label>
-          <input id="backupWindow" type="text" defaultValue="02:00 UTC" />
-        </article>
+              <label htmlFor="chatFlag">Chat Pipeline</label>
+              <select
+                id="chatFlag"
+                value={settings.chatPipelineEnabled ? 'enabled' : 'disabled'}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          chatPipelineEnabled: event.target.value === 'enabled',
+                        }
+                      : current
+                  )
+                }
+              >
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
 
-        <article className="admin-card">
-          <h3>API Keys</h3>
-          <label htmlFor="livekitKey">LiveKit Key</label>
-          <input id="livekitKey" type="password" value="****************" readOnly />
+              <label htmlFor="audioFlag">Audio Overrides</label>
+              <select
+                id="audioFlag"
+                value={settings.audioOverridesEnabled ? 'enabled' : 'disabled'}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          audioOverridesEnabled: event.target.value === 'enabled',
+                        }
+                      : current
+                  )
+                }
+              >
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </article>
 
-          <label htmlFor="dbKey">Database Key</label>
-          <input id="dbKey" type="password" value="****************" readOnly />
-        </article>
-      </div>
+            <article className="admin-card settings-card">
+              <h3>Storage</h3>
 
-      <div className="admin-actions-row">
-        <button className="admin-btn">Save Changes</button>
-        <button className="admin-btn admin-btn-ghost">Backup Now</button>
-      </div>
+              <label htmlFor="retention">Log Retention (days)</label>
+              <input
+                id="retention"
+                type="number"
+                min={1}
+                value={settings.logRetentionDays}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          logRetentionDays: Math.max(1, Number(event.target.value || 1)),
+                        }
+                      : current
+                  )
+                }
+              />
+
+              <label htmlFor="backupWindow">Backup Window</label>
+              <input
+                id="backupWindow"
+                type="text"
+                value={settings.backupWindow}
+                onChange={(event) =>
+                  setSettings((current) =>
+                    current
+                      ? {
+                          ...current,
+                          backupWindow: event.target.value,
+                        }
+                      : current
+                  )
+                }
+              />
+            </article>
+
+            <article className="admin-card settings-card">
+              <h3>Runtime State</h3>
+              <p className="settings-runtime-line">
+                Last updated: {new Date(settings.updatedAt).toLocaleString()}
+              </p>
+              <p className="settings-runtime-line">
+                Changes are applied immediately and tracked in admin audit logs.
+              </p>
+            </article>
+          </div>
+
+          <div className="admin-actions-row">
+            <button className="admin-btn" disabled={saving} onClick={() => void updateSettings()}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              className="admin-btn admin-btn-ghost"
+              disabled={backupBusy}
+              onClick={() => void triggerBackup()}
+            >
+              {backupBusy ? 'Queuing...' : 'Backup Now'}
+            </button>
+          </div>
+        </>
+      )}
     </section>
   )
 }
