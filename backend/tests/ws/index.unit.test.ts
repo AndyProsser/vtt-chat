@@ -59,24 +59,27 @@ vi.mock('@/ws/dispatcher', async () => {
 })
 
 vi.mock('ws', () => {
+  class MockWebSocketServer {
+    public clients = new Set<any>()
+    public handlers = new Map<string, (...args: any[]) => void>()
+    public close = vi.fn((cb?: () => void) => {
+      cb?.()
+    })
+
+    constructor(opts: any) {
+      void opts
+    }
+
+    on(event: string, handler: (...args: any[]) => void) {
+      this.handlers.set(event, handler)
+      return this
+    }
+  }
+
   return {
     WebSocket: class {},
-    Server: class {
-      public clients = new Set<any>()
-      public handlers = new Map<string, (...args: any[]) => void>()
-      public close = vi.fn((cb?: () => void) => {
-        cb?.()
-      })
-
-      constructor(opts: any) {
-        void opts
-      }
-
-      on(event: string, handler: (...args: any[]) => void) {
-        this.handlers.set(event, handler)
-        return this
-      }
-    },
+    Server: MockWebSocketServer,
+    WebSocketServer: MockWebSocketServer,
   }
 })
 

@@ -9,7 +9,7 @@ It is intentionally aligned with the root roadmap and tracks:
 - Operational exit criteria
 - Immediate next operational milestones
 
-Last updated: 2026-04-21
+Last updated: 2026-04-22
 
 Mirror reference: Keep this operations snapshot in sync with primary roadmap [ROADMAP.md](../../ROADMAP.md).
 
@@ -17,7 +17,7 @@ Mirror reference: Keep this operations snapshot in sync with primary roadmap [RO
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-8 complete (baseline), Stage 9 now in progress (9.1 started), Stages 10-13 planned remaining scope**.
+Current overall status: **Stages 0-8 complete (baseline), Stage 9 in progress (9.1 and 9.2 complete, 9.3 next), Stages 10-13 planned remaining scope**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -26,36 +26,37 @@ Current overall status: **Stages 0-8 complete (baseline), Stage 9 now in progres
 - Notes vertical slice is now operational with persisted CRUD + visibility controls.
 - Presence/rooms vertical slice includes mounted APIs, Redis-first state, DB snapshot recovery, frontend indicators, and transition notifications; final hardening/e2e remains.
 - Audio/livekit vertical slice baseline is complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), while durable audio-state recovery and broader reconnect/e2e hardening remain pending.
-- Frontend command-center Stage 9 is now underway with an initial 9.1 shell slice delivered (explicit left/center/right panel frame, persona-aware right-rail tab matrix, and panel toggle behavior).
+- Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
+- Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 
 Latest verification:
 
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
-- Current frontend verification: `7` test files / `21` tests passing.
+- Current frontend verification: `9` test files / `36` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `13` passed + `1` skipped test files; `53` passing tests + `6` todo markers (`59` total).
+- Current backend verification: `13` passed + `1` skipped test files; `57` passing tests + `6` todo markers (`63` total).
 - Admin test coverage gap: current automated coverage is still centered on shared backend/frontend runtime slices; there are not yet dedicated admin route suites or admin SPA interaction suites covering Stage 8/10 workflows end-to-end.
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion                | Immediate focus                                         |
-| ----- | ----------------------------------- | ----------- | ------------------------- | ------------------------------------------------------- |
-| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline            |
-| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                         |
-| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                      |
-| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work             |
-| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                       |
-| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                     |
-| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                         |
-| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening                |
-| 8     | Admin + ops baseline                | Complete    | ✅                        | Stage 10 secure ops workflows + durable telemetry       |
-| 9     | Frontend command-center completion  | In progress | 🟨 9.1 started            | Complete 9.1 parity, then begin 9.2 DM control surfaces |
-| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows               |
-| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                    |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                        |
-| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync                |
+| Stage | Area                                | Status      | Completion                | Immediate focus                                        |
+| ----- | ----------------------------------- | ----------- | ------------------------- | ------------------------------------------------------ |
+| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline           |
+| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                        |
+| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                     |
+| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work            |
+| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                      |
+| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                    |
+| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                        |
+| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening               |
+| 8     | Admin + ops baseline                | Complete    | ✅                        | Stage 10 secure ops workflows + durable telemetry      |
+| 9     | Frontend command-center completion  | In progress | 🟨 9.2 complete, 9.3 next | Recovery, loading/error, theming, and motion hardening |
+| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows              |
+| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                   |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                       |
+| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync               |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -193,7 +194,7 @@ Residual work moved to Stage 10:
 
 ### Stage 9: Frontend UI Command-Center Completion
 
-Status: **In progress (Stage 9.1 started)**
+Status: **In progress (Stage 9.1 and Stage 9.2 complete, Stage 9.3 next)**
 
 Operational impact:
 
@@ -202,20 +203,35 @@ Operational impact:
 
 Completed so far:
 
-- Stage 9.1 initial shell implementation is now in runtime:
+- Stage 9.1 layout/persona shell parity is complete in runtime:
   - Explicit three-panel command-center frame (left rail + center pane + right rail) mounted in active sessions.
+  - `Toolbar`, `CampaignInfo`, `SystemToasts`, and `LeftRailSummary` shell surfaces are implemented as dedicated components.
+  - Toolbar controls now use a minimal globally addressable store slice (`commandCenter`) for center-pane and right-rail actions.
   - Center pane toggle between chat and notes is implemented.
   - Persona-specific right-rail tab visibility matrix is implemented (DM/Player/Spectator).
   - Right-rail open/close lifecycle is implemented.
-  - Component tests now cover tab visibility matrix and panel toggle behavior.
+  - Component tests now cover persona matrix, panel toggles, and responsive desktop/tablet layout mode changes.
+- Stage 9.2 DM control surfaces are now complete in runtime:
+  - Audio right-rail tab now mounts a DM-only control surface (`DMAudioControls`) instead of placeholder-only copy.
+  - DM voice bar now supports DM voice presets and advanced player overrides (distance, condition, filter) in addition to mute/gain controls.
+  - Room drag/drop movement now calls an authoritative DM-only backend endpoint (`POST /api/rooms/:roomId/move-user`) and reconciles via websocket room events.
+  - Frontend component coverage now includes DM-only gating, advanced override request behavior, drag/drop move request behavior, and optimistic/reconciliation assertions.
+  - Backend API coverage now includes DM-only authorization/success-path tests and websocket emission payload assertions for authoritative room movement.
+  - Frontend integration coverage now includes full DM drag/drop move flow validation against live room/presence websocket updates.
+  - Frontend reducer/store coverage now includes distance/condition/filter transition assertions and DM override state transitions.
 
 Milestone checkpoints and target validation:
 
 - **Stage 9.1: Layout and Persona Shell Parity**
-  - Current status: explicit three-panel frame, center chat/notes toggle, and persona tab visibility matrix are implemented; full toolbar/campaign/toast composition and responsive parity remain.
+  - Current status: complete. Three-panel shell, extracted shell components, toolbar action model, persona visibility matrix, and responsive layout checks are in place.
   - Validation targets: persona visibility tests, right-panel interaction tests, responsive shell checks.
 - **Stage 9.2: DM Controls and Realtime UX**
+  - Current status: complete. Advanced DM overrides, authoritative room drag/drop, websocket emission payload validation, websocket-driven move reconciliation integration coverage, and reducer/store-level audio transition coverage are now in place.
   - Validation targets: DM-only reducer/event tests, persona restriction tests, WS contract alignment checks.
+  - Closure notes:
+    - Backend route tests now assert websocket `ROOM:USER_LEFT`/`ROOM:USER_JOINED` emission payloads for `move-user`.
+    - Integration coverage now exercises full DM drag/drop move flow against live room/presence websocket updates.
+    - Reducer/store-level tests now cover distance/condition/filter transitions beyond request-level component assertions.
 - **Stage 9.3: UX Reliability and Spec Compliance**
   - Validation targets: reconnect/hydration integration tests, deterministic error-toast tests, theme/motion regression checks.
   - Implementation checklist: adopt frontend log-level controls and telemetry separation per [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L102), [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L174), and validation gates in [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
@@ -277,27 +293,27 @@ Operational impact:
 
 Priority 1:
 
-- Stage 9.1 completion: finish toolbar/campaign/toast parity and responsive behavior on top of the shipped three-panel command-center shell.
+- Stage 9.2 DM control surfaces and realtime flows: DM voice bar, advanced overrides, and room drag/drop polish.
 
 Priority 2:
 
-- Stage 9.2 DM control surfaces and realtime flows: DM voice bar, advanced overrides, and room drag/drop polish.
+- Stage 10 admin UI secure action workflows and durable telemetry hardening.
 
 Priority 3:
 
-- Stage 10 admin UI secure action workflows and durable telemetry hardening.
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
 
 Priority 4:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
 Priority 5:
 
-- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+- Stage 11/12 knowledge and portability domains, then Stage 13 extension and overlay integration after Stage 10.4 external system authorization.
 
 Priority 6:
 
-- Stage 11/12 knowledge and portability domains, then Stage 13 extension and overlay integration after Stage 10.4 external system authorization.
+- Stage 9.3 UX reliability and spec compliance (loading/error/recovery/theming/motion) after 9.2 control-surface delivery stabilizes.
 
 ---
 
@@ -325,13 +341,18 @@ Dependencies before later stages:
 ## 5) Progress Log (Condensed)
 
 - 2026-04: Stage 9.1 started in frontend runtime. Added explicit three-panel command-center shell (left rail + center pane + right rail), role-aware right-rail tab visibility for DM/Player/Spectator, and right-rail open/close behavior. Added component coverage for persona matrix and panel toggles via `frontend/src/tests/components/CommandCenterFrame.test.tsx`; frontend verification now reports `7` files / `21` tests passing.
+- 2026-04: Stage 9.1 completed. Added toolbar action model backed by global `commandCenter` store slice, extracted `CampaignInfo`/`SystemToasts`/`LeftRailSummary` components, and extended responsive layout testing for desktop/tablet breakpoint transitions. Frontend verification now reports `7` files / `24` tests passing.
+- 2026-04: Stage 9.2 started with the first DM command-center audio control surface. Added API-backed DM audio controls (`DMAudioControls`) to the right-rail audio tab for room environment apply plus per-player mute/gain overrides, with DM-only gating and component tests. Frontend verification now reports `8` files / `27` tests passing.
+- 2026-04: Stage 9.2 advanced pass delivered. Extended `DMAudioControls` with DM voice presets plus distance/condition/filter overrides, and switched drag/drop room movement to authoritative backend control via `POST /api/rooms/:roomId/move-user` with websocket reconciliation. Added backend authz/success coverage for `move-user` and expanded frontend component coverage; verification now reports frontend `8` files / `30` tests and backend `55` passing tests + `6` todo markers (`61` total).
+- 2026-04: Stage 9.2 completion pass delivered. Added backend websocket payload assertions for `ROOM:USER_LEFT`/`ROOM:USER_JOINED` on `POST /api/rooms/:roomId/move-user`, added integration coverage for full DM drag/drop flow against live room/presence websocket updates, and added reducer/store-level coverage for distance/condition/filter + DM override state transitions.
+- 2026-04: Full-suite verification refresh run completed. Frontend now reports `9` passed test files with `36` passing tests. Backend now reports `13` passed + `1` skipped test files with `57` passing tests + `6` todo markers (`63` total).
 - 2026-04: Stage 3 session lifecycle implemented and validated.
 - 2026-04: Stage 4 chat baseline implemented (privacy-safe whisper filtering).
 - 2026-04: Stage 5 notes vertical slice closed with visibility controls, custom-share selector UX, websocket propagation tests, and publish audit logging hooks.
 - 2026-04: Stage 6 finalized with Redis-first presence/rooms, snapshot recovery, transition orchestration, authz hardening, and reconnect topology hydration.
 - 2026-04: Stage 8 readonly telemetry endpoints + admin telemetry table pagination/sorting implemented.
 - 2026-04: Stage 7 baseline completed with runtime-mounted livekit/audio hooks, backend audio control routes, and dispatcher coverage; remaining durability/e2e concerns are tracked as hardening follow-up.
-- 2026-04: Latest backend verification: `13` passed + `1` skipped test files; `53` passing tests + `6` todo markers (`59` total).
+- 2026-04: Latest backend verification: `13` passed + `1` skipped test files; `57` passing tests + `6` todo markers (`63` total).
 - 2026-04: Roadmap scope expanded beyond Stage 8 to include Stages 9-13 for full UI/admin completion and remaining platform domains.
 
 ---

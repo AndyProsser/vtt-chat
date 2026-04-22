@@ -20,6 +20,7 @@ import {
 import { CampaignInfo } from './CampaignInfo'
 import { LeftRailSummary } from './LeftRailSummary'
 import { SystemToasts } from './SystemToasts'
+import { DMAudioControls } from './DMAudioControls'
 import type { Session as SessionRecord } from '../../state/sessionSlice'
 import type {
   Room as RoomRecord,
@@ -989,7 +990,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   Stage 9.1 action model
                 </p>
 
-                <div style={{ marginTop: '0.5rem', display: 'inline-flex', gap: '0.45rem' }}>
+                <div
+                  style={{
+                    marginTop: '0.5rem',
+                    display: 'inline-flex',
+                    gap: '0.45rem',
+                  }}
+                >
                   <button
                     type="button"
                     aria-label="Center Chat"
@@ -1172,8 +1179,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               }
 
               const placeholderByTab: Record<Exclude<RightRailTab, 'rooms'>, string> = {
-                audio:
-                  'Audio room tools are mounted in the bottom audio panel and will move into this rail in Stage 9.2.',
+                audio: '',
                 notes:
                   'Shared notes shortcuts and filters will be expanded in a dedicated right-rail notes tool.',
                 search: 'Cross-session search tools are planned for Stage 11.',
@@ -1183,9 +1189,32 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   'Session-level command center settings are planned in later Stage 9 milestones.',
               }
 
+              if (tab === 'audio') {
+                return (
+                  <DMAudioControls
+                    apiUrl={apiUrl}
+                    token={token}
+                    role={user.role}
+                    sessionId={currentSession.id}
+                    dmUserId={currentSession.dmId}
+                    rooms={currentRooms.map((room) => ({
+                      id: room.id,
+                      name: room.name,
+                      type: room.type,
+                    }))}
+                    participants={currentPresence.map((presence) => ({
+                      userId: presence.userId,
+                      username: presence.username,
+                      state: presence.state,
+                      primaryRoomId: presence.primaryRoomId,
+                    }))}
+                  />
+                )
+              }
+
               return (
                 <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
-                  {placeholderByTab[tab as Exclude<RightRailTab, 'rooms'>]}
+                  {placeholderByTab[tab as Exclude<RightRailTab, 'rooms' | 'audio'>]}
                 </p>
               )
             }}

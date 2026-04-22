@@ -9,7 +9,11 @@ const mocks = vi.hoisted(() => ({
   mockGetSessionUsers: vi.fn(),
   mockGetSessionPresence: vi.fn(),
   mockGetRooms: vi.fn(),
+  mockGetRoom: vi.fn(),
+  mockJoinRoom: vi.fn(),
 }))
+const mockBroadcastEventToSession = vi.fn()
+const mockWSManager = { broadcastEventToSession: mockBroadcastEventToSession }
 
 vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: mocks.mockExtractTokenFromHeader,
@@ -24,8 +28,8 @@ vi.mock('@/services/session.service', () => ({
 vi.mock('@/core/rooms/room.service', () => ({
   ensurePresenceRecoveredFromSnapshots: vi.fn(),
   getSessionPresence: mocks.mockGetSessionPresence,
-  getRoom: vi.fn(),
-  joinRoom: vi.fn(),
+  getRoom: mocks.mockGetRoom,
+  joinRoom: mocks.mockJoinRoom,
   snapshotSessionPresence: vi.fn(),
   updatePresenceState: vi.fn(),
   createRoom: vi.fn(),
@@ -40,6 +44,8 @@ import roomsRoutes from '../../src/api/rooms.routes'
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const USER_ID = '22222222-2222-4222-8222-222222222222'
 const OTHER_ID = '33333333-3333-4333-8333-333333333333'
+const ROOM_ID = '44444444-4444-4444-8444-444444444444'
+const PREV_ROOM_ID = '55555555-5555-5555-8555-555555555555'
 
 function buildApp() {
   const app = express()
@@ -70,6 +76,23 @@ describe('presence/rooms authz', () => {
 
     mocks.mockGetSessionPresence.mockResolvedValue([])
     mocks.mockGetRooms.mockResolvedValue([])
+    mocks.mockGetRoom.mockResolvedValue({
+      id: '44444444-4444-4444-8444-444444444444',
+      sessionId: SESSION_ID,
+      name: 'Room B',
+      type: 'GROUP',
+      createdBy: OTHER_ID,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    mocks.mockJoinRoom.mockResolvedValue({
+      sessionId: SESSION_ID,
+      userId: USER_ID,
+      username: 'alice',
+      primaryRoomId: '44444444-4444-4444-8444-444444444444',
+      state: 'ONLINE',
+      lastSeenAt: Date.now(),
+    })
   })
 
   it('denies non-members from reading session presence', async () => {
@@ -101,4 +124,139 @@ describe('presence/rooms authz', () => {
     expect(presenceResponse.status).toBe(200)
     expect(roomsResponse.status).toBe(200)
   })
+
+  it('denies non-DM users from moving users between rooms', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .post('/api/rooms/44444444-4444-4444-8444-444444444444/move-user')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+      })
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FORBIDDEN')
+  })
+
+  it('allows DM to move session users between rooms', async () => {
+    const app = buildApp()
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: OTHER_ID,
+      username: 'dm',
+      role: 'DM',
+    })
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER' },
+      { id: OTHER_ID, username: 'dm', role: 'DM' },
+    ])
+
+    const response = await request(app)
+      .post('/api/rooms/44444444-4444-4444-8444-444444444444/move-user')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+      })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockJoinRoom).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: '44444444-4444-4444-8444-444444444444',
+      userId: USER_ID,
+      username: 'alice',
+      state: 'ONLINE',
+    })
+    expect(response.body.ok).toBe(true)
+  })
 })
+  mockBroadcastEventToSession.mockClear()
+
+  it('emits ROOM:USER_JOINED event with movedBy field when DM moves user', async () => {
+    const app = buildApp()
+    app.locals.wsManager = mockWSManager
+
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: OTHER_ID,
+      username: 'dm',
+      role: 'DM',
+    })
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER' },
+      { id: OTHER_ID, username: 'dm', role: 'DM' },
+    ])
+    mocks.mockGetSessionPresence.mockResolvedValue([
+      {
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        primaryRoomId: PREV_ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+    ])
+
+    const response = await request(app)
+      .post(`/api/rooms/${ROOM_ID}/move-user`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+      })
+
+    expect(response.status).toBe(200)
+    expect(mockBroadcastEventToSession).toHaveBeenCalledTimes(2) // LEFT + JOINED
+
+    const leftCall = mockBroadcastEventToSession.mock.calls[0][1]
+    expect(leftCall.type).toBe('ROOM:USER_LEFT')
+    expect(leftCall.payload).toMatchObject({
+      roomId: PREV_ROOM_ID,
+      userId: USER_ID,
+      username: 'alice',
+      reason: 'DM_MOVE',
+      movedBy: OTHER_ID,
+    })
+
+    const joinedCall = mockBroadcastEventToSession.mock.calls[1][1]
+    expect(joinedCall.type).toBe('ROOM:USER_JOINED')
+    expect(joinedCall.payload).toMatchObject({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      username: 'alice',
+      movedBy: OTHER_ID,
+    })
+  })
+
+  it('emits only ROOM:USER_JOINED when moving user from nowhere', async () => {
+    const app = buildApp()
+    app.locals.wsManager = mockWSManager
+
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: OTHER_ID,
+      username: 'dm',
+      role: 'DM',
+    })
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER' },
+      { id: OTHER_ID, username: 'dm', role: 'DM' },
+    ])
+    mocks.mockGetSessionPresence.mockResolvedValue([]) // No previous presence
+
+    await request(app)
+      .post(`/api/rooms/${ROOM_ID}/move-user`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+      })
+
+    const emittedEvents = mockBroadcastEventToSession.mock.calls.map((call) => call[1])
+    const joinedEvents = emittedEvents.filter((event) => event.type === 'ROOM:USER_JOINED')
+    expect(joinedEvents.length).toBeGreaterThan(0)
+    expect(joinedEvents[0].payload).toMatchObject({
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      username: 'alice',
+      movedBy: OTHER_ID,
+    })
+  })

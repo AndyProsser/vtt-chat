@@ -46,6 +46,8 @@
         "matchCommandLine": true,
       },
       "npm --prefix frontend": true,
+      "npx prettier": true,
+      "npm --prefix backend": true,
     },
   },
 }
