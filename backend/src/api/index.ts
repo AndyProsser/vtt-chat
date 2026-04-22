@@ -10,6 +10,7 @@ import roomsRoutes from './rooms.routes'
 import presenceRoutes from './presence.routes'
 import liveKitRoutes from './livekit.routes'
 import audioRoutes from './audio.routes'
+import telemetryRoutes from './telemetry.routes'
 
 const router = Router()
 
@@ -39,6 +40,7 @@ router.use('/rooms', roomsRoutes)
 router.use('/presence', presenceRoutes)
 router.use('/livekit', liveKitRoutes)
 router.use('/audio', audioRoutes)
+router.use('/telemetry', telemetryRoutes)
 
 /**
  * Placeholder routes (not yet implemented)

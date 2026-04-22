@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { Role } from '@shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   CommandCenterFrame,
@@ -40,7 +41,7 @@ function renderToolbar(model: ToolbarActionModel) {
 
 describe('getRightRailTabsForRole', () => {
   it('returns full toolset for DM', () => {
-    expect(getRightRailTabsForRole('DM')).toEqual([
+    expect(getRightRailTabsForRole(Role.DM)).toEqual([
       'rooms',
       'audio',
       'notes',
@@ -52,11 +53,11 @@ describe('getRightRailTabsForRole', () => {
   })
 
   it('returns limited toolset for PLAYER', () => {
-    expect(getRightRailTabsForRole('PLAYER')).toEqual(['rooms', 'audio', 'notes'])
+    expect(getRightRailTabsForRole(Role.PLAYER)).toEqual(['rooms', 'audio', 'notes'])
   })
 
   it('returns rooms-only toolset for SPECTATOR', () => {
-    expect(getRightRailTabsForRole('SPECTATOR')).toEqual(['rooms'])
+    expect(getRightRailTabsForRole(Role.SPECTATOR)).toEqual(['rooms'])
   })
 })
 
@@ -68,7 +69,7 @@ describe('CommandCenterFrame', () => {
   it('toggles center pane between chat and notes', () => {
     render(
       <CommandCenterFrame
-        role="DM"
+        role={Role.DM}
         renderToolbar={(model) => (
           <div>
             {renderToolbar(model)}
@@ -99,7 +100,7 @@ describe('CommandCenterFrame', () => {
   it('opens and closes right rail tools panel', () => {
     render(
       <CommandCenterFrame
-        role="PLAYER"
+        role={Role.PLAYER}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
@@ -123,7 +124,7 @@ describe('CommandCenterFrame', () => {
   it('renders persona-specific right-rail tabs', () => {
     const { rerender } = render(
       <CommandCenterFrame
-        role="SPECTATOR"
+        role={Role.SPECTATOR}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
@@ -137,7 +138,7 @@ describe('CommandCenterFrame', () => {
 
     rerender(
       <CommandCenterFrame
-        role="DM"
+        role={Role.DM}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
@@ -155,7 +156,7 @@ describe('CommandCenterFrame', () => {
   it('renders system toasts container only when provided', () => {
     const { rerender } = render(
       <CommandCenterFrame
-        role="PLAYER"
+        role={Role.PLAYER}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderSystemToasts={() => <div>System Toasts Content</div>}
@@ -169,7 +170,7 @@ describe('CommandCenterFrame', () => {
 
     rerender(
       <CommandCenterFrame
-        role="PLAYER"
+        role={Role.PLAYER}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
@@ -188,7 +189,7 @@ describe('CommandCenterFrame', () => {
 
     render(
       <CommandCenterFrame
-        role="PLAYER"
+        role={Role.PLAYER}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
@@ -214,7 +215,7 @@ describe('CommandCenterFrame', () => {
 
     render(
       <CommandCenterFrame
-        role="PLAYER"
+        role={Role.PLAYER}
         renderToolbar={renderToolbar}
         renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}

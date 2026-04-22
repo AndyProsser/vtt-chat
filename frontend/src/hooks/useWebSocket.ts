@@ -9,6 +9,7 @@ import type { EventEnvelope } from '@shared'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
+import { logger } from '../utils/logger'
 
 export interface UseWebSocketOptions {
   url: string
@@ -150,7 +151,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     // Connect
     client.connect().catch((err) => {
-      console.error('Failed to connect:', err)
+      logger.error('ws.hook', 'Failed to connect', err)
       setError(err)
     })
 

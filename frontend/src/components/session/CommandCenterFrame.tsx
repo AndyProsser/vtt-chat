@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import type { ToolbarCenterPaneView } from '../../state/commandCenterSlice'
+import { telemetryClient } from '../../utils/telemetry'
 import './CommandCenterFrame.css'
 
 export type CenterPaneView = ToolbarCenterPaneView
@@ -112,9 +113,24 @@ export function CommandCenterFrame({
 
   const toolbarModel: ToolbarActionModel = {
     centerPaneView: toolbarCenterPaneView,
-    setCenterPaneView: setToolbarCenterPaneView,
+    setCenterPaneView: (view) => {
+      telemetryClient.track('UI_TAB_SWITCH', {
+        surface: 'command-center-center-pane',
+        from: toolbarCenterPaneView,
+        to: view,
+        role,
+      })
+      setToolbarCenterPaneView(view)
+    },
     rightRailOpen: toolbarRightRailOpen,
-    toggleRightRail: toggleToolbarRightRail,
+    toggleRightRail: () => {
+      telemetryClient.track('UI_PANEL_TOGGLE', {
+        surface: 'command-center-right-rail',
+        nextOpen: !toolbarRightRailOpen,
+        role,
+      })
+      toggleToolbarRightRail()
+    },
     placeholderActions,
   }
 
@@ -168,7 +184,15 @@ export function CommandCenterFrame({
                   type="button"
                   aria-label={`Tool ${formatTabLabel(tab)}`}
                   aria-pressed={tab === activeRightRailTab}
-                  onClick={() => setSelectedRightRailTab(tab)}
+                  onClick={() => {
+                    telemetryClient.track('UI_TAB_SWITCH', {
+                      surface: 'command-center-right-rail',
+                      from: activeRightRailTab,
+                      to: tab,
+                      role,
+                    })
+                    setSelectedRightRailTab(tab)
+                  }}
                 >
                   {formatTabLabel(tab)}
                 </button>

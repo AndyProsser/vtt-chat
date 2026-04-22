@@ -17,7 +17,7 @@ Mirror reference: Keep this operations snapshot in sync with primary roadmap [RO
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-8 complete (baseline), Stage 9 in progress (9.1 and 9.2 complete, 9.3 next), Stages 10-13 planned remaining scope**.
+Current overall status: **Stages 0-9 complete (baseline + command-center), Stages 10-13 planned remaining scope**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -34,7 +34,7 @@ Latest verification:
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
-- Current frontend verification: `9` test files / `36` tests passing.
+- Current frontend verification: `15` test files / `115` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
 - Current backend verification: `13` passed + `1` skipped test files; `57` passing tests + `6` todo markers (`63` total).
 - Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
@@ -43,22 +43,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion                | Immediate focus                                        |
-| ----- | ----------------------------------- | ----------- | ------------------------- | ------------------------------------------------------ |
-| 0     | Contract lock                       | Complete    | ✅                        | Maintain contract/source-of-truth discipline           |
-| 1     | Backend foundation                  | Complete    | ✅                        | Ongoing hardening + reliability                        |
-| 2     | Frontend transport spine            | Complete    | ✅                        | Keep reducer/event contract parity                     |
-| 3     | Session lifecycle                   | Complete    | ✅                        | Regression coverage during later stage work            |
-| 4     | Chat vertical slice                 | Complete    | ✅                        | UX/moderation polish as follow-up                      |
-| 5     | Notes vertical slice                | Complete    | ✅                        | Advanced workflows and audit polish                    |
-| 6     | Presence and rooms                  | Complete    | ✅                        | Multi-client e2e/load hardening                        |
-| 7     | Audio + LiveKit                     | Complete    | ✅                        | Multi-client e2e + persistence hardening               |
-| 8     | Admin + ops baseline                | Complete    | ✅                        | Stage 10 secure ops workflows + durable telemetry      |
-| 9     | Frontend command-center completion  | In progress | 🟨 9.2 complete, 9.3 next | Recovery, loading/error, theming, and motion hardening |
-| 10    | Admin UI feature completion         | Planned     | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows              |
-| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started            | Knowledge surfaces + discoverability                   |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started            | Portability + archival workflows                       |
-| 13    | Extension/overlay integration       | Planned     | ⬜ Not started            | VTT bridge contracts + privacy-safe sync               |
+| Stage | Area                                | Status   | Completion                | Immediate focus                                    |
+| ----- | ----------------------------------- | -------- | ------------------------- | -------------------------------------------------- |
+| 0     | Contract lock                       | Complete | ✅                        | Maintain contract/source-of-truth discipline       |
+| 1     | Backend foundation                  | Complete | ✅                        | Ongoing hardening + reliability                    |
+| 2     | Frontend transport spine            | Complete | ✅                        | Keep reducer/event contract parity                 |
+| 3     | Session lifecycle                   | Complete | ✅                        | Regression coverage during later stage work        |
+| 4     | Chat vertical slice                 | Complete | ✅                        | UX/moderation polish as follow-up                  |
+| 5     | Notes vertical slice                | Complete | ✅                        | Advanced workflows and audit polish                |
+| 6     | Presence and rooms                  | Complete | ✅                        | Multi-client e2e/load hardening                    |
+| 7     | Audio + LiveKit                     | Complete | ✅                        | Multi-client e2e + persistence hardening           |
+| 8     | Admin + ops baseline                | Complete | ✅                        | Stage 10 secure ops workflows + durable telemetry  |
+| 9     | Frontend command-center completion  | Complete | ✅                        | Maintain regression coverage during Stage 10+ work |
+| 10    | Admin UI feature completion         | Planned  | ⬜ Not started (as stage) | Secure ops actions + drill-down workflows          |
+| 11    | Metadata/journal/history/search     | Planned  | ⬜ Not started            | Knowledge surfaces + discoverability               |
+| 12    | Import/export + recordings metadata | Planned  | ⬜ Not started            | Portability + archival workflows                   |
+| 13    | Extension/overlay integration       | Planned  | ⬜ Not started            | VTT bridge contracts + privacy-safe sync           |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -196,7 +196,7 @@ Residual work moved to Stage 10:
 
 ### Stage 9: Frontend UI Command-Center Completion
 
-Status: **In progress (Stage 9.1 and Stage 9.2 complete, Stage 9.3 next)**
+Status: **Complete (Stages 9.1, 9.2, and 9.3 complete)**
 
 Operational impact:
 
@@ -221,6 +221,14 @@ Completed so far:
   - Backend API coverage now includes DM-only authorization/success-path tests and websocket emission payload assertions for authoritative room movement.
   - Frontend integration coverage now includes full DM drag/drop move flow validation against live room/presence websocket updates.
   - Frontend reducer/store coverage now includes distance/condition/filter transition assertions and DM override state transitions.
+- Stage 9.3 reliability/spec-compliance work is now complete in runtime:
+  - Added reconnect/hydration UX banner (`ReconnectBanner`) with deterministic state messaging for `connecting`, `reconnecting`, `disconnected`, and post-reconnect hydration.
+  - Added reusable severity-based toast system (`Toast`) and wired `SystemToasts` to variant-driven non-blocking rendering semantics.
+  - Added design-token + motion foundation (`theme.css`) and migrated command-center shell styles to tokenized surface/border/motion variables.
+  - Added frontend logger level controls with runtime/browser/env precedence (`window.__VTT_LOG_LEVEL__`, `localStorage['vtt.log.level']`, `VITE_LOG_LEVEL`, safe fallback).
+  - Replaced remaining direct frontend WS `console.*` calls with context-rich shared logger usage.
+  - Added privacy-safe telemetry client utility with bounded queue, interval/unload/session-end flushing hooks, and sanitization of sensitive property keys.
+  - Added Stage 9.3 validation coverage for toast semantics, reconnect/hydration lifecycle UI behavior, theme token/keyframe parity, logger controls, and telemetry separation checks.
 
 Milestone checkpoints and target validation:
 
@@ -342,6 +350,8 @@ Dependencies before later stages:
 
 ## 5) Progress Log (Condensed)
 
+- 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
+- 2026-04: Stage 9.3 started in frontend runtime. Added reconnect/hydration status banner UX, variant-based non-blocking toast rendering, tokenized theming foundation with motion keyframes, and Stage 9.3 regression tests for reconnect lifecycle, toast semantics, and theme-token parity. Frontend verification now reports `13` passed test files / `106` passing tests.
 - 2026-04: Full verification snapshot: build ✅ (`npm run build` at repo root), lint ✅ (`npm run lint` at repo root), tests ✅ (backend `57` passing + `6` todo, frontend `36` passing, admin `9` passing).
 - 2026-04: Standardized Vitest coverage reporting delivered across backend/frontend/admin. Added per-package `test:coverage` scripts, root `test:coverage` aggregator, V8 coverage reporters (`text`, `html`, `json-summary`), and enforced baseline thresholds (backend: branches `18`, functions `24`, lines/statements `22`; frontend: branches `20`, functions/lines/statements `25`; admin: branches `6`, functions/lines/statements `7`).
 - 2026-04: Stage 9.1 started in frontend runtime. Added explicit three-panel command-center shell (left rail + center pane + right rail), role-aware right-rail tab visibility for DM/Player/Spectator, and right-rail open/close behavior. Added component coverage for persona matrix and panel toggles via `frontend/src/tests/components/CommandCenterFrame.test.tsx`; frontend verification now reports `7` files / `21` tests passing.

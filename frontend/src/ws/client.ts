@@ -6,6 +6,7 @@
 
 import type { EventEnvelope, UUID } from '@shared'
 import { isValidUUID } from '@shared'
+import { logger } from '../utils/logger'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
@@ -107,7 +108,7 @@ export class WebSocketClient {
    */
   async connect(): Promise<void> {
     if (this.state !== 'disconnected' && this.state !== 'reconnecting') {
-      console.warn(`Cannot connect: already in state ${this.state}`)
+      logger.warn('ws.client', `Cannot connect: already in state ${this.state}`)
       return
     }
 
@@ -182,7 +183,7 @@ export class WebSocketClient {
         this.socket.send(JSON.stringify(event))
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
-        console.error('Failed to send event:', err)
+        logger.error('ws.client', 'Failed to send event', err)
         this.callbacks.onError?.(err)
         // Queue for retry
         this.eventQueue.push(event)
@@ -279,28 +280,29 @@ export class WebSocketClient {
       this.callbacks.onEvent?.(incoming as EventEnvelope)
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
-      console.error('Failed to parse message:', err)
+      logger.error('ws.client', 'Failed to parse message', err)
       this.callbacks.onError?.(err)
     }
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached`)
+      logger.error('ws.client', `Max reconnection attempts (${this.maxReconnectAttempts}) reached`)
       return
     }
 
     this.reconnectAttempts += 1
     const delay = this.reconnectDelayMs * Math.pow(2, this.reconnectAttempts - 1)
 
-    console.log(
+    logger.info(
+      'ws.client',
       `Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
     )
 
     this.setState('reconnecting')
     this.reconnectTimeoutId = setTimeout(() => {
       this.connect().catch((error) => {
-        console.error('Reconnection failed:', error)
+        logger.error('ws.client', 'Reconnection failed', error)
       })
     }, delay)
   }

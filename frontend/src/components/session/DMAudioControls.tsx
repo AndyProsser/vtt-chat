@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
+import { telemetryClient } from '../../utils/telemetry'
 
 interface AudioRoomOption {
   id: UUID
@@ -226,6 +227,12 @@ export function DMAudioControls({
         roomId: selectedRoomId,
         environmentName: selectedEnvironmentName,
       })
+      telemetryClient.track('AUDIO_ENVIRONMENT_SET', {
+        sessionId,
+        roomId: selectedRoomId,
+        environmentName: selectedEnvironmentName,
+        role,
+      })
       setSuccess(`Applied ${selectedEnvironmentName} to selected room.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to apply environment')
@@ -268,6 +275,13 @@ export function DMAudioControls({
         parameters,
       })
 
+      telemetryClient.track('AUDIO_DM_OVERRIDE_APPLIED', {
+        sessionId,
+        targetUserId: resolvedTargetUserId,
+        overrideType,
+        role,
+      })
+
       setDMOverride(resolvedTargetUserId, {
         userId: resolvedTargetUserId,
         overrideType,
@@ -302,6 +316,13 @@ export function DMAudioControls({
         sessionId,
         targetUserId: selectedTargetUserId,
         overrideType,
+      })
+
+      telemetryClient.track('AUDIO_DM_OVERRIDE_REMOVED', {
+        sessionId,
+        targetUserId: selectedTargetUserId,
+        overrideType,
+        role,
       })
 
       setDMOverride(selectedTargetUserId, null)
@@ -356,6 +377,14 @@ export function DMAudioControls({
         const payload = (await response.json().catch(() => ({}))) as { message?: string }
         throw new Error(payload.message || 'Failed to request room move')
       }
+
+      telemetryClient.track('ROOM_SWITCH', {
+        sessionId,
+        targetUserId: userId,
+        fromRoomId,
+        toRoomId,
+        role,
+      })
     } catch (err) {
       setPendingRoomMoves((state) => {
         const next = { ...state }

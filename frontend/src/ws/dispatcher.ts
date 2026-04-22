@@ -5,6 +5,7 @@
  */
 
 import type { EventEnvelope } from '@shared'
+import { logger } from '../utils/logger'
 
 /**
  * Handler function that processes an event.
@@ -31,7 +32,7 @@ export class EventDispatcher {
       this.handlers.set(eventType, [])
     }
     this.handlers.get(eventType)!.push(handler)
-    console.debug(`Registered handler for event type: ${eventType}`)
+    logger.debug('ws.dispatcher', `Registered handler for event type: ${eventType}`)
   }
 
   /**
@@ -55,7 +56,7 @@ export class EventDispatcher {
     // Validate event envelope
     const validation = this.validateEvent(event)
     if (!validation.valid) {
-      console.warn(`Event validation failed:`, validation.errors)
+      logger.warn('ws.dispatcher', 'Event validation failed', validation.errors)
       return
     }
 
@@ -87,7 +88,7 @@ export class EventDispatcher {
       try {
         handler(event)
       } catch (error) {
-        console.error(`Handler error for event ${event.type}:`, error)
+        logger.error('ws.dispatcher', `Handler error for event ${event.type}`, error)
       }
     }
   }

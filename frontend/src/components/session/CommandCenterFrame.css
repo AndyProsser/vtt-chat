@@ -1,24 +1,33 @@
+/**
+ * CommandCenterFrame layout
+ * Stage 9.3: Uses CSS custom properties from theme.css for dark/light parity.
+ * Motion rules added for rail open/close and slide-in panels.
+ * Import theme.css from this file so all CommandCenter sub-trees inherit tokens.
+ */
+
+@import './theme.css';
+
 .command-center-frame {
   display: grid;
   gap: 1rem;
 }
 
 .command-center-surface {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background-color: #fff;
-  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  padding: var(--space-3);
 }
 
 .command-center-meta-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
 }
 
 .command-center-controls {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
@@ -26,13 +35,16 @@
 
 .command-center-controls-left {
   display: inline-flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
+
+/* ─── Rails layout ───────────────────────────────────────────────────────── */
 
 .command-center-rails {
   display: grid;
   gap: 1rem;
   align-items: start;
+  transition: grid-template-columns var(--duration-normal) var(--ease-in-out);
 }
 
 .command-center-rails.open {
@@ -43,12 +55,32 @@
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
 }
 
+/* Right-rail slides in from the right */
+[data-testid='right-rail'] {
+  animation: slide-in-from-right var(--duration-normal) var(--ease-out);
+}
+
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ─── Tab strip ──────────────────────────────────────────────────────────── */
+
 .command-center-tools-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
+
+/* ─── Responsive breakpoints ─────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
   .command-center-rails.open,
@@ -62,3 +94,4 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
