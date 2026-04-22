@@ -270,6 +270,11 @@ Milestone checkpoints and target validation:
   - Validation targets: telemetry/audit persistence tests, logs detail/filter/sort/pagination integrity tests, end-to-end operator journey tests.
   - Implementation checklist: implement backend log stream/sink model from [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L235), align endpoints with [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md#L437), and verify admin observability outcomes using [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
 
+  - Expansion tasks now active:
+    - Persist runtime diagnostic stream entries so all log sources support durable drill-down retrieval.
+    - Expose telemetry/diagnostic sink retention + rotation controls through admin settings workflows.
+    - Keep logs UI interaction coverage green for filter/sort/pagination/detail surfaces.
+
 - **Stage 10.5: UI Style Externalization Workstream (Ongoing)**
   - Scope: progressively migrate inline styles to external stylesheet files (`styles/`) where practical, starting with Stage 10 admin surfaces and all newly touched components.
   - Validation targets: new/updated Stage 10 components avoid inline `style={{ ... }}` unless styles must be computed dynamically at runtime; preserve visual parity for theme/responsive/interaction states; run lint/build/test checks after extraction batches.
@@ -284,6 +289,15 @@ Status: **Planned**
 Operational impact:
 
 - Adds long-term campaign knowledge surfaces and discoverability workflows across sessions.
+
+Stage 11 frontend execution tasks:
+
+- Replace placeholder frontend room components with production UI:
+  - `frontend/src/components/rooms/AvatarOverlay.tsx` (speaking/muted/condition indicators)
+  - `frontend/src/components/rooms/RoomSelector.tsx` (room list + occupancy + selection context)
+- Complete command-center left-rail participant status visibility (DM/player presence + speaking/muted/condition state).
+- Replace remaining Stage 11 command-center placeholder surfaces (search/journal/history tabs) with real workflows.
+- Externalize Stage 11 frontend CSS by migrating inline session/command-center styles to dedicated stylesheets with parity checks.
 
 ---
 
@@ -319,19 +333,23 @@ Priority 2:
 
 Priority 3:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+- Stage 11 frontend command-center completion (avatar overlay, room selector, participant status UX, and CSS externalization).
 
 Priority 4:
 
-- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
 
 Priority 5:
 
-- Stage 11/12 knowledge and portability domains, then Stage 13 extension and overlay integration after Stage 10.4 external system authorization.
+- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
 Priority 6:
 
-- Stage 9 regression hardening while Stage 10 scope expands.
+- Stage 12/13 knowledge + extension integration after Stage 10.4 external system authorization.
+
+Priority 7:
+
+- Stage 9 regression hardening while Stage 10/11 scope expands.
 
 ---
 
@@ -361,6 +379,8 @@ Dependencies before later stages:
 - 2026-04: Stage 10.2 kickoff delivered. Activated `Rooms & Campaigns` with live backend campaign/session/room data and authenticated session-end action path; style externalization rule applied through a dedicated page stylesheet.
 - 2026-04: Stage 10.2 expansion delivered. Added backend campaign archive/restore + room move-player admin actions with audit hooks and authz coverage, added dedicated admin interaction tests for live Rooms & Campaigns flows (filters, selection, end-session success/failure), and activated Settings with authenticated backend save/backup workflows plus externalized page styling.
 - 2026-04: Stage 10.3 kickoff started with durable telemetry ingest sink persistence plus persisted log drill-down route (`GET /api/admin/telemetry/logs/:logId`) for telemetry and admin-audit entries.
+- 2026-04: Stage 10.3 durability hardening increment delivered. Added persisted diagnostic stream drill-down parity, sink retention/rotation policy controls in admin settings, and logs UI interaction tests for filter/sort/pagination/detail flows.
+- 2026-04: Stage 11 frontend scope expanded. Placeholder `AvatarOverlay` and `RoomSelector` are now tracked as explicit Stage 11 deliverables, along with left-rail participant status completion and Stage 11 frontend CSS externalization.
 - 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression tests for public vs protected route boundaries and invalid-token rejection, plus admin SPA guard tests covering login routing, authenticated dashboard rendering, and forced logout when session validation returns unauthorized.
 - 2026-04: Stage 10 commenced. Added Stage 10.5 as a tracked workstream for incremental CSS externalization (`styles/`) and began first-pass admin inline-style extraction to separate visuals from component logic.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
