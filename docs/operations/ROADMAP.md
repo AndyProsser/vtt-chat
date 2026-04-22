@@ -297,7 +297,13 @@ Stage 11 frontend execution tasks:
   - `frontend/src/components/rooms/RoomSelector.tsx` (room list + occupancy + selection context)
 - Complete command-center left-rail participant status visibility (DM/player presence + speaking/muted/condition state).
 - Replace remaining Stage 11 command-center placeholder surfaces (search/journal/history tabs) with real workflows.
-- Externalize Stage 11 frontend CSS by migrating inline session/command-center styles to dedicated stylesheets with parity checks.
+- Continue Stage 11 frontend CSS externalization by migrating remaining non-command-center inline surfaces to dedicated stylesheets with parity checks.
+
+Completed in latest Stage 11 increment:
+
+- Consolidated frontend component CSS into centralized style paths under `frontend/src/styles/components/**`.
+- Removed remaining inline SessionInit campaign/session/session-list styles and replaced with stylesheet classes.
+- Added SessionInit integration test coverage for left-rail room switch behavior and participant status rendering.
 
 ---
 
@@ -381,6 +387,7 @@ Dependencies before later stages:
 - 2026-04: Stage 10.3 kickoff started with durable telemetry ingest sink persistence plus persisted log drill-down route (`GET /api/admin/telemetry/logs/:logId`) for telemetry and admin-audit entries.
 - 2026-04: Stage 10.3 durability hardening increment delivered. Added persisted diagnostic stream drill-down parity, sink retention/rotation policy controls in admin settings, and logs UI interaction tests for filter/sort/pagination/detail flows.
 - 2026-04: Stage 11 frontend scope expanded. Placeholder `AvatarOverlay` and `RoomSelector` are now tracked as explicit Stage 11 deliverables, along with left-rail participant status completion and Stage 11 frontend CSS externalization.
+- 2026-04: Stage 11 CSS consolidation increment delivered. Migrated frontend component CSS into `frontend/src/styles/components/**`, extracted remaining inline SessionInit campaign/session/session-list styles, and added SessionInit left-rail room-switch integration test coverage.
 - 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression tests for public vs protected route boundaries and invalid-token rejection, plus admin SPA guard tests covering login routing, authenticated dashboard rendering, and forced logout when session validation returns unauthorized.
 - 2026-04: Stage 10 commenced. Added Stage 10.5 as a tracked workstream for incremental CSS externalization (`styles/`) and began first-pass admin inline-style extraction to separate visuals from component logic.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.

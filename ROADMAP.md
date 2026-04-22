@@ -549,9 +549,15 @@ Remaining scope:
   - Expand left-rail/status rendering for richer live participant states (presence + speaking/mute/condition summary).
   - Add dedicated frontend interaction tests for left-rail/room-selector/avatar-state behavior and role visibility rules.
 - Stage 11 frontend style externalization workstream:
-  - Extract remaining inline frontend command-center/session styles to external CSS modules/files.
+  - Continue extracting remaining non-command-center inline `SessionInit` styles after initial campaign/session/session-list extraction.
   - Ensure new Stage 11 frontend components avoid inline `style={{...}}` unless runtime computation is required.
   - Add visual/regression checks to preserve current responsive and theme behavior after CSS extraction.
+
+Completed in latest Stage 11 increment:
+
+- Frontend component CSS has been consolidated into `frontend/src/styles/components/**` and component imports now resolve from the centralized styles tree.
+- Stage 11 session-shell extraction advanced by removing remaining inline styling from `SessionInit` campaign/session forms and session list surfaces.
+- Added integration coverage for left-rail room switching in active sessions (`frontend/src/tests/components/SessionInit.integration.test.tsx`).
 
 Exit criteria:
 
@@ -789,6 +795,7 @@ The following references support the corrected stage labels and current model te
 - 2026-04: Stage 10.3 kickoff delivered initial durability/drill-down increment. Added durable telemetry ingest sink persistence for client events, merged persisted telemetry into `/api/admin/telemetry/logs`, and added new `/api/admin/telemetry/logs/:logId` drill-down endpoint for persisted telemetry and admin-audit entries.
 - 2026-04: Stage 10.3 durability hardening increment delivered. Added persisted diagnostic stream support for runtime log drill-down parity, retention/rotation policy controls surfaced in admin settings, and dedicated admin logs UI coverage for filter/sort/pagination/detail workflows.
 - 2026-04: Stage 11 scope expanded for frontend command-center parity. Identified `AvatarOverlay` and `RoomSelector` as baseline placeholders and elevated them to explicit Stage 11 deliverables, including left-rail participant status UX completion and frontend CSS externalization for Stage 11 surfaces.
+- 2026-04: Stage 11 CSS consolidation increment delivered. Migrated frontend component CSS into centralized `frontend/src/styles/components/**`, completed inline-style extraction for `SessionInit` campaign/session/session-list surfaces, and added end-to-end SessionInit left-rail room-switch integration coverage.
 - 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression coverage for protected routes (`/api/admin/telemetry/status`, `/api/admin/users`, `/api/admin/me`) and explicit public-route assertion for `/api/admin/setup-status`. Added admin SPA guard tests covering setup/login routing, authenticated dashboard rendering, and session-expiry logout handling.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
 - 2026-04: Stage 9.3 started in frontend runtime. Added reconnect/hydration status banner UX, variant-based non-blocking toast rendering, tokenized theming foundation with motion keyframes, and Stage 9.3 regression tests for reconnect lifecycle, toast semantics, and theme-token parity. Frontend verification now reports `13` passed test files / `106` passing tests.

@@ -113,6 +113,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   // Store
   const store = useStore()
   const { sessions, currentSessionId } = store
+  const clearSessions = store.clearSessions
+  const replaceSessions = store.replaceSessions
+  const replaceSessionTopology = store.replaceSessionTopology
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] : null
@@ -194,7 +197,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
         } else {
           setSelectedCampaignId('')
-          store.clearSessions()
+          clearSessions()
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
@@ -205,12 +208,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadCampaigns()
-  }, [apiUrl, token, store])
+  }, [apiUrl, token, clearSessions])
 
   useEffect(() => {
     const loadCampaignSessions = async () => {
       if (!selectedCampaignId) {
-        store.clearSessions()
+        clearSessions()
         setIsLoadingSessions(false)
         return
       }
@@ -231,7 +234,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
 
         const data = await response.json()
-        store.replaceSessions(data.sessions || [])
+        replaceSessions(data.sessions || [])
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
@@ -241,7 +244,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadCampaignSessions()
-  }, [apiUrl, selectedCampaignId, token, store])
+  }, [apiUrl, selectedCampaignId, token, clearSessions, replaceSessions])
 
   useEffect(() => {
     telemetryClient.setTransport(
@@ -330,7 +333,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }))
 
         // Atomic: both rooms and presence replace in a single store update.
-        store.replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
+        replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
       } catch {
         // Event-driven WebSocket updates continue to flow even if hydration fails.
       } finally {
@@ -339,7 +342,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadPresenceAndRooms()
-  }, [apiUrl, currentSession, token, wsState, store])
+  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
