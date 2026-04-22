@@ -17,6 +17,9 @@ import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
 import { CampaignInfo } from './CampaignInfo'
 import { SystemToasts } from './SystemToasts'
 import { DMAudioControls } from './DMAudioControls'
+import { HistoryPanel } from './HistoryPanel'
+import { JournalPanel } from './JournalPanel'
+import { SearchPanel } from './SearchPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
 import { SessionToolbar } from './SessionToolbar'
@@ -908,9 +911,49 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   )
                 }
 
+                if (tab === 'search') {
+                  return (
+                    <SearchPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={user.role}
+                      rooms={currentRooms.map((room) => ({
+                        id: room.id,
+                        name: room.name,
+                        type: room.type,
+                      }))}
+                      participants={currentPresence}
+                      onSelectRoom={setSelectedRoomIdOverride}
+                    />
+                  )
+                }
+
+                if (tab === 'journal') {
+                  return (
+                    <JournalPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={user.role}
+                    />
+                  )
+                }
+
+                if (tab === 'history') {
+                  return (
+                    <HistoryPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={user.role}
+                    />
+                  )
+                }
+
                 return (
                   <p className="session-placeholder-copy">
-                    {placeholderByTab[tab as Exclude<RightRailTab, 'rooms' | 'audio'>]}
+                    {placeholderByTab[tab as Exclude<RightRailTab, 'rooms' | 'audio' | 'search' | 'journal' | 'history'>]}
                   </p>
                 )
               }}

@@ -38,7 +38,7 @@ const DM_TABS: RightRailTab[] = [
   'history',
   'settings',
 ]
-const PLAYER_TABS: RightRailTab[] = ['rooms', 'audio', 'notes']
+const PLAYER_TABS: RightRailTab[] = ['rooms', 'audio', 'notes', 'search', 'journal', 'history']
 const SPECTATOR_TABS: RightRailTab[] = ['rooms']
 
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {

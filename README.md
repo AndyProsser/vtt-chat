@@ -10,8 +10,8 @@ Build and release status badges will be enabled once CI workflows are activated.
 [![Release](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml/badge.svg)](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml)
 -->
 
-**Version:** 0.5.2 — active development, not yet production-ready\
-**Status:** Stages 0–7 complete · Stage 8 in progress · Stages 9–13 planned — see [ROADMAP.md](ROADMAP.md)\
+**Version:** 0.5.3 — active development, not yet production-ready\
+**Status:** Stages 0–10 complete · Stages 11–13 planned — see [ROADMAP.md](ROADMAP.md)\
 **Release notes:** [CHANGELOG.md](CHANGELOG.md)
 
 ---

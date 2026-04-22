@@ -52,8 +52,15 @@ describe('getRightRailTabsForRole', () => {
     ])
   })
 
-  it('returns limited toolset for PLAYER', () => {
-    expect(getRightRailTabsForRole(Role.PLAYER)).toEqual(['rooms', 'audio', 'notes'])
+  it('returns stage 11 toolset for PLAYER', () => {
+    expect(getRightRailTabsForRole(Role.PLAYER)).toEqual([
+      'rooms',
+      'audio',
+      'notes',
+      'search',
+      'journal',
+      'history',
+    ])
   })
 
   it('returns rooms-only toolset for SPECTATOR', () => {
@@ -151,6 +158,22 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByRole('button', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Tool History' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Tool Settings' })).toBeTruthy()
+
+    rerender(
+      <CommandCenterFrame
+        role={Role.PLAYER}
+        renderToolbar={renderToolbar}
+        renderCampaignInfo={() => <div>Campaign Info Content</div>}
+        renderLeftRail={() => <div>Left Rail Content</div>}
+        renderCenterPane={() => <div>Center</div>}
+        renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Tool Search' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Tool Journal' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Tool History' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Tool Settings' })).toBeNull()
   })
 
   it('renders system toasts container only when provided', () => {

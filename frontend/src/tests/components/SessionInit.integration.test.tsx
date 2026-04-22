@@ -199,4 +199,137 @@ describe('SessionInit integration', () => {
     expect(screen.queryByText('Silenced')).toBeNull()
     expect(screen.queryByText('Muted')).toBeNull()
   })
+
+  it('wires stage 11 knowledge tabs into the right rail for players', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+                description: 'Active field session',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/chat/messages/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            messages: [
+              {
+                id: asUuid('99999999-9999-4999-8999-999999999999'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                content: 'Archive map ready.',
+                type: 'OOC',
+                isDmOnly: false,
+                createdAt: 10,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/notes/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                id: asUuid('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                title: 'Archive route',
+                content: 'Cellar route confirmed.',
+                visibility: 'PLAYERS_VISIBLE',
+                tags: ['route'],
+                allowedUsers: [],
+                createdAt: 5,
+                updatedAt: 8,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            logs: [
+              {
+                id: 'log-1',
+                sessionId: SESSION_ID,
+                userId: DM_ID,
+                username: 'Morgan',
+                eventType: 'STATE_CHANGED',
+                detail: 'Session state changed from IDLE to ACTIVE',
+                createdAt: '2026-04-23T10:00:00.000Z',
+              },
+            ],
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: PLAYER_ID,
+          username: 'Tara',
+          role: Role.PLAYER,
+        }}
+      />
+    )
+
+    await screen.findByText('Session Alpha')
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tool Search' }))
+    expect(await screen.findByTestId('search-panel')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Search notes, chat, rooms, or players')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tool Journal' }))
+    expect(await screen.findByTestId('journal-panel')).toBeTruthy()
+    expect(screen.getByText('Archive route')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tool History' }))
+    expect(await screen.findByTestId('history-panel')).toBeTruthy()
+    expect(screen.getByText('State Changed')).toBeTruthy()
+  })
 })

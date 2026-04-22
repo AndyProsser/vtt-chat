@@ -6,6 +6,7 @@ import CampaignManagement from './pages/CampaignManagement'
 import PlatformStatus from './pages/PlatformStatus'
 import Logs from './pages/Logs'
 import Settings from './pages/Settings'
+import Integrations from './pages/Integrations'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
 import InviteOnboarding from './pages/InviteOnboarding'
@@ -13,7 +14,15 @@ import { useAuthStore } from './store'
 import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
 import './styles/App.css'
 
-type AdminPage = 'dashboard' | 'analytics' | 'users' | 'campaigns' | 'status' | 'logs' | 'settings'
+type AdminPage =
+  | 'dashboard'
+  | 'analytics'
+  | 'users'
+  | 'campaigns'
+  | 'status'
+  | 'logs'
+  | 'settings'
+  | 'integrations'
 
 interface NavItem {
   key: AdminPage
@@ -28,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'status', label: 'System Health' },
   { key: 'logs', label: 'Logs & Activity' },
   { key: 'settings', label: 'Settings' },
+  { key: 'integrations', label: 'Integrations' },
 ]
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
@@ -273,6 +283,8 @@ export default function App() {
         return <Logs />
       case 'settings':
         return <Settings />
+      case 'integrations':
+        return <Integrations />
       default:
         return <Dashboard />
     }

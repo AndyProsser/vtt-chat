@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 Mirror reference: Keep this file in sync with operations snapshot [docs/operations/ROADMAP.md](docs/operations/ROADMAP.md).
 
@@ -17,7 +17,7 @@ Mirror reference: Keep this file in sync with operations snapshot [docs/operatio
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-9 complete (baseline + command-center), Stage 10 in progress, Stages 11-13 planned remaining scope**.
+Current overall status: **Stages 0-10 complete (baseline + command-center + secure admin ops), Stage 11 in progress, Stages 12-13 planned remaining scope**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -28,6 +28,7 @@ Current overall status: **Stages 0-9 complete (baseline + command-center), Stage
 - Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), while durable audio-state recovery and broader reconnect/e2e hardening remain pending.
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
+- Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
 
 Latest verification:
 
@@ -43,22 +44,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion         | Immediate focus                                        |
-| ----- | ----------------------------------- | ----------- | ------------------ | ------------------------------------------------------ |
-| 0     | Contract lock                       | Complete    | ✅                 | Maintain contract/source-of-truth discipline           |
-| 1     | Backend foundation                  | Complete    | ✅                 | Ongoing hardening + reliability                        |
-| 2     | Frontend transport spine            | Complete    | ✅                 | Keep reducer/event contract parity                     |
-| 3     | Session lifecycle                   | Complete    | ✅                 | Regression coverage during later stage work            |
-| 4     | Chat vertical slice                 | Complete    | ✅                 | UX/moderation polish as follow-up                      |
-| 5     | Notes vertical slice                | Complete    | ✅                 | Advanced workflows and audit polish                    |
-| 6     | Presence and rooms                  | Complete    | ✅                 | Multi-client e2e/load hardening                        |
-| 7     | Audio + LiveKit                     | Complete    | ✅                 | Multi-client e2e + persistence hardening               |
-| 8     | Admin + ops baseline                | Complete    | ✅                 | Stage 10 secure ops workflows + durable telemetry      |
-| 9     | Frontend command-center completion  | Complete    | ✅                 | Maintain regression coverage during Stage 10+ work     |
-| 10    | Admin UI feature completion         | In progress | 🟨 Stage commenced | Secure ops actions + drill-down workflows              |
-| 11    | Metadata/journal/history/search     | Planned     | ⬜ Not started     | Knowledge surfaces + discoverability                   |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started     | Portability + archival workflows                       |
-| 13    | Extension + guest auth integration  | Planned     | ⬜ Not started     | Guest auth, invite flow, external identity, VTT bridge |
+| Stage | Area                                | Status      | Completion     | Immediate focus                                        |
+| ----- | ----------------------------------- | ----------- | -------------- | ------------------------------------------------------ |
+| 0     | Contract lock                       | Complete    | ✅             | Maintain contract/source-of-truth discipline           |
+| 1     | Backend foundation                  | Complete    | ✅             | Ongoing hardening + reliability                        |
+| 2     | Frontend transport spine            | Complete    | ✅             | Keep reducer/event contract parity                     |
+| 3     | Session lifecycle                   | Complete    | ✅             | Regression coverage during later stage work            |
+| 4     | Chat vertical slice                 | Complete    | ✅             | UX/moderation polish as follow-up                      |
+| 5     | Notes vertical slice                | Complete    | ✅             | Advanced workflows and audit polish                    |
+| 6     | Presence and rooms                  | Complete    | ✅             | Multi-client e2e/load hardening                        |
+| 7     | Audio + LiveKit                     | Complete    | ✅             | Multi-client e2e + persistence hardening               |
+| 8     | Admin + ops baseline                | Complete    | ✅             | Stage 10 secure ops workflows + durable telemetry      |
+| 9     | Frontend command-center completion  | Complete    | ✅             | Maintain regression coverage during Stage 10+ work     |
+| 10    | Admin UI feature completion         | Complete    | ✅             | Stage 11 knowledge surfaces + Stage 13 guest auth prep |
+| 11    | Metadata/journal/history/search     | In Progress | 🟨 Started     | Knowledge panels + metadata follow-through             |
+| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started | Portability + archival workflows                       |
+| 13    | Extension + guest auth integration  | Planned     | ⬜ Not started | Guest auth, invite flow, external identity, VTT bridge |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -439,7 +440,7 @@ Exit criteria:
 
 ### Stage 10: Admin UI Feature Completion and Secure Operations
 
-Status: **In progress (builds on Stage 8 baseline)**
+Status: **Complete**
 
 Goal:
 
@@ -463,17 +464,16 @@ Completed so far:
 - Settings activation started in Stage 10.2: settings page now reads/writes backend runtime settings and triggers authenticated backup actions (with audit logging) rather than static placeholder controls.
 - Stage 10.3 kickoff started: telemetry client-events now persist to durable backend sink storage and admin logs drill-down now supports source-backed detail retrieval for persisted telemetry/audit entries.
 - Stage 10.3 expansion delivered: admin logs now have dedicated UI interaction coverage (filtering, sorting, pagination, drill-down), runtime diagnostic events are persisted into durable stream storage for drill-down parity, and settings now expose retention/rotation controls for telemetry/diagnostic sink policies.
+- Stage 10.4 delivered in runtime:
+  - Backend admin authorization routes now implemented: `GET /api/admin/integrations/systems`, `POST /api/admin/integrations/systems/:system/authorize`, `POST /api/admin/integrations/systems/:system/block`, `PATCH /api/admin/integrations/systems/:system`.
+  - Guest-auth and external-log-ingestion guardrails now enforce integration authorization state (`INTEGRATION_NOT_AUTHORIZED`) for blocked/unrecognized systems.
+  - Admin UI now includes an `Integrations` page with authorize/log-only/block actions plus notes updates.
+  - Automated coverage added for route authorization/state transitions, endpoint guardrails, and admin UI interactions.
 
-Remaining scope:
+Remaining scope moved forward:
 
-- Convert `Rooms & Campaigns` from scaffold to real operational workflows (view/close/move players/archive/export/delete) with confirmations and audit coverage.
-- Convert `Settings` from static controls to persisted feature-flag, maintenance-mode, API-key, backup, and restore workflows.
-- Deepen `Users`, `Dashboard`, and `System Health` from baseline functionality to production-grade operations UX with richer drill-downs, recent activity context, and more durable metrics sourcing.
-- Improve telemetry durability and queryability so admin views are backed by persistent signals rather than mixed in-memory/proxy data where possible.
-- Add dedicated admin backend authz/action tests and admin SPA interaction coverage for login, moderation, invites, logs, and future secure-ops workflows.
-- Promote Stage 10.3 durability hardening from initial implementation to production-grade operations controls (stream rotation jobs, archival/export policy hooks, restart/e2e verification).
-- Admin component extraction and placeholder closure tasks from latest review:
-  - Remaining extraction/debt focus: split oversized pages into reusable hooks/components while preserving existing operation coverage.
+- Stage 10 exit criteria are now satisfied.
+- Follow-on observability hardening and advanced operations ergonomics continue under Stage 11+ execution tracks.
 
 - Stage 10 UI completion delivered (current increment):
   - `admin/src/pages/Analytics.tsx` now provides telemetry-backed analytics workflows with live loading/error handling.
@@ -509,13 +509,8 @@ Milestone checkpoints:
     - Verify admin filterability, audit trace completeness, and telemetry durability against [docs/operations/TELEMETRY.md](docs/operations/TELEMETRY.md#L430).
 
 - **Stage 10.4: External System Authorization Panel**
-  - Scope: Admin UI panel for authorizing, restricting, or blocking third-party VTT systems that are permitted to authenticate users or ingest logs.
-  - This is a prerequisite for Stage 13 guest auth to be safely enabled in production.
-  - Target validation tests:
-    - Backend tests for `GET/POST/PATCH /api/admin/integrations/systems` route authorization and state transitions.
-    - Tests asserting blocked/unauthorized systems are rejected at guest-login and log-ingestion endpoints.
-    - Audit-log assertions verifying all authorization state changes are persisted with admin user ID, system key, old/new state, and timestamp.
-    - Admin UI interaction tests for authorize/block/restrict-to-log-only actions with confirmation dialogs.
+  - Status: complete.
+  - Delivered: backend route surface + audit logging + endpoint guardrails + admin UI interaction coverage.
 
 - **Stage 10.5: UI Style Externalization Workstream (Ongoing)**
   - Scope: progressively refactor inline component styles into external stylesheet files (`styles/`) where practical, prioritizing Stage 10 admin surfaces and new work first.
@@ -529,14 +524,14 @@ Milestone checkpoints:
 
 Exit criteria:
 
-- Admin UI provides authenticated, auditable, least-privilege operational actions and reliable telemetry workflows.
-- External system authorization panel is functional and guards Stage 13 guest auth endpoints.
+- Admin UI provides authenticated, auditable, least-privilege operational actions and reliable telemetry workflows. ✅
+- External system authorization panel is functional and guards Stage 13 guest auth endpoints. ✅
 
 ---
 
 ### Stage 11: Metadata, Journal, History, and Search Surfaces
 
-Status: **Planned**
+Status: **In Progress**
 
 Goal:
 
@@ -545,20 +540,20 @@ Goal:
 Remaining scope:
 
 - Implement metadata cards/timeline/tag flows defined in architecture and UI docs.
-- Implement journal and history panel data pipelines and role-aware read/write behavior.
-- Implement search services and UI for messages, notes, and recording metadata.
+- Expand journal and history panel data pipelines from the current frontend seed surfaces into dedicated role-aware read/write behavior.
+- Expand search services and UI beyond the current session runtime sources into metadata and recording-aware discoverability.
 - Align API endpoints and store slices with documented contracts for journal/history/search.
 - Frontend left-panel operational UX completion:
   - Replace placeholder `AvatarOverlay` in `frontend/src/components/rooms/AvatarOverlay.tsx` with real participant avatar/status overlay (speaking, muted, condition, role/ownership semantics).
   - Replace placeholder `RoomSelector` in `frontend/src/components/rooms/RoomSelector.tsx` with full room selector UI supporting room occupancy counts, selected-room state, and accessible DM/player context.
   - Integrate avatar + room selector into command-center left-rail workflow to provide always-visible DM/player status in active sessions.
 - Command-center frontend surface completion for currently placeholder tabs and partial UX:
-  - Implement Stage 11 search/journal/history right-rail surfaces currently represented as placeholder copy in `SessionInit`.
+  - Extend the new Stage 11 search/journal/history right-rail panels beyond the current session runtime data sources and read-only baseline.
   - Expand left-rail/status rendering for richer live participant states (presence + speaking/mute/condition summary).
   - Add dedicated frontend interaction tests for left-rail/room-selector/avatar-state behavior and role visibility rules.
 - Frontend component extraction and placeholder closure tasks from latest review:
   - Continue decomposition of oversized session components, prioritizing `frontend/src/components/session/SessionInit.tsx` (~923 LOC) and `frontend/src/components/session/DMAudioControls.tsx` (~843 LOC) into focused view-model hooks and subcomponents.
-  - Replace right-rail placeholder copy paths in `SessionInit` for `search`, `journal`, and `history` tabs with functional Stage 11 surfaces.
+  - Continue iterating on the newly-wired `search`, `journal`, and `history` right-rail surfaces in `SessionInit` to close the remaining contract and UX gaps.
   - Resolve remaining baseline placeholder modules in frontend runtime surface areas, prioritizing:
     - metadata: `frontend/src/components/metadata/MetadataCard.tsx`, `frontend/src/components/metadata/MetadataTimeline.tsx`
     - audio command-center adjuncts: `frontend/src/components/audio/EnvironmentPanel.tsx`, `frontend/src/components/audio/ConditionsPanel.tsx`, `frontend/src/components/audio/DMVoicePanel.tsx`, `frontend/src/components/audio/AudioStateSlideout.tsx`
@@ -574,6 +569,9 @@ Completed in latest Stage 11 increment:
 - Frontend component CSS has been consolidated into `frontend/src/styles/components/**` and component imports now resolve from the centralized styles tree.
 - Stage 11 session-shell extraction advanced by removing remaining inline styling from `SessionInit` campaign/session forms and session list surfaces.
 - Added integration coverage for left-rail room switching in active sessions (`frontend/src/tests/components/SessionInit.integration.test.tsx`).
+- Replaced `SessionInit` right-rail placeholder copy for `search`, `journal`, and `history` with real Stage 11 panels backed by persisted chat history, visible notes, and session logs.
+- Added a shared Stage 11 panel stylesheet plus focused component coverage for search/journal/history behavior and player-facing read-only access.
+- Expanded the player command-center right rail to include `search`, `journal`, and `history` tabs, with integration coverage proving the SessionInit wiring path.
 
 Exit criteria:
 
@@ -738,15 +736,15 @@ Exit criteria:
 
 Priority 1:
 
-- Stage 10 secure admin workflows and telemetry hardening.
+- Stage 11 frontend command-center completion: avatar overlays, room selector UX, left-rail status visibility, and CSS externalization.
 
 Priority 2:
 
-- Stage 10.5 incremental UI style externalization in `styles/` for admin and newly touched Stage 10 surfaces.
+- Stage 13 guest-auth preparation: extension bridge contracts, external identity wiring, and guarded rollout sequencing.
 
 Priority 3:
 
-- Stage 11 frontend command-center completion: avatar overlays, room selector UX, left-rail status visibility, and CSS externalization.
+- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
 
 Priority 4:
 
@@ -812,6 +810,7 @@ The following references support the corrected stage labels and current model te
 - 2026-04: Stage 10.3 durability hardening increment delivered. Added persisted diagnostic stream support for runtime log drill-down parity, retention/rotation policy controls surfaced in admin settings, and dedicated admin logs UI coverage for filter/sort/pagination/detail workflows.
 - 2026-04: Stage 11 scope expanded for frontend command-center parity. Identified `AvatarOverlay` and `RoomSelector` as baseline placeholders and elevated them to explicit Stage 11 deliverables, including left-rail participant status UX completion and frontend CSS externalization for Stage 11 surfaces.
 - 2026-04: Stage 11 CSS consolidation increment delivered. Migrated frontend component CSS into centralized `frontend/src/styles/components/**`, completed inline-style extraction for `SessionInit` campaign/session/session-list surfaces, and added end-to-end SessionInit left-rail room-switch integration coverage.
+- 2026-04: Stage 11 frontend knowledge-surface kickoff delivered. Replaced `SessionInit` right-rail placeholder copy for `search`/`journal`/`history` with real panels backed by persisted chat, notes, and session-log APIs; expanded player right-rail access to the new read-only knowledge tabs; and added focused panel + integration coverage.
 - 2026-04: Stage 10.1 execution pass delivered. Added backend admin authz regression coverage for protected routes (`/api/admin/telemetry/status`, `/api/admin/users`, `/api/admin/me`) and explicit public-route assertion for `/api/admin/setup-status`. Added admin SPA guard tests covering setup/login routing, authenticated dashboard rendering, and session-expiry logout handling.
 - 2026-04: Stage 9.3 completed and Stage 9 closed. Implemented frontend logger controls (`setLevel`, `getLevel`, `enableConsole`) with precedence model, migrated remaining WS path ad-hoc `console.*` calls to shared logger contexts, added privacy-safe telemetry client batching/sanitization utilities, and added validation tests for logger controls + telemetry/console separation checks. Frontend verification now reports `15` passed test files / `115` passing tests.
 - 2026-04: Stage 9.3 started in frontend runtime. Added reconnect/hydration status banner UX, variant-based non-blocking toast rendering, tokenized theming foundation with motion keyframes, and Stage 9.3 regression tests for reconnect lifecycle, toast semantics, and theme-token parity. Frontend verification now reports `13` passed test files / `106` passing tests.

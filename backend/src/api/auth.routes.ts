@@ -14,6 +14,7 @@ import { ErrorCode, isValidUsername } from '@shared'
 import { upsertUserAccount } from '@/repositories/campaign.repository'
 import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
+import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -28,6 +29,32 @@ const tokenRefreshRateLimit = createRateLimit({
   windowMs: 60 * 1000,
   maxRequests: 60,
   message: 'Too many token refresh attempts. Please slow down.',
+})
+
+router.post('/extension/guest-login', async (req: Request, res: Response) => {
+  const externalSystem = String(req.body?.externalSystem || '')
+    .trim()
+    .toLowerCase()
+
+  if (!externalSystem) {
+    return res.status(400).json({
+      code: 'MISSING_EXTERNAL_SYSTEM',
+      message: 'externalSystem is required',
+    })
+  }
+
+  const system = getExternalSystem(externalSystem)
+  if (!system || !isExternalSystemAuthAllowed(externalSystem)) {
+    return res.status(403).json({
+      code: 'INTEGRATION_NOT_AUTHORIZED',
+      message: `This platform has not enabled ${system?.displayName || externalSystem} integration.`,
+    })
+  }
+
+  return res.status(501).json({
+    code: 'GUEST_AUTH_NOT_IMPLEMENTED',
+    message: 'Guest authentication flow is planned for Stage 13',
+  })
 })
 
 /**

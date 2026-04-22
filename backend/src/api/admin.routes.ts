@@ -21,6 +21,7 @@ import {
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { hashPassword } from '@/services/auth.service'
+import { listExternalSystems, updateExternalSystem } from '@/services/integrations.service'
 import { randomBytes } from 'crypto'
 import type { WebSocketManager } from '@/ws'
 
@@ -1286,6 +1287,182 @@ router.post('/settings/backup', adminAuthMiddleware, async (req: Request, res: R
     errorHandler(error as any, req, res, () => {})
   }
 })
+
+router.get('/integrations/systems', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+      return
+    }
+
+    res.status(200).json({
+      systems: listExternalSystems().map((system) => ({
+        ...system,
+        metrics: {
+          linkedUsers: 0,
+          requests24h: 0,
+          lastSeenAt: null,
+        },
+      })),
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.post(
+  '/integrations/systems/:system/authorize',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const result = updateExternalSystem(String(req.params.system || ''), {
+        authorizationState: 'AUTHORIZED',
+      })
+
+      if (!result) {
+        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      await writeAudit({
+        actor,
+        action: 'INTEGRATION_SYSTEM_AUTHORIZE',
+        targetType: 'EXTERNAL_SYSTEM',
+        targetId: result.next.system,
+        metadata: {
+          previousState: result.previous.authorizationState,
+          nextState: result.next.authorizationState,
+          allowedScopes: result.next.allowedScopes,
+        },
+      })
+
+      res.status(200).json({
+        message: 'External system authorized',
+        system: result.next,
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
+
+router.post(
+  '/integrations/systems/:system/block',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const result = updateExternalSystem(String(req.params.system || ''), {
+        authorizationState: 'BLOCKED',
+      })
+
+      if (!result) {
+        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      await writeAudit({
+        actor,
+        action: 'INTEGRATION_SYSTEM_BLOCK',
+        targetType: 'EXTERNAL_SYSTEM',
+        targetId: result.next.system,
+        metadata: {
+          previousState: result.previous.authorizationState,
+          nextState: result.next.authorizationState,
+          allowedScopes: result.next.allowedScopes,
+        },
+      })
+
+      res.status(200).json({
+        message: 'External system blocked',
+        system: result.next,
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
+
+router.patch(
+  '/integrations/systems/:system',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const state = String(req.body?.authorizationState || '')
+        .trim()
+        .toUpperCase()
+      const authorizationState =
+        state === 'AUTHORIZED' || state === 'LOG_ONLY' || state === 'BLOCKED' ? state : undefined
+
+      const result = updateExternalSystem(String(req.params.system || ''), {
+        authorizationState,
+        displayName: req.body?.displayName,
+        notes: req.body?.notes,
+        allowedScopes: req.body?.allowedScopes,
+      })
+
+      if (!result) {
+        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      await writeAudit({
+        actor,
+        action: 'INTEGRATION_SYSTEM_UPDATE',
+        targetType: 'EXTERNAL_SYSTEM',
+        targetId: result.next.system,
+        metadata: {
+          previousState: result.previous.authorizationState,
+          nextState: result.next.authorizationState,
+          previousScopes: result.previous.allowedScopes,
+          nextScopes: result.next.allowedScopes,
+          previousDisplayName: result.previous.displayName,
+          nextDisplayName: result.next.displayName,
+        },
+      })
+
+      res.status(200).json({
+        message: 'External system updated',
+        system: result.next,
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
 
 router.post('/users/:userId/promote', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
