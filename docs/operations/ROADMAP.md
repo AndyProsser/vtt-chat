@@ -275,6 +275,15 @@ Milestone checkpoints and target validation:
     - Expose telemetry/diagnostic sink retention + rotation controls through admin settings workflows.
     - Keep logs UI interaction coverage green for filter/sort/pagination/detail surfaces.
 
+  - Admin review findings now tracked as explicit Stage 10 tasks:
+    - Extract oversized admin pages into focused components/hooks: `CampaignManagement.tsx`, `Settings.tsx`, `UserManagement.tsx`, `Logs.tsx`.
+    - Remaining extraction/debt focus: split oversized pages into focused components/hooks while preserving existing operation coverage.
+
+  - Stage 10 UI completion delivered (current increment):
+    - `admin/src/pages/Analytics.tsx` placeholder replaced with telemetry-backed analytics workflows and route-level loading/error handling.
+    - `admin/src/pages/Dashboard.tsx` scaffold note removed with explicit telemetry data-provenance messaging.
+    - `admin/src/pages/PlatformStatus.tsx` chart placeholders replaced by real telemetry trend chart components.
+
 - **Stage 10.5: UI Style Externalization Workstream (Ongoing)**
   - Scope: progressively migrate inline styles to external stylesheet files (`styles/`) where practical, starting with Stage 10 admin surfaces and all newly touched components.
   - Validation targets: new/updated Stage 10 components avoid inline `style={{ ... }}` unless styles must be computed dynamically at runtime; preserve visual parity for theme/responsive/interaction states; run lint/build/test checks after extraction batches.
@@ -298,6 +307,14 @@ Stage 11 frontend execution tasks:
 - Complete command-center left-rail participant status visibility (DM/player presence + speaking/muted/condition state).
 - Replace remaining Stage 11 command-center placeholder surfaces (search/journal/history tabs) with real workflows.
 - Continue Stage 11 frontend CSS externalization by migrating remaining non-command-center inline surfaces to dedicated stylesheets with parity checks.
+- Frontend review findings now tracked as explicit Stage 11 tasks:
+  - Continue decomposition of oversized frontend session components (`SessionInit.tsx`, `DMAudioControls.tsx`) into focused subcomponents/hooks.
+  - Remove right-rail placeholder copy in `SessionInit` for `search`, `journal`, and `history` tabs by implementing functional surfaces.
+  - Close baseline placeholder component debt in metadata/audio/ui modules:
+    - metadata: `MetadataCard.tsx`, `MetadataTimeline.tsx`
+    - audio: `EnvironmentPanel.tsx`, `ConditionsPanel.tsx`, `DMVoicePanel.tsx`, `AudioStateSlideout.tsx`
+    - UI primitives: `Button.tsx`, `Icon.tsx`, `Panel.tsx`
+  - Resolve placeholder utility/type modules (`frontend/src/types/*.types.ts`, `frontend/src/utils/api.ts`, `frontend/src/utils/format.ts`, `frontend/src/utils/ws-events.ts`) by implementing concrete contracts or removing unused stubs.
 
 Completed in latest Stage 11 increment:
 

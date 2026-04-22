@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
 import { getJson } from '../utils/api'
 
 interface DashboardTelemetry {
@@ -53,74 +54,62 @@ export default function Dashboard() {
       {error && <p className="admin-inline-error">{error}</p>}
 
       <div className="admin-card-grid three-col">
-        <article className="admin-card metric">
-          <h3>Active Users</h3>
-          <p className="metric-value">{data?.activeUsers ?? '--'}</p>
-          <small>Live WebSocket connections</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Active Rooms</h3>
-          <p className="metric-value">{data?.activeRooms ?? '--'}</p>
-          <small>Sessions currently active</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Recent Errors</h3>
-          <p className="metric-value">{data?.recentErrors ?? '--'}</p>
-          <small>Last 24 hours</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>System Load</h3>
-          <p className="metric-value">
-            {typeof data?.systemLoadPercent === 'number' ? `${data.systemLoadPercent}%` : '--'}
-          </p>
-          <small>Approximate process load</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Message Throughput</h3>
-          <p className="metric-value">
-            {typeof data?.messageThroughputPerMinute === 'number'
+        <TelemetryMetricCard
+          title="Active Users"
+          value={data?.activeUsers ?? '--'}
+          subtitle="Live WebSocket connections"
+        />
+        <TelemetryMetricCard
+          title="Active Rooms"
+          value={data?.activeRooms ?? '--'}
+          subtitle="Sessions currently active"
+        />
+        <TelemetryMetricCard
+          title="Recent Errors"
+          value={data?.recentErrors ?? '--'}
+          subtitle="Last 24 hours"
+        />
+        <TelemetryMetricCard
+          title="System Load"
+          value={typeof data?.systemLoadPercent === 'number' ? `${data.systemLoadPercent}%` : '--'}
+          subtitle="Approximate process load"
+        />
+        <TelemetryMetricCard
+          title="Message Throughput"
+          value={
+            typeof data?.messageThroughputPerMinute === 'number'
               ? `${data.messageThroughputPerMinute}/min`
-              : '--'}
-          </p>
-          <small>Messages in last minute</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Storage Usage</h3>
-          <p className="metric-value">
-            {typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'}
-          </p>
-          <small>Heap usage proxy</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Total Users</h3>
-          <p className="metric-value">{data?.totalUsers ?? '--'}</p>
-          <small>Persisted user records</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Suspended Users</h3>
-          <p className="metric-value">{data?.suspendedUsers ?? '--'}</p>
-          <small>Currently inactive by moderation</small>
-        </article>
-
-        <article className="admin-card metric">
-          <h3>Moderation Actions</h3>
-          <p className="metric-value">{data?.recentModerationActions ?? '--'}</p>
-          <small>Last 24 hours</small>
-        </article>
+              : '--'
+          }
+          subtitle="Messages in last minute"
+        />
+        <TelemetryMetricCard
+          title="Storage Usage"
+          value={typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'}
+          subtitle="Heap usage proxy"
+        />
+        <TelemetryMetricCard
+          title="Total Users"
+          value={data?.totalUsers ?? '--'}
+          subtitle="Persisted user records"
+        />
+        <TelemetryMetricCard
+          title="Suspended Users"
+          value={data?.suspendedUsers ?? '--'}
+          subtitle="Currently inactive by moderation"
+        />
+        <TelemetryMetricCard
+          title="Moderation Actions"
+          value={data?.recentModerationActions ?? '--'}
+          subtitle="Last 24 hours"
+        />
       </div>
 
       <section className="admin-card">
-        <h3>Notes</h3>
+        <h3>Data Provenance</h3>
         <p>
-          This page is a design-aligned scaffold. Wire these cards to telemetry endpoints in a later
-          stage.
+          Metrics on this page are sourced from the authenticated <strong>/telemetry/dashboard</strong>{' '}
+          endpoint and refresh automatically every 15 seconds.
         </p>
       </section>
     </section>

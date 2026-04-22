@@ -291,6 +291,54 @@ body {
   color: var(--text-secondary);
 }
 
+.sparkline-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sparkline-chart-viewport {
+  min-height: 80px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: linear-gradient(180deg, transparent 0%, var(--accent-primary-soft) 100%);
+  padding: 8px;
+}
+
+.sparkline-chart-svg {
+  display: block;
+  width: 100%;
+  height: 64px;
+}
+
+.sparkline-chart-line {
+  stroke: var(--accent-primary);
+  stroke-width: 2;
+}
+
+.sparkline-chart-line-cpu {
+  stroke: var(--accent-warning);
+}
+
+.sparkline-chart-line-throughput {
+  stroke: var(--accent-success);
+}
+
+.sparkline-chart-empty {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.sparkline-chart-value {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .admin-actions-row {
   display: flex;
   gap: 8px;

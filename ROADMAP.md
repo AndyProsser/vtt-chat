@@ -472,6 +472,14 @@ Remaining scope:
 - Improve telemetry durability and queryability so admin views are backed by persistent signals rather than mixed in-memory/proxy data where possible.
 - Add dedicated admin backend authz/action tests and admin SPA interaction coverage for login, moderation, invites, logs, and future secure-ops workflows.
 - Promote Stage 10.3 durability hardening from initial implementation to production-grade operations controls (stream rotation jobs, archival/export policy hooks, restart/e2e verification).
+- Admin component extraction and placeholder closure tasks from latest review:
+  - Decompose oversized admin pages into reusable blocks and hooks, starting with `admin/src/pages/CampaignManagement.tsx` (~588 LOC), `admin/src/pages/Settings.tsx` (~388 LOC), `admin/src/pages/UserManagement.tsx` (~331 LOC), and `admin/src/pages/Logs.tsx` (~322 LOC).
+  - Remaining extraction/debt focus: split oversized pages into reusable hooks/components while preserving existing operation coverage.
+
+- Stage 10 UI completion delivered (current increment):
+  - `admin/src/pages/Analytics.tsx` now provides telemetry-backed analytics workflows with live loading/error handling.
+  - `admin/src/pages/Dashboard.tsx` scaffold-note debt removed and data provenance explicitly documented against telemetry contract.
+  - `admin/src/pages/PlatformStatus.tsx` now renders real telemetry trend charts instead of placeholder text.
 
 Milestone checkpoints:
 
@@ -548,6 +556,14 @@ Remaining scope:
   - Implement Stage 11 search/journal/history right-rail surfaces currently represented as placeholder copy in `SessionInit`.
   - Expand left-rail/status rendering for richer live participant states (presence + speaking/mute/condition summary).
   - Add dedicated frontend interaction tests for left-rail/room-selector/avatar-state behavior and role visibility rules.
+- Frontend component extraction and placeholder closure tasks from latest review:
+  - Continue decomposition of oversized session components, prioritizing `frontend/src/components/session/SessionInit.tsx` (~923 LOC) and `frontend/src/components/session/DMAudioControls.tsx` (~843 LOC) into focused view-model hooks and subcomponents.
+  - Replace right-rail placeholder copy paths in `SessionInit` for `search`, `journal`, and `history` tabs with functional Stage 11 surfaces.
+  - Resolve remaining baseline placeholder modules in frontend runtime surface areas, prioritizing:
+    - metadata: `frontend/src/components/metadata/MetadataCard.tsx`, `frontend/src/components/metadata/MetadataTimeline.tsx`
+    - audio command-center adjuncts: `frontend/src/components/audio/EnvironmentPanel.tsx`, `frontend/src/components/audio/ConditionsPanel.tsx`, `frontend/src/components/audio/DMVoicePanel.tsx`, `frontend/src/components/audio/AudioStateSlideout.tsx`
+    - shared UI primitives currently stubbed: `frontend/src/components/ui/Button.tsx`, `frontend/src/components/ui/Icon.tsx`, `frontend/src/components/ui/Panel.tsx`
+  - Replace placeholder utility/type stubs with concrete contracts or remove them if unused: `frontend/src/types/*.types.ts` placeholder files and `frontend/src/utils/api.ts`, `frontend/src/utils/format.ts`, `frontend/src/utils/ws-events.ts`.
 - Stage 11 frontend style externalization workstream:
   - Continue extracting remaining non-command-center inline `SessionInit` styles after initial campaign/session/session-list extraction.
   - Ensure new Stage 11 frontend components avoid inline `style={{...}}` unless runtime computation is required.

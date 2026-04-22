@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { SparklineChart } from '../components/SparklineChart'
+import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
 import { getJson } from '../utils/api'
 
 interface StatusTelemetry {
@@ -61,79 +63,70 @@ export default function PlatformStatus() {
       {error && <p className="admin-inline-error">{error}</p>}
 
       <div className="admin-card-grid three-col">
-        <article className="admin-card metric">
-          <h3>CPU</h3>
-          <p className="metric-value">
-            {typeof data?.cards.cpuPercent === 'number' ? `${data.cards.cpuPercent}%` : '--'}
-          </p>
-          <small>
-            Status:{' '}
-            {typeof data?.cards.cpuPercent === 'number'
+        <TelemetryMetricCard
+          title="CPU"
+          value={typeof data?.cards.cpuPercent === 'number' ? `${data.cards.cpuPercent}%` : '--'}
+          subtitle={`Status: ${
+            typeof data?.cards.cpuPercent === 'number'
               ? statusLabelFromPercent(data.cards.cpuPercent)
-              : '--'}
-          </small>
-        </article>
-        <article className="admin-card metric">
-          <h3>Memory</h3>
-          <p className="metric-value">
-            {typeof data?.cards.memoryPercent === 'number' ? `${data.cards.memoryPercent}%` : '--'}
-          </p>
-          <small>
-            Status:{' '}
-            {typeof data?.cards.memoryPercent === 'number'
+              : '--'
+          }`}
+        />
+        <TelemetryMetricCard
+          title="Memory"
+          value={
+            typeof data?.cards.memoryPercent === 'number' ? `${data.cards.memoryPercent}%` : '--'
+          }
+          subtitle={`Status: ${
+            typeof data?.cards.memoryPercent === 'number'
               ? statusLabelFromPercent(data.cards.memoryPercent)
-              : '--'}
-          </small>
-        </article>
-        <article className="admin-card metric">
-          <h3>Disk</h3>
-          <p className="metric-value">
-            {typeof data?.cards.diskPercent === 'number' ? `${data.cards.diskPercent}%` : '--'}
-          </p>
-          <small>
-            Status:{' '}
-            {typeof data?.cards.diskPercent === 'number'
+              : '--'
+          }`}
+        />
+        <TelemetryMetricCard
+          title="Disk"
+          value={typeof data?.cards.diskPercent === 'number' ? `${data.cards.diskPercent}%` : '--'}
+          subtitle={`Status: ${
+            typeof data?.cards.diskPercent === 'number'
               ? statusLabelFromPercent(data.cards.diskPercent)
-              : '--'}
-          </small>
-        </article>
-        <article className="admin-card metric">
-          <h3>Network</h3>
-          <p className="metric-value">
-            {typeof data?.cards.networkLatencyMs === 'number'
-              ? `${data.cards.networkLatencyMs}ms`
-              : '--'}
-          </p>
-          <small>Status: Healthy</small>
-        </article>
-        <article className="admin-card metric">
-          <h3>LiveKit</h3>
-          <p className="metric-value">{data?.cards.livekitStatus ?? '--'}</p>
-          <small>Status: Healthy</small>
-        </article>
-        <article className="admin-card metric">
-          <h3>Database</h3>
-          <p className="metric-value">{data?.cards.databaseStatus ?? '--'}</p>
-          <small>Status: Healthy</small>
-        </article>
+              : '--'
+          }`}
+        />
+        <TelemetryMetricCard
+          title="Network"
+          value={
+            typeof data?.cards.networkLatencyMs === 'number' ? `${data.cards.networkLatencyMs}ms` : '--'
+          }
+          subtitle="Status: Healthy"
+        />
+        <TelemetryMetricCard
+          title="LiveKit"
+          value={data?.cards.livekitStatus ?? '--'}
+          subtitle="Status: Healthy"
+        />
+        <TelemetryMetricCard
+          title="Database"
+          value={data?.cards.databaseStatus ?? '--'}
+          subtitle="Status: Healthy"
+        />
       </div>
 
       <div className="admin-card-grid two-col">
         <article className="admin-card">
           <h3>CPU Load (24h)</h3>
-          <p className="chart-placeholder">
-            {data?.charts.cpuLoad24h?.length
-              ? `Latest: ${data.charts.cpuLoad24h[data.charts.cpuLoad24h.length - 1].y}%`
-              : 'No data'}
-          </p>
+          <SparklineChart
+            points={data?.charts.cpuLoad24h || []}
+            colorClassName="sparkline-chart-line-cpu"
+            valueSuffix="%"
+          />
         </article>
         <article className="admin-card">
           <h3>Message Throughput (24h)</h3>
-          <p className="chart-placeholder">
-            {data?.charts.messageThroughput24h?.length
-              ? `Latest: ${data.charts.messageThroughput24h[data.charts.messageThroughput24h.length - 1].y}/min`
-              : 'No data'}
-          </p>
+          <SparklineChart
+            points={data?.charts.messageThroughput24h || []}
+            colorClassName="sparkline-chart-line-throughput"
+            valueSuffix="/min"
+          />
         </article>
       </div>
 

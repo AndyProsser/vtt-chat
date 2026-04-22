@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Dashboard from './pages/Dashboard'
+import Analytics from './pages/Analytics'
 import UserManagement from './pages/UserManagement'
 import CampaignManagement from './pages/CampaignManagement'
 import PlatformStatus from './pages/PlatformStatus'
@@ -12,7 +13,7 @@ import { useAuthStore } from './store'
 import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
 import './styles/App.css'
 
-type AdminPage = 'dashboard' | 'users' | 'campaigns' | 'status' | 'logs' | 'settings'
+type AdminPage = 'dashboard' | 'analytics' | 'users' | 'campaigns' | 'status' | 'logs' | 'settings'
 
 interface NavItem {
   key: AdminPage
@@ -21,6 +22,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'analytics', label: 'Analytics' },
   { key: 'users', label: 'Users' },
   { key: 'campaigns', label: 'Rooms & Campaigns' },
   { key: 'status', label: 'System Health' },
@@ -259,6 +261,8 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
+      case 'analytics':
+        return <Analytics />
       case 'users':
         return <UserManagement />
       case 'campaigns':
