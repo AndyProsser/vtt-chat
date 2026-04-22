@@ -37,7 +37,9 @@ Latest verification:
 - Current frontend verification: `9` test files / `36` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
 - Current backend verification: `13` passed + `1` skipped test files; `57` passing tests + `6` todo markers (`63` total).
-- Admin test coverage gap: current automated coverage is still centered on shared backend/frontend runtime slices; there are not yet dedicated admin route suites or admin SPA interaction suites covering Stage 8/10 workflows end-to-end.
+- Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
+- Current admin verification: `2` passed test files; `9` passing tests.
+- Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
 
 ### Stage Completion Checklist (At a Glance)
 
@@ -340,6 +342,8 @@ Dependencies before later stages:
 
 ## 5) Progress Log (Condensed)
 
+- 2026-04: Full verification snapshot: build ✅ (`npm run build` at repo root), lint ✅ (`npm run lint` at repo root), tests ✅ (backend `57` passing + `6` todo, frontend `36` passing, admin `9` passing).
+- 2026-04: Standardized Vitest coverage reporting delivered across backend/frontend/admin. Added per-package `test:coverage` scripts, root `test:coverage` aggregator, V8 coverage reporters (`text`, `html`, `json-summary`), and enforced baseline thresholds (backend: branches `18`, functions `24`, lines/statements `22`; frontend: branches `20`, functions/lines/statements `25`; admin: branches `6`, functions/lines/statements `7`).
 - 2026-04: Stage 9.1 started in frontend runtime. Added explicit three-panel command-center shell (left rail + center pane + right rail), role-aware right-rail tab visibility for DM/Player/Spectator, and right-rail open/close behavior. Added component coverage for persona matrix and panel toggles via `frontend/src/tests/components/CommandCenterFrame.test.tsx`; frontend verification now reports `7` files / `21` tests passing.
 - 2026-04: Stage 9.1 completed. Added toolbar action model backed by global `commandCenter` store slice, extracted `CampaignInfo`/`SystemToasts`/`LeftRailSummary` components, and extended responsive layout testing for desktop/tablet breakpoint transitions. Frontend verification now reports `7` files / `24` tests passing.
 - 2026-04: Stage 9.2 started with the first DM command-center audio control surface. Added API-backed DM audio controls (`DMAudioControls`) to the right-rail audio tab for room environment apply plus per-player mute/gain overrides, with DM-only gating and component tests. Frontend verification now reports `8` files / `27` tests passing.

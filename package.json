@@ -9,6 +9,8 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:admin": "npm --prefix admin run build",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "test": "npm --prefix backend run test && npm --prefix frontend run test && npm --prefix admin run test",
+    "test:coverage": "npm --prefix backend run test:coverage && npm --prefix frontend run test:coverage && npm --prefix admin run test:coverage",
     "format": "prettier --write .",
     "check": "npm run lint",
     "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update"

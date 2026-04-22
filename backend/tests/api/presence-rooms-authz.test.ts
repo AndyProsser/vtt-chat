@@ -93,6 +93,7 @@ describe('presence/rooms authz', () => {
       state: 'ONLINE',
       lastSeenAt: Date.now(),
     })
+    mockBroadcastEventToSession.mockClear()
   })
 
   it('denies non-members from reading session presence', async () => {
@@ -170,8 +171,6 @@ describe('presence/rooms authz', () => {
     })
     expect(response.body.ok).toBe(true)
   })
-})
-  mockBroadcastEventToSession.mockClear()
 
   it('emits ROOM:USER_JOINED event with movedBy field when DM moves user', async () => {
     const app = buildApp()
@@ -260,3 +259,4 @@ describe('presence/rooms authz', () => {
       movedBy: OTHER_ID,
     })
   })
+})

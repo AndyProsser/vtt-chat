@@ -21,7 +21,7 @@ import {
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
 import { PresenceState } from '@shared'
-import { ErrorCode } from '@shared'
+import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'

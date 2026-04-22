@@ -291,7 +291,9 @@ router.post('/:roomId/move-user', requireAuth, async (req: Request, res: Respons
 
     const session = await getSession(sessionId as UUID)
     if (!session) {
-      return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+      return res
+        .status(404)
+        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
     if (user.role !== Role.DM || session.dmId !== (user.userId as UUID)) {
@@ -301,7 +303,9 @@ router.post('/:roomId/move-user', requireAuth, async (req: Request, res: Respons
     const sessionUsers = await getSessionUsers(sessionId as UUID)
     const targetUser = sessionUsers.find((entry) => entry.id === (targetUserId as UUID))
     if (!targetUser) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Target user not in session' })
+      return res
+        .status(404)
+        .json({ code: ErrorCode.NOT_FOUND, message: 'Target user not in session' })
     }
 
     const presence = await getSessionPresence(sessionId as UUID)

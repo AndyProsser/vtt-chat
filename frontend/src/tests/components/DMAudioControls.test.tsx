@@ -535,17 +535,20 @@ describe('DMAudioControls', () => {
     fireEvent.drop(dropTarget, { dataTransfer })
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(`http://localhost:3000/api/rooms/${ROOM_B}/move-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer token',
-        },
-        body: JSON.stringify({
-          sessionId: SESSION_ID,
-          targetUserId: PLAYER_ID,
-        }),
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/rooms/${ROOM_B}/move-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token',
+          },
+          body: JSON.stringify({
+            sessionId: SESSION_ID,
+            targetUserId: PLAYER_ID,
+          }),
+        }
+      )
     })
 
     act(() => {

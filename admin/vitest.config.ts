@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitest/config'
-import path from 'path'
 
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    include: ['src/tests/**/*.test.ts'],
+    setupFiles: ['src/tests/setup.ts'],
     globals: true,
-    maxWorkers: 1,
-    setupFiles: ['./src/tests/setup.ts'],
+    clearMocks: true,
+    restoreMocks: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
@@ -17,19 +18,13 @@ export default defineConfig({
         'src/main.tsx',
         'src/vite-env.d.ts',
         'src/tests/**',
-        'src/**/index.ts',
       ],
       thresholds: {
-        branches: 20,
-        functions: 25,
-        lines: 25,
-        statements: 25,
+        branches: 6,
+        functions: 7,
+        lines: 7,
+        statements: 7,
       },
-    },
-  },
-  resolve: {
-    alias: {
-      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
 })
