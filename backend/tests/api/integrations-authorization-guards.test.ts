@@ -58,7 +58,7 @@ describe('external systems authorization guardrails', () => {
     expect(response.body.code).toBe('INTEGRATION_NOT_AUTHORIZED')
   })
 
-  it('returns not-implemented for authorized systems until Stage 13', async () => {
+  it('rejects incomplete guest-login payloads for authorized systems', async () => {
     const app = buildApp()
 
     updateExternalSystem('dndbeyond', { authorizationState: 'AUTHORIZED' })
@@ -67,8 +67,8 @@ describe('external systems authorization guardrails', () => {
       externalSystem: 'dndbeyond',
     })
 
-    expect(response.status).toBe(501)
-    expect(response.body.code).toBe('GUEST_AUTH_NOT_IMPLEMENTED')
+    expect(response.status).toBe(400)
+    expect(response.body.code).toBe('INVALID_GUEST_AUTH_REQUEST')
   })
 
   it('rejects blocked systems for external log ingestion', async () => {

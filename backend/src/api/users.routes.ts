@@ -69,6 +69,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl,
       role: profile.role,
+      authType: user.authType || 'FULL',
       createdAt: profile.createdAt,
     },
   })

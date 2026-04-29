@@ -11,6 +11,7 @@ import presenceRoutes from './presence.routes'
 import liveKitRoutes from './livekit.routes'
 import audioRoutes from './audio.routes'
 import telemetryRoutes from './telemetry.routes'
+import platformRoutes from './platform.routes'
 
 const router = Router()
 
@@ -30,6 +31,7 @@ router.get('/health', (_req: Request, res: Response) => {
  * Implemented routes
  */
 router.use('/auth', authRoutes)
+router.use('/platform', platformRoutes)
 router.use('/session', sessionRoutes)
 router.use('/chat', chatRoutes)
 router.use('/admin', adminRoutes)

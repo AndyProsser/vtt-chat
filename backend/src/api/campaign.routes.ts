@@ -12,6 +12,7 @@ import {
   joinCampaignForUser,
   listCampaignsForUser,
 } from '@/repositories/campaign.repository'
+import { validatePlayerInviteCode } from '@/services/guest-auth.service'
 
 const router = Router()
 
@@ -38,6 +39,20 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const campaigns = await listCampaignsForUser(user.userId as UUID)
   res.status(200).json({ campaigns })
+})
+
+router.get('/invite/:code/validate', async (req: Request, res: Response) => {
+  const code = String(req.params.code || '').trim()
+
+  if (!code) {
+    return res.status(400).json({
+      valid: false,
+      reason: 'INVITE_EXPIRED',
+    })
+  }
+
+  const result = await validatePlayerInviteCode(code)
+  return res.status(result.valid ? 200 : 404).json(result)
 })
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {

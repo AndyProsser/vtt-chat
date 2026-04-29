@@ -70,25 +70,25 @@ model PresenceSnapshot {
 }
 
 model User {
-  id                   String                 @id @default(uuid()) @db.Uuid
-  email                String?                @unique
-  username             String                 @unique
-  displayName          String
-  avatarUrl            String?
-  authType             AuthType               @default(FULL)
-  password             String? // null for guest accounts; required for admin operations
-  role                 Role                   @default(PLAYER)
-  adminRole            AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
-  isActive             Boolean                @default(true)
-  tokenInvalidBefore   DateTime?
-  campaignsDm          Campaign[]             @relation("CampaignCurrentDm")
-  campaignLinks        CampaignMembership[]
-  characters           Character[]
-  externalIdentities   ExternalIdentity[]
+  id                      String                 @id @default(uuid()) @db.Uuid
+  email                   String?                @unique
+  username                String                 @unique
+  displayName             String
+  avatarUrl               String?
+  authType                AuthType               @default(FULL)
+  password                String? // null for guest accounts; required for admin operations
+  role                    Role                   @default(PLAYER)
+  adminRole               AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive                Boolean                @default(true)
+  tokenInvalidBefore      DateTime?
+  campaignsDm             Campaign[]             @relation("CampaignCurrentDm")
+  campaignLinks           CampaignMembership[]
+  characters              Character[]
+  externalIdentities      ExternalIdentity[]
   linkedExternalCampaigns CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
-  portabilityArtifacts ImportExportArtifact[]
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
+  portabilityArtifacts    ImportExportArtifact[]
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
 
   @@index([username])
   @@index([email])
@@ -131,23 +131,23 @@ model CampaignMembership {
 }
 
 model Character {
-  id         String          @id @default(uuid()) @db.Uuid
-  userId     String          @db.Uuid
-  campaignId String          @db.Uuid
-  name       String
-  status     CharacterStatus @default(ALIVE)
-  race       String?
-  class      String?
-  subclass   String?
-  avatarUrl  String?
+  id             String          @id @default(uuid()) @db.Uuid
+  userId         String          @db.Uuid
+  campaignId     String          @db.Uuid
+  name           String
+  status         CharacterStatus @default(ALIVE)
+  race           String?
+  class          String?
+  subclass       String?
+  avatarUrl      String?
   externalSystem String?
-  externalId  String?
-  isActive   Boolean         @default(false)
-  metadata   Json?
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  externalId     String?
+  isActive       Boolean         @default(false)
+  metadata       Json?
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([userId])
   @@index([campaignId])

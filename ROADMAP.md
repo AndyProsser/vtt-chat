@@ -17,7 +17,7 @@ Mirror reference: Keep this file in sync with operations snapshot [docs/operatio
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-11 complete (baseline + command-center + secure admin ops + knowledge surfaces), Stages 12-13 planned remaining scope**.
+Current overall status: **Stages 0-12 complete (baseline + command-center + secure admin ops + knowledge surfaces + portability), Stage 13 now in progress**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -29,6 +29,7 @@ Current overall status: **Stages 0-11 complete (baseline + command-center + secu
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 is now complete in the frontend runtime with command-center search, journal, and history panels backed by persisted chat, notes, and session-log data, with placeholder module debt removed across metadata/audio/ui/types/utils surfaces.
+- Stage 13 has now started in the backend runtime with public platform status + player invite validation endpoints, extension preflight, real guest-login/account-upgrade flow, and initial schema support for `authType`, `ExternalIdentity`, and `CampaignExternalLink`.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -54,22 +55,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status   | Completion     | Immediate focus                                        |
-| ----- | ----------------------------------- | -------- | -------------- | ------------------------------------------------------ |
-| 0     | Contract lock                       | Complete | ✅             | Maintain contract/source-of-truth discipline           |
-| 1     | Backend foundation                  | Complete | ✅             | Ongoing hardening + reliability                        |
-| 2     | Frontend transport spine            | Complete | ✅             | Keep reducer/event contract parity                     |
-| 3     | Session lifecycle                   | Complete | ✅             | Regression coverage during later stage work            |
-| 4     | Chat vertical slice                 | Complete | ✅             | UX/moderation polish as follow-up                      |
-| 5     | Notes vertical slice                | Complete | ✅             | Advanced workflows and audit polish                    |
-| 6     | Presence and rooms                  | Complete | ✅             | Multi-client e2e/load hardening                        |
-| 7     | Audio + LiveKit                     | Complete | ✅             | Multi-client e2e + persistence hardening               |
-| 8     | Admin + ops baseline                | Complete | ✅             | Stage 10 secure ops workflows + durable telemetry      |
-| 9     | Frontend command-center completion  | Complete | ✅             | Maintain regression coverage during Stage 10+ work     |
-| 10    | Admin UI feature completion         | Complete | ✅             | Stage 11 knowledge surfaces + Stage 13 guest auth prep |
-| 11    | Metadata/journal/history/search     | Complete | ✅             | Maintain coverage + contract parity                    |
-| 12    | Import/export + recordings metadata | Complete | ✅             | Maintain schema + portability regression coverage      |
-| 13    | Extension + guest auth integration  | Planned  | ⬜ Not started | Guest auth, invite flow, external identity, VTT bridge |
+| Stage | Area                                | Status      | Completion | Immediate focus                                            |
+| ----- | ----------------------------------- | ----------- | ---------- | ---------------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅         | Maintain contract/source-of-truth discipline               |
+| 1     | Backend foundation                  | Complete    | ✅         | Ongoing hardening + reliability                            |
+| 2     | Frontend transport spine            | Complete    | ✅         | Keep reducer/event contract parity                         |
+| 3     | Session lifecycle                   | Complete    | ✅         | Regression coverage during later stage work                |
+| 4     | Chat vertical slice                 | Complete    | ✅         | UX/moderation polish as follow-up                          |
+| 5     | Notes vertical slice                | Complete    | ✅         | Advanced workflows and audit polish                        |
+| 6     | Presence and rooms                  | Complete    | ✅         | Multi-client e2e/load hardening                            |
+| 7     | Audio + LiveKit                     | Complete    | ✅         | Multi-client e2e + persistence hardening                   |
+| 8     | Admin + ops baseline                | Complete    | ✅         | Stage 10 secure ops workflows + durable telemetry          |
+| 9     | Frontend command-center completion  | Complete    | ✅         | Maintain regression coverage during Stage 10+ work         |
+| 10    | Admin UI feature completion         | Complete    | ✅         | Stage 11 knowledge surfaces + Stage 13 guest auth prep     |
+| 11    | Metadata/journal/history/search     | Complete    | ✅         | Maintain coverage + contract parity                        |
+| 12    | Import/export + recordings metadata | Complete    | ✅         | Maintain schema + portability regression coverage          |
+| 13    | Extension + guest auth integration  | In progress | 🟨 Started | Spectator path, browse flow, frontend guest UX, VTT bridge |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -791,7 +792,7 @@ Exit criteria:
 
 ### Stage 13: Extension and Guest Auth Integration
 
-Status: **Planned**
+Status: **In progress**
 
 Goal:
 
@@ -803,6 +804,22 @@ Design reference: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md), 
 ---
 
 **Stage 13.1: Backend Guest Auth, Spectator Access, and Invite Flow**
+
+Completed so far:
+
+- Implemented `GET /api/platform/status` public platform snapshot endpoint.
+- Implemented `GET /api/campaigns/invite/:code/validate` public player-invite validation endpoint.
+- Implemented `POST /api/auth/extension/preflight` with `accountStatus` / `suggestedFlow` response branches.
+- Replaced the Stage 13 guest-login stub with a real `POST /api/auth/extension/guest-login` flow gated by external-system authorization.
+- Implemented `POST /api/auth/upgrade` for guest-to-full account upgrade.
+- Added initial Prisma schema/runtime support for `User.authType`, `ExternalIdentity`, `Campaign.inviteActive`, `CampaignExternalLink`, and external character linkage fields.
+- Added backend route coverage for platform status, invite validation, preflight, guest login, and guest account upgrade.
+
+Remaining in this slice:
+
+- Spectator invite validation, guest spectator join, waitlist, and browse endpoints.
+- Reduced-lifetime guest token policy and richer guest/full-account merge rules.
+- Campaign-level spectator and sync-policy fields plus associated guardrails.
 
 - Scope: All backend endpoints required for player guest auth (extension) and spectator access (web). Includes spectator policy enforcement, slot management, and waitlist.
 - Prerequisite: Stage 10.4 external system authorization panel must be complete so production systems are gated from day one.
@@ -924,11 +941,11 @@ Exit criteria:
 
 Priority 1:
 
-- Stage 11 frontend command-center completion: avatar overlays, room selector UX, left-rail status visibility, and CSS externalization.
+- Stage 13.1 backend completion: spectator guest path, waitlist/browse endpoints, and tighter guest-token policy.
 
 Priority 2:
 
-- Stage 13 guest-auth preparation: extension bridge contracts, external identity wiring, and guarded rollout sequencing.
+- Stage 13 frontend/extension continuation: guest UX, extension contract wiring, and guarded rollout sequencing.
 
 Priority 3:
 
@@ -991,6 +1008,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-04: Stage 13 started in backend runtime. Added `GET /api/platform/status`, `GET /api/campaigns/invite/:code/validate`, `POST /api/auth/extension/preflight`, real `POST /api/auth/extension/guest-login`, and `POST /api/auth/upgrade`; added schema/runtime foundations for `authType`, `ExternalIdentity`, `CampaignExternalLink`, and external character linkage; backend verification now reports `19` passed test files, `92` passing tests, and clean backend build.
 
 - 2026-04: Stage 10.2 kickoff delivered. Added authenticated admin campaign operations endpoints (`GET /api/admin/campaigns`, `GET /api/admin/campaigns/:campaignId/rooms`, `POST /api/admin/campaigns/:campaignId/sessions/:sessionId/end`) and replaced static `Rooms & Campaigns` page content with live list/detail/action workflows. Style extraction rule preserved via dedicated external stylesheet for the activated page.
 - 2026-04: Stage 10.2 expansion pass delivered. Added campaign archive/restore and room move-player admin endpoints with audit entries, added dedicated admin interaction tests for live `Rooms & Campaigns` filter/selection/end-session flows (success/failure), and activated `Settings` with backend-backed save/backup workflows using externalized stylesheet rules.

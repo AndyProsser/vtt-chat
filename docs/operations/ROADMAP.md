@@ -17,7 +17,7 @@ Mirror reference: Keep this operations snapshot in sync with primary roadmap [RO
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-11 complete (baseline + command-center + secure admin ops + knowledge surfaces), Stages 12-13 planned remaining scope**.
+Current overall status: **Stages 0-12 complete, with Stage 13 now in progress on the backend guest-auth foundation**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -50,22 +50,22 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status   | Completion     | Immediate focus                                    |
-| ----- | ----------------------------------- | -------- | -------------- | -------------------------------------------------- |
-| 0     | Contract lock                       | Complete | ✅             | Maintain contract/source-of-truth discipline       |
-| 1     | Backend foundation                  | Complete | ✅             | Ongoing hardening + reliability                    |
-| 2     | Frontend transport spine            | Complete | ✅             | Keep reducer/event contract parity                 |
-| 3     | Session lifecycle                   | Complete | ✅             | Regression coverage during later stage work        |
-| 4     | Chat vertical slice                 | Complete | ✅             | UX/moderation polish as follow-up                  |
-| 5     | Notes vertical slice                | Complete | ✅             | Advanced workflows and audit polish                |
-| 6     | Presence and rooms                  | Complete | ✅             | Multi-client e2e/load hardening                    |
-| 7     | Audio + LiveKit                     | Complete | ✅             | Multi-client e2e + persistence hardening           |
-| 8     | Admin + ops baseline                | Complete | ✅             | Stage 10 secure ops workflows + durable telemetry  |
-| 9     | Frontend command-center completion  | Complete | ✅             | Maintain regression coverage during Stage 10+ work |
-| 10    | Admin UI feature completion         | Complete | ✅             | Stage 11 knowledge surfaces + Stage 13 guest prep  |
-| 11    | Metadata/journal/history/search     | Complete | ✅             | Maintain coverage + contract parity                |
-| 12    | Import/export + recordings metadata | Complete | ✅             | Maintain portability and archival regression gates |
-| 13    | Extension/overlay integration       | Planned  | ⬜ Not started | VTT bridge contracts + privacy-safe sync           |
+| Stage | Area                                | Status      | Completion | Immediate focus                                    |
+| ----- | ----------------------------------- | ----------- | ---------- | -------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅         | Maintain contract/source-of-truth discipline       |
+| 1     | Backend foundation                  | Complete    | ✅         | Ongoing hardening + reliability                    |
+| 2     | Frontend transport spine            | Complete    | ✅         | Keep reducer/event contract parity                 |
+| 3     | Session lifecycle                   | Complete    | ✅         | Regression coverage during later stage work        |
+| 4     | Chat vertical slice                 | Complete    | ✅         | UX/moderation polish as follow-up                  |
+| 5     | Notes vertical slice                | Complete    | ✅         | Advanced workflows and audit polish                |
+| 6     | Presence and rooms                  | Complete    | ✅         | Multi-client e2e/load hardening                    |
+| 7     | Audio + LiveKit                     | Complete    | ✅         | Multi-client e2e + persistence hardening           |
+| 8     | Admin + ops baseline                | Complete    | ✅         | Stage 10 secure ops workflows + durable telemetry  |
+| 9     | Frontend command-center completion  | Complete    | ✅         | Maintain regression coverage during Stage 10+ work |
+| 10    | Admin UI feature completion         | Complete    | ✅         | Stage 11 knowledge surfaces + Stage 13 guest prep  |
+| 11    | Metadata/journal/history/search     | Complete    | ✅         | Maintain coverage + contract parity                |
+| 12    | Import/export + recordings metadata | Complete    | ✅         | Maintain portability and archival regression gates |
+| 13    | Extension/overlay integration       | In progress | 🟨 Started | Guest-auth backend completion + privacy-safe sync  |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -370,7 +370,7 @@ Completed Stage 12 scope:
 
 ### Stage 13: Extension and Overlay Integration (VTT Bridge)
 
-Status: **Planned**
+Status: **In progress**
 
 Operational impact:
 
@@ -382,7 +382,7 @@ Operational impact:
 
 Priority 1:
 
-- Stage 13 guest-auth preparation (extension contracts, external identity/linking, and controlled rollout guardrails).
+- Stage 13 backend completion (spectator guest path, waitlist/browse endpoints, and controlled rollout guardrails).
 
 Priority 2:
 
@@ -424,6 +424,8 @@ Dependencies before later stages:
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-04: Stage 13 backend foundation started. Added public platform status and player-invite validation routes, extension preflight, real guest-login and guest-upgrade routes, plus initial runtime/schema support for guest auth identities and external campaign linkage. Backend verification for this increment is green.
 
 - 2026-04: Stage 10.2 kickoff delivered. Activated `Rooms & Campaigns` with live backend campaign/session/room data and authenticated session-end action path; style externalization rule applied through a dedicated page stylesheet.
 - 2026-04: Stage 10.2 expansion delivered. Added backend campaign archive/restore + room move-player admin actions with audit hooks and authz coverage, added dedicated admin interaction tests for live Rooms & Campaigns flows (filters, selection, end-session success/failure), and activated Settings with authenticated backend save/backup workflows plus externalized page styling.

@@ -17,6 +17,7 @@ export const createUserToken = (
     userId,
     username,
     role: role as 'PLAYER' | 'DM',
+    authType: 'FULL',
     sessionId,
   }
 

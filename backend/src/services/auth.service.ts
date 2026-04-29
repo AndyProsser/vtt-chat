@@ -19,6 +19,7 @@ export interface TokenPayload {
   userId: UUID
   username: string
   role: 'DM' | 'PLAYER' | 'SPECTATOR'
+  authType?: 'FULL' | 'GUEST'
   sessionId?: UUID
   iat?: number
   exp?: number
@@ -47,6 +48,7 @@ export function createToken(payload: TokenPayload): string {
       userId: payload.userId,
       username: payload.username,
       role: payload.role,
+      authType: payload.authType || 'FULL',
       sessionId: payload.sessionId,
     } as any,
     config.jwt.secret,

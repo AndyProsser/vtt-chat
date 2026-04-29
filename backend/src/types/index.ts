@@ -185,6 +185,7 @@ export interface AuthToken {
   userId: string
   username: string
   role: 'PLAYER' | 'DM' | 'SPECTATOR'
+  authType: 'FULL' | 'GUEST'
   sessionId: string
   iat: number
   exp: number
