@@ -301,14 +301,18 @@ Stored transiently in Redis, but DB logs:
 
 Recordings are stored externally (S3, etc.) but metadata is stored in DB.
 
-### **Recording**
+### **RecordingMetadata**
 
 - `campaignId`, `sessionId`, `roomId`
-- `type` (AUDIO, VIDEO, TEXT)
-- `url`
+- `title`
+- `storageKey`
+- `sourceUrl`
+- `durationSeconds`
+- `startedAt`, `endedAt`
+- `journalSummary` (recap/linkage field used by admin archival workflow)
 - `metadata`
 
-### **Transcript**
+### **Transcript** (planned)
 
 - `recordingId`
 - `text`
@@ -443,13 +447,15 @@ Campaign import/export stores:
 - Recordings metadata
 - Settings
 
-### **ImportExport**
+### **ImportExportArtifact**
 
-- `type`
+- `type` (`CAMPAIGN_EXPORT`, `CAMPAIGN_IMPORT`, `OPERATIONS_EXPORT`)
 - `payload` (JSON)
-- `createdById`
+- `createdByUserId`
 - `campaignId` (optional)
-- `userId` (optional)
+- `formatVersion`
+- `metadata` (counts/context)
+- `createdAt`
 
 ---
 

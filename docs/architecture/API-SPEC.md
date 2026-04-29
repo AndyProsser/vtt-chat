@@ -29,7 +29,7 @@ It covers:
 
 All endpoints are **JSON‑based**, **stateless**, and **authenticated** via JWT or API keys.
 
-Current shipped runtime baseline through Stage 7 includes mounted route families for:
+Current shipped runtime baseline through Stage 12 includes mounted route families for:
 
 - `/api/auth`
 - `/api/session`
@@ -41,8 +41,9 @@ Current shipped runtime baseline through Stage 7 includes mounted route families
 - `/api/presence`
 - `/api/livekit`
 - `/api/audio`
+- `/api/admin`
 
-Placeholder route families such as metadata and export remain planned follow-up work.
+The metadata route family remains planned follow-up work.
 
 When this document describes broader campaign-scoped or future-state endpoints that are not mounted in the current backend, those sections should be read as target architecture.
 
@@ -56,11 +57,11 @@ Shipped baseline through Stage 7:
 - Route-level authorization for session membership and DM-only controls where implemented.
 - Stable baseline audio control API surface, including an audio state endpoint that is not yet backed by durable persisted recovery.
 
-Still planned or partially implemented beyond Stage 7:
+Still planned or partially implemented beyond Stage 12:
 
 - Full refresh-token lifecycle reflected in docs.
 - Complete campaign-scoped REST normalization for every conceptual endpoint in this file.
-- Search, recordings, journal/history, metadata, import/export, and other later-stage domains.
+- Search, richer journal/history domains, metadata timeline domains, and extension bridge domains.
 - Durable audio-state recovery and richer admin/ops workflows.
 
 ---
@@ -879,7 +880,6 @@ The following endpoint groups remain target architecture and are intentionally s
 - recordings and journal endpoints
 - search endpoints for messages, notes, and recordings
 - external log ingestion endpoints
-- import/export workflows
 - broader campaign-admin action endpoints
 - client telemetry ingestion and richer dependency/status endpoints
 
@@ -913,3 +913,21 @@ Still planned beyond the current baseline:
 - performance-series metrics endpoints
 - audit-log query endpoints
 - authenticated operational action endpoints beyond readonly telemetry
+
+---
+
+# 🧳 Admin Portability and Recording Metadata (Stage 12 Shipped)
+
+The following Stage 12 endpoints are mounted and validated in runtime:
+
+- `GET /api/admin/campaigns/:campaignId/export`
+- `POST /api/admin/campaigns/import`
+- `GET /api/admin/campaigns/:campaignId/recordings`
+- `POST /api/admin/campaigns/:campaignId/recordings`
+- `GET /api/admin/settings/backup/export`
+
+Operational notes:
+
+- Campaign import creates a new campaign and does not overwrite existing campaigns.
+- Export/import and recording metadata writes are audit logged through admin audit entries.
+- Portability payloads are persisted as artifacts for traceability/recovery workflows.

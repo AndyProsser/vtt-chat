@@ -139,6 +139,12 @@ export function useCampaignManagement() {
           if (!targetRoomId) {
             setTargetRoomId(roomForMember)
           }
+
+          setRecordingDraft((current) => ({
+            ...current,
+            sessionId: current.sessionId || response.session?.id || '',
+            roomId: current.roomId || roomForMember,
+          }))
         }
 
         setSelectedCampaignRooms(response)
@@ -154,8 +160,6 @@ export function useCampaignManagement() {
 
   useEffect(() => {
     if (!selectedCampaign) {
-      setRecordings([])
-      setRecordingsError(null)
       return
     }
 
@@ -180,17 +184,6 @@ export function useCampaignManagement() {
 
     void loadRecordings()
   }, [selectedCampaign])
-
-  useEffect(() => {
-    const nextSessionId = selectedCampaignRooms?.session?.id || ''
-    const nextRoomId = selectedCampaignRooms?.rooms?.[0]?.id || ''
-
-    setRecordingDraft((current) => ({
-      ...current,
-      sessionId: current.sessionId || nextSessionId,
-      roomId: current.roomId || nextRoomId,
-    }))
-  }, [selectedCampaignRooms])
 
   const refreshCampaigns = async () => {
     const refreshed = await requestJson<CampaignListResponse>(`/campaigns?${queryString}`, {

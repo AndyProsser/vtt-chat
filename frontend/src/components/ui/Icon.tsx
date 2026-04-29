@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react'
+import type { SVGProps, ReactElement } from 'react'
 
 type IconName = 'search' | 'journal' | 'history' | 'settings' | 'close'
 
@@ -16,7 +16,7 @@ export function Icon({ name, className = '', ...props }: IconProps) {
     strokeLinejoin: 'round' as const,
   }
 
-  const paths: Record<IconName, JSX.Element> = {
+  const paths: Record<IconName, ReactElement> = {
     search: (
       <>
         <circle cx="11" cy="11" r="7" />

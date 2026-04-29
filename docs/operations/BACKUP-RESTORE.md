@@ -152,6 +152,14 @@ Object storage (S3, MinIO, etc.) stores:
 
 # 📦 5. User‑Initiated Export / Import
 
+Current shipped admin workflows:
+
+- `GET /api/admin/campaigns/:campaignId/export`
+- `POST /api/admin/campaigns/import`
+- `GET /api/admin/campaigns/:campaignId/recordings`
+- `POST /api/admin/campaigns/:campaignId/recordings`
+- `GET /api/admin/settings/backup/export`
+
 Users can export:
 
 - Entire campaign
@@ -168,13 +176,12 @@ Users can export:
 ```json
 {
   "version": 1,
+  "exportedAt": "2026-04-29T00:00:00.000Z",
+  "sourceCampaignId": "...",
   "campaign": { ... },
+  "members": [ ... ],
   "characters": [ ... ],
-  "notes": [ ... ],
-  "chat": [ ... ],
   "sessions": [ ... ],
-  "journals": [ ... ],
-  "metadataCards": [ ... ],
   "recordings": [ ... ]
 }
 ```
@@ -191,6 +198,7 @@ Users can export:
 8. Insert journals
 9. Insert metadata cards
 10. Insert recording metadata
+11. Persist portability artifact + admin audit entry
 
 Import never overwrites existing campaigns.
 

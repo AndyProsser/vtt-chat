@@ -43,9 +43,9 @@ Latest verification:
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
 - Current frontend verification: `18` test files / `123` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `18` passed + `1` skipped test files; `82` passing tests + `6` todo markers (`88` total).
+- Current backend verification: `18` passed + `1` skipped test files; `87` passing tests + `6` todo markers (`93` total).
 - Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
-- Current admin verification: `8` passed test files; `43` passing tests.
+- Current admin verification: `8` passed test files; `47` passing tests.
 - Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
 
 ### Stage Completion Checklist (At a Glance)
@@ -64,7 +64,7 @@ Latest verification:
 | 9     | Frontend command-center completion  | Complete | ✅             | Maintain regression coverage during Stage 10+ work |
 | 10    | Admin UI feature completion         | Complete | ✅             | Stage 11 knowledge surfaces + Stage 13 guest prep  |
 | 11    | Metadata/journal/history/search     | Complete | ✅             | Maintain coverage + contract parity                |
-| 12    | Import/export + recordings metadata | Planned  | ⬜ Not started | Portability + archival workflows                   |
+| 12    | Import/export + recordings metadata | Complete | ✅             | Maintain portability and archival regression gates |
 | 13    | Extension/overlay integration       | Planned  | ⬜ Not started | VTT bridge contracts + privacy-safe sync           |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
@@ -353,11 +353,18 @@ Completed in latest Stage 11 increment:
 
 ### Stage 12: Import/Export, Recordings Metadata, and Archival Workflows
 
-Status: **Planned**
+Status: **Complete**
 
 Operational impact:
 
-- Enables campaign portability, retention, and durable archival operations.
+- Enables campaign portability, retention, and durable archival operations through authenticated admin workflows, persisted artifact tracking, and recording metadata storage.
+
+Completed Stage 12 scope:
+
+- Implemented admin campaign export/import endpoints with audit logging and persisted transfer artifacts.
+- Implemented persisted recording metadata model (`RecordingMetadata`) and admin recording metadata list/create endpoints.
+- Implemented operational backup export endpoint (`GET /api/admin/settings/backup/export`) with persisted operations artifact tracking.
+- Activated admin UI controls in campaign management/settings for export/import, recording metadata entry, and operations bundle capture.
 
 ---
 
@@ -375,29 +382,21 @@ Operational impact:
 
 Priority 1:
 
-- Stage 11 frontend command-center completion (avatar overlay, room selector, participant status UX, and CSS externalization).
+- Stage 13 guest-auth preparation (extension contracts, external identity/linking, and controlled rollout guardrails).
 
 Priority 2:
 
-- Stage 13 guest-auth preparation (extension contracts, external identity/linking, and controlled rollout guardrails).
+- Cross-stage observability hardening (telemetry durability operations, export/rotation controls, and restart verification).
 
 Priority 3:
 
-- Cross-stage observability hardening (telemetry durability operations, export/rotation controls, and restart verification).
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
 
 Priority 4:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
-
-Priority 5:
-
 - Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
-Priority 6:
-
-- Stage 12/13 knowledge + extension integration after Stage 10.4 external system authorization.
-
-Priority 7:
+Priority 5:
 
 - Stage 9 regression hardening while Stage 10/11 scope expands.
 
@@ -412,7 +411,7 @@ Key risks:
 - In-memory admin log history and WS recovery state are not durable across process restarts.
 - Admin-specific automated coverage remains thinner than core runtime slices.
 - UI specification breadth creates delivery/consistency risk without stage-specific checkpoints (layout, theming, motion, loading, error handling, recovery).
-- Several documented domains (metadata timeline, journal/history/search, import/export, recordings metadata, extension bridge) remain planned rather than closed runtime slices.
+- Metadata timeline and extension bridge domains remain planned rather than closed runtime slices.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
 - Custom-share recipient UX depends on session membership hydration (users appear after joining session).
 - Prisma schema is updated, but migration history is not yet committed; DB rollout consistency risk remains.
