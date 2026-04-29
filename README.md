@@ -104,7 +104,7 @@ vtt-chat/
   admin/      — React SPA (sysadmin panel)
   shared/     — Shared TypeScript types, event contracts, validators
   docs/       — Full architecture, design, and API documentation
-  install.sh  — Ubuntu Server home deployment script
+  infra/      — Deployment/runtime infrastructure configs and helper scripts
 ```
 
 The browser extension lives in a separate repository: **[AndyProsser/vtt-chat-extension](https://github.com/AndyProsser/vtt-chat-extension)**
@@ -113,7 +113,7 @@ The browser extension lives in a separate repository: **[AndyProsser/vtt-chat-ex
 
 ## Quick Start — Self-Hosting on Ubuntu Server
 
-VTT-Chat is designed to run on a home server or small VPS. The `install.sh` script handles all dependencies and initial configuration on Ubuntu Server 22.04+.
+VTT-Chat is designed to run on a home server or small VPS. The `infra/scripts/install.sh` script handles all dependencies and initial configuration on Ubuntu Server 22.04+.
 
 **Before you start, you will need:**
 
@@ -123,15 +123,15 @@ VTT-Chat is designed to run on a home server or small VPS. The `install.sh` scri
 ### 1. Run the installer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/AndyProsser/vtt-chat/main/install.sh | sudo bash -s setup
+curl -fsSL https://raw.githubusercontent.com/AndyProsser/vtt-chat/main/infra/scripts/install.sh | sudo bash -s setup
 ```
 
-This installs Docker, Caddy, and UFW; downloads the latest release; and writes a config file at `/opt/vtt-chat/install-config.yml`.
+This installs Docker, Caddy, and UFW; downloads the latest release; and writes a config file at `/opt/vtt-chat/infra/install-config.yml`.
 
 ### 2. Edit the config
 
 ```bash
-sudo nano /opt/vtt-chat/install-config.yml
+sudo nano /opt/vtt-chat/infra/install-config.yml
 ```
 
 Set your domain name at minimum. Passwords marked `auto` are generated randomly on first run.

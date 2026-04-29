@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$INSTALL_DIR/install-config.yml"
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+CONFIG_FILE="$INSTALL_DIR/infra/install-config.yml"
 REPO_NAME="${REPO_NAME:-AndyProsser/vtt-chat}"
 BRANCH="${BRANCH:-main}"
 REPO_ARCHIVE_URL="${REPO_ARCHIVE_URL:-https://codeload.github.com/${REPO_NAME}/tar.gz/${BRANCH}}"
@@ -117,6 +117,7 @@ EOF
 
 function generate_caddyfile() {
   mkdir -p "$INSTALL_DIR/caddy/certs"
+  mkdir -p "$INSTALL_DIR/infra/caddy"
 
   if [[ -z "$DOMAIN" ]]; then
     if [[ "$USE_SELF_SIGNED" == "true" ]]; then
@@ -128,7 +129,7 @@ function generate_caddyfile() {
         -subj "/CN=vtt-chat"
     fi
 
-    cat <<EOF >"$INSTALL_DIR/Caddyfile"
+    cat <<EOF >"$INSTALL_DIR/infra/caddy/Caddyfile"
 https://:${HTTPS_PORT} {
   tls /certs/selfsigned.crt /certs/selfsigned.key
   encode gzip
@@ -148,7 +149,7 @@ https://:${HTTPS_PORT} {
 }
 EOF
   else
-    cat <<EOF >"$INSTALL_DIR/Caddyfile"
+    cat <<EOF >"$INSTALL_DIR/infra/caddy/Caddyfile"
 https://${DOMAIN}:${HTTPS_PORT} {
   tls {
     dns ${DNS_PROVIDER}
@@ -241,7 +242,7 @@ services:
     ports:
       - "${HTTPS_PORT}:${HTTPS_PORT}"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./caddy/certs:/certs
     depends_on:
       - backend
@@ -319,9 +320,9 @@ function update() {
     trap 'rm -rf "$tmpdir"' EXIT
     curl -fsSL "$REPO_ARCHIVE_URL" | tar -xz --strip-components=1 -C "$tmpdir"
     rsync -a --delete \
-      --exclude 'install-config.yml' \
+      --exclude 'infra/install-config.yml' \
       --exclude '.env' \
-      --exclude 'Caddyfile' \
+      --exclude 'infra/caddy/Caddyfile' \
       --exclude 'caddy/certs' \
       --exclude 'backend/.env' \
       --exclude 'frontend/.env' \

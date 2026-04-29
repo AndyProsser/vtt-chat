@@ -105,7 +105,7 @@ services:
       - '7881-7980:7881-7980/udp'
       - '7881-7980:7881-7980/tcp'
     volumes:
-      - ./livekit.dev.yaml:/etc/livekit.yaml
+      - ./infra/livekit/livekit.dev.yaml:/etc/livekit.yaml
     networks:
       - vttnet
 
@@ -116,7 +116,7 @@ services:
     ports:
       - '8080:8080'
     volumes:
-      - ./Caddyfile.dev:/etc/caddy/Caddyfile
+      - ./infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
     depends_on:
       - backend
       - frontend

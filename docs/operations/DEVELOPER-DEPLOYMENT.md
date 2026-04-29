@@ -312,11 +312,11 @@ vtt-chat-server help       # Show available commands
 
 # 🎙️ 6. LiveKit Deployment
 
-containerized service\*\* with configuration via `livekit.yaml`.
+containerized service\*\* with configuration via `infra/livekit/livekit.yaml`.
 
 ### Configuration File
 
-A `livekit.yaml` file at the project root controls all LiveKit settings:
+A `infra/livekit/livekit.yaml` file controls all LiveKit settings:
 
 - **Signaling port:** 7880 (TCP/WebSocket)
 - **Media ports:** 7881–7980 (UDP + TCP for NAT fallback)
@@ -327,7 +327,7 @@ A `livekit.yaml` file at the project root controls all LiveKit settings:
 
 ### How It Works
 
-- Docker Compose mounts `livekit.yaml` into the container at `/etc/livekit.yaml`
+- Docker Compose mounts `infra/livekit/livekit.yaml` into the container at `/etc/livekit.yaml`
 - Both dev and production compose files use the same config file approach
 - The backend communicates with LiveKit via internal network (`http://livekit:7880`)
 - Clients connect via the exposed ports
@@ -341,7 +341,7 @@ The current setup is optimized for **voice-only** communication:
 - Reduces bandwidth and CPU usage
 - Suitable for TTT/RPG chat applications
 
-For details, see `livekit.yaml` in the project root.
+For details, see `infra/livekit/livekit.yaml`.
 
 ---
 
@@ -418,7 +418,7 @@ Add exception manually or use a domain with proper ACME certificates.
    ```
    sudo ss -tulpn | grep 7881
    ```
-2. Verify `livekit.yaml` is mounted correctly:
+2. Verify `infra/livekit/livekit.yaml` is mounted correctly:
    ```
    docker exec vttchat-livekit cat /etc/livekit.yaml
    ```
@@ -440,7 +440,7 @@ Add exception manually or use a domain with proper ACME certificates.
 
 ### LiveKit config not being read
 
-- Ensure `livekit.yaml` exists in project root
+- Ensure `infra/livekit/livekit.yaml` exists
 - Verify it's a valid YAML file (check indentation)
 - Restart the container:
   ```

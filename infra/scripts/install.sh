@@ -2,12 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 INSTALL_DIR="/opt/vtt-chat"
 TARGET_USER="${SUDO_USER:-$USER}"
 REPO_NAME="${REPO_NAME:-AndyProsser/vtt-chat}"
 BRANCH="${BRANCH:-main}"
 REPO_ARCHIVE_URL="${REPO_ARCHIVE_URL:-https://codeload.github.com/${REPO_NAME}/tar.gz/${BRANCH}}"
-CONFIG_FILE="$INSTALL_DIR/install-config.yml"
+CONFIG_FILE="$INSTALL_DIR/infra/install-config.yml"
 
 function show_help() {
   cat <<HELP
@@ -70,7 +71,7 @@ function download_source() {
   echo "[6/8] Installing VTT-Chat files..."
   mkdir -p "$INSTALL_DIR"
 
-  if [[ -d "$SCRIPT_DIR/backend" && -d "$SCRIPT_DIR/frontend" && -f "$SCRIPT_DIR/install-config.yml" ]]; then
+  if [[ -d "$REPO_ROOT/backend" && -d "$REPO_ROOT/frontend" && -f "$REPO_ROOT/infra/install-config.yml" ]]; then
     echo "Copying local repository files into $INSTALL_DIR..."
     rsync -a --delete \
       --exclude '.git' \
@@ -79,12 +80,12 @@ function download_source() {
       --exclude 'frontend/node_modules' \
       --exclude 'dist' \
       --exclude 'caddy/certs' \
-      --exclude 'install-config.yml' \
+      --exclude 'infra/install-config.yml' \
       --exclude 'config.yml' \
       --exclude '.env' \
       --exclude 'backend/.env' \
       --exclude 'frontend/.env' \
-      "$SCRIPT_DIR/" "$INSTALL_DIR/"
+      "$REPO_ROOT/" "$INSTALL_DIR/"
   else
     echo "Downloading repository archive from $REPO_ARCHIVE_URL..."
     tmpdir=$(mktemp -d)
@@ -96,7 +97,7 @@ function download_source() {
       --exclude 'frontend/node_modules' \
       --exclude 'dist' \
       --exclude 'caddy/certs' \
-      --exclude 'install-config.yml' \
+      --exclude 'infra/install-config.yml' \
       --exclude 'config.yml' \
       --exclude '.env' \
       --exclude 'backend/.env' \
@@ -115,6 +116,7 @@ function write_install_config() {
   fi
 
   echo "[7/8] Writing default install-config.yml..."
+  mkdir -p "$INSTALL_DIR/infra"
   cat <<EOF >"$CONFIG_FILE"
 install_dir: $INSTALL_DIR
 https_port: 8443
@@ -139,7 +141,7 @@ EOF
 
 function make_scripts_executable() {
   echo "[8/8] Making server scripts executable..."
-  sudo chmod +x "$INSTALL_DIR/install.sh" "$INSTALL_DIR/server" "$INSTALL_DIR/scripts"/*.sh
+  sudo chmod +x "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/infra/scripts/server"
 }
 
 function setup() {
@@ -155,8 +157,8 @@ function setup() {
   echo "[Done] Bootstrapping complete."
   echo "Edit $CONFIG_FILE before running the stack."
   echo "Then build and start with:"
-  echo "  sudo $INSTALL_DIR/server build"
-  echo "  sudo $INSTALL_DIR/server start"
+  echo "  sudo $INSTALL_DIR/infra/scripts/server build"
+  echo "  sudo $INSTALL_DIR/infra/scripts/server start"
 }
 
 if [[ $# -eq 0 ]]; then

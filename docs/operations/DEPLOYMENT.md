@@ -156,7 +156,7 @@ services:
     command: >
       --config /livekit.yaml
     volumes:
-      - ./livekit/livekit.yaml:/livekit.yaml
+      - ./infra/livekit/livekit.yaml:/livekit.yaml
       - ./data/recordings:/recordings
 
   caddy:
@@ -167,7 +167,7 @@ services:
       - '443:443'
       - '7880:7880'
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./data/caddy:/data
       - ./data/caddy-config:/config
 ```
@@ -176,7 +176,7 @@ services:
 
 # 🔐 5. Caddy Configuration (HTTPS + Reverse Proxy)
 
-`Caddyfile`:
+`infra/caddy/Caddyfile`:
 
 ```
 yourdomain.com {
@@ -213,7 +213,7 @@ Caddy automatically:
 
 # 🎧 6. LiveKit Configuration
 
-`livekit.yaml`:
+`infra/livekit/livekit.yaml`:
 
 ```yaml
 port: 7880

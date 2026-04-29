@@ -1,5 +1,5 @@
 # VTT-Chat installation configuration.
-# Edit these values before running ./install.sh setup.
+# Edit these values before running ./infra/scripts/install.sh setup.
 
 # Installation path for the VTT-Chat home server.
 install_dir: /opt/vtt-chat

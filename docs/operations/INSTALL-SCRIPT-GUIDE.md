@@ -174,7 +174,7 @@ The script supports optional flags:
 Example:
 
 ```
-./install.sh --domain mygame.net --dns-provider cloudflare --dns-token ABC123
+./infra/scripts/install.sh --domain mygame.net --dns-provider cloudflare --dns-token ABC123
 ```
 
 ---
@@ -220,8 +220,8 @@ After cloning the repo:
 
 ```
 cd vtt-chat
-chmod +x install.sh
-sudo ./install.sh
+chmod +x infra/scripts/install.sh
+sudo ./infra/scripts/install.sh
 ```
 
 The script will:
