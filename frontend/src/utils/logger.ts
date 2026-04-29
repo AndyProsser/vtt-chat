@@ -36,8 +36,29 @@ function getRuntimeLevelOverride(): LogLevel | null {
 
 function getPersistedLevelOverride(): LogLevel | null {
   if (typeof window === 'undefined') return null
+
+  const storage = getLevelStorage()
+  if (!storage) return null
+
   try {
-    return normalizeLevel(window.localStorage.getItem(LOG_LEVEL_KEY))
+    return normalizeLevel(storage.getItem(LOG_LEVEL_KEY))
+  } catch {
+    return null
+  }
+}
+
+function getLevelStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+
+  if (import.meta.env.MODE === 'test') {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    if (descriptor && !('value' in descriptor)) {
+      return null
+    }
+  }
+
+  try {
+    return globalThis.localStorage
   } catch {
     return null
   }
@@ -56,7 +77,7 @@ class Logger {
   private consoleEnabled = true
 
   constructor() {
-    this.level = this.resolveLevel()
+    this.level = getSafeFallbackLevel()
   }
 
   private resolveLevel(): LogLevel {
@@ -81,8 +102,10 @@ class Logger {
     this.level = level
     if (typeof window !== 'undefined') {
       window.__VTT_LOG_LEVEL__ = level
+      const storage = getLevelStorage()
+      if (!storage) return
       try {
-        window.localStorage.setItem(LOG_LEVEL_KEY, level)
+        storage.setItem(LOG_LEVEL_KEY, level)
       } catch {
         // Ignore storage failures in private/locked-down contexts.
       }
@@ -105,8 +128,10 @@ class Logger {
   clearPersistedLevel(): void {
     if (typeof window === 'undefined') return
     delete window.__VTT_LOG_LEVEL__
+    const storage = getLevelStorage()
+    if (!storage) return
     try {
-      window.localStorage.removeItem(LOG_LEVEL_KEY)
+      storage.removeItem(LOG_LEVEL_KEY)
     } catch {
       // Ignore storage failures.
     }

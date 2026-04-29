@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID, Role } from '@shared'
 import { LoginForm } from './components/auth/LoginForm'
-import { SessionInit } from './components/session/SessionInit'
-import { AudioPanel } from './components/audio/AudioPanel'
 import { useStore } from './hooks/useStore'
 import { cn } from './utils/cn'
+
+const SessionInit = lazy(async () => {
+  const module = await import('./components/session/SessionInit')
+  return { default: module.SessionInit }
+})
+
+const AudioPanel = lazy(async () => {
+  const module = await import('./components/audio/AudioPanel')
+  return { default: module.AudioPanel }
+})
 
 /**
  * App Component
@@ -292,21 +300,37 @@ export default function App() {
             </section>
           </>
         ) : (
-          <SessionInit
-            apiUrl={apiUrl}
-            wsUrl={wsUrl}
-            token={auth.token}
-            user={auth.user}
-            onSessionCreated={(sessionId) => {
-              void sessionId
-            }}
-          />
+          <Suspense
+            fallback={
+              <div className="rounded-ui-md border border-ui-border bg-ui-surface p-4">
+                Loading session surface...
+              </div>
+            }
+          >
+            <SessionInit
+              apiUrl={apiUrl}
+              wsUrl={wsUrl}
+              token={auth.token}
+              user={auth.user}
+              onSessionCreated={(sessionId) => {
+                void sessionId
+              }}
+            />
+          </Suspense>
         )}
       </main>
 
       {/* Audio bar — mounted once a session room is active */}
       {auth.token && currentSessionId && activeRoomId && (
-        <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
+        <Suspense
+          fallback={
+            <div className="border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-secondary">
+              Loading audio controls...
+            </div>
+          }
+        >
+          <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
+        </Suspense>
       )}
 
       {/* Footer */}

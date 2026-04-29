@@ -110,8 +110,8 @@ describe('App shell', () => {
 
     fireEvent.click(screen.getByText('Complete Login'))
 
-    expect(screen.getByText('Session Init Mounted: jwt-token:andy')).toBeTruthy()
-    expect(screen.getByText(`Audio Panel Mounted: ${sessionId}:${roomId}`)).toBeTruthy()
+    expect(await screen.findByText('Session Init Mounted: jwt-token:andy')).toBeTruthy()
+    expect(await screen.findByText(`Audio Panel Mounted: ${sessionId}:${roomId}`)).toBeTruthy()
     expect(screen.queryByText('Mock Login Form')).toBeNull()
   })
 

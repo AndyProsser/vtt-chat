@@ -2,19 +2,57 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+function getPackageName(id: string): string | null {
+  const normalized = id.split('node_modules/')[1]
+  if (!normalized) return null
+
+  const [scopeOrName, maybeName] = normalized.split('/')
+  if (!scopeOrName) return null
+
+  return scopeOrName.startsWith('@') && maybeName ? `${scopeOrName}/${maybeName}` : scopeOrName
+}
+
 function getVendorChunk(id: string): string | undefined {
-  if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+  const packageName = getPackageName(id)
+  if (!packageName) return undefined
+
+  if (packageName === 'react' || packageName === 'react-dom' || packageName === 'scheduler') {
     return 'vendor-react'
   }
-  if (id.includes('node_modules/zustand')) {
+
+  if (packageName === 'zustand') {
     return 'vendor-store'
   }
-  if (id.includes('node_modules/@livekit')) {
+
+  if (packageName === 'livekit-client' || packageName.startsWith('@livekit/')) {
     return 'vendor-livekit'
   }
-  if (id.includes('node_modules/@radix-ui') || id.includes('node_modules/clsx')) {
-    return 'vendor-ui'
+
+  if (packageName === '@radix-ui/react-dialog') {
+    return 'vendor-radix-dialog'
   }
+
+  if (packageName === '@radix-ui/react-tabs') {
+    return 'vendor-radix-tabs'
+  }
+
+  if (packageName === '@radix-ui/react-tooltip') {
+    return 'vendor-radix-tooltip'
+  }
+
+  if (packageName === '@radix-ui/react-separator') {
+    return 'vendor-radix-separator'
+  }
+
+  if (packageName === 'clsx' || packageName === 'tailwind-merge') {
+    return 'vendor-utils'
+  }
+
+  if (id.includes('node_modules/')) {
+    return 'vendor-misc'
+  }
+
+  return undefined
 }
 
 export default defineConfig({
