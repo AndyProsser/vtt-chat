@@ -50,17 +50,29 @@ The admin panel is **MUI‑based**, structured, and operational.
 
 ## **2.3 Folder Structure**
 
-```
-src/
-  core-ui/          # Radix + Tailwind components
-  admin/            # MUI components
-  personas/         # DM, Player, Spectator logic + UI wrappers
+The project uses separate frontend and admin applications.
+The target structure must respect that split instead of introducing a shared `src/admin/` inside the frontend app.
+
+```text
+frontend/src/
+  core-ui/          # Radix + Tailwind wrapper components
+  personas/         # DM, Player, Spectator UI providers and wrappers
   state/            # Zustand stores
-  tokens/           # CSS variables, theme definitions
-  components/       # Shared wrappers, utilities
+  tokens/           # CSS variables, token exports, theme utilities
+  components/       # Feature components composed from core-ui
   hooks/            # Shared hooks
   utils/            # Non-UI utilities
+
+admin/src/
+  components/       # MUI-based reusable admin components
+  features/         # Admin feature modules
+  pages/            # Route-level admin screens
+  theme.ts          # Custom MUI theme
+  utils/            # Non-UI utilities
 ```
+
+Migration to this structure should be incremental.
+Feature folders may continue to exist during the transition as long as import boundaries remain clear.
 
 ---
 
@@ -85,9 +97,10 @@ Tokens are implemented as **CSS variables** and mapped into Tailwind via the con
 
 ## **3.2 Light/Dark Mode**
 
-- Controlled via a root class (`.light` / `.dark`)
-- Tokens must switch automatically
-- No hardcoded colors
+- Target end state: controlled via a root class (`.light` / `.dark`)
+- During migration, existing `prefers-color-scheme` token definitions may remain until the root-class theme controller is implemented
+- Tokens must switch automatically once the root theme controller is in place
+- No hardcoded colors in migrated UI
 
 ## **3.3 Persona Accents**
 
@@ -119,7 +132,7 @@ Components must apply accents via persona wrappers, not inline logic.
 
 ## **4.2 Wrapping Pattern**
 
-Every Radix primitive must be wrapped in a project‑specific component:
+Every adopted Radix primitive must be wrapped in a project-specific component before use in feature code:
 
 ```
 core-ui/
@@ -172,7 +185,7 @@ Use component classes when:
 
 ## **6.1 Component Template**
 
-Every component must follow this structure:
+Every core UI wrapper component should follow this structure:
 
 ```
 import { cn } from "@/utils/cn";
@@ -221,7 +234,7 @@ Admin panel must remain fully isolated:
 Admin panel uses a custom MUI theme defined in:
 
 ```
-admin/theme.ts
+admin/src/theme.ts
 ```
 
 ## **7.3 Component Rules**
@@ -256,15 +269,116 @@ Any hardcoded:
 - shadows
 - transitions
 
-must be replaced with tokens.
+- must be replaced with tokens and framework-appropriate styling primitives.
+- Dynamic inline styles may remain when they are driven by runtime values and cannot be expressed safely through tokens or component props.
 
 ## **8.3 Replace legacy CSS with Tailwind**
 
-Legacy `.css` or `.scss` files must be removed unless layout‑critical.
+Legacy `.css` or `.scss` files in the frontend should be phased out as Tailwind-based equivalents land.
+Do not remove existing stylesheets until the replacement UI has shipped and been verified.
 
 ## **8.4 Admin UI must migrate to MUI**
 
-Any admin‑related UI using custom components must be replaced with MUI equivalents.
+Any admin-related UI in the separate `admin` application using custom components must be replaced with MUI equivalents.
+Admin migration should be page-by-page to avoid mixing framework adoption, layout rewrites, and feature refactors in a single change.
+
+## **8.5 Migration sequencing**
+
+Changes should land in this order:
+
+1. Align docs and migration rules
+2. Add framework infrastructure using current stable package releases only
+3. Normalize tokens and theme handling
+4. Add wrapper/component layers
+5. Migrate feature surfaces incrementally
+6. Remove deprecated CSS and component paths only after replacement verification
+
+## **8.6 Migration deliverables**
+
+The migration program should be delivered as explicit work packages.
+
+### **Deliverable D1 — Spec Alignment**
+
+- Design-system docs aligned to the current multi-app repository structure
+- Migration rules updated to require current stable package releases only
+- Theme migration path clarified from `prefers-color-scheme` to root theme classes
+- Roadmap and implementation docs updated to reference the new UI migration track
+
+### **Deliverable D2 — Framework Foundations**
+
+- Frontend has Tailwind and PostCSS configured
+- Frontend has initial Radix wrapper folders and utility helpers
+- Admin has MUI installed and `admin/src/theme.ts` created
+- Import boundaries are documented so frontend core UI and admin UI remain isolated
+
+### **Deliverable D3 — Token and Theme Normalization**
+
+- Existing frontend CSS variables are normalized into the target token contract
+- Tailwind theme mappings point to token-backed CSS variables
+- Admin theme tokens are represented in the MUI theme
+- Root theme class support is added without regressing current light/dark behavior
+
+### **Deliverable D4 — Primitive and Shell Migration**
+
+- Core Radix wrappers exist for the approved primitive set actually used by the app
+- Frontend shell/app-frame surfaces stop relying on hardcoded inline styles
+- Auth and entry surfaces use the new tokenized styling path
+- Admin shell layout, theme provider, and baseline controls are MUI-based
+
+### **Deliverable D5 — Feature Surface Migration**
+
+- High-use frontend surfaces are migrated incrementally: command center, notes, chat, audio, room controls
+- Admin pages are migrated page-by-page to MUI components
+- Persona-aware styling is applied through wrappers/providers instead of inline branching in reusable primitives
+
+### **Deliverable D6 — Cleanup and Enforcement**
+
+- Obsolete frontend CSS files are removed only after replacement verification
+- Deprecated custom admin controls are removed only after MUI replacements land
+- Docs, tests, and contributor guidance reflect the new framework split
+- Verification gates exist for architecture boundaries, accessibility, and theme behavior
+
+## **8.7 Acceptance criteria**
+
+Each deliverable is complete only when all relevant criteria below are met.
+
+### **D1 Acceptance Criteria**
+
+- No design doc instructs contributors to create a shared `src/admin/` inside the frontend app
+- All file-location references match the current repository layout
+- The migration order is documented consistently across design and roadmap docs
+
+### **D2 Acceptance Criteria**
+
+- Frontend installs and builds with Tailwind/PostCSS enabled
+- Admin installs and builds with MUI enabled
+- Only current stable package releases are introduced
+- No feature behavior changes are required to land the framework setup
+
+### **D3 Acceptance Criteria**
+
+- Frontend token definitions are source-of-truth driven and mapped into Tailwind
+- Admin theme values are defined through MUI theme configuration rather than ad hoc CSS drift
+- Light and dark theme behavior remains stable before and after theme-controller introduction
+
+### **D4 Acceptance Criteria**
+
+- Adopted Radix primitives are only consumed through project wrappers
+- Frontend shell and auth surfaces no longer depend on non-dynamic hardcoded inline styles
+- Admin shell renders through MUI theme/provider infrastructure
+- Accessibility behavior for focus, keyboard navigation, and announcements is preserved
+
+### **D5 Acceptance Criteria**
+
+- Migrated frontend features use tokens plus Tailwind or wrapper primitives instead of legacy CSS-first implementations
+- Migrated admin pages use MUI layout and form primitives instead of custom CSS-only controls
+- Persona-specific accents are applied without embedding persona logic inside shared primitive components
+
+### **D6 Acceptance Criteria**
+
+- Removed CSS/components have verified replacements in runtime and tests
+- Architecture rules are enforceable by code review and contributor guidance
+- Documentation references the current framework split and migration status accurately
 
 ---
 
@@ -296,6 +410,7 @@ Especially before:
 - Renaming files
 - Reorganizing folders
 - Changing token definitions
+- Replacing working CSS with framework code when there is no verified equivalent yet
 
 ---
 
@@ -304,11 +419,11 @@ Especially before:
 This file must remain at:
 
 ```
-AI-CONTEXT-DESIGN-CHANGES.md
+docs/changes/AI-CONTEXT-DESIGN-CHANGES.md
 ```
 
 The change‑tracking file must remain at:
 
 ```
-DESIGN-SYSTEM-CHANGES.md
+docs/changes/DESIGN-SYSTEM-CHANGES.md
 ```

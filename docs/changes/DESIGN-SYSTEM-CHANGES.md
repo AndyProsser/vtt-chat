@@ -1,9 +1,3 @@
-Here is your **initial, production‑ready `DESIGN-SYSTEM-CHANGES.md`**, aligned with the Modify AI Context rules and ready for GitHub Copilot to use as the authoritative change‑tracking log.
-
-It is intentionally minimal, structured, and ready to expand as Copilot begins making updates.
-
----
-
 # **DESIGN-SYSTEM-CHANGES.md**
 
 ### _Authoritative change‑tracking log for design system, architecture, and UI implementation_
@@ -42,6 +36,22 @@ The project is transitioning to a **dual‑UI architecture**:
 
 This initial version captures the starting point before Copilot begins applying migrations.
 
+## **0.2 Verified Current State**
+
+The current repository state before migration is:
+
+- Frontend UI uses CSS variables, CSS files, and some inline styles
+- Admin UI uses custom CSS and native React components
+- Tailwind is not yet installed in the frontend app
+- Radix UI is not yet installed in the frontend app
+- MUI is not yet installed in the admin app
+- Frontend and admin are separate applications and must remain separate
+
+## **0.3 Package Policy**
+
+Framework adoption must use current stable package releases only.
+Do not introduce alpha, beta, canary, preview, or release-candidate package versions during this migration unless explicitly approved.
+
 ---
 
 # **1. Summary of Context Changes**
@@ -65,8 +75,18 @@ This section lists changes made to the design system or AI context.
 - Updated component patterns to use Radix wrappers
 - Updated styling rules to use Tailwind + tokens
 - Updated persona logic to use wrapper providers
+- Updated file-location rules to match the existing multi-app repository layout
+- Updated theme rules to allow a staged migration from `prefers-color-scheme` to root theme classes
 
-### **1.3 Deprecated**
+### **1.3 Clarified in PR1**
+
+- Frontend and admin remain separate applications; there is no shared `src/admin/` inside the frontend app
+- `admin/src/theme.ts` is the target MUI theme location
+- Legacy CSS removal happens after replacement verification, not before
+- Radix wrapper rules apply to core UI primitives, not every feature component
+- Package adoption must stay on current stable releases
+
+### **1.4 Deprecated**
 
 - Deprecated custom modal/popover/dialog implementations
 - Deprecated inline styles
@@ -92,11 +112,11 @@ This section defines the code changes Copilot must apply to align the implementa
 
 ## **2.2 File-Level Changes**
 
-- Move all core UI components into `src/core-ui/`
-- Move all admin UI components into `src/admin/`
-- Move persona wrappers into `src/personas/`
-- Move token definitions into `src/tokens/`
-- Remove legacy CSS/SCSS files unless layout‑critical
+- Create and expand `frontend/src/core-ui/` for Radix-based wrapper components
+- Create and expand `frontend/src/personas/` for persona-specific providers and wrappers
+- Create and expand `frontend/src/tokens/` for token exports and theme utilities
+- Add `admin/src/theme.ts` for the MUI theme
+- Remove legacy CSS/SCSS files only after equivalent frontend Tailwind or admin MUI replacements are verified
 
 ## **2.3 Pattern-Level Changes**
 
@@ -104,6 +124,7 @@ This section defines the code changes Copilot must apply to align the implementa
 - Replace arbitrary Tailwind values with token‑mapped utilities
 - Replace custom animations with token‑based motion rules
 - Replace persona logic inside components with persona providers
+- Preserve dynamic inline styles temporarily when driven by runtime values and no safe tokenized alternative exists yet
 
 ## **2.4 Token-Level Changes**
 
@@ -141,7 +162,7 @@ For each legacy component:
 - Replace with Radix primitive
 - Wrap in project‑specific component
 - Apply Tailwind + tokens
-- Remove legacy implementation
+- Remove legacy implementation only after the replacement has been verified
 
 ### **Before**
 
@@ -166,6 +187,8 @@ Replace:
 - `8px` → `var(--space-2)`
 - `border-radius: 4px` → `var(--radius-sm)`
 
+If an existing token name differs from the target naming scheme, normalize the token contract first before bulk component migration.
+
 ## **3.4 Step 4 — Migrate Admin UI to MUI**
 
 Replace:
@@ -174,11 +197,59 @@ Replace:
 - custom tables → MUI `<DataGrid>` or `<Table>`
 - custom layouts → MUI `<Box>` and `<Grid>`
 
-## **3.5 Step 5 — Remove Deprecated Files**
+Admin migration should proceed page-by-page inside the separate `admin` application.
+
+## **3.5 Step 5 — Add infrastructure before rewrites**
+
+Before large component rewrites:
+
+- Add Tailwind and PostCSS to the frontend app using current stable releases
+- Add Radix packages to the frontend app using current stable releases
+- Add MUI packages to the admin app using current stable releases
+- Add shared wrapper utilities such as `cn()` and theme helpers
+
+## **3.6 Step 6 — Remove Deprecated Files**
 
 - Remove unused CSS
 - Remove unused components
 - Remove duplicated patterns
+
+## **3.7 Deliverables by Work Package**
+
+### **WP1 — Documentation Alignment**
+
+- Align design docs to the current repository layout
+- Define stable-package policy
+- Record migration ordering and architecture boundaries
+
+### **WP2 — Framework Setup**
+
+- Add Tailwind/PostCSS to frontend
+- Add Radix packages and wrapper utilities to frontend
+- Add MUI packages and theme entrypoint to admin
+
+### **WP3 — Token and Theme Normalization**
+
+- Normalize frontend token contract
+- Map Tailwind theme values to CSS variables
+- Represent admin theme values through MUI theme configuration
+
+### **WP4 — Shell and Primitive Migration**
+
+- Create project wrappers for adopted Radix primitives
+- Migrate frontend shell/auth surfaces to the new styling path
+- Migrate admin shell and shared controls to MUI
+
+### **WP5 — Feature-by-Feature Migration**
+
+- Migrate frontend command-center, notes, chat, audio, and room-control surfaces incrementally
+- Migrate admin pages page-by-page to MUI
+
+### **WP6 — Cleanup and Enforcement**
+
+- Remove superseded CSS and components only after verification
+- Update contributor docs and reference docs
+- Enforce architecture boundaries in review and verification
 
 ---
 
@@ -203,11 +274,11 @@ Copilot must verify the following after applying changes.
 
 ## **4.3 Architecture Verification**
 
-- No MUI in core UI
-- No Radix/Tailwind in admin
+- No MUI in frontend core UI
+- No Radix/Tailwind components in admin unless an explicit bridge is documented
 - No persona logic inside components
-- No inline styles
-- No arbitrary Tailwind values
+- No non-dynamic inline styles in migrated surfaces
+- No arbitrary Tailwind values in migrated frontend code
 
 ## **4.4 Code Quality Verification**
 
@@ -215,6 +286,43 @@ Copilot must verify the following after applying changes.
 - Zustand stores remain UI‑agnostic
 - No unused imports
 - No dead code
+
+## **4.5 Work-Package Acceptance Criteria**
+
+### **WP1 Acceptance**
+
+- Design docs, roadmap docs, and implementation docs describe the same migration order
+- File paths and app boundaries match the repository as it exists
+
+### **WP2 Acceptance**
+
+- Frontend and admin both install/build with their new framework dependencies
+- Only current stable package releases are introduced
+- No user-facing behavior regressions are required to land setup work
+
+### **WP3 Acceptance**
+
+- Frontend token definitions are mapped into Tailwind without hardcoded-color backsliding
+- Admin visual tokens are represented through the MUI theme
+- Theme behavior remains correct in light and dark modes
+
+### **WP4 Acceptance**
+
+- Adopted Radix primitives are consumed via project wrappers only
+- Frontend shell/auth surfaces are tokenized and no longer depend on non-dynamic hardcoded inline styles
+- Admin shell is MUI-driven and theme-provider backed
+
+### **WP5 Acceptance**
+
+- Migrated frontend feature surfaces use the new core UI layer and tokenized styling path
+- Migrated admin pages use MUI primitives instead of custom CSS-first controls
+- Persona behavior remains outside shared primitive components
+
+### **WP6 Acceptance**
+
+- Superseded CSS/components are removed only after runtime and test verification
+- Documentation and contributor guidance reflect the new architecture accurately
+- Verification checks cover accessibility, architecture boundaries, and theme behavior
 
 ---
 
@@ -229,3 +337,10 @@ Future updates will append new sections under:
 - **4. Verification Checklist**
 
 Copilot must maintain this file as the project evolves.
+
+## **6. PR1 Outcome — Spec Alignment**
+
+PR1 is documentation-only.
+It aligns the design-system specification with the current repository structure and establishes the migration order before framework or component code changes begin.
+
+Future PRs should map cleanly to WP2-WP6 above.

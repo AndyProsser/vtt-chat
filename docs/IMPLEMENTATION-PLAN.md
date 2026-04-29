@@ -140,6 +140,74 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 # 🎨 Phase 4 — Frontend Application
 
+## **UI Modernization Track**
+
+This track standardizes the shipped UI architecture without requiring a single big-bang rewrite.
+
+### **UM1. Documentation Alignment**
+
+- Align design docs to the current multi-app repository structure
+- Define stable-package policy for framework adoption
+- Align roadmap and implementation docs to the same migration order
+
+Acceptance criteria:
+
+- Design-system docs, roadmap docs, and implementation docs describe the same migration sequence
+- Frontend and admin ownership boundaries are explicit and consistent
+
+### **UM2. Framework Foundations**
+
+- Add Tailwind + PostCSS to the frontend app
+- Add Radix packages and wrapper utilities to the frontend app
+- Add MUI packages and `admin/src/theme.ts` to the admin app
+
+Acceptance criteria:
+
+- Frontend and admin install/build successfully with only current stable package versions
+- Framework setup lands without mandatory feature rewrites
+
+### **UM3. Token and Theme Normalization**
+
+- Normalize existing frontend CSS variable tokens into the target contract
+- Map Tailwind theme values to token-backed CSS variables
+- Move admin visual tokens into the MUI theme
+
+Acceptance criteria:
+
+- Theme behavior remains correct in light and dark modes
+- Token naming and ownership are documented and consistent
+
+### **UM4. Shell and Primitive Migration**
+
+- Create frontend core-ui wrappers for adopted Radix primitives
+- Migrate frontend shell/auth surfaces to the tokenized styling path
+- Migrate admin shell and common controls to MUI
+
+Acceptance criteria:
+
+- Adopted Radix primitives are used via wrappers only
+- Shell surfaces no longer depend on non-dynamic hardcoded inline styles
+
+### **UM5. Feature Surface Migration**
+
+- Migrate frontend command center, notes, chat, audio, and room controls incrementally
+- Migrate admin pages page-by-page to MUI
+
+Acceptance criteria:
+
+- Migrated frontend features use the new wrapper/token path
+- Migrated admin pages use MUI primitives instead of custom CSS-first controls
+
+### **UM6. Cleanup and Enforcement**
+
+- Remove superseded CSS/components after verification
+- Update contributor docs, quick reference docs, and verification guidance
+
+Acceptance criteria:
+
+- Cleanup only happens after runtime and test verification
+- Architecture boundaries remain enforceable in documentation and review
+
 ## **12. SPA UI/UX Design**
 
 - DM panel
@@ -195,6 +263,8 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Timeline styling
 - Audio panel styling
 - Responsive layout
+- Transition frontend styling to Tailwind utilities backed by design tokens
+- Reserve CSS-file removal until replacement surfaces are verified
 
 ---
 

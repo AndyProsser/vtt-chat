@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-04-23
+Last updated: 2026-04-29
 
 Mirror reference: Keep this file in sync with operations snapshot [docs/operations/ROADMAP.md](docs/operations/ROADMAP.md).
 
@@ -29,6 +29,13 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
+- A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
+
+UI modernization status:
+
+- WP1 spec alignment is complete in `docs/changes`
+- WP2 framework foundations are now starting and should land incrementally using current stable package releases only
+- WP3-WP6 remain planned behind the foundation pass
 
 Latest verification:
 
@@ -62,6 +69,178 @@ Latest verification:
 | 13    | Extension + guest auth integration  | Planned     | ⬜ Not started | Guest auth, invite flow, external identity, VTT bridge |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
+
+### UI Modernization Track
+
+| Work package | Scope                         | Status      | Exit criteria                                                                  |
+| ------------ | ----------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| WP1          | Spec alignment                | Complete    | Design, roadmap, and implementation docs agree on structure and sequencing     |
+| WP2          | Framework foundations         | In Progress | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
+| WP3          | Token/theme normalization     | Planned     | Tokens are normalized and theme systems are framework-backed                   |
+| WP4          | Shell and primitive migration | Planned     | App shells and adopted primitives use the new framework layers                 |
+| WP5          | Feature surface migration     | Planned     | High-use frontend/admin surfaces migrate incrementally                         |
+| WP6          | Cleanup and enforcement       | Planned     | Legacy CSS/components removed after verification and docs/tests updated        |
+
+## 1.1) UI Modernization Deliverables
+
+This workstream runs in parallel with stage delivery because it standardizes frameworks and architecture across already-shipped surfaces.
+
+### WP1: Spec Alignment
+
+Status: **Complete**
+
+Deliverables:
+
+- Design change docs aligned to the multi-app repository layout
+- Stable-package policy documented
+- Migration ordering and architecture boundaries documented
+
+Acceptance criteria:
+
+- No doc instructs contributors to create a shared frontend `src/admin/`
+- File locations and ownership boundaries match the repository
+- Roadmap and implementation docs reference the same migration order
+
+### WP2: Framework Foundations
+
+Status: **In Progress**
+
+Deliverables:
+
+- Frontend Tailwind/PostCSS setup
+- Frontend Radix package installation, wrapper directories, and helper utilities
+- Admin MUI installation and `admin/src/theme.ts`
+
+Acceptance criteria:
+
+- Frontend and admin install/build cleanly with the new stable dependencies
+- No user-facing behavior change is required to land infrastructure setup
+
+### WP3: Token and Theme Normalization
+
+Status: **Planned**
+
+Deliverables:
+
+- Frontend token contract normalized and mapped into Tailwind
+- Admin theme values defined through the MUI theme
+- Root theme-class strategy added without regressing current light/dark behavior
+
+Acceptance criteria:
+
+- Theme behavior remains correct in light and dark modes
+- Hardcoded-color drift does not increase during migration
+
+### WP4: Shell and Primitive Migration
+
+Status: **Planned**
+
+Deliverables:
+
+- Adopted Radix primitives wrapped under `frontend/src/core-ui/`
+- Frontend app shell/auth surfaces migrated to tokenized styling
+- Admin shell and shared controls migrated to MUI
+
+Acceptance criteria:
+
+- Adopted Radix primitives are only consumed through project wrappers
+- Admin shell is MUI-driven and theme-provider backed
+
+### WP5: Feature Surface Migration
+
+Status: **Planned**
+
+Deliverables:
+
+- Frontend command-center, notes, chat, audio, and room surfaces migrated incrementally
+- Admin pages migrated page-by-page to MUI
+
+Acceptance criteria:
+
+- Migrated frontend surfaces use the new core UI layer
+- Migrated admin pages use MUI primitives instead of CSS-first custom controls
+
+### WP6: Cleanup and Enforcement
+
+Status: **Planned**
+
+Deliverables:
+
+- Superseded CSS/components removed after verification
+- Contributor docs and verification guidance updated
+
+Acceptance criteria:
+
+- Runtime and tests validate replacements before cleanup
+- Architecture boundaries remain clear in docs and review guidance
+
+## Appendix A) Target Files by Work Package
+
+Use this appendix to keep PR slicing concrete and scoped.
+
+### WP1: Spec Alignment
+
+- `docs/changes/AI-CONTEXT-DESIGN-CHANGES.md`
+- `docs/changes/DESIGN-SYSTEM-CHANGES.md`
+- `ROADMAP.md`
+- `docs/operations/ROADMAP.md`
+- `docs/IMPLEMENTATION-PLAN.md`
+- `docs/DEV-QUICK-REFERENCE.md`
+- `docs/README.md`
+
+### WP2: Framework Foundations
+
+- `frontend/package.json`
+- `frontend/postcss.config.mjs`
+- `frontend/vite.config.ts`
+- `frontend/tsconfig.json`
+- `frontend/src/main.tsx`
+- `frontend/src/styles/tailwind.css`
+- `frontend/src/utils/cn.ts`
+- `frontend/src/core-ui/**`
+- `admin/package.json`
+- `admin/src/main.tsx`
+- `admin/src/theme.ts`
+- `admin/vite.config.ts`
+
+### WP3: Token and Theme Normalization
+
+- `frontend/src/styles/components/session/theme.css`
+- `frontend/src/tokens/**`
+- `frontend/src/styles/**`
+- `frontend/src/main.tsx`
+- `admin/src/theme.ts`
+- `admin/src/styles/App.css`
+
+### WP4: Shell and Primitive Migration
+
+- `frontend/src/App.tsx`
+- `frontend/src/components/auth/LoginForm.tsx`
+- `frontend/src/core-ui/**`
+- `frontend/src/components/ui/**`
+- `admin/src/App.tsx`
+- `admin/src/components/**`
+- `admin/src/styles/App.css`
+
+### WP5: Feature Surface Migration
+
+- `frontend/src/components/session/**`
+- `frontend/src/components/chat/**`
+- `frontend/src/components/notes/**`
+- `frontend/src/components/audio/**`
+- `frontend/src/components/rooms/**`
+- `admin/src/pages/**`
+- `admin/src/features/**`
+- `admin/src/components/**`
+
+### WP6: Cleanup and Enforcement
+
+- `frontend/src/styles/**`
+- `frontend/src/components/ui/**`
+- `admin/src/styles/**`
+- `docs/changes/**`
+- `docs/DEV-QUICK-REFERENCE.md`
+- `docs/README.md`
 
 ---
 

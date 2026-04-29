@@ -11,6 +11,9 @@ function getVendorChunk(id: string): string | undefined {
   if (id.includes('node_modules/@livekit')) {
     return 'vendor-livekit'
   }
+  if (id.includes('node_modules/@mui') || id.includes('node_modules/@emotion')) {
+    return 'vendor-mui'
+  }
 }
 
 export default defineConfig({

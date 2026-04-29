@@ -107,6 +107,15 @@ Reducers compute the next state _only_ from `(state, event)`.
 - Panels are modular, dockable, collapsible
 - No hidden behaviours or surprises
 
+### **UI Modernization Guardrails**
+
+- Frontend core UI target: Radix UI + Tailwind + token-backed CSS variables
+- Admin UI target: MUI with `admin/src/theme.ts`
+- Frontend and admin remain separate apps; do not create a shared frontend `src/admin/`
+- Use current stable package releases only for framework adoption
+- Remove legacy CSS only after the replacement surface is verified
+- Keep persona logic out of shared primitive components
+
 ---
 
 ## 🧩 Extension Rules
@@ -156,6 +165,7 @@ Before submitting a PR:
 - Does the extension remain non‑blocking?
 - Does hydration restore correct state?
 - Are docs updated?
+- If UI was migrated, does it meet the current work-package acceptance criteria in `docs/changes/DESIGN-SYSTEM-CHANGES.md`?
 
 ---
 

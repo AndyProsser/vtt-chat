@@ -9,7 +9,7 @@ It is intentionally aligned with the root roadmap and tracks:
 - Operational exit criteria
 - Immediate next operational milestones
 
-Last updated: 2026-04-23
+Last updated: 2026-04-29
 
 Mirror reference: Keep this operations snapshot in sync with primary roadmap [ROADMAP.md](../../ROADMAP.md).
 
@@ -29,6 +29,8 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
+- A UI modernization track is now defined to standardize frontend core UI on Radix/Tailwind/tokens and admin UI on MUI, delivered incrementally to avoid disrupting active stage work.
+- WP2 framework foundations are now starting with dependency and configuration scaffolding for frontend and admin.
 
 Latest verification:
 
@@ -62,6 +64,21 @@ Latest verification:
 | 13    | Extension/overlay integration       | Planned     | ⬜ Not started | VTT bridge contracts + privacy-safe sync           |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
+
+### UI Modernization Track (Operations Snapshot)
+
+| Work package | Scope                         | Status      | Operational gate                                                     |
+| ------------ | ----------------------------- | ----------- | -------------------------------------------------------------------- |
+| WP1          | Spec alignment                | Complete    | Planning docs agree on repo layout and migration order               |
+| WP2          | Framework foundations         | In Progress | New dependencies install/build cleanly on stable releases            |
+| WP3          | Token/theme normalization     | Planned     | Theme systems are framework-backed without runtime regressions       |
+| WP4          | Shell and primitive migration | Planned     | Core shells/providers move to the new framework layers               |
+| WP5          | Feature surface migration     | Planned     | High-traffic surfaces migrate incrementally with low regression risk |
+| WP6          | Cleanup and enforcement       | Planned     | Legacy layers removed only after verification                        |
+
+### Appendix A) Target Files by Work Package
+
+For exact PR slicing, use the root roadmap appendix in `ROADMAP.md` as the canonical file-target map for WP1-WP6.
 
 ---
 

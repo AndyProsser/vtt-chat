@@ -20,6 +20,16 @@ Use these sources first when updating docs or stage status:
 
 Architecture and API docs may include target-architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
 
+## Active UI Modernization Docs
+
+The active framework-standardization effort is documented here first:
+
+- `docs/changes/AI-CONTEXT-DESIGN-CHANGES.md` for design-system and architecture rules
+- `docs/changes/DESIGN-SYSTEM-CHANGES.md` for migration work packages, deliverables, and acceptance criteria
+- `ROADMAP.md` for delivery sequencing and status tracking
+
+When UI implementation docs diverge from these migration docs, update the implementation docs or mark them as planned rather than treating future-state guidance as shipped behavior.
+
 ## 📚 Documentation Index
 
 ### **Philosophy**

@@ -12,12 +12,16 @@ function getVendorChunk(id: string): string | undefined {
   if (id.includes('node_modules/@livekit')) {
     return 'vendor-livekit'
   }
+  if (id.includes('node_modules/@radix-ui') || id.includes('node_modules/clsx')) {
+    return 'vendor-ui'
+  }
 }
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
   },
