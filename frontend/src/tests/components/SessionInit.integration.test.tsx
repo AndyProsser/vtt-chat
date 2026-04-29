@@ -320,15 +320,30 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select' }))
     fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tool Search' }))
+    const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
+    fireEvent.mouseDown(searchTab, { button: 0 })
+    fireEvent.click(searchTab)
+    await waitFor(() => {
+      expect(searchTab.getAttribute('data-state')).toBe('active')
+    })
     expect(await screen.findByTestId('search-panel')).toBeTruthy()
     expect(screen.getByPlaceholderText('Search notes, chat, rooms, or players')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tool Journal' }))
+    const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
+    fireEvent.mouseDown(journalTab, { button: 0 })
+    fireEvent.click(journalTab)
+    await waitFor(() => {
+      expect(journalTab.getAttribute('data-state')).toBe('active')
+    })
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
     expect(screen.getByText('Archive route')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tool History' }))
+    const historyTab = screen.getByRole('tab', { name: 'Tool History' })
+    fireEvent.mouseDown(historyTab, { button: 0 })
+    fireEvent.click(historyTab)
+    await waitFor(() => {
+      expect(historyTab.getAttribute('data-state')).toBe('active')
+    })
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
     expect(screen.getByText('State Changed')).toBeTruthy()
   })

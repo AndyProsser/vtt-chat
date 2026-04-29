@@ -38,7 +38,7 @@ UI modernization status:
 - WP3 token and theme normalization is complete with root theme-class strategy and Tailwind token mappings in place
 - WP4 shell and primitive migration is complete for frontend shell/auth surfaces and admin MUI-driven shell controls
 - WP5 feature-surface migration is complete across command-center, chat, notes, audio/room controls, and key admin operations pages
-- WP6 cleanup/enforcement is now in progress with obsolete session CSS selector removal started
+- WP6 cleanup/enforcement is complete with obsolete session/non-session CSS cleanup and infra path/documentation normalization
 
 Latest verification:
 
@@ -75,14 +75,14 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
 ### UI Modernization Track
 
-| Work package | Scope                         | Status      | Exit criteria                                                                  |
-| ------------ | ----------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| WP1          | Spec alignment                | Complete    | Design, roadmap, and implementation docs agree on structure and sequencing     |
-| WP2          | Framework foundations         | Complete    | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
-| WP3          | Token/theme normalization     | Complete    | Tokens are normalized and theme systems are framework-backed                   |
-| WP4          | Shell and primitive migration | Complete    | App shells and adopted primitives use the new framework layers                 |
-| WP5          | Feature surface migration     | Complete    | High-use frontend/admin surfaces migrate incrementally                         |
-| WP6          | Cleanup and enforcement       | In Progress | Legacy CSS/components removed after verification and docs/tests updated        |
+| Work package | Scope                         | Status   | Exit criteria                                                                  |
+| ------------ | ----------------------------- | -------- | ------------------------------------------------------------------------------ |
+| WP1          | Spec alignment                | Complete | Design, roadmap, and implementation docs agree on structure and sequencing     |
+| WP2          | Framework foundations         | Complete | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
+| WP3          | Token/theme normalization     | Complete | Tokens are normalized and theme systems are framework-backed                   |
+| WP4          | Shell and primitive migration | Complete | App shells and adopted primitives use the new framework layers                 |
+| WP5          | Feature surface migration     | Complete | High-use frontend/admin surfaces migrate incrementally                         |
+| WP6          | Cleanup and enforcement       | Complete | Legacy CSS/components removed after verification and docs/tests updated        |
 
 ## 1.1) UI Modernization Deliverables
 
@@ -172,16 +172,18 @@ Acceptance criteria:
 
 ### WP6: Cleanup and Enforcement
 
-Status: **In Progress**
+Status: **Complete**
 
 Deliverables:
 
 - Superseded CSS/components removed after verification
 - Contributor docs and verification guidance updated
 
-Current slice:
+Completed scope:
 
 - Removed obsolete unreferenced session CSS selectors in `SessionInit.css` and `CommandCenterFrame.css`
+- Removed additional dead non-session admin CSS and obsolete style files after usage sweep
+- Consolidated infra config/script assets under `infra/` and updated compose/script/doc references
 
 Acceptance criteria:
 

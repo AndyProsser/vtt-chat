@@ -140,8 +140,8 @@ describe('CommandCenterFrame', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Tool Rooms' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Tool Audio' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Rooms' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Audio' })).toBeNull()
 
     rerender(
       <CommandCenterFrame
@@ -154,10 +154,10 @@ describe('CommandCenterFrame', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Tool Audio' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tool Search' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tool Settings' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
 
     rerender(
       <CommandCenterFrame
@@ -170,10 +170,10 @@ describe('CommandCenterFrame', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Tool Search' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tool Journal' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Tool Settings' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
   })
 
   it('renders system toasts container only when provided', () => {

@@ -2,10 +2,10 @@ import React, { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, Root } from 'react-dom/client'
 
-const getJsonMock = vi.fn()
+const requestJsonMock = vi.fn()
 
 vi.mock('../utils/api', () => ({
-  getJson: (...args: unknown[]) => getJsonMock(...args),
+  requestJson: (...args: unknown[]) => requestJsonMock(...args),
   adminApiBase: () => '/admin/api',
 }))
 
@@ -47,8 +47,8 @@ describe('Logs page interactions', () => {
   }
 
   beforeEach(() => {
-    getJsonMock.mockReset()
-    getJsonMock.mockImplementation((path: string) => {
+    requestJsonMock.mockReset()
+    requestJsonMock.mockImplementation((path: string) => {
       if (path.startsWith('/telemetry/logs/diagnostic-log-1')) {
         return Promise.resolve({
           log: {
@@ -98,7 +98,9 @@ describe('Logs page interactions', () => {
     await renderComponent()
     await flush()
 
-    const sourceSelect = container.querySelector('select[aria-label="Source"]') as HTMLSelectElement
+    const sourceSelect = container.querySelector(
+      'select[aria-label="Filter by source"]'
+    ) as HTMLSelectElement
 
     await act(async () => {
       sourceSelect.value = 'telemetry'
@@ -107,10 +109,11 @@ describe('Logs page interactions', () => {
 
     await flush()
 
-    expect(getJsonMock).toHaveBeenCalledWith(
-      '/telemetry/logs?timeRange=24h&severity=all&source=telemetry&page=1&pageSize=25&sortBy=timestamp&sortDir=desc',
-      expect.anything()
-    )
+    const lastCall = requestJsonMock.mock.calls.at(-1)
+    expect(lastCall).toEqual([
+      '/telemetry/logs?timeRange=24h&severity=all&source=telemetry&userId=&roomId=&page=1&pageSize=25&sortBy=timestamp&sortDir=desc',
+      { method: 'GET' },
+    ])
   })
 
   it('toggles sort ordering when sort header is clicked', async () => {
@@ -126,20 +129,22 @@ describe('Logs page interactions', () => {
     })
     await flush()
 
-    expect(getJsonMock).toHaveBeenCalledWith(
-      '/telemetry/logs?timeRange=24h&severity=all&source=all&page=1&pageSize=25&sortBy=severity&sortDir=asc',
-      expect.anything()
-    )
+    let lastCall = requestJsonMock.mock.calls.at(-1)
+    expect(lastCall).toEqual([
+      '/telemetry/logs?timeRange=24h&severity=all&source=all&userId=&roomId=&page=1&pageSize=25&sortBy=severity&sortDir=asc',
+      { method: 'GET' },
+    ])
 
     await act(async () => {
       severitySortButton.click()
     })
     await flush()
 
-    expect(getJsonMock).toHaveBeenCalledWith(
-      '/telemetry/logs?timeRange=24h&severity=all&source=all&page=1&pageSize=25&sortBy=severity&sortDir=desc',
-      expect.anything()
-    )
+    lastCall = requestJsonMock.mock.calls.at(-1)
+    expect(lastCall).toEqual([
+      '/telemetry/logs?timeRange=24h&severity=all&source=all&userId=&roomId=&page=1&pageSize=25&sortBy=severity&sortDir=desc',
+      { method: 'GET' },
+    ])
   })
 
   it('paginates to next page and reloads log rows', async () => {
@@ -156,10 +161,11 @@ describe('Logs page interactions', () => {
 
     await flush()
 
-    expect(getJsonMock).toHaveBeenCalledWith(
-      '/telemetry/logs?timeRange=24h&severity=all&source=all&page=2&pageSize=25&sortBy=timestamp&sortDir=desc',
-      expect.anything()
-    )
+    const lastCall = requestJsonMock.mock.calls.at(-1)
+    expect(lastCall).toEqual([
+      '/telemetry/logs?timeRange=24h&severity=all&source=all&userId=&roomId=&page=2&pageSize=25&sortBy=timestamp&sortDir=desc',
+      { method: 'GET' },
+    ])
     expect(container.textContent).toContain('Rate limit warning')
   })
 
@@ -168,7 +174,7 @@ describe('Logs page interactions', () => {
     await flush()
 
     const expandButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Expand'
+      (button) => button.textContent === 'View'
     ) as HTMLButtonElement
 
     await act(async () => {
@@ -177,8 +183,10 @@ describe('Logs page interactions', () => {
 
     await flush()
 
-    expect(getJsonMock).toHaveBeenCalledWith('/telemetry/logs/diagnostic-log-1')
-    expect(container.textContent).toContain('Log Details')
+    expect(requestJsonMock).toHaveBeenCalledWith('/telemetry/logs/diagnostic-log-1', {
+      method: 'GET',
+    })
+    expect(container.textContent).toContain('Log Detail')
     expect(container.textContent).toContain('Request completed')
     expect(container.textContent).toContain('endpoint')
   })
