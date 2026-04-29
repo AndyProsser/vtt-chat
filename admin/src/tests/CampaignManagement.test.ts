@@ -90,9 +90,78 @@ const ROOMS_RESPONSE = {
   ],
 }
 
+const RECORDINGS_RESPONSE = {
+  campaign: { id: 'campaign-1', name: 'Ashfall' },
+  recordings: [
+    {
+      id: 'recording-1',
+      campaignId: 'campaign-1',
+      sessionId: 'session-1',
+      roomId: 'room-1',
+      title: 'Session One Main Mix',
+      storageKey: 'recordings/ashfall/session-1/main.opus',
+      sourceUrl: 'https://example.com/ashfall/session-1/main.opus',
+      durationSeconds: 3600,
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      journalSummary: 'The party secured the outer gate.',
+      metadata: { source: 'admin-console' },
+      session: {
+        id: 'session-1',
+        name: 'Session One',
+      },
+      room: {
+        id: 'room-1',
+        name: 'Main Room',
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ],
+}
+
+const EXPORT_RESPONSE = {
+  message: 'Campaign export created successfully',
+  artifactId: 'artifact-1',
+  counts: {
+    members: 4,
+    characters: 4,
+    sessions: 1,
+    rooms: 2,
+    messages: 0,
+    notes: 0,
+    logs: 0,
+    recordings: 1,
+  },
+  bundle: {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    sourceCampaignId: 'campaign-1',
+    campaign: {
+      name: 'Ashfall',
+      description: 'Primary campaign',
+      inviteCode: 'ASHFALL',
+      currentDmId: 'dm-1',
+      currentDmUsername: 'DungeonMaster',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    members: [],
+    characters: [],
+    sessions: [],
+    recordings: [],
+  },
+}
+
 describe('CampaignManagement interactions', () => {
   let container: HTMLDivElement
   let root: Root
+
+  const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const prototype = Object.getPrototypeOf(element)
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+    descriptor?.set?.call(element, value)
+  }
 
   const renderComponent = async () => {
     await act(async () => {
@@ -108,12 +177,31 @@ describe('CampaignManagement interactions', () => {
 
   beforeEach(() => {
     requestJsonMock.mockReset()
-    requestJsonMock.mockImplementation((path: string) => {
+    requestJsonMock.mockImplementation((path: string, init?: { method?: string }) => {
       if (path.startsWith('/campaigns?')) return Promise.resolve(CAMPAIGN_LIST_RESPONSE)
       if (path.includes('/campaigns/campaign-1/rooms')) return Promise.resolve(ROOMS_RESPONSE)
+      if (path === '/campaigns/campaign-1/recordings' && init?.method === 'GET') {
+        return Promise.resolve(RECORDINGS_RESPONSE)
+      }
+      if (path === '/campaigns/campaign-1/recordings' && init?.method === 'POST') {
+        return Promise.resolve({ message: 'Recording metadata saved successfully' })
+      }
       if (path.includes('/sessions/session-1/end')) return Promise.resolve({ message: 'ok' })
       if (path.endsWith('/archive')) return Promise.resolve({ message: 'archived' })
       if (path.endsWith('/restore')) return Promise.resolve({ message: 'restored' })
+      if (path.endsWith('/export')) return Promise.resolve(EXPORT_RESPONSE)
+      if (path === '/campaigns/import') {
+        return Promise.resolve({
+          message: 'Campaign imported successfully',
+          artifactId: 'artifact-import',
+          counts: EXPORT_RESPONSE.counts,
+          campaign: {
+            ...CAMPAIGN_LIST_RESPONSE.campaigns[0],
+            id: 'campaign-imported',
+            name: 'Ashfall (Imported)',
+          },
+        })
+      }
       if (path.includes('/move-player')) return Promise.resolve({ message: 'moved' })
       return Promise.resolve({})
     })
@@ -140,6 +228,7 @@ describe('CampaignManagement interactions', () => {
 
     expect(container.textContent).toContain('Ashfall')
     expect(container.textContent).toContain('Rooms in session: Session One')
+    expect(container.textContent).toContain('Session One Main Mix')
     expect(requestJsonMock).toHaveBeenCalledWith(
       '/campaigns?search=&status=all&page=1&pageSize=20',
       {
@@ -309,5 +398,112 @@ describe('CampaignManagement interactions', () => {
         method: 'GET',
       }
     )
+  })
+
+  it('exports campaign bundle into the readonly textarea', async () => {
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const exportButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Export Campaign JSON'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      exportButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith('/campaigns/campaign-1/export', {
+      method: 'GET',
+    })
+
+    const exportTextarea = container.querySelector(
+      'textarea[aria-label="Campaign export bundle"]'
+    ) as HTMLTextAreaElement
+
+    expect(exportTextarea.value).toContain('sourceCampaignId')
+  })
+
+  it('imports a pasted campaign bundle', async () => {
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const importTextarea = container.querySelector(
+      'textarea[aria-label="Campaign import bundle"]'
+    ) as HTMLTextAreaElement
+
+    await act(async () => {
+      setNativeValue(importTextarea, JSON.stringify(EXPORT_RESPONSE.bundle))
+      importTextarea.dispatchEvent(new Event('input', { bubbles: true }))
+      importTextarea.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    await flush()
+
+    const importButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Import As New Campaign'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      importButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith('/campaigns/import', {
+      method: 'POST',
+      body: JSON.stringify({ bundle: EXPORT_RESPONSE.bundle }),
+    })
+  })
+
+  it('saves recording metadata and refreshes the list', async () => {
+    requestJsonMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.startsWith('/campaigns?')) return Promise.resolve(CAMPAIGN_LIST_RESPONSE)
+      if (path.includes('/campaigns/campaign-1/rooms')) return Promise.resolve(ROOMS_RESPONSE)
+      if (path === '/campaigns/campaign-1/recordings' && init?.method === 'GET') {
+        return Promise.resolve(RECORDINGS_RESPONSE)
+      }
+      if (path === '/campaigns/campaign-1/recordings' && init?.method === 'POST') {
+        return Promise.resolve({ message: 'Recording metadata saved successfully' })
+      }
+      return Promise.resolve({})
+    })
+
+    await renderComponent()
+    await flush()
+    await flush()
+
+    const titleInput = container.querySelector(
+      'input[aria-label="Recording title"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setNativeValue(titleInput, 'Session Two Main Mix')
+      titleInput.dispatchEvent(new Event('input', { bubbles: true }))
+      titleInput.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    await flush()
+
+    const saveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Save Recording Metadata'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      saveButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith(
+      '/campaigns/campaign-1/recordings',
+      expect.objectContaining({ method: 'POST' })
+    )
+    expect(requestJsonMock).toHaveBeenCalledWith('/campaigns/campaign-1/recordings', {
+      method: 'GET',
+    })
   })
 })

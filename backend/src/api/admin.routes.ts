@@ -18,6 +18,14 @@ import {
   persistDiagnosticEvents,
   updateLogRetentionSettings,
 } from '@/infra/telemetry-store'
+import {
+  buildCampaignExport,
+  createOperationalExportArtifact,
+  createRecordingMetadata,
+  importCampaignBundle,
+  isValidTransferBundle,
+  listRecordingMetadata,
+} from '@/core/portability/admin-portability'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { hashPassword } from '@/services/auth.service'
@@ -940,6 +948,313 @@ router.post(
   }
 )
 
+router.get(
+  '/campaigns/:campaignId/export',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'CAMPAIGN_DM')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const campaignId = String(req.params.campaignId || '').trim()
+
+      const campaign = await prisma.campaign.findUnique({
+        where: { id: campaignId },
+        select: {
+          id: true,
+          name: true,
+          currentDmId: true,
+        },
+      })
+
+      if (!campaign) {
+        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const exported = await buildCampaignExport(prisma, campaign.id, actor.userId)
+      if (!exported) {
+        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      await writeAudit({
+        actor,
+        action: 'CAMPAIGN_EXPORT',
+        targetType: 'CAMPAIGN',
+        targetId: campaign.id,
+        metadata: {
+          artifactId: exported.artifactId,
+          ...exported.counts,
+        },
+      })
+
+      res.status(200).json({
+        message: 'Campaign export created successfully',
+        artifactId: exported.artifactId,
+        counts: exported.counts,
+        bundle: exported.bundle,
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
+
+router.post('/campaigns/import', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+      return
+    }
+
+    if (!hasRole(actor.adminRole, 'CAMPAIGN_DM')) {
+      res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+      return
+    }
+
+    const bundle = req.body?.bundle ?? req.body
+    const name = String(req.body?.name || '').trim() || undefined
+
+    if (!isValidTransferBundle(bundle)) {
+      res.status(400).json({
+        error: 'Invalid campaign transfer bundle',
+        code: 'INVALID_TRANSFER_BUNDLE',
+      })
+      return
+    }
+
+    const imported = await importCampaignBundle(prisma, actor.userId, bundle, name)
+
+    if (!imported) {
+      res.status(400).json({
+        error: 'Invalid campaign transfer bundle',
+        code: 'INVALID_TRANSFER_BUNDLE',
+      })
+      return
+    }
+
+    await writeAudit({
+      actor,
+      action: 'CAMPAIGN_IMPORT',
+      targetType: 'CAMPAIGN',
+      targetId: imported.campaign.id,
+      metadata: {
+        artifactId: imported.artifactId,
+        importedCampaignName: imported.campaign.name,
+        ...imported.counts,
+      },
+    })
+
+    res.status(201).json({
+      message: 'Campaign imported successfully',
+      artifactId: imported.artifactId,
+      counts: imported.counts,
+      campaign: imported.campaign,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.get(
+  '/campaigns/:campaignId/recordings',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'CAMPAIGN_DM')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const campaignId = String(req.params.campaignId || '').trim()
+
+      const campaign = await prisma.campaign.findUnique({
+        where: { id: campaignId },
+        select: { id: true, name: true, currentDmId: true },
+      })
+
+      if (!campaign) {
+        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const recordings = await listRecordingMetadata(prisma, campaign.id)
+
+      res.status(200).json({
+        campaign,
+        recordings: recordings.map((recording) => ({
+          ...recording,
+          startedAt: recording.startedAt?.toISOString() || null,
+          endedAt: recording.endedAt?.toISOString() || null,
+          createdAt: recording.createdAt.toISOString(),
+          updatedAt: recording.updatedAt.toISOString(),
+        })),
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
+
+router.post(
+  '/campaigns/:campaignId/recordings',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'CAMPAIGN_DM')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const campaignId = String(req.params.campaignId || '').trim()
+      const title = String(req.body?.title || '').trim()
+      const sessionId = String(req.body?.sessionId || '').trim() || null
+      const roomId = String(req.body?.roomId || '').trim() || null
+      const storageKey = String(req.body?.storageKey || '').trim() || null
+      const sourceUrl = String(req.body?.sourceUrl || '').trim() || null
+      const journalSummary = String(req.body?.journalSummary || '').trim() || null
+      const startedAt = String(req.body?.startedAt || '').trim() || null
+      const endedAt = String(req.body?.endedAt || '').trim() || null
+      const durationValue = Number(req.body?.durationSeconds)
+      const durationSeconds =
+        Number.isFinite(durationValue) && durationValue >= 0 ? Math.round(durationValue) : null
+      const metadata =
+        req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : null
+
+      if (!title) {
+        res.status(400).json({
+          error: 'title is required',
+          code: 'MISSING_TITLE',
+          field: 'title',
+        })
+        return
+      }
+
+      const campaign = await prisma.campaign.findUnique({
+        where: { id: campaignId },
+        select: { id: true, name: true, currentDmId: true },
+      })
+
+      if (!campaign) {
+        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
+        return
+      }
+
+      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      if (sessionId) {
+        const session = await prisma.session.findFirst({
+          where: { id: sessionId, campaignId: campaign.id },
+          select: { id: true },
+        })
+
+        if (!session) {
+          res.status(400).json({
+            error: 'sessionId must belong to the selected campaign',
+            code: 'INVALID_SESSION',
+            field: 'sessionId',
+          })
+          return
+        }
+      }
+
+      if (roomId) {
+        const room = await prisma.room.findFirst({
+          where: {
+            id: roomId,
+            ...(sessionId ? { sessionId } : { session: { campaignId: campaign.id } }),
+          },
+          select: { id: true },
+        })
+
+        if (!room) {
+          res.status(400).json({
+            error: 'roomId must belong to the selected campaign/session',
+            code: 'INVALID_ROOM',
+            field: 'roomId',
+          })
+          return
+        }
+      }
+
+      const recording = await createRecordingMetadata(prisma, {
+        campaignId: campaign.id,
+        sessionId,
+        roomId,
+        title,
+        storageKey,
+        sourceUrl,
+        durationSeconds,
+        startedAt,
+        endedAt,
+        journalSummary,
+        metadata: metadata as Prisma.InputJsonValue | null,
+      })
+
+      await writeAudit({
+        actor,
+        action: 'RECORDING_METADATA_CREATE',
+        targetType: 'CAMPAIGN',
+        targetId: campaign.id,
+        metadata: {
+          recordingId: recording.id,
+          title: recording.title,
+          sessionId: recording.sessionId,
+          roomId: recording.roomId,
+        },
+      })
+
+      res.status(201).json({
+        message: 'Recording metadata saved successfully',
+        recording: {
+          ...recording,
+          startedAt: recording.startedAt?.toISOString() || null,
+          endedAt: recording.endedAt?.toISOString() || null,
+          createdAt: recording.createdAt.toISOString(),
+          updatedAt: recording.updatedAt.toISOString(),
+        },
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
+
 router.post(
   '/campaigns/:campaignId/sessions/:sessionId/rooms/:roomId/move-player',
   adminAuthMiddleware,
@@ -1282,6 +1597,75 @@ router.post('/settings/backup', adminAuthMiddleware, async (req: Request, res: R
     res.status(200).json({
       message: 'Backup queued successfully',
       queuedAt: now,
+    })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+      return
+    }
+
+    if (!hasRole(actor.adminRole, 'ADMIN')) {
+      res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+      return
+    }
+
+    const [telemetry, diagnostics, auditLog] = await Promise.all([
+      loadTelemetryEvents(),
+      loadDiagnosticEvents(),
+      prisma.adminAuditLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 250,
+        select: {
+          id: true,
+          actorUserId: true,
+          actorName: true,
+          actorRole: true,
+          action: true,
+          targetType: true,
+          targetId: true,
+          outcome: true,
+          reason: true,
+          metadata: true,
+          createdAt: true,
+        },
+      }),
+    ])
+
+    const exported = await createOperationalExportArtifact(
+      prisma,
+      actor.userId,
+      runtimeSettingsState,
+      telemetry.map((entry) => ({ ...entry })),
+      diagnostics.map((entry) => ({ ...entry })),
+      auditLog.map((entry) => ({
+        ...entry,
+        createdAt: entry.createdAt.toISOString(),
+      })) as Array<Record<string, unknown>>
+    )
+
+    await writeAudit({
+      actor,
+      action: 'SETTINGS_OPERATIONS_EXPORT',
+      targetType: 'ADMIN_SETTINGS',
+      metadata: {
+        artifactId: exported.artifactId,
+        telemetryCount: telemetry.length,
+        diagnosticCount: diagnostics.length,
+        auditCount: auditLog.length,
+      },
+    })
+
+    res.status(200).json({
+      message: 'Operations export created successfully',
+      artifactId: exported.artifactId,
+      bundle: exported.bundle,
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})

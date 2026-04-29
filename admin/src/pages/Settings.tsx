@@ -15,10 +15,13 @@ export default function Settings() {
     loading,
     saving,
     backupBusy,
+    opsExportBusy,
     error,
     statusMessage,
+    operationsExportText,
     updateSettings,
     triggerBackup,
+    exportOperationsBundle,
   } = useRuntimeSettings()
 
   const handleChange = (partial: Partial<RuntimeSettings>) => {
@@ -61,7 +64,26 @@ export default function Settings() {
             <Button variant="outlined" disabled={backupBusy} onClick={() => void triggerBackup()}>
               {backupBusy ? 'Queuing...' : 'Backup Now'}
             </Button>
+            <Button
+              variant="outlined"
+              disabled={opsExportBusy}
+              onClick={() => void exportOperationsBundle()}
+            >
+              {opsExportBusy ? 'Exporting...' : 'Export Ops Bundle'}
+            </Button>
           </Box>
+
+          {operationsExportText ? (
+            <Box sx={{ display: 'grid', gap: 1 }}>
+              <Typography variant="subtitle2">Operational Export Bundle</Typography>
+              <textarea
+                aria-label="Operations export bundle"
+                className="settings-export-textarea"
+                value={operationsExportText}
+                readOnly
+              />
+            </Box>
+          ) : null}
         </>
       )}
     </Box>

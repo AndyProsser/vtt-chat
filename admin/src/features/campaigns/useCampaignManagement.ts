@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { requestJson } from '../../utils/api'
 import type {
+  CampaignExportResponse,
+  CampaignImportResponse,
   CampaignListResponse,
+  CampaignRecordingsResponse,
   CampaignRoomsResponse,
   CampaignStatusFilter,
   CampaignSummary,
+  RecordingDraft,
+  RecordingSummary,
 } from './types'
+
+const EMPTY_RECORDING_DRAFT: RecordingDraft = {
+  title: '',
+  sessionId: '',
+  roomId: '',
+  sourceUrl: '',
+  storageKey: '',
+  durationSeconds: '',
+  startedAt: '',
+  endedAt: '',
+  journalSummary: '',
+}
 
 export function useCampaignManagement() {
   const [search, setSearch] = useState('')
@@ -30,6 +47,16 @@ export function useCampaignManagement() {
   const [moveBusyUserId, setMoveBusyUserId] = useState<string | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState('')
   const [targetRoomId, setTargetRoomId] = useState('')
+  const [recordingsLoading, setRecordingsLoading] = useState(false)
+  const [recordingsError, setRecordingsError] = useState<string | null>(null)
+  const [recordings, setRecordings] = useState<RecordingSummary[]>([])
+  const [recordingBusy, setRecordingBusy] = useState(false)
+  const [exportBusyCampaignId, setExportBusyCampaignId] = useState<string | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [exportBundleText, setExportBundleText] = useState('')
+  const [importBundleText, setImportBundleText] = useState('')
+  const [portabilityMessage, setPortabilityMessage] = useState<string | null>(null)
+  const [recordingDraft, setRecordingDraft] = useState<RecordingDraft>(EMPTY_RECORDING_DRAFT)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -125,6 +152,46 @@ export function useCampaignManagement() {
     void loadRooms()
   }, [selectedCampaign, selectedMemberId, targetRoomId])
 
+  useEffect(() => {
+    if (!selectedCampaign) {
+      setRecordings([])
+      setRecordingsError(null)
+      return
+    }
+
+    const loadRecordings = async () => {
+      setRecordingsLoading(true)
+      setRecordingsError(null)
+
+      try {
+        const response = await requestJson<CampaignRecordingsResponse>(
+          `/campaigns/${selectedCampaign.id}/recordings`,
+          {
+            method: 'GET',
+          }
+        )
+        setRecordings(response.recordings || [])
+      } catch (err) {
+        setRecordingsError(err instanceof Error ? err.message : 'Failed to load recordings')
+      } finally {
+        setRecordingsLoading(false)
+      }
+    }
+
+    void loadRecordings()
+  }, [selectedCampaign])
+
+  useEffect(() => {
+    const nextSessionId = selectedCampaignRooms?.session?.id || ''
+    const nextRoomId = selectedCampaignRooms?.rooms?.[0]?.id || ''
+
+    setRecordingDraft((current) => ({
+      ...current,
+      sessionId: current.sessionId || nextSessionId,
+      roomId: current.roomId || nextRoomId,
+    }))
+  }, [selectedCampaignRooms])
+
   const refreshCampaigns = async () => {
     const refreshed = await requestJson<CampaignListResponse>(`/campaigns?${queryString}`, {
       method: 'GET',
@@ -133,6 +200,17 @@ export function useCampaignManagement() {
     setCampaigns(refreshed.campaigns)
     setTotal(refreshed.total)
     setTotalPages(refreshed.totalPages)
+  }
+
+  const refreshRecordings = async (campaignId: string) => {
+    const response = await requestJson<CampaignRecordingsResponse>(
+      `/campaigns/${campaignId}/recordings`,
+      {
+        method: 'GET',
+      }
+    )
+
+    setRecordings(response.recordings || [])
   }
 
   const endSession = async (campaign: CampaignSummary) => {
@@ -150,6 +228,7 @@ export function useCampaignManagement() {
 
     setEndingSessionId(campaign.latestSession.id)
     setError(null)
+    setPortabilityMessage(null)
 
     try {
       await requestJson<{ message: string }>(
@@ -175,6 +254,7 @@ export function useCampaignManagement() {
 
     setArchivingCampaignId(campaign.id)
     setError(null)
+    setPortabilityMessage(null)
 
     try {
       await requestJson<{ message: string }>(
@@ -210,6 +290,7 @@ export function useCampaignManagement() {
 
     setMoveBusyUserId(member.userId)
     setError(null)
+    setPortabilityMessage(null)
 
     try {
       await requestJson<{ message: string }>(
@@ -235,6 +316,124 @@ export function useCampaignManagement() {
       setError(err instanceof Error ? err.message : 'Failed to move player')
     } finally {
       setMoveBusyUserId(null)
+    }
+  }
+
+  const exportCampaign = async (campaign: CampaignSummary) => {
+    setExportBusyCampaignId(campaign.id)
+    setError(null)
+    setPortabilityMessage(null)
+
+    try {
+      const response = await requestJson<CampaignExportResponse>(
+        `/campaigns/${campaign.id}/export`,
+        {
+          method: 'GET',
+        }
+      )
+
+      setExportBundleText(JSON.stringify(response.bundle, null, 2))
+      setPortabilityMessage(`${response.message} (${response.artifactId})`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export campaign')
+    } finally {
+      setExportBusyCampaignId(null)
+    }
+  }
+
+  const importCampaign = async () => {
+    if (!importBundleText.trim()) {
+      setError('Paste an export bundle before importing')
+      return
+    }
+
+    let bundle: unknown
+    try {
+      bundle = JSON.parse(importBundleText)
+    } catch {
+      setError('Import bundle must be valid JSON')
+      return
+    }
+
+    setImportBusy(true)
+    setError(null)
+    setPortabilityMessage(null)
+
+    try {
+      const response = await requestJson<CampaignImportResponse>('/campaigns/import', {
+        method: 'POST',
+        body: JSON.stringify({ bundle }),
+      })
+
+      await refreshCampaigns()
+      setSelectedCampaignId(response.campaign.id)
+      setPortabilityMessage(`${response.message} (${response.artifactId})`)
+      setImportBundleText('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to import campaign')
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  const updateRecordingDraft = (field: keyof RecordingDraft, value: string) => {
+    setRecordingDraft((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const saveRecording = async () => {
+    if (!selectedCampaign) {
+      return
+    }
+
+    if (!recordingDraft.title.trim()) {
+      setError('Recording title is required')
+      return
+    }
+
+    setRecordingBusy(true)
+    setError(null)
+    setPortabilityMessage(null)
+
+    try {
+      const durationSeconds = recordingDraft.durationSeconds.trim()
+        ? Number(recordingDraft.durationSeconds)
+        : undefined
+
+      await requestJson<{ message: string }>(`/campaigns/${selectedCampaign.id}/recordings`, {
+        method: 'POST',
+        body: JSON.stringify({
+          title: recordingDraft.title,
+          sessionId: recordingDraft.sessionId || undefined,
+          roomId: recordingDraft.roomId || undefined,
+          sourceUrl: recordingDraft.sourceUrl || undefined,
+          storageKey: recordingDraft.storageKey || undefined,
+          durationSeconds:
+            typeof durationSeconds === 'number' && Number.isFinite(durationSeconds)
+              ? durationSeconds
+              : undefined,
+          startedAt: recordingDraft.startedAt || undefined,
+          endedAt: recordingDraft.endedAt || undefined,
+          journalSummary: recordingDraft.journalSummary || undefined,
+          metadata: {
+            source: 'admin-console',
+          },
+        }),
+      })
+
+      await refreshRecordings(selectedCampaign.id)
+      setPortabilityMessage('Recording metadata saved successfully')
+      setRecordingDraft((current) => ({
+        ...EMPTY_RECORDING_DRAFT,
+        sessionId: current.sessionId,
+        roomId: current.roomId,
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save recording metadata')
+    } finally {
+      setRecordingBusy(false)
     }
   }
 
@@ -265,8 +464,23 @@ export function useCampaignManagement() {
     setSelectedMemberId,
     targetRoomId,
     setTargetRoomId,
+    recordingsLoading,
+    recordingsError,
+    recordings,
+    recordingBusy,
+    exportBusyCampaignId,
+    importBusy,
+    exportBundleText,
+    importBundleText,
+    setImportBundleText,
+    portabilityMessage,
+    recordingDraft,
     endSession,
     toggleArchive,
     movePlayer,
+    exportCampaign,
+    importCampaign,
+    updateRecordingDraft,
+    saveRecording,
   }
 }

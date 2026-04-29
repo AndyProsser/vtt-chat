@@ -58,6 +58,5 @@ function notImplemented(domain: string) {
 
 // Stubs for future stages
 router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
-router.use('/export', (_req: Request, res: Response) => notImplemented('export')(_req, res))
 
 export default router

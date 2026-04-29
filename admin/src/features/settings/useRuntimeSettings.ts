@@ -7,8 +7,10 @@ export function useRuntimeSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [backupBusy, setBackupBusy] = useState(false)
+  const [opsExportBusy, setOpsExportBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [operationsExportText, setOperationsExportText] = useState('')
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -90,15 +92,40 @@ export function useRuntimeSettings() {
     }
   }
 
+  const exportOperationsBundle = async () => {
+    setOpsExportBusy(true)
+    setError(null)
+    setStatusMessage(null)
+
+    try {
+      const response = await requestJson<{ message: string; artifactId: string; bundle: unknown }>(
+        '/settings/backup/export',
+        {
+          method: 'GET',
+        }
+      )
+
+      setOperationsExportText(JSON.stringify(response.bundle, null, 2))
+      setStatusMessage(`${response.message} (${response.artifactId})`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export operations bundle')
+    } finally {
+      setOpsExportBusy(false)
+    }
+  }
+
   return {
     settings,
     setSettings,
     loading,
     saving,
     backupBusy,
+    opsExportBusy,
     error,
     statusMessage,
+    operationsExportText,
     updateSettings,
     triggerBackup,
+    exportOperationsBundle,
   }
 }

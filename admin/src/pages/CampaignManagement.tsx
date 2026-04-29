@@ -33,9 +33,24 @@ export default function CampaignManagement() {
     setSelectedMemberId,
     targetRoomId,
     setTargetRoomId,
+    recordingsLoading,
+    recordingsError,
+    recordings,
+    recordingBusy,
+    exportBusyCampaignId,
+    importBusy,
+    exportBundleText,
+    importBundleText,
+    setImportBundleText,
+    portabilityMessage,
+    recordingDraft,
     endSession,
     toggleArchive,
     movePlayer,
+    exportCampaign,
+    importCampaign,
+    updateRecordingDraft,
+    saveRecording,
   } = useCampaignManagement()
 
   return (
@@ -46,6 +61,7 @@ export default function CampaignManagement() {
       </p>
 
       {error && <p className="admin-inline-error">{error}</p>}
+      {portabilityMessage && <p className="admin-inline-success">{portabilityMessage}</p>}
 
       <CampaignFilters
         search={search}
@@ -93,12 +109,26 @@ export default function CampaignManagement() {
         selectedCampaignRooms={selectedCampaignRooms}
         roomsLoading={roomsLoading}
         roomsError={roomsError}
+        recordingsLoading={recordingsLoading}
+        recordingsError={recordingsError}
+        recordings={recordings}
         selectedMemberId={selectedMemberId}
         targetRoomId={targetRoomId}
         moveBusyUserId={moveBusyUserId}
+        recordingBusy={recordingBusy}
+        exportBusyCampaignId={exportBusyCampaignId}
+        importBusy={importBusy}
+        exportBundleText={exportBundleText}
+        importBundleText={importBundleText}
+        recordingDraft={recordingDraft}
         onSelectedMemberChange={setSelectedMemberId}
         onTargetRoomChange={setTargetRoomId}
+        onImportBundleChange={setImportBundleText}
+        onRecordingDraftChange={updateRecordingDraft}
         onMovePlayer={() => void movePlayer()}
+        onExportCampaign={(campaign) => void exportCampaign(campaign)}
+        onImportCampaign={() => void importCampaign()}
+        onSaveRecording={() => void saveRecording()}
       />
     </section>
   )

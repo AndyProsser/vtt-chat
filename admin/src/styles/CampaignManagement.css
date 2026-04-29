@@ -65,6 +65,11 @@
   color: var(--text-secondary);
 }
 
+.admin-inline-success {
+  color: #166534;
+  font-size: 13px;
+}
+
 .campaign-kv-grid {
   margin-bottom: 12px;
 }
@@ -132,4 +137,97 @@
   background: var(--bg-surface-alt);
   color: var(--text-primary);
   padding: 8px 10px;
+}
+
+.campaign-portability-block,
+.campaign-recordings-block {
+  margin-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.campaign-bundle-textarea {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  resize: vertical;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+}
+
+.campaign-bundle-textarea.compact {
+  min-height: 100px;
+}
+
+.campaign-inline-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.campaign-form-label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.campaign-form-label input,
+.campaign-form-label select {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  padding: 8px 10px;
+}
+
+.campaign-recording-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.campaign-recording-list {
+  display: grid;
+  gap: 10px;
+}
+
+.campaign-recording-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-alt);
+  padding: 10px 12px;
+}
+
+.campaign-recording-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.campaign-recording-card p {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+}
+
+.admin-button.secondary {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.admin-button.secondary:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }

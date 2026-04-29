@@ -7,23 +7,24 @@ datasource db {
 }
 
 model Session {
-  id          String             @id @default(uuid()) @db.Uuid
-  campaignId  String?            @db.Uuid
-  campaign    Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  id          String              @id @default(uuid()) @db.Uuid
+  campaignId  String?             @db.Uuid
+  campaign    Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   name        String
   description String?
-  dmId        String             @db.Uuid
-  state       SessionState       @default(IDLE)
+  dmId        String              @db.Uuid
+  state       SessionState        @default(IDLE)
   members     SessionMember[]
   rooms       Room[]
   presence    PresenceSnapshot[]
   messages    ChatMessage[]
   notes       Note[]
   logs        SessionLog[]
-  createdAt   DateTime           @default(now())
+  recordings  RecordingMetadata[]
+  createdAt   DateTime            @default(now())
   startedAt   DateTime?
   endedAt     DateTime?
-  updatedAt   DateTime           @updatedAt
+  updatedAt   DateTime            @updatedAt
 
   @@index([dmId])
   @@index([campaignId])
@@ -32,14 +33,15 @@ model Session {
 }
 
 model Room {
-  id        String   @id @default(uuid()) @db.Uuid
-  sessionId String   @db.Uuid
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  name      String
-  type      RoomType @default(MAIN)
-  createdBy String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String              @id @default(uuid()) @db.Uuid
+  sessionId  String              @db.Uuid
+  session    Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name       String
+  type       RoomType            @default(MAIN)
+  createdBy  String              @db.Uuid
+  recordings RecordingMetadata[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@index([sessionId])
   @@index([type])
@@ -68,21 +70,22 @@ model PresenceSnapshot {
 }
 
 model User {
-  id                 String               @id @default(uuid()) @db.Uuid
-  email              String?              @unique
-  username           String               @unique
-  displayName        String
-  avatarUrl          String?
-  password           String? // null for guest accounts; required for admin operations
-  role               Role                 @default(PLAYER)
-  adminRole          AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
-  isActive           Boolean              @default(true)
-  tokenInvalidBefore DateTime?
-  campaignsDm        Campaign[]           @relation("CampaignCurrentDm")
-  campaignLinks      CampaignMembership[]
-  characters         Character[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id                   String                 @id @default(uuid()) @db.Uuid
+  email                String?                @unique
+  username             String                 @unique
+  displayName          String
+  avatarUrl            String?
+  password             String? // null for guest accounts; required for admin operations
+  role                 Role                   @default(PLAYER)
+  adminRole            AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive             Boolean                @default(true)
+  tokenInvalidBefore   DateTime?
+  campaignsDm          Campaign[]             @relation("CampaignCurrentDm")
+  campaignLinks        CampaignMembership[]
+  characters           Character[]
+  portabilityArtifacts ImportExportArtifact[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@index([username])
   @@index([email])
@@ -90,17 +93,19 @@ model User {
 }
 
 model Campaign {
-  id          String               @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  inviteCode  String               @unique
-  currentDmId String               @db.Uuid
-  currentDm   User                 @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
-  members     CampaignMembership[]
-  characters  Character[]
-  sessions    Session[]
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id                   String                 @id @default(uuid()) @db.Uuid
+  name                 String
+  description          String?
+  inviteCode           String                 @unique
+  currentDmId          String                 @db.Uuid
+  currentDm            User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
+  members              CampaignMembership[]
+  characters           Character[]
+  sessions             Session[]
+  recordings           RecordingMetadata[]
+  portabilityArtifacts ImportExportArtifact[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@index([currentDmId])
   @@index([createdAt])
@@ -249,6 +254,49 @@ model AdminInvite {
   @@index([expiresAt])
 }
 
+model RecordingMetadata {
+  id              String    @id @default(uuid()) @db.Uuid
+  campaignId      String    @db.Uuid
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sessionId       String?   @db.Uuid
+  session         Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  roomId          String?   @db.Uuid
+  room            Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  title           String
+  storageKey      String?
+  sourceUrl       String?
+  durationSeconds Int?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  journalSummary  String?   @db.Text
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([campaignId])
+  @@index([sessionId])
+  @@index([roomId])
+  @@index([createdAt])
+}
+
+model ImportExportArtifact {
+  id              String                  @id @default(uuid()) @db.Uuid
+  type            PortabilityArtifactType
+  campaignId      String?                 @db.Uuid
+  campaign        Campaign?               @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdByUserId String?                 @db.Uuid
+  createdBy       User?                   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  formatVersion   Int                     @default(1)
+  payload         Json
+  metadata        Json?
+  createdAt       DateTime                @default(now())
+
+  @@index([type])
+  @@index([campaignId])
+  @@index([createdByUserId])
+  @@index([createdAt])
+}
+
 enum AdminRole {
   SUPER_ADMIN
   ADMIN
@@ -308,4 +356,10 @@ enum SessionLogEventType {
   JOINED
   LEFT
   STATE_CHANGED
+}
+
+enum PortabilityArtifactType {
+  CAMPAIGN_EXPORT
+  CAMPAIGN_IMPORT
+  OPERATIONS_EXPORT
 }

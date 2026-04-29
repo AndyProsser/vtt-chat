@@ -60,6 +60,20 @@ describe('Settings page interactions', () => {
           queuedAt: new Date('2026-01-01T03:00:00Z').toISOString(),
         })
       }
+      if (path === '/settings/backup/export' && init?.method === 'GET') {
+        return Promise.resolve({
+          message: 'Operations export created successfully',
+          artifactId: 'ops-artifact-1',
+          bundle: {
+            version: 1,
+            exportedAt: new Date('2026-01-01T03:00:00Z').toISOString(),
+            settings: BASE_SETTINGS,
+            telemetry: [],
+            diagnostics: [],
+            auditLog: [],
+          },
+        })
+      }
       return Promise.resolve({})
     })
 
@@ -213,5 +227,28 @@ describe('Settings page interactions', () => {
     await flush()
 
     expect(container.textContent).toContain('Backup service unavailable')
+  })
+
+  it('exports operational bundle and renders the payload', async () => {
+    await renderComponent()
+    await flush()
+
+    const exportButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Export Ops Bundle'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      exportButton.click()
+    })
+
+    await flush()
+
+    expect(requestJsonMock).toHaveBeenCalledWith('/settings/backup/export', { method: 'GET' })
+
+    const textarea = container.querySelector(
+      'textarea[aria-label="Operations export bundle"]'
+    ) as HTMLTextAreaElement
+
+    expect(textarea.value).toContain('telemetry')
   })
 })
