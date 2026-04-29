@@ -141,6 +141,24 @@ export type BrowseCampaignResult = {
   joinEnabled: boolean
 }
 
+export type SpectatorPromotionResult =
+  | {
+      promoted: true
+      campaignId: string
+      sessionId: string
+      waitlistToken: string
+      user: {
+        id: string
+        username: string
+        displayName: string
+        role: 'SPECTATOR'
+        authType: 'GUEST'
+      }
+    }
+  | {
+      promoted: false
+    }
+
 function sanitizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
@@ -1109,6 +1127,132 @@ export async function browseSpectatorCampaignsForUser(params: {
       joinEnabled: !isPrivate,
     }
   })
+}
+
+export async function promoteNextWaitlistedSpectatorForSession(
+  sessionId: string
+): Promise<SpectatorPromotionResult> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      campaignId: true,
+      members: {
+        where: {
+          role: 'SPECTATOR',
+        },
+        select: {
+          id: true,
+        },
+      },
+      campaign: {
+        select: {
+          id: true,
+          spectatorMax: true,
+          spectatorWaitlistEnabled: true,
+        },
+      },
+    },
+  })
+
+  if (!session?.campaignId || !session.campaign?.spectatorWaitlistEnabled) {
+    return { promoted: false }
+  }
+
+  const spectatorSlotsMax = session.campaign.spectatorMax ?? 5
+  if (session.members.length >= spectatorSlotsMax) {
+    return { promoted: false }
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const nextEntry = await prisma.spectatorWaitlist.findFirst({
+      where: {
+        campaignId: session.campaignId,
+        promoted: false,
+      },
+      orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+          },
+        },
+      },
+    })
+
+    if (!nextEntry) {
+      return { promoted: false }
+    }
+
+    const claimed = await prisma.spectatorWaitlist.updateMany({
+      where: {
+        id: nextEntry.id,
+        promoted: false,
+      },
+      data: {
+        promoted: true,
+        promotedAt: new Date(),
+      },
+    })
+
+    if (claimed.count === 0) {
+      continue
+    }
+
+    await prisma.campaignMembership.upsert({
+      where: {
+        campaignId_userId: {
+          campaignId: session.campaignId,
+          userId: nextEntry.user.id,
+        },
+      },
+      create: {
+        campaignId: session.campaignId,
+        userId: nextEntry.user.id,
+        role: 'SPECTATOR',
+      },
+      update: {
+        role: 'SPECTATOR',
+      },
+    })
+
+    await prisma.sessionMember.upsert({
+      where: {
+        sessionId_userId: {
+          sessionId,
+          userId: nextEntry.user.id,
+        },
+      },
+      create: {
+        sessionId,
+        userId: nextEntry.user.id,
+        username: nextEntry.user.username,
+        role: 'SPECTATOR',
+      },
+      update: {
+        role: 'SPECTATOR',
+        username: nextEntry.user.username,
+      },
+    })
+
+    return {
+      promoted: true,
+      campaignId: session.campaignId,
+      sessionId,
+      waitlistToken: nextEntry.waitlistToken,
+      user: {
+        id: nextEntry.user.id,
+        username: nextEntry.user.username,
+        displayName: nextEntry.user.displayName,
+        role: 'SPECTATOR',
+        authType: 'GUEST',
+      },
+    }
+  }
+
+  return { promoted: false }
 }
 
 export async function upgradeGuestAccount(params: { userId: string; password: string }): Promise<{

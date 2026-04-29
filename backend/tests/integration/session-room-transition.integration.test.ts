@@ -8,9 +8,11 @@ const mocks = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
   mockGetSessionUsers: vi.fn(),
   mockUpdateSessionState: vi.fn(),
+  mockRemoveUserFromSession: vi.fn(),
   mockApplySessionStateRoomTransition: vi.fn(),
   mockEmitSessionBoundarySystemMessage: vi.fn(),
   mockLogSessionStateChange: vi.fn(),
+  mockLogSessionLeave: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -25,6 +27,7 @@ vi.mock('@/services/session.service', () => ({
   updateSessionState: mocks.mockUpdateSessionState,
   deleteSession: vi.fn(),
   addUserToSession: vi.fn(),
+  removeUserFromSession: mocks.mockRemoveUserFromSession,
   getSessionUsers: mocks.mockGetSessionUsers,
 }))
 
@@ -39,7 +42,7 @@ vi.mock('@/core/chat/system-messages', () => ({
 vi.mock('@/services/session-logs.service', () => ({
   logSessionStateChange: mocks.mockLogSessionStateChange,
   logSessionJoin: vi.fn(),
-  logSessionLeave: vi.fn(),
+  logSessionLeave: mocks.mockLogSessionLeave,
   getSessionEventHistory: vi.fn(),
 }))
 
@@ -102,6 +105,11 @@ describe('session state room orchestration', () => {
       movedUsers: 2,
       targetState: 'ONLINE',
     })
+
+    mocks.mockRemoveUserFromSession.mockResolvedValue({
+      removed: true,
+      promotedSpectator: { promoted: false },
+    })
   })
 
   it('applies bulk room transitions after session state update', async () => {
@@ -133,6 +141,59 @@ describe('session state room orchestration', () => {
         movedUsers: 2,
         targetRoomId: '44444444-4444-4444-8444-444444444444',
       })
+    )
+  })
+
+  it('broadcasts spectator waitlist promotions after a spectator leaves', async () => {
+    const app = buildApp()
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: PLAYER_ID,
+      username: 'alice',
+      role: 'SPECTATOR',
+    })
+    mocks.mockGetSessionUsers.mockResolvedValueOnce([
+      { id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() },
+      { id: PLAYER_ID, username: 'alice', role: 'SPECTATOR', createdAt: Date.now() },
+    ])
+    mocks.mockRemoveUserFromSession.mockResolvedValueOnce({
+      removed: true,
+      promotedSpectator: {
+        promoted: true,
+        campaignId: 'campaign-1',
+        sessionId: SESSION_ID,
+        waitlistToken: 'wait-123',
+        user: {
+          id: '44444444-4444-4444-8444-444444444441',
+          username: 'spectator-queue-1',
+          displayName: 'Queued Spectator',
+          role: 'SPECTATOR',
+          authType: 'GUEST',
+        },
+      },
+    })
+    mocks.mockGetSessionUsers.mockResolvedValueOnce([
+      { id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() },
+      {
+        id: '44444444-4444-4444-8444-444444444441',
+        username: 'spectator-queue-1',
+        role: 'SPECTATOR',
+        createdAt: Date.now(),
+      },
+    ])
+
+    const response = await request(app)
+      .post(`/api/session/${SESSION_ID}/leave`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockRemoveUserFromSession).toHaveBeenCalledWith(SESSION_ID, PLAYER_ID)
+    expect(mocks.mockLogSessionLeave).toHaveBeenCalledWith(SESSION_ID, PLAYER_ID, 'alice')
+
+    const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+    expect(wsCalls).toHaveLength(2)
+    expect(wsCalls[0][1].payload.content).toBe('alice left the session')
+    expect(wsCalls[1][1].payload.content).toBe(
+      'spectator-queue-1 was promoted from the spectator waitlist'
     )
   })
 })

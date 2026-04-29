@@ -18,6 +18,10 @@ import {
   updateSessionStateRecord,
   upsertSessionMember,
 } from '@/repositories/session.repository'
+import {
+  promoteNextWaitlistedSpectatorForSession,
+  type SpectatorPromotionResult,
+} from '@/services/guest-auth.service'
 
 /**
  * Generate a deterministic UUID for Stage 1
@@ -177,8 +181,42 @@ export async function addUserToSession(sessionId: UUID, user: User): Promise<boo
 /**
  * Remove a user from a session
  */
-export async function removeUserFromSession(sessionId: UUID, userId: UUID): Promise<boolean> {
-  return removeSessionMember({ sessionId, userId })
+export type RemoveUserFromSessionResult = {
+  removed: boolean
+  promotedSpectator: SpectatorPromotionResult
+}
+
+export async function removeUserFromSession(
+  sessionId: UUID,
+  userId: UUID
+): Promise<RemoveUserFromSessionResult> {
+  const existingMembers = await listSessionMembers(sessionId)
+  const removedMember = existingMembers.find((member) => member.userId === userId)
+
+  if (!removedMember) {
+    return {
+      removed: false,
+      promotedSpectator: { promoted: false },
+    }
+  }
+
+  const removed = await removeSessionMember({ sessionId, userId })
+  if (!removed) {
+    return {
+      removed: false,
+      promotedSpectator: { promoted: false },
+    }
+  }
+
+  const promotedSpectator =
+    removedMember.role === 'SPECTATOR'
+      ? await promoteNextWaitlistedSpectatorForSession(sessionId)
+      : { promoted: false as const }
+
+  return {
+    removed,
+    promotedSpectator,
+  }
 }
 
 /**

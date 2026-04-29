@@ -459,9 +459,9 @@ router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Remove user from session
-    const success = await removeUserFromSession(id as UUID, user.userId as UUID)
+    const removal = await removeUserFromSession(id as UUID, user.userId as UUID)
 
-    if (!success) {
+    if (!removal.removed) {
       return res.status(500).json({
         code: ErrorCode.INTERNAL_ERROR,
         message: 'Failed to remove user from session',
@@ -496,6 +496,31 @@ router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
           whisperTo: null,
         },
       })
+
+      if (removal.promotedSpectator.promoted) {
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'CHAT:MESSAGE_CREATED',
+          version: 1,
+          userId: session.dmId,
+          userRole: Role.DM,
+          sessionId: id as UUID,
+          roomId: null as any,
+          timestamp: Date.now(),
+          payload: {
+            messageId: crypto.randomUUID() as UUID,
+            authorId: session.dmId,
+            authorUsername: 'System',
+            sessionId: id as UUID,
+            roomId: null as any,
+            content: `${removal.promotedSpectator.user.username} was promoted from the spectator waitlist`,
+            type: 'SYSTEM',
+            isEdited: false,
+            createdAt: Date.now(),
+            whisperTo: null,
+          },
+        })
+      }
     }
 
     const updatedUsers = await getSessionUsers(id as UUID)
