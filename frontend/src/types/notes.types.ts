@@ -1,5 +1,24 @@
-/**
- * Baseline placeholder module.
- * This implementation is intentionally disabled for staged rebuild.
- */
-export const BASELINE_PLACEHOLDER = true
+import type { NoteVisibility, UUID } from '@shared'
+
+export interface SessionNote {
+  id: UUID
+  sessionId: UUID
+  ownerId: UUID
+  ownerUsername: string
+  title: string
+  content: string
+  visibility: NoteVisibility
+  tags: string[]
+  allowedUsers?: UUID[]
+  publishedAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface NoteDraft {
+  title: string
+  content: string
+  visibility: NoteVisibility
+  tags: string[]
+  allowedUsers?: UUID[]
+}

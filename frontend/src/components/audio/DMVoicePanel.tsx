@@ -1,5 +1,56 @@
-/**
- * Baseline placeholder module.
- * This implementation is intentionally disabled for staged rebuild.
- */
-export const BASELINE_PLACEHOLDER = true
+interface DMVoicePanelProps {
+  isEnabled: boolean
+  gain: number
+  muted: boolean
+  onEnabledChange: (enabled: boolean) => void
+  onGainChange: (gain: number) => void
+  onMutedChange: (muted: boolean) => void
+}
+
+export function DMVoicePanel({
+  isEnabled,
+  gain,
+  muted,
+  onEnabledChange,
+  onGainChange,
+  onMutedChange,
+}: DMVoicePanelProps) {
+  return (
+    <section className="rounded-ui-md border border-ui-border bg-ui-surface p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="m-0 text-sm font-semibold text-ui-primary">DM Voice Override</h4>
+        <label className="flex items-center gap-2 text-xs text-ui-secondary">
+          <input
+            type="checkbox"
+            checked={isEnabled}
+            onChange={(event) => onEnabledChange(event.target.checked)}
+          />
+          Enabled
+        </label>
+      </div>
+
+      <label className="mt-3 block text-xs text-ui-secondary">
+        Gain ({Math.round(gain * 100)}%)
+        <input
+          className="mt-1 w-full"
+          type="range"
+          min={0}
+          max={2}
+          step={0.05}
+          value={gain}
+          disabled={!isEnabled}
+          onChange={(event) => onGainChange(Number(event.target.value))}
+        />
+      </label>
+
+      <button
+        type="button"
+        disabled={!isEnabled}
+        className="mt-3 rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-1.5 text-xs text-ui-primary"
+        onClick={() => onMutedChange(!muted)}
+      >
+        {muted ? 'Unmute DM Channel' : 'Mute DM Channel'}
+      </button>
+    </section>
+  )
+}

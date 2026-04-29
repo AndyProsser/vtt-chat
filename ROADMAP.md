@@ -17,7 +17,7 @@ Mirror reference: Keep this file in sync with operations snapshot [docs/operatio
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-10 complete (baseline + command-center + secure admin ops), Stage 11 in progress, Stages 12-13 planned remaining scope**.
+Current overall status: **Stages 0-11 complete (baseline + command-center + secure admin ops + knowledge surfaces), Stages 12-13 planned remaining scope**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -28,7 +28,7 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - Audio/livekit vertical slice baseline is now complete (token issuance route + mounted frontend hooks + backend audio control routes + websocket dispatcher coverage), while durable audio-state recovery and broader reconnect/e2e hardening remain pending.
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
-- Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
+- Stage 11 is now complete in the frontend runtime with command-center search, journal, and history panels backed by persisted chat, notes, and session-log data, with placeholder module debt removed across metadata/audio/ui/types/utils surfaces.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -45,31 +45,31 @@ Latest verification:
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
-- Current frontend verification: `15` test files / `115` tests passing.
+- Current frontend verification: `18` test files / `123` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `13` passed + `1` skipped test files; `57` passing tests + `6` todo markers (`63` total).
+- Current backend verification: `18` passed + `1` skipped test files; `82` passing tests + `6` todo markers (`88` total).
 - Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
-- Current admin verification: `2` passed test files; `9` passing tests.
+- Current admin verification: `8` passed test files; `43` passing tests.
 - Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion     | Immediate focus                                        |
-| ----- | ----------------------------------- | ----------- | -------------- | ------------------------------------------------------ |
-| 0     | Contract lock                       | Complete    | ✅             | Maintain contract/source-of-truth discipline           |
-| 1     | Backend foundation                  | Complete    | ✅             | Ongoing hardening + reliability                        |
-| 2     | Frontend transport spine            | Complete    | ✅             | Keep reducer/event contract parity                     |
-| 3     | Session lifecycle                   | Complete    | ✅             | Regression coverage during later stage work            |
-| 4     | Chat vertical slice                 | Complete    | ✅             | UX/moderation polish as follow-up                      |
-| 5     | Notes vertical slice                | Complete    | ✅             | Advanced workflows and audit polish                    |
-| 6     | Presence and rooms                  | Complete    | ✅             | Multi-client e2e/load hardening                        |
-| 7     | Audio + LiveKit                     | Complete    | ✅             | Multi-client e2e + persistence hardening               |
-| 8     | Admin + ops baseline                | Complete    | ✅             | Stage 10 secure ops workflows + durable telemetry      |
-| 9     | Frontend command-center completion  | Complete    | ✅             | Maintain regression coverage during Stage 10+ work     |
-| 10    | Admin UI feature completion         | Complete    | ✅             | Stage 11 knowledge surfaces + Stage 13 guest auth prep |
-| 11    | Metadata/journal/history/search     | In Progress | 🟨 Started     | Knowledge panels + metadata follow-through             |
-| 12    | Import/export + recordings metadata | Planned     | ⬜ Not started | Portability + archival workflows                       |
-| 13    | Extension + guest auth integration  | Planned     | ⬜ Not started | Guest auth, invite flow, external identity, VTT bridge |
+| Stage | Area                                | Status   | Completion     | Immediate focus                                        |
+| ----- | ----------------------------------- | -------- | -------------- | ------------------------------------------------------ |
+| 0     | Contract lock                       | Complete | ✅             | Maintain contract/source-of-truth discipline           |
+| 1     | Backend foundation                  | Complete | ✅             | Ongoing hardening + reliability                        |
+| 2     | Frontend transport spine            | Complete | ✅             | Keep reducer/event contract parity                     |
+| 3     | Session lifecycle                   | Complete | ✅             | Regression coverage during later stage work            |
+| 4     | Chat vertical slice                 | Complete | ✅             | UX/moderation polish as follow-up                      |
+| 5     | Notes vertical slice                | Complete | ✅             | Advanced workflows and audit polish                    |
+| 6     | Presence and rooms                  | Complete | ✅             | Multi-client e2e/load hardening                        |
+| 7     | Audio + LiveKit                     | Complete | ✅             | Multi-client e2e + persistence hardening               |
+| 8     | Admin + ops baseline                | Complete | ✅             | Stage 10 secure ops workflows + durable telemetry      |
+| 9     | Frontend command-center completion  | Complete | ✅             | Maintain regression coverage during Stage 10+ work     |
+| 10    | Admin UI feature completion         | Complete | ✅             | Stage 11 knowledge surfaces + Stage 13 guest auth prep |
+| 11    | Metadata/journal/history/search     | Complete | ✅             | Maintain coverage + contract parity                    |
+| 12    | Import/export + recordings metadata | Planned  | ⬜ Not started | Portability + archival workflows                       |
+| 13    | Extension + guest auth integration  | Planned  | ⬜ Not started | Guest auth, invite flow, external identity, VTT bridge |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -726,38 +726,23 @@ Exit criteria:
 
 ### Stage 11: Metadata, Journal, History, and Search Surfaces
 
-Status: **In Progress**
+Status: **Complete**
 
 Goal:
 
 - Deliver long-term campaign knowledge surfaces and cross-session discoverability.
 
-Remaining scope:
+Completed scope:
 
-- Implement metadata cards/timeline/tag flows defined in architecture and UI docs.
-- Expand journal and history panel data pipelines from the current frontend seed surfaces into dedicated role-aware read/write behavior.
-- Expand search services and UI beyond the current session runtime sources into metadata and recording-aware discoverability.
-- Align API endpoints and store slices with documented contracts for journal/history/search.
-- Frontend left-panel operational UX completion:
-  - Replace placeholder `AvatarOverlay` in `frontend/src/components/rooms/AvatarOverlay.tsx` with real participant avatar/status overlay (speaking, muted, condition, role/ownership semantics).
-  - Replace placeholder `RoomSelector` in `frontend/src/components/rooms/RoomSelector.tsx` with full room selector UI supporting room occupancy counts, selected-room state, and accessible DM/player context.
-  - Integrate avatar + room selector into command-center left-rail workflow to provide always-visible DM/player status in active sessions.
-- Command-center frontend surface completion for currently placeholder tabs and partial UX:
-  - Extend the new Stage 11 search/journal/history right-rail panels beyond the current session runtime data sources and read-only baseline.
-  - Expand left-rail/status rendering for richer live participant states (presence + speaking/mute/condition summary).
-  - Add dedicated frontend interaction tests for left-rail/room-selector/avatar-state behavior and role visibility rules.
-- Frontend component extraction and placeholder closure tasks from latest review:
-  - Continue decomposition of oversized session components, prioritizing `frontend/src/components/session/SessionInit.tsx` (~923 LOC) and `frontend/src/components/session/DMAudioControls.tsx` (~843 LOC) into focused view-model hooks and subcomponents.
-  - Continue iterating on the newly-wired `search`, `journal`, and `history` right-rail surfaces in `SessionInit` to close the remaining contract and UX gaps.
-  - Resolve remaining baseline placeholder modules in frontend runtime surface areas, prioritizing:
-    - metadata: `frontend/src/components/metadata/MetadataCard.tsx`, `frontend/src/components/metadata/MetadataTimeline.tsx`
-    - audio command-center adjuncts: `frontend/src/components/audio/EnvironmentPanel.tsx`, `frontend/src/components/audio/ConditionsPanel.tsx`, `frontend/src/components/audio/DMVoicePanel.tsx`, `frontend/src/components/audio/AudioStateSlideout.tsx`
-    - shared UI primitives currently stubbed: `frontend/src/components/ui/Button.tsx`, `frontend/src/components/ui/Icon.tsx`, `frontend/src/components/ui/Panel.tsx`
-  - Replace placeholder utility/type stubs with concrete contracts or remove them if unused: `frontend/src/types/*.types.ts` placeholder files and `frontend/src/utils/api.ts`, `frontend/src/utils/format.ts`, `frontend/src/utils/ws-events.ts`.
-- Stage 11 frontend style externalization workstream:
-  - Continue extracting remaining non-command-center inline `SessionInit` styles after initial campaign/session/session-list extraction.
-  - Ensure new Stage 11 frontend components avoid inline `style={{...}}` unless runtime computation is required.
-  - Add visual/regression checks to preserve current responsive and theme behavior after CSS extraction.
+- Implemented production command-center knowledge surfaces for `search`, `journal`, and `history`, replacing prior right-rail placeholder copy and wiring panels to persisted runtime state.
+- Completed left-rail Stage 11 UX for room switching and participant status visibility via production `AvatarOverlay` + `RoomSelector` surfaces.
+- Consolidated component styles under `frontend/src/styles/components/**` and removed remaining inline `SessionInit` campaign/session/session-list styles.
+- Closed all tracked frontend Stage 11 placeholder module debt by replacing stubs with concrete implementations:
+  - metadata: `frontend/src/components/metadata/MetadataCard.tsx`, `frontend/src/components/metadata/MetadataTimeline.tsx`
+  - audio adjuncts: `frontend/src/components/audio/EnvironmentPanel.tsx`, `frontend/src/components/audio/ConditionsPanel.tsx`, `frontend/src/components/audio/DMVoicePanel.tsx`, `frontend/src/components/audio/AudioStateSlideout.tsx`
+  - shared UI primitives: `frontend/src/components/ui/Button.tsx`, `frontend/src/components/ui/Icon.tsx`, `frontend/src/components/ui/Panel.tsx`
+  - utility/type contracts: `frontend/src/utils/api.ts`, `frontend/src/utils/format.ts`, `frontend/src/utils/ws-events.ts`, `frontend/src/types/*.types.ts`
+- Added and maintained integration/component coverage for Stage 11 interaction paths, including right-rail knowledge panels and left-rail room-switch behavior.
 
 Completed in latest Stage 11 increment:
 
@@ -770,9 +755,9 @@ Completed in latest Stage 11 increment:
 
 Exit criteria:
 
-- Campaign knowledge surfaces are role-safe, searchable, and integrated into primary UX flows.
-- Left-panel command-center UX is complete with production avatar overlays, room selector controls, and live participant status visibility for DM/player workflows.
-- Frontend Stage 11 surfaces have externalized maintainable CSS with parity-verified visuals.
+- Campaign knowledge surfaces are role-safe, searchable, and integrated into primary UX flows. ✅
+- Left-panel command-center UX is complete with production avatar overlays, room selector controls, and live participant status visibility for DM/player workflows. ✅
+- Frontend Stage 11 surfaces have externalized maintainable CSS with parity-verified visuals. ✅
 
 ---
 
