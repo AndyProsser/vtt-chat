@@ -113,6 +113,10 @@ function buildApp() {
 describe('admin telemetry durability and drill-down', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    const now = Date.now()
+    const auditCreatedAt = new Date(now - 10 * 60 * 1000)
+    const telemetryTimestamp = new Date(now - 5 * 60 * 1000).toISOString()
+    const diagnosticTimestamp = new Date(now - 2 * 60 * 1000).toISOString()
 
     mocks.mockAdminUsersExist.mockResolvedValue(true)
     mocks.mockVerifyAdminToken.mockReturnValue({
@@ -140,14 +144,14 @@ describe('admin telemetry durability and drill-down', () => {
         outcome: 'SUCCESS',
         reason: 'policy',
         metadata: { reasonCode: 'abuse' },
-        createdAt: new Date('2026-04-22T10:00:00.000Z'),
+        createdAt: auditCreatedAt,
       },
     ])
 
     mocks.mockLoadTelemetryEvents.mockResolvedValue([
       {
         id: 'telemetry-1',
-        timestamp: '2026-04-22T10:05:00.000Z',
+        timestamp: telemetryTimestamp,
         severity: 'INFO',
         source: 'telemetry',
         message: 'ROOM_SWITCH',
@@ -170,12 +174,12 @@ describe('admin telemetry durability and drill-down', () => {
       outcome: 'SUCCESS',
       reason: 'policy',
       metadata: { reasonCode: 'abuse' },
-      createdAt: new Date('2026-04-22T10:00:00.000Z'),
+      createdAt: auditCreatedAt,
     })
 
     mocks.mockFindTelemetryEventById.mockResolvedValue({
       id: 'telemetry-1',
-      timestamp: '2026-04-22T10:05:00.000Z',
+      timestamp: telemetryTimestamp,
       severity: 'INFO',
       source: 'telemetry',
       message: 'ROOM_SWITCH',
@@ -189,7 +193,7 @@ describe('admin telemetry durability and drill-down', () => {
     mocks.mockLoadDiagnosticEvents.mockResolvedValue([
       {
         id: 'diag-1',
-        timestamp: '2026-04-22T10:03:00.000Z',
+        timestamp: diagnosticTimestamp,
         severity: 'INFO',
         source: 'api',
         message: 'Request completed',
@@ -199,7 +203,7 @@ describe('admin telemetry durability and drill-down', () => {
     mocks.mockPersistDiagnosticEvents.mockResolvedValue([])
     mocks.mockFindDiagnosticEventById.mockResolvedValue({
       id: 'diag-1',
-      timestamp: '2026-04-22T10:03:00.000Z',
+      timestamp: diagnosticTimestamp,
       severity: 'INFO',
       source: 'api',
       message: 'Request completed',
