@@ -30,7 +30,10 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
 - A UI modernization track is now defined to standardize frontend core UI on Radix/Tailwind/tokens and admin UI on MUI, delivered incrementally to avoid disrupting active stage work.
-- WP2 framework foundations are complete, and WP3 token/theme normalization is now in progress.
+- WP2 framework foundations are complete.
+- WP3 token/theme normalization is complete with root theme-class support and Tailwind token mapping.
+- WP4 shell and primitive migration is complete for frontend shell/auth surfaces and admin MUI-driven shell controls.
+- WP5 feature surface migration is now in progress, starting with command-center session surfaces.
 
 Latest verification:
 
@@ -71,9 +74,9 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 | ------------ | ----------------------------- | ----------- | -------------------------------------------------------------------- |
 | WP1          | Spec alignment                | Complete    | Planning docs agree on repo layout and migration order               |
 | WP2          | Framework foundations         | Complete    | New dependencies install/build cleanly on stable releases            |
-| WP3          | Token/theme normalization     | In Progress | Theme systems are framework-backed without runtime regressions       |
-| WP4          | Shell and primitive migration | Planned     | Core shells/providers move to the new framework layers               |
-| WP5          | Feature surface migration     | Planned     | High-traffic surfaces migrate incrementally with low regression risk |
+| WP3          | Token/theme normalization     | Complete    | Theme systems are framework-backed without runtime regressions       |
+| WP4          | Shell and primitive migration | Complete    | Core shells/providers move to the new framework layers               |
+| WP5          | Feature surface migration     | In Progress | High-traffic surfaces migrate incrementally with low regression risk |
 | WP6          | Cleanup and enforcement       | Planned     | Legacy layers removed only after verification                        |
 
 ### Appendix A) Target Files by Work Package

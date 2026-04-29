@@ -21,40 +21,26 @@ export function LeftRailSummary({
   presenceCount,
 }: LeftRailSummaryProps) {
   return (
-    <div>
-      <h4 style={{ margin: '0 0 0.5rem 0' }}>Left Rail</h4>
-      <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+    <div className="space-y-1">
+      <h4 className="mb-2 mt-0 text-base font-semibold text-ui-primary">Left Rail</h4>
+      <p className="m-0 text-xs text-ui-secondary">
         User: <strong>{username}</strong>
       </p>
-      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+      <p className="m-0 text-xs text-ui-secondary">
         Persona: <strong>{role}</strong>
       </p>
-      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+      <p className="m-0 text-xs text-ui-secondary">
         Session: <strong>{sessionName}</strong>
       </p>
-      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+      <p className="m-0 text-xs text-ui-secondary">
         State: <strong>{sessionState}</strong>
       </p>
 
-      <div
-        style={{
-          marginTop: '0.75rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid #e2e8f0',
-        }}
-      >
-        <p style={{ margin: 0, fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
-          Quick counts
-        </p>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-          Sessions in campaign: {sessionCount}
-        </p>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-          Rooms tracked: {roomCount}
-        </p>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-          Presence tracked: {presenceCount}
-        </p>
+      <div className="mt-3 border-t border-ui-border pt-3">
+        <p className="m-0 text-xs font-semibold text-ui-primary">Quick counts</p>
+        <p className="mt-1 text-xs text-ui-secondary">Sessions in campaign: {sessionCount}</p>
+        <p className="mt-1 text-xs text-ui-secondary">Rooms tracked: {roomCount}</p>
+        <p className="mt-1 text-xs text-ui-secondary">Presence tracked: {presenceCount}</p>
       </div>
     </div>
   )

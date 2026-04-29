@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../core-ui'
 import type { ToolbarCenterPaneView } from '../../state/commandCenterSlice'
 import { telemetryClient } from '../../utils/telemetry'
 import '../../styles/components/session/CommandCenterFrame.css'
@@ -66,6 +67,10 @@ function formatTabLabel(tab: RightRailTab): string {
     default:
       return tab
   }
+}
+
+function isRightRailTab(value: string, tabs: RightRailTab[]): value is RightRailTab {
+  return tabs.includes(value as RightRailTab)
 }
 
 interface CommandCenterFrameProps {
@@ -177,28 +182,39 @@ export function CommandCenterFrame({
 
         {toolbarRightRailOpen && (
           <aside data-testid="right-rail" className="command-center-surface">
-            <div className="command-center-tools-tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  aria-label={`Tool ${formatTabLabel(tab)}`}
-                  aria-pressed={tab === activeRightRailTab}
-                  onClick={() => {
-                    telemetryClient.track('UI_TAB_SWITCH', {
-                      surface: 'command-center-right-rail',
-                      from: activeRightRailTab,
-                      to: tab,
-                      role,
-                    })
-                    setSelectedRightRailTab(tab)
-                  }}
-                >
-                  {formatTabLabel(tab)}
-                </button>
-              ))}
-            </div>
-            <div data-testid="right-rail-content">{renderRightRailTab(activeRightRailTab)}</div>
+            <Tabs
+              value={activeRightRailTab}
+              onValueChange={(nextTab) => {
+                if (!isRightRailTab(nextTab, tabs)) {
+                  return
+                }
+
+                telemetryClient.track('UI_TAB_SWITCH', {
+                  surface: 'command-center-right-rail',
+                  from: activeRightRailTab,
+                  to: nextTab,
+                  role,
+                })
+                setSelectedRightRailTab(nextTab)
+              }}
+            >
+              <TabsList className="mb-3 h-auto w-full flex-wrap gap-2 rounded-ui-md bg-ui-surface-subtle p-1">
+                {tabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    aria-label={`Tool ${formatTabLabel(tab)}`}
+                    className="rounded-ui-sm text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
+                  >
+                    {formatTabLabel(tab)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <TabsContent value={activeRightRailTab} data-testid="right-rail-content">
+                {renderRightRailTab(activeRightRailTab)}
+              </TabsContent>
+            </Tabs>
           </aside>
         )}
       </div>

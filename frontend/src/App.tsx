@@ -5,6 +5,7 @@ import { LoginForm } from './components/auth/LoginForm'
 import { SessionInit } from './components/session/SessionInit'
 import { AudioPanel } from './components/audio/AudioPanel'
 import { useStore } from './hooks/useStore'
+import { cn } from './utils/cn'
 
 /**
  * App Component
@@ -208,39 +209,19 @@ export default function App() {
     !authProfile?.hasAdminAccess
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif',
-      }}
-    >
+    <div className="min-h-screen bg-ui-surface-subtle font-sans text-ui-primary">
       {/* Header */}
-      <header
-        style={{
-          backgroundColor: '#fff',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '1rem',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+      <header className="border-b border-ui-border bg-ui-surface px-4 py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>VTT-Chat</h1>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
+            <p className="mt-1 text-sm text-ui-secondary">
               Stage 7: Audio &amp; LiveKit Integration
             </p>
           </div>
 
           {auth.user && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="flex gap-2">
               {showAdminButton && (
                 <button
                   onClick={handleOpenAdmin}
@@ -250,30 +231,19 @@ export default function App() {
                       ? 'Upgrade to full account to access admin'
                       : undefined
                   }
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: adminButtonDisabled ? '#94a3b8' : '#0f766e',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: adminButtonDisabled ? 'not-allowed' : 'pointer',
-                    fontSize: '0.875rem',
-                  }}
+                  className={cn(
+                    'rounded-ui-sm px-4 py-2 text-sm text-white',
+                    adminButtonDisabled
+                      ? 'cursor-not-allowed bg-slate-400'
+                      : 'cursor-pointer bg-teal-700 hover:bg-teal-800'
+                  )}
                 >
                   {adminLaunchLoading ? 'Opening Admin...' : 'Open Admin'}
                 </button>
               )}
               <button
                 onClick={handleLogout}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                }}
+                className="cursor-pointer rounded-ui-sm bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
               >
                 Logout
               </button>
@@ -283,40 +253,18 @@ export default function App() {
       </header>
 
       {authMessage && (
-        <div
-          style={{
-            maxWidth: '1200px',
-            margin: '1rem auto 0',
-            padding: '0.75rem 1rem',
-            border: '1px solid #f59e0b',
-            backgroundColor: '#fffbeb',
-            color: '#92400e',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-          }}
-        >
+        <div className="mx-auto mt-4 w-full max-w-6xl rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {authMessage}
         </div>
       )}
 
       {/* Main Content */}
-      <main
-        style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '2rem 1rem',
-        }}
-      >
+      <main className="mx-auto w-full max-w-6xl px-4 py-8">
         {!auth.token || !auth.user ? (
           <>
-            <section
-              style={{
-                textAlign: 'center',
-                marginBottom: '2rem',
-              }}
-            >
-              <h2 style={{ color: '#1f2937' }}>Welcome to VTT-Chat</h2>
-              <p style={{ color: '#6b7280', maxWidth: '500px', margin: '0 auto' }}>
+            <section className="mb-8 text-center">
+              <h2 className="text-3xl font-semibold text-ui-primary">Welcome to VTT-Chat</h2>
+              <p className="mx-auto mt-2 max-w-xl text-ui-secondary">
                 Stage 7 adds room voice, LiveKit transport, and the client audio engine. Start a
                 session to unlock chat, room state, and the mounted audio controls.
               </p>
@@ -324,20 +272,9 @@ export default function App() {
 
             <LoginForm apiUrl={apiUrl} onLoginSuccess={handleLoginSuccess} />
 
-            <section
-              style={{
-                maxWidth: '600px',
-                margin: '2rem auto',
-                padding: '1.5rem',
-                backgroundColor: '#eff6ff',
-                border: '1px solid #93c5fd',
-                borderRadius: '8px',
-                color: '#1e40af',
-                fontSize: '0.875rem',
-              }}
-            >
-              <h3 style={{ marginTop: 0 }}>Test Credentials</h3>
-              <ul style={{ margin: '0.5rem 0' }}>
+            <section className="mx-auto mt-8 max-w-2xl rounded-ui-lg border border-blue-300 bg-blue-50 p-6 text-sm text-blue-900">
+              <h3 className="mt-0 text-base font-semibold">Test Credentials</h3>
+              <ul className="my-2 list-disc pl-5">
                 <li>
                   <strong>Username:</strong> Any 3-32 character username (alphanumeric + underscore)
                 </li>
@@ -348,7 +285,7 @@ export default function App() {
                   <strong>Password:</strong> Not required in Stage 1 (for testing)
                 </li>
               </ul>
-              <p style={{ margin: '0.5rem 0 0 0' }}>
+              <p className="mt-2">
                 After login, you&apos;ll be able to create sessions and see real-time WebSocket
                 state, room updates, and audio controls activate together.
               </p>
@@ -373,18 +310,8 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer
-        style={{
-          backgroundColor: '#f3f4f6',
-          borderTop: '1px solid #e5e7eb',
-          padding: '1rem',
-          marginTop: '2rem',
-          textAlign: 'center',
-          color: '#6b7280',
-          fontSize: '0.875rem',
-        }}
-      >
-        <p style={{ margin: 0 }}>
+      <footer className="mt-8 border-t border-ui-border bg-ui-surface px-4 py-4 text-center text-sm text-ui-secondary">
+        <p className="m-0">
           Stage 7 Active: Audio &amp; LiveKit Integration (voice rooms, DSP engine, DM overrides)
         </p>
       </footer>

@@ -61,42 +61,18 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      style={{
-        maxWidth: '400px',
-        margin: '2rem auto',
-        padding: '2rem',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      }}
+      className="mx-auto my-8 w-full max-w-md rounded-ui-lg border border-ui-border bg-ui-surface p-8 shadow-ui-sm"
     >
-      <h2 style={{ marginTop: 0 }}>Login</h2>
+      <h2 className="mt-0 text-2xl font-semibold text-ui-primary">Login</h2>
 
       {error && (
-        <div
-          style={{
-            padding: '0.75rem',
-            marginBottom: '1rem',
-            backgroundColor: '#fee2e2',
-            color: '#991b1b',
-            borderRadius: '4px',
-            fontSize: '0.875rem',
-          }}
-        >
+        <div className="mb-4 rounded-ui-sm bg-ui-error-surface px-3 py-3 text-sm text-ui-error-text">
           {error}
         </div>
       )}
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label
-          htmlFor="username"
-          style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            fontSize: '0.875rem',
-          }}
-        >
+      <div className="mb-4">
+        <label htmlFor="username" className="mb-2 block text-sm font-medium text-ui-primary">
           Username
         </label>
         <input
@@ -105,43 +81,21 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Enter username (3-32 chars)"
-          style={{
-            width: '100%',
-            padding: '0.5rem',
-            border: '1px solid #cbd5e1',
-            borderRadius: '4px',
-            fontSize: '0.875rem',
-            boxSizing: 'border-box',
-          }}
+          className="block w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary outline-none focus:border-ui-border-focus"
           disabled={isLoading}
           required
         />
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label
-          htmlFor="role"
-          style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            fontSize: '0.875rem',
-          }}
-        >
+      <div className="mb-6">
+        <label htmlFor="role" className="mb-2 block text-sm font-medium text-ui-primary">
           Role
         </label>
         <select
           id="role"
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
-          style={{
-            width: '100%',
-            padding: '0.5rem',
-            border: '1px solid #cbd5e1',
-            borderRadius: '4px',
-            fontSize: '0.875rem',
-            boxSizing: 'border-box',
-          }}
+          className="block w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary outline-none focus:border-ui-border-focus"
           disabled={isLoading}
         >
           <option value="DM">Dungeon Master (DM)</option>
@@ -153,29 +107,12 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       <button
         type="submit"
         disabled={isLoading || !username.trim()}
-        style={{
-          width: '100%',
-          padding: '0.75rem',
-          backgroundColor: isLoading || !username.trim() ? '#cbd5e1' : '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          fontWeight: '500',
-          cursor: isLoading || !username.trim() ? 'not-allowed' : 'pointer',
-          fontSize: '0.875rem',
-        }}
+        className="w-full rounded-ui-sm bg-ui-brand px-4 py-3 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {isLoading ? 'Logging in...' : 'Login'}
       </button>
 
-      <p
-        style={{
-          marginTop: '1rem',
-          fontSize: '0.75rem',
-          color: '#64748b',
-          textAlign: 'center',
-        }}
-      >
+      <p className="mt-4 text-center text-xs text-ui-secondary">
         Stage 1: No password required. Username is verified by length and format only.
       </p>
     </form>

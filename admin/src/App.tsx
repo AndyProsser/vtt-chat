@@ -1,5 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CssBaseline, ThemeProvider } from '@mui/material'
+import {
+  AppBar,
+  Box,
+  Button,
+  CssBaseline,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  ThemeProvider,
+  Toolbar,
+  Typography,
+} from '@mui/material'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import UserManagement from './pages/UserManagement'
@@ -305,71 +318,100 @@ export default function App() {
     }
   }
 
+  const navWidth = isNavCollapsed ? 76 : 240
+
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
-      <div className={`admin-app theme-${theme}`}>
-        <header className="admin-topbar">
-          <div>
-            <h1 className="admin-title">VTT-Chat Admin</h1>
-            <p className="admin-subtitle">Operations console</p>
-          </div>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+        <AppBar
+          position="fixed"
+          color="inherit"
+          elevation={0}
+          sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
+        >
+          <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+            <Box>
+              <Typography variant="h6" sx={{ lineHeight: 1.1 }}>
+                VTT-Chat Admin
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Operations console
+              </Typography>
+            </Box>
 
-          <div className="admin-topbar-actions">
-            <button
-              className="admin-btn admin-btn-ghost"
-              onClick={() => setIsNavCollapsed((prev) => !prev)}
-              aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            >
-              {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
-            </button>
-            <button
-              className="admin-btn"
-              onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-              aria-label="Toggle theme"
-            >
-              Theme: {theme === 'dark' ? 'Dark' : 'Light'}
-            </button>
-            <button
-              className="admin-btn admin-btn-ghost"
-              onClick={handleOpenFrontend}
-              disabled={launchLoading}
-              aria-label="Open frontend"
-            >
-              {launchLoading ? 'Opening App...' : 'Open App'}
-            </button>
-            <button
-              className="admin-btn admin-btn-danger"
-              onClick={handleLogout}
-              aria-label="Logout"
-            >
-              Logout
-            </button>
-          </div>
-        </header>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setIsNavCollapsed((prev) => !prev)}
+                aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              >
+                {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+                aria-label="Toggle theme"
+              >
+                Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleOpenFrontend}
+                disabled={launchLoading}
+                aria-label="Open frontend"
+              >
+                {launchLoading ? 'Opening App...' : 'Open App'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={handleLogout}
+                aria-label="Logout"
+              >
+                Logout
+              </Button>
+            </Box>
+          </Toolbar>
+        </AppBar>
 
-        <div className="admin-layout">
-          <aside className={`admin-nav ${isNavCollapsed ? 'collapsed' : ''}`}>
-            <nav aria-label="Admin navigation">
-              <ul className="admin-nav-list">
-                {NAV_ITEMS.map((item) => (
-                  <li key={item.key}>
-                    <button
-                      className={`admin-nav-item ${page === item.key ? 'active' : ''}`}
-                      onClick={() => setPage(item.key)}
-                      title={item.label}
-                    >
-                      {isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </aside>
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: navWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: navWidth,
+              boxSizing: 'border-box',
+              borderRight: 1,
+              borderColor: 'divider',
+              mt: '64px',
+              height: 'calc(100% - 64px)',
+              bgcolor: 'background.paper',
+            },
+          }}
+        >
+          <List sx={{ pt: 1 }} aria-label="Admin navigation">
+            {NAV_ITEMS.map((item) => (
+              <ListItem key={item.key} disablePadding>
+                <ListItemButton selected={page === item.key} onClick={() => setPage(item.key)}>
+                  <ListItemText
+                    primary={isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Drawer>
 
-          <main className="admin-main-content">{renderPage()}</main>
-        </div>
-      </div>
+        <Box component="main" sx={{ ml: `${navWidth}px`, mt: '64px', p: 2 }}>
+          {renderPage()}
+        </Box>
+      </Box>
     </ThemeProvider>
   )
 }

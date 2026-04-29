@@ -35,8 +35,10 @@ UI modernization status:
 
 - WP1 spec alignment is complete in `docs/changes`
 - WP2 framework foundations are complete with frontend Tailwind/Radix scaffolding and admin MUI/theme entrypoint in place
-- WP3 token and theme normalization is now in progress
-- WP4-WP6 remain planned behind token/theme normalization
+- WP3 token and theme normalization is complete with root theme-class strategy and Tailwind token mappings in place
+- WP4 shell and primitive migration is complete for frontend shell/auth surfaces and admin MUI-driven shell controls
+- WP5 feature-surface migration is now in progress with first slice applied to command-center session surfaces
+- WP6 remains planned
 
 Latest verification:
 
@@ -77,9 +79,9 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 | ------------ | ----------------------------- | ----------- | ------------------------------------------------------------------------------ |
 | WP1          | Spec alignment                | Complete    | Design, roadmap, and implementation docs agree on structure and sequencing     |
 | WP2          | Framework foundations         | Complete    | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
-| WP3          | Token/theme normalization     | In Progress | Tokens are normalized and theme systems are framework-backed                   |
-| WP4          | Shell and primitive migration | Planned     | App shells and adopted primitives use the new framework layers                 |
-| WP5          | Feature surface migration     | Planned     | High-use frontend/admin surfaces migrate incrementally                         |
+| WP3          | Token/theme normalization     | Complete    | Tokens are normalized and theme systems are framework-backed                   |
+| WP4          | Shell and primitive migration | Complete    | App shells and adopted primitives use the new framework layers                 |
+| WP5          | Feature surface migration     | In Progress | High-use frontend/admin surfaces migrate incrementally                         |
 | WP6          | Cleanup and enforcement       | Planned     | Legacy CSS/components removed after verification and docs/tests updated        |
 
 ## 1.1) UI Modernization Deliverables
@@ -119,7 +121,7 @@ Acceptance criteria:
 
 ### WP3: Token and Theme Normalization
 
-Status: **In Progress**
+Status: **Complete**
 
 Deliverables:
 
@@ -134,7 +136,7 @@ Acceptance criteria:
 
 ### WP4: Shell and Primitive Migration
 
-Status: **Planned**
+Status: **Complete**
 
 Deliverables:
 
@@ -149,12 +151,17 @@ Acceptance criteria:
 
 ### WP5: Feature Surface Migration
 
-Status: **Planned**
+Status: **In Progress**
 
 Deliverables:
 
 - Frontend command-center, notes, chat, audio, and room surfaces migrated incrementally
 - Admin pages migrated page-by-page to MUI
+
+Current slice (PR1 within WP5):
+
+- Command-center session summary/toast surfaces migrated to tokenized utility classes
+- Command-center right-rail tab control migrated to `frontend/src/core-ui/tabs` wrappers
 
 Acceptance criteria:
 
