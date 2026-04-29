@@ -132,34 +132,26 @@ export function NoteCard({
   const publishedLabel = note.publishedAt ? new Date(note.publishedAt).toLocaleString() : null
 
   return (
-    <article
-      style={{
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '0.75rem',
-        backgroundColor: '#fff',
-        marginBottom: '0.75rem',
-      }}
-    >
+    <article className="mb-3 rounded-ui-md border border-ui-border bg-ui-surface p-3">
       {isEditing ? (
         <>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Note title"
-            style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem' }}
+            className="mb-2 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
           />
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your note"
-            style={{ width: '100%', minHeight: '100px', marginBottom: '0.5rem', padding: '0.5rem' }}
+            className="mb-2 min-h-25 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
           />
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <div className="mb-2 flex gap-2">
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as NoteVisibility)}
-              style={{ flex: 1, padding: '0.5rem' }}
+              className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
             >
               <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
               <option value={NoteVisibility.CUSTOM}>Custom</option>
@@ -169,16 +161,16 @@ export function NoteCard({
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="tag1, tag2"
-              style={{ flex: 2, padding: '0.5rem' }}
+              className="flex-2 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
             />
           </div>
           {visibility === NoteVisibility.CUSTOM && (
-            <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+            <div className="mb-2">
+              <div className="mb-1.5 flex gap-2">
                 <select
                   value={selectedShareUserId}
                   onChange={(e) => setSelectedShareUserId(e.target.value)}
-                  style={{ flex: 1, padding: '0.5rem' }}
+                  className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
                 >
                   <option value="">Select player to share with</option>
                   {shareUsers.map((shareUser) => (
@@ -191,39 +183,33 @@ export function NoteCard({
                   type="button"
                   onClick={handleAddSelectedUser}
                   disabled={!selectedShareUserId}
-                  style={{ padding: '0.4rem 0.75rem' }}
+                  className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Add
                 </button>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <div className="mb-1.5 flex gap-2">
                 <input
                   value={shareWithInput}
                   onChange={(e) => setShareWithInput(e.target.value)}
                   placeholder="Or paste user ID"
-                  style={{ flex: 1, padding: '0.5rem' }}
+                  className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
                 />
                 <button
                   type="button"
                   onClick={handleAddManualUser}
-                  style={{ padding: '0.4rem 0.75rem' }}
+                  className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
                 >
                   Add
                 </button>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              <div className="flex flex-wrap gap-1.5">
                 {allowedUsers.map((userId) => (
                   <button
                     key={userId}
                     type="button"
                     onClick={() => removeAllowedUser(userId)}
-                    style={{
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#f8fafc',
-                      borderRadius: '999px',
-                      padding: '0.2rem 0.5rem',
-                      fontSize: '0.75rem',
-                    }}
+                    className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
                     title="Click to remove"
                   >
                     {shareUsers.find((u) => u.id === userId)?.username || userId} x
@@ -232,67 +218,62 @@ export function NoteCard({
               </div>
             </div>
           )}
-          {error && <p style={{ margin: '0 0 0.5rem 0', color: '#b91c1c' }}>{error}</p>}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={handleSave} disabled={isSaving} style={{ padding: '0.4rem 0.75rem' }}>
+          {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
               {isSaving ? 'Saving...' : 'Save'}
             </button>
-            <button onClick={cancelEdit} disabled={isSaving} style={{ padding: '0.4rem 0.75rem' }}>
+            <button
+              onClick={cancelEdit}
+              disabled={isSaving}
+              className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Cancel
             </button>
           </div>
         </>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h4 style={{ margin: 0 }}>{note.title}</h4>
-            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <div className="flex items-center justify-between">
+            <h4 className="m-0 text-base font-semibold text-ui-primary">{note.title}</h4>
+            <div className="flex items-center gap-1.5">
               {note.publishedAt && (
                 <span
-                  style={{
-                    fontSize: '0.72rem',
-                    color: '#065f46',
-                    backgroundColor: '#d1fae5',
-                    border: '1px solid #6ee7b7',
-                    borderRadius: '999px',
-                    padding: '0.1rem 0.45rem',
-                    lineHeight: 1.4,
-                  }}
+                  className="rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[11px] leading-[1.4] text-emerald-800"
                   title={`Published ${publishedLabel}`}
                 >
                   Published
                 </span>
               )}
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                {visibilityLabel[note.visibility]}
-              </span>
+              <span className="text-xs text-ui-secondary">{visibilityLabel[note.visibility]}</span>
             </div>
           </div>
-          <p style={{ margin: '0.5rem 0', whiteSpace: 'pre-wrap' }}>{note.content}</p>
-          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#64748b' }}>
-            by {note.ownerUsername}
-          </p>
+          <p className="my-2 whitespace-pre-wrap text-sm text-ui-primary">{note.content}</p>
+          <p className="mb-2 text-xs text-ui-secondary">by {note.ownerUsername}</p>
           {note.publishedAt && (
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#047857' }}>
-              Published to chat: {publishedLabel}
-            </p>
+            <p className="mb-2 text-xs text-emerald-700">Published to chat: {publishedLabel}</p>
           )}
           {note.tags.length > 0 && (
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#475569' }}>
-              Tags: {note.tags.join(', ')}
-            </p>
+            <p className="mb-2 text-xs text-slate-600">Tags: {note.tags.join(', ')}</p>
           )}
-          {error && <p style={{ margin: '0 0 0.5rem 0', color: '#b91c1c' }}>{error}</p>}
+          {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
           {canEdit && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setIsEditing(true)} style={{ padding: '0.4rem 0.75rem' }}>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
+              >
                 Edit
               </button>
               {canPublish && (
                 <button
                   onClick={handlePublish}
                   disabled={isSaving || !!note.publishedAt}
-                  style={{ padding: '0.4rem 0.75rem' }}
+                  className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                   {note.publishedAt ? 'Published' : isSaving ? 'Publishing...' : 'Publish'}
                 </button>
@@ -300,7 +281,7 @@ export function NoteCard({
               <button
                 onClick={handleDelete}
                 disabled={isSaving}
-                style={{ padding: '0.4rem 0.75rem' }}
+                className="rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {isSaving ? 'Deleting...' : 'Delete'}
               </button>

@@ -482,9 +482,7 @@ export function DMAudioControls({
 
   if (role !== 'DM') {
     return (
-      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-        Audio controls are DM-only during Stage 9.2.
-      </p>
+      <p className="m-0 text-sm text-ui-secondary">Audio controls are DM-only during Stage 9.2.</p>
     )
   }
 
@@ -493,23 +491,24 @@ export function DMAudioControls({
     FILTER_PRESETS.find((preset) => preset.id === selectedFilterPresetId) || FILTER_PRESETS[0]
 
   return (
-    <div style={{ display: 'grid', gap: '0.75rem' }}>
+    <div className="grid gap-3">
       <div>
-        <p style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>DM Voice Bar</p>
-        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+        <p className="mb-1 mt-0 font-semibold text-ui-primary">DM Voice Bar</p>
+        <p className="m-0 text-xs text-ui-secondary">
           First 9.2 slice: room environment + per-player override controls.
         </p>
       </div>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem' }}>
-        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Room Environment</p>
-        <div style={{ display: 'grid', gap: '0.45rem' }}>
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Room</span>
+      <section className="rounded-ui-md border border-ui-border p-2.5">
+        <p className="mb-2 mt-0 font-semibold text-ui-primary">Room Environment</p>
+        <div className="grid gap-2">
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Room</span>
             <select
               aria-label="Audio Room"
               value={selectedRoomId}
               onChange={(event) => setSelectedRoomId(event.target.value as UUID)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
@@ -519,12 +518,13 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Environment</span>
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Environment</span>
             <select
               aria-label="Environment Preset"
               value={selectedEnvironmentName}
               onChange={(event) => setSelectedEnvironmentName(event.target.value)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {environmentPresets.map((preset) => (
                 <option key={preset.id} value={preset.name}>
@@ -534,21 +534,27 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <button type="button" disabled={isSubmitting} onClick={applyEnvironment}>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={applyEnvironment}
+            className="w-fit rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
             Apply Environment
           </button>
         </div>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem' }}>
-        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>DM Voice Preset</p>
-        <div style={{ display: 'grid', gap: '0.45rem' }}>
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Voice</span>
+      <section className="rounded-ui-md border border-ui-border p-2.5">
+        <p className="mb-2 mt-0 font-semibold text-ui-primary">DM Voice Preset</p>
+        <div className="grid gap-2">
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Voice</span>
             <select
               aria-label="DM Voice Preset"
               value={selectedVoicePresetName}
               onChange={(event) => setSelectedVoicePresetName(event.target.value)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {voicePresets.map((preset) => (
                 <option key={preset.id} value={preset.name}>
@@ -557,7 +563,7 @@ export function DMAudioControls({
               ))}
             </select>
           </label>
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <div className="inline-flex flex-wrap gap-2">
             <button
               type="button"
               disabled={isSubmitting}
@@ -571,25 +577,32 @@ export function DMAudioControls({
                   dmUserId
                 )
               }
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Apply DM Voice
             </button>
-            <button type="button" disabled={isSubmitting} onClick={() => removeOverride('VOICE')}>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => removeOverride('VOICE')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Clear DM Voice
             </button>
           </div>
         </div>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem' }}>
-        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Player Overrides</p>
-        <div style={{ display: 'grid', gap: '0.45rem' }}>
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Target Player</span>
+      <section className="rounded-ui-md border border-ui-border p-2.5">
+        <p className="mb-2 mt-0 font-semibold text-ui-primary">Player Overrides</p>
+        <div className="grid gap-2">
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Target Player</span>
             <select
               aria-label="Override Target"
               value={selectedTargetUserId}
               onChange={(event) => setSelectedTargetUserId(event.target.value as UUID)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {controllableParticipants.map((participant) => (
                 <option key={participant.userId} value={participant.userId}>
@@ -599,17 +612,27 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-            <button type="button" disabled={isSubmitting} onClick={() => applyOverride('MUTE')}>
+          <div className="inline-flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => applyOverride('MUTE')}
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
               Mute
             </button>
-            <button type="button" disabled={isSubmitting} onClick={() => removeOverride('MUTE')}>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => removeOverride('MUTE')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Unmute
             </button>
           </div>
 
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Gain ({gainPercent}%)</span>
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Gain ({gainPercent}%)</span>
             <input
               aria-label="Override Gain"
               type="range"
@@ -618,28 +641,36 @@ export function DMAudioControls({
               step={5}
               value={gainPercent}
               onChange={(event) => setGainPercent(Number(event.target.value))}
+              className="accent-sky-600"
             />
           </label>
 
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <div className="inline-flex flex-wrap gap-2">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => applyOverride('GAIN', { gain: gainPercent / 100 })}
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Apply Gain
             </button>
-            <button type="button" disabled={isSubmitting} onClick={() => removeOverride('GAIN')}>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => removeOverride('GAIN')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Clear Gain
             </button>
           </div>
 
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Distance preset</span>
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Distance preset</span>
             <select
               aria-label="Distance Preset"
               value={selectedDistancePresetName}
               onChange={(event) => setSelectedDistancePresetName(event.target.value)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {distancePresets.map((preset) => (
                 <option key={preset.id} value={preset.name}>
@@ -649,7 +680,7 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <div className="inline-flex flex-wrap gap-2">
             <button
               type="button"
               disabled={isSubmitting}
@@ -659,6 +690,7 @@ export function DMAudioControls({
                   presetName: selectedDistancePresetName,
                 })
               }
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Apply Distance
             </button>
@@ -666,17 +698,19 @@ export function DMAudioControls({
               type="button"
               disabled={isSubmitting}
               onClick={() => removeOverride('DISTANCE')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               Clear Distance
             </button>
           </div>
 
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Condition preset</span>
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Condition preset</span>
             <select
               aria-label="Condition Preset"
               value={selectedConditionPresetName}
               onChange={(event) => setSelectedConditionPresetName(event.target.value)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {conditionPresets.map((preset) => (
                 <option key={preset.id} value={preset.name}>
@@ -686,7 +720,7 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <div className="inline-flex flex-wrap gap-2">
             <button
               type="button"
               disabled={isSubmitting}
@@ -696,6 +730,7 @@ export function DMAudioControls({
                   presetName: selectedConditionPresetName,
                 })
               }
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Apply Condition
             </button>
@@ -703,17 +738,19 @@ export function DMAudioControls({
               type="button"
               disabled={isSubmitting}
               onClick={() => removeOverride('CONDITION')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               Clear Condition
             </button>
           </div>
 
-          <label style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.75rem' }}>Filter preset</span>
+          <label className="grid gap-1">
+            <span className="text-xs text-ui-secondary">Filter preset</span>
             <select
               aria-label="Filter Preset"
               value={selectedFilterPresetId}
               onChange={(event) => setSelectedFilterPresetId(event.target.value)}
+              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
             >
               {FILTER_PRESETS.map((preset) => (
                 <option key={preset.id} value={preset.id}>
@@ -723,7 +760,7 @@ export function DMAudioControls({
             </select>
           </label>
 
-          <div style={{ display: 'inline-flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <div className="inline-flex flex-wrap gap-2">
             <button
               type="button"
               disabled={isSubmitting || !selectedFilterPreset}
@@ -734,34 +771,40 @@ export function DMAudioControls({
                   ...(selectedFilterPreset?.params || {}),
                 })
               }
+              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               Apply Filter
             </button>
-            <button type="button" disabled={isSubmitting} onClick={() => removeOverride('FILTER')}>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => removeOverride('FILTER')}
+              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
               Clear Filter
             </button>
           </div>
 
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+          <p className="m-0 text-xs text-ui-secondary">
             Active override:{' '}
             <strong>{activeOverride ? activeOverride.overrideType : 'None'}</strong>
           </p>
           {selectedTargetUserId && pendingOverrides[selectedTargetUserId] ? (
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#92400e' }}>
+            <p className="m-0 text-xs text-amber-700">
               Pending sync: waiting for websocket reconciliation.
             </p>
           ) : null}
         </div>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.6rem' }}>
-        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Room Movement (Drag and Drop)</p>
-        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#64748b' }}>
+      <section className="rounded-ui-md border border-ui-border p-2.5">
+        <p className="mb-2 mt-0 font-semibold text-ui-primary">Room Movement (Drag and Drop)</p>
+        <p className="mb-2 text-xs text-ui-secondary">
           Drag players between room columns. The UI applies optimistic state and waits for realtime
           confirmation before finalizing.
         </p>
 
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
+        <div className="grid gap-2">
           {rooms.map((room) => (
             <section
               key={room.id}
@@ -779,18 +822,13 @@ export function DMAudioControls({
                 }
                 setDraggedUserId(null)
               }}
-              style={{
-                border: '1px dashed #94a3b8',
-                borderRadius: '6px',
-                padding: '0.5rem',
-                background: '#f8fafc',
-              }}
+              className="rounded-ui-sm border border-dashed border-slate-400 bg-ui-surface-subtle p-2"
             >
-              <p style={{ margin: '0 0 0.35rem 0', fontWeight: 600 }}>
+              <p className="mb-1.5 mt-0 font-semibold text-ui-primary">
                 {room.name} ({room.type})
               </p>
 
-              <div style={{ display: 'grid', gap: '0.25rem' }}>
+              <div className="grid gap-1">
                 {(playersByRoom[room.id] || []).map((participant) => {
                   const pendingMove = pendingRoomMoves[participant.userId]
                   return (
@@ -804,14 +842,7 @@ export function DMAudioControls({
                         setDraggedUserId(participant.userId)
                       }}
                       onDragEnd={() => setDraggedUserId(null)}
-                      style={{
-                        textAlign: 'left',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        padding: '0.35rem 0.45rem',
-                        background: '#ffffff',
-                        cursor: 'grab',
-                      }}
+                      className="cursor-grab rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-1.5 text-left text-sm text-ui-primary"
                     >
                       {participant.username} ({participant.state})
                       {pendingMove ? ' - moving...' : ''}
@@ -820,7 +851,7 @@ export function DMAudioControls({
                 })}
 
                 {(playersByRoom[room.id] || []).length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>No players</p>
+                  <p className="m-0 text-xs text-ui-muted">No players</p>
                 ) : null}
               </div>
             </section>
@@ -829,12 +860,12 @@ export function DMAudioControls({
       </section>
 
       {error ? (
-        <p style={{ margin: 0, fontSize: '0.8rem', color: '#b91c1c' }} role="alert">
+        <p className="m-0 text-sm text-ui-error-text" role="alert">
           {error}
         </p>
       ) : null}
       {success ? (
-        <p style={{ margin: 0, fontSize: '0.8rem', color: '#166534' }} role="status">
+        <p className="m-0 text-sm text-emerald-700" role="status">
           {success}
         </p>
       ) : null}

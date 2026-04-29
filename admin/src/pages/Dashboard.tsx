@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
 import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
 import { getJson } from '../utils/api'
 
@@ -46,14 +47,16 @@ export default function Dashboard() {
   }, [])
 
   return (
-    <section className="admin-page">
-      <h2 className="admin-page-title">Dashboard</h2>
-      <p className="admin-page-subtitle">Operational overview of platform health and activity.</p>
+    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">Dashboard</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Operational overview of platform health and activity.
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading telemetry...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
+      {loading && <Alert severity="info">Loading telemetry...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
 
-      <div className="admin-card-grid three-col">
+      <Box className="admin-card-grid three-col">
         <TelemetryMetricCard
           title="Active Users"
           value={data?.activeUsers ?? '--'}
@@ -105,15 +108,20 @@ export default function Dashboard() {
           value={data?.recentModerationActions ?? '--'}
           subtitle="Last 24 hours"
         />
-      </div>
+      </Box>
 
-      <section className="admin-card">
-        <h3>Data Provenance</h3>
-        <p>
-          Metrics on this page are sourced from the authenticated{' '}
-          <strong>/telemetry/dashboard</strong> endpoint and refresh automatically every 15 seconds.
-        </p>
-      </section>
-    </section>
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Data Provenance
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Metrics on this page are sourced from the authenticated{' '}
+            <strong>/telemetry/dashboard</strong> endpoint and refresh automatically every 15
+            seconds.
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
   )
 }

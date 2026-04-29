@@ -20,10 +20,10 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  [MessageType.IC]: { bg: '#dbeafe', text: '#1d4ed8' },
-  [MessageType.OOC]: { bg: '#d1fae5', text: '#065f46' },
-  [MessageType.WHISPER]: { bg: '#ede9fe', text: '#6d28d9' },
-  [MessageType.SYSTEM]: { bg: '#f3f4f6', text: '#374151' },
+  [MessageType.IC]: { bg: 'bg-sky-100', text: 'text-sky-800' },
+  [MessageType.OOC]: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  [MessageType.WHISPER]: { bg: 'bg-violet-100', text: 'text-violet-800' },
+  [MessageType.SYSTEM]: { bg: 'bg-slate-200', text: 'text-slate-700' },
 }
 
 function formatTime(ts: number): string {
@@ -33,85 +33,37 @@ function formatTime(ts: number): string {
 export function MessageList({ messages, currentUserId }: MessageListProps) {
   if (messages.length === 0) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#9ca3af',
-          fontSize: '0.875rem',
-        }}
-      >
+      <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">
         No messages yet. Say something!
       </div>
     )
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-        padding: '0.75rem',
-      }}
-    >
+    <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
       {messages.map((msg) => {
         const colors = TYPE_COLORS[msg.type] ?? TYPE_COLORS[MessageType.OOC]
         const isSelf = msg.authorId === currentUserId
 
         return (
-          <div
-            key={msg.id}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: isSelf ? 'flex-end' : 'flex-start',
-            }}
-          >
+          <div key={msg.id} className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
             {/* Author + type badge */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                marginBottom: '0.125rem',
-                fontSize: '0.75rem',
-                color: '#6b7280',
-              }}
-            >
-              {!isSelf && <span style={{ fontWeight: 600 }}>{msg.authorUsername}</span>}
+            <div className="mb-0.5 flex items-center gap-1.5 text-xs text-ui-secondary">
+              {!isSelf && <span className="font-semibold">{msg.authorUsername}</span>}
               <span
-                style={{
-                  padding: '0.125rem 0.375rem',
-                  borderRadius: '9999px',
-                  backgroundColor: colors.bg,
-                  color: colors.text,
-                  fontWeight: 600,
-                  fontSize: '0.6875rem',
-                }}
+                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
               >
                 {TYPE_LABELS[msg.type] ?? msg.type}
               </span>
-              {msg.editedAt && <span style={{ fontStyle: 'italic' }}>edited</span>}
+              {msg.editedAt && <span className="italic">edited</span>}
               <span>{formatTime(msg.createdAt)}</span>
             </div>
 
             {/* Message bubble */}
             <div
-              style={{
-                maxWidth: '80%',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '0.5rem',
-                backgroundColor: isSelf ? '#3b82f6' : '#f3f4f6',
-                color: isSelf ? '#fff' : '#111827',
-                fontSize: '0.875rem',
-                lineHeight: '1.4',
-                wordBreak: 'break-word',
-              }}
+              className={`max-w-[80%] wrap-break-word rounded-ui-md px-3 py-2 text-sm leading-[1.4] ${
+                isSelf ? 'bg-ui-brand text-white' : 'bg-ui-surface-subtle text-ui-primary'
+              }`}
             >
               {msg.content}
             </div>

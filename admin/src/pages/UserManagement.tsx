@@ -1,3 +1,4 @@
+import { Alert, Box, Typography } from '@mui/material'
 import { AdminPagination } from '../components/AdminPagination'
 import { UserFilters } from '../features/users/UserFilters'
 import { UserInvitePanel } from '../features/users/UserInvitePanel'
@@ -33,12 +34,14 @@ export default function UserManagement() {
   } = useUserManagement()
 
   return (
-    <section className="admin-page">
-      <h2 className="admin-page-title">Users</h2>
-      <p className="admin-page-subtitle">Search, filter, and moderate user accounts.</p>
+    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">Users</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Search, filter, and moderate user accounts.
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading users...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
+      {loading && <Alert severity="info">Loading users...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
 
       <UserFilters
         search={search}
@@ -73,9 +76,9 @@ export default function UserManagement() {
         onCreateInvite={() => void createInvite()}
       />
 
-      <p className="admin-page-subtitle">
+      <Typography variant="body2" color="text.secondary">
         Showing {rows.length} of {total} users (page {page}/{totalPages})
-      </p>
+      </Typography>
 
       <UserTable
         rows={rows}
@@ -90,6 +93,6 @@ export default function UserManagement() {
         onPrevious={() => setPage((current) => Math.max(1, current - 1))}
         onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
       />
-    </section>
+    </Box>
   )
 }

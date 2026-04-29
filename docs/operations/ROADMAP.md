@@ -33,7 +33,7 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - WP2 framework foundations are complete.
 - WP3 token/theme normalization is complete with root theme-class support and Tailwind token mapping.
 - WP4 shell and primitive migration is complete for frontend shell/auth surfaces and admin MUI-driven shell controls.
-- WP5 feature surface migration is now in progress, starting with command-center session surfaces.
+- WP5 feature surface migration is complete across command-center, chat/notes/audio-room controls, and key admin operations pages.
 
 Latest verification:
 
@@ -70,14 +70,14 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
 ### UI Modernization Track (Operations Snapshot)
 
-| Work package | Scope                         | Status      | Operational gate                                                     |
-| ------------ | ----------------------------- | ----------- | -------------------------------------------------------------------- |
-| WP1          | Spec alignment                | Complete    | Planning docs agree on repo layout and migration order               |
-| WP2          | Framework foundations         | Complete    | New dependencies install/build cleanly on stable releases            |
-| WP3          | Token/theme normalization     | Complete    | Theme systems are framework-backed without runtime regressions       |
-| WP4          | Shell and primitive migration | Complete    | Core shells/providers move to the new framework layers               |
-| WP5          | Feature surface migration     | In Progress | High-traffic surfaces migrate incrementally with low regression risk |
-| WP6          | Cleanup and enforcement       | Planned     | Legacy layers removed only after verification                        |
+| Work package | Scope                         | Status   | Operational gate                                                     |
+| ------------ | ----------------------------- | -------- | -------------------------------------------------------------------- |
+| WP1          | Spec alignment                | Complete | Planning docs agree on repo layout and migration order               |
+| WP2          | Framework foundations         | Complete | New dependencies install/build cleanly on stable releases            |
+| WP3          | Token/theme normalization     | Complete | Theme systems are framework-backed without runtime regressions       |
+| WP4          | Shell and primitive migration | Complete | Core shells/providers move to the new framework layers               |
+| WP5          | Feature surface migration     | Complete | High-traffic surfaces migrate incrementally with low regression risk |
+| WP6          | Cleanup and enforcement       | Planned  | Legacy layers removed only after verification                        |
 
 ### Appendix A) Target Files by Work Package
 

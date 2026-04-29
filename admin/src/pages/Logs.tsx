@@ -1,3 +1,4 @@
+import { Alert, Box, Typography } from '@mui/material'
 import { AdminPagination } from '../components/AdminPagination'
 import { LogDetailsPanel } from '../features/logs/LogDetailsPanel'
 import { LogFilters } from '../features/logs/LogFilters'
@@ -35,12 +36,14 @@ export default function Logs() {
   } = useLogsPage()
 
   return (
-    <section className="admin-page">
-      <h2 className="admin-page-title">Logs & Activity</h2>
-      <p className="admin-page-subtitle">Filter and inspect system events.</p>
+    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">Logs & Activity</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Filter and inspect system events.
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading logs...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
+      {loading && <Alert severity="info">Loading logs...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
 
       <LogFilters
         timeRange={timeRange}
@@ -75,10 +78,10 @@ export default function Logs() {
         }}
       />
 
-      <p className="admin-page-subtitle">
+      <Typography variant="body2" color="text.secondary">
         Showing {rows.length} of {total} entries (page {page}/{totalPages}) from {adminApiBase()}
         /telemetry/logs
-      </p>
+      </Typography>
 
       <LogsTable
         rows={rows}
@@ -97,6 +100,6 @@ export default function Logs() {
       />
 
       {selectedLog && <LogDetailsPanel log={selectedLog} onClose={() => setSelectedLog(null)} />}
-    </section>
+    </Box>
   )
 }

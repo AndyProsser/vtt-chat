@@ -79,41 +79,23 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
       : 'Disconnected'
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        padding: '0.5rem 1rem',
-        backgroundColor: '#1f2937',
-        borderTop: '1px solid #374151',
-        fontSize: '0.875rem',
-        color: '#f9fafb',
-      }}
-    >
+    <div className="flex items-center gap-3 border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-primary">
       {/* Connection status */}
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+      <span className="flex items-center gap-1.5">
         <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            backgroundColor: statusColor,
-            display: 'inline-block',
-          }}
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ backgroundColor: statusColor }}
         />
         {statusLabel}
       </span>
 
       {/* Error */}
-      {livekit.error && (
-        <span style={{ color: '#f87171', marginLeft: '0.5rem' }}>⚠ {livekit.error}</span>
-      )}
+      {livekit.error && <span className="ml-2 text-ui-error-text">⚠ {livekit.error}</span>}
 
-      <span style={{ flex: 1 }} />
+      <span className="flex-1" />
 
       {/* Volume */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <label className="flex items-center gap-2">
         🔊
         <input
           type="range"
@@ -121,7 +103,7 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
           max={100}
           value={device.volumeLevel}
           onChange={handleVolumeChange}
-          style={{ width: '80px', accentColor: '#6366f1' }}
+          className="w-20 accent-sky-600"
         />
       </label>
 
@@ -131,15 +113,9 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
           onMouseDown={() => togglePTT(true)}
           onMouseUp={() => togglePTT(false)}
           onMouseLeave={() => togglePTT(false)}
-          style={{
-            padding: '0.25rem 0.75rem',
-            borderRadius: '4px',
-            border: 'none',
-            backgroundColor: pttActive ? '#4f46e5' : '#374151',
-            color: '#f9fafb',
-            cursor: 'pointer',
-            fontWeight: pttActive ? '700' : '400',
-          }}
+          className={`rounded-ui-sm px-3 py-1 text-white ${
+            pttActive ? 'bg-indigo-600 font-bold' : 'bg-slate-600'
+          }`}
         >
           PTT
         </button>
@@ -148,30 +124,13 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
       {/* Mic toggle */}
       {livekit.isConnected &&
         (device.microphoneOn ? (
-          <button
-            onClick={handleMute}
-            style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: '4px',
-              border: 'none',
-              backgroundColor: '#dc2626',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={handleMute} className="rounded-ui-sm bg-red-600 px-3 py-1 text-white">
             🎙 Mute
           </button>
         ) : (
           <button
             onClick={handleGoLive}
-            style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: '4px',
-              border: 'none',
-              backgroundColor: '#16a34a',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
+            className="rounded-ui-sm bg-emerald-600 px-3 py-1 text-white"
           >
             🎙 Go Live
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
 import { SparklineChart } from '../components/SparklineChart'
 import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
 import { getJson } from '../utils/api'
@@ -56,16 +57,16 @@ export default function Analytics() {
   }, [])
 
   return (
-    <section className="admin-page">
-      <h2 className="admin-page-title">Analytics</h2>
-      <p className="admin-page-subtitle">
+    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">Analytics</Typography>
+      <Typography variant="body2" color="text.secondary">
         Session engagement and platform activity signals from live telemetry streams.
-      </p>
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading analytics...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
+      {loading && <Alert severity="info">Loading analytics...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
 
-      <div className="admin-card-grid three-col">
+      <Box className="admin-card-grid three-col">
         <TelemetryMetricCard
           title="Active Campaigns"
           value={dashboard?.activeCampaigns ?? '--'}
@@ -85,39 +86,51 @@ export default function Analytics() {
           }
           subtitle="Rolling one-minute rate"
         />
-      </div>
+      </Box>
 
-      <div className="admin-card-grid two-col">
-        <article className="admin-card">
-          <h3>CPU Trend (24h)</h3>
-          <SparklineChart
-            points={status?.charts.cpuLoad24h || []}
-            colorClassName="sparkline-chart-line-cpu"
-            valueSuffix="%"
-          />
-        </article>
+      <Box className="admin-card-grid two-col">
+        <Card variant="outlined" className="admin-card">
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              CPU Trend (24h)
+            </Typography>
+            <SparklineChart
+              points={status?.charts.cpuLoad24h || []}
+              colorClassName="sparkline-chart-line-cpu"
+              valueSuffix="%"
+            />
+          </CardContent>
+        </Card>
 
-        <article className="admin-card">
-          <h3>Message Trend (24h)</h3>
-          <SparklineChart
-            points={status?.charts.messageThroughput24h || []}
-            colorClassName="sparkline-chart-line-throughput"
-            valueSuffix="/min"
-          />
-        </article>
-      </div>
+        <Card variant="outlined" className="admin-card">
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Message Trend (24h)
+            </Typography>
+            <SparklineChart
+              points={status?.charts.messageThroughput24h || []}
+              colorClassName="sparkline-chart-line-throughput"
+              valueSuffix="/min"
+            />
+          </CardContent>
+        </Card>
+      </Box>
 
-      <section className="admin-card">
-        <h3>Quality Signals</h3>
-        <div className="kv-grid">
-          <div>
-            <strong>Active Rooms:</strong> {dashboard?.activeRooms ?? '--'}
-          </div>
-          <div>
-            <strong>Recent Errors (24h):</strong> {dashboard?.recentErrors ?? '--'}
-          </div>
-        </div>
-      </section>
-    </section>
+      <Card variant="outlined" className="admin-card">
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Quality Signals
+          </Typography>
+          <Box className="kv-grid">
+            <Typography variant="body2">
+              <strong>Active Rooms:</strong> {dashboard?.activeRooms ?? '--'}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Recent Errors (24h):</strong> {dashboard?.recentErrors ?? '--'}
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   )
 }

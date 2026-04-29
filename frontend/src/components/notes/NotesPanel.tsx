@@ -270,49 +270,31 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   }
 
   return (
-    <section
-      style={{
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-      }}
-    >
-      <div
-        style={{
-          padding: '0.75rem 1rem',
-          borderBottom: '1px solid #e2e8f0',
-          backgroundColor: '#f8fafc',
-          fontWeight: 600,
-          color: '#334155',
-        }}
-      >
+    <section className="overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface">
+      <div className="border-b border-ui-border bg-ui-surface-subtle px-4 py-3 font-semibold text-ui-primary">
         Notes
       </div>
 
-      <form
-        onSubmit={handleCreate}
-        style={{ padding: '0.75rem', borderBottom: '1px solid #e2e8f0' }}
-      >
+      <form onSubmit={handleCreate} className="space-y-2 border-b border-ui-border p-3">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
           required
-          style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem' }}
+          className="w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
         />
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write note content"
           required
-          style={{ width: '100%', minHeight: '88px', marginBottom: '0.5rem', padding: '0.5rem' }}
+          className="min-h-22 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
         />
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <div className="flex gap-2">
           <select
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as NoteVisibility)}
-            style={{ flex: 1, padding: '0.5rem' }}
+            className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
           >
             <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
             <option value={NoteVisibility.CUSTOM}>Custom</option>
@@ -322,16 +304,16 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
             value={tagsText}
             onChange={(e) => setTagsText(e.target.value)}
             placeholder="tag1, tag2"
-            style={{ flex: 2, padding: '0.5rem' }}
+            className="flex-2 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
           />
         </div>
         {visibility === NoteVisibility.CUSTOM && (
-          <div style={{ marginBottom: '0.5rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+          <div className="mb-2 space-y-1.5">
+            <div className="flex gap-2">
               <select
                 value={selectedShareUserId}
                 onChange={(e) => setSelectedShareUserId(e.target.value)}
-                style={{ flex: 1, padding: '0.5rem' }}
+                className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
               >
                 <option value="">Select player to share with</option>
                 {shareUsers.map((shareUser) => (
@@ -344,29 +326,23 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
                 type="button"
                 onClick={handleAddSelectedUser}
                 disabled={!selectedShareUserId}
-                style={{ padding: '0.4rem 0.75rem' }}
+                className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Add
               </button>
             </div>
             {shareUsers.length === 0 && (
-              <p style={{ margin: '0 0 0.35rem 0', color: '#64748b', fontSize: '0.8rem' }}>
+              <p className="m-0 text-xs text-ui-secondary">
                 No session users available yet. Users appear here after joining the session.
               </p>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+            <div className="flex flex-wrap gap-1.5">
               {allowedUsers.map((userId) => (
                 <button
                   key={userId}
                   type="button"
                   onClick={() => removeAllowedUser(userId)}
-                  style={{
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#f8fafc',
-                    borderRadius: '999px',
-                    padding: '0.2rem 0.5rem',
-                    fontSize: '0.75rem',
-                  }}
+                  className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
                   title="Click to remove"
                 >
                   {shareUsers.find((u) => u.id === userId)?.username || userId} x
@@ -375,25 +351,19 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
             </div>
           </div>
         )}
-        <button type="submit" disabled={isCreating} style={{ padding: '0.45rem 0.75rem' }}>
+        <button
+          type="submit"
+          disabled={isCreating}
+          className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
           {isCreating ? 'Creating...' : 'Create Note'}
         </button>
       </form>
 
-      {error && <p style={{ margin: '0.75rem', color: '#b91c1c' }}>{error}</p>}
+      {error && <p className="m-3 text-sm text-ui-error-text">{error}</p>}
 
-      <div
-        style={{
-          padding: '0 0.75rem 0.75rem 0.75rem',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          color: '#334155',
-          fontSize: '0.875rem',
-        }}
-      >
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+      <div className="flex items-center gap-2 border-b border-ui-border px-3 pb-3 text-sm text-ui-primary">
+        <label className="inline-flex items-center gap-1.5">
           <input
             type="checkbox"
             checked={showPublishedOnly}
@@ -401,16 +371,16 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
           />
           Show published only
         </label>
-        <span style={{ color: '#64748b' }}>
+        <span className="text-ui-secondary">
           {showPublishedOnly ? `${displayedNotes.length} published` : `${notes.length} total`}
         </span>
       </div>
 
-      <div style={{ padding: '0.75rem', maxHeight: '360px', overflowY: 'auto' }}>
+      <div className="max-h-90 overflow-y-auto p-3">
         {isLoading ? (
-          <p style={{ color: '#64748b' }}>Loading notes...</p>
+          <p className="text-sm text-ui-secondary">Loading notes...</p>
         ) : displayedNotes.length === 0 ? (
-          <p style={{ color: '#64748b' }}>
+          <p className="text-sm text-ui-secondary">
             {showPublishedOnly ? 'No published notes yet.' : 'No notes yet.'}
           </p>
         ) : (

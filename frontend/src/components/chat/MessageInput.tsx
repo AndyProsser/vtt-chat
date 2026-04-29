@@ -63,34 +63,19 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
   }
 
   return (
-    <div
-      style={{
-        borderTop: '1px solid #e5e7eb',
-        padding: '0.75rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-        backgroundColor: '#fff',
-      }}
-    >
+    <div className="flex flex-col gap-2 border-t border-ui-border bg-ui-surface p-3">
       {/* Type selector */}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.75rem', color: '#6b7280', flexShrink: 0 }}>Type:</span>
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs text-ui-secondary">Type:</span>
         {allowedTypes.map((t) => (
           <button
             key={t}
             onClick={() => setSelectedType(t)}
-            style={{
-              padding: '0.2rem 0.6rem',
-              borderRadius: '9999px',
-              border: '1px solid',
-              borderColor: type === t ? '#3b82f6' : '#d1d5db',
-              backgroundColor: type === t ? '#3b82f6' : '#fff',
-              color: type === t ? '#fff' : '#374151',
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-              fontWeight: type === t ? 600 : 400,
-            }}
+            className={`rounded-full border px-2.5 py-1 text-xs ${
+              type === t
+                ? 'border-ui-brand bg-ui-brand text-white font-semibold'
+                : 'border-ui-border-soft bg-ui-surface text-ui-primary'
+            }`}
           >
             {TYPE_LABELS[t]}
           </button>
@@ -98,22 +83,14 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
       </div>
 
       {/* Input row */}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+      <div className="flex items-end gap-2">
         {type === MessageType.WHISPER && (
           <input
             value={recipientId}
             onChange={(e) => setRecipientId(e.target.value)}
             disabled={disabled || isSending}
             placeholder="Recipient user ID"
-            style={{
-              width: '220px',
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontFamily: 'inherit',
-              backgroundColor: disabled ? '#f9fafb' : '#fff',
-            }}
+            className="w-55 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary disabled:bg-ui-surface-subtle"
           />
         )}
         <textarea
@@ -129,16 +106,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
           }
           rows={2}
           maxLength={4000}
-          style={{
-            flex: 1,
-            padding: '0.5rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            resize: 'none',
-            fontFamily: 'inherit',
-            backgroundColor: disabled ? '#f9fafb' : '#fff',
-          }}
+          className="flex-1 resize-none rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary disabled:bg-ui-surface-subtle"
         />
         <button
           onClick={() => void handleSend()}
@@ -148,17 +116,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
             isSending ||
             (type === MessageType.WHISPER && !recipientId.trim())
           }
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: content.trim() && !disabled ? '#3b82f6' : '#9ca3af',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: content.trim() && !disabled ? 'pointer' : 'not-allowed',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-          }}
+          className="whitespace-nowrap rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           {isSending ? '…' : 'Send'}
         </button>

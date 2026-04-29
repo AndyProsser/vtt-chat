@@ -1,3 +1,4 @@
+import { Alert, Box, Button, Typography } from '@mui/material'
 import { FeatureFlagsSection } from '../features/settings/FeatureFlagsSection'
 import { LogSinkPoliciesSection } from '../features/settings/LogSinkPoliciesSection'
 import { SettingsSection } from '../features/settings/SettingsSection'
@@ -25,13 +26,15 @@ export default function Settings() {
   }
 
   return (
-    <section className="admin-page settings-page">
-      <h2 className="admin-page-title">Settings</h2>
-      <p className="admin-page-subtitle">System configuration and maintenance controls.</p>
+    <Box component="section" className="settings-page" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">Settings</Typography>
+      <Typography variant="body2" color="text.secondary">
+        System configuration and maintenance controls.
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading settings...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
-      {statusMessage && <p className="settings-status-message">{statusMessage}</p>}
+      {loading && <Alert severity="info">Loading settings...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
+      {statusMessage && <Alert severity="success">{statusMessage}</Alert>}
 
       {settings && (
         <>
@@ -51,20 +54,16 @@ export default function Settings() {
             </SettingsSection>
           </div>
 
-          <div className="admin-actions-row">
-            <button className="admin-btn" disabled={saving} onClick={() => void updateSettings()}>
+          <Box className="admin-actions-row" sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="contained" disabled={saving} onClick={() => void updateSettings()}>
               {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
-              className="admin-btn admin-btn-ghost"
-              disabled={backupBusy}
-              onClick={() => void triggerBackup()}
-            >
+            </Button>
+            <Button variant="outlined" disabled={backupBusy} onClick={() => void triggerBackup()}>
               {backupBusy ? 'Queuing...' : 'Backup Now'}
-            </button>
-          </div>
+            </Button>
+          </Box>
         </>
       )}
-    </section>
+    </Box>
   )
 }

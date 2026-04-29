@@ -109,61 +109,22 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        minHeight: '400px',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-      }}
-    >
+    <div className="flex h-full min-h-100 flex-col overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface">
       {/* Header */}
-      <div
-        style={{
-          padding: '0.75rem 1rem',
-          backgroundColor: '#f9fafb',
-          borderBottom: '1px solid #e5e7eb',
-          fontWeight: 600,
-          fontSize: '0.875rem',
-          color: '#374151',
-          flexShrink: 0,
-        }}
-      >
+      <div className="shrink-0 border-b border-ui-border bg-ui-surface-subtle px-4 py-3 text-sm font-semibold text-ui-primary">
         Chat
       </div>
 
       {/* Error banner */}
       {error && (
-        <div
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#fef2f2',
-            borderBottom: '1px solid #fca5a5',
-            color: '#b91c1c',
-            fontSize: '0.8125rem',
-            flexShrink: 0,
-          }}
-        >
+        <div className="shrink-0 border-b border-red-300 bg-ui-error-surface px-4 py-2 text-xs text-ui-error-text">
           {error}
         </div>
       )}
 
       {/* Message list */}
       {isLoading ? (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#9ca3af',
-            fontSize: '0.875rem',
-          }}
-        >
+        <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">
           Loading messages…
         </div>
       ) : (
