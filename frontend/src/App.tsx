@@ -123,6 +123,18 @@ export default function App() {
     setAuthMessage('Spectator session ready. You are signed in as a guest account.')
   }
 
+  const handleGuestExtensionAuthenticated = (
+    token: string,
+    user: { id: UUID; username: string; role: Role }
+  ) => {
+    storeAuthSession(token, {
+      ...user,
+      authType: 'GUEST',
+    })
+    setUpgradePromptDismissed(false)
+    setAuthMessage('Extension guest login complete. You are signed in as a guest account.')
+  }
+
   const handleLogout = () => {
     setAuth({
       token: null,
@@ -391,6 +403,7 @@ export default function App() {
             apiUrl={apiUrl}
             inviteCode={routeView.inviteCode}
             authToken={auth.token}
+            onAuthenticated={handleGuestExtensionAuthenticated}
           />
         ) : routeView.kind === 'watch' ? (
           <SpectatorInvitePage
