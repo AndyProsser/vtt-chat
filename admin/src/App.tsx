@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import UserManagement from './pages/UserManagement'
@@ -11,6 +12,7 @@ import Setup from './pages/Setup'
 import Login from './pages/Login'
 import InviteOnboarding from './pages/InviteOnboarding'
 import { useAuthStore } from './store'
+import { getAdminTheme } from './theme'
 import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
 import './styles/App.css'
 
@@ -50,6 +52,7 @@ export default function App() {
   const [setupLoading, setSetupLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(null)
   const [launchLoading, setLaunchLoading] = useState(false)
+  const muiTheme = useMemo(() => getAdminTheme(theme), [theme])
 
   const { isAuthenticated, logout, setToken, initializeAuth, token } = useAuthStore()
 
@@ -228,21 +231,27 @@ export default function App() {
 
   if (setupLoading) {
     return (
-      <div className="admin-app">
-        <div className="admin-loading-screen">
-          <p>Loading...</p>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div className="admin-app">
+          <div className="admin-loading-screen">
+            <p>Loading...</p>
+          </div>
         </div>
-      </div>
+      </ThemeProvider>
     )
   }
 
   // Show setup wizard if no admin exists
   if (setupRequired) {
     return (
-      <div className="admin-app">
-        <Setup onComplete={handleSetupComplete} onError={handleAuthError} />
-        {authError && <div className="error-alert">{authError}</div>}
-      </div>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div className="admin-app">
+          <Setup onComplete={handleSetupComplete} onError={handleAuthError} />
+          {authError && <div className="error-alert">{authError}</div>}
+        </div>
+      </ThemeProvider>
     )
   }
 
@@ -250,22 +259,28 @@ export default function App() {
   if (!isAuthenticated) {
     if (!setupRequired && inviteToken) {
       return (
-        <div className="admin-app">
-          <InviteOnboarding
-            inviteToken={inviteToken}
-            onComplete={handleLoginSuccess}
-            onError={handleAuthError}
-          />
-          {authError && <div className="error-alert">{authError}</div>}
-        </div>
+        <ThemeProvider theme={muiTheme}>
+          <CssBaseline />
+          <div className="admin-app">
+            <InviteOnboarding
+              inviteToken={inviteToken}
+              onComplete={handleLoginSuccess}
+              onError={handleAuthError}
+            />
+            {authError && <div className="error-alert">{authError}</div>}
+          </div>
+        </ThemeProvider>
       )
     }
 
     return (
-      <div className="admin-app">
-        <Login onLoginSuccess={handleLoginSuccess} onError={handleAuthError} />
-        {authError && <div className="error-alert">{authError}</div>}
-      </div>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div className="admin-app">
+          <Login onLoginSuccess={handleLoginSuccess} onError={handleAuthError} />
+          {authError && <div className="error-alert">{authError}</div>}
+        </div>
+      </ThemeProvider>
     )
   }
 
@@ -291,63 +306,70 @@ export default function App() {
   }
 
   return (
-    <div className={`admin-app theme-${theme}`}>
-      <header className="admin-topbar">
-        <div>
-          <h1 className="admin-title">VTT-Chat Admin</h1>
-          <p className="admin-subtitle">Operations console</p>
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <div className={`admin-app theme-${theme}`}>
+        <header className="admin-topbar">
+          <div>
+            <h1 className="admin-title">VTT-Chat Admin</h1>
+            <p className="admin-subtitle">Operations console</p>
+          </div>
+
+          <div className="admin-topbar-actions">
+            <button
+              className="admin-btn admin-btn-ghost"
+              onClick={() => setIsNavCollapsed((prev) => !prev)}
+              aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            >
+              {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
+            </button>
+            <button
+              className="admin-btn"
+              onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+              aria-label="Toggle theme"
+            >
+              Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+            </button>
+            <button
+              className="admin-btn admin-btn-ghost"
+              onClick={handleOpenFrontend}
+              disabled={launchLoading}
+              aria-label="Open frontend"
+            >
+              {launchLoading ? 'Opening App...' : 'Open App'}
+            </button>
+            <button
+              className="admin-btn admin-btn-danger"
+              onClick={handleLogout}
+              aria-label="Logout"
+            >
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <div className="admin-layout">
+          <aside className={`admin-nav ${isNavCollapsed ? 'collapsed' : ''}`}>
+            <nav aria-label="Admin navigation">
+              <ul className="admin-nav-list">
+                {NAV_ITEMS.map((item) => (
+                  <li key={item.key}>
+                    <button
+                      className={`admin-nav-item ${page === item.key ? 'active' : ''}`}
+                      onClick={() => setPage(item.key)}
+                      title={item.label}
+                    >
+                      {isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+
+          <main className="admin-main-content">{renderPage()}</main>
         </div>
-
-        <div className="admin-topbar-actions">
-          <button
-            className="admin-btn admin-btn-ghost"
-            onClick={() => setIsNavCollapsed((prev) => !prev)}
-            aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          >
-            {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
-          </button>
-          <button
-            className="admin-btn"
-            onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-            aria-label="Toggle theme"
-          >
-            Theme: {theme === 'dark' ? 'Dark' : 'Light'}
-          </button>
-          <button
-            className="admin-btn admin-btn-ghost"
-            onClick={handleOpenFrontend}
-            disabled={launchLoading}
-            aria-label="Open frontend"
-          >
-            {launchLoading ? 'Opening App...' : 'Open App'}
-          </button>
-          <button className="admin-btn admin-btn-danger" onClick={handleLogout} aria-label="Logout">
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <div className="admin-layout">
-        <aside className={`admin-nav ${isNavCollapsed ? 'collapsed' : ''}`}>
-          <nav aria-label="Admin navigation">
-            <ul className="admin-nav-list">
-              {NAV_ITEMS.map((item) => (
-                <li key={item.key}>
-                  <button
-                    className={`admin-nav-item ${page === item.key ? 'active' : ''}`}
-                    onClick={() => setPage(item.key)}
-                    title={item.label}
-                  >
-                    {isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </aside>
-
-        <main className="admin-main-content">{renderPage()}</main>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }

@@ -30,7 +30,7 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 has now started in the frontend runtime with real command-center search, journal, and history panels backed by persisted chat, notes, and session-log data.
 - A UI modernization track is now defined to standardize frontend core UI on Radix/Tailwind/tokens and admin UI on MUI, delivered incrementally to avoid disrupting active stage work.
-- WP2 framework foundations are now starting with dependency and configuration scaffolding for frontend and admin.
+- WP2 framework foundations are complete, and WP3 token/theme normalization is now in progress.
 
 Latest verification:
 
@@ -70,8 +70,8 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 | Work package | Scope                         | Status      | Operational gate                                                     |
 | ------------ | ----------------------------- | ----------- | -------------------------------------------------------------------- |
 | WP1          | Spec alignment                | Complete    | Planning docs agree on repo layout and migration order               |
-| WP2          | Framework foundations         | In Progress | New dependencies install/build cleanly on stable releases            |
-| WP3          | Token/theme normalization     | Planned     | Theme systems are framework-backed without runtime regressions       |
+| WP2          | Framework foundations         | Complete    | New dependencies install/build cleanly on stable releases            |
+| WP3          | Token/theme normalization     | In Progress | Theme systems are framework-backed without runtime regressions       |
 | WP4          | Shell and primitive migration | Planned     | Core shells/providers move to the new framework layers               |
 | WP5          | Feature surface migration     | Planned     | High-traffic surfaces migrate incrementally with low regression risk |
 | WP6          | Cleanup and enforcement       | Planned     | Legacy layers removed only after verification                        |

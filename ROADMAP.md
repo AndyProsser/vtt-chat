@@ -34,8 +34,9 @@ Current overall status: **Stages 0-10 complete (baseline + command-center + secu
 UI modernization status:
 
 - WP1 spec alignment is complete in `docs/changes`
-- WP2 framework foundations are now starting and should land incrementally using current stable package releases only
-- WP3-WP6 remain planned behind the foundation pass
+- WP2 framework foundations are complete with frontend Tailwind/Radix scaffolding and admin MUI/theme entrypoint in place
+- WP3 token and theme normalization is now in progress
+- WP4-WP6 remain planned behind token/theme normalization
 
 Latest verification:
 
@@ -75,8 +76,8 @@ Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 | Work package | Scope                         | Status      | Exit criteria                                                                  |
 | ------------ | ----------------------------- | ----------- | ------------------------------------------------------------------------------ |
 | WP1          | Spec alignment                | Complete    | Design, roadmap, and implementation docs agree on structure and sequencing     |
-| WP2          | Framework foundations         | In Progress | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
-| WP3          | Token/theme normalization     | Planned     | Tokens are normalized and theme systems are framework-backed                   |
+| WP2          | Framework foundations         | Complete    | Frontend Tailwind/Radix and admin MUI install/build cleanly on stable releases |
+| WP3          | Token/theme normalization     | In Progress | Tokens are normalized and theme systems are framework-backed                   |
 | WP4          | Shell and primitive migration | Planned     | App shells and adopted primitives use the new framework layers                 |
 | WP5          | Feature surface migration     | Planned     | High-use frontend/admin surfaces migrate incrementally                         |
 | WP6          | Cleanup and enforcement       | Planned     | Legacy CSS/components removed after verification and docs/tests updated        |
@@ -103,7 +104,7 @@ Acceptance criteria:
 
 ### WP2: Framework Foundations
 
-Status: **In Progress**
+Status: **Complete**
 
 Deliverables:
 
@@ -118,7 +119,7 @@ Acceptance criteria:
 
 ### WP3: Token and Theme Normalization
 
-Status: **Planned**
+Status: **In Progress**
 
 Deliverables:
 

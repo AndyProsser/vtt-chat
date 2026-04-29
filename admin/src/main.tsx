@@ -1,13 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { ThemeProvider } from '@mui/material/styles'
 import App from './App'
-import { getAdminTheme } from './theme'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider theme={getAdminTheme('dark')}>
-      <App />
-    </ThemeProvider>
+    <App />
   </React.StrictMode>
 )

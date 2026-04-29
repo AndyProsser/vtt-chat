@@ -1,1 +1,50 @@
+@import './components/session/theme.css';
 @import 'tailwindcss';
+
+@theme {
+  /* Color mappings for Tailwind utilities (e.g. bg-ui-surface, text-ui-primary). */
+  --color-ui-surface: var(--color-surface);
+  --color-ui-surface-subtle: var(--color-surface-subtle);
+  --color-ui-surface-raised: var(--color-surface-raised);
+
+  --color-ui-border: var(--color-border);
+  --color-ui-border-soft: var(--color-border-soft);
+  --color-ui-border-focus: var(--color-border-focus);
+
+  --color-ui-primary: var(--color-text-primary);
+  --color-ui-secondary: var(--color-text-secondary);
+  --color-ui-muted: var(--color-text-muted);
+
+  --color-ui-brand: var(--color-brand);
+  --color-ui-brand-hover: var(--color-brand-hover);
+
+  --color-ui-success: var(--color-success);
+  --color-ui-success-surface: var(--color-success-surface);
+  --color-ui-success-text: var(--color-success-text);
+
+  --color-ui-warn: var(--color-warn);
+  --color-ui-warn-surface: var(--color-warn-surface);
+  --color-ui-warn-text: var(--color-warn-text);
+
+  --color-ui-error: var(--color-error);
+  --color-ui-error-surface: var(--color-error-surface);
+  --color-ui-error-text: var(--color-error-text);
+
+  --color-ui-info: var(--color-info);
+  --color-ui-info-surface: var(--color-info-surface);
+  --color-ui-info-text: var(--color-info-text);
+
+  --spacing-ui-1: var(--space-1);
+  --spacing-ui-2: var(--space-2);
+  --spacing-ui-3: var(--space-3);
+  --spacing-ui-4: var(--space-4);
+  --spacing-ui-6: var(--space-6);
+  --spacing-ui-8: var(--space-8);
+
+  --radius-ui-sm: var(--radius-sm);
+  --radius-ui-md: var(--radius-md);
+  --radius-ui-lg: var(--radius-lg);
+
+  --shadow-ui-sm: var(--shadow-sm);
+  --shadow-ui-md: var(--shadow-md);
+}
