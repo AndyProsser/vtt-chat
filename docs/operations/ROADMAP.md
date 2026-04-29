@@ -17,7 +17,7 @@ Mirror reference: Keep this operations snapshot in sync with primary roadmap [RO
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-12 complete, with Stage 13 now in progress on the backend guest-auth foundation**.
+Current overall status: **Stages 0-12 complete, with Stage 13 now in progress across backend guest-auth/linking foundations and initial frontend 13.3 route surfaces**.
 
 - Contract and architecture baseline are in place.
 - Core backend/frontend spine is operational.
@@ -382,21 +382,25 @@ Operational impact:
 
 Priority 1:
 
-- Stage 13 backend completion (spectator guest path, waitlist/browse endpoints, and controlled rollout guardrails).
+- Stage 13.3 frontend hardening (automated coverage for `/join`, `/watch`, `/browse`, and guest-upgrade token swap behavior).
 
 Priority 2:
 
-- Cross-stage observability hardening (telemetry durability operations, export/rotation controls, and restart verification).
+- Stage 13 frontend/extension continuation (complete `/join/:code` extension guest-login branch and contract wiring).
 
 Priority 3:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+- Cross-stage observability hardening (telemetry durability operations, export/rotation controls, and restart verification).
 
 Priority 4:
 
-- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
 
 Priority 5:
+
+- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+
+Priority 6:
 
 - Stage 9 regression hardening while Stage 10/11 scope expands.
 
@@ -424,6 +428,8 @@ Dependencies before later stages:
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-04: Stage 13.3 frontend kickoff delivered. Added app-level route support for `/join/:code`, `/watch/:code`, and `/browse`; implemented spectator guest-join + waitlist polling/auto-promotion UX; added guest-account upgrade prompt/token-swap flow in app shell; and extended `GET /api/auth/me` with email for read-only upgrade form hydration.
 
 - 2026-04: Stage 13 backend foundation started. Added public platform status and player-invite validation routes, extension preflight, real guest-login and guest-upgrade routes, plus initial runtime/schema support for guest auth identities and external campaign linkage. Backend verification for this increment is green.
 

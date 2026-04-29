@@ -29,7 +29,7 @@ Current overall status: **Stages 0-12 complete (baseline + command-center + secu
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 is now complete in the frontend runtime with command-center search, journal, and history panels backed by persisted chat, notes, and session-log data, with placeholder module debt removed across metadata/audio/ui/types/utils surfaces.
-- Stage 13 has now started in the backend runtime with public platform status + player invite validation endpoints, extension preflight, real guest-login/account-upgrade flow, and initial schema support for `authType`, `ExternalIdentity`, and `CampaignExternalLink`.
+- Stage 13 has advanced through backend guest-auth/linking foundations and now has initial frontend Stage 13.3 route surfaces (`/join/:code`, `/watch/:code`, `/browse`) plus guest upgrade UX wiring in the SPA shell.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -858,6 +858,17 @@ Remaining in this slice:
 
 **Stage 13.2: External Identity and Campaign Linking**
 
+Completed so far:
+
+- Runtime route surface is implemented and mounted for external sync + campaign external links.
+- Campaign sync policy checks (`NONE`, `DM_ONLY`, `DM_AND_PLAYERS`) are enforced in the sync endpoint.
+- Campaign external link create/list/update flows are implemented with DM-only authorization checks.
+- External-link and sync actions write audit-log entries.
+
+Remaining in this slice:
+
+- Restore full assertion coverage for Stage 13.2 endpoint behavior (temporary placeholder tests must be replaced with real route assertions).
+
 - Scope: Persistence and retrieval of external identities and campaign-to-external-system links.
 - Endpoints to implement:
   - `POST /api/integrations/external/sync` — push character or campaign updates from extension; applies per `extensionSyncPolicy` and caller role
@@ -876,6 +887,21 @@ Remaining in this slice:
 ---
 
 **Stage 13.3: Frontend Guest Auth UX, Spectator Invite Page, and Account Upgrade**
+
+Completed so far:
+
+- Added SPA route handling for `/join/:code`, `/watch/:code`, and `/browse` in the frontend app shell.
+- Added player invite page flow with invite validation, extension preflight trigger, and authenticated fallback campaign join.
+- Added spectator invite page flow with campaign/roster display, guest spectator join, waitlist status polling, and auto-promotion token adoption.
+- Added guest upgrade prompt UX in the app shell (dismissible, hidden during active session play) plus authenticated upgrade call/token swap.
+- Added `authType`-aware frontend session persistence and profile hydration for guest/full account handling.
+- Added authenticated profile `email` field on `GET /api/auth/me` to support read-only upgrade form rendering.
+
+Remaining in this slice:
+
+- Add dedicated frontend automated coverage for new `/join`, `/watch`, `/browse`, and guest-upgrade flows.
+- Extend `/join/:code` UX to complete extension guest-login branch handoff (beyond preflight + standard join fallback).
+- Implement DM invite-link management controls in Campaign Settings for player/spectator invite policies.
 
 - Scope: SPA-side support for guest player sessions, the spectator invite/watch page, campaign browse, and account upgrade flow.
 - Changes required:
@@ -941,11 +967,11 @@ Exit criteria:
 
 Priority 1:
 
-- Stage 13.1 backend completion: spectator guest path, waitlist/browse endpoints, and tighter guest-token policy.
+- Stage 13.3 frontend hardening: add test coverage for `/join`, `/watch`, `/browse`, and guest-upgrade/session token-swap behavior.
 
 Priority 2:
 
-- Stage 13 frontend/extension continuation: guest UX, extension contract wiring, and guarded rollout sequencing.
+- Stage 13 frontend/extension continuation: complete `/join/:code` extension guest-login branch and finalize extension contract wiring.
 
 Priority 3:
 
@@ -1008,6 +1034,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-04: Stage 13.3 frontend kickoff delivered. Added app-level route support for `/join/:code`, `/watch/:code`, and `/browse`; implemented spectator guest-join + waitlist polling/auto-promotion UX; added guest-account upgrade prompt/token-swap flow in app shell; and extended `GET /api/auth/me` to return email for read-only upgrade form hydration.
 
 - 2026-04: Stage 13 started in backend runtime. Added `GET /api/platform/status`, `GET /api/campaigns/invite/:code/validate`, `POST /api/auth/extension/preflight`, real `POST /api/auth/extension/guest-login`, and `POST /api/auth/upgrade`; added schema/runtime foundations for `authType`, `ExternalIdentity`, `CampaignExternalLink`, and external character linkage; backend verification now reports `19` passed test files, `92` passing tests, and clean backend build.
 

@@ -1,7 +1,11 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { RoomType } from '@shared'
-import type { UUID, Role } from '@shared'
+import type { Role, UUID } from '@shared'
+import { BrowseCampaignsPage } from './components/auth/BrowseCampaignsPage'
+import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
+import { InviteJoinPage } from './components/auth/InviteJoinPage'
 import { LoginForm } from './components/auth/LoginForm'
+import { SpectatorInvitePage } from './components/auth/SpectatorInvitePage'
 import { useStore } from './hooks/useStore'
 import { cn } from './utils/cn'
 
@@ -15,25 +19,16 @@ const AudioPanel = lazy(async () => {
   return { default: module.AudioPanel }
 })
 
-/**
- * App Component
- * Stage 7: Audio & LiveKit Integration
- * - Login form to get JWT
- * - WebSocket connection with event dispatcher
- * - Session creation and state transitions
- * - Zustand store integration
- * - LiveKit audio connection + DSP engine mounted when a session room is active
- *
- * The pipeline: UI → Event → Dispatcher → Store → UI
- */
+interface AuthUser {
+  id: UUID
+  username: string
+  role: Role
+  authType?: 'FULL' | 'GUEST'
+}
 
 interface AuthState {
   token: string | null
-  user: {
-    id: UUID
-    username: string
-    role: Role
-  } | null
+  user: AuthUser | null
 }
 
 interface AuthProfile {
@@ -41,6 +36,38 @@ interface AuthProfile {
   hasAdminAccess: boolean
   isFullAccount: boolean
   requiresUpgradeForAdmin: boolean
+  authType: 'FULL' | 'GUEST'
+  email: string | null
+}
+
+type RouteView =
+  | { kind: 'app' }
+  | { kind: 'join'; inviteCode: string }
+  | { kind: 'watch'; inviteCode: string }
+  | { kind: 'browse' }
+
+function resolveRoute(pathname: string): RouteView {
+  const joinMatch = pathname.match(/^\/join\/([^/]+)$/)
+  if (joinMatch) {
+    return {
+      kind: 'join',
+      inviteCode: decodeURIComponent(joinMatch[1] || '').trim(),
+    }
+  }
+
+  const watchMatch = pathname.match(/^\/watch\/([^/]+)$/)
+  if (watchMatch) {
+    return {
+      kind: 'watch',
+      inviteCode: decodeURIComponent(watchMatch[1] || '').trim(),
+    }
+  }
+
+  if (pathname === '/browse') {
+    return { kind: 'browse' }
+  }
+
+  return { kind: 'app' }
 }
 
 export default function App() {
@@ -51,30 +78,49 @@ export default function App() {
   const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null)
   const [authMessage, setAuthMessage] = useState<string | null>(null)
   const [adminLaunchLoading, setAdminLaunchLoading] = useState(false)
+  const [routeView] = useState<RouteView>(() => resolveRoute(window.location.pathname))
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [upgradePromptDismissed, setUpgradePromptDismissed] = useState(false)
 
-  // API and WebSocket URLs (configurable via env or hardcoded for testing)
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
   const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
 
-  // Derive active session + primary room from store to know when to mount AudioPanel
   const { currentSessionId, rooms } = useStore((s) => ({
     currentSessionId: s.currentSessionId,
     rooms: s.rooms,
   }))
 
-  // Prefer the session's primary room when audio is mounted.
   const activeRoomId = currentSessionId
     ? Object.values(rooms[currentSessionId] ?? {}).find((room) => room.type === RoomType.MAIN)
         ?.id || (Object.keys(rooms[currentSessionId] ?? {})[0] as UUID | undefined)
     : undefined
 
+  const storeAuthSession = (token: string, user: AuthUser) => {
+    sessionStorage.setItem('authToken', token)
+    sessionStorage.setItem('user', JSON.stringify(user))
+    setAuth({ token, user })
+  }
+
   const handleLoginSuccess = (token: string, user: { id: UUID; username: string; role: Role }) => {
-    setAuth({
-      token,
-      user,
+    storeAuthSession(token, {
+      ...user,
+      authType: 'FULL',
     })
+    setUpgradePromptDismissed(false)
     setAuthMessage(null)
+  }
+
+  const handleGuestSpectatorAuthenticated = (
+    token: string,
+    user: { id: UUID; username: string; role: Role }
+  ) => {
+    storeAuthSession(token, {
+      ...user,
+      authType: 'GUEST',
+    })
+    setUpgradePromptDismissed(false)
+    setAuthMessage('Spectator session ready. You are signed in as a guest account.')
   }
 
   const handleLogout = () => {
@@ -108,9 +154,13 @@ export default function App() {
           }
 
           const data = await response.json()
-          sessionStorage.setItem('authToken', data.token)
-          sessionStorage.setItem('user', JSON.stringify(data.user))
-          setAuth({ token: data.token, user: data.user })
+          const handoffUser: AuthUser = {
+            id: data.user.id as UUID,
+            username: String(data.user.username || data.user.displayName || 'user'),
+            role: data.user.role as Role,
+            authType: data.user.authType === 'GUEST' ? 'GUEST' : 'FULL',
+          }
+          storeAuthSession(data.token, handoffUser)
           setAuthMessage(null)
           window.history.replaceState({}, document.title, window.location.pathname)
           return
@@ -124,7 +174,8 @@ export default function App() {
       const existingUser = sessionStorage.getItem('user')
       if (existingToken && existingUser) {
         try {
-          setAuth({ token: existingToken, user: JSON.parse(existingUser) })
+          const parsed = JSON.parse(existingUser) as AuthUser
+          setAuth({ token: existingToken, user: parsed })
         } catch {
           sessionStorage.removeItem('authToken')
           sessionStorage.removeItem('user')
@@ -160,6 +211,8 @@ export default function App() {
           hasAdminAccess: Boolean(data.hasAdminAccess),
           isFullAccount: Boolean(data.isFullAccount),
           requiresUpgradeForAdmin: Boolean(data.requiresUpgradeForAdmin),
+          authType: data.authType === 'GUEST' ? 'GUEST' : 'FULL',
+          email: typeof data.email === 'string' ? data.email : null,
         })
       } catch {
         setAuthProfile(null)
@@ -168,6 +221,58 @@ export default function App() {
 
     void loadProfile()
   }, [auth.token, apiUrl])
+
+  const handleUpgradeAccount = async (password: string) => {
+    if (!auth.token) {
+      throw new Error('Authentication required')
+    }
+
+    setUpgradeLoading(true)
+    setAuthMessage(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/upgrade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({ password }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.message || 'Account upgrade failed')
+      }
+
+      if (!auth.user) {
+        throw new Error('Missing user session')
+      }
+
+      storeAuthSession(data.token, {
+        id: auth.user.id,
+        username: auth.user.username,
+        role: auth.user.role,
+        authType: 'FULL',
+      })
+
+      setAuthProfile((current) =>
+        current
+          ? {
+              ...current,
+              isFullAccount: true,
+              requiresUpgradeForAdmin: false,
+              authType: 'FULL',
+            }
+          : current
+      )
+
+      setUpgradePromptDismissed(false)
+      setAuthMessage('Account upgraded successfully.')
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
 
   const handleOpenAdmin = async () => {
     if (!auth.token || !auth.user) {
@@ -216,9 +321,14 @@ export default function App() {
     Boolean(authProfile?.requiresUpgradeForAdmin) ||
     !authProfile?.hasAdminAccess
 
+  const isGuestAccount = Boolean(
+    auth.token && auth.user && (authProfile?.authType === 'GUEST' || auth.user.authType === 'GUEST')
+  )
+  const showUpgradePrompt =
+    routeView.kind === 'app' && isGuestAccount && !upgradePromptDismissed && !currentSessionId
+
   return (
     <div className="min-h-screen bg-ui-surface-subtle font-sans text-ui-primary">
-      {/* Header */}
       <header className="border-b border-ui-border bg-ui-surface px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
           <div>
@@ -266,9 +376,31 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content */}
+      {showUpgradePrompt && authProfile?.email && (
+        <GuestUpgradePrompt
+          email={authProfile.email}
+          loading={upgradeLoading}
+          onUpgrade={handleUpgradeAccount}
+          onDismiss={() => setUpgradePromptDismissed(true)}
+        />
+      )}
+
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        {!auth.token || !auth.user ? (
+        {routeView.kind === 'join' ? (
+          <InviteJoinPage
+            apiUrl={apiUrl}
+            inviteCode={routeView.inviteCode}
+            authToken={auth.token}
+          />
+        ) : routeView.kind === 'watch' ? (
+          <SpectatorInvitePage
+            apiUrl={apiUrl}
+            inviteCode={routeView.inviteCode}
+            onAuthenticated={handleGuestSpectatorAuthenticated}
+          />
+        ) : routeView.kind === 'browse' ? (
+          <BrowseCampaignsPage apiUrl={apiUrl} authToken={auth.token} />
+        ) : !auth.token || !auth.user ? (
           <>
             <section className="mb-8 text-center">
               <h2 className="text-3xl font-semibold text-ui-primary">Welcome to VTT-Chat</h2>
@@ -320,8 +452,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Audio bar — mounted once a session room is active */}
-      {auth.token && currentSessionId && activeRoomId && (
+      {routeView.kind === 'app' && auth.token && currentSessionId && activeRoomId && (
         <Suspense
           fallback={
             <div className="border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-secondary">
@@ -333,7 +464,6 @@ export default function App() {
         </Suspense>
       )}
 
-      {/* Footer */}
       <footer className="mt-8 border-t border-ui-border bg-ui-surface px-4 py-4 text-center text-sm text-ui-secondary">
         <p className="m-0">
           Stage 7 Active: Audio &amp; LiveKit Integration (voice rooms, DSP engine, DM overrides)
