@@ -70,25 +70,26 @@ model PresenceSnapshot {
 }
 
 model User {
-  id                      String                 @id @default(uuid()) @db.Uuid
-  email                   String?                @unique
-  username                String                 @unique
-  displayName             String
-  avatarUrl               String?
-  authType                AuthType               @default(FULL)
-  password                String? // null for guest accounts; required for admin operations
-  role                    Role                   @default(PLAYER)
-  adminRole               AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
-  isActive                Boolean                @default(true)
-  tokenInvalidBefore      DateTime?
-  campaignsDm             Campaign[]             @relation("CampaignCurrentDm")
-  campaignLinks           CampaignMembership[]
-  characters              Character[]
-  externalIdentities      ExternalIdentity[]
-  linkedExternalCampaigns CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
-  portabilityArtifacts    ImportExportArtifact[]
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
+  id                       String                 @id @default(uuid()) @db.Uuid
+  email                    String?                @unique
+  username                 String                 @unique
+  displayName              String
+  avatarUrl                String?
+  authType                 AuthType               @default(FULL)
+  password                 String? // null for guest accounts; required for admin operations
+  role                     Role                   @default(PLAYER)
+  adminRole                AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive                 Boolean                @default(true)
+  tokenInvalidBefore       DateTime?
+  campaignsDm              Campaign[]             @relation("CampaignCurrentDm")
+  campaignLinks            CampaignMembership[]
+  characters               Character[]
+  externalIdentities       ExternalIdentity[]
+  linkedExternalCampaigns  CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
+  spectatorWaitlistEntries SpectatorWaitlist[]
+  portabilityArtifacts     ImportExportArtifact[]
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
 
   @@index([username])
   @@index([email])
@@ -96,23 +97,34 @@ model User {
 }
 
 model Campaign {
-  id                   String                 @id @default(uuid()) @db.Uuid
-  name                 String
-  description          String?
-  inviteCode           String                 @unique
-  inviteActive         Boolean                @default(true)
-  currentDmId          String                 @db.Uuid
-  currentDm            User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
-  members              CampaignMembership[]
-  characters           Character[]
-  externalLinks        CampaignExternalLink[]
-  sessions             Session[]
-  recordings           RecordingMetadata[]
-  portabilityArtifacts ImportExportArtifact[]
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
+  id                          String                 @id @default(uuid()) @db.Uuid
+  name                        String
+  description                 String?
+  inviteCode                  String                 @unique
+  inviteActive                Boolean                @default(true)
+  spectatorInviteCode         String?                @unique
+  spectatorInviteActive       Boolean                @default(false)
+  spectatorPolicy             SpectatorPolicy        @default(NONE)
+  spectatorMax                Int?
+  spectatorWaitlistEnabled    Boolean                @default(false)
+  spectatorReconnectGraceSecs Int                    @default(60)
+  discoverable                Boolean                @default(false)
+  extensionSyncPolicy         ExtensionSyncPolicy    @default(NONE)
+  currentDmId                 String                 @db.Uuid
+  currentDm                   User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
+  members                     CampaignMembership[]
+  characters                  Character[]
+  externalLinks               CampaignExternalLink[]
+  spectatorWaitlist           SpectatorWaitlist[]
+  sessions                    Session[]
+  recordings                  RecordingMetadata[]
+  portabilityArtifacts        ImportExportArtifact[]
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
 
   @@index([currentDmId])
+  @@index([discoverable])
+  @@index([spectatorPolicy])
   @@index([createdAt])
 }
 
@@ -184,6 +196,22 @@ model CampaignExternalLink {
   @@unique([campaignId, externalSystem])
   @@index([externalSystem, externalId])
   @@index([linkedBy])
+}
+
+model SpectatorWaitlist {
+  id            String    @id @default(uuid()) @db.Uuid
+  campaignId    String    @db.Uuid
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime  @default(now())
+  waitlistToken String    @unique
+  promoted      Boolean   @default(false)
+  promotedAt    DateTime?
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, joinedAt])
+  @@index([waitlistToken])
 }
 
 model SessionMember {
@@ -346,6 +374,18 @@ enum AdminRole {
 enum AuthType {
   FULL
   GUEST
+}
+
+enum SpectatorPolicy {
+  NONE
+  GUESTS
+  USERS
+}
+
+enum ExtensionSyncPolicy {
+  NONE
+  DM_ONLY
+  DM_AND_PLAYERS
 }
 
 enum Role {

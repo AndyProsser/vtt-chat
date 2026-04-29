@@ -27,6 +27,14 @@ const mocks = vi.hoisted(() => ({
   mockCharacterCreate: vi.fn(),
   mockCharacterUpdate: vi.fn(),
   mockCampaignExternalLinkCreate: vi.fn(),
+  mockPresenceSnapshotFindMany: vi.fn(),
+  mockSessionMemberUpsert: vi.fn(),
+  mockSpectatorWaitlistFindUnique: vi.fn(),
+  mockSpectatorWaitlistCreate: vi.fn(),
+  mockSpectatorWaitlistFindFirst: vi.fn(),
+  mockSpectatorWaitlistCount: vi.fn(),
+  mockSpectatorWaitlistUpdate: vi.fn(),
+  mockCampaignFindMany: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -48,6 +56,7 @@ vi.mock('@/infra/db', () => ({
     campaign: {
       count: mocks.mockCampaignCount,
       findFirst: mocks.mockCampaignFindFirst,
+      findMany: mocks.mockCampaignFindMany,
       update: mocks.mockCampaignUpdate,
     },
     session: {
@@ -67,6 +76,19 @@ vi.mock('@/infra/db', () => ({
     },
     campaignExternalLink: {
       create: mocks.mockCampaignExternalLinkCreate,
+    },
+    presenceSnapshot: {
+      findMany: mocks.mockPresenceSnapshotFindMany,
+    },
+    sessionMember: {
+      upsert: mocks.mockSessionMemberUpsert,
+    },
+    spectatorWaitlist: {
+      findUnique: mocks.mockSpectatorWaitlistFindUnique,
+      create: mocks.mockSpectatorWaitlistCreate,
+      findFirst: mocks.mockSpectatorWaitlistFindFirst,
+      count: mocks.mockSpectatorWaitlistCount,
+      update: mocks.mockSpectatorWaitlistUpdate,
     },
   }),
 }))
@@ -129,6 +151,11 @@ describe('Stage 13 guest auth routes', () => {
     mocks.mockSessionCount.mockResolvedValue(2)
     mocks.mockExternalIdentityFindUnique.mockResolvedValue(null)
     mocks.mockUserFindFirst.mockResolvedValue(null)
+    mocks.mockSpectatorWaitlistFindUnique.mockResolvedValue(null)
+    mocks.mockSpectatorWaitlistFindFirst.mockResolvedValue(null)
+    mocks.mockSpectatorWaitlistCount.mockResolvedValue(1)
+    mocks.mockPresenceSnapshotFindMany.mockResolvedValue([])
+    mocks.mockCampaignFindMany.mockResolvedValue([])
     mocks.mockUserFindUnique.mockResolvedValue({
       id: 'guest-user',
       username: 'guest-user',
@@ -315,5 +342,134 @@ describe('Stage 13 guest auth routes', () => {
       authType: 'FULL',
     })
     expect(mocks.mockHashPassword).toHaveBeenCalledWith('ValidPassword!23')
+  })
+
+  it('validates spectator invite codes publicly', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValueOnce({
+      id: 'campaign-1',
+      name: 'The Lost Mines',
+      spectatorPolicy: 'GUESTS',
+      spectatorMax: 3,
+      spectatorWaitlistEnabled: true,
+      currentDm: {
+        displayName: 'Gandalf',
+        username: 'gandalf',
+      },
+      sessions: [
+        {
+          id: 'session-1',
+          members: [{ id: 'm1' }],
+        },
+      ],
+      characters: [
+        {
+          name: 'Aragorn',
+          class: 'Ranger',
+          avatarUrl: null,
+          metadata: { level: 5 },
+          userId: 'user-1',
+        },
+      ],
+    })
+    mocks.mockPresenceSnapshotFindMany.mockResolvedValueOnce([{ userId: 'user-1' }])
+
+    const response = await request(app).get('/api/campaigns/watch/spec123/validate')
+
+    expect(response.status).toBe(200)
+    expect(response.body.valid).toBe(true)
+    expect(response.body.campaign.spectatorPolicy).toBe('GUESTS')
+    expect(response.body.characters[0]).toMatchObject({
+      name: 'Aragorn',
+      level: 5,
+      online: true,
+    })
+  })
+
+  it('adds spectators to waitlist when full and waitlist enabled', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValueOnce({
+      id: 'campaign-1',
+      spectatorPolicy: 'GUESTS',
+      spectatorMax: 1,
+      spectatorWaitlistEnabled: true,
+      sessions: [
+        {
+          id: 'session-1',
+          members: [{ id: 'existing-spectator' }],
+        },
+      ],
+    })
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    mocks.mockUserFindUnique.mockResolvedValueOnce(null)
+    mocks.mockUserCreate.mockResolvedValueOnce({
+      id: 'spectator-1',
+      username: 'spectator-a1',
+      displayName: 'Spectator User',
+    })
+    mocks.mockSpectatorWaitlistCreate.mockResolvedValueOnce({
+      waitlistToken: 'waitlist-token-1',
+      joinedAt: new Date('2026-04-29T00:00:00Z'),
+    })
+    mocks.mockSpectatorWaitlistCount.mockResolvedValueOnce(1)
+
+    const response = await request(app).post('/api/auth/spectator/guest-join').send({
+      spectatorInviteCode: 'SPEC123',
+      email: 'spectator@example.com',
+      displayName: 'Spectator User',
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.joined).toBe(false)
+    expect(response.body.waitlist).toMatchObject({
+      enabled: true,
+      waitlistToken: 'waitlist-token-1',
+      position: 1,
+    })
+  })
+
+  it('returns waitlist status and promotion token', async () => {
+    const app = buildApp()
+    mocks.mockSpectatorWaitlistFindFirst.mockResolvedValueOnce({
+      joinedAt: new Date('2026-04-29T00:00:00Z'),
+      promoted: true,
+      user: {
+        id: 'spectator-1',
+        username: 'spectator-a1',
+        displayName: 'Spectator User',
+      },
+    })
+
+    const response = await request(app).get(
+      '/api/campaigns/11111111-1111-4111-8111-111111111111/spectator/waitlist-status?waitlistToken=wait-123'
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('PROMOTED')
+    expect(response.body.user).toMatchObject({
+      id: 'spectator-1',
+      authType: 'GUEST',
+    })
+    expect(response.body.token).toBe('jwt-token')
+  })
+
+  it('restricts campaign browse to full accounts', async () => {
+    const app = buildApp()
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: 'guest-user',
+      username: 'guest-user',
+      role: 'PLAYER',
+      authType: 'GUEST',
+    })
+    mocks.mockUserFindUnique.mockResolvedValueOnce({
+      authType: 'GUEST',
+    })
+
+    const response = await request(app)
+      .get('/api/campaigns/browse')
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FULL_ACCOUNT_REQUIRED')
   })
 })

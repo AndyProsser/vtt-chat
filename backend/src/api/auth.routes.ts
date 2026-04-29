@@ -16,6 +16,7 @@ import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
 import {
+  joinGuestSpectatorViaInvite,
   getExtensionPreflight,
   loginGuestViaExtension,
   upgradeGuestAccount,
@@ -172,6 +173,61 @@ router.post('/extension/preflight', async (req: Request, res: Response) => {
     return res.status(500).json({
       code: 'PREFLIGHT_FAILED',
       message: 'Failed to evaluate extension preflight',
+    })
+  }
+})
+
+router.post('/spectator/guest-join', async (req: Request, res: Response) => {
+  const spectatorInviteCode = String(req.body?.spectatorInviteCode || '').trim()
+  const email = String(req.body?.email || '').trim()
+  const displayName = String(req.body?.displayName || '').trim()
+
+  if (!spectatorInviteCode || !email || !displayName) {
+    return res.status(400).json({
+      code: 'INVALID_SPECTATOR_JOIN_REQUEST',
+      message: 'spectatorInviteCode, email, and displayName are required',
+    })
+  }
+
+  try {
+    const result = await joinGuestSpectatorViaInvite({
+      spectatorInviteCode,
+      email,
+      displayName,
+    })
+
+    return res.status(200).json(result)
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'INVITE_EXPIRED') {
+        return res.status(404).json({
+          code: 'INVITE_EXPIRED',
+          message: 'Spectator invite code is invalid',
+        })
+      }
+      if (error.message === 'SPECTATORS_DISABLED') {
+        return res.status(403).json({
+          code: 'SPECTATORS_DISABLED',
+          message: 'Spectators are not enabled for this campaign',
+        })
+      }
+      if (error.message === 'FULL_ACCOUNT_REQUIRED') {
+        return res.status(403).json({
+          code: 'FULL_ACCOUNT_REQUIRED',
+          message: 'This campaign only allows full-account spectators',
+        })
+      }
+      if (error.message === 'SPECTATOR_CAPACITY_REACHED') {
+        return res.status(409).json({
+          code: 'SPECTATOR_CAPACITY_REACHED',
+          message: 'Spectator capacity reached and waitlist is disabled',
+        })
+      }
+    }
+
+    return res.status(500).json({
+      code: 'SPECTATOR_JOIN_FAILED',
+      message: 'Failed to join spectator session',
     })
   }
 })

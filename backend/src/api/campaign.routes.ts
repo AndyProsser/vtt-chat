@@ -12,7 +12,12 @@ import {
   joinCampaignForUser,
   listCampaignsForUser,
 } from '@/repositories/campaign.repository'
-import { validatePlayerInviteCode } from '@/services/guest-auth.service'
+import {
+  browseSpectatorCampaignsForUser,
+  getSpectatorWaitlistStatus,
+  validatePlayerInviteCode,
+  validateSpectatorInviteCode,
+} from '@/services/guest-auth.service'
 
 const router = Router()
 
@@ -53,6 +58,48 @@ router.get('/invite/:code/validate', async (req: Request, res: Response) => {
 
   const result = await validatePlayerInviteCode(code)
   return res.status(result.valid ? 200 : 404).json(result)
+})
+
+router.get('/watch/:code/validate', async (req: Request, res: Response) => {
+  const code = String(req.params.code || '').trim()
+
+  if (!code) {
+    return res.status(400).json({
+      valid: false,
+      reason: 'INVITE_EXPIRED',
+    })
+  }
+
+  const result = await validateSpectatorInviteCode(code)
+  return res.status(result.valid ? 200 : 404).json(result)
+})
+
+router.get('/browse', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+
+  try {
+    const campaigns = await browseSpectatorCampaignsForUser({
+      userId: user.userId as UUID,
+    })
+    return res.status(200).json({ campaigns })
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'USER_NOT_FOUND') {
+        return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'User not found' })
+      }
+      if (error.message === 'FULL_ACCOUNT_REQUIRED') {
+        return res.status(403).json({
+          code: 'FULL_ACCOUNT_REQUIRED',
+          message: 'Only full accounts may browse spectator campaigns',
+        })
+      }
+    }
+
+    return res.status(500).json({
+      code: 'CAMPAIGN_BROWSE_FAILED',
+      message: 'Failed to browse campaigns',
+    })
+  }
 })
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {
@@ -254,6 +301,32 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
 
   const sessions = await listSessionsByCampaign(campaignId as UUID)
   return res.status(200).json({ sessions })
+})
+
+router.get('/:campaignId/spectator/waitlist-status', async (req: Request, res: Response) => {
+  const campaignId = String(req.params.campaignId || '').trim()
+  const waitlistToken = String(req.query.waitlistToken || '').trim()
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (!waitlistToken) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'waitlistToken is required',
+      field: 'waitlistToken',
+    })
+  }
+
+  const status = await getSpectatorWaitlistStatus({
+    campaignId,
+    waitlistToken,
+  })
+
+  return res.status(status.status === 'NOT_FOUND' ? 404 : 200).json(status)
 })
 
 export default router
