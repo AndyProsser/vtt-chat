@@ -12,6 +12,7 @@ import liveKitRoutes from './livekit.routes'
 import audioRoutes from './audio.routes'
 import telemetryRoutes from './telemetry.routes'
 import platformRoutes from './platform.routes'
+import integrationsRoutes from './integrations.routes'
 
 const router = Router()
 
@@ -43,6 +44,7 @@ router.use('/presence', presenceRoutes)
 router.use('/livekit', liveKitRoutes)
 router.use('/audio', audioRoutes)
 router.use('/telemetry', telemetryRoutes)
+router.use('/integrations', integrationsRoutes)
 
 /**
  * Placeholder routes (not yet implemented)

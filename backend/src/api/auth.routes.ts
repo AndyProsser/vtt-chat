@@ -441,6 +441,7 @@ router.get('/me', authMiddleware, (req: Request, res: Response) => {
         username: dbUser.username,
         role: dbUser.role,
         sessionId: user.sessionId || null,
+        email: dbUser.email,
         authType: dbUser.authType,
         adminRole: dbUser.adminRole,
         hasAdminAccess: dbUser.hasAdminAccess,

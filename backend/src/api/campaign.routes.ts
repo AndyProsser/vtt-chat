@@ -329,4 +329,226 @@ router.get('/:campaignId/spectator/waitlist-status', async (req: Request, res: R
   return res.status(status.status === 'NOT_FOUND' ? 404 : 200).json(status)
 })
 
+router.get('/:campaignId/external-links', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid campaignId',
+      field: 'campaignId',
+    })
+  }
+
+  try {
+    // Get prisma for database access
+    const { getPrismaClient } = await import('@/infra/db')
+    const prisma = getPrismaClient()
+
+    // Verify DM status
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { currentDmId: true },
+    })
+
+    if (!campaign) {
+      return res.status(404).json({
+        code: ErrorCode.NOT_FOUND,
+        message: 'Campaign not found',
+      })
+    }
+
+    if (campaign.currentDmId !== user.userId) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only the campaign DM can view external links',
+      })
+    }
+
+    // Fetch external links
+    const links = await prisma.campaignExternalLink.findMany({
+      where: { campaignId },
+      select: {
+        id: true,
+        externalSystem: true,
+        externalId: true,
+        linkedAt: true,
+        linkedByUser: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+          },
+        },
+      },
+      orderBy: { linkedAt: 'desc' },
+    })
+
+    return res.status(200).json({ links })
+  } catch (error) {
+    console.error('[campaigns.getExternalLinks]', error)
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Failed to retrieve external links',
+    })
+  }
+})
+
+router.post('/:campaignId/external-links', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const { externalSystem, externalId } = req.body || {}
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid campaignId',
+      field: 'campaignId',
+    })
+  }
+
+  if (!externalSystem || typeof externalSystem !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'externalSystem is required',
+      field: 'externalSystem',
+    })
+  }
+
+  if (!externalId || typeof externalId !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'externalId is required',
+      field: 'externalId',
+    })
+  }
+
+  try {
+    // Get prisma for database access
+    const { getPrismaClient } = await import('@/infra/db')
+    const prisma = getPrismaClient()
+
+    // Verify DM status
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { currentDmId: true },
+    })
+
+    if (!campaign) {
+      return res.status(404).json({
+        code: ErrorCode.NOT_FOUND,
+        message: 'Campaign not found',
+      })
+    }
+
+    if (campaign.currentDmId !== user.userId) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only the campaign DM can link external systems',
+      })
+    }
+
+    // Check if a link already exists for this system
+    const existingLink = await prisma.campaignExternalLink.findFirst({
+      where: {
+        campaignId,
+        externalSystem,
+      },
+    })
+
+    if (existingLink && existingLink.externalId !== externalId) {
+      // Update existing link
+      const updated = await prisma.campaignExternalLink.update({
+        where: { id: existingLink.id },
+        data: {
+          externalId,
+          linkedAt: new Date(),
+        },
+        select: {
+          id: true,
+          externalSystem: true,
+          externalId: true,
+          linkedAt: true,
+        },
+      })
+
+      // Audit log
+      await prisma.adminAuditLog.create({
+        data: {
+          actorUserId: user.userId,
+          actorName: user.username,
+          actorRole: user.role || user.adminRole,
+          action: 'campaign_external_link_update',
+          targetType: 'CampaignExternalLink',
+          targetId: updated.id,
+          outcome: 'SUCCESS',
+          metadata: {
+            externalSystem,
+            previousExternalId: existingLink.externalId,
+            newExternalId: externalId,
+          },
+        },
+      })
+
+      return res.status(200).json({
+        message: 'External link updated',
+        link: updated,
+      })
+    }
+
+    if (existingLink && existingLink.externalId === externalId) {
+      // Already linked
+      return res.status(409).json({
+        code: 'LINK_ALREADY_EXISTS',
+        message: `Campaign is already linked to ${externalSystem} campaign ${externalId}`,
+      })
+    }
+
+    // Create new link
+    const link = await prisma.campaignExternalLink.create({
+      data: {
+        campaignId,
+        externalSystem,
+        externalId,
+        linkedBy: user.userId,
+      },
+      select: {
+        id: true,
+        externalSystem: true,
+        externalId: true,
+        linkedAt: true,
+      },
+    })
+
+    // Audit log
+    await prisma.adminAuditLog.create({
+      data: {
+        actorUserId: user.userId,
+        actorName: user.username,
+        actorRole: user.role || user.adminRole,
+        action: 'campaign_external_link_create',
+        targetType: 'CampaignExternalLink',
+        targetId: link.id,
+        outcome: 'SUCCESS',
+        metadata: {
+          externalSystem,
+          externalId,
+        },
+      },
+    })
+
+    return res.status(201).json({
+      message: 'External link created',
+      link,
+    })
+  } catch (error) {
+    console.error('[campaigns.createExternalLink]', error)
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Failed to create external link',
+    })
+  }
+})
+
 export default router
