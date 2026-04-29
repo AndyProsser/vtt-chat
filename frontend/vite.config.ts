@@ -2,6 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const RADIX_SHARED_PACKAGES = new Set([
+  'react-remove-scroll',
+  'react-remove-scroll-bar',
+  'react-style-singleton',
+  'use-callback-ref',
+  'use-sidecar',
+  'aria-hidden',
+  'get-nonce',
+  'tslib',
+])
+
 function getPackageName(id: string): string | null {
   const normalized = id.split('node_modules/')[1]
   if (!normalized) return null
@@ -42,6 +53,18 @@ function getVendorChunk(id: string): string | undefined {
 
   if (packageName === '@radix-ui/react-separator') {
     return 'vendor-radix-separator'
+  }
+
+  if (
+    (packageName.startsWith('@radix-ui/') &&
+      packageName !== '@radix-ui/react-dialog' &&
+      packageName !== '@radix-ui/react-tabs' &&
+      packageName !== '@radix-ui/react-tooltip' &&
+      packageName !== '@radix-ui/react-separator') ||
+    packageName.startsWith('@floating-ui/') ||
+    RADIX_SHARED_PACKAGES.has(packageName)
+  ) {
+    return 'vendor-radix-shared'
   }
 
   if (packageName === 'clsx' || packageName === 'tailwind-merge') {
