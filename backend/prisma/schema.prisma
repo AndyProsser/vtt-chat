@@ -75,6 +75,7 @@ model User {
   username             String                 @unique
   displayName          String
   avatarUrl            String?
+  authType             AuthType               @default(FULL)
   password             String? // null for guest accounts; required for admin operations
   role                 Role                   @default(PLAYER)
   adminRole            AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
@@ -83,6 +84,8 @@ model User {
   campaignsDm          Campaign[]             @relation("CampaignCurrentDm")
   campaignLinks        CampaignMembership[]
   characters           Character[]
+  externalIdentities   ExternalIdentity[]
+  linkedExternalCampaigns CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
   portabilityArtifacts ImportExportArtifact[]
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -97,10 +100,12 @@ model Campaign {
   name                 String
   description          String?
   inviteCode           String                 @unique
+  inviteActive         Boolean                @default(true)
   currentDmId          String                 @db.Uuid
   currentDm            User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members              CampaignMembership[]
   characters           Character[]
+  externalLinks        CampaignExternalLink[]
   sessions             Session[]
   recordings           RecordingMetadata[]
   portabilityArtifacts ImportExportArtifact[]
@@ -135,6 +140,8 @@ model Character {
   class      String?
   subclass   String?
   avatarUrl  String?
+  externalSystem String?
+  externalId  String?
   isActive   Boolean         @default(false)
   metadata   Json?
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -145,6 +152,38 @@ model Character {
   @@index([userId])
   @@index([campaignId])
   @@index([campaignId, userId])
+  @@index([externalSystem, externalId])
+}
+
+model ExternalIdentity {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalSystem String
+  externalUserId String
+  email          String
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@unique([externalSystem, externalUserId])
+  @@unique([userId, externalSystem])
+  @@index([email])
+  @@index([userId])
+}
+
+model CampaignExternalLink {
+  id             String   @id @default(uuid()) @db.Uuid
+  campaignId     String   @db.Uuid
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  externalSystem String
+  externalId     String
+  linkedAt       DateTime @default(now())
+  linkedBy       String   @db.Uuid
+  linkedByUser   User     @relation("CampaignExternalLinkLinkedBy", fields: [linkedBy], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, externalSystem])
+  @@index([externalSystem, externalId])
+  @@index([linkedBy])
 }
 
 model SessionMember {
@@ -302,6 +341,11 @@ enum AdminRole {
   ADMIN
   CAMPAIGN_DM
   READ_ONLY
+}
+
+enum AuthType {
+  FULL
+  GUEST
 }
 
 enum Role {
