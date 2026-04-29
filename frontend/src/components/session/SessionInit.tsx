@@ -953,7 +953,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
                 return (
                   <p className="session-placeholder-copy">
-                    {placeholderByTab[tab as Exclude<RightRailTab, 'rooms' | 'audio' | 'search' | 'journal' | 'history'>]}
+                    {
+                      placeholderByTab[
+                        tab as Exclude<
+                          RightRailTab,
+                          'rooms' | 'audio' | 'search' | 'journal' | 'history'
+                        >
+                      ]
+                    }
                   </p>
                 )
               }}

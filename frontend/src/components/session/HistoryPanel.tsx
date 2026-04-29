@@ -78,7 +78,9 @@ export function HistoryPanel({ apiUrl, token, sessionId, role }: HistoryPanelPro
           <p className="knowledge-panel-eyebrow">Stage 11</p>
           <h3 className="knowledge-panel-title">History</h3>
         </div>
-        <span className="knowledge-panel-badge">{role === 'DM' ? 'Live timeline' : 'Read only'}</span>
+        <span className="knowledge-panel-badge">
+          {role === 'DM' ? 'Live timeline' : 'Read only'}
+        </span>
       </header>
 
       <p className="knowledge-panel-copy">

@@ -56,7 +56,8 @@ function createNoteResult(note: Note): SearchResult {
     title: note.title,
     subtitle: `${note.ownerUsername} • ${NOTE_VISIBILITY_LABEL[note.visibility]}`,
     excerpt: note.content,
-    searchText: `${note.title} ${note.content} ${note.ownerUsername} ${note.tags.join(' ')}`.toLowerCase(),
+    searchText:
+      `${note.title} ${note.content} ${note.ownerUsername} ${note.tags.join(' ')}`.toLowerCase(),
   }
 }
 
@@ -278,7 +279,9 @@ export function SearchPanel({
                 </div>
                 <span className="knowledge-panel-chip">{resultKindLabel(result.kind)}</span>
               </div>
-              {result.excerpt ? <p className="knowledge-panel-card-body">{result.excerpt}</p> : null}
+              {result.excerpt ? (
+                <p className="knowledge-panel-card-body">{result.excerpt}</p>
+              ) : null}
               {result.roomId && onSelectRoom ? (
                 <button
                   type="button"

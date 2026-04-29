@@ -26,12 +26,6 @@
   outline: none;
 }
 
-.settings-status-message {
-  margin: 0 0 12px;
-  color: var(--accent-success);
-  font-size: 13px;
-}
-
 .settings-runtime-line {
   margin: 0;
   font-size: 13px;

@@ -225,29 +225,6 @@
   top: 1rem;
 }
 
-.session-toolbar-title {
-  margin: 0 0 0.5rem 0;
-}
-
-.session-toolbar-subtitle {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-}
-
-.session-toolbar-primary-actions {
-  margin-top: 0.5rem;
-  display: inline-flex;
-  gap: 0.45rem;
-}
-
-.session-toolbar-secondary-actions {
-  margin-top: 0.5rem;
-  display: inline-flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
 .session-left-rail {
   display: grid;
   gap: 0.75rem;
@@ -346,14 +323,7 @@
     flex-direction: column;
   }
 
-  .session-action-row .session-button,
-  .session-toolbar-primary-actions,
-  .session-toolbar-secondary-actions {
+  .session-action-row .session-button {
     width: 100%;
-  }
-
-  .session-toolbar-primary-actions,
-  .session-toolbar-secondary-actions {
-    display: grid;
   }
 }

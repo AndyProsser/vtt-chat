@@ -44,99 +44,6 @@ body {
   height: 100vh;
 }
 
-.admin-app.theme-light {
-  --bg-app: #f3f5f8;
-  --bg-surface: #ffffff;
-  --bg-surface-alt: #f8fafc;
-  --bg-elevated: #ffffff;
-  --text-primary: #101827;
-  --text-secondary: #4b5563;
-  --border-subtle: #dbe2ea;
-  --border-strong: #cbd5e1;
-  --accent-primary: #2563eb;
-  --accent-primary-soft: rgba(37, 99, 235, 0.12);
-}
-
-.admin-topbar {
-  height: 56px;
-  background: var(--bg-surface-alt);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.admin-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-.admin-subtitle {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.admin-topbar-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.admin-layout {
-  min-height: calc(100vh - 56px);
-  display: grid;
-  grid-template-columns: auto 1fr;
-}
-
-.admin-nav {
-  width: 240px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
-  transition: width 160ms ease;
-}
-
-.admin-nav.collapsed {
-  width: 64px;
-}
-
-.admin-nav-list {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-}
-
-.admin-nav-item {
-  width: 100%;
-  height: 40px;
-  border: 0;
-  border-left: 3px solid transparent;
-  background: transparent;
-  color: var(--text-secondary);
-  text-align: left;
-  padding: 0 12px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.admin-nav-item:hover {
-  background: var(--accent-primary-soft);
-  color: var(--text-primary);
-}
-
-.admin-nav-item.active {
-  border-left-color: var(--accent-primary);
-  color: var(--text-primary);
-  background: var(--accent-primary-soft);
-}
-
-.admin-main-content {
-  padding: 16px;
-  overflow: auto;
-}
-
 .admin-page {
   max-width: 1200px;
   margin: 0 auto;
@@ -414,18 +321,6 @@ label {
   margin: 10px 0 4px;
   font-size: 12px;
   color: var(--text-secondary);
-}
-
-@media (max-width: 1024px) {
-  .admin-nav {
-    width: 64px;
-  }
-
-  .admin-nav-item {
-    text-align: center;
-    padding: 0 6px;
-    font-size: 11px;
-  }
 }
 
 /* ============================================================================

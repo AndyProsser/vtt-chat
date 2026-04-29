@@ -106,7 +106,9 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
           <p className="knowledge-panel-eyebrow">Stage 11</p>
           <h3 className="knowledge-panel-title">Journal</h3>
         </div>
-        <span className="knowledge-panel-badge">{role === 'DM' ? 'Editable source' : 'Read only'}</span>
+        <span className="knowledge-panel-badge">
+          {role === 'DM' ? 'Editable source' : 'Read only'}
+        </span>
       </header>
 
       <p className="knowledge-panel-copy">
