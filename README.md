@@ -11,7 +11,7 @@ Build and release status badges will be enabled once CI workflows are activated.
 -->
 
 **Version:** 0.5.3 — active development, not yet production-ready\
-**Status:** Stages 0–10 complete · Stages 11–13 planned — see [ROADMAP.md](ROADMAP.md)\
+**Status:** Stages 0–12 complete · Stage 13 in progress — see [ROADMAP.md](ROADMAP.md)\
 **Release notes:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
