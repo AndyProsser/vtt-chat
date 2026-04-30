@@ -1,5 +1,3 @@
-# **ADMIN-ARCHITECTURE.md**
-
 # Admin Architecture
 
 The Admin system is built on top of the unified **User** model with role-based access control (RBAC). Admins are users with special privileges granted via the `adminRole` field on the User record.
@@ -110,7 +108,7 @@ When the system has no admins:
 
 ### 4.2 Adding New Admins
 
-**Method 1: From existing User (most common)**
+#### **Method 1: From existing User (most common)**
 
 1. Super Admin navigates to User → Admin Operations
 2. Clicks "Grant Admin Role"
@@ -118,7 +116,7 @@ When the system has no admins:
 4. User is promoted; receives notification
 5. Next login: user sees admin console access
 
-**Method 2: Invite Link (preferred for external hires)**
+#### **Method 2: Invite Link (preferred for external hires)**
 
 1. Super Admin generates an admin invite link with role pre-selected
 2. Link is shared with the invitee (email, Slack, etc.)
@@ -127,7 +125,7 @@ When the system has no admins:
    - If existing account: redirects to login, then grants role
 4. Invitee gains admin console access
 
-**Method 3: Direct User Creation + Promotion**
+#### **Method 3: Direct User Creation + Promotion**
 
 1. Super Admin creates a new User record (email + username)
 2. Sends temporary password or password reset link to invitee

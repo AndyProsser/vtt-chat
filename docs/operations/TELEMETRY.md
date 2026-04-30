@@ -1,5 +1,3 @@
-# **TELEMETRY.md**
-
 # Telemetry & Analytics
 
 _A privacy‑respecting, low‑overhead telemetry pipeline for client events, presence analytics, and system health._
@@ -42,9 +40,9 @@ This document defines:
 
 ---
 
-# 🧩 1. Telemetry Architecture Overview
+## 🧩 1. Telemetry Architecture Overview
 
-```
+```text
 Client (Zustand Telemetry Store)
         ↓ batched events
 WebSocket: telemetry.clientEvent
@@ -68,7 +66,7 @@ It is strictly for **product improvement** and **system health**.
 
 ---
 
-# 🧱 2. Client Telemetry
+## 🧱 2. Client Telemetry
 
 The client batches events in `useTelemetryStore`.
 
@@ -164,11 +162,11 @@ To make logging operationally controllable, standardize on explicit log levels.
 
 ---
 
-# 📡 3. WebSocket Telemetry Events
+## 📡 3. WebSocket Telemetry Events
 
 Telemetry events are delivered via:
 
-```
+```text
 telemetry.clientEvent
 ```
 
@@ -205,11 +203,11 @@ Only:
 
 ---
 
-# 🔌 4. Redis Ingestion
+## 🔌 4. Redis Ingestion
 
 Raw telemetry events are appended to:
 
-```
+```text
 telemetry:campaign:{campaignId}
 ```
 
@@ -232,7 +230,7 @@ Each entry is a JSON string:
 
 ---
 
-# 📁 5. Backend Logging Streams (Diagnostics, Audit, Performance, Telemetry)
+## 📁 5. Backend Logging Streams (Diagnostics, Audit, Performance, Telemetry)
 
 Backend logging is split by intent so admin workflows can filter and retain correctly.
 
@@ -270,7 +268,7 @@ Operational requirements:
 
 ---
 
-# 🧮 6. Aggregation Worker
+## 🧮 6. Aggregation Worker
 
 A background worker periodically:
 
@@ -286,7 +284,7 @@ A background worker periodically:
 
 Raw events:
 
-```
+```text
 ROOM_SWITCH (main → group-1)
 ROOM_SWITCH (group-1 → main)
 AUDIO_PRESET_APPLIED (CAVE)
@@ -306,7 +304,7 @@ Aggregated row:
 
 ---
 
-# 🗄️ 7. Postgres Storage
+## 🗄️ 7. Postgres Storage
 
 ### Table: `TelemetryEvent`
 
@@ -332,11 +330,11 @@ model TelemetryEvent {
 
 ---
 
-# 📊 8. Query Patterns
+## 📊 8. Query Patterns
 
 ### 1. Feature Usage
 
-```
+```sql
 SELECT eventName, SUM(count)
 FROM TelemetryEvent
 WHERE campaignId = $1
@@ -345,7 +343,7 @@ GROUP BY eventName;
 
 ### 2. Room Activity Over Time
 
-```
+```sql
 SELECT windowStart, count
 FROM TelemetryEvent
 WHERE campaignId = $1
@@ -355,7 +353,7 @@ ORDER BY windowStart;
 
 ### 3. Audio Preset Popularity
 
-```
+```sql
 SELECT properties->>'presetId', SUM(count)
 FROM TelemetryEvent
 WHERE eventName = 'AUDIO_PRESET_APPLIED'
@@ -364,7 +362,7 @@ GROUP BY properties->>'presetId';
 
 ### 4. Extension Usage
 
-```
+```sql
 SELECT properties->>'source', SUM(count)
 FROM TelemetryEvent
 WHERE eventName = 'EXTENSION_CONNECTED'
@@ -373,7 +371,7 @@ GROUP BY properties->>'source';
 
 ---
 
-# 🔒 9. Privacy & Trust Model
+## 🔒 9. Privacy & Trust Model
 
 Telemetry is designed to be:
 
@@ -403,7 +401,7 @@ Stored in Postgres with strict access control.
 
 ---
 
-# 🧠 10. Design Principles
+## 🧠 10. Design Principles
 
 ### 1. Telemetry must never impact gameplay
 
@@ -427,7 +425,7 @@ No PII, no tracking, no profiling.
 
 ---
 
-# 🧪 11. Validation Checklist (Logging + Telemetry)
+## 🧪 11. Validation Checklist (Logging + Telemetry)
 
 Use this checklist when implementing logging upgrades:
 

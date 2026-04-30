@@ -1,5 +1,3 @@
-# **NOTES-SYSTEM.md**
-
 # Notes System
 
 _A lightweight, persistent, DM‑controlled knowledge system for handouts, maps, summaries, and metagame notes._
@@ -46,7 +44,7 @@ This document defines:
 
 ---
 
-# 🧩 1. Note Model
+## 🧩 1. Note Model
 
 ### Schema
 
@@ -80,7 +78,7 @@ interface Note {
 
 ---
 
-# 🔐 2. Visibility Rules
+## 🔐 2. Visibility Rules
 
 Visibility is determined by `visibility` + `sharedWith`.
 
@@ -107,7 +105,7 @@ Players may share their own notes with others, but:
 
 ---
 
-# 🧭 3. Sharing Model
+## 🧭 3. Sharing Model
 
 Notes can be shared in two ways:
 
@@ -137,7 +135,7 @@ Players **cannot**:
 
 ---
 
-# 📝 4. Note Flags (Per‑User State)
+## 📝 4. Note Flags (Per‑User State)
 
 Each user has independent flags for each note:
 
@@ -163,7 +161,7 @@ Flags do **not** affect other users.
 
 ---
 
-# 🗂️ 5. Note Types
+## 🗂️ 5. Note Types
 
 ### 1. **NORMAL**
 
@@ -182,7 +180,7 @@ Metagame notes can still be shared or published.
 
 ---
 
-# 🖼️ 6. Attachments
+## 🖼️ 6. Attachments
 
 Notes support **base64 images**:
 
@@ -206,7 +204,7 @@ Attachments are stored inline with the note.
 
 ---
 
-# 📢 7. Publishing Notes to Chat
+## 📢 7. Publishing Notes to Chat
 
 Notes can be published to chat as a **one‑time event**.
 
@@ -233,7 +231,7 @@ Notes can be published to chat as a **one‑time event**.
 
 ---
 
-# 🔍 8. Searching Notes
+## 🔍 8. Searching Notes
 
 Search supports:
 
@@ -245,13 +243,13 @@ Search supports:
 
 ### API
 
-```
+```text
 GET /api/search/notes
 ```
 
 ---
 
-# 🔄 9. Interaction With Sessions
+## 🔄 9. Interaction With Sessions
 
 ### Before Session
 
@@ -284,7 +282,7 @@ Notes become part of the **session journal**.
 
 ---
 
-# 💬 10. Interaction With Chat
+## 💬 10. Interaction With Chat
 
 Notes can be:
 
@@ -300,7 +298,7 @@ Chat messages can also be converted into notes:
 
 ---
 
-# 🔌 11. Interaction With Extension
+## 🔌 11. Interaction With Extension
 
 The browser extension can:
 
@@ -317,7 +315,7 @@ Examples:
 
 ---
 
-# 📦 12. Import / Export
+## 📦 12. Import / Export
 
 Notes are included in:
 
@@ -343,7 +341,7 @@ Notes are included in:
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Notes are lightweight
 

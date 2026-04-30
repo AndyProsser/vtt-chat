@@ -4,9 +4,9 @@ _Aligned with your architecture, token system, and persona rules._
 
 ---
 
-# 1. **Frame Specification**
+## 1. **Frame Specification**
 
-## **1.1 Root Frame**
+### **1.1 Root Frame**
 
 | Property   | Value                   |
 | ---------- | ----------------------- |
@@ -20,9 +20,9 @@ _Aligned with your architecture, token system, and persona rules._
 
 ---
 
-# 2. **Top Regions**
+## 2. **Top Regions**
 
-## **2.1 Toolbar**
+### **2.1 Toolbar**
 
 Identical structure to DM, but **no DM‑only controls**.
 
@@ -34,7 +34,7 @@ Identical structure to DM, but **no DM‑only controls**.
 | Layout        | Horizontal, space‑between        |
 | Padding       | 0 16px                           |
 
-### **Toolbar Components**
+#### **Toolbar Components**
 
 - **Left:** Campaign Name
 - **Center:** Session Timer
@@ -44,13 +44,13 @@ _No DM Voice Bar._
 
 ---
 
-# 3. **Main Layout (3 Columns)**
+## 3. **Main Layout (3 Columns)**
 
 The Player Persona keeps the same structural grid as DM, but with **restricted functionality**.
 
 ---
 
-## **3.1 Left Rail — Player List**
+### **3.1 Left Rail — Player List**
 
 | Property   | Value               |
 | ---------- | ------------------- |
@@ -60,13 +60,13 @@ The Player Persona keeps the same structural grid as DM, but with **restricted f
 | Padding    | 8px 0               |
 | Scroll     | Yes                 |
 
-### **Rooms Section**
+#### **Rooms Section**
 
 - Players see **only rooms they are allowed to see**
 - No DM‑only overrides
 - No right‑click environment menu
 
-### **Player Item**
+#### **Player Item**
 
 | Element       | Spec                         |
 | ------------- | ---------------------------- |
@@ -77,7 +77,7 @@ The Player Persona keeps the same structural grid as DM, but with **restricted f
 | Hover         | `var(--accent-primary-soft)` |
 | Right‑click   | Whisper only (if enabled)    |
 
-### **Player‑Only Controls**
+#### **Player‑Only Controls**
 
 - **Whisper to Player** (right‑click)
 - **No Manage Players button**
@@ -87,7 +87,7 @@ The Player Persona keeps the same structural grid as DM, but with **restricted f
 
 ---
 
-## **3.2 Center Pane — Chat Only**
+### **3.2 Center Pane — Chat Only**
 
 Players have the same chat experience as DM, minus DM‑only message types.
 
@@ -97,7 +97,7 @@ Players have the same chat experience as DM, minus DM‑only message types.
 | Background | `var(--bg-app)` |
 | Layout     | Vertical        |
 
-### **Room Header**
+#### **Room Header**
 
 | Property   | Value                               |
 | ---------- | ----------------------------------- |
@@ -110,7 +110,7 @@ Players **see** the environment but cannot change it.
 
 ---
 
-### **Chat Window**
+#### **Chat Window**
 
 | Property        | Value               |
 | --------------- | ------------------- |
@@ -119,7 +119,7 @@ Players **see** the environment but cannot change it.
 | Padding         | 16px                |
 | Message Spacing | 12px                |
 
-#### **Message Types (Player Persona)**
+##### **Message Types (Player Persona)**
 
 | Type                 | Visible? | Notes                              |
 | -------------------- | -------- | ---------------------------------- |
@@ -133,7 +133,7 @@ Players cannot create global notes, but they can **view** any note visible to th
 
 ---
 
-### **Composer**
+#### **Composer**
 
 | Property   | Value                                        |
 | ---------- | -------------------------------------------- |
@@ -156,7 +156,7 @@ Players cannot:
 
 ---
 
-## **3.3 Right Rail — Icon Tabs**
+### **3.3 Right Rail — Icon Tabs**
 
 Players see **fewer tabs**.
 
@@ -168,7 +168,7 @@ Players see **fewer tabs**.
 | Padding    | 8px 0                   |
 | Icon Size  | 24px                    |
 
-### **Player Tab Order (top → bottom)**
+#### **Player Tab Order (top → bottom)**
 
 1. Notes
 2. Journal
@@ -183,9 +183,9 @@ Players do **not** see:
 
 ---
 
-# 4. **Right Panel (Slide‑In Panels)**
+## 4. **Right Panel (Slide‑In Panels)**
 
-## **4.1 Panel Container**
+### **4.1 Panel Container**
 
 | Property    | Value                  |
 | ----------- | ---------------------- |
@@ -198,7 +198,7 @@ Players do **not** see:
 
 ---
 
-## **4.2 Notes Panel (Player Version)**
+### **4.2 Notes Panel (Player Version)**
 
 Players see:
 
@@ -213,13 +213,13 @@ Players cannot:
 
 ---
 
-## **4.3 Journal Panel**
+### **4.3 Journal Panel**
 
 Read‑only unless DM grants write access.
 
 ---
 
-## **4.4 History Panel**
+### **4.4 History Panel**
 
 Players see:
 
@@ -234,7 +234,7 @@ Players do not see:
 
 ---
 
-## **4.5 Search Panel**
+### **4.5 Search Panel**
 
 Players can search:
 
@@ -244,7 +244,7 @@ Players can search:
 
 ---
 
-## **4.6 Settings Panel**
+### **4.6 Settings Panel**
 
 Player‑only settings:
 
@@ -256,7 +256,7 @@ Player‑only settings:
 
 ---
 
-# 5. **Z‑Index Hierarchy**
+## 5. **Z‑Index Hierarchy**
 
 Same as DM, minus DM‑only layers.
 
@@ -271,7 +271,7 @@ Same as DM, minus DM‑only layers.
 
 ---
 
-# 6. **Auto‑Layout Rules**
+## 6. **Auto‑Layout Rules**
 
 ### **Toolbar**
 
@@ -301,11 +301,11 @@ Same as DM, minus DM‑only layers.
 
 ---
 
-# 7. **Motion & Interaction Overlays**
+## 7. **Motion & Interaction Overlays**
 
 ### **Slide‑In Panel**
 
-```
+```text
 translateX(100%) → 0
 duration: 180ms
 easing: primary
@@ -313,7 +313,7 @@ easing: primary
 
 ### **Note Popout**
 
-```
+```text
 translateX(100%) → 0
 duration: 180ms
 ```
@@ -330,7 +330,7 @@ duration: 180ms
 
 ---
 
-# 8. **Component Naming (Figma‑Ready)**
+## 8. **Component Naming (Figma‑Ready)**
 
 - `Frame / Player Persona`
 - `Component / Toolbar`
@@ -351,7 +351,7 @@ duration: 180ms
 
 ---
 
-# ✔ **Player Persona Figma‑Ready Mockup Complete**
+## ✔ **Player Persona Figma‑Ready Mockup Complete**
 
 This is the full, implementation‑grade specification for the Player Persona.
 

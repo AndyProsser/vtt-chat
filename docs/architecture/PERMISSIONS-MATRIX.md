@@ -1,5 +1,3 @@
-# **PERMISSIONS-MATRIX.md**
-
 # Permissions Matrix
 
 The Permissions Matrix defines **who can do what** within the VTT‑Chat platform.
@@ -18,7 +16,7 @@ Roles define capabilities; capabilities unlock features.
 
 ---
 
-# 1. Roles Overview
+## 1. Roles Overview
 
 | Role          | Description                                                                                                                                                                                                                                                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -49,7 +47,7 @@ See [../extension/GUEST-AUTH.md](../extension/GUEST-AUTH.md) for the guest auth 
 
 ---
 
-# 2. Capability Categories
+## 2. Capability Categories
 
 Capabilities are grouped into functional domains:
 
@@ -64,9 +62,9 @@ Capabilities are grouped into functional domains:
 
 ---
 
-# 3. Permissions Matrix
+## 3. Permissions Matrix
 
-## 3.1 Chat Capabilities
+### 3.1 Chat Capabilities
 
 | Capability              | DM  | Player | Spectator | System |
 | ----------------------- | --- | ------ | --------- | ------ |
@@ -80,7 +78,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.2 Notes Capabilities
+### 3.2 Notes Capabilities
 
 | Capability          | DM  | Player | Spectator | System |
 | ------------------- | --- | ------ | --------- | ------ |
@@ -92,7 +90,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.3 Audio Capabilities
+### 3.3 Audio Capabilities
 
 | Capability           | DM  | Player | Spectator | System |
 | -------------------- | --- | ------ | --------- | ------ |
@@ -104,7 +102,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.4 Presence Capabilities
+### 3.4 Presence Capabilities
 
 | Capability               | DM  | Player | Spectator | System |
 | ------------------------ | --- | ------ | --------- | ------ |
@@ -115,7 +113,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.5 Session Capabilities
+### 3.5 Session Capabilities
 
 | Capability     | DM  | Player | Spectator | System |
 | -------------- | --- | ------ | --------- | ------ |
@@ -127,7 +125,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.6 Moderation Capabilities
+### 3.6 Moderation Capabilities
 
 | Capability     | DM  | Player | Spectator | System |
 | -------------- | --- | ------ | --------- | ------ |
@@ -138,7 +136,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.7 Extension Capabilities
+### 3.7 Extension Capabilities
 
 | Capability                                  | DM                    | Player | Spectator     | System |
 | ------------------------------------------- | --------------------- | ------ | ------------- | ------ |
@@ -164,7 +162,7 @@ Capabilities are grouped into functional domains:
 
 ---
 
-## 3.8 Spectator Access Rules
+### 3.8 Spectator Access Rules
 
 These are **not** role-based capabilities — they are structural constraints that apply to all spectators regardless of account type:
 
@@ -183,11 +181,11 @@ These are **not** role-based capabilities — they are structural constraints th
 
 ---
 
-## 3.9 Admin Roles
+### 3.9 Admin Roles
 
 The **Admin system** is orthogonal to game roles (DM, Player, Spectator). Any user can become an admin by being promoted. All DMs automatically have `adminRole: CAMPAIGN_DM`. Admins authenticate separately with their password, and guest users must upgrade to full accounts before admin login is allowed.
 
-### Admin Role Hierarchy
+#### Admin Role Hierarchy
 
 | Admin Role      | Description                                                                                         | Automatic Assignment |
 | --------------- | --------------------------------------------------------------------------------------------------- | -------------------- |
@@ -196,7 +194,7 @@ The **Admin system** is orthogonal to game roles (DM, Player, Spectator). Any us
 | **CAMPAIGN_DM** | Campaign-level ops (backup, export, import, members, campaign telemetry). System view is read-only. | Yes (all DMs)        |
 | **READ_ONLY**   | View-only access to all data. Cannot modify anything.                                               | No (promoted only)   |
 
-### Admin Permissions
+#### Admin Permissions
 
 See [./ADMIN-ARCHITECTURE.md](./ADMIN-ARCHITECTURE.md#3-admin-permissions-matrix) for the complete admin permissions matrix covering:
 
@@ -208,7 +206,7 @@ See [./ADMIN-ARCHITECTURE.md](./ADMIN-ARCHITECTURE.md#3-admin-permissions-matrix
 
 ---
 
-# 4. System Role
+## 4. System Role
 
 The **System** role is not a user.
 It is used for:
@@ -223,7 +221,7 @@ System actions **never bypass** the permissions model unless explicitly defined.
 
 ---
 
-# 5. Extensibility
+## 5. Extensibility
 
 The Permissions Matrix is designed to be:
 
@@ -234,7 +232,7 @@ The Permissions Matrix is designed to be:
 
 ---
 
-# 6. Source of Truth
+## 6. Source of Truth
 
 The matrix is enforced in:
 

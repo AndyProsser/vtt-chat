@@ -1,5 +1,3 @@
-# **LIVEKIT-INTEGRATION.md**
-
 # LiveKit Integration Architecture
 
 _How VTT-Chat uses LiveKit for real-time audio distribution and room management._
@@ -148,7 +146,7 @@ VTT-Chat creates multiple rooms per session:
 
 ### 2.2 Room Lifecycle
 
-```
+```text
 Session Created
   ├─ Create Main Room (empty, waiting for members)
   ├─ Create Green Room (spectators)
@@ -228,7 +226,7 @@ Each participant in a room has:
 
 ### 3.3 Example: Whisper vs. Shout
 
-```
+```text
 User A (Main Room) sends whisper to User B:
   ├─ Publishes to Main Room (all hear it)
   ├─ WebSocket event: CHAT:MESSAGE_SENT + whisper marker
@@ -249,7 +247,7 @@ User A (DM) sends shout to User B:
 
 ### 4.1 Reconnection Flow (Network Loss)
 
-```
+```text
 WebSocket Disconnected
   ├─ Client detects: WS connection lost
   └─ localStorage: store(token, roomId, sessionId, currentEffects)

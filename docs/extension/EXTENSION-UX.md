@@ -1,5 +1,3 @@
-# **EXTENSION-UX.md**
-
 # Extension UX
 
 The Extension UX defines how the VTT‑Chat browser extension behaves when injected into a third‑party Virtual Tabletop (VTT).
@@ -20,7 +18,7 @@ This document focuses on **user experience**, not technical implementation.
 
 ---
 
-# 1. UX Philosophy
+## 1. UX Philosophy
 
 ### **1.1 Overlay‑First**
 
@@ -62,7 +60,7 @@ The overlay behaves consistently across all VTTs.
 
 ---
 
-# 2. Overlay Layout
+## 2. Overlay Layout
 
 The overlay is composed of modular UI regions:
 
@@ -129,7 +127,7 @@ Visible only to the DM:
 
 ---
 
-# 3. Interaction Patterns
+## 3. Interaction Patterns
 
 ### **3.1 Click‑Through by Default**
 
@@ -165,11 +163,11 @@ Examples:
 
 ---
 
-# 4. Role‑Based UX
+## 4. Role‑Based UX
 
 ---
 
-## 4.1 DM UX
+### 4.1 DM UX
 
 DMs see:
 
@@ -185,7 +183,7 @@ DMs do **not** see:
 
 ---
 
-## 4.2 Player UX
+### 4.2 Player UX
 
 Players see:
 
@@ -209,13 +207,13 @@ Players do **not** see:
 
 ---
 
-# 5. Overlay States
+## 5. Overlay States
 
 The overlay has several states depending on connection and session status.
 
 ---
 
-## 5.1 Connected
+### 5.1 Connected
 
 - Full UI available
 - Presence active
@@ -224,7 +222,7 @@ The overlay has several states depending on connection and session status.
 
 ---
 
-## 5.2 Reconnecting
+### 5.2 Reconnecting
 
 - UI dims
 - “Reconnecting…” banner
@@ -233,7 +231,7 @@ The overlay has several states depending on connection and session status.
 
 ---
 
-## 5.3 Disconnected
+### 5.3 Disconnected
 
 - UI disabled
 - Error message shown
@@ -241,7 +239,7 @@ The overlay has several states depending on connection and session status.
 
 ---
 
-## 5.4 Paused Session
+### 5.4 Paused Session
 
 - Paused banner
 - Session‑critical actions disabled
@@ -249,7 +247,7 @@ The overlay has several states depending on connection and session status.
 
 ---
 
-# 6. Motion & Animation
+## 6. Motion & Animation
 
 The overlay follows the global Motion Spec:
 
@@ -261,7 +259,7 @@ The overlay follows the global Motion Spec:
 
 ---
 
-# 7. VTT Interaction UX
+## 7. VTT Interaction UX
 
 The overlay interacts with the VTT in a **safe, predictable** way.
 
@@ -296,7 +294,7 @@ The overlay must never block:
 
 ---
 
-# 8. Error UX
+## 8. Error UX
 
 Errors must be:
 
@@ -315,7 +313,7 @@ DMs may see more detail.
 
 ---
 
-# 9. Accessibility
+## 9. Accessibility
 
 The overlay must support:
 
@@ -326,7 +324,7 @@ The overlay must support:
 
 ---
 
-# 10. Future Enhancements
+## 10. Future Enhancements
 
 Planned improvements:
 
@@ -339,7 +337,7 @@ Planned improvements:
 
 ---
 
-# 11. Summary
+## 11. Summary
 
 The Extension UX ensures that the overlay is:
 

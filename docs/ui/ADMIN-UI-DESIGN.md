@@ -1,10 +1,10 @@
-# **ADMIN-UI-DESIGN.md**
+# ADMIN UI DESIGN
 
 _Minimalistic, full‑window, theme‑aware admin interface for VTT‑Chat._
 
 ---
 
-# 🧭 1. Purpose & Philosophy
+## 🧭 1. Purpose & Philosophy
 
 The Admin UI is a **separate SPA** used by a very small number of trusted operators.
 Its goals are:
@@ -21,11 +21,11 @@ It’s for **administrators, developers, and support staff**.
 
 ---
 
-# 🧱 2. Layout Structure (Full‑Window SPA)
+## 🧱 2. Layout Structure (Full‑Window SPA)
 
 The Admin UI uses a **two‑column layout**:
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ TOP BAR (optional)                                                           │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -54,7 +54,7 @@ The Admin UI uses a **two‑column layout**:
 
 ---
 
-# 🎨 3. Theming (Light & Dark)
+## 🎨 3. Theming (Light & Dark)
 
 The Admin UI uses the **same token system** as the main app.
 
@@ -85,7 +85,7 @@ The Admin UI uses the **same token system** as the main app.
 
 ---
 
-# 🧩 4. Navigation Structure
+## 🧩 4. Navigation Structure
 
 The Admin UI has **six core sections**:
 
@@ -116,17 +116,17 @@ Each item is:
 
 ---
 
-# 📊 5. Section Specifications
+## 📊 5. Section Specifications
 
 Below are the **functional requirements** and **UI layout** for each section.
 
 ---
 
-## **5.1 Dashboard**
+### **5.1 Dashboard**
 
 A high‑level overview.
 
-### **Cards**
+#### **Cards**
 
 - Active Users
 - Active Rooms
@@ -135,7 +135,7 @@ A high‑level overview.
 - Message Throughput
 - Storage Usage
 
-### **Layout**
+#### **Layout**
 
 - 3‑column grid (auto‑wrap)
 - Each card:
@@ -145,11 +145,11 @@ A high‑level overview.
 
 ---
 
-## **5.2 Users**
+### **5.2 Users**
 
 Admin‑level user management.
 
-### **Table Columns**
+#### **Table Columns**
 
 - Username
 - Email
@@ -158,7 +158,7 @@ Admin‑level user management.
 - Status (Active / Suspended)
 - Actions (View / Suspend / Delete)
 
-### **Actions**
+#### **Actions**
 
 - Search
 - Filter by role
@@ -166,7 +166,7 @@ Admin‑level user management.
 - Force logout
 - Reset MFA (if applicable)
 
-### **User Detail Panel**
+#### **User Detail Panel**
 
 - Profile info
 - Rooms joined
@@ -175,11 +175,11 @@ Admin‑level user management.
 
 ---
 
-## **5.3 Rooms & Campaigns**
+### **5.3 Rooms & Campaigns**
 
 Operational view of all rooms.
 
-### **Table Columns**
+#### **Table Columns**
 
 - Room Name
 - Campaign
@@ -188,7 +188,7 @@ Operational view of all rooms.
 - Status (Active / Idle)
 - Actions (View / Close / Move Players)
 
-### **Room Detail Panel**
+#### **Room Detail Panel**
 
 - Players
 - Environment
@@ -199,11 +199,11 @@ Operational view of all rooms.
 
 ---
 
-## **5.4 System Health**
+### **5.4 System Health**
 
 Real‑time operational metrics.
 
-### **Cards**
+#### **Cards**
 
 - CPU
 - Memory
@@ -212,13 +212,13 @@ Real‑time operational metrics.
 - LiveKit status
 - Database status
 
-### **Charts**
+#### **Charts**
 
 - CPU load (line chart)
 - Memory usage (area chart)
 - Message throughput (bar or line)
 
-### **Status Indicators**
+#### **Status Indicators**
 
 - Green = healthy
 - Yellow = degraded
@@ -226,11 +226,11 @@ Real‑time operational metrics.
 
 ---
 
-## **5.5 Logs & Activity**
+### **5.5 Logs & Activity**
 
 Centralized logging.
 
-### **Filters**
+#### **Filters**
 
 - Time range
 - Severity (Info / Warn / Error)
@@ -238,7 +238,7 @@ Centralized logging.
 - User ID
 - Room ID
 
-### **Log Table**
+#### **Log Table**
 
 - Timestamp
 - Severity
@@ -248,11 +248,11 @@ Centralized logging.
 
 ---
 
-## **5.6 Settings**
+### **5.6 Settings**
 
 Admin‑level configuration.
 
-### **Sections**
+#### **Sections**
 
 - System configuration
 - Feature flags
@@ -261,7 +261,7 @@ Admin‑level configuration.
 - Storage settings
 - Backup & restore
 
-### **UI**
+#### **UI**
 
 - Form‑based
 - Minimal
@@ -270,7 +270,7 @@ Admin‑level configuration.
 
 ---
 
-# 🧠 6. Interaction & Motion
+## 🧠 6. Interaction & Motion
 
 The Admin UI is **minimal**, so motion is subtle.
 
@@ -289,7 +289,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-# 🧱 7. Component Library (Admin‑Specific)
+## 🧱 7. Component Library (Admin‑Specific)
 
 ### **Admin Card**
 
@@ -319,7 +319,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-# 🎨 8. Typography
+## 🎨 8. Typography
 
 ### **Font**
 
@@ -339,7 +339,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-# ✔ 9. Summary
+## ✔ 9. Summary
 
 The Admin UI is:
 

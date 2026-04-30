@@ -1,8 +1,6 @@
-# **ARCHITECTURE.md**
-
 # VTT‑Chat Platform Architecture
 
-_A scalable, real‑time virtual tabletop communication system_
+> _A scalable, real‑time virtual tabletop communication system_
 
 ---
 
@@ -85,7 +83,7 @@ A background job periodically snapshots Redis → Postgres for recovery and anal
 
 All clients maintain a WebSocket connection per campaign:
 
-```
+```text
 wss://server/ws/campaign/:campaignId
 ```
 

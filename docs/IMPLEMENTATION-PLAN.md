@@ -1,6 +1,6 @@
 # VTT‑Chat Implementation Plan
 
-_A staged implementation plan for the full platform_
+> _A staged implementation plan for the full platform_
 
 This roadmap outlines the complete development sequence for **VTT‑Chat**, from architecture to deployment.
 It is designed to guide contributors, GitHub AI, and future maintainers through a clear, structured build process.
@@ -9,9 +9,9 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-# 🧱 Phase 1 — Foundations
+## 🧱 Phase 1 — Foundations
 
-## **1. Architecture Design**
+### **1. Architecture Design**
 
 - Define backend, SPA, LiveKit, database, and Redis topology
 - Finalize session model, room model, audio model
@@ -19,14 +19,14 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Define metadata, notes, tags, and timeline behavior
 - Document all in `docs/ARCHITECTURE.md`
 
-## **2. Repository Structure**
+### **2. Repository Structure**
 
 - Establish monorepo layout
 - Create folders for backend, frontend, livekit, docker, docs, scripts
 - Add initial `.env.example` files
 - Add LICENSE, README, CONTRIBUTING, CODE_OF_CONDUCT
 
-## **3. Shared Framework & Types**
+### **3. Shared Framework & Types**
 
 - Create shared TypeScript interfaces for:
   - WebSocket events
@@ -40,9 +40,9 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-# 🏗️ Phase 2 — Deployment Infrastructure
+## 🏗️ Phase 2 — Deployment Infrastructure
 
-## **4. Docker Build Automation**
+### **4. Docker Build Automation**
 
 - Backend Dockerfile
 - SPA Dockerfile
@@ -51,7 +51,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Build scripts
 - GitHub Actions CI (optional)
 
-## **5. Docker Swarm Stack (HomeLab‑friendly)**
+### **5. Docker Swarm Stack (HomeLab‑friendly)**
 
 - Compose → Swarm conversion
 - Redundant backend nodes (optional)
@@ -59,14 +59,14 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Redis persistence
 - Traefik or Caddy routing (Caddy preferred)
 
-## **6. LiveKit Server Build**
+### **6. LiveKit Server Build**
 
 - Native LiveKit binary
 - `livekit.yaml` configuration
 - Token server integration
 - UDP port range configuration
 
-## **7. Firewall & NAT Configuration**
+### **7. Firewall & NAT Configuration**
 
 - Non‑standard HTTPS ports (e.g., 8443)
 - LiveKit WS (7880)
@@ -76,9 +76,9 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-# 🗄️ Phase 3 — Data & Realtime Layers
+## 🗄️ Phase 3 — Data & Realtime Layers
 
-## **8. Database Schema**
+### **8. Database Schema**
 
 - Users
 - Campaigns
@@ -94,7 +94,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Ping cooldowns
 - Admin audit logs
 
-## **9. WebSocket Event Schema**
+### **9. WebSocket Event Schema**
 
 - Chat events
 - Room events
@@ -107,7 +107,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Presence events
 - Ping events
 
-## **10. Backend API Design**
+### **10. Backend API Design**
 
 - Auth
 - Campaign join
@@ -121,7 +121,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 - Health endpoints
 - Admin endpoints (future)
 
-## **11. Backend Implementation**
+### **11. Backend Implementation**
 
 - Full TypeScript backend
 - WebSocket server
@@ -138,13 +138,13 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-# 🎨 Phase 4 — Frontend Application
+## 🎨 Phase 4 — Frontend Application
 
-## **UI Modernization Track**
+### **UI Modernization Track**
 
 This track standardizes the shipped UI architecture without requiring a single big-bang rewrite.
 
-### **UM1. Documentation Alignment**
+#### **UM1. Documentation Alignment**
 
 - Align design docs to the current multi-app repository structure
 - Define stable-package policy for framework adoption
@@ -155,7 +155,7 @@ Acceptance criteria:
 - Design-system docs, roadmap docs, and implementation docs describe the same migration sequence
 - Frontend and admin ownership boundaries are explicit and consistent
 
-### **UM2. Framework Foundations**
+#### **UM2. Framework Foundations**
 
 - Add Tailwind + PostCSS to the frontend app
 - Add Radix packages and wrapper utilities to the frontend app
@@ -166,7 +166,7 @@ Acceptance criteria:
 - Frontend and admin install/build successfully with only current stable package versions
 - Framework setup lands without mandatory feature rewrites
 
-### **UM3. Token and Theme Normalization**
+#### **UM3. Token and Theme Normalization**
 
 - Normalize existing frontend CSS variable tokens into the target contract
 - Map Tailwind theme values to token-backed CSS variables
@@ -177,7 +177,7 @@ Acceptance criteria:
 - Theme behavior remains correct in light and dark modes
 - Token naming and ownership are documented and consistent
 
-### **UM4. Shell and Primitive Migration**
+#### **UM4. Shell and Primitive Migration**
 
 - Create frontend core-ui wrappers for adopted Radix primitives
 - Migrate frontend shell/auth surfaces to the tokenized styling path
@@ -188,7 +188,7 @@ Acceptance criteria:
 - Adopted Radix primitives are used via wrappers only
 - Shell surfaces no longer depend on non-dynamic hardcoded inline styles
 
-### **UM5. Feature Surface Migration**
+#### **UM5. Feature Surface Migration**
 
 - Migrate frontend command center, notes, chat, audio, and room controls incrementally
 - Migrate admin pages page-by-page to MUI
@@ -198,7 +198,7 @@ Acceptance criteria:
 - Migrated frontend features use the new wrapper/token path
 - Migrated admin pages use MUI primitives instead of custom CSS-first controls
 
-### **UM6. Cleanup and Enforcement**
+#### **UM6. Cleanup and Enforcement**
 
 - Remove superseded CSS/components after verification
 - Update contributor docs, quick reference docs, and verification guidance
@@ -208,7 +208,7 @@ Acceptance criteria:
 - Cleanup only happens after runtime and test verification
 - Architecture boundaries remain enforceable in documentation and review
 
-## **12. SPA UI/UX Design**
+### **12. SPA UI/UX Design**
 
 - DM panel
 - Player panel
@@ -225,7 +225,7 @@ Acceptance criteria:
 - Effects panel
 - Admin panel (optional)
 
-## **13. SPA Core Framework**
+### **13. SPA Core Framework**
 
 - React + TypeScript setup
 - Routing
@@ -236,7 +236,7 @@ Acceptance criteria:
 - Theme system
 - Persistence layer
 
-## **14. SPA UI Components**
+### **14. SPA UI Components**
 
 - Chat
 - Message cards
@@ -254,7 +254,7 @@ Acceptance criteria:
 - Session boundary markers
 - Export dialogs
 
-## **15. CSS & Styling**
+### **15. CSS & Styling**
 
 - Theme variables
 - Light/dark mode
@@ -268,9 +268,9 @@ Acceptance criteria:
 
 ---
 
-# 🔊 Phase 5 — Audio & Realtime Integration
+## 🔊 Phase 5 — Audio & Realtime Integration
 
-## **16. LiveKit Integration**
+### **16. LiveKit Integration**
 
 - Token server
 - Room join/leave
@@ -286,9 +286,9 @@ Acceptance criteria:
 
 ---
 
-# 📊 Phase 6 — Platform Health & Admin
+## 📊 Phase 6 — Platform Health & Admin
 
-## **17. System Status / Health Page**
+### **17. System Status / Health Page**
 
 - Backend health
 - Redis health
@@ -301,7 +301,7 @@ Acceptance criteria:
 - Error logs
 - CPU/memory usage
 
-## **18. Documentation & User Guides**
+### **18. Documentation & User Guides**
 
 - README
 - Deployment guide
@@ -312,9 +312,9 @@ Acceptance criteria:
 
 ---
 
-# 🛡️ Optional Phase — Admin App
+## 🛡️ Optional Phase — Admin App
 
-## **Admin App Features**
+### **Admin App Features**
 
 - Campaign management
 - Archive/export/delete
@@ -327,7 +327,7 @@ Acceptance criteria:
 
 ---
 
-# 🚀 Development Flow Summary
+## 🚀 Development Flow Summary
 
 1. **Design first**
 2. **Infrastructure second**
@@ -340,7 +340,7 @@ This order minimizes rework and ensures a stable foundation at every stage.
 
 ---
 
-# 📝 Notes for Contributors
+## 📝 Notes for Contributors
 
 - Follow the architecture doc
 - Respect privacy rules

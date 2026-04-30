@@ -1,5 +1,3 @@
-# **SESSION-LIFECYCLE.md**
-
 # Session Lifecycle
 
 The Session Lifecycle defines how a tabletop session moves through its various states, how transitions occur, and which actors have authority over those transitions.
@@ -16,7 +14,7 @@ The lifecycle is intentionally simple, predictable, and resilient to reconnectio
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 ### **1.1 Sessions are state machines**
 
@@ -45,7 +43,7 @@ All participants can see the current session state, regardless of role.
 
 ---
 
-# 2. Session States
+## 2. Session States
 
 The session state machine consists of four primary states.
 
@@ -109,7 +107,7 @@ The session has concluded.
 
 ---
 
-# 3. Session Events
+## 3. Session Events
 
 All session transitions are triggered by events.
 
@@ -130,7 +128,7 @@ Invalid transitions are rejected.
 
 ---
 
-# 4. Event Flow
+## 4. Event Flow
 
 ```mermaid
 sequenceDiagram
@@ -159,7 +157,7 @@ Key points:
 
 ---
 
-# 5. UI Behaviour by State
+## 5. UI Behaviour by State
 
 ### **idle**
 
@@ -187,7 +185,7 @@ Key points:
 
 ---
 
-# 6. Presence & Session Interaction
+## 6. Presence & Session Interaction
 
 Presence is independent of session state.
 
@@ -201,7 +199,7 @@ Session state does not override presence; they coexist.
 
 ---
 
-# 7. State Recovery
+## 7. State Recovery
 
 When a client reconnects:
 
@@ -218,7 +216,7 @@ This ensures:
 
 ---
 
-# 8. Error Handling
+## 8. Error Handling
 
 Invalid transitions produce:
 
@@ -234,7 +232,7 @@ Examples:
 
 ---
 
-# 9. Extension Behaviour
+## 9. Extension Behaviour
 
 The extension respects session state:
 
@@ -246,7 +244,7 @@ The extension **cannot** change session state.
 
 ---
 
-# 10. Future Extensions
+## 10. Future Extensions
 
 Planned enhancements:
 
@@ -258,7 +256,7 @@ Planned enhancements:
 
 ---
 
-# 11. Summary
+## 11. Summary
 
 The Session Lifecycle ensures:
 

@@ -1,5 +1,3 @@
-# **WEBSOCKETS.md**
-
 # WebSocket Protocol Specification
 
 _A versioned, event‑driven real‑time protocol for presence, chat, audio, and DM controls._
@@ -38,7 +36,7 @@ This document also contains conceptual and future-state material for later stage
 
 ---
 
-# 🔌 Connection Model
+## 🔌 Connection Model
 
 Current shipped baseline:
 
@@ -85,7 +83,7 @@ Illustrative runtime shape:
 
 Conceptual legacy connection model retained below for future architecture discussion:
 
-```
+```text
 wss://server/ws/campaign/:campaignId
 ```
 
@@ -98,7 +96,7 @@ The connection is:
 
 ---
 
-# 🔐 Authentication
+## 🔐 Authentication
 
 Current shipped baseline:
 
@@ -147,7 +145,7 @@ If authentication fails:
 
 ---
 
-# 📦 Event Envelope Format
+## 📦 Event Envelope Format
 
 Shipped domain events follow the shared event envelope:
 
@@ -178,7 +176,7 @@ Transport wrappers around domain events are separate from the domain envelope an
 
 ---
 
-# 🧩 Namespaces
+## 🧩 Namespaces
 
 Current shipped runtime event families are grouped by uppercase domains:
 
@@ -212,7 +210,7 @@ Conceptual namespace list:
 
 ---
 
-# Reconnect Baseline
+## Reconnect Baseline
 
 Current shipped Stage 6-7 reconnect behavior is intentionally narrower than a full hydrate protocol:
 
@@ -224,7 +222,7 @@ Current shipped Stage 6-7 reconnect behavior is intentionally narrower than a fu
 
 ---
 
-# Legacy Conceptual Event Families
+## Legacy Conceptual Event Families
 
 The following lowercase event families are retained only as compact architecture notes for later-stage protocol design. They are not the shipped Stage 0-7 contract.
 
@@ -242,7 +240,7 @@ When updating runtime-facing documentation, prefer the shipped uppercase contrac
 
 ---
 
-# Legacy Reconnect Concept
+## Legacy Reconnect Concept
 
 Earlier protocol sketches described reconnect as an explicit `client.reconnect` request followed by state replay. That is still useful as target architecture, but it is not the shipped runtime behavior.
 
@@ -255,7 +253,7 @@ Current shipped baseline instead uses:
 
 ---
 
-# 🧠 Versioning Strategy
+## 🧠 Versioning Strategy
 
 - Shipped runtime domain events include `version: 1`
 - New fields → bump minor version

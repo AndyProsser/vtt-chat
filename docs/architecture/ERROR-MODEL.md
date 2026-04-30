@@ -1,5 +1,3 @@
-# **ERROR-MODEL.md**
-
 # Error Model
 
 The Error Model defines how VTT‑Chat detects, classifies, reports, and recovers from errors across the entire platform.
@@ -16,9 +14,9 @@ This document covers error categories, propagation rules, UI behaviour, reducer 
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
-### **1.1 Errors must never break the event pipeline**
+#### **1.1 Errors must never break the event pipeline**
 
 Even when an error occurs, the system must remain:
 
@@ -26,16 +24,16 @@ Even when an error occurs, the system must remain:
 - Responsive
 - Consistent
 
-### **1.2 Errors must never leak private data**
+#### **1.2 Errors must never leak private data**
 
 Error messages are sanitized before being shown to users.
 
-### **1.3 Errors must be role‑appropriate**
+#### **1.3 Errors must be role‑appropriate**
 
 DMs see more detail than players.
 Players see more detail than spectators.
 
-### **1.4 Errors must be recoverable**
+#### **1.4 Errors must be recoverable**
 
 The system must always be able to:
 
@@ -44,19 +42,19 @@ The system must always be able to:
 - Reconnect
 - Reset local state
 
-### **1.5 Errors must be observable**
+#### **1.5 Errors must be observable**
 
 Errors are logged for debugging and telemetry.
 
 ---
 
-# 2. Error Categories
+## 2. Error Categories
 
 Errors are grouped into five categories.
 
 ---
 
-## 2.1 Validation Errors
+### 2.1 Validation Errors
 
 Triggered when:
 
@@ -76,7 +74,7 @@ These errors are **never broadcast** to other clients.
 
 ---
 
-## 2.2 Permission Errors
+### 2.2 Permission Errors
 
 Triggered when:
 
@@ -94,7 +92,7 @@ These errors are visible only to the actor who triggered them.
 
 ---
 
-## 2.3 Reducer Errors
+### 2.3 Reducer Errors
 
 Triggered when:
 
@@ -117,7 +115,7 @@ These errors are logged and surfaced to developers in dev mode.
 
 ---
 
-## 2.4 Transport Errors
+### 2.4 Transport Errors
 
 Triggered when:
 
@@ -136,7 +134,7 @@ UI shows a non‑blocking “Reconnecting…” banner.
 
 ---
 
-## 2.5 System Errors
+### 2.5 System Errors
 
 Triggered when:
 
@@ -154,13 +152,13 @@ DMs may see a generic “System error occurred” message.
 
 ---
 
-# 3. Error Propagation Rules
+## 3. Error Propagation Rules
 
 Errors follow strict propagation rules to maintain privacy and predictability.
 
 ---
 
-## 3.1 Validation & Permission Errors
+### 3.1 Validation & Permission Errors
 
 - Visible only to the actor
 - Never broadcast
@@ -169,7 +167,7 @@ Errors follow strict propagation rules to maintain privacy and predictability.
 
 ---
 
-## 3.2 Reducer Errors
+### 3.2 Reducer Errors
 
 - Logged locally
 - Do not mutate state
@@ -179,7 +177,7 @@ Errors follow strict propagation rules to maintain privacy and predictability.
 
 ---
 
-## 3.3 Transport Errors
+### 3.3 Transport Errors
 
 - Trigger reconnection logic
 - UI shows connection status
@@ -188,7 +186,7 @@ Errors follow strict propagation rules to maintain privacy and predictability.
 
 ---
 
-## 3.4 System Errors
+### 3.4 System Errors
 
 - Sanitized before reaching clients
 - Never reveal internal details
@@ -197,7 +195,7 @@ Errors follow strict propagation rules to maintain privacy and predictability.
 
 ---
 
-# 4. Error Lifecycle
+## 4. Error Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -220,28 +218,28 @@ sequenceDiagram
 
 ---
 
-# 5. UI Error Behaviour
+## 5. UI Error Behaviour
 
-### **Player UI**
+#### **Player UI**
 
 - Shows friendly, non‑technical messages
 - Never shows stack traces
 - Never shows DM‑private information
 
-### **DM UI**
+#### **DM UI**
 
 - Shows more detailed messages
 - May include context (e.g., “Invalid transition: session already active”)
 - Still sanitized
 
-### **Spectator UI**
+#### **Spectator UI**
 
 - Shows minimal error feedback
 - Never shows private or role‑restricted information
 
 ---
 
-# 6. Extension Error Behaviour
+## 6. Extension Error Behaviour
 
 The extension must:
 
@@ -259,7 +257,7 @@ Examples:
 
 ---
 
-# 7. Error Logging & Telemetry
+## 7. Error Logging & Telemetry
 
 Errors are logged at multiple layers:
 
@@ -285,53 +283,53 @@ Logs never include:
 
 ---
 
-# 8. Recovery Strategies
+## 8. Recovery Strategies
 
 The system uses several recovery strategies:
 
-### **8.1 Automatic Reconnect**
+#### **8.1 Automatic Reconnect**
 
 Triggered on transport failure.
 
-### **8.2 State Rehydration**
+#### **8.2 State Rehydration**
 
 Triggered after reconnect.
 
-### **8.3 Event Replay**
+#### **8.3 Event Replay**
 
 Future feature for full determinism.
 
-### **8.4 Local Reset**
+#### **8.4 Local Reset**
 
 Triggered when local state becomes inconsistent.
 
-### **8.5 Server Fallback**
+#### **8.5 Server Fallback**
 
 Triggered when a subsystem fails.
 
 ---
 
-# 9. Developer Guidance
+## 9. Developer Guidance
 
-### **Reducers must never throw**
+#### **Reducers must never throw**
 
 All reducer errors indicate a bug.
 
-### **Events must be validated**
+#### **Events must be validated**
 
 Never trust client payloads.
 
-### **UI must handle partial state**
+#### **UI must handle partial state**
 
 Never assume state is fully loaded.
 
-### **Extension must sandbox operations**
+#### **Extension must sandbox operations**
 
 Never assume VTT DOM is stable.
 
 ---
 
-# 10. Summary
+## 10. Summary
 
 The Error Model ensures that:
 

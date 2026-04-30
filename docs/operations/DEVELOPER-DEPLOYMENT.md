@@ -1,6 +1,6 @@
 # VTT‑Chat Deployment Guide
 
-_HomeLab‑friendly installation for Ubuntu Server + Docker + Caddy_
+> _HomeLab‑friendly installation for Ubuntu Server + Docker + Caddy_
 
 ---
 
@@ -19,7 +19,7 @@ The goal is to allow a DM (or any group member) to deploy the entire platform on
 
 ---
 
-# 🏡 1. System Requirements
+## 🏡 1. System Requirements
 
 ### Minimum Recommended Hardware
 
@@ -39,7 +39,7 @@ The goal is to allow a DM (or any group member) to deploy the entire platform on
 
 ---
 
-# 🔧 2. Network & Port Requirements
+## 🔧 2. Network & Port Requirements
 
 VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs block 80/443.
 
@@ -61,16 +61,14 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 
 ---
 
-# 🔐 3. TLS Strategy
+## 🔐 3. TLS Strategy
 
 ### Default (No Domain)
 
 - Generate **self‑signed certificates**
 - Caddy terminates TLS on port **8443**
 - SPA accessed via:
-  ```
-  https://<server-ip>:8443
-  ```
+  <https://{server-ip}:8443>
 
 ### With Domain (Optional)
 
@@ -80,11 +78,11 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 
 ---
 
-# 📦 4. Directory Structure
+## 📦 4. Directory Structure
 
 A typical installation will look like:
 
-```
+```text
 /opt/vtt-chat/
     backend/
     frontend/
@@ -98,7 +96,7 @@ A typical installation will look like:
 
 ---
 
-## 4.1 Docker Compose Setup
+### 4.1 Docker Compose Setup
 
 VTT‑Chat provides two preconfigured Docker Compose files:
 
@@ -116,24 +114,24 @@ Both files:
 
 ---
 
-# 🚀 5. Installation Steps (High-Level)
+## 🚀 5. Installation Steps (High-Level)
 
 Below is the high‑level flow.
 A full install script will automate these steps.
 
 ---
 
-## 5.1 Update System
+### 5.1 Update System
 
-```
+```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
 ---
 
-## 5.2 Install Docker
+### 5.2 Install Docker
 
-```
+```bash
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
 ```
@@ -142,9 +140,9 @@ Log out and back in.
 
 ---
 
-## 5.3 Install Caddy
+### 5.3 Install Caddy
 
-```
+```bash
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo apt-key add -
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
@@ -154,20 +152,20 @@ sudo apt install caddy
 
 ---
 
-## 5.4 Clone the Repository
+### 5.4 Clone the Repository
 
-```
+```bash
 git clone https://github.com/AndyProsser/vtt-chat.git
 cd vtt-chat
 ```
 
 ---
 
-## 5.5 Create `.env` Files
+### 5.5 Create `.env` Files
 
 The install script will generate defaults, but manual setup looks like:
 
-```
+```bash
 cp .env.example .env
 nano .env
 ```
@@ -183,7 +181,7 @@ For production, generate strong random values for API credentials.
 
 ---
 
-## 5.6 Configure LiveKit (Optional)
+### 5.6 Configure LiveKit (Optional)
 
 The `livekit.yaml` file is already configured for voice-only with optimal settings.
 
@@ -197,9 +195,9 @@ The `livekit.yaml` file is already configured for voice-only with optimal settin
 
 ---
 
-## 5.6.1 Generate Self‑Signed Certificates (No Domain)
+### 5.6.1 Generate Self‑Signed Certificates (No Domain)
 
-```
+```bash
 mkdir -p caddy/certs
 openssl req -x509 -nodes -days 365 \
   -newkey rsa:2048 \
@@ -210,7 +208,7 @@ openssl req -x509 -nodes -days 365 \
 
 Caddyfile example:
 
-```
+```yaml
 https://:8443 {
     tls /opt/vtt-chat/caddy/certs/selfsigned.crt /opt/vtt-chat/caddy/certs/selfsigned.key
     reverse_proxy backend:3000
@@ -221,23 +219,23 @@ https://:8443 {
 
 ---
 
-## 5.7 Start Docker Stack
+### 5.7 Start Docker Stack
 
 **Development:**
 
-```
+```bash
 docker compose -f docker-compose.dev.yml up -d
 ```
 
 **Production:**
 
-```
+```bash
 docker compose -f docker-compose.yml up -d
 ```
 
 Or for Docker Swarm (production):
 
-```
+```bash
 docker swarm init
 docker stack deploy -c docker-compose.yml vttchat
 ```
@@ -251,36 +249,29 @@ The stack will start:
 - **frontend** (web SPA)
 - **caddy** (reverse proxy + TLS)ker stack deploy -c docker-compose.yml vttchat
 
-```
-
 ---
 
-## 5.8 Access the App
+### 5.8 Access the App
 
 Open:
-
-```
-
-https://<server-ip>:8443
-
-````
+<https://{server-ip}:8443>
 
 Accept the self‑signed certificate.
 
 ---
 
-## 5.9 (Optional) Add Server Control Script to PATH
+### 5.9 (Optional) Add Server Control Script to PATH
 
 VTT‑Chat includes a `server` control script for easy management. To access it globally as `vtt-chat-server`:
 
-### Option 1: Symlink (Recommended)
+#### Option 1: Symlink (Recommended)
 
 ```bash
 sudo ln -s /opt/vtt-chat/server /usr/local/bin/vtt-chat-server
 chmod +x /opt/vtt-chat/server
-````
+```
 
-### Option 2: Add to PATH
+#### Option 2: Add to PATH
 
 Add to your shell profile (`.bashrc`, `.zshrc`, etc.):
 
@@ -294,7 +285,7 @@ Then reload your shell:
 source ~/.bashrc
 ```
 
-### Usage
+#### Usage
 
 Once installed, you can control the stack:
 
@@ -310,7 +301,7 @@ vtt-chat-server help       # Show available commands
 
 ---
 
-# 🎙️ 6. LiveKit Deployment
+## 🎙️ 6. LiveKit Deployment
 
 containerized service\*\* with configuration via `infra/livekit/livekit.yaml`.
 
@@ -345,7 +336,7 @@ For details, see `infra/livekit/livekit.yaml`.
 
 ---
 
-# 🗄️ 7. Database & Redis
+## 🗄️ 7. Database & Redis
 
 ### Postgres
 
@@ -369,20 +360,20 @@ For details, see `infra/livekit/livekit.yaml`.
 
 ---
 
-# 🧪 8. Testing the Deployment
+## 🧪 8. Testing the Deployment
 
-### Verify services:
+### Verify services
 
-```
+```bash
 docker ps
 docker logs -f vttchat-backend
 docker logs -f vttchat-livekit
 docker logs -f vttchat-caddy
 ```
 
-### Verify ports:
+### Verify ports
 
-```
+```bash
 # HTTPS proxy
 sudo ss -tulpn | grep 8443
 
@@ -393,9 +384,9 @@ sudo ss -tulpn | grep 7880
 sudo ss -tulpn | grep 7881
 ```
 
-### Verify connectivity:
+### Verify connectivity
 
-```
+```bash
 # Test backend API
 curl -k https://localhost:8443/api/health
 
@@ -406,7 +397,7 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 
 ---
 
-# 🛠️ 9. Troubleshooting
+## 🛠️ 9. Troubleshooting
 
 ### Browser refuses self‑signed cert
 
@@ -415,26 +406,34 @@ Add exception manually or use a domain with proper ACME certificates.
 ### LiveKit audio not working
 
 1. Check both UDP AND TCP ports 7881–7980 are exposed:
-   ```
+
+   ```bash
    sudo ss -tulpn | grep 7881
    ```
+
 2. Verify `infra/livekit/livekit.yaml` is mounted correctly:
-   ```
+
+   ```bash
    docker exec vttchat-livekit cat /etc/livekit.yaml
    ```
+
 3. Check LiveKit logs for configuration errors:
-   ```
+
+   ```bash
    docker logs vttchat-livekit | grep -i error
    ```
 
 ### SPA cannot connect to backend
 
 1. Verify Caddy is routing correctly:
-   ```
+
+   ```bash
    docker logs vttchat-caddy | grep -i reverse_proxy
    ```
+
 2. Check backend is healthy:
-   ```
+
+   ```bash
    curl -k https://localhost:8443/api/health
    ```
 
@@ -443,7 +442,8 @@ Add exception manually or use a domain with proper ACME certificates.
 - Ensure `infra/livekit/livekit.yaml` exists
 - Verify it's a valid YAML file (check indentation)
 - Restart the container:
-  ```
+
+  ```bash
   docker compose restart livekit
   ```
 
@@ -451,16 +451,19 @@ Add exception manually or use a domain with proper ACME certificates.
 
 - Check if TCP fallback is being used (UDP may be blocked)
 - Monitor resource usage:
-  ```
+
+  ```bash
   docker stats vttchat-livekit
   ```
+
 - Ensure minimum 4GB RAM available
 
 ### WebSocket connection fails
 
 - Check `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are set in `.env`
 - Verify backend can reach LiveKit:
-  ```
+
+  ```bash
   docker exec vttchat-backend curl http://livekit:7880/health
   ```
 
@@ -476,49 +479,49 @@ Important:
 
 1. Confirm Postgres access with your local superuser password:
 
-```
-export PGPASSWORD='<postgres-password>'
-psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
-```
+    ```bash
+    export PGPASSWORD='<postgres-password>'
+    psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
+    ```
 
 2. Ensure backend Prisma CLI can read `DATABASE_URL` from backend env:
 
-```
-# backend/prisma.config.ts should include:
-# import 'dotenv/config'
-```
+    ```text
+    # backend/prisma.config.ts should include:
+    # import 'dotenv/config'
+    ```
 
 3. Set local backend DB URL in `backend/.env`:
 
-```
-DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
-```
+    ```text
+    DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
+    ```
 
 4. Reset local DB and recreate it cleanly:
 
-```
-dropdb -h localhost -U postgres --if-exists vtt-chat
-createdb -h localhost -U postgres -O postgres vtt-chat
-```
+    ```text
+    dropdb -h localhost -U postgres --if-exists vtt-chat
+    createdb -h localhost -U postgres -O postgres vtt-chat
+    ```
 
 5. Apply migrations:
 
-```
-cd backend
-npx prisma migrate dev --name stage6_rooms_presence_snapshots
-```
+    ```text
+    cd backend
+    npx prisma migrate dev --name stage6_rooms_presence_snapshots
+    ```
 
 6. Verify schema/tooling health:
 
-```
-npx prisma migrate status
-npm run build
-npm test -- --run
-```
+    ```text
+    npx prisma migrate status
+    npm run build
+    npm test -- --run
+    ```
 
 ---
 
-# 🔐 10. Security Notes
+## 🔐 10. Security Notes
 
 - Self‑signed certs are fine for local networks
 - For remote access, use DNS‑01 ACME
@@ -528,7 +531,7 @@ npm test -- --run
 
 ---
 
-# 📦 11. Future Enhancements
+## 📦 11. Future Enhancements
 
 - Automated install script
 - Optional TURN server
@@ -538,7 +541,7 @@ npm test -- --run
 
 ---
 
-# ⚠️ Trademark Disclaimer
+## ⚠️ Trademark Disclaimer
 
 - **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
 - **LiveKit** is a trademark of **LiveKit, Inc.**

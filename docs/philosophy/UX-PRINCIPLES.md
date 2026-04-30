@@ -1,5 +1,3 @@
-# **UX-PRINCIPLES.md**
-
 # UX Principles
 
 These UX Principles define how VTT‑Chat should feel, behave, and respond.
@@ -16,7 +14,7 @@ These principles apply to the core app, the extension overlay, and all future UI
 
 ---
 
-# 1. Core UX Philosophy
+## 1. Core UX Philosophy
 
 ### **1.1 The UI Should Support the Table, Not Replace It**
 
@@ -76,7 +74,7 @@ Privacy is a first‑class UX concern.
 
 ---
 
-# 2. Layout Principles
+## 2. Layout Principles
 
 ### **2.1 Panels Should Be Modular**
 
@@ -115,7 +113,7 @@ Spacing should follow a consistent scale:
 
 ---
 
-# 3. Interaction Principles
+## 3. Interaction Principles
 
 ### **3.1 Immediate Feedback**
 
@@ -147,11 +145,11 @@ The UI must support:
 
 ---
 
-# 4. Role‑Based UX
+## 4. Role‑Based UX
 
 ---
 
-## 4.1 DM UX
+### 4.1 DM UX
 
 DMs see:
 
@@ -170,7 +168,7 @@ DM UX must feel:
 
 ---
 
-## 4.2 Player UX
+### 4.2 Player UX
 
 Players see:
 
@@ -188,7 +186,7 @@ Player UX must feel:
 
 ---
 
-## 4.3 Spectator UX
+### 4.3 Spectator UX
 
 Spectators see:
 
@@ -203,7 +201,7 @@ Spectator UX must feel:
 
 ---
 
-# 5. Chat UX Principles
+## 5. Chat UX Principles
 
 ### **5.1 IC and OOC Must Be Visually Distinct**
 
@@ -227,7 +225,7 @@ System messages should:
 
 ---
 
-# 6. Notes UX Principles
+## 6. Notes UX Principles
 
 ### **6.1 Private Notes Must Feel Safe**
 
@@ -246,7 +244,7 @@ Shared notes should:
 
 ---
 
-# 7. Audio UX Principles
+## 7. Audio UX Principles
 
 ### **7.1 Audio Should Feel Responsive**
 
@@ -269,7 +267,7 @@ Players should know when an effect is:
 
 ---
 
-# 8. Presence UX Principles
+## 8. Presence UX Principles
 
 ### **8.1 Presence Should Be Ambient**
 
@@ -297,7 +295,7 @@ Typing indicators should:
 
 ---
 
-# 9. Extension UX Principles
+## 9. Extension UX Principles
 
 ### **9.1 Overlay‑First**
 
@@ -325,7 +323,7 @@ The overlay should adapt to:
 
 ---
 
-# 10. Error UX Principles
+## 10. Error UX Principles
 
 ### **10.1 Errors Must Be Non‑Blocking**
 
@@ -346,7 +344,7 @@ Users should always be able to:
 
 ---
 
-# 11. Motion & Animation Principles
+## 11. Motion & Animation Principles
 
 ### **11.1 Motion Should Reinforce State**
 
@@ -373,7 +371,7 @@ Target durations:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 These UX Principles ensure that VTT‑Chat remains:
 

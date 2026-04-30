@@ -1,5 +1,3 @@
-# **DEVELOPING.md**
-
 # 🛠️ VTT‑Chat — Developer Setup Guide (Linux)
 
 Welcome to the VTT‑Chat development environment.
@@ -13,7 +11,7 @@ It assumes you’re using:
 
 ---
 
-# 📦 1. System Requirements
+## 📦 1. System Requirements
 
 ### **Minimum**
 
@@ -30,7 +28,7 @@ It assumes you’re using:
 
 ---
 
-# 🧰 2. Required Tools
+## 🧰 2. Required Tools
 
 Install these first — they’re essential for backend, frontend, and Docker workflows.
 
@@ -65,7 +63,7 @@ sudo apt install make -y
 
 ---
 
-# 🧩 3. Recommended Developer Apps
+## 🧩 3. Recommended Developer Apps
 
 ### **VS Code**
 
@@ -105,7 +103,7 @@ If you prefer a GUI for containers.
 
 ---
 
-# 🧱 4. Clone the Repository
+## 🧱 4. Clone the Repository
 
 ```bash
 git clone https://github.com/yourname/vtt-chat.git
@@ -114,7 +112,7 @@ cd vtt-chat
 
 ---
 
-# 🧪 5. Environment Variables
+## 🧪 5. Environment Variables
 
 Copy the example env files:
 
@@ -133,7 +131,7 @@ Fill in:
 
 ---
 
-# 🧵 6. Install Dependencies
+## 🧵 6. Install Dependencies
 
 ### Root (Linting & Formatting Tools)
 
@@ -157,7 +155,7 @@ npm install
 
 ---
 
-# 🐳 7. Running the Development Environment
+## 🐳 7. Running the Development Environment
 
 Use the hot‑reload dev stack:
 
@@ -167,23 +165,23 @@ docker compose -f docker-compose.dev.yml up --build
 
 This gives you:
 
-| Service     | URL                           |
-| ----------- | ----------------------------- |
-| Frontend    | http://localhost:8080         |
-| Backend API | http://localhost:8080/api     |
-| LiveKit     | http://localhost:8080/livekit |
-| Postgres    | localhost:5432                |
-| Redis       | localhost:6379                |
+| Service     | URL                             |
+| ----------- | ------------------------------- |
+| Frontend    | <http://localhost:8080>         |
+| Backend API | <http://localhost:8080/api>     |
+| LiveKit     | <http://localhost:8080/livekit> |
+| Postgres    | localhost:5432                  |
+| Redis       | localhost:6379                  |
 
 Caddy handles routing automatically.
 
 ---
 
-# 🧠 8. VS Code Workspace
+## 🧠 8. VS Code Workspace
 
 Open the workspace file:
 
-```
+```text
 vtt-chat.code-workspace
 ```
 
@@ -196,13 +194,13 @@ This gives you:
 
 ---
 
-# 🐞 9. Debugging
+## 🐞 9. Debugging
 
 ### Backend Debug
 
 Run from VS Code:
 
-```
+```text
 Run → "Backend: Debug"
 ```
 
@@ -210,19 +208,19 @@ Run → "Backend: Debug"
 
 Launch Chrome debugger:
 
-```
+```text
 Run → "Frontend: Debug"
 ```
 
 ### Combined Debug
 
-```
+```text
 Run → "Dev: Backend + Frontend"
 ```
 
 ---
 
-# 🧹 10. Code Style & Linting
+## 🧹 10. Code Style & Linting
 
 This project uses:
 
@@ -242,7 +240,7 @@ VS Code will auto‑format on save.
 
 ---
 
-# 🧪 11. Running Tests (if enabled later)
+## 🧪 11. Running Tests (if enabled later)
 
 Backend:
 
@@ -258,7 +256,7 @@ npm run test
 
 ---
 
-# 🚀 12. Building for Production
+## 🚀 12. Building for Production
 
 From the repo root, build both together:
 
@@ -281,7 +279,7 @@ docker compose build
 
 ---
 
-# 🧭 13. Useful Commands
+## 🧭 13. Useful Commands
 
 ### Stop all dev containers
 
@@ -303,7 +301,7 @@ docker compose -f docker-compose.dev.yml up --build
 
 ---
 
-# ❤️ 14. Need Help?
+## ❤️ 14. Need Help?
 
 If you run into issues:
 
@@ -314,7 +312,7 @@ If you run into issues:
 
 ---
 
-# 🎉 You’re Ready to Develop
+## 🎉 You’re Ready to Develop
 
 You now have:
 
@@ -329,13 +327,13 @@ This is the exact setup used for real development on VTT‑Chat.
 
 ---
 
-# 🐧 **Optional: Arch Linux Developer Setup**
+# 🐧 **Optional: Arch Linux Developer Setup** <!-- markdownlint-disable-line MD025 -->
 
 Arch Linux is a fantastic choice for development thanks to its rolling‑release model and up‑to‑date packages. Below is a streamlined setup path for VTT‑Chat on Arch‑based systems (Arch, EndeavourOS, Manjaro, Garuda, etc.).
 
 ---
 
-# 📦 1. System Requirements
+## 📦 1. System Requirements
 
 Same as Ubuntu:
 
@@ -346,7 +344,7 @@ Same as Ubuntu:
 
 ---
 
-# 🧰 2. Required Packages
+## 🧰 2. Required Packages
 
 ### **Update your system first**
 
@@ -377,7 +375,7 @@ Log out and back in to apply group changes.
 
 ---
 
-# 🧩 3. Recommended Developer Apps (Arch Versions)
+## 🧩 3. Recommended Developer Apps (Arch Versions)
 
 ### **VS Code (AUR)**
 
@@ -413,7 +411,7 @@ sudo pacman -S insomnia
 
 ---
 
-# 🧱 4. Clone the Repository
+## 🧱 4. Clone the Repository
 
 ```bash
 git clone https://github.com/yourname/vtt-chat.git
@@ -422,7 +420,7 @@ cd vtt-chat
 
 ---
 
-# 🔧 5. Environment Variables
+## 🔧 5. Environment Variables
 
 Copy the example files:
 
@@ -441,7 +439,7 @@ Fill in:
 
 ---
 
-# 📦 6. Install Dependencies
+## 📦 6. Install Dependencies
 
 ### Root (Linting & Formatting Tools)
 
@@ -465,7 +463,7 @@ npm install
 
 ---
 
-# 🐳 7. Running the Dev Environment (Hot Reload)
+## 🐳 7. Running the Dev Environment (Hot Reload)
 
 Use the dev compose file:
 
@@ -475,19 +473,19 @@ docker compose -f docker-compose.dev.yml up --build
 
 This gives you:
 
-| Service  | URL                           |
-| -------- | ----------------------------- |
-| Frontend | http://localhost:8080         |
-| Backend  | http://localhost:8080/api     |
-| LiveKit  | http://localhost:8080/livekit |
+| Service  | URL                             |
+| -------- | ------------------------------- |
+| Frontend | <http://localhost:8080>         |
+| Backend  | <http://localhost:8080/api>     |
+| LiveKit  | <http://localhost:8080/livekit> |
 
 ---
 
-# 🧠 8. VS Code Workspace
+## 🧠 8. VS Code Workspace
 
 Open:
 
-```
+```text
 vtt-chat.code-workspace
 ```
 
@@ -500,29 +498,29 @@ You’ll get:
 
 ---
 
-# 🐞 9. Debugging
+## 🐞 9. Debugging
 
 Backend:
 
-```
+```text
 Run → Backend: Debug
 ```
 
 Frontend:
 
-```
+```text
 Run → Frontend: Debug
 ```
 
 Both:
 
-```
+```text
 Run → Dev: Backend + Frontend
 ```
 
 ---
 
-# 🧹 10. Code Style
+## 🧹 10. Code Style
 
 Arch users often have Prettier + ESLint globally installed, but the project uses local versions.
 VS Code will auto‑format on save.
@@ -537,7 +535,7 @@ npm run check     # Run linting checks
 
 ---
 
-# 🚀 11. Building for Production
+## 🚀 11. Building for Production
 
 From the repo root, build both together:
 
@@ -560,7 +558,7 @@ docker compose build
 
 ---
 
-# 🧭 12. Useful Commands
+## 🧭 12. Useful Commands
 
 Stop dev stack:
 
@@ -582,7 +580,7 @@ docker compose -f docker-compose.dev.yml up --build
 
 ---
 
-# 🎉 Arch Linux is Ready to Go
+## 🎉 Arch Linux is Ready to Go
 
 You now have a fully functional Arch‑based development environment with:
 

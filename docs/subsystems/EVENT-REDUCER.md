@@ -1,5 +1,3 @@
-# **EVENT-REDUCER.md**
-
 # WebSocket Event Reducer
 
 _A deterministic, modular dispatcher that synchronizes client state with the real‑time backend._
@@ -38,9 +36,9 @@ This document defines:
 
 ---
 
-# 🧩 Architecture Overview
+## 🧩 Architecture Overview
 
-```
+```text
 WebSocket Event
       ↓
 Event Reducer (handleWsEvent)
@@ -56,7 +54,7 @@ The reducer is **pure routing logic** — it does not store state itself.
 
 ---
 
-# 🧱 1. Event Envelope
+## 🧱 1. Event Envelope
 
 All events follow:
 
@@ -80,7 +78,7 @@ Example:
 
 ---
 
-# 🧭 2. Top‑Level Reducer
+## 🧭 2. Top‑Level Reducer
 
 The top‑level reducer routes events by namespace:
 
@@ -108,7 +106,7 @@ This keeps the system **modular** and **easy to extend**.
 
 ---
 
-# 🟢 3. Presence Reducer
+## 🟢 3. Presence Reducer
 
 Handles:
 
@@ -146,7 +144,7 @@ function presenceReducer(type: string, p: any) {
 
 ---
 
-# 🎭 4. Session Reducer
+## 🎭 4. Session Reducer
 
 Handles:
 
@@ -184,7 +182,7 @@ function sessionReducer(type: string, p: any) {
 
 ---
 
-# 🏠 5. Room Reducer
+## 🏠 5. Room Reducer
 
 Handles:
 
@@ -214,7 +212,7 @@ function roomReducer(type: string, p: any) {
 
 ---
 
-# 🎚️ 6. Voice Reducer (Legacy)
+## 🎚️ 6. Voice Reducer (Legacy)
 
 Handles:
 
@@ -245,7 +243,7 @@ function voiceReducer(type: string, p: any) {
 
 ---
 
-# 💬 7. Chat Reducer
+## 💬 7. Chat Reducer
 
 Handles:
 
@@ -275,7 +273,7 @@ function chatReducer(type: string, p: any) {
 
 ---
 
-# 🔐 8. Private Chat Reducer
+## 🔐 8. Private Chat Reducer
 
 Handles:
 
@@ -308,7 +306,7 @@ function privateReducer(type: string, p: any) {
 
 ---
 
-# 🧙 9. DM Reducer
+## 🧙 9. DM Reducer
 
 Handles:
 
@@ -333,7 +331,7 @@ function dmReducer(type: string, p: any) {
 
 ---
 
-# 📝 10. Notes Reducer
+## 📝 10. Notes Reducer
 
 Handles:
 
@@ -356,7 +354,7 @@ function noteReducer(type: string, p: any) {
 
 ---
 
-# 🔌 11. External Logs Reducer
+## 🔌 11. External Logs Reducer
 
 Handles:
 
@@ -374,7 +372,7 @@ function externalReducer(type: string, p: any) {
 
 ---
 
-# 🎙️ 12. Audio Reducer (Presets & Effects)
+## 🎙️ 12. Audio Reducer (Presets & Effects)
 
 Handles:
 
@@ -433,7 +431,7 @@ function audioReducer(type: string, p: any) {
 
 ---
 
-# ❗ 13. Error Reducer
+## ❗ 13. Error Reducer
 
 ```ts
 function errorReducer(type: string, p: any) {
@@ -444,7 +442,7 @@ function errorReducer(type: string, p: any) {
 
 ---
 
-# 🔁 14. Reconnect Behavior
+## 🔁 14. Reconnect Behavior
 
 On reconnect:
 
@@ -464,7 +462,7 @@ This ensures **deterministic recovery**.
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Reducers are pure
 

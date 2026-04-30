@@ -1,5 +1,3 @@
-# **EVENT-BUS.md**
-
 # Event Bus Architecture
 
 Status:
@@ -23,7 +21,7 @@ This document defines the event model, event lifecycle, validation rules, and su
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 ### **1.1 Events are the only way state changes**
 
@@ -53,7 +51,7 @@ This enables:
 
 ---
 
-# 2. Event Structure
+## 2. Event Structure
 
 All events follow a strict schema:
 
@@ -77,7 +75,7 @@ All events follow a strict schema:
 
 ### **Event Type Naming Convention**
 
-```
+```text
 Canonical runtime: DOMAIN:ACTION
 Conceptual notation (used in some design docs): <domain>.<subdomain>.<action>
 ```
@@ -99,7 +97,7 @@ Examples (conceptual alias → runtime contract):
 
 ---
 
-# 3. Event Lifecycle
+## 3. Event Lifecycle
 
 The event lifecycle is consistent across all transports.
 
@@ -144,7 +142,7 @@ sequenceDiagram
 
 ---
 
-# 4. Event Domains
+## 4. Event Domains
 
 The Event Bus is organized into domains that map to subsystems.
 
@@ -212,7 +210,7 @@ use [CONTRACTS.md](../CONTRACTS.md) and the `/shared/events` definitions.
 
 ---
 
-# 5. Validation Layer
+## 5. Validation Layer
 
 Validation ensures:
 
@@ -230,11 +228,11 @@ Invalid events:
 
 ---
 
-# 6. Reducer Layer
+## 6. Reducer Layer
 
 Reducers are pure functions:
 
-```
+```text
 (nextState, event) = reducer(currentState, event)
 ```
 
@@ -256,7 +254,7 @@ Reducers are grouped by domain:
 
 ---
 
-# 7. State Stores
+## 7. State Stores
 
 The Event Bus feeds into Zustand stores.
 
@@ -269,7 +267,7 @@ Stores:
 
 ---
 
-# 8. Transport Layer
+## 8. Transport Layer
 
 The Event Bus is transport‑agnostic.
 
@@ -284,7 +282,7 @@ All transports normalize events into the same schema.
 
 ---
 
-# 9. Debugging & Tooling
+## 9. Debugging & Tooling
 
 The Event Bus supports:
 
@@ -296,7 +294,7 @@ The Event Bus supports:
 
 ---
 
-# 10. Extensibility
+## 10. Extensibility
 
 New subsystems can register:
 

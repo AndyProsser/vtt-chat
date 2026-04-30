@@ -1,5 +1,3 @@
-# **ARCHITECTURE-DIAGRAM.md**
-
 # Architecture Diagram
 
 This document provides a visual overview of the VTT‑Chat platform architecture.
@@ -10,7 +8,7 @@ They are intentionally high‑level and conceptual, not implementation‑specifi
 
 ---
 
-# 1. High‑Level System Overview
+## 1. High‑Level System Overview
 
 This diagram shows the major layers of the platform and how they relate.
 
@@ -66,7 +64,7 @@ flowchart TD
 
 ---
 
-# 2. Event Flow Diagram
+## 2. Event Flow Diagram
 
 This diagram illustrates the **unidirectional event flow** that powers the entire system.
 
@@ -101,7 +99,7 @@ Key points:
 
 ---
 
-# 3. Subsystem Interaction Diagram
+## 3. Subsystem Interaction Diagram
 
 This diagram shows how subsystems depend on each other.
 
@@ -134,7 +132,7 @@ flowchart LR
 
 ---
 
-# 4. Client‑Side Architecture
+## 4. Client‑Side Architecture
 
 This diagram focuses on the **frontend**.
 
@@ -165,7 +163,7 @@ Notes:
 
 ---
 
-# 5. Extension Architecture
+## 5. Extension Architecture
 
 This diagram shows how the browser extension integrates with the core app and the VTT.
 
@@ -190,7 +188,7 @@ Key points:
 
 ---
 
-# 6. Data Persistence Diagram
+## 6. Data Persistence Diagram
 
 ```mermaid
 flowchart TD
@@ -214,7 +212,7 @@ Persistence is used for:
 
 ---
 
-# 7. Summary
+## 7. Summary
 
 The architecture is designed to be:
 

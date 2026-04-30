@@ -4,9 +4,9 @@ _Read‑only. Zero interaction. Maximum visibility._
 
 ---
 
-# 1. **Frame Specification**
+## 1. **Frame Specification**
 
-## **1.1 Root Frame**
+### **1.1 Root Frame**
 
 | Property   | Value                      |
 | ---------- | -------------------------- |
@@ -20,9 +20,9 @@ _Read‑only. Zero interaction. Maximum visibility._
 
 ---
 
-# 2. **Top Regions**
+## 2. **Top Regions**
 
-## **2.1 Toolbar**
+### **2.1 Toolbar**
 
 Spectator sees a simplified toolbar.
 
@@ -34,7 +34,7 @@ Spectator sees a simplified toolbar.
 | Layout        | Horizontal, space‑between        |
 | Padding       | 0 16px                           |
 
-### **Toolbar Components**
+#### **Toolbar Components**
 
 - **Left:** Campaign Name
 - **Center:** Session Timer
@@ -49,7 +49,7 @@ Spectator does **not** see:
 
 ---
 
-# 3. **Main Layout (2 Columns)**
+## 3. **Main Layout (2 Columns)**
 
 Spectator does **not** get the right rail.
 Spectator does **not** get the composer.
@@ -60,7 +60,7 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 
 ---
 
-## **3.1 Left Rail — Player List**
+### **3.1 Left Rail — Player List**
 
 | Property   | Value               |
 | ---------- | ------------------- |
@@ -70,14 +70,14 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 | Padding    | 8px 0               |
 | Scroll     | Yes                 |
 
-### **Rooms Section**
+#### **Rooms Section**
 
 - Spectator sees **all rooms**, but cannot interact
 - No hover states
 - No right‑click menus
 - No DM‑only overrides
 
-### **Player Item**
+#### **Player Item**
 
 | Element       | Spec                    |
 | ------------- | ----------------------- |
@@ -88,7 +88,7 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 | Hover         | **none** (read‑only)    |
 | Right‑click   | **disabled**            |
 
-### **Spectator‑Only Behaviour**
+#### **Spectator‑Only Behaviour**
 
 - Player list is **always expanded**
 - No collapse button
@@ -96,7 +96,7 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 
 ---
 
-## **3.2 Center Pane — Chat Only (Read‑Only)**
+### **3.2 Center Pane — Chat Only (Read‑Only)**
 
 | Property   | Value           |
 | ---------- | --------------- |
@@ -104,7 +104,7 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 | Background | `var(--bg-app)` |
 | Layout     | Vertical        |
 
-### **Room Header**
+#### **Room Header**
 
 | Property   | Value                   |
 | ---------- | ----------------------- |
@@ -117,7 +117,7 @@ Spectator sees the environment but cannot change it.
 
 ---
 
-### **Chat Window**
+#### **Chat Window**
 
 | Property        | Value               |
 | --------------- | ------------------- |
@@ -126,7 +126,7 @@ Spectator sees the environment but cannot change it.
 | Padding         | 16px                |
 | Message Spacing | 12px                |
 
-#### **Message Types (Spectator Persona)**
+##### **Message Types (Spectator Persona)**
 
 | Type           | Visible? | Notes                     |
 | -------------- | -------- | ------------------------- |
@@ -139,14 +139,14 @@ Spectator sees **everything visible to the room**, but cannot interact.
 
 ---
 
-### **Composer**
+#### **Composer**
 
 ❌ **Not visible**
 Spectator cannot send messages.
 
 ---
 
-# 4. **Right Rail**
+## 4. **Right Rail**
 
 ❌ **Not visible**
 Spectator has no tabs and no slide‑in panels.
@@ -155,14 +155,14 @@ This maximizes center‑pane visibility.
 
 ---
 
-# 5. **Right Panel (Slide‑In Panels)**
+## 5. **Right Panel (Slide‑In Panels)**
 
 ❌ **Never appears**
 Spectator cannot open any panels.
 
 ---
 
-# 6. **Z‑Index Hierarchy**
+## 6. **Z‑Index Hierarchy**
 
 Simplified version:
 
@@ -180,7 +180,7 @@ No composer.
 
 ---
 
-# 7. **Auto‑Layout Rules**
+## 7. **Auto‑Layout Rules**
 
 ### **Toolbar**
 
@@ -200,7 +200,7 @@ No composer.
 
 ---
 
-# 8. **Motion & Interaction Overlays**
+## 8. **Motion & Interaction Overlays**
 
 Spectator has **reduced motion** by default.
 
@@ -220,7 +220,7 @@ Spectator has **reduced motion** by default.
 
 ### **Note Popout (if enabled)**
 
-```
+```text
 opacity: 0 → 1
 duration: 120ms
 no transform
@@ -228,7 +228,7 @@ no transform
 
 ---
 
-# 9. **Component Naming (Figma‑Ready)**
+## 9. **Component Naming (Figma‑Ready)**
 
 - `Frame / Spectator Persona`
 - `Component / Toolbar`
@@ -247,7 +247,7 @@ No DM Voice Bar.
 
 ---
 
-# ✔ **Spectator Persona Figma‑Ready Mockup Complete**
+## ✔ **Spectator Persona Figma‑Ready Mockup Complete**
 
 This is the **cleanest**, **most visibility‑optimized**, and **strictly read‑only** persona in your system.
 

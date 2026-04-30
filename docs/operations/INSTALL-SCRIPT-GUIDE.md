@@ -1,8 +1,6 @@
-# **INSTALL-SCRIPT-GUIDE.md**
-
 # VTT‑Chat Install Script Guide
 
-_A HomeLab‑friendly automated installer for Ubuntu Server_
+> _A HomeLab‑friendly automated installer for Ubuntu Server_
 
 This guide explains how the **VTT‑Chat install script** works, what it installs, how it configures your system, and how to customize or troubleshoot it.
 
@@ -27,7 +25,7 @@ The install script handles everything:
 
 ---
 
-# 🧰 1. What the Install Script Does
+## 🧰 1. What the Install Script Does
 
 The script performs the following tasks in order:
 
@@ -50,7 +48,7 @@ The script performs the following tasks in order:
 
 4. **Directory structure creation**
 
-   ```
+   ```text
    /opt/vtt-chat/
        backend/
        frontend/
@@ -93,7 +91,7 @@ The script performs the following tasks in order:
 
 ---
 
-# 🏡 2. HomeLab Assumptions
+## 🏡 2. HomeLab Assumptions
 
 The install script assumes:
 
@@ -107,13 +105,13 @@ The install script assumes:
 
 ---
 
-# 🔐 3. TLS Options
+## 🔐 3. TLS Options
 
 The script supports two TLS modes:
 
 ---
 
-## **A. Self‑Signed (Default)**
+### **A. Self‑Signed (Default)**
 
 Best for:
 
@@ -124,7 +122,7 @@ Best for:
 
 The script generates:
 
-```
+```text
 selfsigned.crt
 selfsigned.key
 ```
@@ -133,7 +131,7 @@ Caddy is configured to use them on port **8443**.
 
 Access URL:
 
-```
+```text
 https://<server-ip>:8443
 ```
 
@@ -141,7 +139,7 @@ You will need to accept the certificate in your browser.
 
 ---
 
-## **B. ACME DNS‑01 (Optional)**
+### **B. ACME DNS‑01 (Optional)**
 
 Best for:
 
@@ -159,7 +157,7 @@ The script will:
 
 ---
 
-# 🔧 4. Script Parameters
+## 🔧 4. Script Parameters
 
 The script supports optional flags:
 
@@ -173,13 +171,13 @@ The script supports optional flags:
 
 Example:
 
-```
+```bash
 ./infra/scripts/install.sh --domain mygame.net --dns-provider cloudflare --dns-token ABC123
 ```
 
 ---
 
-# 📦 5. What Gets Installed
+## 📦 5. What Gets Installed
 
 ### Docker Containers
 
@@ -194,11 +192,11 @@ Example:
 
 ---
 
-# 🗄️ 6. Environment Variables
+## 🗄️ 6. Environment Variables
 
 The script generates `.env` with:
 
-```
+```env
 VTTCHAT_PORT=8443
 LIVEKIT_WS_PORT=7880
 LIVEKIT_UDP_START=7881
@@ -214,11 +212,11 @@ You can edit `.env` anytime and redeploy.
 
 ---
 
-# 🚀 7. Running the Script
+## 🚀 7. Running the Script
 
 After cloning the repo:
 
-```
+```bash
 cd vtt-chat
 chmod +x infra/scripts/install.sh
 sudo ./infra/scripts/install.sh
@@ -233,32 +231,32 @@ The script will:
 
 ---
 
-# 🧪 8. Verifying the Installation
+## 🧪 8. Verifying the Installation
 
-### Check running containers:
+### Check running containers
 
-```
+```bash
 docker ps
 ```
 
-### Check logs:
+### Check logs
 
-```
+```bash
 docker logs backend
 docker logs livekit
 docker logs caddy
 ```
 
-### Check ports:
+### Check ports
 
-```
+```bash
 sudo ss -tulpn | grep 8443
 sudo ss -tulpn | grep 7880
 ```
 
-### Access the app:
+### Access the app
 
-```
+```text
 https://<server-ip>:8443
 ```
 
@@ -266,7 +264,7 @@ Accept the self‑signed certificate.
 
 ---
 
-# 🛠️ 9. Troubleshooting
+## 🛠️ 9. Troubleshooting
 
 ### Browser rejects certificate
 
@@ -284,7 +282,7 @@ Check Caddy reverse proxy config.
 
 Check `livekit.yaml` and logs:
 
-```
+```bash
 docker logs livekit
 ```
 
@@ -294,11 +292,11 @@ Check WebSocket connection in browser dev tools.
 
 ---
 
-# 🔄 10. Updating the System
+## 🔄 10. Updating the System
 
 To update:
 
-```
+```bash
 git pull
 docker compose pull
 docker compose up -d
@@ -306,35 +304,24 @@ docker compose up -d
 
 Or for Swarm:
 
-```
+```bash
 docker stack deploy -c docker-compose.yml vttchat
 ```
 
 ---
 
-# 🧹 11. Uninstalling
+## 🧹 11. Uninstalling
 
-```
+```bash
 docker compose down -v
 sudo rm -rf /opt/vtt-chat
 ```
 
 ---
 
-# ⚠️ Trademark Disclaimer
+## ⚠️ Trademark Disclaimer
 
 - **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
 - **LiveKit** is a trademark of **LiveKit, Inc.**
 - All other trademarks belong to their respective owners.
 - VTT‑Chat is **not affiliated** with any trademark holder.
-
----
-
-If you want, I can now generate:
-
-- The **actual install script (`install.sh`)**
-- The **Stage 1: Architecture Design**
-- The **backend folder skeleton**
-- The **SPA folder skeleton**
-
-Just tell me where you want to go next.

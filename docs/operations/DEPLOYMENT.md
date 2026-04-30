@@ -1,5 +1,3 @@
-# **DEPLOYMENT.md**
-
 # Deployment Guide
 
 _A production‑grade deployment strategy for HomeLab servers running Docker, Caddy, Postgres, Redis, and LiveKit._
@@ -33,7 +31,7 @@ This guide covers:
 
 ---
 
-# 🧩 1. System Requirements
+## 🧩 1. System Requirements
 
 ### Minimum
 
@@ -56,11 +54,11 @@ This guide covers:
 
 ---
 
-# 🗂️ 2. Folder Structure
+## 🗂️ 2. Folder Structure
 
 Recommended repo layout:
 
-```
+```text
 /vtt-chat
   /backend
   /frontend
@@ -73,7 +71,7 @@ Recommended repo layout:
 
 Deployment folder:
 
-```
+```text
 /opt/vtt-chat
   docker-compose.yml
   .env
@@ -87,11 +85,11 @@ Deployment folder:
 
 ---
 
-# 🔐 3. Environment Variables
+## 🔐 3. Environment Variables
 
 Create `.env`:
 
-```
+```text
 POSTGRES_USER=vtt
 POSTGRES_PASSWORD=supersecret
 POSTGRES_DB=vtt
@@ -113,7 +111,7 @@ TURN_PASSWORD=turnpass
 
 ---
 
-# 🐳 4. Docker Compose Stack
+## 🐳 4. Docker Compose Stack
 
 `docker-compose.yml`:
 
@@ -174,11 +172,11 @@ services:
 
 ---
 
-# 🔐 5. Caddy Configuration (HTTPS + Reverse Proxy)
+## 🔐 5. Caddy Configuration (HTTPS + Reverse Proxy)
 
 `infra/caddy/Caddyfile`:
 
-```
+```text
 yourdomain.com {
   encode gzip
   tls you@example.com
@@ -211,7 +209,7 @@ Caddy automatically:
 
 ---
 
-# 🎧 6. LiveKit Configuration
+## 🎧 6. LiveKit Configuration
 
 `infra/livekit/livekit.yaml`:
 
@@ -235,11 +233,11 @@ turn:
 
 ---
 
-# 🌐 7. TURN Server (Optional but Recommended)
+## 🌐 7. TURN Server (Optional but Recommended)
 
 If your players are behind strict NAT:
 
-```
+```bash
 docker run -d \
   --name coturn \
   -p 3478:3478 \
@@ -253,7 +251,7 @@ docker run -d \
 
 Update `.env`:
 
-```
+```env
 TURN_URL=turn:yourdomain.com:3478
 TURN_USERNAME=turnuser
 TURN_PASSWORD=turnpass
@@ -261,133 +259,133 @@ TURN_PASSWORD=turnpass
 
 ---
 
-# 🔄 8. Deployment Steps
+## 🔄 8. Deployment Steps
 
 ### 1. Clone repo
 
-```
+```bash
 git clone https://github.com/yourname/vtt-chat
 cd vtt-chat
 ```
 
 ### 2. Create `.env`
 
-```
+```bash
 cp .env.example .env
 nano .env
 ```
 
 ### 3. Build & start
 
-```
+```bash
 docker compose up -d --build
 ```
 
 ### 4. Run migrations
 
-```
+```bash
 docker compose exec backend npx prisma migrate deploy
 ```
 
 ### 5. Verify services
 
-```
+```bash
 docker compose ps
 ```
 
 ### 6. Access the app
 
-```
+```text
 https://yourdomain.com
 ```
 
 ---
 
-# 🧪 9. Health Checks
+## 🧪 9. Health Checks
 
 ### Backend
 
-```
+```bash
 curl https://yourdomain.com/api/health
 ```
 
 ### LiveKit
 
-```
+```bash
 curl https://yourdomain.com:7880
 ```
 
 ### Redis
 
-```
+```bash
 docker compose exec redis redis-cli -a $REDIS_PASSWORD ping
 ```
 
 ### Postgres
 
-```
+```bash
 docker compose exec postgres psql -U vtt -c "SELECT 1;"
 ```
 
 ---
 
-# 💾 10. Backups
+## 💾 10. Backups
 
 ### Postgres
 
-```
+```bash
 pg_dump -U vtt vtt > backup.sql
 ```
 
 ### Redis
 
-```
+```bash
 docker compose exec redis redis-cli -a $REDIS_PASSWORD save
 ```
 
 ### Recordings
 
-```
+```bash
 rsync -av ./data/recordings /backup/
 ```
 
 ### Full campaign export
 
-```
+```text
 GET /api/campaigns/:id/export
 ```
 
 ---
 
-# 🔁 11. Upgrades & Zero‑Downtime Deploys
+## 🔁 11. Upgrades & Zero‑Downtime Deploys
 
 ### Pull latest
 
-```
+```bash
 git pull
 ```
 
 ### Rebuild
 
-```
+```bash
 docker compose up -d --build
 ```
 
 ### Migrate
 
-```
+```bash
 docker compose exec backend npx prisma migrate deploy
 ```
 
 ### Restart LiveKit only (optional)
 
-```
+```bash
 docker compose restart livekit
 ```
 
 ---
 
-# 🧠 12. Design Principles
+## 🧠 12. Design Principles
 
 ### 1. HomeLab‑friendly
 

@@ -1,5 +1,3 @@
-# **STATE-STORES.md**
-
 # Zustand State Stores
 
 _A modular, deterministic client‑side state architecture for presence, rooms, audio, chat, roles, notes, and sessions._
@@ -28,7 +26,7 @@ Instead, they expose **actions** that integration layers call.
 
 ---
 
-# 🧩 Store Overview
+## 🧩 Store Overview
 
 | Store               | Responsibility                                |
 | ------------------- | --------------------------------------------- |
@@ -45,7 +43,7 @@ Each store is documented below.
 
 ---
 
-# 🟢 1. Presence Store
+## 🟢 1. Presence Store
 
 **File:** `stores/presence.ts`
 
@@ -90,7 +88,7 @@ setCharacter(characterId: string)
 
 ---
 
-# 🏠 2. Room Store
+## 🏠 2. Room Store
 
 **File:** `stores/rooms.ts`
 
@@ -128,7 +126,7 @@ leavePrivateRoom(roomId: string)
 
 ---
 
-# 🎧 3. Audio Store
+## 🎧 3. Audio Store
 
 **File:** `stores/audio.ts`
 
@@ -197,7 +195,7 @@ setDistance(userId, distance)
 
 ---
 
-# 💬 4. Chat Store
+## 💬 4. Chat Store
 
 **File:** `stores/chat.ts`
 
@@ -240,7 +238,7 @@ toggleExternalLogs()
 
 ---
 
-# 🧙 5. Role Store
+## 🧙 5. Role Store
 
 **File:** `stores/roles.ts`
 
@@ -273,7 +271,7 @@ setDM()
 
 ---
 
-# 📝 6. Note Store
+## 📝 6. Note Store
 
 **File:** `stores/notes.ts`
 
@@ -311,7 +309,7 @@ publishToChat(noteId)
 
 ---
 
-# 🎭 7. Session Store
+## 🎭 7. Session Store
 
 **File:** `stores/session.ts`
 
@@ -342,7 +340,7 @@ setJournal(text)
 
 ---
 
-# 📡 8. Telemetry Store
+## 📡 8. Telemetry Store
 
 **File:** `stores/telemetry.ts`
 
@@ -369,9 +367,9 @@ flush()
 
 ---
 
-# 🔄 Store Interaction Diagram
+## 🔄 Store Interaction Diagram
 
-```
+```text
 WebSocket Events
       ↓
 Event Reducer
@@ -389,7 +387,7 @@ UI Components
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Stores are pure
 

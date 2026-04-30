@@ -1,5 +1,3 @@
-# **PRESET-LIBRARY.md**
-
 # Audio Preset Library
 
 _A versioned, declarative preset system for voice, distance, environment, condition, and IC effects._
@@ -32,7 +30,7 @@ This library is loaded at:
 
 ---
 
-# 🧩 Preset Schema
+## 🧩 Preset Schema
 
 All presets follow the same structure:
 
@@ -71,7 +69,7 @@ Missing fields are ignored.
 
 ---
 
-# 🗂️ Library Structure
+## 🗂️ Library Structure
 
 The preset library is stored as a **versioned JSON file**:
 
@@ -90,7 +88,7 @@ Each category is documented below.
 
 ---
 
-# 🎙️ 1. Voice Presets (DM Voice Changer)
+## 🎙️ 1. Voice Presets (DM Voice Changer)
 
 Voice presets apply **only to the DM’s microphone**.
 
@@ -143,7 +141,7 @@ Used for:
 
 ---
 
-# 📏 2. Distance Presets (Spatial Simulation)
+## 📏 2. Distance Presets (Spatial Simulation)
 
 Distance presets apply **per participant**.
 
@@ -194,7 +192,7 @@ Used for:
 
 ---
 
-# 🏛️ 3. Environment Presets (Room Acoustics)
+## 🏛️ 3. Environment Presets (Room Acoustics)
 
 Environment presets apply to **RoomBus** (room‑level).
 
@@ -246,7 +244,7 @@ Used for:
 
 ---
 
-# 🧪 4. Condition Presets (Character Status Effects)
+## 🧪 4. Condition Presets (Character Status Effects)
 
 Condition presets apply **per participant** and override distance.
 
@@ -301,7 +299,7 @@ Used for:
 
 ---
 
-# 🎭 5. IC Presets (Player → DM Only)
+## 🎭 5. IC Presets (Player → DM Only)
 
 IC presets apply **only to the DM’s monitor chain**.
 
@@ -340,17 +338,17 @@ Used for:
 
 ---
 
-# 🔄 Preset Merging Rules
+## 🔄 Preset Merging Rules
 
 Presets are merged into the participant’s audio chain using:
 
-```
+```text
 finalValue = presetValue OR previousValue
 ```
 
 ### Merge Order (lowest → highest)
 
-```
+```text
 Environment
 ↓
 Distance
@@ -377,7 +375,7 @@ PTT Override (highest)
 
 ---
 
-# 🧱 Versioning Strategy
+## 🧱 Versioning Strategy
 
 The preset library includes a version number:
 
@@ -399,7 +397,7 @@ Clients cache presets by version.
 
 ---
 
-# 🔌 Extension Mapping
+## 🔌 Extension Mapping
 
 The browser extension maps external events to presets:
 
@@ -415,7 +413,7 @@ The browser extension maps external events to presets:
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Declarative
 

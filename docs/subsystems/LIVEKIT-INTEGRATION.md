@@ -1,5 +1,3 @@
-# **LIVEKIT-INTEGRATION.md**
-
 # LiveKit Integration
 
 _A modular, deterministic audio transport layer for real‑time tabletop communication._
@@ -37,9 +35,9 @@ These modules interact with the Zustand stores and WebSocket event reducer.
 
 ---
 
-# 🧩 Architecture Overview
+## 🧩 Architecture Overview
 
-```
+```text
 WebSocket Events
         ↓
 Zustand Stores
@@ -55,13 +53,13 @@ Output to speakers/headphones
 
 Publishing path:
 
-```
+```text
 Microphone → LiveKitPublisher → LiveKit SFU → Other clients
 ```
 
 ---
 
-# 🎛️ 1. LiveKitRoomManager
+## 🎛️ 1. LiveKitRoomManager
 
 The **RoomManager** is responsible for:
 
@@ -134,7 +132,7 @@ export class LiveKitRoomManager {
 
 ---
 
-# 🎚️ 2. LiveKitTrackRouter
+## 🎚️ 2. LiveKitTrackRouter
 
 The **TrackRouter** connects LiveKit audio tracks into the **AudioGraph**.
 
@@ -179,7 +177,7 @@ export const LiveKitTrackRouter = {
 
 ---
 
-# 🎤 3. LiveKitPublisher
+## 🎤 3. LiveKitPublisher
 
 The **Publisher** controls microphone publishing:
 
@@ -237,13 +235,13 @@ export class LiveKitPublisher {
 
 ---
 
-# 🎧 4. AudioGraph (WebAudio)
+## 🎧 4. AudioGraph (WebAudio)
 
 The **AudioGraph** is the heart of the audio engine.
 
 Each participant gets:
 
-```
+```text
 MediaStreamSource
   → TrackGain
     → DistanceFilter
@@ -277,7 +275,7 @@ DM overrides apply on top of the chain.
 
 ---
 
-# 🔄 5. Interaction With Zustand Stores
+## 🔄 5. Interaction With Zustand Stores
 
 ### PresenceStore
 
@@ -315,7 +313,7 @@ DM/assistant DM capabilities.
 
 ---
 
-# 🔁 6. Reconnect Logic
+## 🔁 6. Reconnect Logic
 
 When WebSocket reconnects:
 
@@ -334,7 +332,7 @@ This ensures deterministic recovery.
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. LiveKit is transport, not logic
 

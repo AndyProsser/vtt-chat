@@ -1,5 +1,3 @@
-# **ROLE-SYSTEM.md**
-
 # Role System
 
 The Role System defines the fundamental identities within VTT‑Chat and determines how authority, visibility, and capabilities are distributed across the platform.
@@ -18,7 +16,7 @@ This document describes the conceptual model behind roles, not the technical imp
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 ### **1.1 Roles define authority**
 
@@ -42,7 +40,7 @@ All subsystems — chat, notes, audio, presence, extension — respect the same 
 
 ---
 
-# 2. The Three Human Roles
+## 2. The Three Human Roles
 
 VTT‑Chat defines three human roles:
 
@@ -54,7 +52,7 @@ Each role has a distinct purpose and set of capabilities.
 
 ---
 
-# 3. DM (Dungeon Master)
+## 3. DM (Dungeon Master)
 
 The DM is the **table authority**.
 They have the highest level of control and visibility.
@@ -101,7 +99,7 @@ This is a deliberate privacy boundary.
 
 ---
 
-# 4. Player
+## 4. Player
 
 Players are active participants with character‑level interactions.
 
@@ -150,7 +148,7 @@ Players cannot see:
 
 ---
 
-# 5. Spectator
+## 5. Spectator
 
 Spectators are passive observers.
 
@@ -193,7 +191,7 @@ Spectators cannot see:
 
 ---
 
-# 6. System Role
+## 6. System Role
 
 The **System** is a non‑human actor used for:
 
@@ -214,7 +212,7 @@ It exists purely for internal consistency.
 
 ---
 
-# 7. Role Boundaries
+## 7. Role Boundaries
 
 Role boundaries are enforced at multiple layers:
 
@@ -229,7 +227,7 @@ No single layer can violate role boundaries.
 
 ---
 
-# 8. Role Transitions
+## 8. Role Transitions
 
 Role transitions are rare and controlled.
 
@@ -248,7 +246,7 @@ DM authority cannot be granted automatically.
 
 ---
 
-# 9. Role in the Event System
+## 9. Role in the Event System
 
 Every event includes an `actor` field that identifies the role of the sender.
 
@@ -262,7 +260,7 @@ If not, the event is rejected.
 
 ---
 
-# 10. Role in the UI
+## 10. Role in the UI
 
 The UI adapts based on role:
 
@@ -287,7 +285,7 @@ The UI adapts based on role:
 
 ---
 
-# 11. Role in the Extension
+## 11. Role in the Extension
 
 The extension enforces role boundaries:
 
@@ -298,7 +296,7 @@ The extension enforces role boundaries:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 The Role System ensures:
 

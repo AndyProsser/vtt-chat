@@ -4,7 +4,7 @@ _A unified motion language for the VTT‑Chat command‑centre UI._
 
 ---
 
-# 🎛️ 1. **Core Motion Principles**
+## 🎛️ 1. **Core Motion Principles**
 
 ### **1. Motion must communicate intent**
 
@@ -38,13 +38,13 @@ Every animation answers:
 
 ---
 
-# 🧱 2. **Easing Curves**
+## 🧱 2. **Easing Curves**
 
 These are the only curves used across the entire UI.
 
 ### **Primary UI Easing**
 
-```
+```text
 cubic-bezier(0.25, 0.1, 0.25, 1.0)
 ```
 
@@ -55,7 +55,7 @@ cubic-bezier(0.25, 0.1, 0.25, 1.0)
 
 ### **Micro‑interaction Easing**
 
-```
+```text
 cubic-bezier(0.33, 0.0, 0.67, 1.0)
 ```
 
@@ -64,7 +64,7 @@ cubic-bezier(0.33, 0.0, 0.67, 1.0)
 
 ### **Drag‑and‑drop Easing**
 
-```
+```text
 cubic-bezier(0.2, 0.0, 0.0, 1.0)
 ```
 
@@ -73,7 +73,7 @@ cubic-bezier(0.2, 0.0, 0.0, 1.0)
 
 ---
 
-# 🧭 3. **Slide‑In Panels (Right Side)**
+## 🧭 3. **Slide‑In Panels (Right Side)**
 
 ### **Panels:**
 
@@ -87,7 +87,7 @@ cubic-bezier(0.2, 0.0, 0.0, 1.0)
 
 ### **Animation**
 
-```
+```text
 Duration: 180ms
 Easing: primary
 Transform: translateX(100%) → 0
@@ -97,7 +97,7 @@ Shadow: fade in from 0 → 12px blur
 
 ### **Close Animation**
 
-```
+```text
 Duration: 140ms
 Easing: primary
 Transform: translateX(0) → 100%
@@ -109,18 +109,18 @@ Shadow: fade out
 
 Chat shifts left by a fixed amount (panel width), not animated by size — only by transform.
 
-```
+```text
 Duration: 180ms
 Transform: translateX(0 → -panelWidth)
 ```
 
 ---
 
-# 👥 4. **Left Player Rail**
+## 👥 4. **Left Player Rail**
 
 ### **Expanded → Collapsed**
 
-```
+```text
 Duration: 160ms
 Transform: width 240px → 64px
 Opacity of text: 1 → 0
@@ -129,7 +129,7 @@ Avatar scale: 1.0 → 0.9
 
 ### **Collapsed → Expanded**
 
-```
+```text
 Duration: 180ms
 Transform: width 64px → 240px
 Opacity of text: 0 → 1
@@ -138,7 +138,7 @@ Avatar scale: 0.9 → 1.0
 
 ### **Player Item Hover**
 
-```
+```text
 Duration: 80ms
 Background: darken by 4%
 Scale: 1.0 → 1.02
@@ -146,7 +146,7 @@ Scale: 1.0 → 1.02
 
 ### **Speaking Indicator Pulse**
 
-```
+```text
 Duration: 900ms
 Easing: ease-in-out
 Opacity: 0.4 → 1.0 → 0.4
@@ -154,11 +154,11 @@ Opacity: 0.4 → 1.0 → 0.4
 
 ---
 
-# 🎙 5. **DM Voice Panel**
+## 🎙 5. **DM Voice Panel**
 
 ### **Open**
 
-```
+```text
 Duration: 140ms
 Transform: translateY(-8px) → 0
 Opacity: 0 → 1
@@ -166,7 +166,7 @@ Opacity: 0 → 1
 
 ### **Preset Button Press**
 
-```
+```text
 Duration: 80ms
 Scale: 1.0 → 0.96 → 1.0
 Glow: 0 → 1 (blue)
@@ -174,18 +174,18 @@ Glow: 0 → 1 (blue)
 
 ### **Clear All**
 
-```
+```text
 Duration: 120ms
 Flash: red glow 0 → 1 → 0
 ```
 
 ---
 
-# 💬 6. **Chat Window**
+## 💬 6. **Chat Window**
 
 ### **New Message**
 
-```
+```text
 Duration: 120ms
 Transform: translateY(6px) → 0
 Opacity: 0 → 1
@@ -193,14 +193,14 @@ Opacity: 0 → 1
 
 ### **System Message**
 
-```
+```text
 Duration: 100ms
 Opacity: 0 → 1
 ```
 
 ### **Note Published**
 
-```
+```text
 Duration: 160ms
 Border-left accent: fade in
 Background: slight pulse (2% brightness)
@@ -208,11 +208,11 @@ Background: slight pulse (2% brightness)
 
 ---
 
-# ⌨️ 7. **Message Composer**
+## ⌨️ 7. **Message Composer**
 
 ### **Focus**
 
-```
+```text
 Duration: 120ms
 Border: 1px → 2px (accent)
 Shadow: subtle glow
@@ -220,7 +220,7 @@ Shadow: subtle glow
 
 ### **Autocomplete Dropdown**
 
-```
+```text
 Duration: 120ms
 Transform: translateY(-4px) → 0
 Opacity: 0 → 1
@@ -228,18 +228,18 @@ Opacity: 0 → 1
 
 ### **Autocomplete Item Hover**
 
-```
+```text
 Duration: 80ms
 Background: darken by 6%
 ```
 
 ---
 
-# 🖱️ 8. **Right‑Click Menus**
+## 🖱️ 8. **Right‑Click Menus**
 
 ### **Open**
 
-```
+```text
 Duration: 120ms
 Transform: scale(0.96) → 1.0
 Opacity: 0 → 1
@@ -248,18 +248,18 @@ Shadow: fade in
 
 ### **Menu Item Hover**
 
-```
+```text
 Duration: 80ms
 Background: darken by 5%
 ```
 
 ---
 
-# 🧲 9. **Drag‑and‑Drop Player Movement**
+## 🧲 9. **Drag‑and‑Drop Player Movement**
 
 ### **Pickup**
 
-```
+```text
 Duration: 80ms
 Scale: 1.0 → 1.05
 Shadow: 0 → 12px blur
@@ -267,14 +267,14 @@ Shadow: 0 → 12px blur
 
 ### **Drag**
 
-```
+```text
 Cursor: grab
 Transform follows pointer with 1–2px inertia
 ```
 
 ### **Drop Target Highlight**
 
-```
+```text
 Duration: 120ms
 Background: accent glow (blue)
 Border: 1px → 2px
@@ -282,7 +282,7 @@ Border: 1px → 2px
 
 ### **Drop + Countdown**
 
-```
+```text
 Countdown numbers fade in/out (200ms each)
 Color: accent blue
 Scale: 1.0 → 1.1 → 1.0
@@ -290,11 +290,11 @@ Scale: 1.0 → 1.1 → 1.0
 
 ---
 
-# 🌫️ 10. **Environment Change (Room)**
+## 🌫️ 10. **Environment Change (Room)**
 
 ### **Icon Update**
 
-```
+```text
 Duration: 160ms
 Scale: 0.8 → 1.0
 Opacity: 0 → 1
@@ -302,18 +302,18 @@ Opacity: 0 → 1
 
 ### **Room Background Pulse**
 
-```
+```text
 Duration: 200ms
 Background: darken by 4% → normal
 ```
 
 ---
 
-# 📝 11. **Notes Panel**
+## 📝 11. **Notes Panel**
 
 ### **Open**
 
-```
+```text
 Duration: 180ms
 Slide-in from right
 Opacity: 0.85 → 1
@@ -321,46 +321,46 @@ Opacity: 0.85 → 1
 
 ### **Note Item Hover**
 
-```
+```text
 Duration: 80ms
 Background: darken by 4%
 ```
 
 ### **Note Editor**
 
-```
+```text
 Duration: 140ms
 Fade + slight scale (0.98 → 1.0)
 ```
 
 ---
 
-# 📱 12. **Mobile Motion Rules**
+## 📱 12. **Mobile Motion Rules**
 
 ### **Bottom Tabs**
 
-```
+```text
 Duration: 140ms
 Opacity: 0 → 1
 ```
 
 ### **Slide‑Up Panels**
 
-```
+```text
 Duration: 200ms
 Transform: translateY(100%) → 0
 ```
 
 ### **Swipe‑Open Left Rail**
 
-```
+```text
 Duration: 180ms
 Transform: translateX(-100%) → 0
 ```
 
 ---
 
-# 🧠 13. **Persona‑Specific Motion Weighting**
+## 🧠 13. **Persona‑Specific Motion Weighting**
 
 ### **DM**
 
@@ -382,7 +382,7 @@ Transform: translateX(-100%) → 0
 
 ---
 
-# 🎮 14. **Motion Summary Table**
+## 🎮 14. **Motion Summary Table**
 
 | Interaction        | Duration | Easing  | Notes            |
 | ------------------ | -------- | ------- | ---------------- |

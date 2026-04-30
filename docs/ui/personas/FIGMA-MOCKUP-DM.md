@@ -4,9 +4,9 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 1. **Frame Specification**
+## 1. **Frame Specification**
 
-## **1.1 Root Frame**
+### **1.1 Root Frame**
 
 | Property   | Value               |
 | ---------- | ------------------- |
@@ -20,9 +20,9 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 2. **Top Regions**
+## 2. **Top Regions**
 
-## **2.1 Toolbar**
+### **2.1 Toolbar**
 
 | Property      | Value                                     |
 | ------------- | ----------------------------------------- |
@@ -33,7 +33,7 @@ _All values are implementation‑grade and token‑driven._
 | Layout        | Horizontal, space‑between, center‑aligned |
 | Padding       | 0 16px                                    |
 
-### **Toolbar Components**
+#### **Toolbar Components**
 
 - **Left:** Campaign Name (text-primary, 16px semibold)
 - **Center:** Session Timer (text-secondary, 14px)
@@ -44,7 +44,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-## **2.2 DM Voice Bar**
+### **2.2 DM Voice Bar**
 
 | Property   | Value                    |
 | ---------- | ------------------------ |
@@ -54,7 +54,7 @@ _All values are implementation‑grade and token‑driven._
 | Padding    | 0 16px                   |
 | Spacing    | 12px                     |
 
-### **Voice Bar Components**
+#### **Voice Bar Components**
 
 - **Preset Buttons (ALL visible)**
   - Height: 32px
@@ -72,9 +72,9 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 3. **Main Layout (3 Columns)**
+## 3. **Main Layout (3 Columns)**
 
-## **3.1 Left Rail — Player List**
+### **3.1 Left Rail — Player List**
 
 | Property   | Value                              |
 | ---------- | ---------------------------------- |
@@ -84,9 +84,9 @@ _All values are implementation‑grade and token‑driven._
 | Padding    | 8px 0                              |
 | Scroll     | Yes                                |
 
-### **Left Rail Components**
+#### **Left Rail Components**
 
-#### **Rooms Section**
+##### **Rooms Section**
 
 - Section Header: text-muted, 12px uppercase
 - Room Item:
@@ -94,7 +94,7 @@ _All values are implementation‑grade and token‑driven._
   - Text: text-secondary
   - Player Count: text-muted
 
-#### **Player Item**
+##### **Player Item**
 
 - Height: **40px**
 - Avatar: 32px
@@ -103,7 +103,7 @@ _All values are implementation‑grade and token‑driven._
 - Hover: `var(--accent-primary-soft)`
 - Right‑click menu: Condition / Distance
 
-#### **Manage Players Button**
+##### **Manage Players Button**
 
 - Height: 32px
 - Background: `var(--bg-surface-alt)`
@@ -112,7 +112,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-## **3.2 Center Pane — Chat Only**
+### **3.2 Center Pane — Chat Only**
 
 | Property   | Value           |
 | ---------- | --------------- |
@@ -121,7 +121,7 @@ _All values are implementation‑grade and token‑driven._
 | Layout     | Vertical        |
 | Padding    | 0               |
 
-### **Room Header**
+#### **Room Header**
 
 | Property   | Value                   |
 | ---------- | ----------------------- |
@@ -131,7 +131,7 @@ _All values are implementation‑grade and token‑driven._
 | Padding    | 0 16px                  |
 | Content    | Room Name + Environment |
 
-### **Chat Window**
+#### **Chat Window**
 
 | Property        | Value               |
 | --------------- | ------------------- |
@@ -140,7 +140,7 @@ _All values are implementation‑grade and token‑driven._
 | Padding         | 16px                |
 | Message Spacing | 12px                |
 
-#### **Message Types**
+##### **Message Types**
 
 - **Player Message**
   - Border-left: 2px solid `var(--accent-player)`
@@ -154,7 +154,7 @@ _All values are implementation‑grade and token‑driven._
   - Border-left: 3px solid `var(--accent-primary)`
   - Click → opens Note Popout
 
-### **Composer**
+#### **Composer**
 
 | Property   | Value                                        |
 | ---------- | -------------------------------------------- |
@@ -165,7 +165,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-## **3.3 Right Rail — Icon Tabs**
+### **3.3 Right Rail — Icon Tabs**
 
 | Property   | Value                   |
 | ---------- | ----------------------- |
@@ -176,7 +176,7 @@ _All values are implementation‑grade and token‑driven._
 | Icon Size  | 24px                    |
 | Tooltip    | Appears on hover        |
 
-### **Tab Order (top → bottom)**
+#### **Tab Order (top → bottom)**
 
 1. Rooms
 2. Journal
@@ -187,9 +187,9 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 4. **Right Panel (Slide‑In Panels)**
+## 4. **Right Panel (Slide‑In Panels)**
 
-## **4.1 Panel Container**
+### **4.1 Panel Container**
 
 | Property    | Value                  |
 | ----------- | ---------------------- |
@@ -202,7 +202,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-## **4.2 Rooms Panel**
+### **4.2 Rooms Panel**
 
 - Title: “Rooms”
 - Create Room Button
@@ -214,7 +214,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-## **4.3 Player Management Panel**
+### **4.3 Player Management Panel**
 
 - Player Name
 - Gain Slider
@@ -224,7 +224,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 5. **Z‑Index Hierarchy**
+## 5. **Z‑Index Hierarchy**
 
 | Layer        | z-index |
 | ------------ | ------- |
@@ -238,7 +238,7 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 6. **Auto‑Layout Rules**
+## 6. **Auto‑Layout Rules**
 
 ### **Toolbar**
 
@@ -275,11 +275,11 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-# 7. **Motion & Interaction Overlays**
+## 7. **Motion & Interaction Overlays**
 
 ### **Slide‑In Panel**
 
-```
+```text
 translateX(100%) → 0
 duration: 180ms
 easing: primary
@@ -287,7 +287,7 @@ easing: primary
 
 ### **Note Popout**
 
-```
+```text
 translateX(100%) → 0
 duration: 180ms
 ```
@@ -303,7 +303,7 @@ duration: 180ms
 
 ---
 
-# 8. **Component Naming (Figma‑Ready)**
+## 8. **Component Naming (Figma‑Ready)**
 
 - `Frame / DM Persona`
 - `Component / Toolbar`

@@ -1,5 +1,3 @@
-# **STATE-RECOVERY.md**
-
 # State Recovery
 
 Status:
@@ -23,7 +21,7 @@ State Recovery is a foundational part of the platform’s reliability model.
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 Current implementation note:
 
@@ -73,7 +71,7 @@ Recovery must not:
 
 ---
 
-# 2. Recovery Triggers
+## 2. Recovery Triggers
 
 Recovery may be triggered when:
 
@@ -92,7 +90,7 @@ Current shipped baseline most directly covers:
 
 ---
 
-# 3. Recovery Lifecycle
+## 3. Recovery Lifecycle
 
 Target architecture lifecycle:
 
@@ -149,7 +147,7 @@ Current shipped Stage 6-7 baseline is narrower:
 
 ---
 
-# 4. Hydration Payload Structure
+## 4. Hydration Payload Structure
 
 Target architecture:
 
@@ -215,14 +213,14 @@ Current shipped baseline:
 
 ---
 
-# 5. Reducer Behaviour During Hydration
+## 5. Reducer Behaviour During Hydration
 
 Target architecture:
 
 - Full hydration is intended to be handled by a dedicated reducer.
 - That reducer contract is not yet the shipped runtime baseline.
 
-```
+```text
 systemReducer.hydrate(payload)
 ```
 
@@ -247,7 +245,7 @@ Current shipped baseline instead relies on:
 
 ---
 
-# 6. Event Replay (Future)
+## 6. Event Replay (Future)
 
 The architecture supports future event replay:
 
@@ -259,13 +257,13 @@ This is not yet implemented but the Event Bus is designed for it.
 
 ---
 
-# 7. Subsystem Recovery Rules
+## 7. Subsystem Recovery Rules
 
 Each subsystem has specific recovery behaviour.
 
 ---
 
-## 7.1 Chat Recovery
+### 7.1 Chat Recovery
 
 Target architecture:
 
@@ -281,7 +279,7 @@ Current shipped baseline:
 
 ---
 
-## 7.2 Notes Recovery
+### 7.2 Notes Recovery
 
 Target architecture:
 
@@ -296,7 +294,7 @@ Current shipped baseline:
 
 ---
 
-## 7.3 Audio Recovery
+### 7.3 Audio Recovery
 
 Target architecture:
 
@@ -313,7 +311,7 @@ Current shipped baseline:
 
 ---
 
-## 7.4 Presence Recovery
+### 7.4 Presence Recovery
 
 - Rebuilds presence list
 - Resets speaking/typing indicators
@@ -327,7 +325,7 @@ Current shipped baseline:
 
 ---
 
-## 7.5 Session Recovery
+### 7.5 Session Recovery
 
 Target architecture:
 
@@ -342,13 +340,13 @@ Current shipped baseline:
 
 ---
 
-## 7.6 Extension Recovery
+### 7.6 Extension Recovery
 
 Planned future-state behavior; not part of the shipped Stage 0-7 runtime baseline.
 
 ---
 
-# 8. Error Handling
+## 8. Error Handling
 
 If hydration fails:
 
@@ -364,7 +362,7 @@ If repeated failures occur:
 
 ---
 
-# 9. Security & Privacy
+## 9. Security & Privacy
 
 Hydration must never include:
 
@@ -377,7 +375,7 @@ Payloads are filtered based on role and permissions.
 
 ---
 
-# 10. Performance Requirements
+## 10. Performance Requirements
 
 Hydration must:
 
@@ -389,7 +387,7 @@ Hydration must:
 
 ---
 
-# 11. Summary
+## 11. Summary
 
 State Recovery ensures that:
 

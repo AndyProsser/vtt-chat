@@ -1,5 +1,3 @@
-# **CHAT-SYSTEM.md**
-
 # Chat System
 
 _A real‑time, room‑aware chat architecture for tabletop sessions, whispers, green room, and system events._
@@ -30,9 +28,9 @@ Chat is **real‑time** via WebSockets and **persistent** via Postgres.
 
 ---
 
-# 🧩 Architecture Overview
+## 🧩 Architecture Overview
 
-```
+```text
 WebSocket Events
       ↓
 Event Reducer
@@ -44,19 +42,19 @@ UI Components
 
 Persistence:
 
-```
+```text
 REST API → Postgres
 ```
 
 Real‑time:
 
-```
+```text
 WebSocket → Zustand → UI
 ```
 
 ---
 
-# 🏠 1. Chat Rooms
+## 🏠 1. Chat Rooms
 
 Chat is scoped to **rooms**, which mirror audio rooms:
 
@@ -78,7 +76,7 @@ Chat is scoped to **rooms**, which mirror audio rooms:
 
 ---
 
-# 💬 2. Message Types
+## 💬 2. Message Types
 
 Every message has a `type`:
 
@@ -111,7 +109,7 @@ interface ChatMessage {
 
 ---
 
-# 🟢 3. Green Room Chat
+## 🟢 3. Green Room Chat
 
 Green room chat is **special**:
 
@@ -131,7 +129,7 @@ Green room chat is **special**:
 
 ---
 
-# 🔐 4. Whispers
+## 🔐 4. Whispers
 
 Whispers are **direct messages** between:
 
@@ -162,7 +160,7 @@ Whispers are **direct messages** between:
 
 ---
 
-# 🔊 5. System Messages
+## 🔊 5. System Messages
 
 System messages appear in chat but are not user‑generated.
 
@@ -178,7 +176,7 @@ Examples:
 
 ### Example
 
-```
+```text
 **Thorin** has joined the Main Room.
 ```
 
@@ -191,7 +189,7 @@ System messages are:
 
 ---
 
-# 📝 6. Notes Published to Chat
+## 📝 6. Notes Published to Chat
 
 Notes can be published into chat:
 
@@ -214,7 +212,7 @@ Notes can be published into chat:
 
 ---
 
-# 🔌 7. External Logs (DDB / Roll20 / FVTT)
+## 🔌 7. External Logs (DDB / Roll20 / FVTT)
 
 External logs appear as chat messages with:
 
@@ -248,26 +246,32 @@ Examples:
 
 Users can toggle visibility:
 
-```
+```text
 chat.filters.showExternalLogs = true/false
 ```
 
 ---
 
-# 🧭 8. Chat Flow (Real‑Time)
+## 🧭 8. Chat Flow (Real‑Time)
 
 ### Sending a message
 
 1. User sends REST request:
-   ```
+
+   ```text
    POST /api/campaigns/:id/chat
    ```
+
 2. Server stores message in DB
+
 3. Server emits WebSocket event:
-   ```
+
+   ```text
    chat.newMessage
    ```
+
 4. Event reducer updates `useChatStore`
+
 5. UI updates instantly
 
 ### Receiving a message
@@ -279,7 +283,7 @@ chat.filters.showExternalLogs = true/false
 
 ---
 
-# 🧱 9. Chat Persistence
+## 🧱 9. Chat Persistence
 
 Messages are stored in Postgres:
 
@@ -296,7 +300,7 @@ Green room messages are stored separately.
 
 ---
 
-# 🔍 10. Chat Search
+## 🔍 10. Chat Search
 
 Search supports:
 
@@ -309,13 +313,13 @@ Search supports:
 
 ### API
 
-```
+```text
 GET /api/search/messages
 ```
 
 ---
 
-# 🔄 11. Interaction With Other Systems
+## 🔄 11. Interaction With Other Systems
 
 ### Presence System
 
@@ -339,7 +343,7 @@ External logs appear as chat messages.
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Chat is room‑aware
 

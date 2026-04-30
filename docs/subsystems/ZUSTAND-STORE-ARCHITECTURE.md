@@ -4,7 +4,7 @@ _Full store definitions, actions, and responsibilities._
 
 ---
 
-# 🧠 **Philosophy**
+## 🧠 **Philosophy**
 
 Each store is:
 
@@ -18,7 +18,7 @@ Stores communicate via **actions**, not direct mutation.
 
 ---
 
-# 🧱 **Store Overview**
+## 🧱 **Store Overview**
 
 | Store              | Purpose                                    |
 | ------------------ | ------------------------------------------ |
@@ -36,7 +36,7 @@ This is the **minimum viable set** for your architecture.
 
 ---
 
-# 🧭 **1. Session Store**
+## 🧭 **1. Session Store**
 
 Tracks high‑level session metadata.
 
@@ -62,7 +62,7 @@ export const useSessionStore = create<{
 
 ---
 
-# 👥 **2. Presence Store**
+## 👥 **2. Presence Store**
 
 Players, rooms, conditions, distance, speaking, mute.
 
@@ -174,7 +174,7 @@ export const usePresenceStore = create<{
 
 ---
 
-# 💬 **3. Chat Store**
+## 💬 **3. Chat Store**
 
 Handles chat messages, history, scroll state.
 
@@ -200,7 +200,7 @@ export const useChatStore = create<{
 
 ---
 
-# 📝 **4. Notes Store**
+## 📝 **4. Notes Store**
 
 Handles note creation, sharing, visibility.
 
@@ -238,7 +238,7 @@ export const useNotesStore = create<{
 
 ---
 
-# 📘 **5. Journal Store**
+## 📘 **5. Journal Store**
 
 ```ts
 export const useJournalStore = create<{
@@ -252,7 +252,7 @@ export const useJournalStore = create<{
 
 ---
 
-# 🕒 **6. History Store**
+## 🕒 **6. History Store**
 
 ```ts
 export const useHistoryStore = create<{
@@ -266,7 +266,7 @@ export const useHistoryStore = create<{
 
 ---
 
-# 🎧 **7. Audio Store**
+## 🎧 **7. Audio Store**
 
 Handles gain, mute, distance, DM voice preset.
 
@@ -292,7 +292,7 @@ export const useAudioStore = create<{
 
 ---
 
-# 🎛️ **8. UI Store**
+## 🎛️ **8. UI Store**
 
 Handles panels, persona, theme, layout.
 
@@ -322,7 +322,7 @@ export const useUIStore = create<{
 
 ---
 
-# ⌨️ **9. Command Store**
+## ⌨️ **9. Command Store**
 
 Autocomplete + command context.
 

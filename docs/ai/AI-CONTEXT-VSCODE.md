@@ -38,7 +38,7 @@ Your job is to generate code, architecture, and reasoning that fits this system 
 
 Highest wins:
 
-```
+```text
 PTT override
 Private room clean mode
 DM override
@@ -181,7 +181,7 @@ You must enforce:
 
 ## 🧭 **Document Map (Use these as anchors)**
 
-```
+```text
 ARCHITECTURE.md
 API-SPEC.md
 DATA-MODEL.md
@@ -229,8 +229,8 @@ Never access DB or internal services directly.
 
 ---
 
-## ✔️ \*\*This is your operating context.
+## ✔️ This is your operating context
 
-All code and reasoning must align with it.\*\*
+All code and reasoning must align with it.
 
 ---

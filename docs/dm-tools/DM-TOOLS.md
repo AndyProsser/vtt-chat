@@ -1,6 +1,4 @@
-# **DM-TOOLS.md**
-
-# Dungeon Master Tools
+## Dungeon Master Tools
 
 _A unified control surface for audio, rooms, notes, metadata, private chats, and session flow._
 
@@ -40,7 +38,7 @@ This document defines:
 
 ---
 
-# 🧩 1. DM UI Overview
+## 🧩 1. DM UI Overview
 
 The DM UI is composed of **six primary panels**:
 
@@ -61,7 +59,7 @@ Assistant DMs see the same UI **except**:
 
 ---
 
-# 🏠 2. Room Manager
+## 🏠 2. Room Manager
 
 The DM can:
 
@@ -94,7 +92,7 @@ The DM can:
 
 ---
 
-# 🧑‍🤝‍🧑 3. Player List & Movement Panel
+## 🧑‍🤝‍🧑 3. Player List & Movement Panel
 
 The DM sees:
 
@@ -119,7 +117,7 @@ The DM sees:
 
 ---
 
-# 🎚️ 4. Audio Control Panel
+## 🎚️ 4. Audio Control Panel
 
 The DM audio panel is the **most powerful tool** in the system.
 
@@ -137,7 +135,7 @@ The DM audio panel is the **most powerful tool** in the system.
 
 ---
 
-## 4.1 DM Voice Presets
+### 4.1 DM Voice Presets
 
 Applies only to DM’s microphone.
 
@@ -149,7 +147,7 @@ Examples:
 - Angel
 - Robot
 
-### UI
+#### UI
 
 - Single‑click toggle
 - Only one active at a time
@@ -157,7 +155,7 @@ Examples:
 
 ---
 
-## 4.2 Environment Presets (Room-Level)
+### 4.2 Environment Presets (Room-Level)
 
 Applies to **RoomBus**:
 
@@ -167,7 +165,7 @@ Applies to **RoomBus**:
 - Forest
 - Dungeon
 
-### UI
+#### UI
 
 - Hover → preview
 - Click → apply
@@ -175,7 +173,7 @@ Applies to **RoomBus**:
 
 ---
 
-## 4.3 Conditions (Per Player)
+### 4.3 Conditions (Per Player)
 
 Examples:
 
@@ -186,7 +184,7 @@ Examples:
 - Invisible
 - Exhausted
 
-### UI
+#### UI
 
 - Right‑click player → “Apply Condition”
 - Multiple conditions can stack
@@ -194,11 +192,11 @@ Examples:
 
 ---
 
-## 4.4 Distance (Per Player)
+### 4.4 Distance (Per Player)
 
 Simulates spatial separation.
 
-### UI
+#### UI
 
 - Slider (0.0 → 1.0)
 - Presets: Close / Near / Far / Distant
@@ -206,7 +204,7 @@ Simulates spatial separation.
 
 ---
 
-## 4.5 IC Mode (Player → DM Only)
+### 4.5 IC Mode (Player → DM Only)
 
 Players can toggle IC mode:
 
@@ -224,7 +222,7 @@ DM can:
 
 ---
 
-## 4.6 DM Overrides
+### 4.6 DM Overrides
 
 DM can override:
 
@@ -236,7 +234,7 @@ Overrides apply **after** all presets.
 
 ---
 
-## 4.7 Private Room Clean Mode
+### 4.7 Private Room Clean Mode
 
 Automatically enabled when entering private rooms:
 
@@ -251,13 +249,13 @@ DM can manually toggle clean mode.
 
 ---
 
-## 4.8 PTT Override
+### 4.8 PTT Override
 
 DM holds a key (e.g., Space) to temporarily disable all effects.
 
 ---
 
-## 4.9 Clear All Effects
+### 4.9 Clear All Effects
 
 Resets:
 
@@ -270,7 +268,7 @@ Resets:
 
 ---
 
-# 📝 5. Notes & Handouts Panel
+## 📝 5. Notes & Handouts Panel
 
 DM can:
 
@@ -301,7 +299,7 @@ Players **cannot**:
 
 ---
 
-# 🗂️ 6. Metadata Card Composer
+## 🗂️ 6. Metadata Card Composer
 
 DM can create **metadata cards**:
 
@@ -333,7 +331,7 @@ DM can publish metadata cards to:
 
 ---
 
-# 🎬 7. Session Control Panel
+## 🎬 7. Session Control Panel
 
 DM controls:
 
@@ -348,7 +346,7 @@ DM controls:
 
 ---
 
-# 🧭 8. Assistant DM Capabilities
+## 🧭 8. Assistant DM Capabilities
 
 Assistant DMs can:
 
@@ -373,7 +371,7 @@ Assistant DMs **cannot**:
 
 ---
 
-# 🔄 9. Interaction With Presence
+## 🔄 9. Interaction With Presence
 
 DM actions trigger presence events:
 
@@ -387,7 +385,7 @@ DM actions trigger presence events:
 
 ---
 
-# 🎧 10. Interaction With Audio Engine
+## 🎧 10. Interaction With Audio Engine
 
 DM actions trigger audio events:
 
@@ -404,7 +402,7 @@ DM actions trigger audio events:
 
 ---
 
-# 💬 11. Interaction With Chat
+## 💬 11. Interaction With Chat
 
 DM can:
 
@@ -416,7 +414,7 @@ DM can:
 
 ---
 
-# 📓 12. Interaction With Sessions
+## 📓 12. Interaction With Sessions
 
 DM controls:
 
@@ -429,7 +427,7 @@ DM tools reset at session boundaries.
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. DM has full visibility
 

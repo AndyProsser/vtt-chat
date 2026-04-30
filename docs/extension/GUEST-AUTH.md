@@ -1,5 +1,3 @@
-# **GUEST-AUTH.md**
-
 # Guest Mode & Extension Authentication
 
 _How the browser extension enables low-friction, invite-link-based onboarding by delegating identity and character validation to third-party VTT systems._
@@ -84,7 +82,7 @@ Player invite links require the browser extension (or equivalent VTT integration
 - The invite carries **no role information**. The DM role is inferred from the external system's campaign ownership data supplied in the extension data packet at join time.
 - Invite codes can be **revoked and reissued** by a DM (any account type, once joined) or a sysadmin. Revoking prevents new connections; existing sessions continue until their token expires naturally.
 
-```
+```text
 https://<platform>/join/<inviteCode>
 https://<platform>/join/<inviteCode>?source=dndbeyond
 ```
@@ -103,7 +101,7 @@ Spectator invite links open a browser page — no extension installation require
 - The user enters their name and email to create a guest spectator account. No password is set; the invite validates their session.
 - Spectators **cannot access the green room**. Spectator sessions are only active during a live session. Spectators who connect between sessions see the status page only.
 
-```
+```text
 https://<platform>/watch/<spectatorInviteCode>
 ```
 
@@ -170,7 +168,7 @@ Full-account users can browse active campaigns that have spectators enabled and 
 
 Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear in browse results as **private** (name shown, no join option).
 
-```
+```text
 GET /api/campaigns/browse
 ```
 
@@ -189,7 +187,7 @@ Guest player accounts cannot access the campaign browse page — they are scoped
 
 Before attempting a player guest login, the extension validates the invite:
 
-```
+```text
 GET /api/campaigns/invite/:code/validate
 ```
 
@@ -230,7 +228,7 @@ Before presenting a join UI or requesting a token, the extension performs a pre-
 
 ### 3.1 Pre-flight Steps
 
-```
+```text
 1. GET /api/platform/status          — Is the platform online?
 2. GET /api/campaigns/invite/:code/validate  — Is the invite valid?
 3. POST /api/auth/extension/preflight        — Does a vtt-chat account exist for this email?
@@ -240,7 +238,7 @@ Steps 1 and 2 are unauthenticated. Step 3 submits the scraped email address (and
 
 ### 3.2 Platform Status Endpoint
 
-```
+```text
 GET /api/platform/status
 ```
 
@@ -261,7 +259,7 @@ Response:
 
 ### 3.3 Account Pre-check Endpoint
 
-```
+```text
 POST /api/auth/extension/preflight
 ```
 
@@ -326,7 +324,7 @@ Based on the pre-flight results, the extension popup presents one of:
 
 ### 4.1 New Guest (No Existing Account)
 
-```
+```text
 Extension scrapes identity from DDB
   → pre-flight: accountStatus = "none"
   → POST /api/auth/extension/guest-login
@@ -340,7 +338,7 @@ Extension scrapes identity from DDB
 
 ### 4.2 Returning Guest (Existing Guest Account)
 
-```
+```text
 Extension scrapes identity from DDB
   → pre-flight: accountStatus = "guest"
   → POST /api/auth/extension/guest-login (same endpoint)
@@ -352,7 +350,7 @@ Extension scrapes identity from DDB
 
 ### 4.3 Existing Full Account (Not Logged In)
 
-```
+```text
 Extension scrapes identity from DDB
   → pre-flight: accountStatus = "full"
   → extension popup shows login form (email pre-filled)
@@ -364,7 +362,7 @@ Extension scrapes identity from DDB
 
 ### 4.4 Existing Full Account (Already Logged In)
 
-```
+```text
 Extension has valid JWT in memory
   → pre-flight: accountStatus = "full", suggestedFlow = "already-authenticated"
   → POST /api/campaigns/invite/:code/join (authenticated)
@@ -407,7 +405,7 @@ When the DM connects (if not the first user):
 
 No extension required.
 
-```
+```text
 User opens https://<platform>/watch/<spectatorInviteCode>
   → browser loads the spectator invite page
   → page shows: campaign info, character roster + connection status, session status, slot availability
@@ -425,7 +423,7 @@ User opens https://<platform>/watch/<spectatorInviteCode>
 
 Spectator guest endpoint:
 
-```
+```text
 POST /api/auth/spectator/guest-join
 ```
 
@@ -472,7 +470,7 @@ Full-account users may spectate via invite link or via the campaign browse page.
 
 **Via invite link:**
 
-```
+```text
 User opens https://<platform>/watch/<spectatorInviteCode>
   → if already logged in: proceed to slot check → enter session view
   → if not logged in: login prompt → on success: slot check → enter session view
@@ -480,7 +478,7 @@ User opens https://<platform>/watch/<spectatorInviteCode>
 
 **Via campaign browse:**
 
-```
+```text
 Full-account user navigates to /browse
   → lists active discoverable campaigns with spectator slots
   → user clicks a campaign
@@ -510,7 +508,7 @@ Regardless of account type:
 
 ### 4.9 Guest Login Endpoint (Player / DM)
 
-```
+```text
 POST /api/auth/extension/guest-login
 ```
 
@@ -604,7 +602,7 @@ Response:
 
 Every user authenticated via an external system has an `ExternalIdentity` record:
 
-```
+```text
 ExternalIdentity
   id              — internal UUID
   userId          — FK to User
@@ -621,7 +619,7 @@ One user may have multiple `ExternalIdentity` records (one per system they've co
 
 Characters may be associated with an external character record:
 
-```
+```text
 Character
   ...
   externalSystem    — enum (nullable)
@@ -638,7 +636,7 @@ When a character is created or updated via the extension, these fields are popul
 
 A campaign may be linked to a campaign on an external system:
 
-```
+```text
 CampaignExternalLink
   id              — internal UUID
   campaignId      — FK to Campaign
@@ -666,7 +664,7 @@ The DM controls whether data pushed from the extension can override campaign inf
 
 The policy is stored per campaign:
 
-```
+```text
 Campaign
   extensionSyncPolicy  — enum: NONE | DM_ONLY | DM_AND_PLAYERS
 ```
@@ -689,7 +687,7 @@ DM-level campaign data (name, structure) can only be updated when the push comes
 
 ### 6.3 Sync Update Endpoint
 
-```
+```text
 POST /api/integrations/external/sync
 ```
 
@@ -726,7 +724,7 @@ The prompt is not shown during active session play to avoid disruption.
 
 ### 7.2 Upgrade Flow (Player or DM Guest)
 
-```
+```text
 Guest user clicks "Upgrade to full account"
   → UI presents email (pre-filled, read-only) and password fields
   → POST /api/auth/upgrade
@@ -738,7 +736,7 @@ Guest user clicks "Upgrade to full account"
 
 Endpoint:
 
-```
+```text
 POST /api/auth/upgrade
 ```
 
@@ -760,7 +758,7 @@ Spectators are not extension users. However, a user who started as a guest spect
 
 **Path A — Register a full account:**
 
-```
+```text
 Spectator clicks "Create Account"
   → registration form with email pre-filled (read-only from spectator session)
   → user sets password
@@ -772,7 +770,7 @@ Spectator clicks "Create Account"
 
 **Path B — Join via player invite link:**
 
-```
+```text
 Spectator opens a player invite link in the extension
   → extension sends POST /api/auth/extension/guest-login with invite code + email
   → backend finds matching spectator account by email

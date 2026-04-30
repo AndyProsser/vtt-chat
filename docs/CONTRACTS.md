@@ -29,7 +29,7 @@ Where names differ, treat this file as canonical for current runtime behavior.
 
 All contracts are in `/shared/` (monorepo root):
 
-```
+```text
 shared/
   index.ts                    # Main export
   package.json               # Private package for shared types

@@ -1,5 +1,3 @@
-# **CONTRIBUTING.md**
-
 # Contributing Guide
 
 Thank you for your interest in contributing to VTT‑Chat!
@@ -8,7 +6,7 @@ This guide explains how to contribute effectively and consistently.
 
 ---
 
-# 1. Core Principles
+## 1. Core Principles
 
 All contributions should follow these principles:
 
@@ -44,7 +42,7 @@ No contribution may violate:
 
 ---
 
-# 2. How to Contribute
+## 2. How to Contribute
 
 ### **2.1 Fork the repository**
 
@@ -54,7 +52,7 @@ Create your own working copy.
 
 Use descriptive names:
 
-```
+```text
 feature/audio-presets
 fix/presence-race-condition
 docs/update-session-lifecycle
@@ -100,7 +98,7 @@ Examples:
 
 ---
 
-# 3. Code Standards
+## 3. Code Standards
 
 ### **3.1 Event‑Driven Architecture**
 
@@ -135,7 +133,7 @@ Components must:
 
 ---
 
-# 4. Documentation Standards
+## 4. Documentation Standards
 
 ### **4.1 Every new feature must be documented**
 
@@ -152,7 +150,7 @@ At minimum:
 
 Documentation must be placed in:
 
-```
+```text
 docs/philosophy/
 docs/architecture/
 docs/subsystems/
@@ -179,13 +177,13 @@ One concept per document.
 
 ---
 
-# 5. Event & Reducer Standards
+## 5. Event & Reducer Standards
 
 ### **5.1 Event Naming**
 
 Use:
 
-```
+```text
 <domain>.<subdomain>.<action>
 ```
 
@@ -215,7 +213,7 @@ All events must pass:
 
 ---
 
-# 6. UI Contribution Standards
+## 6. UI Contribution Standards
 
 ### **6.1 Follow the UX Principles**
 
@@ -240,7 +238,7 @@ Animations must:
 
 ---
 
-# 7. Extension Contribution Standards
+## 7. Extension Contribution Standards
 
 Extension contributions must:
 
@@ -252,7 +250,7 @@ Extension contributions must:
 
 ---
 
-# 8. Testing Standards
+## 8. Testing Standards
 
 ### **8.1 Manual Testing**
 
@@ -271,7 +269,7 @@ When test harness is added:
 
 ---
 
-# 9. Communication Standards
+## 9. Communication Standards
 
 ### **9.1 Be clear**
 
@@ -291,7 +289,7 @@ Invite feedback.
 
 ---
 
-# 10. Contributor Roles
+## 10. Contributor Roles
 
 ### **Maintainers**
 
@@ -322,7 +320,7 @@ AI output must always be reviewed by a human.
 
 ---
 
-# 11. Summary
+## 11. Summary
 
 This project values:
 

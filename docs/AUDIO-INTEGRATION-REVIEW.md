@@ -44,7 +44,7 @@ Stage 7 (Audio/LiveKit) is currently **scaffolded with baseline placeholders**. 
 
 ### 1.2 Effect Priority Stack
 
-```
+```text
 PTT override (highest)
   ↓
 Private room clean mode
@@ -340,7 +340,7 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {})
 
 ## 6. Recommended Implementation Order
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │ Phase 1: Setup (Dependencies + Docs)        │
 ├─────────────────────────────────────────────┤

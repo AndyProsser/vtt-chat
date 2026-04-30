@@ -4,7 +4,7 @@ _A compact, high‑signal context file for GitHub Copilot._
 
 ---
 
-# 🧭 Project Summary
+## 🧭 Project Summary
 
 **VTT‑Chat** is a real‑time, audio‑centric virtual tabletop communication platform.
 It integrates:
@@ -20,7 +20,7 @@ Copilot should treat this as a **modular, event‑driven system** with strict bo
 
 ---
 
-# 🧱 Core Architectural Rules (Copilot MUST follow)
+## 🧱 Core Architectural Rules (Copilot MUST follow)
 
 ### **1. Reducers must be pure**
 
@@ -38,7 +38,7 @@ Copilot should treat this as a **modular, event‑driven system** with strict bo
 
 Highest wins:
 
-```
+```text
 PTT override
 Private room clean mode
 DM override
@@ -77,7 +77,7 @@ Copilot must enforce:
 
 ---
 
-# 🧩 Subsystem Overview (Copilot should understand these modules)
+## 🧩 Subsystem Overview (Copilot should understand these modules)
 
 ### **Presence System**
 
@@ -146,7 +146,7 @@ Copilot must enforce:
 
 ---
 
-# 🧠 Copilot Behavioral Expectations
+## 🧠 Copilot Behavioral Expectations
 
 ### **When generating code**
 
@@ -188,9 +188,9 @@ Copilot must enforce:
 
 ---
 
-# 🧭 File Map (Copilot should use these as anchors)
+## 🧭 File Map (Copilot should use these as anchors)
 
-```
+```text
 ARCHITECTURE.md
 API-SPEC.md
 DATA-MODEL.md
@@ -215,7 +215,7 @@ Copilot should reference these documents when generating or modifying code.
 
 ---
 
-# 🧩 Example Instructions to Copilot (You can paste these into prompts)
+## 🧩 Example Instructions to Copilot (You can paste these into prompts)
 
 ### **“When modifying reducers…”**
 

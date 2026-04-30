@@ -1,5 +1,3 @@
-# **SYSTEM-PHILOSOPHY.md**
-
 # System Philosophy
 
 The System Philosophy defines the foundational beliefs that guide every design, architectural, and UX decision in VTT‑Chat.
@@ -19,7 +17,7 @@ Every subsystem, reducer, UI component, and extension feature must align with th
 
 ---
 
-# 1. Core Beliefs
+## 1. Core Beliefs
 
 ### **1.1 The Table Comes First**
 
@@ -86,7 +84,7 @@ The system should disappear when not needed.
 
 ---
 
-# 2. Architectural Principles
+## 2. Architectural Principles
 
 ### **2.1 Unidirectional Data Flow**
 
@@ -142,7 +140,7 @@ This guarantees stability and predictability.
 
 ---
 
-# 3. UX Principles
+## 3. UX Principles
 
 ### **3.1 Clarity Over Cleverness**
 
@@ -180,7 +178,7 @@ The UI should reduce mental overhead, not increase it.
 
 ---
 
-# 4. Privacy Principles
+## 4. Privacy Principles
 
 ### **4.1 Private Means Private**
 
@@ -209,7 +207,7 @@ The extension must never:
 
 ---
 
-# 5. Role Philosophy
+## 5. Role Philosophy
 
 ### **5.1 DM as Facilitator**
 
@@ -237,7 +235,7 @@ It never takes sides.
 
 ---
 
-# 6. Extension Philosophy
+## 6. Extension Philosophy
 
 ### **6.1 Overlay‑First**
 
@@ -261,7 +259,7 @@ The extension respects:
 
 ---
 
-# 7. Developer Philosophy
+## 7. Developer Philosophy
 
 ### **7.1 Documentation Is Part of the Codebase**
 
@@ -294,7 +292,7 @@ But humans make final decisions.
 
 ---
 
-# 8. Summary
+## 8. Summary
 
 The System Philosophy ensures that VTT‑Chat remains:
 

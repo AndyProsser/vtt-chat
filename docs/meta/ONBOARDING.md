@@ -1,5 +1,3 @@
-# **ONBOARDING.md**
-
 # Onboarding Guide
 
 Welcome to VTT‑Chat!
@@ -8,7 +6,7 @@ It is designed to get you productive quickly, with a clear understanding of how 
 
 ---
 
-# 1. What VTT‑Chat Is
+## 1. What VTT‑Chat Is
 
 VTT‑Chat is a **role‑aware, privacy‑first communication layer** for virtual tabletops.
 It provides:
@@ -24,7 +22,7 @@ Everything is built on a **unidirectional event architecture** with deterministi
 
 ---
 
-# 2. Core Concepts You Must Understand
+## 2. Core Concepts You Must Understand
 
 Before contributing, you should be familiar with these foundational documents:
 
@@ -60,16 +58,14 @@ All contributions must align with them.
 
 ---
 
-# 3. How the System Works (High‑Level)
+## 3. How the System Works (High‑Level)
 
 ### **3.1 Unidirectional Data Flow**
 
 All state changes originate from events.
 
-```
-
+```text
 UI → Event → Reducer → Store → UI
-
 ```
 
 ### **3.2 Deterministic Reducers**
@@ -94,7 +90,7 @@ Clients can reconnect at any time and rebuild state from the server.
 
 ---
 
-# 4. Development Workflow
+## 4. Development Workflow
 
 ### **4.1 Fork the Repository**
 
@@ -104,12 +100,10 @@ Create your own working copy.
 
 Use descriptive names:
 
-```
-
+```text
 feature/chat-whisper-improvements
 fix/audio-preset-crash
 docs/update-privacy-model
-
 ```
 
 ### **4.3 Implement Your Change**
@@ -138,10 +132,9 @@ Include:
 
 ---
 
-# 5. Project Structure
+## 5. Project Structure
 
-```
-
+```text
 docs/
 philosophy/
 architecture/
@@ -160,7 +153,6 @@ reducers/
 stores/
 ui/
 extension/
-
 ```
 
 ### **5.1 docs/**
@@ -173,7 +165,7 @@ Contains the actual implementation.
 
 ---
 
-# 6. Coding Standards
+## 6. Coding Standards
 
 ### **6.1 Events**
 
@@ -202,7 +194,7 @@ Contains the actual implementation.
 
 ---
 
-# 7. UX Standards
+## 7. UX Standards
 
 ### **7.1 Predictable**
 
@@ -226,7 +218,7 @@ Animations reinforce meaning.
 
 ---
 
-# 8. Extension Standards
+## 8. Extension Standards
 
 ### **8.1 Overlay‑First**
 
@@ -246,7 +238,7 @@ DM actions only for DMs.
 
 ---
 
-# 9. Getting Set Up (Local Development)
+## 9. Getting Set Up (Local Development)
 
 ### **9.1 Install Dependencies**
 
@@ -277,7 +269,7 @@ Interact with:
 
 ---
 
-# 10. Common Pitfalls
+## 10. Common Pitfalls
 
 ### **10.1 Mutating State**
 
@@ -301,7 +293,7 @@ Every change must be documented.
 
 ---
 
-# 11. Where to Ask Questions
+## 11. Where to Ask Questions
 
 - Pull request comments
 - Issue threads
@@ -312,7 +304,7 @@ The project values clarity and collaboration.
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 This onboarding guide gives you everything you need to start contributing:
 

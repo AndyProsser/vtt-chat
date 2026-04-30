@@ -797,13 +797,13 @@ Status: **In progress**
 Goal:
 
 - Deliver the browser extension integration with the vtt-chat backend: guest/invite-link authentication, external identity management, data sync, pre-flight validation, and VTT overlay contracts.
-- The extension front-end and D&D Beyond scraping layer already exist at https://github.com/AndyProsser/vtt-chat-extension. This stage delivers the backend integration surface and wires the extension to the vtt-chat platform.
+- The extension front-end and D&D Beyond scraping layer already exist at <https://github.com/AndyProsser/vtt-chat-extension>. This stage delivers the backend integration surface and wires the extension to the vtt-chat platform.
 
 Design reference: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md), [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md)
 
 ---
 
-**Stage 13.1: Backend Guest Auth, Spectator Access, and Invite Flow**
+#### **Stage 13.1: Backend Guest Auth, Spectator Access, and Invite Flow**
 
 Completed so far:
 
@@ -856,7 +856,7 @@ Remaining in this slice:
 
 ---
 
-**Stage 13.2: External Identity and Campaign Linking**
+#### **Stage 13.2: External Identity and Campaign Linking**
 
 Completed so far:
 
@@ -886,7 +886,7 @@ Remaining in this slice:
 
 ---
 
-**Stage 13.3: Frontend Guest Auth UX, Spectator Invite Page, and Account Upgrade**
+#### **Stage 13.3: Frontend Guest Auth UX, Spectator Invite Page, and Account Upgrade**
 
 Completed so far:
 
@@ -923,9 +923,9 @@ Remaining in this slice:
 
 ---
 
-**Stage 13.4: Extension Backend Contract Integration (D&D Beyond)**
+#### **Stage 13.4: Extension Backend Contract Integration (D&D Beyond)**
 
-- Scope: Wire the existing https://github.com/AndyProsser/vtt-chat-extension front-end and scraping layer to the vtt-chat backend endpoints implemented in 13.1–13.3.
+- Scope: Wire the existing <https://github.com/AndyProsser/vtt-chat-extension> front-end and scraping layer to the vtt-chat backend endpoints implemented in 13.1–13.3.
 - Extension changes required (in extension repo):
   - Background script: implement pre-flight sequence (`/api/platform/status` → `/api/campaigns/invite/:code/validate` → `/api/auth/extension/preflight`).
   - Background script: implement guest-login call and in-memory JWT storage with silent renewal.
@@ -942,7 +942,7 @@ Remaining in this slice:
 
 ---
 
-**Stage 13.5: VTT Overlay Bridge Contracts (Roll20, Foundry, Others)**
+#### **Stage 13.5: VTT Overlay Bridge Contracts (Roll20, Foundry, Others)**
 
 - Scope: Extend the integration layer to Roll20 and Foundry VTT once D&D Beyond integration is validated. Add platform-level support for additional external systems via the ExternalSystem registry.
 - Remaining scope:
@@ -1083,7 +1083,7 @@ The following references support the corrected stage labels and current model te
 - 2026-04: Backend test coverage expanded and reorganized into `api`, `integration`, `core`, `ws`, and `contracts` domains with normalized `*.integration.test.ts` naming for integration suites.
 - 2026-04: Backend circular dependency refactoring completed: `SessionLogsService` extracted, `RoomService`/`RoomRecoveryService`/`PresenceService` converted to dependency injection pattern. Latest verification now reports frontend `6` files / `15` tests passing and backend `13` passed + `1` skipped files with `53` passing tests + `6` todo markers; monorepo builds cleanly. Infrastructure hardening improves testability and maintainability.
 - 2026-04: Roadmap expanded to track remaining full-project scope beyond Stage 8, including frontend command-center completion, admin feature completion, knowledge surfaces (metadata/journal/history/search), import/export + recordings metadata, and extension bridge integration.
-- 2026-04: Extension/guest auth system fully designed and documented: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md) created covering invite links, pre-flight sequence, four auth path variants, external identity model, data sync policy, and account upgrade flow. [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md), [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md), [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md), and [docs/architecture/PERMISSIONS-MATRIX.md](docs/architecture/PERMISSIONS-MATRIX.md) updated to reflect `ExternalIdentity`, `CampaignExternalLink`, `ExternalSystem` registry, guest `authType`, `extensionSyncPolicy`, and all new endpoints. Stage 10 expanded with Stage 10.4 (external system authorization panel as prerequisite for Stage 13). Stage 13 expanded from a placeholder into five concrete sub-milestones (13.1 backend guest auth, 13.2 external identity/linking, 13.3 frontend guest UX, 13.4 D&D Beyond extension wiring, 13.5 Roll20/Foundry bridge). Extension repository noted: https://github.com/AndyProsser/vtt-chat-extension.
+- 2026-04: Extension/guest auth system fully designed and documented: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md) created covering invite links, pre-flight sequence, four auth path variants, external identity model, data sync policy, and account upgrade flow. [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md), [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md), [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md), and [docs/architecture/PERMISSIONS-MATRIX.md](docs/architecture/PERMISSIONS-MATRIX.md) updated to reflect `ExternalIdentity`, `CampaignExternalLink`, `ExternalSystem` registry, guest `authType`, `extensionSyncPolicy`, and all new endpoints. Stage 10 expanded with Stage 10.4 (external system authorization panel as prerequisite for Stage 13). Stage 13 expanded from a placeholder into five concrete sub-milestones (13.1 backend guest auth, 13.2 external identity/linking, 13.3 frontend guest UX, 13.4 D&D Beyond extension wiring, 13.5 Roll20/Foundry bridge). Extension repository noted: <https://github.com/AndyProsser/vtt-chat-extension>.
 
 ---
 

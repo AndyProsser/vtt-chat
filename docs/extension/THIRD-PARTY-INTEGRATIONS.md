@@ -1,5 +1,3 @@
-# **THIRD-PARTY-INTEGRATIONS.md**
-
 # Third‑Party Integrations
 
 This document defines how VTT‑Chat integrates with external Virtual Tabletops (VTTs) such as D&D Beyond, Roll20, Foundry VTT, Fantasy Grounds, Owlbear Rodeo, and others.
@@ -21,7 +19,7 @@ The goal is to provide a **consistent, VTT‑agnostic integration layer** that:
 
 ---
 
-# 1. Integration Philosophy
+## 1. Integration Philosophy
 
 ### **1.1 Non‑intrusive**
 
@@ -64,7 +62,7 @@ Where possible, integrations use:
 
 ---
 
-# 2. Integration Architecture
+## 2. Integration Architecture
 
 The integration model consists of three layers:
 
@@ -113,13 +111,13 @@ The host platform.
 
 ---
 
-# 3. Integration Capabilities
+## 3. Integration Capabilities
 
 The extension supports a limited set of VTT interactions.
 
 ---
 
-## 3.1 Read‑Only Capabilities
+### 3.1 Read‑Only Capabilities
 
 These are safe for all roles:
 
@@ -137,7 +135,7 @@ These operations must:
 
 ---
 
-## 3.2 DM‑Only Capabilities
+### 3.2 DM‑Only Capabilities
 
 These require DM authority:
 
@@ -155,7 +153,7 @@ These actions must be:
 
 ---
 
-## 3.3 Unsupported Capabilities
+### 3.3 Unsupported Capabilities
 
 The extension must **never**:
 
@@ -167,7 +165,7 @@ The extension must **never**:
 
 ---
 
-# 4. Event Flow
+## 4. Event Flow
 
 All VTT interactions flow through the Event Bus.
 
@@ -192,13 +190,13 @@ sequenceDiagram
 
 ---
 
-# 5. Integration Modes
+## 5. Integration Modes
 
 The extension supports multiple integration modes depending on VTT capabilities.
 
 ---
 
-## 5.1 Overlay‑Only Mode (Universal)
+### 5.1 Overlay‑Only Mode (Universal)
 
 Works on all VTTs.
 
@@ -215,7 +213,7 @@ No deep VTT integration required.
 
 ---
 
-## 5.2 API‑Enhanced Mode (VTT‑Specific)
+### 5.2 API‑Enhanced Mode (VTT‑Specific)
 
 Used when a VTT exposes:
 
@@ -238,7 +236,7 @@ Capabilities:
 
 ---
 
-## 5.3 DOM‑Assisted Mode (Fallback)
+### 5.3 DOM‑Assisted Mode (Fallback)
 
 Used when:
 
@@ -260,7 +258,7 @@ DOM access must be:
 
 ---
 
-# 6. VTT Compatibility Matrix
+## 6. VTT Compatibility Matrix
 
 | VTT                | Overlay Mode | API Mode | DOM Mode | Notes               |
 | ------------------ | ------------ | -------- | -------- | ------------------- |
@@ -272,7 +270,7 @@ DOM access must be:
 
 ---
 
-# 7. Privacy & Permissions
+## 7. Privacy & Permissions
 
 The extension must enforce:
 
@@ -290,7 +288,7 @@ Examples:
 
 ---
 
-# 8. Error Handling
+## 8. Error Handling
 
 Integration errors must:
 
@@ -308,7 +306,7 @@ Examples:
 
 ---
 
-# 9. Future Integrations
+## 9. Future Integrations
 
 Planned enhancements:
 
@@ -320,7 +318,7 @@ Planned enhancements:
 
 ---
 
-# 10. Third-Party System Separation
+## 10. Third-Party System Separation
 
 Each external system is treated as an isolated identity namespace. Data from one system cannot bleed into another system's identity records.
 
@@ -356,7 +354,7 @@ Adding a new system requires adding to the enum and registering the system in th
 
 ---
 
-# 11. Platform Admin: System Authorization
+## 11. Platform Admin: System Authorization
 
 The platform admin (system operator) controls which external systems are permitted to authenticate users or ingest data. This is independent of the DM's per-campaign sync policy.
 
@@ -372,7 +370,7 @@ Default for new registered systems: `BLOCKED` (must be explicitly authorized).
 
 ### 11.2 Admin API
 
-```
+```text
 GET  /api/admin/integrations/systems
 POST /api/admin/integrations/systems/:system/authorize
 POST /api/admin/integrations/systems/:system/block
@@ -401,7 +399,7 @@ The admin panel (in the `admin/` application) exposes a **Integrations** section
 
 When the extension submits a request from a blocked or unrecognized system:
 
-```
+```text
 POST /api/auth/extension/guest-login
   → 403 { "code": "INTEGRATION_NOT_AUTHORIZED", "message": "..." }
 ```
@@ -419,7 +417,7 @@ All authorization state changes are logged in the platform audit log with:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 The third‑party integration model is:
 

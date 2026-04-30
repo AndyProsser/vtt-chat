@@ -1,5 +1,3 @@
-# **DATA-MODEL.md**
-
 # VTT‑Chat Data Model
 
 _A relational schema for campaigns, sessions, presence, chat, notes, audio, and long‑term history._
@@ -32,9 +30,9 @@ The schema is designed for:
 
 ---
 
-# 🧩 Core Entities
+## 🧩 Core Entities
 
-## **User**
+### **User**
 
 Represents a real person. A unified record for game users and system admins.
 
@@ -77,7 +75,7 @@ See [../extension/GUEST-AUTH.md](../extension/GUEST-AUTH.md) for the guest auth 
 
 ---
 
-## **Character**
+### **Character**
 
 Represents a player character in a specific campaign.
 
@@ -100,7 +98,7 @@ Key points:
 
 ---
 
-## **Campaign**
+### **Campaign**
 
 Top‑level container for:
 
@@ -147,7 +145,7 @@ Key points:
 
 ---
 
-# 🎭 Sessions
+## 🎭 Sessions
 
 A session represents a single play session.
 
@@ -167,7 +165,7 @@ Key points:
 
 ---
 
-# 🏠 Rooms
+## 🏠 Rooms
 
 Rooms represent audio/chat spaces:
 
@@ -190,7 +188,7 @@ Key points:
 
 ---
 
-# 🟢 Presence
+## 🟢 Presence
 
 Presence is **Redis‑first**, but Postgres stores snapshots for:
 
@@ -208,7 +206,7 @@ Presence is **Redis‑first**, but Postgres stores snapshots for:
 
 ---
 
-# 💬 Chat System
+## 💬 Chat System
 
 Chat messages support:
 
@@ -232,7 +230,7 @@ Messages are immutable except for deletion flags.
 
 ---
 
-# 📝 Notes System
+## 📝 Notes System
 
 Notes support:
 
@@ -267,7 +265,7 @@ Explicit mapping for individual visibility.
 
 ---
 
-# 🎙️ Audio Presets & DM Controls
+## 🎙️ Audio Presets & DM Controls
 
 Audio effects are stored as:
 
@@ -297,7 +295,7 @@ Stored transiently in Redis, but DB logs:
 
 ---
 
-# 🎧 Recordings & Transcripts
+## 🎧 Recordings & Transcripts
 
 Recordings are stored externally (S3, etc.) but metadata is stored in DB.
 
@@ -320,7 +318,7 @@ Recordings are stored externally (S3, etc.) but metadata is stored in DB.
 
 ---
 
-# 📓 Journals
+## 📓 Journals
 
 Each session has one journal:
 
@@ -330,9 +328,9 @@ Each session has one journal:
 
 ---
 
-# 🔌 External Integrations
+## 🔌 External Integrations
 
-## **ExternalIdentity**
+### **ExternalIdentity**
 
 Links a vtt-chat user to an account on an external system.
 
@@ -354,7 +352,7 @@ Key points:
 
 ---
 
-## **SpectatorWaitlist**
+### **SpectatorWaitlist**
 
 Tracks spectators waiting for a slot in a campaign that is at capacity.
 
@@ -377,7 +375,7 @@ Key points:
 
 ---
 
-## **CampaignExternalLink**
+### **CampaignExternalLink**
 
 Links a vtt-chat campaign to a campaign on an external system.
 
@@ -398,7 +396,7 @@ Key points:
 
 ---
 
-## **ExternalSystem** (Platform Registry)
+### **ExternalSystem** (Platform Registry)
 
 Platform-admin-controlled registry of permitted external systems.
 
@@ -425,7 +423,7 @@ See [../extension/THIRD-PARTY-INTEGRATIONS.md § 11](../extension/THIRD-PARTY-IN
 
 External logs (DDB/Roll20/FVTT) are normalized into:
 
-### **ChatMessage** with `type=EXTERNAL`
+#### **ChatMessage** with `type=EXTERNAL`
 
 Fields include:
 
@@ -435,7 +433,7 @@ Fields include:
 
 ---
 
-# 📦 Import / Export
+## 📦 Import / Export
 
 Campaign import/export stores:
 
@@ -459,7 +457,7 @@ Campaign import/export stores:
 
 ---
 
-# 🛠️ Admin & Audit Logs
+## 🛠️ Admin & Audit Logs
 
 ### **AuditLog**
 
@@ -484,7 +482,7 @@ Fields:
 
 ---
 
-# 📡 Telemetry
+## 📡 Telemetry
 
 Telemetry events are:
 
@@ -502,7 +500,7 @@ Telemetry events are:
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. **Redis is the source of truth for live state**
 

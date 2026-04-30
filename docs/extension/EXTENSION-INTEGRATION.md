@@ -1,5 +1,3 @@
-# **EXTENSION-INTEGRATION.md**
-
 # Browser Extension Integration
 
 _A cross‑browser MV3 extension that injects UI, extracts metadata, syncs character/campaign context, and streams external logs into the platform._
@@ -9,7 +7,7 @@ For UX principles and overlay layout, see [EXTENSION-UX.md](EXTENSION-UX.md).
 For guest auth, invite links, and pre-flight validation, see [GUEST-AUTH.md](GUEST-AUTH.md).
 For third-party system separation and admin authorization, see [THIRD-PARTY-INTEGRATIONS.md](THIRD-PARTY-INTEGRATIONS.md).
 
-**Extension repository:** https://github.com/AndyProsser/vtt-chat-extension
+**Extension repository:** <https://github.com/AndyProsser/vtt-chat-extension>
 The existing extension has a functional D&D Beyond front-end and data-scraping layer. The integration contract with the vtt-chat backend is defined in [GUEST-AUTH.md](GUEST-AUTH.md) and this document.
 
 ---
@@ -50,11 +48,11 @@ This document defines:
 
 ---
 
-# 🧩 1. Extension Architecture
+## 🧩 1. Extension Architecture
 
 The extension uses a **modular MV3 architecture**:
 
-```
+```text
 popup.html / popup.js
 background.js
 content.js
@@ -74,7 +72,7 @@ manifest.json
 
 ---
 
-# 🧭 2. Page Detection Rules
+## 🧭 2. Page Detection Rules
 
 The extension only activates on **supported pages**.
 
@@ -101,7 +99,7 @@ The extension only activates on **supported pages**.
 
 ---
 
-# 🧩 3. Injection Logic
+## 🧩 3. Injection Logic
 
 The extension injects a **Launch Chat** button only on:
 
@@ -117,7 +115,7 @@ The extension injects a **Launch Chat** button only on:
 
 ### Example Injected UI
 
-```
+```text
 [ Launch VTT Chat ]
 ```
 
@@ -130,7 +128,7 @@ Clicking the button:
 
 ---
 
-# 🧬 4. Metadata Extraction
+## 🧬 4. Metadata Extraction
 
 The content script extracts:
 
@@ -163,7 +161,7 @@ The content script extracts:
 
 ---
 
-# 🔌 5. Communication With Backend
+## 🔌 5. Communication With Backend
 
 The extension communicates with the backend via the **background script**.
 
@@ -183,7 +181,7 @@ The extension communicates with the backend via the **background script**.
 
 ### Flow
 
-```
+```text
 content.js → background.js → backend API → background.js → content.js
 ```
 
@@ -199,7 +197,7 @@ See [GUEST-AUTH.md](GUEST-AUTH.md) for the full authentication flow specificatio
 
 ---
 
-# 📡 6. External Log Ingestion
+## 📡 6. External Log Ingestion
 
 The extension captures logs from:
 
@@ -209,7 +207,7 @@ The extension captures logs from:
 
 And sends them to:
 
-```
+```text
 POST /api/integrations/logs/ingest
 ```
 
@@ -236,13 +234,13 @@ POST /api/integrations/logs/ingest
 
 Logs appear as:
 
-```
+```text
 chat.externalLog
 ```
 
 ---
 
-# 🎚️ 7. Auto‑Effects (Audio Integration)
+## 🎚️ 7. Auto‑Effects (Audio Integration)
 
 The extension can automatically apply audio effects based on external events.
 
@@ -258,13 +256,13 @@ The extension can automatically apply audio effects based on external events.
 
 ### Flow
 
-```
+```text
 content.js → background.js → backend → WebSocket → audioReducer → AudioGraph
 ```
 
 ---
 
-# 🔐 8. Whisper Detection
+## 🔐 8. Whisper Detection
 
 The extension detects whispers:
 
@@ -279,7 +277,7 @@ Whispers trigger:
 
 ---
 
-# 🗺️ 9. Distance Tracking (FVTT)
+## 🗺️ 9. Distance Tracking (FVTT)
 
 Foundry VTT exposes movement events.
 
@@ -293,11 +291,11 @@ The extension:
 
 ---
 
-# 🧭 10. Session Launch Flow
+## 🧭 10. Session Launch Flow
 
 When user clicks **Launch Chat**:
 
-```
+```text
 content.js → background.js → backend → SPA tab
 ```
 
@@ -306,16 +304,14 @@ content.js → background.js → backend → SPA tab
 1. Extract character/campaign metadata
 2. Request LiveKit token
 3. Open SPA with query params:
-   ```
-   https://app/chat?campaign=123&character=456
-   ```
+   <https://app/chat?campaign=123&character=456>
 4. SPA connects to WebSocket
 5. SPA joins campaign
 6. SPA joins correct room
 
 ---
 
-# 🧱 11. Extension Popup
+## 🧱 11. Extension Popup
 
 The popup allows:
 
@@ -334,11 +330,11 @@ The popup allows:
 
 ---
 
-# 🔍 12. Pre-flight Validation
+## 🔍 12. Pre-flight Validation
 
 Before showing any join UI or requesting a token, the background script runs the pre-flight sequence:
 
-```
+```text
 1. GET /api/platform/status
      → Is the platform reachable and not in maintenance mode?
 
@@ -353,7 +349,7 @@ Results determine which UI branch to show in the extension popup. See [GUEST-AUT
 
 ---
 
-# 🪪 13. Guest Auth & Identity
+## 🪪 13. Guest Auth & Identity
 
 The extension supports a guest authentication model where the external VTT (e.g. D&D Beyond) acts as the identity provider.
 
@@ -375,7 +371,7 @@ See [GUEST-AUTH.md](GUEST-AUTH.md) for the complete specification covering:
 
 ---
 
-# 🧠 14. Design Principles
+## 🧠 14. Design Principles
 
 ### 1. Non‑intrusive
 

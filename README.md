@@ -47,7 +47,7 @@ VTT-Chat is what Discord would be if it was purpose-built for tabletop games.
 
 ## How It Works
 
-```
+```text
 Browser Extension (D&D Beyond / Roll20 / Foundry)
       |  scrapes identity + character data
       v
@@ -97,7 +97,7 @@ See [docs/philosophy/](docs/philosophy/) for the full philosophy documentation.
 
 ## Repository Structure
 
-```
+```text
 vtt-chat/
   backend/    — Node.js/Express API, WebSocket server, Prisma schema
   frontend/   — React SPA (player/DM client)

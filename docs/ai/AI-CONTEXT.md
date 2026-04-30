@@ -1,8 +1,8 @@
 # **AI-CONTEXT.md**
 
-### _A complete onboarding context for any AI assisting with the VTT‑Chat platform_
+> _A complete onboarding context for any AI assisting with the VTT‑Chat platform_
 
-# AI Context & Onboarding Guide
+## AI Context & Onboarding Guide
 
 _A complete onboarding context for any AI assisting with the VTT‑Chat platform._
 
@@ -20,7 +20,7 @@ This is the **single source of truth** for AI behaviour within the VTT‑Chat ec
 
 ---
 
-# 1. Project Identity
+## 1. Project Identity
 
 VTT‑Chat is a **role‑aware, privacy‑first communication layer** for virtual tabletops (VTTs).
 It provides:
@@ -36,11 +36,11 @@ Everything is built on a **unidirectional event architecture** with deterministi
 
 ---
 
-# 2. Documentation Map (Full Repo Index)
+## 2. Documentation Map (Full Repo Index)
 
 AI assistants must reference and align with the documentation stored in the repo:
 
-```
+```text
 docs/
 ├── README.md
 │
@@ -112,7 +112,7 @@ AI assistants must use these documents as authoritative references.
 
 ---
 
-# 3. Core Principles (From Philosophy Docs)
+## 3. Core Principles (From Philosophy Docs)
 
 AI behaviour must align with:
 
@@ -152,7 +152,7 @@ AI must never violate these boundaries.
 
 ---
 
-# 4. Architecture Rules (From Architecture Docs)
+## 4. Architecture Rules (From Architecture Docs)
 
 ### **ARCHITECTURE-DIAGRAM.md**
 
@@ -211,7 +211,7 @@ AI must enforce:
 
 ---
 
-# 5. Subsystem Behaviour (From Subsystem Docs)
+## 5. Subsystem Behaviour (From Subsystem Docs)
 
 AI must understand the behaviour of:
 
@@ -253,7 +253,7 @@ AI must generate output consistent with subsystem rules.
 
 ---
 
-# 6. UI & Extension Behaviour (From UI + Extension Docs)
+## 6. UI & Extension Behaviour (From UI + Extension Docs)
 
 ### **UI Layer**
 
@@ -281,7 +281,7 @@ AI must never propose behaviours that violate these constraints.
 
 ---
 
-# 7. DM Tools (From DM-TOOLS.md)
+## 7. DM Tools (From DM-TOOLS.md)
 
 AI must understand:
 
@@ -295,7 +295,7 @@ DM tools are **DM‑only**.
 
 ---
 
-# 8. Operations (From Operations Docs)
+## 8. Operations (From Operations Docs)
 
 AI may reference:
 
@@ -308,7 +308,7 @@ But must not invent operational behaviour outside documented rules.
 
 ---
 
-# 9. Meta Rules (From Meta Docs)
+## 9. Meta Rules (From Meta Docs)
 
 ### **ONBOARDING.md**
 
@@ -334,7 +334,7 @@ AI must use consistent terminology.
 
 ---
 
-# 10. AI Behaviour Rules (From PROMPTING-RULES.md)
+## 10. AI Behaviour Rules (From PROMPTING-RULES.md)
 
 AI must:
 
@@ -363,7 +363,7 @@ For each changed key system, tests should cover happy path, permission/privacy b
 
 ---
 
-# 11. Output Format Expectations
+## 11. Output Format Expectations
 
 AI output must:
 
@@ -376,7 +376,7 @@ AI output must:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 This file defines:
 
@@ -393,7 +393,7 @@ Any AI assisting with VTT‑Chat must operate **strictly within these boundaries
 
 ---
 
-# 13. Release Consistency Rules
+## 13. Release Consistency Rules
 
 In addition to architecture and privacy compliance, AI assistants must preserve release-document consistency.
 

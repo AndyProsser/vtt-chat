@@ -37,7 +37,7 @@ These are requested in the workflow YAML. No manual GitHub permissions setup req
 By default, images are pushed to **GitHub Container Registry (GHCR)** only.
 To also push to **Docker Hub**, add these secrets to your repository:
 
-#### Steps:
+#### Steps
 
 1. Go to **Settings → Secrets and variables → Actions**
 
@@ -55,7 +55,7 @@ To also push to **Docker Hub**, add these secrets to your repository:
    - Give it read/write permissions
    - Copy the token immediately (you won't see it again)
 
-#### How It Works:
+#### How It Works
 
 Once secrets are configured, the Docker build workflows will:
 
@@ -94,7 +94,7 @@ If `DOCKER_HUB_USERNAME` is not set, only GHCR is used (no failures).
 
 For semantic-release to work, use:
 
-```
+```text
 feat: Add new feature          # → minor version bump
 fix: Fix a bug                 # → patch version bump
 BREAKING CHANGE: ...           # → major version bump
@@ -175,7 +175,7 @@ git commit -m "feat: Add player ping system"
 
 For a push with tag `v1.2.3`:
 
-```
+```text
 ghcr.io/yourrepo/vtt-chat-backend:1.2.3
 ghcr.io/yourrepo/vtt-chat-backend:1.2
 ghcr.io/yourrepo/vtt-chat-backend:main

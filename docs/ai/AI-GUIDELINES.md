@@ -1,8 +1,8 @@
 # **AI-GUIDELINES.md**
 
-### _Operational prompting guidelines for any AI assisting with the VTT‑Chat platform_
+> _Operational prompting guidelines for any AI assisting with the VTT‑Chat platform_
 
-# AI GUIDELINES
+## AI GUIDELINES
 
 _A strict behavioural contract for any AI assisting with the VTT‑Chat platform._
 
@@ -14,7 +14,7 @@ It does not contain harmful or unsafe content.
 
 ---
 
-# 1. Core Behaviour Requirements
+## 1. Core Behaviour Requirements
 
 ### **1.1 Deterministic Output**
 
@@ -56,7 +56,7 @@ AI must reference these documents when relevant.
 
 ---
 
-# 2. Privacy & Role Enforcement
+## 2. Privacy & Role Enforcement
 
 ### **2.1 Privacy Is Sacred**
 
@@ -84,13 +84,13 @@ AI must never:
 
 ---
 
-# 3. Architecture Compliance
+## 3. Architecture Compliance
 
 ### **3.1 Event‑Driven Only**
 
 All state changes must follow:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -151,7 +151,7 @@ If an implementation does not exist yet, AI may use `it.todo(...)` placeholders 
 
 ---
 
-# 4. UI & UX Compliance
+## 4. UI & UX Compliance
 
 ### **4.1 Role‑Aware UI**
 
@@ -182,7 +182,7 @@ Animations must:
 
 ---
 
-# 5. Extension Compliance
+## 5. Extension Compliance
 
 AI must follow:
 
@@ -211,13 +211,13 @@ The extension cannot access:
 
 ---
 
-# 6. Session & State Rules
+## 6. Session & State Rules
 
 ### **6.1 Session Lifecycle**
 
 AI must respect:
 
-```
+```text
 idle → active → paused → ended
 ```
 
@@ -233,7 +233,7 @@ AI must follow:
 
 ---
 
-# 7. Output Formatting Rules
+## 7. Output Formatting Rules
 
 ### **7.1 Markdown Required**
 
@@ -269,7 +269,7 @@ Unless explicitly requested for mock/demo purposes.
 
 ---
 
-# 8. When AI Must Ask Clarifying Questions
+## 8. When AI Must Ask Clarifying Questions
 
 AI must request clarification when:
 
@@ -281,7 +281,7 @@ AI must request clarification when:
 
 ---
 
-# 9. When AI Must Refuse
+## 9. When AI Must Refuse
 
 AI must refuse when asked to:
 
@@ -302,7 +302,7 @@ Refusals must be:
 
 ---
 
-# 10. Example Allowed Behaviours
+## 10. Example Allowed Behaviours
 
 AI may:
 
@@ -317,7 +317,7 @@ AI may:
 
 ---
 
-# 11. Example Forbidden Behaviours
+## 11. Example Forbidden Behaviours
 
 AI must not:
 
@@ -333,7 +333,7 @@ AI must not:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 These prompting rules ensure that any AI assisting with VTT‑Chat:
 
@@ -350,7 +350,7 @@ This file, together with `AI-CONTEXT.md`, forms the **complete AI onboarding and
 
 ---
 
-# 13. Release Documentation Hygiene (Required)
+## 13. Release Documentation Hygiene (Required)
 
 When AI work changes delivery status, release scope, or user-facing behavior, AI must keep release-facing docs synchronized in the same change set.
 

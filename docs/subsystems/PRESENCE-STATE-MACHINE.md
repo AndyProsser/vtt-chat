@@ -1,5 +1,3 @@
-# **PRESENCE-STATE-MACHINE.md**
-
 # Presence & Session State Machine
 
 _A Redis‑first real‑time presence model with DB‑backed recovery and analytics._
@@ -45,11 +43,11 @@ Both dimensions may coexist:
 
 ---
 
-# 🧩 Presence State Machine (Client-Level)
+## 🧩 Presence State Machine (Client-Level)
 
 Each client runs a deterministic state machine that mirrors Redis.
 
-```
+```text
 OFFLINE
   ↓ connect
 CONNECTING
@@ -81,13 +79,13 @@ DISCONNECTED_RECOVERABLE
 
 ---
 
-# 🧠 Redis Presence Model (Authoritative)
+## 🧠 Redis Presence Model (Authoritative)
 
 Redis stores **all live state** using hashes, sets, sorted sets, and TTL keys.
 
-## 1. Campaign Presence Hash
+### 1. Campaign Presence Hash
 
-### `presence:campaign:{campaignId}`
+#### `presence:campaign:{campaignId}`
 
 **Hash**
 Key = `userId`
@@ -106,9 +104,9 @@ Value = JSON blob:
 
 ---
 
-## 2. Room Membership Sets
+### 2. Room Membership Sets
 
-### `room:campaign:{campaignId}:{roomId}:members`
+#### `room:campaign:{campaignId}:{roomId}:members`
 
 **Set of userIds**
 
@@ -121,9 +119,9 @@ Used for:
 
 ---
 
-## 3. Green Room Membership
+### 3. Green Room Membership
 
-### `room:campaign:{campaignId}:green-room:members`
+#### `room:campaign:{campaignId}:green-room:members`
 
 **Set**
 
@@ -136,9 +134,9 @@ Green room is:
 
 ---
 
-## 4. Private Rooms
+### 4. Private Rooms
 
-### `room:campaign:{campaignId}:private:{privateRoomId}:members`
+#### `room:campaign:{campaignId}:private:{privateRoomId}:members`
 
 **Set**
 
@@ -153,9 +151,9 @@ TTL: **5 minutes** after last user leaves.
 
 ---
 
-## 5. Activity Tracking
+### 5. Activity Tracking
 
-### `presence:campaign:{campaignId}:activity`
+#### `presence:campaign:{campaignId}:activity`
 
 **Sorted set**
 Score = timestamp
@@ -169,9 +167,9 @@ Used for:
 
 ---
 
-## 6. DM & Assistant DM Roles
+### 6. DM & Assistant DM Roles
 
-### `campaign:{campaignId}:roles`
+#### `campaign:{campaignId}:roles`
 
 **Hash**
 
@@ -183,18 +181,18 @@ Used for:
 }
 ```
 
-### Session‑scoped assistant DM roles
+#### Session‑scoped assistant DM roles
 
-### `session:{sessionId}:assistant-dms`
+#### `session:{sessionId}:assistant-dms`
 
 **Set**
 TTL = session lifetime.
 
 ---
 
-## 7. Audio Overrides
+### 7. Audio Overrides
 
-### `audio:campaign:{campaignId}:overrides:{userId}`
+#### `audio:campaign:{campaignId}:overrides:{userId}`
 
 **Hash**
 
@@ -211,9 +209,9 @@ TTL = session lifetime.
 
 ---
 
-## 8. Shout State
+### 8. Shout State
 
-### `shout:campaign:{campaignId}:{userId}`
+#### `shout:campaign:{campaignId}:{userId}`
 
 **String**
 TTL = 2–5 seconds.
@@ -222,7 +220,7 @@ Used to route upstream audio to primary room temporarily.
 
 ---
 
-## 9. WebSocket Fan‑Out Channels
+### 9. WebSocket Fan‑Out Channels
 
 - `ws:campaign:{campaignId}`
 - `ws:campaign:{campaignId}:room:{roomId}`
@@ -230,11 +228,11 @@ Used to route upstream audio to primary room temporarily.
 
 ---
 
-# 🔄 State Transitions (Redis-Level)
+## 🔄 State Transitions (Redis-Level)
 
-## 1. Join Campaign → Green Room
+### 1. Join Campaign → Green Room
 
-```
+```text
 HSET presence:campaign:123 userId {...state:"GREEN_ROOM"...}
 SADD room:campaign:123:green-room:members userId
 ZADD presence:campaign:123:activity timestamp userId
@@ -243,9 +241,9 @@ PUBLISH ws:campaign:123 {event:"presence.joinCampaign"}
 
 ---
 
-## 2. Start Session → Move Everyone to Main Room
+### 2. Start Session → Move Everyone to Main Room
 
-```
+```text
 For each user in green room:
   HSET presence state="IN_SESSION_PRIMARY", primaryRoomId="main"
   SREM green-room:members userId
@@ -255,9 +253,9 @@ For each user in green room:
 
 ---
 
-## 3. Switch Rooms
+### 3. Switch Rooms
 
-```
+```text
 HSET presence primaryRoomId="group-1"
 SREM room:main:members userId
 SADD room:group-1:members userId
@@ -266,9 +264,9 @@ PUBLISH ws:campaign:123:room:group-1 {event:"presence.joinRoom"}
 
 ---
 
-## 4. Private Chat Start
+### 4. Private Chat Start
 
-```
+```text
 SADD room:private:xyz:members userId
 HSET presence privateRoomId="xyz", state="IN_SESSION_PRIVATE"
 EXPIRE room:private:xyz:members 300
@@ -277,9 +275,9 @@ PUBLISH ws:user:targetUser {event:"private.started"}
 
 ---
 
-## 5. Private Chat End
+### 5. Private Chat End
 
-```
+```text
 HSET presence privateRoomId=null, state="IN_SESSION_PRIMARY"
 SREM room:private:xyz:members userId
 PUBLISH ws:user:targetUser {event:"private.ended"}
@@ -287,9 +285,9 @@ PUBLISH ws:user:targetUser {event:"private.ended"}
 
 ---
 
-## 6. Session End → Return to Green Room
+### 6. Session End → Return to Green Room
 
-```
+```text
 For each user in session:
   HSET presence state="GREEN_ROOM", primaryRoomId=null, privateRoomId=null
   SADD green-room:members userId
@@ -298,7 +296,7 @@ For each user in session:
 
 ---
 
-# 🧱 DB Snapshots (Recovery + Analytics)
+## 🧱 DB Snapshots (Recovery + Analytics)
 
 Every 30–60 seconds, a worker writes:
 
@@ -322,7 +320,7 @@ Snapshots allow:
 
 ---
 
-# 🔁 Redis Failure Recovery
+## 🔁 Redis Failure Recovery
 
 If Redis fails:
 
@@ -333,6 +331,7 @@ If Redis fails:
    - `roles`
 3. Mark all users as `DISCONNECTED_RECOVERABLE`
 4. When clients reconnect, they send:
+
    ```json
    {
      "campaignId": "...",
@@ -340,13 +339,14 @@ If Redis fails:
      "lastKnownRoom": "..."
    }
    ```
+
 5. Server restores them to correct room and state
 
 This provides **graceful degradation**.
 
 ---
 
-# 📡 Telemetry & Analytics
+## 📡 Telemetry & Analytics
 
 Presence events are logged as **aggregated telemetry**, not detailed logs.
 
@@ -373,7 +373,7 @@ A worker periodically:
 
 ---
 
-# 🧠 Design Principles
+## 🧠 Design Principles
 
 ### 1. Redis is authoritative for live state
 
