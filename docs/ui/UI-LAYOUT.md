@@ -4,12 +4,12 @@ _Authoritative layout specification for all VTT‑Chat personas._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 The VTT‑Chat UI is a **three‑panel command‑centre layout** designed for widescreen PC use.
 All personas share the same structural regions:
 
-```
+```text
 Toolbar
 Campaign Info + System Toasts
 Left Panel (Players)
@@ -24,13 +24,13 @@ See [ADMIN-UI-DESIGN.md](ADMIN-UI-DESIGN.md).
 
 ---
 
-# 🧱 2. Global Layout Structure
+## 🧱 2. Global Layout Structure
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ TOOLBAR: Audio Devices | Theme | Connection Status                           │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN INFO: Campaign Name | DM | Session # | Time                         │
+│ CAMPAIGN INFO: Campaign Name | DM | Session ## | Time                         │
 │ SYSTEM TOASTS (Dismissable, stacked, temporary)                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
@@ -48,7 +48,7 @@ This layout is **fluid**, **uncluttered**, and designed to complement external V
 
 ---
 
-# 🔔 3. System Toasts
+## 🔔 3. System Toasts
 
 System‑level notifications appear as **dismissable toasts** directly under the toolbar.
 
@@ -66,7 +66,7 @@ System‑level notifications appear as **dismissable toasts** directly under the
 
 ### Motion
 
-```
+```text
 Duration: 140ms
 Transform: translateY(-6px) → 0
 Opacity: 0 → 1
@@ -82,7 +82,7 @@ Easing: primary
 
 ---
 
-# 👥 4. Left Panel — Player List
+## 👥 4. Left Panel — Player List
 
 The left panel is the **primary anchor** of the UI.
 
@@ -111,13 +111,13 @@ Collapse/expand follows `Left Player Rail` rules in `ANIMATION-AND-MOTION-SPEC.m
 
 ---
 
-# 💬 5. Center Panel — Chat & Notes
+## 💬 5. Center Panel — Chat & Notes
 
 The center panel is the **core interaction surface**.
 
 ### Structure
 
-```
+```text
 [Room Header]
 [Chat ▼ | Notes]
 -----------------------------------
@@ -154,7 +154,7 @@ Each card includes:
 
 Clicking “Open Note” opens a **right‑side pop‑out viewer**:
 
-```
+```text
 ┌────────────────┐
 │ NOTE VIEWER    │
 │----------------│
@@ -173,7 +173,7 @@ Persona rules:
 
 ---
 
-# 🎛️ 6. Right Panel — Vertical Tabs + Slide‑In Panels
+## 🎛️ 6. Right Panel — Vertical Tabs + Slide‑In Panels
 
 The right panel contains **secondary tools**.
 Tabs vary by persona.
@@ -208,7 +208,7 @@ Tabs vary by persona.
 
 Panels follow the motion spec:
 
-```
+```text
 Duration: 180ms
 Easing: primary
 Transform: translateX(100%) → 0
@@ -219,7 +219,7 @@ Chat shifts left by panel width (transform only).
 
 ---
 
-# 🎙️ 7. DM Voice Bar (DM Only)
+## 🎙️ 7. DM Voice Bar (DM Only)
 
 A horizontal, collapsible bar between Campaign Info and the main layout.
 
@@ -236,7 +236,7 @@ A horizontal, collapsible bar between Campaign Info and the main layout.
 
 ### Motion
 
-```
+```text
 Duration: 140ms
 Transform: translateY(-8px) → 0
 Opacity: 0 → 1
@@ -244,28 +244,28 @@ Opacity: 0 → 1
 
 ---
 
-# 🎭 8. Persona‑Specific Layouts
+## 🎭 8. Persona‑Specific Layouts
 
-## 8.1 DM Layout
+### 8.1 DM Layout
 
-```
+```text
 Toolbar
 Campaign Info + Toasts
 DM Voice Bar
 Left Panel | Center Panel | Right Panel (full tabs)
 ```
 
-## 8.2 Player Layout
+### 8.2 Player Layout
 
-```
+```text
 Toolbar
 Campaign Info + Toasts
 Left Panel | Center Panel | Right Panel (limited tabs)
 ```
 
-## 8.3 Spectator Layout
+### 8.3 Spectator Layout
 
-```
+```text
 Toolbar
 Campaign Info + Toasts
 Left Panel | Center Panel (read‑only) | Right Panel (read‑only tabs)
@@ -273,7 +273,7 @@ Left Panel | Center Panel (read‑only) | Right Panel (read‑only tabs)
 
 ---
 
-# 🧩 9. Component Mapping
+## 🧩 9. Component Mapping
 
 ### Left Panel
 
@@ -308,7 +308,7 @@ Left Panel | Center Panel (read‑only) | Right Panel (read‑only tabs)
 
 ---
 
-# 🧠 10. Motion Integration
+## 🧠 10. Motion Integration
 
 All motion follows `ANIMATION-AND-MOTION-SPEC.md`.
 
@@ -320,7 +320,7 @@ All motion follows `ANIMATION-AND-MOTION-SPEC.md`.
 
 ---
 
-# 📐 11. Layout Principles
+## 📐 11. Layout Principles
 
 - **Fluid**: Panels resize with viewport
 - **Uncluttered**: Only one secondary panel visible at a time
@@ -330,7 +330,7 @@ All motion follows `ANIMATION-AND-MOTION-SPEC.md`.
 
 ---
 
-# ✔ 12. Summary
+## ✔ 12. Summary
 
 This layout:
 

@@ -4,7 +4,7 @@ _A complete UX blueprint for DM, Player, and Spectator personas._
 
 ---
 
-# 🧭 Overview
+## 🧭 Overview
 
 The VTT‑Chat SPA supports **three personas**, each with a different level of control, visibility, and UI complexity:
 
@@ -30,9 +30,9 @@ Detailed persona companion docs:
 
 ---
 
-# 🎭 Persona 1: **DM UI**
+## 🎭 Persona 1: **DM UI**
 
-## 🎛️ DM UX Principles
+### 🎛️ DM UX Principles
 
 - **Everything visible**: all rooms, all players, all audio states
 - **Everything controllable**: movement, audio, notes, metadata
@@ -40,9 +40,9 @@ Detailed persona companion docs:
 - **Zero clutter**: collapsible panels, context‑aware controls
 - **Session‑aware**: recap, journal, recording, private rooms
 
-## 🧱 DM Layout Structure
+### 🧱 DM Layout Structure
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │ Top Bar: Session Controls + Room Selector    │
 ├──────────────────────────────────────────────┤
@@ -54,9 +54,9 @@ Detailed persona companion docs:
 └──────────────────────────────────────────────┘
 ```
 
-## 🧩 DM UI Components
+### 🧩 DM UI Components
 
-### **1. Top Bar**
+#### **1. Top Bar**
 
 - Start/end session
 - Recap modal
@@ -64,7 +64,7 @@ Detailed persona companion docs:
 - Room selector (DM can join/monitor any room)
 - DM status indicator
 
-### **2. Player List Panel**
+#### **2. Player List Panel**
 
 - Avatar, name, character
 - Speaking indicator
@@ -80,14 +80,14 @@ Detailed persona companion docs:
   - Open notes shared with player
   - Open metadata card
 
-### **3. Room Manager**
+#### **3. Room Manager**
 
 - Create/delete group rooms
 - Drag players between rooms
 - Force private chat
 - Monitor room (listen‑only)
 
-### **4. Chat Panel**
+#### **4. Chat Panel**
 
 - Room chat
 - Whispers
@@ -96,7 +96,7 @@ Detailed persona companion docs:
 - Publish notes
 - Publish metadata cards
 
-### **5. Notes Panel**
+#### **5. Notes Panel**
 
 - Create/edit/delete notes
 - Visibility controls
@@ -104,13 +104,13 @@ Detailed persona companion docs:
 - Publish to chat
 - Mark as recap‑worthy
 
-### **6. Metadata Card Composer**
+#### **6. Metadata Card Composer**
 
 - NPCs, items, locations, clues
 - Publish to chat
 - Link to notes
 
-### **7. Audio Control Panel**
+#### **7. Audio Control Panel**
 
 - DM voice presets
 - Environment presets
@@ -123,9 +123,9 @@ Detailed persona companion docs:
 
 ---
 
-# 🎭 Persona 2: **Player UI**
+## 🎭 Persona 2: **Player UI**
 
-## 🎮 Player UX Principles
+### 🎮 Player UX Principles
 
 - **Minimal cognitive load**
 - **Fast access to chat + audio controls**
@@ -141,9 +141,9 @@ Players should feel:
 - Empowered to roleplay
 - Not overwhelmed by DM‑level controls
 
-## 🧱 Player Layout Structure
+### 🧱 Player Layout Structure
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │ Top Bar: Room Name + Theme Toggle + Mute     │
 ├──────────────────────────────────────────────┤
@@ -153,16 +153,16 @@ Players should feel:
 └──────────────────────────────────────────────┘
 ```
 
-## 🧩 Player UI Components
+### 🧩 Player UI Components
 
-### **1. Top Bar**
+#### **1. Top Bar**
 
 - Room name
 - Theme toggle
 - Self mute/unmute
 - Connection indicator
 
-### **2. Chat Panel**
+#### **2. Chat Panel**
 
 - Room chat
 - Whispers
@@ -170,14 +170,14 @@ Players should feel:
 - System messages (limited)
 - External logs (optional toggle)
 
-### **3. Message Composer**
+#### **3. Message Composer**
 
 - Markdown formatting
 - Inline images
 - Whisper target dropdown (if enabled)
 - IC toggle (affects DM monitor only)
 
-### **4. Notes Panel (Player Version)**
+#### **4. Notes Panel (Player Version)**
 
 - Player’s own notes
 - Notes shared with party
@@ -187,7 +187,7 @@ Players should feel:
   - Unshare notes
   - Delete DM notes
 
-### **5. Audio Controls (Player Version)**
+#### **5. Audio Controls (Player Version)**
 
 - IC toggle
 - Self mute
@@ -199,9 +199,9 @@ Players should feel:
 
 ---
 
-# 🎭 Persona 3: **Spectator UI**
+## 🎭 Persona 3: **Spectator UI**
 
-## 👁️ Spectator UX Principles
+### 👁️ Spectator UX Principles
 
 - **Read‑only**
 - **Zero clutter**
@@ -212,9 +212,9 @@ Players should feel:
 
 Spectators are observers — not participants.
 
-## 🧱 Spectator Layout Structure
+### 🧱 Spectator Layout Structure
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │ Top Bar: Spectator Mode Indicator            │
 ├──────────────────────────────────────────────┤
@@ -224,41 +224,41 @@ Spectators are observers — not participants.
 └──────────────────────────────────────────────┘
 ```
 
-## 🧩 Spectator UI Components
+### 🧩 Spectator UI Components
 
-### **1. Top Bar**
+#### **1. Top Bar**
 
 - “Spectator Mode” label
 - Theme toggle
 - Connection indicator
 
-### **2. Chat Panel**
+#### **2. Chat Panel**
 
 - Read‑only
 - No composer
 - No whispers
 - No external logs (optional)
 
-### **3. Player List**
+#### **3. Player List**
 
 - Avatar + name
 - Speaking indicator
 - Room membership
 - No actions
 
-### **4. Notes Panel**
+#### **4. Notes Panel**
 
 - Only notes marked **GLOBAL**
 - Read‑only
 
-### **5. Audio**
+#### **5. Audio**
 
 - Spectators hear everything
 - No controls
 
 ---
 
-# 🧠 Cross‑Persona Behavior Rules
+## 🧠 Cross‑Persona Behavior Rules
 
 ### **Room Visibility**
 
@@ -298,7 +298,7 @@ Spectators are observers — not participants.
 
 ---
 
-# 🚀 Next Step Options
+## 🚀 Next Step Options
 
 If you want, I can now generate:
 

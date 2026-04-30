@@ -98,7 +98,7 @@ The Admin UI has **six core sections**:
 
 ### **4.1 Navigation Example**
 
-```
+```text
 Dashboard
 Users
 Rooms & Campaigns

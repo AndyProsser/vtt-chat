@@ -4,7 +4,7 @@ _A complete props reference for all UI components in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 This document lists the **props** for every UI component in the VTT‑Chat SPA.
 
@@ -15,7 +15,7 @@ All props reference the domain types defined in:
 
 All components follow the event‑driven architecture:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -23,11 +23,11 @@ No component mutates state directly.
 
 ---
 
-# 🧱 2. Layout Components
+## 🧱 2. Layout Components
 
 ---
 
-## **2.1 `<Toolbar />`**
+### **2.1 `<Toolbar />`**
 
 | Prop               | Type                   | Description                    |
 | ------------------ | ---------------------- | ------------------------------ | --------------- | --------------------- |
@@ -40,7 +40,7 @@ No component mutates state directly.
 
 ---
 
-## **2.2 `<CampaignInfo />`**
+### **2.2 `<CampaignInfo />`**
 
 | Prop            | Type     | Description                    |
 | --------------- | -------- | ------------------------------ |
@@ -51,7 +51,7 @@ No component mutates state directly.
 
 ---
 
-## **2.3 `<SystemToasts />`**
+### **2.3 `<SystemToasts />`**
 
 | Prop        | Type                        | Description          |
 | ----------- | --------------------------- | -------------------- |
@@ -60,7 +60,7 @@ No component mutates state directly.
 
 ---
 
-## **2.4 `<MainLayout />`**
+### **2.4 `<MainLayout />`**
 
 | Prop       | Type              | Description                |
 | ---------- | ----------------- | -------------------------- |
@@ -68,7 +68,7 @@ No component mutates state directly.
 
 ---
 
-## **2.5 `<LeftRail />`**
+### **2.5 `<LeftRail />`**
 
 | Prop        | Type              | Description                   |
 | ----------- | ----------------- | ----------------------------- |
@@ -77,7 +77,7 @@ No component mutates state directly.
 
 ---
 
-## **2.6 `<CenterPane />`**
+### **2.6 `<CenterPane />`**
 
 | Prop       | Type              | Description                       |
 | ---------- | ----------------- | --------------------------------- |
@@ -85,7 +85,7 @@ No component mutates state directly.
 
 ---
 
-## **2.7 `<RightRail />`**
+### **2.7 `<RightRail />`**
 
 | Prop       | Type              | Description            |
 | ---------- | ----------------- | ---------------------- |
@@ -93,11 +93,11 @@ No component mutates state directly.
 
 ---
 
-# 👥 3. Player List Components
+## 👥 3. Player List Components
 
 ---
 
-## **3.1 `<PlayerList />`**
+### **3.1 `<PlayerList />`**
 
 | Prop                 | Type                                                      | Description           |
 | -------------------- | --------------------------------------------------------- | --------------------- |
@@ -111,7 +111,7 @@ No component mutates state directly.
 
 ---
 
-## **3.2 `<PlayerItem />`**
+### **3.2 `<PlayerItem />`**
 
 | Prop            | Type                         | Description                      |
 | --------------- | ---------------------------- | -------------------------------- |
@@ -123,7 +123,7 @@ No component mutates state directly.
 
 ---
 
-## **3.3 `<PlayerOverrides />` (DM Only)**
+### **3.3 `<PlayerOverrides />` (DM Only)**
 
 | Prop             | Type                                                     | Description      |
 | ---------------- | -------------------------------------------------------- | ---------------- | ---------------------- |
@@ -135,11 +135,11 @@ No component mutates state directly.
 
 ---
 
-# 💬 4. Chat & Messaging Components
+## 💬 4. Chat & Messaging Components
 
 ---
 
-## **4.1 `<RoomHeader />`**
+### **4.1 `<RoomHeader />`**
 
 | Prop                    | Type                                 | Description         |
 | ----------------------- | ------------------------------------ | ------------------- |
@@ -150,7 +150,7 @@ No component mutates state directly.
 
 ---
 
-## **4.2 `<ChatNotesToggle />`**
+### **4.2 `<ChatNotesToggle />`**
 
 | Prop         | Type           | Description       |
 | ------------ | -------------- | ----------------- | ------------ |
@@ -159,7 +159,7 @@ No component mutates state directly.
 
 ---
 
-## **4.3 `<ChatWindow />`**
+### **4.3 `<ChatWindow />`**
 
 | Prop          | Type            | Description               |
 | ------------- | --------------- | ------------------------- |
@@ -170,7 +170,7 @@ No component mutates state directly.
 
 ---
 
-## **4.4 `<MessageComposer />`**
+### **4.4 `<MessageComposer />`**
 
 | Prop                  | Type                     | Description         |
 | --------------------- | ------------------------ | ------------------- |
@@ -181,7 +181,7 @@ No component mutates state directly.
 
 ---
 
-## **4.5 `<MessageBubble />`**
+### **4.5 `<MessageBubble />`**
 
 | Prop           | Type             | Description              |
 | -------------- | ---------------- | ------------------------ |
@@ -191,7 +191,7 @@ No component mutates state directly.
 
 ---
 
-## **4.6 `<NoteCard />`**
+### **4.6 `<NoteCard />`**
 
 | Prop      | Type                       | Description         |
 | --------- | -------------------------- | ------------------- |
@@ -202,11 +202,11 @@ No component mutates state directly.
 
 ---
 
-# 📝 5. Notes Components
+## 📝 5. Notes Components
 
 ---
 
-## **5.1 `<NotesPanel />`**
+### **5.1 `<NotesPanel />`**
 
 | Prop           | Type                       | Description               |
 | -------------- | -------------------------- | ------------------------- |
@@ -217,7 +217,7 @@ No component mutates state directly.
 
 ---
 
-## **5.2 `<NotePopout />`**
+### **5.2 `<NotePopout />`**
 
 | Prop       | Type           | Description          |
 | ---------- | -------------- | -------------------- |
@@ -228,11 +228,11 @@ No component mutates state directly.
 
 ---
 
-# 🎙️ 6. DM‑Only Components
+## 🎙️ 6. DM‑Only Components
 
 ---
 
-## **6.1 `<DMVoiceBar />`**
+### **6.1 `<DMVoiceBar />`**
 
 | Prop             | Type                       | Description       |
 | ---------------- | -------------------------- | ----------------- |
@@ -243,7 +243,7 @@ No component mutates state directly.
 
 ---
 
-## **6.2 `<RoomsPanel />`**
+### **6.2 `<RoomsPanel />`**
 
 | Prop               | Type                                             | Description      |
 | ------------------ | ------------------------------------------------ | ---------------- |
@@ -257,7 +257,7 @@ No component mutates state directly.
 
 ---
 
-## **6.3 `<AudioPanel />`**
+### **6.3 `<AudioPanel />`**
 
 | Prop                   | Type                                                       | Description |
 | ---------------------- | ---------------------------------------------------------- | ----------- |
@@ -272,11 +272,11 @@ No component mutates state directly.
 
 ---
 
-# 🔍 7. Search, Journal, History, Settings
+## 🔍 7. Search, Journal, History, Settings
 
 ---
 
-## **7.1 `<SearchPanel />`**
+### **7.1 `<SearchPanel />`**
 
 | Prop             | Type                             | Description  |
 | ---------------- | -------------------------------- | ------------ |
@@ -287,7 +287,7 @@ No component mutates state directly.
 
 ---
 
-## **7.2 `<JournalPanel />`**
+### **7.2 `<JournalPanel />`**
 
 | Prop          | Type                   | Description      |
 | ------------- | ---------------------- | ---------------- |
@@ -297,7 +297,7 @@ No component mutates state directly.
 
 ---
 
-## **7.3 `<HistoryPanel />`**
+### **7.3 `<HistoryPanel />`**
 
 | Prop       | Type             | Description      |
 | ---------- | ---------------- | ---------------- |
@@ -306,7 +306,7 @@ No component mutates state directly.
 
 ---
 
-## **7.4 `<SettingsPanel />`**
+### **7.4 `<SettingsPanel />`**
 
 | Prop            | Type                                         | Description         |
 | --------------- | -------------------------------------------- | ------------------- |
@@ -318,7 +318,7 @@ No component mutates state directly.
 
 ---
 
-# ✔ 8. Summary
+## ✔ 8. Summary
 
 This file provides:
 

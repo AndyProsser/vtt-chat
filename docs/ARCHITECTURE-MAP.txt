@@ -22,32 +22,32 @@ SECTION 2 — HIGH‑LEVEL SYSTEM OVERVIEW
 ████████████████████████████████████████████████████████████████████████████████
 
                          ┌──────────────────────────────┐
-                         │        VTT‑CHAT CORE          │
-                         │  (Browser App / Extension)    │
+                         │        VTT‑CHAT CORE         │
+                         │  (Browser App / Extension)   │
                          └──────────────────────────────┘
                                       │
                                       ▼
                          ┌──────────────────────────────┐
-                         │        EVENT BUS              │
-                         │  (Single Source of Truth)     │
+                         │        EVENT BUS             │
+                         │  (Single Source of Truth)    │
                          └──────────────────────────────┘
                                       │
                                       ▼
                          ┌──────────────────────────────┐
-                         │         REDUCERS              │
-                         │  Pure, Deterministic Logic    │
+                         │         REDUCERS             │
+                         │  Pure, Deterministic Logic   │
                          └──────────────────────────────┘
                                       │
                                       ▼
                          ┌──────────────────────────────┐
-                         │          STORES               │
-                         │  Zustand, Selector‑Driven     │
+                         │          STORES              │
+                         │  Zustand, Selector‑Driven    │
                          └──────────────────────────────┘
                                       │
                                       ▼
                          ┌──────────────────────────────┐
-                         │            UI                 │
-                         │  Role‑Aware, Non‑Blocking     │
+                         │            UI                │
+                         │  Role‑Aware, Non‑Blocking    │
                          └──────────────────────────────┘
 
 
@@ -77,11 +77,11 @@ Each subsystem is isolated, documented, and event‑driven.
 SECTION 4 — ROLE SYSTEM
 ████████████████████████████████████████████████████████████████████████████████
 
- ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+ ┌───────────────┐   ┌──────────────┐   ┌──────────────┐
  │     DM        │   │    PLAYER    │   │  SPECTATOR   │
  │ Full Control  │   │ Active User  │   │ Read‑Only    │
  │ All Visibility│   │ Private Notes│   │ No Influence │
- └──────────────┘   └──────────────┘   └──────────────┘
+ └───────────────┘   └──────────────┘   └──────────────┘
 
  • DM sees whispers (safety)
  • Players have private spaces
@@ -107,7 +107,7 @@ SECTION 6 — SESSION LIFECYCLE
 ████████████████████████████████████████████████████████████████████████████████
 
  ┌──────┐   start   ┌────────┐   pause   ┌────────┐   end   ┌──────┐
- │ idle │──────────▶│ active │──────────▶│ paused │────────▶│ ended│
+ │ idle │─────────▶│ active │──────────▶│ paused │───────▶│ ended│
  └──────┘           └────────┘           └────────┘         └──────┘
                        ▲                         │
                        └──────── resume ─────────┘

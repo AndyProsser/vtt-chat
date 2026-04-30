@@ -4,11 +4,11 @@ _Authoritative mapping of UI interactions → events → reducers in VTT‑Chat.
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 All UI interactions in VTT‑Chat follow the same pipeline:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -27,7 +27,7 @@ No component mutates state directly.
 
 ---
 
-# 🧱 2. Event Categories
+## 🧱 2. Event Categories
 
 UI events fall into these categories:
 
@@ -47,11 +47,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 💬 3. Chat Events
+## 💬 3. Chat Events
 
 ---
 
-## **3.1 `chat/sendMessage`**
+### **3.1 `chat/sendMessage`**
 
 **Triggered by:**
 `<MessageComposer />`
@@ -76,7 +76,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **3.2 `chat/loadOlderMessages`**
+### **3.2 `chat/loadOlderMessages`**
 
 **Triggered by:**
 `<ChatWindow onScrollTop />`
@@ -95,11 +95,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 📝 4. Notes Events
+## 📝 4. Notes Events
 
 ---
 
-## **4.1 `notes/create`**
+### **4.1 `notes/create`**
 
 **Triggered by:**
 `<NotesPanel onCreateNote />`
@@ -125,7 +125,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **4.2 `notes/update`**
+### **4.2 `notes/update`**
 
 **Triggered by:**
 `<NotePopout />` (DM or Player if allowed)
@@ -146,7 +146,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **4.3 `notes/publishToChat`**
+### **4.3 `notes/publishToChat`**
 
 **Triggered by:**
 `<MessageComposer />` → “Publish Note”
@@ -164,7 +164,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **4.4 `notes/openPopout`**
+### **4.4 `notes/openPopout`**
 
 **Triggered by:**
 `<NoteCard onOpen />` or `<NotesPanel onSelectNote />`
@@ -182,7 +182,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **4.5 `notes/closePopout`**
+### **4.5 `notes/closePopout`**
 
 **Triggered by:**
 `<NotePopout onClose />`
@@ -192,11 +192,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 👥 5. Player List Events
+## 👥 5. Player List Events
 
 ---
 
-## **5.1 `players/rightClick`**
+### **5.1 `players/rightClick`**
 
 **Triggered by:**
 `<PlayerItem onRightClick />`
@@ -218,7 +218,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **5.2 `players/dragStart`** (DM Only)
+### **5.2 `players/dragStart`** (DM Only)
 
 **Triggered by:**
 `<PlayerList onPlayerDrag />`
@@ -236,7 +236,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **5.3 `players/dragDrop`** (DM Only)
+### **5.3 `players/dragDrop`** (DM Only)
 
 **Triggered by:**
 `<PlayerList onPlayerDrop />`
@@ -255,11 +255,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 🏠 6. Room Events (DM Only)
+## 🏠 6. Room Events (DM Only)
 
 ---
 
-## **6.1 `rooms/create`**
+### **6.1 `rooms/create`**
 
 **Triggered by:**
 `<RoomsPanel onCreateRoom />`
@@ -277,7 +277,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **6.2 `rooms/delete`**
+### **6.2 `rooms/delete`**
 
 **Triggered by:**
 `<RoomsPanel onDeleteRoom />`
@@ -295,7 +295,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **6.3 `rooms/rename`**
+### **6.3 `rooms/rename`**
 
 **Triggered by:**
 `<RoomsPanel onRenameRoom />`
@@ -314,7 +314,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **6.4 `rooms/setEnvironment`**
+### **6.4 `rooms/setEnvironment`**
 
 **Triggered by:**
 `<RoomsPanel onSetEnvironment />`
@@ -333,11 +333,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 🎙️ 7. Audio Events (DM Only)
+## 🎙️ 7. Audio Events (DM Only)
 
 ---
 
-## **7.1 `audio/setGain`**
+### **7.1 `audio/setGain`**
 
 **Triggered by:**
 `<PlayerOverrides />` or `<AudioPanel />`
@@ -356,7 +356,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **7.2 `audio/toggleMute`**
+### **7.2 `audio/toggleMute`**
 
 **Triggered by:**
 `<PlayerOverrides />` or `<AudioPanel />`
@@ -374,7 +374,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **7.3 `audio/setCondition`**
+### **7.3 `audio/setCondition`**
 
 **Payload:**
 
@@ -390,7 +390,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **7.4 `audio/setDistance`**
+### **7.4 `audio/setDistance`**
 
 **Payload:**
 
@@ -406,7 +406,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **7.5 Bulk Actions**
+### **7.5 Bulk Actions**
 
 | Event                      | Reducer                           |
 | -------------------------- | --------------------------------- |
@@ -416,11 +416,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 🔍 8. Search Events
+## 🔍 8. Search Events
 
 ---
 
-## **8.1 `search/queryChange`**
+### **8.1 `search/queryChange`**
 
 **Triggered by:**
 `<SearchPanel onQueryChange />`
@@ -438,7 +438,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## **8.2 `search/selectResult`**
+### **8.2 `search/selectResult`**
 
 **Triggered by:**
 `<SearchPanel onSelectResult />`
@@ -456,11 +456,11 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 📚 9. Journal Events
+## 📚 9. Journal Events
 
 ---
 
-## **9.1 `journal/openEntry`**
+### **9.1 `journal/openEntry`**
 
 **Triggered by:**
 `<JournalPanel onOpenEntry />`
@@ -478,7 +478,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-# 🕒 10. History Events
+## 🕒 10. History Events
 
 History is read‑only for Player/Spectator.
 
@@ -486,11 +486,11 @@ No UI‑originating events.
 
 ---
 
-# ⚙️ 11. Settings Events
+## ⚙️ 11. Settings Events
 
 ---
 
-## **11.1 `settings/updateAudio`**
+### **11.1 `settings/updateAudio`**
 
 **Triggered by:**
 `<SettingsPanel onUpdateAudio />`
@@ -506,7 +506,7 @@ Partial<AudioSettings>
 
 ---
 
-## **11.2 `settings/updateUI`**
+### **11.2 `settings/updateUI`**
 
 **Triggered by:**
 `<SettingsPanel onUpdateUI />`
@@ -522,11 +522,11 @@ Partial<UISettings>
 
 ---
 
-# 🔔 12. Toast Events
+## 🔔 12. Toast Events
 
 ---
 
-## **12.1 `toast/dismiss`**
+### **12.1 `toast/dismiss`**
 
 **Triggered by:**
 `<SystemToasts onDismiss />`
@@ -544,11 +544,11 @@ Partial<UISettings>
 
 ---
 
-# 🧭 13. UI View Events
+## 🧭 13. UI View Events
 
 ---
 
-## **13.1 `ui/toggleChatNotes`**
+### **13.1 `ui/toggleChatNotes`**
 
 **Triggered by:**
 `<ChatNotesToggle onChange />`
@@ -566,7 +566,7 @@ Partial<UISettings>
 
 ---
 
-## **13.2 `ui/openPanel`**
+### **13.2 `ui/openPanel`**
 
 **Triggered by:**
 `<RightTabBar onTabSelect />`
@@ -584,7 +584,7 @@ Partial<UISettings>
 
 ---
 
-## **13.3 `ui/closePanel`**
+### **13.3 `ui/closePanel`**
 
 **Triggered by:**
 `<SlideInPanels onClose />`
@@ -594,7 +594,7 @@ Partial<UISettings>
 
 ---
 
-# ✔ 14. Summary
+## ✔ 14. Summary
 
 This file defines:
 

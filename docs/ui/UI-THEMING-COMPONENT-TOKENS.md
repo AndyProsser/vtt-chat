@@ -4,7 +4,7 @@ _Component‑specific token usage for VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 This document defines **exactly which CSS tokens each UI component uses**, and for what purpose.
 
@@ -20,7 +20,7 @@ This is the authoritative reference for implementing the theme layer.
 
 ---
 
-# 🧱 2. Token Categories
+## 🧱 2. Token Categories
 
 From `UI-THEMING.md`, components may use:
 
@@ -59,13 +59,13 @@ From `UI-THEMING.md`, components may use:
 
 ---
 
-# 🧩 3. Component Token Map
+## 🧩 3. Component Token Map
 
 Below is the **complete component → token mapping**.
 
 ---
 
-# **3.1 Toolbar**
+### **3.1 Toolbar**
 
 | Element                       | Tokens             |
 | ----------------------------- | ------------------ |
@@ -78,7 +78,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.2 CampaignInfo**
+### **3.2 CampaignInfo**
 
 | Element          | Tokens             |
 | ---------------- | ------------------ |
@@ -89,7 +89,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.3 SystemToasts**
+### **3.3 SystemToasts**
 
 | Element        | Tokens             |
 | -------------- | ------------------ |
@@ -102,7 +102,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.4 LeftRail (Player List)**
+### **3.4 LeftRail (Player List)**
 
 | Element                 | Tokens                                     |
 | ----------------------- | ------------------------------------------ |
@@ -117,7 +117,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.5 PlayerItem**
+### **3.5 PlayerItem**
 
 | Element              | Tokens                  |
 | -------------------- | ----------------------- |
@@ -129,7 +129,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.6 CenterPane**
+### **3.6 CenterPane**
 
 | Element    | Tokens            |
 | ---------- | ----------------- |
@@ -139,7 +139,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.7 RoomHeader**
+### **3.7 RoomHeader**
 
 | Element             | Tokens             |
 | ------------------- | ------------------ |
@@ -149,7 +149,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.8 ChatNotesToggle**
+### **3.8 ChatNotesToggle**
 
 | Element              | Tokens             |
 | -------------------- | ------------------ |
@@ -159,7 +159,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.9 ChatWindow**
+### **3.9 ChatWindow**
 
 | Element               | Tokens                  |
 | --------------------- | ----------------------- |
@@ -170,7 +170,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.10 MessageBubble**
+### **3.10 MessageBubble**
 
 | Message Type           | Tokens                  |
 | ---------------------- | ----------------------- |
@@ -182,7 +182,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.11 NoteCard (Chat)**
+### **3.11 NoteCard (Chat)**
 
 | Element                  | Tokens             |
 | ------------------------ | ------------------ |
@@ -195,7 +195,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.12 NotesPanel**
+### **3.12 NotesPanel**
 
 | Element         | Tokens                  |
 | --------------- | ----------------------- |
@@ -206,7 +206,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.13 NotePopout**
+### **3.13 NotePopout**
 
 | Element      | Tokens             |
 | ------------ | ------------------ |
@@ -218,7 +218,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.14 RightTabBar**
+### **3.14 RightTabBar**
 
 | Element           | Tokens             |
 | ----------------- | ------------------ |
@@ -229,7 +229,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.15 SlideInPanels**
+### **3.15 SlideInPanels**
 
 | Element     | Tokens             |
 | ----------- | ------------------ |
@@ -240,7 +240,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.16 RoomsPanel (DM)**
+### **3.16 RoomsPanel (DM)**
 
 | Element          | Tokens             |
 | ---------------- | ------------------ |
@@ -251,7 +251,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.17 AudioPanel (DM)**
+### **3.17 AudioPanel (DM)**
 
 | Element         | Tokens             |
 | --------------- | ------------------ |
@@ -262,7 +262,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.18 SearchPanel**
+### **3.18 SearchPanel**
 
 | Element          | Tokens                  |
 | ---------------- | ----------------------- |
@@ -274,7 +274,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.19 JournalPanel**
+### **3.19 JournalPanel**
 
 | Element     | Tokens                  |
 | ----------- | ----------------------- |
@@ -284,7 +284,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.20 HistoryPanel**
+### **3.20 HistoryPanel**
 
 | Element       | Tokens             |
 | ------------- | ------------------ |
@@ -294,7 +294,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# **3.21 SettingsPanel**
+### **3.21 SettingsPanel**
 
 | Element         | Tokens                                                 |
 | --------------- | ------------------------------------------------------ |
@@ -305,7 +305,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-# ✔ 4. Summary
+### ✔ 4. Summary
 
 This file provides:
 

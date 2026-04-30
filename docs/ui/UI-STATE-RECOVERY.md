@@ -4,7 +4,7 @@ _Authoritative specification for UI state recovery in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 VTT‑Chat uses a **backend‑authoritative**, **deterministic**, **atomic** state recovery model.
 
@@ -19,7 +19,7 @@ The UI must:
 
 All UI recovery flows follow:
 
-```
+```text
 Transport reconnects →
 Backend sends full snapshot →
 Client applies snapshot atomically →
@@ -37,11 +37,11 @@ This document defines:
 
 ---
 
-# 🧱 2. Recovery Model Summary
+## 🧱 2. Recovery Model Summary
 
 Recovery is split into two layers:
 
-## **2.1 Domain State (Authoritative)**
+### **2.1 Domain State (Authoritative)**
 
 Recovered from backend snapshot:
 
@@ -57,7 +57,7 @@ Recovered from backend snapshot:
 
 This is applied **atomically** via reducers.
 
-## **2.2 UI State (Local Only)**
+### **2.2 UI State (Local Only)**
 
 Recovered from `uiStore`:
 
@@ -73,7 +73,7 @@ UI state is **never** included in backend snapshots.
 
 ---
 
-# 🧩 3. Recovery Triggers
+## 🧩 3. Recovery Triggers
 
 Recovery is triggered by:
 
@@ -95,11 +95,11 @@ UI triggers full hydration.
 
 ---
 
-# 🔄 4. Recovery Flow (Full Sequence)
+## 🔄 4. Recovery Flow (Full Sequence)
 
 This is the **canonical** recovery flow.
 
-```
+```text
 1. Transport reconnects
 2. UI shows toast: “Reconnecting…”
 3. Backend sends full snapshot
@@ -117,7 +117,7 @@ No optimistic UI.
 
 ---
 
-# 🧱 5. Domain State Recovery (Authoritative)
+## 🧱 5. Domain State Recovery (Authoritative)
 
 The following stores are **fully overwritten** by the snapshot:
 
@@ -147,7 +147,7 @@ UI never filters domain state.
 
 ---
 
-# 🧩 6. UI State Recovery (Local Only)
+## 🧩 6. UI State Recovery (Local Only)
 
 UI state is **not** overwritten by snapshots.
 
@@ -167,7 +167,7 @@ After domain hydration, the UI restores:
 
 If whisper target no longer exists or is in another room:
 
-```
+```text
 uiStore.whisperTarget = null
 ```
 
@@ -175,7 +175,7 @@ uiStore.whisperTarget = null
 
 If active note is no longer visible:
 
-```
+```text
 uiStore.activeNoteId = null
 ```
 
@@ -183,17 +183,17 @@ uiStore.activeNoteId = null
 
 If active panel is no longer allowed for persona:
 
-```
+```text
 uiStore.activeRightPanel = null
 ```
 
 ---
 
-# 🎭 7. Persona‑Specific Recovery Rules
+## 🎭 7. Persona‑Specific Recovery Rules
 
 ---
 
-## **7.1 DM**
+### **7.1 DM**
 
 - All panels may reopen
 - All notes remain visible
@@ -203,7 +203,7 @@ uiStore.activeRightPanel = null
 
 ---
 
-## **7.2 Player**
+### **7.2 Player**
 
 - Whisper target preserved only if still valid
 - Notes panel reopens if previously open
@@ -212,7 +212,7 @@ uiStore.activeRightPanel = null
 
 ---
 
-## **7.3 Spectator**
+### **7.3 Spectator**
 
 - Always read‑only
 - Whisper target always cleared
@@ -221,13 +221,13 @@ uiStore.activeRightPanel = null
 
 ---
 
-# 🧠 8. Error Handling During Recovery
+## 🧠 8. Error Handling During Recovery
 
 Recovery errors follow `UI-ERROR-HANDLING.md`.
 
 ---
 
-## **8.1 Snapshot Validation Error**
+### **8.1 Snapshot Validation Error**
 
 If snapshot is malformed:
 
@@ -238,7 +238,7 @@ If snapshot is malformed:
 
 ---
 
-## **8.2 Reducer Error During Hydration**
+### **8.2 Reducer Error During Hydration**
 
 If reducer rejects snapshot data:
 
@@ -248,7 +248,7 @@ If reducer rejects snapshot data:
 
 ---
 
-## **8.3 Transport Failure During Recovery**
+### **8.3 Transport Failure During Recovery**
 
 If connection drops mid‑hydration:
 
@@ -259,7 +259,7 @@ If connection drops mid‑hydration:
 
 ---
 
-# 🎛️ 9. Motion & UX During Recovery
+## 🎛️ 9. Motion & UX During Recovery
 
 ### **9.1 No blocking overlays**
 
@@ -284,11 +284,11 @@ Hydration is instantaneous.
 
 ---
 
-# 🔍 10. Component‑Specific Recovery Behaviour
+## 🔍 10. Component‑Specific Recovery Behaviour
 
 ---
 
-## **10.1 `<ChatWindow />`**
+### **10.1 `<ChatWindow />`**
 
 - Re-renders with new messages
 - Scroll position preserved if possible
@@ -296,40 +296,40 @@ Hydration is instantaneous.
 
 ---
 
-## **10.2 `<NotesPanel />`**
+### **10.2 `<NotesPanel />`**
 
 - Re-renders with new note list
 - If active note disappears → pop‑out closes
 
 ---
 
-## **10.3 `<PlayerList />`**
+### **10.3 `<PlayerList />`**
 
 - Re-renders with updated rooms/players
 - Drag state cancelled
 
 ---
 
-## **10.4 `<RightTabBar />`**
+### **10.4 `<RightTabBar />`**
 
 - Active tab preserved unless invalid
 
 ---
 
-## **10.5 `<SlideInPanels />`**
+### **10.5 `<SlideInPanels />`**
 
 - Panel remains open unless persona no longer has access
 
 ---
 
-## **10.6 `<DMVoiceBar />`**
+### **10.6 `<DMVoiceBar />`**
 
 - Re-renders with updated audio state
 - Open/closed state preserved
 
 ---
 
-# ✔ 11. Summary
+## ✔ 11. Summary
 
 This document defines:
 

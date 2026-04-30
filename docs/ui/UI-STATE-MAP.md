@@ -4,7 +4,7 @@ _Authoritative mapping of UI components → Zustand stores → selectors._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 Every UI component in VTT‑Chat derives its state from **Zustand stores**, using **selectors** that expose only the required data.
 
@@ -13,7 +13,7 @@ No component mutates state directly.
 
 All state flows follow:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -25,7 +25,7 @@ This document defines:
 
 ---
 
-# 🧱 2. Store Overview
+## 🧱 2. Store Overview
 
 The UI uses the following stores (already defined in your architecture):
 
@@ -46,11 +46,11 @@ No new stores are introduced.
 
 ---
 
-# 🧩 3. Layout Components
+## 🧩 3. Layout Components
 
 ---
 
-## **3.1 `<Toolbar />`**
+### **3.1 `<Toolbar />`**
 
 **Selectors:**
 
@@ -63,7 +63,7 @@ No new stores are introduced.
 
 ---
 
-## **3.2 `<CampaignInfo />`**
+### **3.2 `<CampaignInfo />`**
 
 **Selectors:**
 
@@ -77,7 +77,7 @@ No new stores are introduced.
 
 ---
 
-## **3.3 `<SystemToasts />`**
+### **3.3 `<SystemToasts />`**
 
 **Selectors:**
 
@@ -87,7 +87,7 @@ No new stores are introduced.
 
 ---
 
-## **3.4 `<LeftRail />`**
+### **3.4 `<LeftRail />`**
 
 **Selectors:**
 
@@ -97,7 +97,7 @@ No new stores are introduced.
 
 ---
 
-## **3.5 `<CenterPane />`**
+### **3.5 `<CenterPane />`**
 
 **Selectors:**
 
@@ -107,7 +107,7 @@ No new stores are introduced.
 
 ---
 
-## **3.6 `<RightRail />`**
+### **3.6 `<RightRail />`**
 
 **Selectors:**
 
@@ -117,11 +117,11 @@ No new stores are introduced.
 
 ---
 
-# 👥 4. Player List Components
+## 👥 4. Player List Components
 
 ---
 
-## **4.1 `<PlayerList />`**
+### **4.1 `<PlayerList />`**
 
 **Selectors:**
 
@@ -133,7 +133,7 @@ No new stores are introduced.
 
 ---
 
-## **4.2 `<PlayerItem />`**
+### **4.2 `<PlayerItem />`**
 
 **Selectors:**
 
@@ -146,7 +146,7 @@ No new stores are introduced.
 
 ---
 
-## **4.3 `<PlayerOverrides />` (DM Only)**
+### **4.3 `<PlayerOverrides />` (DM Only)**
 
 **Selectors:**
 
@@ -159,11 +159,11 @@ No new stores are introduced.
 
 ---
 
-# 💬 5. Chat & Messaging Components
+## 💬 5. Chat & Messaging Components
 
 ---
 
-## **5.1 `<RoomHeader />`**
+### **5.1 `<RoomHeader />`**
 
 **Selectors:**
 
@@ -175,7 +175,7 @@ No new stores are introduced.
 
 ---
 
-## **5.2 `<ChatNotesToggle />`**
+### **5.2 `<ChatNotesToggle />`**
 
 **Selectors:**
 
@@ -185,7 +185,7 @@ No new stores are introduced.
 
 ---
 
-## **5.3 `<ChatWindow />`**
+### **5.3 `<ChatWindow />`**
 
 **Selectors:**
 
@@ -196,7 +196,7 @@ No new stores are introduced.
 
 ---
 
-## **5.4 `<MessageComposer />`**
+### **5.4 `<MessageComposer />`**
 
 **Selectors:**
 
@@ -208,7 +208,7 @@ No new stores are introduced.
 
 ---
 
-## **5.5 `<MessageBubble />`**
+### **5.5 `<MessageBubble />`**
 
 **Selectors:**
 
@@ -218,7 +218,7 @@ No new stores are introduced.
 
 ---
 
-## **5.6 `<NoteCard />`**
+### **5.6 `<NoteCard />`**
 
 **Selectors:**
 
@@ -229,11 +229,11 @@ No new stores are introduced.
 
 ---
 
-# 📝 6. Notes Components
+## 📝 6. Notes Components
 
 ---
 
-## **6.1 `<NotesPanel />`**
+### **6.1 `<NotesPanel />`**
 
 **Selectors:**
 
@@ -244,7 +244,7 @@ No new stores are introduced.
 
 ---
 
-## **6.2 `<NotePopout />`**
+### **6.2 `<NotePopout />`**
 
 **Selectors:**
 
@@ -256,11 +256,11 @@ No new stores are introduced.
 
 ---
 
-# 🎙️ 7. DM‑Only Components
+## 🎙️ 7. DM‑Only Components
 
 ---
 
-## **7.1 `<DMVoiceBar />`**
+### **7.1 `<DMVoiceBar />`**
 
 **Selectors:**
 
@@ -271,7 +271,7 @@ No new stores are introduced.
 
 ---
 
-## **7.2 `<RoomsPanel />`**
+### **7.2 `<RoomsPanel />`**
 
 **Selectors:**
 
@@ -282,7 +282,7 @@ No new stores are introduced.
 
 ---
 
-## **7.3 `<AudioPanel />`**
+### **7.3 `<AudioPanel />`**
 
 **Selectors:**
 
@@ -296,11 +296,11 @@ No new stores are introduced.
 
 ---
 
-# 🔍 8. Search, Journal, History, Settings
+## 🔍 8. Search, Journal, History, Settings
 
 ---
 
-## **8.1 `<SearchPanel />`**
+### **8.1 `<SearchPanel />`**
 
 **Selectors:**
 
@@ -311,7 +311,7 @@ No new stores are introduced.
 
 ---
 
-## **8.2 `<JournalPanel />`**
+### **8.2 `<JournalPanel />`**
 
 **Selectors:**
 
@@ -321,7 +321,7 @@ No new stores are introduced.
 
 ---
 
-## **8.3 `<HistoryPanel />`**
+### **8.3 `<HistoryPanel />`**
 
 **Selectors:**
 
@@ -331,7 +331,7 @@ No new stores are introduced.
 
 ---
 
-## **8.4 `<SettingsPanel />`**
+### **8.4 `<SettingsPanel />`**
 
 **Selectors:**
 
@@ -343,7 +343,7 @@ No new stores are introduced.
 
 ---
 
-# 🧠 9. UI‑Only State (uiStore)
+## 🧠 9. UI‑Only State (uiStore)
 
 The `uiStore` contains **only UI state**, never domain state.
 
@@ -359,7 +359,7 @@ The `uiStore` contains **only UI state**, never domain state.
 
 ---
 
-# ✔ 10. Summary
+## ✔ 10. Summary
 
 This file defines:
 

@@ -4,7 +4,7 @@ _Authoritative specification for dark mode behaviour in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 Dark mode is the **primary** visual mode of VTT‑Chat.
 
@@ -26,7 +26,7 @@ This document defines:
 
 ---
 
-# 🌑 2. Dark Mode Philosophy
+## 🌑 2. Dark Mode Philosophy
 
 Dark mode in VTT‑Chat is:
 
@@ -52,7 +52,7 @@ All colors come from CSS variables — never hardcoded.
 
 ---
 
-# 🎨 3. Dark Mode Token Set
+## 🎨 3. Dark Mode Token Set
 
 Dark mode is the **default** token set:
 
@@ -88,7 +88,7 @@ These tokens are **never modified** by components.
 
 ---
 
-# 🌕 4. Light Mode Overrides
+## 🌕 4. Light Mode Overrides
 
 Light mode is activated via:
 
@@ -128,13 +128,13 @@ Overrides:
 
 ---
 
-# 🧩 5. Component Behaviour in Dark Mode
+## 🧩 5. Component Behaviour in Dark Mode
 
 Below is the **component‑level behaviour** for dark mode.
 
 ---
 
-## **5.1 Toolbar**
+### **5.1 Toolbar**
 
 - Background: `--bg-surface-alt`
 - Icons: `--text-primary`
@@ -144,7 +144,7 @@ Dark mode emphasizes **status visibility**.
 
 ---
 
-## **5.2 CampaignInfo**
+### **5.2 CampaignInfo**
 
 - Background: `--bg-surface`
 - Text: `--text-primary`
@@ -154,7 +154,7 @@ Dark mode reduces glare by using **soft contrast** between surfaces.
 
 ---
 
-## **5.3 SystemToasts**
+### **5.3 SystemToasts**
 
 - Background: `--bg-elevated`
 - Border: `--border-strong`
@@ -164,7 +164,7 @@ Dark mode toasts must be **high contrast** but not bright.
 
 ---
 
-## **5.4 LeftRail (Player List)**
+### **5.4 LeftRail (Player List)**
 
 - Background: `--bg-surface`
 - Hover: `--accent-primary-soft`
@@ -174,7 +174,7 @@ Dark mode emphasizes **player activity** without bright colors.
 
 ---
 
-## **5.5 ChatWindow**
+### **5.5 ChatWindow**
 
 - Background: `--bg-surface`
 - Own message tint: `--accent-primary-soft`
@@ -184,7 +184,7 @@ Dark mode keeps chat readable without harsh whites.
 
 ---
 
-## **5.6 MessageBubble**
+### **5.6 MessageBubble**
 
 - Own message border: `--accent-player`
 - Timestamp: `--text-muted`
@@ -193,7 +193,7 @@ Dark mode ensures timestamps are visible but unobtrusive.
 
 ---
 
-## **5.7 NoteCard**
+### **5.7 NoteCard**
 
 - Border-left: `--accent-primary`
 - Visibility badges use persona accents
@@ -202,7 +202,7 @@ Dark mode makes note cards stand out without overpowering chat.
 
 ---
 
-## **5.8 NotesPanel**
+### **5.8 NotesPanel**
 
 - Background: `--bg-elevated`
 - Hover: `--accent-primary-soft`
@@ -211,7 +211,7 @@ Dark mode uses elevation to separate panels.
 
 ---
 
-## **5.9 RightTabBar**
+### **5.9 RightTabBar**
 
 - Background: `--bg-surface-alt`
 - Active tab border: `--accent-primary`
@@ -220,7 +220,7 @@ Dark mode keeps tabs subtle but clear.
 
 ---
 
-## **5.10 SlideInPanels**
+### **5.10 SlideInPanels**
 
 - Background: `--bg-elevated`
 - Border-left: `--border-strong`
@@ -229,7 +229,7 @@ Dark mode uses elevation + border to define panel boundaries.
 
 ---
 
-# 🎭 6. Persona Accent Behaviour in Dark Mode
+## 🎭 6. Persona Accent Behaviour in Dark Mode
 
 Persona accents remain the same in dark mode:
 
@@ -252,7 +252,7 @@ This prevents neon‑gamer aesthetics.
 
 ---
 
-# 🌓 7. Motion in Dark Mode
+## 🌓 7. Motion in Dark Mode
 
 Motion rules are identical in light/dark mode.
 
@@ -270,7 +270,7 @@ No color transitions.
 
 Example:
 
-```
+```css
 box-shadow: 0 0 6px rgba(var(--accent-primary), 0.25);
 ```
 
@@ -278,7 +278,7 @@ DM Voice Bar uses slightly stronger glow.
 
 ---
 
-# ♿ 8. Accessibility in Dark Mode
+## ♿ 8. Accessibility in Dark Mode
 
 ### **8.1 Minimum contrast**
 
@@ -301,7 +301,7 @@ When `prefers-reduced-motion: reduce`:
 
 ---
 
-# 🔧 9. Implementation Rules
+## 🔧 9. Implementation Rules
 
 ### **9.1 Never use raw hex values**
 
@@ -331,7 +331,7 @@ No per‑component theme logic.
 
 ---
 
-# ✔ 10. Summary
+## ✔ 10. Summary
 
 This document defines:
 

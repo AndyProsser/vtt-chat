@@ -4,7 +4,7 @@ _Authoritative specification for light mode behaviour in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 Light mode exists for:
 
@@ -21,7 +21,7 @@ Light mode is the **alternate palette**.
 
 ---
 
-# 🌕 2. Light Mode Philosophy
+## 🌕 2. Light Mode Philosophy
 
 Light mode in VTT‑Chat is:
 
@@ -47,7 +47,7 @@ Only token overrides — no component‑level overrides.
 
 ---
 
-# 🎨 3. Light Mode Token Overrides
+## 🎨 3. Light Mode Token Overrides
 
 Light mode is activated via:
 
@@ -104,13 +104,13 @@ These remain stable across themes for identity consistency.
 
 ---
 
-# 🧩 4. Component Behaviour in Light Mode
+## 🧩 4. Component Behaviour in Light Mode
 
 Below is the **component‑level behaviour** for light mode.
 
 ---
 
-## **4.1 Toolbar**
+### **4.1 Toolbar**
 
 - Background: `--bg-surface-alt`
 - Icons: `--text-primary`
@@ -120,7 +120,7 @@ Light mode keeps the toolbar clean and unobtrusive.
 
 ---
 
-## **4.2 CampaignInfo**
+### **4.2 CampaignInfo**
 
 - Background: `--bg-surface`
 - Text: `--text-primary`
@@ -130,7 +130,7 @@ Light mode prioritizes clarity and readability.
 
 ---
 
-## **4.3 SystemToasts**
+### **4.3 SystemToasts**
 
 - Background: `--bg-elevated`
 - Border: `--border-strong`
@@ -140,7 +140,7 @@ Toasts remain subtle and non‑intrusive.
 
 ---
 
-## **4.4 LeftRail (Player List)**
+### **4.4 LeftRail (Player List)**
 
 - Background: `--bg-surface`
 - Hover: `--accent-primary-soft`
@@ -150,7 +150,7 @@ Light mode keeps the rail clean and bright without glare.
 
 ---
 
-## **4.5 ChatWindow**
+### **4.5 ChatWindow**
 
 - Background: `--bg-surface`
 - Own message tint: `--accent-primary-soft`
@@ -160,7 +160,7 @@ Light mode ensures chat remains readable and calm.
 
 ---
 
-## **4.6 MessageBubble**
+### **4.6 MessageBubble**
 
 - Own message border: `--accent-player`
 - Timestamp: `--text-muted`
@@ -169,7 +169,7 @@ Light mode uses soft greys for metadata.
 
 ---
 
-## **4.7 NoteCard**
+### **4.7 NoteCard**
 
 - Border-left: `--accent-primary`
 - Visibility badges use persona accents
@@ -178,7 +178,7 @@ Light mode keeps note cards visually distinct without heavy contrast.
 
 ---
 
-## **4.8 NotesPanel**
+### **4.8 NotesPanel**
 
 - Background: `--bg-elevated`
 - Hover: `--accent-primary-soft`
@@ -187,7 +187,7 @@ Light mode uses elevation to separate content.
 
 ---
 
-## **4.9 RightTabBar**
+### **4.9 RightTabBar**
 
 - Background: `--bg-surface-alt`
 - Active tab border: `--accent-primary`
@@ -196,7 +196,7 @@ Light mode keeps tabs crisp and readable.
 
 ---
 
-## **4.10 SlideInPanels**
+### **4.10 SlideInPanels**
 
 - Background: `--bg-elevated`
 - Border-left: `--border-strong`
@@ -205,7 +205,7 @@ Light mode uses subtle borders to define panel edges.
 
 ---
 
-# 🎭 5. Persona Accent Behaviour in Light Mode
+## 🎭 5. Persona Accent Behaviour in Light Mode
 
 Persona accents behave **identically** to dark mode.
 
@@ -227,7 +227,7 @@ This preserves the command‑centre aesthetic.
 
 ---
 
-# 🌓 6. Motion in Light Mode
+## 🌓 6. Motion in Light Mode
 
 Motion rules are identical to dark mode:
 
@@ -242,7 +242,7 @@ Glow uses the same accent tokens but with **lower opacity** in light mode to avo
 
 ---
 
-# ♿ 7. Accessibility in Light Mode
+## ♿ 7. Accessibility in Light Mode
 
 ### **7.1 Minimum contrast**
 
@@ -264,7 +264,7 @@ Same behaviour as dark mode:
 
 ---
 
-# 🔧 8. Implementation Rules
+## 🔧 8. Implementation Rules
 
 ### **8.1 Light mode is a token override only**
 
@@ -292,7 +292,7 @@ Accents remain stable across themes.
 
 ---
 
-# ✔ 9. Summary
+## ✔ 9. Summary
 
 This document defines:
 

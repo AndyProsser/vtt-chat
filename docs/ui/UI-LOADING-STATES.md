@@ -4,7 +4,7 @@ _Authoritative specification for loading, empty, and transitional UI states in V
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 VTT‑Chat is designed to feel **instant**, **responsive**, and **non‑blocking**, even during:
 
@@ -27,7 +27,7 @@ Loading states must **never** block interaction unless absolutely required (e.g.
 
 ---
 
-# 🧱 2. Global Loading Principles
+## 🧱 2. Global Loading Principles
 
 ### **2.1 Loading must never block core UI**
 
@@ -60,17 +60,17 @@ Loading states must **never** block interaction unless absolutely required (e.g.
 
 ---
 
-# 🧩 3. Global App Loading States
+## 🧩 3. Global App Loading States
 
 The app has **three** global loading phases:
 
 ---
 
-## **3.1 Phase 1 — App Bootstrapping**
+### **3.1 Phase 1 — App Bootstrapping**
 
 Occurs when the SPA first loads.
 
-### UI Behaviour
+#### UI Behaviour
 
 - Toolbar renders immediately
 - CampaignInfo renders with placeholders
@@ -78,57 +78,57 @@ Occurs when the SPA first loads.
 - CenterPane renders empty chat window
 - RightRail tabs render but disabled
 
-### Motion
+#### Motion
 
 None — static placeholders.
 
-### Persona Rules
+#### Persona Rules
 
 Same for all personas.
 
 ---
 
-## **3.2 Phase 2 — Session Initialization**
+### **3.2 Phase 2 — Session Initialization**
 
 Occurs after connecting but before receiving the first snapshot.
 
-### UI Behaviour
+#### UI Behaviour
 
 - Toast: **“Connecting…”**
 - Chat window shows “Loading messages…” placeholder
 - Notes panel shows “Loading notes…” placeholder
 - Player list shows skeleton avatars
 
-### Motion
+#### Motion
 
 Fade‑in of placeholders (120ms).
 
 ---
 
-## **3.3 Phase 3 — Snapshot Hydration**
+### **3.3 Phase 3 — Snapshot Hydration**
 
 Occurs when backend sends the authoritative snapshot.
 
-### UI Behaviour
+#### UI Behaviour
 
 - All domain stores update atomically
 - UI re-renders instantly
 - No animation on hydration
 - UI-only state restored (see UI‑STATE‑RECOVERY.md)
 
-### Motion
+#### Motion
 
 None — hydration is instantaneous.
 
 ---
 
-# 👥 4. Component‑Level Loading States
+## 👥 4. Component‑Level Loading States
 
 Each component has a deterministic loading state.
 
 ---
 
-# **4.1 `<PlayerList />`**
+## **4.1 `<PlayerList />`**
 
 ### Loading State
 
@@ -146,7 +146,7 @@ Same for all personas.
 
 ---
 
-# **4.2 `<ChatWindow />`**
+## **4.2 `<ChatWindow />`**
 
 ### Loading State
 
@@ -165,7 +165,7 @@ Same for all personas.
 
 ---
 
-# **4.3 `<MessageComposer />`**
+## **4.3 `<MessageComposer />`**
 
 ### Loading State
 
@@ -178,7 +178,7 @@ Same for all personas.
 
 ---
 
-# **4.4 `<NotesPanel />`**
+## **4.4 `<NotesPanel />`**
 
 ### Loading State
 
@@ -189,13 +189,13 @@ Same for all personas.
 
 - “No notes yet”
 
-### Persona Rules
+#### Persona Rules
 
 - Spectator sees only global notes once loaded
 
 ---
 
-# **4.5 `<NotePopout />`**
+## **4.5 `<NotePopout />`**
 
 ### Loading State
 
@@ -209,7 +209,7 @@ Same for all personas.
 
 ---
 
-# **4.6 `<RoomsPanel />` (DM Only)**
+## **4.6 `<RoomsPanel />` (DM Only)**
 
 ### Loading State
 
@@ -222,7 +222,7 @@ Same for all personas.
 
 ---
 
-# **4.7 `<AudioPanel />` (DM Only)**
+## **4.7 `<AudioPanel />` (DM Only)**
 
 ### Loading State
 
@@ -231,7 +231,7 @@ Same for all personas.
 
 ---
 
-# **4.8 `<SearchPanel />`**
+## **4.8 `<SearchPanel />`**
 
 ### Loading State
 
@@ -244,31 +244,31 @@ Same for all personas.
 
 ---
 
-# **4.9 `<JournalPanel />`**
+## **4.9 `<JournalPanel />`**
 
 ### Loading State
 
 - Skeleton entry list
 
-### Empty State
+#### Empty State
 
 - “No journal entries”
 
 ---
 
-# **4.10 `<HistoryPanel />`**
+## **4.10 `<HistoryPanel />`**
 
 ### Loading State
 
 - Skeleton timeline items
 
-### Empty State
+#### Empty State
 
 - “No history events”
 
 ---
 
-# **4.11 `<SettingsPanel />`**
+## **4.11 `<SettingsPanel />`**
 
 ### Loading State
 
@@ -277,7 +277,7 @@ Same for all personas.
 
 ---
 
-# 🧠 5. Right Panel Loading Behaviour
+## 🧠 5. Right Panel Loading Behaviour
 
 Right panel tabs are always visible, but:
 
@@ -289,7 +289,7 @@ This prevents layout shift and maintains the command‑centre feel.
 
 ---
 
-# 🔄 6. Loading During Reconnect
+## 🔄 6. Loading During Reconnect
 
 When the connection drops:
 
@@ -302,7 +302,7 @@ When the connection drops:
 - Chat window remains visible
 - No skeletons shown (avoid flicker)
 
-### On reconnect:
+### On reconnect
 
 - Toast: **“Connection restored.”**
 - Full hydration
@@ -310,11 +310,11 @@ When the connection drops:
 
 ---
 
-# 🎭 7. Persona‑Specific Loading Rules
+## 🎭 7. Persona‑Specific Loading Rules
 
 ---
 
-## **7.1 DM**
+### **7.1 DM**
 
 - Sees all skeletons
 - DM Voice Bar shows disabled controls
@@ -322,7 +322,7 @@ When the connection drops:
 
 ---
 
-## **7.2 Player**
+### **7.2 Player**
 
 - Sees only player‑visible skeletons
 - No DM‑only placeholders
@@ -330,7 +330,7 @@ When the connection drops:
 
 ---
 
-## **7.3 Spectator**
+### **7.3 Spectator**
 
 - Minimal skeletons
 - No composer
@@ -338,11 +338,11 @@ When the connection drops:
 
 ---
 
-# 🎛️ 8. Motion Rules for Loading
+## 🎛️ 8. Motion Rules for Loading
 
 ### **8.1 Skeleton Fade‑In**
 
-```
+```text
 Duration: 120ms
 Opacity: 0 → 1
 ```
@@ -361,7 +361,7 @@ Drag‑and‑drop disabled until presenceStore hydrated.
 
 ---
 
-# 🧩 9. Error Handling During Loading
+## 🧩 9. Error Handling During Loading
 
 Loading integrates with `UI-ERROR-HANDLING.md`.
 
@@ -382,7 +382,7 @@ Loading integrates with `UI-ERROR-HANDLING.md`.
 
 ---
 
-# ✔ 10. Summary
+## ✔ 10. Summary
 
 This document defines:
 

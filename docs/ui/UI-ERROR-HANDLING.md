@@ -4,7 +4,7 @@ _Authoritative specification for UI‑level error handling in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 VTT‑Chat uses a **deterministic, non‑blocking, persona‑aware** error‑handling model.
 
@@ -18,7 +18,7 @@ The UI must:
 
 All errors follow the same pipeline:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -34,7 +34,7 @@ The UI does not create new categories.
 
 ---
 
-# 🧱 2. Error Display Principles
+## 🧱 2. Error Display Principles
 
 ### **2.1 Errors must be visible but non‑blocking**
 
@@ -64,19 +64,19 @@ The UI does not create new categories.
 
 ---
 
-# 🔔 3. Error Presentation (Toasts)
+## 🔔 3. Error Presentation (Toasts)
 
 All UI errors are displayed using `<SystemToasts />`.
 
 ### **Toast Format**
 
-```
+```text
 [Error Title] — [Short deterministic description] [×]
 ```
 
 ### **Toast Motion**
 
-```
+```text
 Duration: 140ms
 Transform: translateY(-6px) → 0
 Opacity: 0 → 1
@@ -93,11 +93,11 @@ Easing: primary
 
 ---
 
-# 🧩 4. Error Handling by Category
+## 🧩 4. Error Handling by Category
 
 ---
 
-# **4.1 Validation Errors**
+## **4.1 Validation Errors**
 
 _The user attempted an invalid action._
 
@@ -121,7 +121,7 @@ Examples:
 
 ---
 
-# **4.2 Permission Errors**
+## **4.2 Permission Errors**
 
 _The user attempted an action outside their role._
 
@@ -146,7 +146,7 @@ Examples:
 
 ---
 
-# **4.3 Reducer Errors**
+## **4.3 Reducer Errors**
 
 _The reducer rejected the event due to invalid state._
 
@@ -171,7 +171,7 @@ Examples:
 
 ---
 
-# **4.4 Transport Errors**
+## **4.4 Transport Errors**
 
 _The WebSocket or extension bridge failed._
 
@@ -197,7 +197,7 @@ Examples:
 
 ---
 
-# **4.5 System Errors**
+## **4.5 System Errors**
 
 _Unexpected internal failure._
 
@@ -223,11 +223,11 @@ Examples:
 
 ---
 
-# 🧠 5. Component‑Specific Error Handling
+## 🧠 5. Component‑Specific Error Handling
 
 ---
 
-## **5.1 `<MessageComposer />`**
+### **5.1 `<MessageComposer />`**
 
 Errors:
 
@@ -242,7 +242,7 @@ UI:
 
 ---
 
-## **5.2 `<NotesPanel />`**
+### **5.2 `<NotesPanel />`**
 
 Errors:
 
@@ -256,7 +256,7 @@ UI:
 
 ---
 
-## **5.3 `<NotePopout />`**
+### **5.3 `<NotePopout />`**
 
 Errors:
 
@@ -270,7 +270,7 @@ UI:
 
 ---
 
-## **5.4 `<RoomsPanel />` (DM Only)**
+### **5.4 `<RoomsPanel />` (DM Only)**
 
 Errors:
 
@@ -284,7 +284,7 @@ UI:
 
 ---
 
-## **5.5 `<AudioPanel />` (DM Only)**
+### **5.5 `<AudioPanel />` (DM Only)**
 
 Errors:
 
@@ -297,7 +297,7 @@ UI:
 
 ---
 
-## **5.6 `<SearchPanel />`**
+### **5.6 `<SearchPanel />`**
 
 Errors:
 
@@ -309,11 +309,11 @@ UI:
 
 ---
 
-# 🧭 6. Error Recovery Flows
+## 🧭 6. Error Recovery Flows
 
 ---
 
-## **6.1 Transport Recovery**
+### **6.1 Transport Recovery**
 
 1. Transport detects failure
 2. UI shows toast
@@ -324,7 +324,7 @@ UI:
 
 ---
 
-## **6.2 Reducer Recovery**
+### **6.2 Reducer Recovery**
 
 1. Reducer rejects event
 2. UI shows toast
@@ -333,7 +333,7 @@ UI:
 
 ---
 
-## **6.3 System Recovery**
+### **6.3 System Recovery**
 
 1. System error detected
 2. UI shows toast
@@ -342,7 +342,7 @@ UI:
 
 ---
 
-# 🧩 7. Persona‑Specific Error Visibility
+## 🧩 7. Persona‑Specific Error Visibility
 
 | Error Type | DM  | Assistant DM  | Player   | Spectator |
 | ---------- | --- | ------------- | -------- | --------- |
@@ -357,7 +357,7 @@ Spectator never receives reducer errors.
 
 ---
 
-# ✔ 8. Summary
+## ✔ 8. Summary
 
 This document defines:
 

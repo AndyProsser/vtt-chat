@@ -4,7 +4,7 @@ _Authoritative reference for all UI components in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 This document defines every UI component used in the VTT‑Chat SPA.
 
@@ -26,13 +26,13 @@ No component mutates state directly.
 
 ---
 
-# 🧱 2. Layout Components
+## 🧱 2. Layout Components
 
 These components define the structural regions of the SPA.
 
 ---
 
-## **2.1 `<Toolbar />`**
+### **2.1 `<Toolbar />`**
 
 **Purpose:**
 Top‑level control strip for audio devices, theme, and connection status.
@@ -51,7 +51,7 @@ Settings are _not_ in the toolbar (moved to last right‑panel tab).
 
 ---
 
-## **2.2 `<CampaignInfo />`**
+### **2.2 `<CampaignInfo />`**
 
 **Purpose:**
 Displays campaign metadata and session info.
@@ -72,7 +72,7 @@ All personas.
 
 ---
 
-## **2.3 `<SystemToasts />`**
+### **2.3 `<SystemToasts />`**
 
 **Purpose:**
 Renders temporary, dismissable system notifications.
@@ -89,7 +89,7 @@ All personas.
 
 ---
 
-## **2.4 `<MainLayout />`**
+### **2.4 `<MainLayout />`**
 
 **Purpose:**
 Three‑panel layout container.
@@ -102,7 +102,7 @@ Three‑panel layout container.
 
 ---
 
-## **2.5 `<LeftRail />`**
+### **2.5 `<LeftRail />`**
 
 **Purpose:**
 Primary anchor panel showing connected players.
@@ -118,7 +118,7 @@ All personas.
 
 ---
 
-## **2.6 `<CenterPane />`**
+### **2.6 `<CenterPane />`**
 
 **Purpose:**
 Core interaction surface (chat + notes).
@@ -132,7 +132,7 @@ Core interaction surface (chat + notes).
 
 ---
 
-## **2.7 `<RightRail />`**
+### **2.7 `<RightRail />`**
 
 **Purpose:**
 Secondary tools behind vertical tabs.
@@ -144,11 +144,11 @@ Secondary tools behind vertical tabs.
 
 ---
 
-# 👥 3. Player List Components
+## 👥 3. Player List Components
 
 ---
 
-## **3.1 `<PlayerList />`**
+### **3.1 `<PlayerList />`**
 
 **Purpose:**
 Displays all players grouped by room.
@@ -161,7 +161,7 @@ Displays all players grouped by room.
 
 ---
 
-## **3.2 `<PlayerItem />`**
+### **3.2 `<PlayerItem />`**
 
 **Purpose:**
 Represents a single player.
@@ -177,7 +177,7 @@ Represents a single player.
 
 ---
 
-## **3.3 `<PlayerOverrides />` (DM Only)**
+### **3.3 `<PlayerOverrides />` (DM Only)**
 
 **Purpose:**
 DM‑only audio and condition controls.
@@ -191,11 +191,11 @@ DM‑only audio and condition controls.
 
 ---
 
-# 💬 4. Chat & Messaging Components
+## 💬 4. Chat & Messaging Components
 
 ---
 
-## **4.1 `<RoomHeader />`**
+### **4.1 `<RoomHeader />`**
 
 **Purpose:**
 Displays current room and whisper target.
@@ -207,7 +207,7 @@ Displays current room and whisper target.
 
 ---
 
-## **4.2 `<ChatNotesToggle />`**
+### **4.2 `<ChatNotesToggle />`**
 
 **Purpose:**
 Switches center panel between Chat and Notes view.
@@ -219,7 +219,7 @@ Switches center panel between Chat and Notes view.
 
 ---
 
-## **4.3 `<ChatWindow />`**
+### **4.3 `<ChatWindow />`**
 
 **Purpose:**
 Displays chat messages.
@@ -232,7 +232,7 @@ Displays chat messages.
 
 ---
 
-## **4.4 `<MessageComposer />`**
+### **4.4 `<MessageComposer />`**
 
 **Purpose:**
 Message input field.
@@ -245,7 +245,7 @@ Message input field.
 
 ---
 
-## **4.5 `<MessageBubble />`**
+### **4.5 `<MessageBubble />`**
 
 **Purpose:**
 Renders a single chat message.
@@ -258,7 +258,7 @@ Renders a single chat message.
 
 ---
 
-## **4.6 `<NoteCard />`**
+### **4.6 `<NoteCard />`**
 
 **Purpose:**
 Chat‑embedded representation of a note.
@@ -272,11 +272,11 @@ Chat‑embedded representation of a note.
 
 ---
 
-# 📝 5. Notes Components
+## 📝 5. Notes Components
 
 ---
 
-## **5.1 `<NotesPanel />`**
+### **5.1 `<NotesPanel />`**
 
 **Purpose:**
 Slide‑in panel for browsing notes.
@@ -289,7 +289,7 @@ Slide‑in panel for browsing notes.
 
 ---
 
-## **5.2 `<NotePopout />`**
+### **5.2 `<NotePopout />`**
 
 **Purpose:**
 Right‑side pop‑out viewer for a single note.
@@ -302,11 +302,11 @@ Right‑side pop‑out viewer for a single note.
 
 ---
 
-# 🎙️ 6. DM‑Only Components
+## 🎙️ 6. DM‑Only Components
 
 ---
 
-## **6.1 `<DMVoiceBar />`**
+### **6.1 `<DMVoiceBar />`**
 
 **Purpose:**
 Horizontal bar for DM audio routing.
@@ -323,7 +323,7 @@ Horizontal bar for DM audio routing.
 
 ---
 
-## **6.2 `<RoomsPanel />`**
+### **6.2 `<RoomsPanel />`**
 
 **Purpose:**
 Room management.
@@ -338,18 +338,18 @@ Room management.
 
 ---
 
-## **6.3 `<AudioPanel />`**
+### **6.3 `<AudioPanel />`**
 
 **Purpose:**
 DM audio routing and bulk actions.
 
 ---
 
-# 🔍 7. Search, Journal, History, Settings
+## 🔍 7. Search, Journal, History, Settings
 
 ---
 
-## **7.1 `<SearchPanel />`**
+### **7.1 `<SearchPanel />`**
 
 **Purpose:**
 Search across notes, chat, players, rooms, metadata.
@@ -362,7 +362,7 @@ Search across notes, chat, players, rooms, metadata.
 
 ---
 
-## **7.2 `<JournalPanel />`**
+### **7.2 `<JournalPanel />`**
 
 **Purpose:**
 Displays journal entries.
@@ -375,7 +375,7 @@ Displays journal entries.
 
 ---
 
-## **7.3 `<HistoryPanel />`**
+### **7.3 `<HistoryPanel />`**
 
 **Purpose:**
 Timeline of campaign events.
@@ -388,7 +388,7 @@ Timeline of campaign events.
 
 ---
 
-## **7.4 `<SettingsPanel />`**
+### **7.4 `<SettingsPanel />`**
 
 **Purpose:**
 User‑specific settings.
@@ -397,11 +397,11 @@ User‑specific settings.
 
 ---
 
-# 🧩 8. Tabs & Panels
+## 🧩 8. Tabs & Panels
 
 ---
 
-## **8.1 `<RightTabBar />`**
+### **8.1 `<RightTabBar />`**
 
 **Purpose:**
 Vertical tab selector.
@@ -411,7 +411,7 @@ Defined in `UI-LAYOUT.md`.
 
 ---
 
-## **8.2 `<SlideInPanels />`**
+### **8.2 `<SlideInPanels />`**
 
 **Purpose:**
 Hosts persona‑specific slide‑in panels.
@@ -421,7 +421,7 @@ Right‑side slide‑in (180ms, primary easing).
 
 ---
 
-# 🧠 9. Persona Visibility Matrix
+## 🧠 9. Persona Visibility Matrix
 
 | Component       | DM   | Player  | Spectator |
 | --------------- | ---- | ------- | --------- |
@@ -439,7 +439,7 @@ Right‑side slide‑in (180ms, primary easing).
 
 ---
 
-# ✔ 10. Summary
+## ✔ 10. Summary
 
 This document defines:
 

@@ -1,10 +1,10 @@
-# ** TYPESCRIPT INTERFACES**
+# **TYPESCRIPT INTERFACES**
 
 _All interfaces follow your existing conventions and do not introduce new architecture._
 
 ---
 
-# 🧱 **1. `<SystemToasts />`**
+## 🧱 **1. `<SystemToasts />`**
 
 A UI‑only component that renders dismissable system toasts.
 No state mutation — reducers control the toast list.
@@ -31,7 +31,7 @@ export interface SystemToastsProps {
 
 ---
 
-# 🧱 **2. `<NotePopout />`**
+## 🧱 **2. `<NotePopout />`**
 
 A persona‑aware wrapper around the existing `NotesPanel` content.
 
@@ -52,7 +52,7 @@ export interface NotePopoutProps {
 
 ---
 
-# 🧱 **3. `<ChatNotesToggle />`**
+## 🧱 **3. `<ChatNotesToggle />`**
 
 A simple UI toggle between chat and notes view.
 
@@ -70,7 +70,7 @@ export interface ChatNotesToggleProps {
 
 ---
 
-# 🧱 **4. `<RoomHeader />`**
+## 🧱 **4. `<RoomHeader />`**
 
 Displays the current room and whisper target (if applicable).
 
@@ -91,7 +91,7 @@ export interface RoomHeaderProps {
 
 ---
 
-# 🧱 **5. Optional: `<NoteCard />` (Chat message type = `METAGAME`)**
+## 🧱 **5. Optional: `<NoteCard />` (Chat message type = `METAGAME`)**
 
 This is not a new subsystem — it is a UI wrapper for `ChatMessage.type = 'METAGAME'`.
 
@@ -111,7 +111,7 @@ export interface NoteCardProps {
 
 ---
 
-# 🧱 **6. Optional: `<SystemToastItem />`**
+## 🧱 **6. Optional: `<SystemToastItem />`**
 
 If you want a split between list + item:
 
@@ -124,7 +124,7 @@ export interface SystemToastItemProps {
 
 ---
 
-# ✔ All Interfaces Are Fully Compliant
+## ✔ All Interfaces Are Fully Compliant
 
 These interfaces:
 

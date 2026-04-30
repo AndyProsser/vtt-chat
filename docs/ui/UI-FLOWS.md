@@ -4,7 +4,7 @@ _Authoritative interaction flows for all personas in VTT‑Chat._
 
 ---
 
-# 🧭 1. Overview
+## 🧭 1. Overview
 
 This document defines **moment‑to‑moment UI interaction flows** for:
 
@@ -22,7 +22,7 @@ Each flow shows:
 
 All flows follow:
 
-```
+```text
 UI → Event → Reducer → Store → UI
 ```
 
@@ -30,13 +30,13 @@ No flow violates persona boundaries or privacy rules.
 
 ---
 
-# 🎭 2. DM Interaction Flows
+## 🎭 2. DM Interaction Flows
 
 DM has the most complete set of flows.
 
 ---
 
-## **2.1 DM Moves a Player Between Rooms**
+### **2.1 DM Moves a Player Between Rooms**
 
 **UI Action:**
 DM drags a player from one room group to another.
@@ -57,7 +57,7 @@ DM drags a player from one room group to another.
 
 ---
 
-## **2.2 DM Publishes a Note to Chat**
+### **2.2 DM Publishes a Note to Chat**
 
 **UI Action:**
 DM clicks “Publish Note” in `<MessageComposer />`.
@@ -74,7 +74,7 @@ DM clicks “Publish Note” in `<MessageComposer />`.
 
 ---
 
-## **2.3 DM Opens a Note in Pop‑Out Viewer**
+### **2.3 DM Opens a Note in Pop‑Out Viewer**
 
 **UI Action:**
 DM clicks “Open Note” on a note card.
@@ -90,7 +90,7 @@ DM clicks “Open Note” on a note card.
 
 ---
 
-## **2.4 DM Applies an Audio Condition**
+### **2.4 DM Applies an Audio Condition**
 
 **UI Action:**
 DM selects a condition from `<PlayerOverrides />`.
@@ -107,7 +107,7 @@ DM selects a condition from `<PlayerOverrides />`.
 
 ---
 
-## **2.5 DM Creates a New Room**
+### **2.5 DM Creates a New Room**
 
 **UI Action:**
 DM clicks “+ Create Room”.
@@ -124,7 +124,7 @@ DM clicks “+ Create Room”.
 
 ---
 
-## **2.6 DM Clears All Audio Effects**
+### **2.6 DM Clears All Audio Effects**
 
 **UI Action:**
 DM clicks “Clear All” in `<DMVoiceBar />`.
@@ -141,13 +141,13 @@ DM clicks “Clear All” in `<DMVoiceBar />`.
 
 ---
 
-# 🎮 3. Player Interaction Flows
+## 🎮 3. Player Interaction Flows
 
 Players have a focused, minimal set of flows.
 
 ---
 
-## **3.1 Player Sends a Chat Message**
+### **3.1 Player Sends a Chat Message**
 
 **UI Action:**
 Player types and presses Enter.
@@ -164,7 +164,7 @@ Player types and presses Enter.
 
 ---
 
-## **3.2 Player Switches Between Chat and Notes**
+### **3.2 Player Switches Between Chat and Notes**
 
 **UI Action:**
 Player clicks `[Chat ▼]` or `[Notes]`.
@@ -181,7 +181,7 @@ Player clicks `[Chat ▼]` or `[Notes]`.
 
 ---
 
-## **3.3 Player Opens a Note in Pop‑Out Viewer**
+### **3.3 Player Opens a Note in Pop‑Out Viewer**
 
 **UI Action:**
 Player clicks “Open Note”.
@@ -197,7 +197,7 @@ Player clicks “Open Note”.
 
 ---
 
-## **3.4 Player Toggles IC Mode**
+### **3.4 Player Toggles IC Mode**
 
 **UI Action:**
 Player toggles IC in composer.
@@ -213,13 +213,13 @@ Player toggles IC in composer.
 
 ---
 
-# 👁️ 4. Spectator Interaction Flows
+## 👁️ 4. Spectator Interaction Flows
 
 Spectators are read‑only.
 
 ---
 
-## **4.1 Spectator Switches Between Chat and Notes**
+### **4.1 Spectator Switches Between Chat and Notes**
 
 **UI Action:**
 Spectator clicks `[Chat ▼]` or `[Notes]`.
@@ -235,7 +235,7 @@ Spectator clicks `[Chat ▼]` or `[Notes]`.
 
 ---
 
-## **4.2 Spectator Opens a Global Note**
+### **4.2 Spectator Opens a Global Note**
 
 **UI Action:**
 Spectator clicks “Open Note”.
@@ -251,11 +251,11 @@ Spectator clicks “Open Note”.
 
 ---
 
-# 🔔 5. System Toast Flows
+## 🔔 5. System Toast Flows
 
 ---
 
-## **5.1 Toast Auto‑Dismiss**
+### **5.1 Toast Auto‑Dismiss**
 
 **Triggered by:**
 Timer in UI layer.
@@ -271,7 +271,7 @@ Timer in UI layer.
 
 ---
 
-## **5.2 Toast Manual Dismiss**
+### **5.2 Toast Manual Dismiss**
 
 **UI Action:**
 User clicks ×.
@@ -281,11 +281,11 @@ Same as above.
 
 ---
 
-# 🧭 6. Right Panel Flows (Tabs + Panels)
+## 🧭 6. Right Panel Flows (Tabs + Panels)
 
 ---
 
-## **6.1 User Opens a Right‑Panel Tab**
+### **6.1 User Opens a Right‑Panel Tab**
 
 **UI Action:**
 User clicks a tab.
@@ -302,7 +302,7 @@ User clicks a tab.
 
 ---
 
-## **6.2 User Closes a Right‑Panel Panel**
+### **6.2 User Closes a Right‑Panel Panel**
 
 **UI Action:**
 User clicks close button.
@@ -319,11 +319,11 @@ User clicks close button.
 
 ---
 
-# 🧠 7. Whisper Flows (DM + Player)
+## 🧠 7. Whisper Flows (DM + Player)
 
 ---
 
-## **7.1 Player Selects Whisper Target**
+### **7.1 Player Selects Whisper Target**
 
 **UI Action:**
 Player selects whisper target in composer.
@@ -339,7 +339,7 @@ Player selects whisper target in composer.
 
 ---
 
-## **7.2 Player Sends Whisper**
+### **7.2 Player Sends Whisper**
 
 **UI Action:**
 Player sends message with whisper target.
@@ -355,7 +355,7 @@ Player sends message with whisper target.
 
 ---
 
-# ✔ 8. Summary
+## ✔ 8. Summary
 
 This document defines:
 
