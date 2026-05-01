@@ -4,13 +4,13 @@ _A modular, deterministic audio transport layer for real‑time tabletop communi
 
 Status:
 
-- This subsystem document includes target-architecture examples that go beyond the shipped Stage 7 baseline.
+- This subsystem document includes planned architecture examples that go beyond the shipped Stage 7 baseline.
 - Lowercase event references in this file should be read as conceptual design shorthand rather than the shipped websocket contract.
 - For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document describes how the VTT‑Chat client integrates with **LiveKit** to provide:
 
@@ -35,7 +35,7 @@ These modules interact with the Zustand stores and WebSocket event reducer.
 
 ---
 
-## 🧩 Architecture Overview
+## Architecture Overview
 
 ```text
 WebSocket Events
@@ -59,7 +59,7 @@ Microphone → LiveKitPublisher → LiveKit SFU → Other clients
 
 ---
 
-## 🎛️ 1. LiveKitRoomManager
+## 1. LiveKitRoomManager
 
 The **RoomManager** is responsible for:
 
@@ -132,7 +132,7 @@ export class LiveKitRoomManager {
 
 ---
 
-## 🎚️ 2. LiveKitTrackRouter
+## 2. LiveKitTrackRouter
 
 The **TrackRouter** connects LiveKit audio tracks into the **AudioGraph**.
 
@@ -177,7 +177,7 @@ export const LiveKitTrackRouter = {
 
 ---
 
-## 🎤 3. LiveKitPublisher
+## 3. LiveKitPublisher
 
 The **Publisher** controls microphone publishing:
 
@@ -235,7 +235,7 @@ export class LiveKitPublisher {
 
 ---
 
-## 🎧 4. AudioGraph (WebAudio)
+## 4. AudioGraph (WebAudio)
 
 The **AudioGraph** is the heart of the audio engine.
 
@@ -275,7 +275,7 @@ DM overrides apply on top of the chain.
 
 ---
 
-## 🔄 5. Interaction With Zustand Stores
+## 5. Interaction With Zustand Stores
 
 ### PresenceStore
 
@@ -313,7 +313,7 @@ DM/assistant DM capabilities.
 
 ---
 
-## 🔁 6. Reconnect Logic
+## 6. Reconnect Logic
 
 When WebSocket reconnects:
 
@@ -332,7 +332,7 @@ This ensures deterministic recovery.
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. LiveKit is transport, not logic
 

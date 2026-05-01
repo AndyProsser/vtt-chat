@@ -4,13 +4,13 @@ _A Redis‑first real‑time presence model with DB‑backed recovery and analyt
 
 Status:
 
-- This document mixes shipped Stage 6 presence behavior with older target-architecture location-state examples.
+- This document mixes shipped Stage 6 presence behavior with older planned architecture location-state examples.
 - Lowercase websocket event names and campaign-scoped publish examples in this file should be read as conceptual legacy flow descriptions, not the shipped runtime contract.
 - For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document describes the **presence architecture** for the VTT‑Chat platform.
 Presence is the backbone of:
@@ -43,7 +43,7 @@ Both dimensions may coexist:
 
 ---
 
-## 🧩 Presence State Machine (Client-Level)
+## Presence State Machine (Client-Level)
 
 Each client runs a deterministic state machine that mirrors Redis.
 
@@ -79,7 +79,7 @@ DISCONNECTED_RECOVERABLE
 
 ---
 
-## 🧠 Redis Presence Model (Authoritative)
+## Redis Presence Model (Authoritative)
 
 Redis stores **all live state** using hashes, sets, sorted sets, and TTL keys.
 
@@ -228,7 +228,7 @@ Used to route upstream audio to primary room temporarily.
 
 ---
 
-## 🔄 State Transitions (Redis-Level)
+## State Transitions (Redis-Level)
 
 ### 1. Join Campaign → Green Room
 
@@ -296,7 +296,7 @@ For each user in session:
 
 ---
 
-## 🧱 DB Snapshots (Recovery + Analytics)
+## DB Snapshots (Recovery + Analytics)
 
 Every 30–60 seconds, a worker writes:
 
@@ -320,7 +320,7 @@ Snapshots allow:
 
 ---
 
-## 🔁 Redis Failure Recovery
+## Redis Failure Recovery
 
 If Redis fails:
 
@@ -346,7 +346,7 @@ This provides **graceful degradation**.
 
 ---
 
-## 📡 Telemetry & Analytics
+## Telemetry & Analytics
 
 Presence events are logged as **aggregated telemetry**, not detailed logs.
 
@@ -373,7 +373,7 @@ A worker periodically:
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. Redis is authoritative for live state
 

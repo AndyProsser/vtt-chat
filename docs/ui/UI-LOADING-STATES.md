@@ -4,7 +4,7 @@ _Authoritative specification for loading, empty, and transitional UI states in V
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 VTT‑Chat is designed to feel **instant**, **responsive**, and **non‑blocking**, even during:
 
@@ -27,7 +27,7 @@ Loading states must **never** block interaction unless absolutely required (e.g.
 
 ---
 
-## 🧱 2. Global Loading Principles
+## 2. Global Loading Principles
 
 ### **2.1 Loading must never block core UI**
 
@@ -60,7 +60,7 @@ Loading states must **never** block interaction unless absolutely required (e.g.
 
 ---
 
-## 🧩 3. Global App Loading States
+## 3. Global App Loading States
 
 The app has **three** global loading phases:
 
@@ -122,7 +122,7 @@ None — hydration is instantaneous.
 
 ---
 
-## 👥 4. Component‑Level Loading States
+## 4. Component‑Level Loading States
 
 Each component has a deterministic loading state.
 
@@ -277,7 +277,7 @@ Same for all personas.
 
 ---
 
-## 🧠 5. Right Panel Loading Behaviour
+## 5. Right Panel Loading Behaviour
 
 Right panel tabs are always visible, but:
 
@@ -289,7 +289,7 @@ This prevents layout shift and maintains the command‑centre feel.
 
 ---
 
-## 🔄 6. Loading During Reconnect
+## 6. Loading During Reconnect
 
 When the connection drops:
 
@@ -310,7 +310,7 @@ When the connection drops:
 
 ---
 
-## 🎭 7. Persona‑Specific Loading Rules
+## 7. Persona‑Specific Loading Rules
 
 ---
 
@@ -338,7 +338,7 @@ When the connection drops:
 
 ---
 
-## 🎛️ 8. Motion Rules for Loading
+## 8. Motion Rules for Loading
 
 ### **8.1 Skeleton Fade‑In**
 
@@ -361,7 +361,7 @@ Drag‑and‑drop disabled until presenceStore hydrated.
 
 ---
 
-## 🧩 9. Error Handling During Loading
+## 9. Error Handling During Loading
 
 Loading integrates with `UI-ERROR-HANDLING.md`.
 
@@ -382,7 +382,7 @@ Loading integrates with `UI-ERROR-HANDLING.md`.
 
 ---
 
-## ✔ 10. Summary
+## 10. Summary
 
 This document defines:
 

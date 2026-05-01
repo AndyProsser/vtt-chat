@@ -5,12 +5,12 @@ _A deterministic WebAudio processing pipeline for real‑time tabletop communica
 Status:
 
 - This document describes the target audio architecture in more detail than the shipped Stage 7 baseline.
-- The shipped runtime includes LiveKit token issuance, mounted frontend hooks, realtime audio control events, and baseline override handling; some preset and control flows described here remain future-state design.
+- The shipped runtime includes LiveKit token issuance, mounted frontend hooks, realtime audio control events, and baseline override handling; some preset and control flows described here remain planned design.
 - For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document describes the **client‑side audio engine** used by the VTT‑Chat platform.
 It is responsible for:
@@ -38,7 +38,7 @@ The engine is built on:
 
 ---
 
-## 🧩 Architecture Overview
+## Architecture Overview
 
 ```text
 LiveKit Track
@@ -67,7 +67,7 @@ Additional chains:
 
 ---
 
-## 🎛️ 1. AudioGraph (Core WebAudio Engine)
+## 1. AudioGraph (Core WebAudio Engine)
 
 The AudioGraph is the central DSP engine.
 
@@ -97,7 +97,7 @@ ReverbBus → Convolver → MasterGain
 
 ---
 
-## 🎚️ 2. RoomBus (Per‑Room Processing)
+## 2. RoomBus (Per‑Room Processing)
 
 Each room has its own gain node:
 
@@ -115,7 +115,7 @@ Used for:
 
 ---
 
-## 🎤 3. ParticipantAudioNode (Per‑User Processing)
+## 3. ParticipantAudioNode (Per‑User Processing)
 
 Each remote participant gets a full chain:
 
@@ -150,7 +150,7 @@ source
 
 ---
 
-## 🎙️ 4. DM Voice Chain (DM Voice Presets)
+## 4. DM Voice Chain (DM Voice Presets)
 
 DM’s microphone is processed through a **separate chain** before publishing:
 
@@ -174,7 +174,7 @@ DM can **toggle presets instantly**.
 
 ---
 
-## 🎧 5. DM Monitor Chain (Player IC Effects)
+## 5. DM Monitor Chain (Player IC Effects)
 
 Players can toggle “in‑character mode” (IC):
 
@@ -199,7 +199,7 @@ Used for:
 
 ---
 
-## 🔇 6. Private Room Clean Mode
+## 6. Private Room Clean Mode
 
 When a user enters a private room:
 
@@ -226,7 +226,7 @@ audioStore.popEffectState()
 
 ---
 
-## 🎤 7. Push‑To‑Talk (PTT) Override
+## 7. Push‑To‑Talk (PTT) Override
 
 DM can hold a key (e.g., Space or V) to temporarily disable all effects:
 
@@ -248,7 +248,7 @@ PTT always overrides everything except device mute.
 
 ---
 
-## 📢 8. Shout Routing
+## 8. Shout Routing
 
 Shout temporarily publishes DM or player audio to the **primary room**:
 
@@ -262,7 +262,7 @@ TTL = 2–5 seconds.
 
 ---
 
-## 🧙 9. DM Overrides
+## 9. DM Overrides
 
 DM can apply:
 
@@ -284,7 +284,7 @@ Overrides apply **after** presets.
 
 ---
 
-## 🌌 10. Environment Presets (Room‑Level)
+## 10. Environment Presets (Room‑Level)
 
 Environment presets apply to **RoomBus**:
 
@@ -303,7 +303,7 @@ Examples:
 
 ---
 
-## 📏 11. Distance Presets (Per‑Participant)
+## 11. Distance Presets (Per‑Participant)
 
 Distance presets simulate spatial separation:
 
@@ -321,7 +321,7 @@ Examples:
 
 ---
 
-## 🧪 12. Condition Presets (Per‑Participant)
+## 12. Condition Presets (Per‑Participant)
 
 Conditions override distance:
 
@@ -336,7 +336,7 @@ Conditions override distance:
 
 ---
 
-## 🎭 13. Voice Presets (DM Only)
+## 13. Voice Presets (DM Only)
 
 DM voice presets override environment:
 
@@ -349,7 +349,7 @@ DM voice presets override environment:
 
 ---
 
-## 🎭 14. IC Presets (Player → DM Only)
+## 14. IC Presets (Player → DM Only)
 
 Players can toggle IC mode:
 
@@ -363,7 +363,7 @@ Only the DM hears these.
 
 ---
 
-## 🧠 15. Effect Priority Rules
+## 15. Effect Priority Rules
 
 Final priority stack:
 
@@ -399,7 +399,7 @@ This ensures:
 
 ---
 
-## 🔄 16. Interaction With WebSocket Events
+## 16. Interaction With WebSocket Events
 
 | Event                        | Effect                      |
 | ---------------------------- | --------------------------- |
@@ -415,7 +415,7 @@ This ensures:
 
 ---
 
-## 🧱 17. Interaction With Zustand Stores
+## 17. Interaction With Zustand Stores
 
 ### `useAudioStore`
 
@@ -447,7 +447,7 @@ Triggers:
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. Deterministic
 

@@ -1,4 +1,4 @@
-# 🎨 **DM PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
+# **DM PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
 
 _All values are implementation‑grade and token‑driven._
 

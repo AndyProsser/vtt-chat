@@ -1,4 +1,4 @@
-# 🎨 **PLAYER PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
+# **PLAYER PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
 
 _Aligned with your architecture, token system, and persona rules._
 
@@ -351,7 +351,7 @@ duration: 180ms
 
 ---
 
-## ✔ **Player Persona Figma‑Ready Mockup Complete**
+## **Player Persona Figma‑Ready Mockup Complete**
 
 This is the full, implementation‑grade specification for the Player Persona.
 

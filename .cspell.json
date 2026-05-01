@@ -1,0 +1,25 @@
+{
+  "language": "en,en-AU",
+  "ignorePaths": ["dist/**", "node_modules/**", "vtt-chat.code-workspace"],
+  "words": [
+    "cooldowns",
+    "dismissable",
+    "dndbeyond",
+    "dockable",
+    "fanout",
+    "FVTT",
+    "journaling",
+    "keepalive",
+    "livekit",
+    "Metagame",
+    "Popout",
+    "productionized",
+    "queryability",
+    "Slideout",
+    "sparkline",
+    "unmute",
+    "waitlist",
+    "wireframes",
+    "workstream"
+  ]
+}

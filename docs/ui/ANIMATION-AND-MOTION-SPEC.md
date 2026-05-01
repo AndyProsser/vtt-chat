@@ -4,7 +4,7 @@ _A unified motion language for the VTT‑Chat command‑centre UI._
 
 ---
 
-## 🎛️ 1. **Core Motion Principles**
+## 1. **Core Motion Principles**
 
 ### **1. Motion must communicate intent**
 
@@ -38,7 +38,7 @@ Every animation answers:
 
 ---
 
-## 🧱 2. **Easing Curves**
+## 2. **Easing Curves**
 
 These are the only curves used across the entire UI.
 
@@ -73,7 +73,7 @@ cubic-bezier(0.2, 0.0, 0.0, 1.0)
 
 ---
 
-## 🧭 3. **Slide‑In Panels (Right Side)**
+## 3. **Slide‑In Panels (Right Side)**
 
 ### **Panels:**
 
@@ -116,7 +116,7 @@ Transform: translateX(0 → -panelWidth)
 
 ---
 
-## 👥 4. **Left Player Rail**
+## 4. **Left Player Rail**
 
 ### **Expanded → Collapsed**
 
@@ -154,7 +154,7 @@ Opacity: 0.4 → 1.0 → 0.4
 
 ---
 
-## 🎙 5. **DM Voice Panel**
+## 5. **DM Voice Panel**
 
 ### **Open**
 
@@ -181,7 +181,7 @@ Flash: red glow 0 → 1 → 0
 
 ---
 
-## 💬 6. **Chat Window**
+## 6. **Chat Window**
 
 ### **New Message**
 
@@ -208,7 +208,7 @@ Background: slight pulse (2% brightness)
 
 ---
 
-## ⌨️ 7. **Message Composer**
+## 7. **Message Composer**
 
 ### **Focus**
 
@@ -235,7 +235,7 @@ Background: darken by 6%
 
 ---
 
-## 🖱️ 8. **Right‑Click Menus**
+## 8. **Right‑Click Menus**
 
 ### **Open**
 
@@ -255,7 +255,7 @@ Background: darken by 5%
 
 ---
 
-## 🧲 9. **Drag‑and‑Drop Player Movement**
+## 9. **Drag‑and‑Drop Player Movement**
 
 ### **Pickup**
 
@@ -290,7 +290,7 @@ Scale: 1.0 → 1.1 → 1.0
 
 ---
 
-## 🌫️ 10. **Environment Change (Room)**
+## 10. **Environment Change (Room)**
 
 ### **Icon Update**
 
@@ -309,7 +309,7 @@ Background: darken by 4% → normal
 
 ---
 
-## 📝 11. **Notes Panel**
+## 11. **Notes Panel**
 
 ### **Open**
 
@@ -335,7 +335,7 @@ Fade + slight scale (0.98 → 1.0)
 
 ---
 
-## 📱 12. **Mobile Motion Rules**
+## 12. **Mobile Motion Rules**
 
 ### **Bottom Tabs**
 
@@ -360,7 +360,7 @@ Transform: translateX(-100%) → 0
 
 ---
 
-## 🧠 13. **Persona‑Specific Motion Weighting**
+## 13. **Persona‑Specific Motion Weighting**
 
 ### **DM**
 
@@ -382,7 +382,7 @@ Transform: translateX(-100%) → 0
 
 ---
 
-## 🎮 14. **Motion Summary Table**
+## 14. **Motion Summary Table**
 
 | Interaction        | Duration | Easing  | Notes            |
 | ------------------ | -------- | ------- | ---------------- |

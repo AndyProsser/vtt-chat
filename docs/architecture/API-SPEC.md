@@ -10,7 +10,7 @@ Status:
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document defines the **public API surface** for the VTT‑Chat backend.
 It covers:
@@ -43,7 +43,7 @@ Current shipped runtime baseline through Stage 12 includes mounted route familie
 
 The metadata route family remains planned follow-up work.
 
-When this document describes broader campaign-scoped or future-state endpoints that are not mounted in the current backend, those sections should be read as target architecture.
+When this document describes broader campaign-scoped or planned endpoints that are not mounted in the current backend, those sections should be read as planned architecture.
 
 ---
 
@@ -64,9 +64,9 @@ Still planned or partially implemented beyond Stage 12:
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
-### `POST /api/auth/login`
+### /api/auth/login`
 
 Authenticate a user.
 
@@ -90,13 +90,13 @@ Authenticate a user.
 
 ---
 
-### `POST /api/auth/refresh`
+### /api/auth/refresh`
 
 Planned / not part of the verified Stage 0-7 shipped baseline.
 
 ---
 
-### `POST /api/auth/logout`
+### /api/auth/logout`
 
 Baseline logout behavior is intentionally minimal; refresh-token invalidation remains planned.
 
@@ -106,7 +106,7 @@ Baseline logout behavior is intentionally minimal; refresh-token invalidation re
 
 These endpoints define linked authentication between the user frontend and admin console so users do not need to log in twice when they already have a valid session.
 
-#### `POST /api/auth/handoff/admin`
+#### /api/auth/handoff/admin`
 
 Requires authenticated user token.
 
@@ -128,7 +128,7 @@ Rules:
 }
 ```
 
-#### `POST /api/admin/auth/handoff/exchange`
+#### /api/admin/auth/handoff/exchange`
 
 Purpose: admin app exchanges one-time handoff token for admin JWT.
 
@@ -153,7 +153,7 @@ Purpose: admin app exchanges one-time handoff token for admin JWT.
 }
 ```
 
-#### `POST /api/admin/handoff/app`
+#### /api/admin/handoff/app`
 
 Requires authenticated admin token.
 
@@ -169,7 +169,7 @@ Purpose: exchange an admin-authenticated session for a one-time token that boots
 }
 ```
 
-#### `POST /api/auth/handoff/exchange`
+#### /api/auth/handoff/exchange`
 
 Purpose: frontend app exchanges one-time handoff token for user JWT.
 
@@ -203,7 +203,7 @@ Handoff security requirements:
 
 ---
 
-### `GET /api/platform/status`
+### /api/platform/status`
 
 Public endpoint. Returns platform health and activity snapshot for the extension pre-flight check.
 
@@ -224,7 +224,7 @@ No authentication required.
 
 ---
 
-### `GET /api/campaigns/invite/:code/validate`
+### /api/campaigns/invite/:code/validate`
 
 Public endpoint. Validates an invite code and returns basic campaign info.
 
@@ -257,7 +257,7 @@ No authentication required.
 
 ---
 
-### `POST /api/auth/extension/preflight`
+### /api/auth/extension/preflight`
 
 Public endpoint. Checks whether an email address has an existing vtt-chat account without issuing a token.
 
@@ -285,7 +285,7 @@ Used by the extension pre-flight to determine which auth branch to present the u
 
 ---
 
-### `POST /api/auth/extension/guest-login`
+### /api/auth/extension/guest-login`
 
 Creates or resumes a guest session based on extension-scraped identity data and a valid player invite code. Used by **both players and DMs** — no separate DM endpoint exists. The server determines the caller's table role (DM or Player) by comparing `externalUserId` against `campaignPacket.dmExternalUserId`.
 
@@ -373,7 +373,7 @@ No authentication required. Validates invite code and authorized external system
 
 ---
 
-### `POST /api/auth/upgrade`
+### /api/auth/upgrade`
 
 Upgrades a guest account to a full account by setting a password.
 
@@ -391,7 +391,7 @@ Requires valid guest token.
 
 ---
 
-### `POST /api/integrations/external/sync`
+### /api/integrations/external/sync`
 
 Pushes character or campaign data updates from the extension. Applies updates based on the campaign's `extensionSyncPolicy` and the caller's role.
 
@@ -433,7 +433,7 @@ See [../extension/THIRD-PARTY-INTEGRATIONS.md § 11](../extension/THIRD-PARTY-IN
 
 ### Spectator Access
 
-#### `GET /api/campaigns/watch/:code/validate`
+#### /api/campaigns/watch/:code/validate`
 
 Public endpoint. Validates a spectator invite code and returns campaign info, character roster, and slot availability. No authentication required.
 
@@ -479,7 +479,7 @@ Public endpoint. Validates a spectator invite code and returns campaign info, ch
 
 ---
 
-#### `POST /api/auth/spectator/guest-join`
+#### /api/auth/spectator/guest-join`
 
 Creates a guest spectator account and issues a token (if a slot is available) or a waitlist position (if at capacity with waitlist enabled).
 
@@ -520,7 +520,7 @@ No authentication required. Validates spectator invite code, `spectatorPolicy`, 
 
 ---
 
-#### `GET /api/campaigns/:id/spectator/waitlist-status`
+#### /api/campaigns/:id/spectator/waitlist-status`
 
 Poll for waitlist promotion. Returns current position or a token if promoted.
 
@@ -540,7 +540,7 @@ Requires `waitlistToken` as a query parameter (no user auth required; the token 
 
 ---
 
-#### `GET /api/campaigns/browse`
+#### /api/campaigns/browse`
 
 Lists discoverable active campaigns with spectator slots for full-account users. Guest player accounts are not permitted to access this endpoint.
 
@@ -577,21 +577,21 @@ Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear with `p
 
 ---
 
-## 🧑‍🤝‍🧑 Users & Characters
+## Users & Characters
 
-### `GET /api/users/me`
+### /api/users/me`
 
 Return authenticated user profile.
 
 ---
 
-### `GET /api/users/me/characters`
+### /api/users/me/characters`
 
 List all characters owned by the user.
 
 ---
 
-### `POST /api/campaigns/:campaignId/characters`
+### /api/campaigns/:campaignId/characters`
 
 Create a character in a campaign.
 
@@ -612,33 +612,33 @@ Create a character in a campaign.
 
 ---
 
-## 🏕️ Campaigns
+## Campaigns
 
-### `GET /api/campaigns`
+### /api/campaigns`
 
 List campaigns the user belongs to.
 
 ---
 
-### `POST /api/campaigns`
+### /api/campaigns`
 
 Create a new campaign.
 
 ---
 
-### `GET /api/campaigns/:campaignId`
+### /api/campaigns/:campaignId`
 
 Get campaign details.
 
 ---
 
-### `POST /api/campaigns/:campaignId/join`
+### /api/campaigns/:campaignId/join`
 
 Join a campaign via invite code.
 
 ---
 
-### `POST /api/campaigns/:campaignId/dm/change`
+### /api/campaigns/:campaignId/dm/change`
 
 Change the campaign DM.
 
@@ -653,9 +653,9 @@ Change the campaign DM.
 
 ---
 
-## 🎭 Sessions
+## Sessions
 
-### `POST /api/campaigns/:campaignId/sessions/start`
+### /api/campaigns/:campaignId/sessions/start`
 
 Start a session.
 
@@ -670,27 +670,27 @@ Start a session.
 
 ---
 
-### `POST /api/campaigns/:campaignId/sessions/:sessionId/end`
+### /api/campaigns/:campaignId/sessions/:sessionId/end`
 
 End a session.
 
 ---
 
-### `GET /api/campaigns/:campaignId/sessions`
+### /api/campaigns/:campaignId/sessions`
 
 List sessions.
 
 ---
 
-## 🏠 Rooms
+## Rooms
 
-### `GET /api/campaigns/:campaignId/rooms`
+### /api/campaigns/:campaignId/rooms`
 
 List rooms (main, group, private).
 
 ---
 
-### `POST /api/campaigns/:campaignId/rooms`
+### /api/campaigns/:campaignId/rooms`
 
 Create a group room.
 
@@ -704,15 +704,15 @@ Create a group room.
 
 ---
 
-### `DELETE /api/campaigns/:campaignId/rooms/:roomId`
+### /api/campaigns/:campaignId/rooms/:roomId`
 
 Delete a room.
 
 ---
 
-## 💬 Chat
+## Chat
 
-### `GET /api/campaigns/:campaignId/chat`
+### /api/campaigns/:campaignId/chat`
 
 Query chat messages.
 
@@ -728,7 +728,7 @@ Query chat messages.
 
 ---
 
-### `POST /api/campaigns/:campaignId/chat`
+### /api/campaigns/:campaignId/chat`
 
 Send a message.
 
@@ -744,21 +744,21 @@ Send a message.
 
 ---
 
-### `POST /api/campaigns/:campaignId/chat/whisper`
+### /api/campaigns/:campaignId/chat/whisper`
 
 Send a whisper.
 
 ---
 
-## 📝 Notes
+## Notes
 
-### `GET /api/campaigns/:campaignId/notes`
+### /api/campaigns/:campaignId/notes`
 
 List notes.
 
 ---
 
-### `POST /api/campaigns/:campaignId/notes`
+### /api/campaigns/:campaignId/notes`
 
 Create a note.
 
@@ -775,13 +775,13 @@ Create a note.
 
 ---
 
-### `POST /api/campaigns/:campaignId/notes/:noteId/publish`
+### /api/campaigns/:campaignId/notes/:noteId/publish`
 
 Publish note to chat.
 
 ---
 
-### `POST /api/campaigns/:campaignId/notes/:noteId/share`
+### /api/campaigns/:campaignId/notes/:noteId/share`
 
 Share note with specific users.
 
@@ -795,9 +795,9 @@ Share note with specific users.
 
 ---
 
-## 🎙️ Audio Presets & DM Controls
+## Audio Presets & DM Controls
 
-The audio section below mixes shipped baseline routes with broader target architecture.
+The audio section below mixes shipped baseline routes with broader planned architecture.
 
 Shipped runtime baseline routes:
 
@@ -811,17 +811,17 @@ Current baseline notes:
 
 - Audio control events are authoritative in realtime.
 - `GET /api/audio/state/:sessionId` exists as a stable API surface for later expansion, but does not yet provide durable persisted room/environment/override recovery.
-- Broader preset, distance, PTT, and clear-all workflows described below remain target architecture until mounted and verified.
+- Broader preset, distance, PTT, and clear-all workflows described below remain planned architecture until mounted and verified.
 
-### `GET /api/audio-presets`
+### /api/audio-presets`
 
 Conceptual legacy endpoint. Current shipped baseline uses `GET /api/audio/presets`.
 
 ---
 
-### `POST /api/campaigns/:campaignId/audio/apply`
+### /api/campaigns/:campaignId/audio/apply`
 
-Planned target-architecture endpoint; not part of the verified shipped Stage 7 baseline.
+Planned planned architecture endpoint; not part of the verified shipped Stage 7 baseline.
 
 **Body**
 
@@ -835,45 +835,45 @@ Planned target-architecture endpoint; not part of the verified shipped Stage 7 b
 
 ---
 
-### `POST /api/campaigns/:campaignId/audio/clear`
+### /api/campaigns/:campaignId/audio/clear`
 
-Planned target-architecture endpoint.
-
----
-
-### `POST /api/campaigns/:campaignId/audio/clear-all`
-
-Planned target-architecture endpoint.
+Planned planned architecture endpoint.
 
 ---
 
-### `POST /api/campaigns/:campaignId/audio/environment`
+### /api/campaigns/:campaignId/audio/clear-all`
 
-Target-architecture path. Current shipped baseline uses `POST /api/audio/environment`.
-
----
-
-### `POST /api/campaigns/:campaignId/audio/distance`
-
-Planned target-architecture endpoint.
+Planned planned architecture endpoint.
 
 ---
 
-### `POST /api/campaigns/:campaignId/audio/ptt/start`
+### /api/campaigns/:campaignId/audio/environment`
 
-Planned target-architecture endpoint.
+Planned architecture path. Current shipped baseline uses `POST /api/audio/environment`.
 
 ---
 
-### `POST /api/campaigns/:campaignId/audio/ptt/end`
+### /api/campaigns/:campaignId/audio/distance`
 
-Planned target-architecture endpoint.
+Planned planned architecture endpoint.
+
+---
+
+### /api/campaigns/:campaignId/audio/ptt/start`
+
+Planned planned architecture endpoint.
+
+---
+
+### /api/campaigns/:campaignId/audio/ptt/end`
+
+Planned planned architecture endpoint.
 
 ---
 
 ## Planned Later-Stage Domains
 
-The following endpoint groups remain target architecture and are intentionally summarized here rather than documented as if they were part of the shipped Stage 0-7 surface:
+The following endpoint groups remain planned architecture and are intentionally summarized here rather than documented as if they were part of the shipped Stage 0-7 surface:
 
 - recordings and journal endpoints
 - search endpoints for messages, notes, and recordings
@@ -885,7 +885,7 @@ These domains should be expanded into full API documentation only when the route
 
 ---
 
-## 🛠️ Admin Telemetry Baseline
+## Admin Telemetry Baseline
 
 Partially shipped admin baseline endpoints currently include:
 
@@ -914,7 +914,7 @@ Still planned beyond the current baseline:
 
 ---
 
-## 🧳 Admin Portability and Recording Metadata (Stage 12 Shipped)
+## Admin Portability and Recording Metadata (Stage 12 Shipped)
 
 The following Stage 12 endpoints are mounted and validated in runtime:
 

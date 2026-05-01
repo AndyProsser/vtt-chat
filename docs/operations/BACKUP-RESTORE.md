@@ -4,7 +4,7 @@ _A resilient, multi‑layered backup strategy for campaigns, sessions, notes, ch
 
 ---
 
-## 📘 Overview
+## Overview
 
 The platform uses a **multi‑tier backup strategy** designed for:
 
@@ -29,7 +29,7 @@ This document defines:
 
 ---
 
-## 🧩 1. Backup Layers Overview
+## 1. Backup Layers Overview
 
 The system uses **four independent backup layers**:
 
@@ -44,7 +44,7 @@ Each layer is documented below.
 
 ---
 
-## 🗄️ 2. Postgres Backups (Authoritative)
+## 2. Postgres Backups (Authoritative)
 
 Postgres is the **source of truth** for:
 
@@ -85,7 +85,7 @@ Postgres is the **source of truth** for:
 
 ---
 
-## 🔴 3. Redis Backups (Presence Recovery)
+## 3. Redis Backups (Presence Recovery)
 
 Redis is **not** authoritative — it stores:
 
@@ -122,7 +122,7 @@ This ensures **no session is lost**.
 
 ---
 
-## 🎧 4. Object Storage Backups (Recordings & Attachments)
+## 4. Object Storage Backups (Recordings & Attachments)
 
 Object storage (S3, MinIO, etc.) stores:
 
@@ -148,7 +148,7 @@ Object storage (S3, MinIO, etc.) stores:
 
 ---
 
-## 📦 5. User‑Initiated Export / Import
+## 5. User‑Initiated Export / Import
 
 Current shipped admin workflows:
 
@@ -202,7 +202,7 @@ Import never overwrites existing campaigns.
 
 ---
 
-## 🧭 6. Disaster Recovery (Admin-Level)
+## 6. Disaster Recovery (Admin-Level)
 
 ### Full Disaster Scenario
 
@@ -232,7 +232,7 @@ If the entire cluster is lost:
 
 ---
 
-## 🧪 7. Testing Backup Integrity
+## 7. Testing Backup Integrity
 
 ### Automated Tests
 
@@ -251,7 +251,7 @@ If the entire cluster is lost:
 
 ---
 
-## 🔄 8. Presence Snapshot System
+## 8. Presence Snapshot System
 
 Presence snapshots are stored in Postgres every 30–60 seconds.
 
@@ -278,7 +278,7 @@ interface PresenceSnapshot {
 
 ---
 
-## 🧠 9. Design Principles
+## 9. Design Principles
 
 ### 1. Postgres is authoritative
 

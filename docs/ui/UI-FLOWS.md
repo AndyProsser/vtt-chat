@@ -4,7 +4,7 @@ _Authoritative interaction flows for all personas in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This document defines **moment‑to‑moment UI interaction flows** for:
 
@@ -30,7 +30,7 @@ No flow violates persona boundaries or privacy rules.
 
 ---
 
-## 🎭 2. DM Interaction Flows
+## 2. DM Interaction Flows
 
 DM has the most complete set of flows.
 
@@ -141,7 +141,7 @@ DM clicks “Clear All” in `<DMVoiceBar />`.
 
 ---
 
-## 🎮 3. Player Interaction Flows
+## 3. Player Interaction Flows
 
 Players have a focused, minimal set of flows.
 
@@ -213,7 +213,7 @@ Player toggles IC in composer.
 
 ---
 
-## 👁️ 4. Spectator Interaction Flows
+## 4. Spectator Interaction Flows
 
 Spectators are read‑only.
 
@@ -251,7 +251,7 @@ Spectator clicks “Open Note”.
 
 ---
 
-## 🔔 5. System Toast Flows
+## 5. System Toast Flows
 
 ---
 
@@ -281,7 +281,7 @@ Same as above.
 
 ---
 
-## 🧭 6. Right Panel Flows (Tabs + Panels)
+## 6. Right Panel Flows (Tabs + Panels)
 
 ---
 
@@ -319,7 +319,7 @@ User clicks close button.
 
 ---
 
-## 🧠 7. Whisper Flows (DM + Player)
+## 7. Whisper Flows (DM + Player)
 
 ---
 
@@ -355,7 +355,7 @@ Player sends message with whisper target.
 
 ---
 
-## ✔ 8. Summary
+## 8. Summary
 
 This document defines:
 

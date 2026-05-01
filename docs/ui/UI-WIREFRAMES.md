@@ -4,7 +4,7 @@ _Wireframes for DM, Player, and Spectator personas._
 
 ---
 
-## 🎭 **1. DM UI Wireframe**
+## **1. DM UI Wireframe**
 
 The DM interface is the most complex: multi‑panel, high‑density, and control‑heavy.
 This wireframe reflects the full control surface.
@@ -50,7 +50,7 @@ This wireframe reflects the full control surface.
 
 ---
 
-## 🎮 **2. Player UI Wireframe**
+## **2. Player UI Wireframe**
 
 Players get a **clean, focused, immersive** interface.
 No DM tools, no room management, no global audio controls.
@@ -91,7 +91,7 @@ No DM tools, no room management, no global audio controls.
 
 ---
 
-## 👁️ **3. Spectator UI Wireframe**
+## **3. Spectator UI Wireframe**
 
 Spectators see **only what is allowed**:
 Read‑only chat, read‑only notes, no composer, no audio controls.
@@ -128,7 +128,7 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 
 ---
 
-## 🧠 Notes on Implementation
+## Notes on Implementation
 
 ### **DM UI**
 

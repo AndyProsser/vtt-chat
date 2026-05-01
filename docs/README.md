@@ -1,5 +1,3 @@
-# **README.md — Documentation Suite Overview**
-
 # VTT‑Chat Documentation Suite
 
 This repository contains the complete documentation for the VTT‑Chat platform — a role‑aware, privacy‑first communication layer for virtual tabletops.
@@ -18,7 +16,7 @@ Use these sources first when updating docs or stage status:
 - `backend/src/ws/index.ts` and `frontend/src/ws/client.ts` for current websocket transport behavior
 - `ROADMAP.md` for stage labels and shipped-baseline wording
 
-Architecture and API docs may include target-architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
+Architecture and API docs may include planned architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
 
 ## Active UI Modernization Docs
 
@@ -28,9 +26,9 @@ The active framework-standardization effort is documented here first:
 - `docs/changes/DESIGN-SYSTEM-CHANGES.md` for migration work packages, deliverables, and acceptance criteria
 - `ROADMAP.md` for delivery sequencing and status tracking
 
-When UI implementation docs diverge from these migration docs, update the implementation docs or mark them as planned rather than treating future-state guidance as shipped behavior.
+When UI implementation docs diverge from these migration docs, update the implementation docs or mark them as planned rather than treating planned guidance as shipped behavior.
 
-## 📚 Documentation Index
+## Documentation Index
 
 ### **Philosophy**
 
@@ -123,7 +121,7 @@ When UI implementation docs diverge from these migration docs, update the implem
 
 ---
 
-# 1. What This System Is
+## 1. What This System Is
 
 VTT‑Chat provides a unified communication and presence layer for any virtual tabletop (VTT).
 It includes:
@@ -139,11 +137,11 @@ Everything is built on a **unidirectional event architecture**, with determinist
 
 ---
 
-# 2. Documentation Structure
+## 2. Documentation Structure
 
 The documentation is organized into clear domains:
 
-```
+```text
 docs/
   philosophy/      → Why the system behaves the way it does
   architecture/    → How the system is structured internally
@@ -160,18 +158,18 @@ Each folder contains focused, self‑contained documents.
 
 ---
 
-# 3. Start Here — Essential Reading
+## 3. Start Here — Essential Reading
 
 These documents give you the **core mental model** of the platform.
 
-### 📘 Philosophy (The “Why”)
+### Philosophy (The “Why”)
 
 - [SYSTEM-PHILOSOPHY.md](philosophy/SYSTEM-PHILOSOPHY.md)
 - [UX-PRINCIPLES.md](philosophy/UX-PRINCIPLES.md)
 - [PRIVACY-MODEL.md](philosophy/PRIVACY-MODEL.md)
 - [ROLE-SYSTEM.md](philosophy/ROLE-SYSTEM.md)
 
-### 🏛 Architecture (The “How”)
+### Architecture (The “How”)
 
 - [ARCHITECTURE-DIAGRAM.md](architecture/ARCHITECTURE-DIAGRAM.md)
 - [EVENT-BUS.md](architecture/EVENT-BUS.md)
@@ -180,7 +178,7 @@ These documents give you the **core mental model** of the platform.
 - [ERROR-MODEL.md](architecture/ERROR-MODEL.md)
 - [PERMISSIONS-MATRIX.md](architecture/PERMISSIONS-MATRIX.md)
 
-### 🧭 Meta (The “How to Work Here”)
+### Meta (The “How to Work Here”)
 
 - [ONBOARDING.md](meta/ONBOARDING.md)
 - [CONTRIBUTING.md](meta/CONTRIBUTING.md)
@@ -188,7 +186,7 @@ These documents give you the **core mental model** of the platform.
 
 ---
 
-# 4. Subsystem Documentation
+## 4. Subsystem Documentation
 
 Each subsystem has its own dedicated document under `docs/subsystems/`.
 
@@ -214,7 +212,7 @@ Examples include:
 
 ---
 
-# 5. Extension Documentation
+## 5. Extension Documentation
 
 The browser extension integrates VTT‑Chat with third‑party VTTs.
 
@@ -232,7 +230,7 @@ These cover:
 
 ---
 
-# 6. UI Documentation
+## 6. UI Documentation
 
 UI documentation lives under `docs/ui/` and covers:
 
@@ -253,7 +251,7 @@ This ensures a consistent, predictable UX across the platform.
 
 ---
 
-# 7. DM Tools Documentation
+## 7. DM Tools Documentation
 
 DM‑specific workflows live under `docs/dm-tools/`.
 
@@ -267,7 +265,7 @@ These documents describe:
 
 ---
 
-# 8. Operations Documentation
+## 8. Operations Documentation
 
 Operational documents live under `docs/operations/` and cover:
 
@@ -279,7 +277,7 @@ Operational documents live under `docs/operations/` and cover:
 
 ---
 
-# 9. AI Documentation (Optional)
+## 9. AI Documentation (Optional)
 
 If your project uses AI assistants, the `docs/ai/` folder contains:
 
@@ -292,7 +290,7 @@ This ensures consistent AI‑generated output across the project.
 
 ---
 
-# 10. Recommended Reading Order for New Developers
+## 10. Recommended Reading Order for New Developers
 
 1. SYSTEM-PHILOSOPHY.md
 2. ARCHITECTURE-DIAGRAM.md
@@ -309,7 +307,7 @@ This order builds understanding from conceptual → architectural → practical.
 
 ---
 
-# 11. Contributing
+## 11. Contributing
 
 To contribute:
 
@@ -326,7 +324,7 @@ See:
 
 ---
 
-# 12. Summary
+## 12. Summary
 
 This documentation suite provides a complete, modular, deterministic foundation for VTT‑Chat.
 It explains:

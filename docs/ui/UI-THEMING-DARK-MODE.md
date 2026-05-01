@@ -4,7 +4,7 @@ _Authoritative specification for dark mode behaviour in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 Dark mode is the **primary** visual mode of VTT‑Chat.
 
@@ -26,7 +26,7 @@ This document defines:
 
 ---
 
-## 🌑 2. Dark Mode Philosophy
+## 2. Dark Mode Philosophy
 
 Dark mode in VTT‑Chat is:
 
@@ -52,7 +52,7 @@ All colors come from CSS variables — never hardcoded.
 
 ---
 
-## 🎨 3. Dark Mode Token Set
+## 3. Dark Mode Token Set
 
 Dark mode is the **default** token set:
 
@@ -88,7 +88,7 @@ These tokens are **never modified** by components.
 
 ---
 
-## 🌕 4. Light Mode Overrides
+## 4. Light Mode Overrides
 
 Light mode is activated via:
 
@@ -128,7 +128,7 @@ Overrides:
 
 ---
 
-## 🧩 5. Component Behaviour in Dark Mode
+## 5. Component Behaviour in Dark Mode
 
 Below is the **component‑level behaviour** for dark mode.
 
@@ -229,7 +229,7 @@ Dark mode uses elevation + border to define panel boundaries.
 
 ---
 
-## 🎭 6. Persona Accent Behaviour in Dark Mode
+## 6. Persona Accent Behaviour in Dark Mode
 
 Persona accents remain the same in dark mode:
 
@@ -252,7 +252,7 @@ This prevents neon‑gamer aesthetics.
 
 ---
 
-## 🌓 7. Motion in Dark Mode
+## 7. Motion in Dark Mode
 
 Motion rules are identical in light/dark mode.
 
@@ -278,7 +278,7 @@ DM Voice Bar uses slightly stronger glow.
 
 ---
 
-## ♿ 8. Accessibility in Dark Mode
+## 8. Accessibility in Dark Mode
 
 ### **8.1 Minimum contrast**
 
@@ -301,7 +301,7 @@ When `prefers-reduced-motion: reduce`:
 
 ---
 
-## 🔧 9. Implementation Rules
+## 9. Implementation Rules
 
 ### **9.1 Never use raw hex values**
 
@@ -331,7 +331,7 @@ No per‑component theme logic.
 
 ---
 
-## ✔ 10. Summary
+## 10. Summary
 
 This document defines:
 

@@ -4,7 +4,7 @@ _Component‑specific token usage for VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This document defines **exactly which CSS tokens each UI component uses**, and for what purpose.
 
@@ -20,7 +20,7 @@ This is the authoritative reference for implementing the theme layer.
 
 ---
 
-## 🧱 2. Token Categories
+## 2. Token Categories
 
 From `UI-THEMING.md`, components may use:
 
@@ -59,7 +59,7 @@ From `UI-THEMING.md`, components may use:
 
 ---
 
-## 🧩 3. Component Token Map
+## 3. Component Token Map
 
 Below is the **complete component → token mapping**.
 
@@ -305,7 +305,7 @@ Below is the **complete component → token mapping**.
 
 ---
 
-### ✔ 4. Summary
+### 4. Summary
 
 This file provides:
 

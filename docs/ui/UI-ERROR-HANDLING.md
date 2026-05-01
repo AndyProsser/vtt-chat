@@ -4,7 +4,7 @@ _Authoritative specification for UI‑level error handling in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 VTT‑Chat uses a **deterministic, non‑blocking, persona‑aware** error‑handling model.
 
@@ -34,7 +34,7 @@ The UI does not create new categories.
 
 ---
 
-## 🧱 2. Error Display Principles
+## 2. Error Display Principles
 
 ### **2.1 Errors must be visible but non‑blocking**
 
@@ -64,7 +64,7 @@ The UI does not create new categories.
 
 ---
 
-## 🔔 3. Error Presentation (Toasts)
+## 3. Error Presentation (Toasts)
 
 All UI errors are displayed using `<SystemToasts />`.
 
@@ -93,7 +93,7 @@ Easing: primary
 
 ---
 
-## 🧩 4. Error Handling by Category
+## 4. Error Handling by Category
 
 ---
 
@@ -223,7 +223,7 @@ Examples:
 
 ---
 
-## 🧠 5. Component‑Specific Error Handling
+## 5. Component‑Specific Error Handling
 
 ---
 
@@ -309,7 +309,7 @@ UI:
 
 ---
 
-## 🧭 6. Error Recovery Flows
+## 6. Error Recovery Flows
 
 ---
 
@@ -342,7 +342,7 @@ UI:
 
 ---
 
-## 🧩 7. Persona‑Specific Error Visibility
+## 7. Persona‑Specific Error Visibility
 
 | Error Type | DM  | Assistant DM  | Player   | Spectator |
 | ---------- | --- | ------------- | -------- | --------- |
@@ -357,7 +357,7 @@ Spectator never receives reducer errors.
 
 ---
 
-## ✔ 8. Summary
+## 8. Summary
 
 This document defines:
 

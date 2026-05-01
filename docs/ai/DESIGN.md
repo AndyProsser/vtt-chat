@@ -1,4 +1,4 @@
-# 🧠 **VTT‑Chat — Deep Architecture & Design AI Onboarding Template**
+# **VTT‑Chat — Deep Architecture & Design AI Onboarding Template**
 
 Copy/paste everything below into a new chat.
 

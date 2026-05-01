@@ -12,7 +12,7 @@ The existing extension has a functional D&D Beyond front-end and data-scraping l
 
 ---
 
-## 📘 Overview
+## Overview
 
 The browser extension provides deep integration between the VTT‑Chat platform and external VTTs such as:
 
@@ -48,7 +48,7 @@ This document defines:
 
 ---
 
-## 🧩 1. Extension Architecture
+## 1. Extension Architecture
 
 The extension uses a **modular MV3 architecture**:
 
@@ -72,7 +72,7 @@ manifest.json
 
 ---
 
-## 🧭 2. Page Detection Rules
+## 2. Page Detection Rules
 
 The extension only activates on **supported pages**.
 
@@ -99,7 +99,7 @@ The extension only activates on **supported pages**.
 
 ---
 
-## 🧩 3. Injection Logic
+## 3. Injection Logic
 
 The extension injects a **Launch Chat** button only on:
 
@@ -128,7 +128,7 @@ Clicking the button:
 
 ---
 
-## 🧬 4. Metadata Extraction
+## 4. Metadata Extraction
 
 The content script extracts:
 
@@ -161,7 +161,7 @@ The content script extracts:
 
 ---
 
-## 🔌 5. Communication With Backend
+## 5. Communication With Backend
 
 The extension communicates with the backend via the **background script**.
 
@@ -197,7 +197,7 @@ See [GUEST-AUTH.md](GUEST-AUTH.md) for the full authentication flow specificatio
 
 ---
 
-## 📡 6. External Log Ingestion
+## 6. External Log Ingestion
 
 The extension captures logs from:
 
@@ -240,7 +240,7 @@ chat.externalLog
 
 ---
 
-## 🎚️ 7. Auto‑Effects (Audio Integration)
+## 7. Auto‑Effects (Audio Integration)
 
 The extension can automatically apply audio effects based on external events.
 
@@ -262,7 +262,7 @@ content.js → background.js → backend → WebSocket → audioReducer → Audi
 
 ---
 
-## 🔐 8. Whisper Detection
+## 8. Whisper Detection
 
 The extension detects whispers:
 
@@ -277,7 +277,7 @@ Whispers trigger:
 
 ---
 
-## 🗺️ 9. Distance Tracking (FVTT)
+## 9. Distance Tracking (FVTT)
 
 Foundry VTT exposes movement events.
 
@@ -291,7 +291,7 @@ The extension:
 
 ---
 
-## 🧭 10. Session Launch Flow
+## 10. Session Launch Flow
 
 When user clicks **Launch Chat**:
 
@@ -311,7 +311,7 @@ content.js → background.js → backend → SPA tab
 
 ---
 
-## 🧱 11. Extension Popup
+## 11. Extension Popup
 
 The popup allows:
 
@@ -330,7 +330,7 @@ The popup allows:
 
 ---
 
-## 🔍 12. Pre-flight Validation
+## 12. Pre-flight Validation
 
 Before showing any join UI or requesting a token, the background script runs the pre-flight sequence:
 
@@ -349,7 +349,7 @@ Results determine which UI branch to show in the extension popup. See [GUEST-AUT
 
 ---
 
-## 🪪 13. Guest Auth & Identity
+## 13. Guest Auth & Identity
 
 The extension supports a guest authentication model where the external VTT (e.g. D&D Beyond) acts as the identity provider.
 
@@ -371,7 +371,7 @@ See [GUEST-AUTH.md](GUEST-AUTH.md) for the complete specification covering:
 
 ---
 
-## 🧠 14. Design Principles
+## 14. Design Principles
 
 ### 1. Non‑intrusive
 

@@ -4,7 +4,7 @@ _Authoritative specification for UI state recovery in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 VTT‑Chat uses a **backend‑authoritative**, **deterministic**, **atomic** state recovery model.
 
@@ -37,7 +37,7 @@ This document defines:
 
 ---
 
-## 🧱 2. Recovery Model Summary
+## 2. Recovery Model Summary
 
 Recovery is split into two layers:
 
@@ -73,7 +73,7 @@ UI state is **never** included in backend snapshots.
 
 ---
 
-## 🧩 3. Recovery Triggers
+## 3. Recovery Triggers
 
 Recovery is triggered by:
 
@@ -95,7 +95,7 @@ UI triggers full hydration.
 
 ---
 
-## 🔄 4. Recovery Flow (Full Sequence)
+## 4. Recovery Flow (Full Sequence)
 
 This is the **canonical** recovery flow.
 
@@ -117,7 +117,7 @@ No optimistic UI.
 
 ---
 
-## 🧱 5. Domain State Recovery (Authoritative)
+## 5. Domain State Recovery (Authoritative)
 
 The following stores are **fully overwritten** by the snapshot:
 
@@ -147,7 +147,7 @@ UI never filters domain state.
 
 ---
 
-## 🧩 6. UI State Recovery (Local Only)
+## 6. UI State Recovery (Local Only)
 
 UI state is **not** overwritten by snapshots.
 
@@ -189,7 +189,7 @@ uiStore.activeRightPanel = null
 
 ---
 
-## 🎭 7. Persona‑Specific Recovery Rules
+## 7. Persona‑Specific Recovery Rules
 
 ---
 
@@ -221,7 +221,7 @@ uiStore.activeRightPanel = null
 
 ---
 
-## 🧠 8. Error Handling During Recovery
+## 8. Error Handling During Recovery
 
 Recovery errors follow `UI-ERROR-HANDLING.md`.
 
@@ -259,7 +259,7 @@ If connection drops mid‑hydration:
 
 ---
 
-## 🎛️ 9. Motion & UX During Recovery
+## 9. Motion & UX During Recovery
 
 ### **9.1 No blocking overlays**
 
@@ -284,7 +284,7 @@ Hydration is instantaneous.
 
 ---
 
-## 🔍 10. Component‑Specific Recovery Behaviour
+## 10. Component‑Specific Recovery Behaviour
 
 ---
 
@@ -329,7 +329,7 @@ Hydration is instantaneous.
 
 ---
 
-## ✔ 11. Summary
+## 11. Summary
 
 This document defines:
 

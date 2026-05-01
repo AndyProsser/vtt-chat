@@ -4,7 +4,7 @@
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document explains how to deploy **VTT‑Chat** on a **fresh Ubuntu Server** using:
 
@@ -19,7 +19,7 @@ The goal is to allow a DM (or any group member) to deploy the entire platform on
 
 ---
 
-## 🏡 1. System Requirements
+## 1. System Requirements
 
 ### Minimum Recommended Hardware
 
@@ -39,7 +39,7 @@ The goal is to allow a DM (or any group member) to deploy the entire platform on
 
 ---
 
-## 🔧 2. Network & Port Requirements
+## 2. Network & Port Requirements
 
 VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs block 80/443.
 
@@ -61,7 +61,7 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 
 ---
 
-## 🔐 3. TLS Strategy
+## 3. TLS Strategy
 
 ### Default (No Domain)
 
@@ -78,7 +78,7 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 
 ---
 
-## 📦 4. Directory Structure
+## 4. Directory Structure
 
 A typical installation will look like:
 
@@ -114,7 +114,7 @@ Both files:
 
 ---
 
-## 🚀 5. Installation Steps (High-Level)
+## 5. Installation Steps (High-Level)
 
 Below is the high‑level flow.
 A full install script will automate these steps.
@@ -301,7 +301,7 @@ vtt-chat-server help       # Show available commands
 
 ---
 
-## 🎙️ 6. LiveKit Deployment
+## 6. LiveKit Deployment
 
 containerized service\*\* with configuration via `infra/livekit/livekit.yaml`.
 
@@ -336,7 +336,7 @@ For details, see `infra/livekit/livekit.yaml`.
 
 ---
 
-## 🗄️ 7. Database & Redis
+## 7. Database & Redis
 
 ### Postgres
 
@@ -360,7 +360,7 @@ For details, see `infra/livekit/livekit.yaml`.
 
 ---
 
-## 🧪 8. Testing the Deployment
+## 8. Testing the Deployment
 
 ### Verify services
 
@@ -397,7 +397,7 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 
 ---
 
-## 🛠️ 9. Troubleshooting
+## 9. Troubleshooting
 
 ### Browser refuses self‑signed cert
 
@@ -521,7 +521,7 @@ Important:
 
 ---
 
-## 🔐 10. Security Notes
+## 10. Security Notes
 
 - Self‑signed certs are fine for local networks
 - For remote access, use DNS‑01 ACME
@@ -531,7 +531,7 @@ Important:
 
 ---
 
-## 📦 11. Future Enhancements
+## 11. Planned Enhancements
 
 - Automated install script
 - Optional TURN server
@@ -541,7 +541,7 @@ Important:
 
 ---
 
-## ⚠️ Trademark Disclaimer
+## Trademark Disclaimer
 
 - **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
 - **LiveKit** is a trademark of **LiveKit, Inc.**

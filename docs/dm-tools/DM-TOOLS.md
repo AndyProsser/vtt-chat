@@ -1,4 +1,4 @@
-## Dungeon Master Tools
+# Dungeon Master Tools
 
 _A unified control surface for audio, rooms, notes, metadata, private chats, and session flow._
 
@@ -10,7 +10,7 @@ Status:
 
 ---
 
-## 📘 Overview
+## Overview
 
 The DM Tools subsystem provides the **full control surface** for running a session:
 
@@ -38,7 +38,7 @@ This document defines:
 
 ---
 
-## 🧩 1. DM UI Overview
+## 1. DM UI Overview
 
 The DM UI is composed of **six primary panels**:
 
@@ -59,7 +59,7 @@ Assistant DMs see the same UI **except**:
 
 ---
 
-## 🏠 2. Room Manager
+## 2. Room Manager
 
 The DM can:
 
@@ -92,7 +92,7 @@ The DM can:
 
 ---
 
-## 🧑‍🤝‍🧑 3. Player List & Movement Panel
+## 3. Player List & Movement Panel
 
 The DM sees:
 
@@ -117,7 +117,7 @@ The DM sees:
 
 ---
 
-## 🎚️ 4. Audio Control Panel
+## 4. Audio Control Panel
 
 The DM audio panel is the **most powerful tool** in the system.
 
@@ -268,7 +268,7 @@ Resets:
 
 ---
 
-## 📝 5. Notes & Handouts Panel
+## 5. Notes & Handouts Panel
 
 DM can:
 
@@ -299,7 +299,7 @@ Players **cannot**:
 
 ---
 
-## 🗂️ 6. Metadata Card Composer
+## 6. Metadata Card Composer
 
 DM can create **metadata cards**:
 
@@ -331,7 +331,7 @@ DM can publish metadata cards to:
 
 ---
 
-## 🎬 7. Session Control Panel
+## 7. Session Control Panel
 
 DM controls:
 
@@ -346,7 +346,7 @@ DM controls:
 
 ---
 
-## 🧭 8. Assistant DM Capabilities
+## 8. Assistant DM Capabilities
 
 Assistant DMs can:
 
@@ -371,7 +371,7 @@ Assistant DMs **cannot**:
 
 ---
 
-## 🔄 9. Interaction With Presence
+## 9. Interaction With Presence
 
 DM actions trigger presence events:
 
@@ -385,7 +385,7 @@ DM actions trigger presence events:
 
 ---
 
-## 🎧 10. Interaction With Audio Engine
+## 10. Interaction With Audio Engine
 
 DM actions trigger audio events:
 
@@ -402,7 +402,7 @@ DM actions trigger audio events:
 
 ---
 
-## 💬 11. Interaction With Chat
+## 11. Interaction With Chat
 
 DM can:
 
@@ -414,7 +414,7 @@ DM can:
 
 ---
 
-## 📓 12. Interaction With Sessions
+## 12. Interaction With Sessions
 
 DM controls:
 
@@ -427,7 +427,7 @@ DM tools reset at session boundaries.
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. DM has full visibility
 

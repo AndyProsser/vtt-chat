@@ -324,7 +324,7 @@ The overlay must support:
 
 ---
 
-## 10. Future Enhancements
+## 10. Planned Enhancements
 
 Planned improvements:
 

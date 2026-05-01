@@ -4,7 +4,7 @@ _Minimalistic, full‑window, theme‑aware admin interface for VTT‑Chat._
 
 ---
 
-## 🧭 1. Purpose & Philosophy
+## 1. Purpose & Philosophy
 
 The Admin UI is a **separate SPA** used by a very small number of trusted operators.
 Its goals are:
@@ -21,7 +21,7 @@ It’s for **administrators, developers, and support staff**.
 
 ---
 
-## 🧱 2. Layout Structure (Full‑Window SPA)
+## 2. Layout Structure (Full‑Window SPA)
 
 The Admin UI uses a **two‑column layout**:
 
@@ -54,7 +54,7 @@ The Admin UI uses a **two‑column layout**:
 
 ---
 
-## 🎨 3. Theming (Light & Dark)
+## 3. Theming (Light & Dark)
 
 The Admin UI uses the **same token system** as the main app.
 
@@ -85,7 +85,7 @@ The Admin UI uses the **same token system** as the main app.
 
 ---
 
-## 🧩 4. Navigation Structure
+## 4. Navigation Structure
 
 The Admin UI has **six core sections**:
 
@@ -116,7 +116,7 @@ Each item is:
 
 ---
 
-## 📊 5. Section Specifications
+## 5. Section Specifications
 
 Below are the **functional requirements** and **UI layout** for each section.
 
@@ -270,7 +270,7 @@ Admin‑level configuration.
 
 ---
 
-## 🧠 6. Interaction & Motion
+## 6. Interaction & Motion
 
 The Admin UI is **minimal**, so motion is subtle.
 
@@ -289,7 +289,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## 🧱 7. Component Library (Admin‑Specific)
+## 7. Component Library (Admin‑Specific)
 
 ### **Admin Card**
 
@@ -319,7 +319,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## 🎨 8. Typography
+## 8. Typography
 
 ### **Font**
 
@@ -339,7 +339,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## ✔ 9. Summary
+## 9. Summary
 
 The Admin UI is:
 

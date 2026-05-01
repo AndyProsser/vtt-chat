@@ -25,7 +25,7 @@ The install script handles everything:
 
 ---
 
-## 🧰 1. What the Install Script Does
+## 1. What the Install Script Does
 
 The script performs the following tasks in order:
 
@@ -91,7 +91,7 @@ The script performs the following tasks in order:
 
 ---
 
-## 🏡 2. HomeLab Assumptions
+## 2. HomeLab Assumptions
 
 The install script assumes:
 
@@ -105,7 +105,7 @@ The install script assumes:
 
 ---
 
-## 🔐 3. TLS Options
+## 3. TLS Options
 
 The script supports two TLS modes:
 
@@ -157,7 +157,7 @@ The script will:
 
 ---
 
-## 🔧 4. Script Parameters
+## 4. Script Parameters
 
 The script supports optional flags:
 
@@ -177,7 +177,7 @@ Example:
 
 ---
 
-## 📦 5. What Gets Installed
+## 5. What Gets Installed
 
 ### Docker Containers
 
@@ -192,7 +192,7 @@ Example:
 
 ---
 
-## 🗄️ 6. Environment Variables
+## 6. Environment Variables
 
 The script generates `.env` with:
 
@@ -212,7 +212,7 @@ You can edit `.env` anytime and redeploy.
 
 ---
 
-## 🚀 7. Running the Script
+## 7. Running the Script
 
 After cloning the repo:
 
@@ -231,7 +231,7 @@ The script will:
 
 ---
 
-## 🧪 8. Verifying the Installation
+## 8. Verifying the Installation
 
 ### Check running containers
 
@@ -264,7 +264,7 @@ Accept the self‑signed certificate.
 
 ---
 
-## 🛠️ 9. Troubleshooting
+## 9. Troubleshooting
 
 ### Browser rejects certificate
 
@@ -292,7 +292,7 @@ Check WebSocket connection in browser dev tools.
 
 ---
 
-## 🔄 10. Updating the System
+## 10. Updating the System
 
 To update:
 
@@ -310,7 +310,7 @@ docker stack deploy -c docker-compose.yml vttchat
 
 ---
 
-## 🧹 11. Uninstalling
+## 11. Uninstalling
 
 ```bash
 docker compose down -v
@@ -319,7 +319,7 @@ sudo rm -rf /opt/vtt-chat
 
 ---
 
-## ⚠️ Trademark Disclaimer
+## Trademark Disclaimer
 
 - **Dungeons & Dragons**, **D&D**, and related terms are trademarks of **Wizards of the Coast LLC**.
 - **LiveKit** is a trademark of **LiveKit, Inc.**

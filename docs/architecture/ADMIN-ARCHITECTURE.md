@@ -285,7 +285,7 @@ Audit logs are:
 
 ---
 
-## 10. Future Enhancements
+## 10. Planned Enhancements
 
 - **Delegated Admin Roles**: Super Admin can delegate admin approval authority to Admins
 - **Time-based Access**: Admins can have temporary elevated permissions (e.g., 1 week to do migration)

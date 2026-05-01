@@ -4,7 +4,7 @@
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document provides a high‑level architectural overview of the VTT‑Chat platform.
 It describes the major subsystems, their responsibilities, and how they interact:
@@ -23,7 +23,7 @@ Each subsystem has its own dedicated document linked below.
 
 ---
 
-## 🏗️ Core System Components
+## Core System Components
 
 ### **1. Backend API (Node.js + Fastify/Express)**
 
@@ -270,7 +270,7 @@ Horizontal scaling is supported via:
 
 ---
 
-## 🧭 Document Index
+## Document Index
 
 | Document                      | Description                           |
 | ----------------------------- | ------------------------------------- |

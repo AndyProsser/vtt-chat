@@ -9,7 +9,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-## 🧱 Phase 1 — Foundations
+## Phase 1 — Foundations
 
 ### **1. Architecture Design**
 
@@ -40,7 +40,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-## 🏗️ Phase 2 — Deployment Infrastructure
+## Phase 2 — Deployment Infrastructure
 
 ### **4. Docker Build Automation**
 
@@ -76,7 +76,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-## 🗄️ Phase 3 — Data & Realtime Layers
+## Phase 3 — Data & Realtime Layers
 
 ### **8. Database Schema**
 
@@ -138,7 +138,7 @@ The roadmap is divided into **phases**, each containing **stages** that should b
 
 ---
 
-## 🎨 Phase 4 — Frontend Application
+## Phase 4 — Frontend Application
 
 ### **UI Modernization Track**
 
@@ -268,7 +268,7 @@ Acceptance criteria:
 
 ---
 
-## 🔊 Phase 5 — Audio & Realtime Integration
+## Phase 5 — Audio & Realtime Integration
 
 ### **16. LiveKit Integration**
 
@@ -286,7 +286,7 @@ Acceptance criteria:
 
 ---
 
-## 📊 Phase 6 — Platform Health & Admin
+## Phase 6 — Platform Health & Admin
 
 ### **17. System Status / Health Page**
 
@@ -312,7 +312,7 @@ Acceptance criteria:
 
 ---
 
-## 🛡️ Optional Phase — Admin App
+## Optional Phase — Admin App
 
 ### **Admin App Features**
 
@@ -327,7 +327,7 @@ Acceptance criteria:
 
 ---
 
-## 🚀 Development Flow Summary
+## Development Flow Summary
 
 1. **Design first**
 2. **Infrastructure second**
@@ -340,7 +340,7 @@ This order minimizes rework and ensures a stable foundation at every stage.
 
 ---
 
-## 📝 Notes for Contributors
+## Notes for Contributors
 
 - Follow the architecture doc
 - Respect privacy rules

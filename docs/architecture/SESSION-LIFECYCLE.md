@@ -244,7 +244,7 @@ The extension **cannot** change session state.
 
 ---
 
-## 10. Future Extensions
+## 10. Planned Extensions
 
 Planned enhancements:
 

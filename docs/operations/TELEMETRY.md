@@ -4,7 +4,7 @@ _A privacy‑respecting, low‑overhead telemetry pipeline for client events, pr
 
 ---
 
-## 📘 Overview
+## Overview
 
 The telemetry subsystem provides **lightweight, anonymous analytics** for:
 
@@ -40,7 +40,7 @@ This document defines:
 
 ---
 
-## 🧩 1. Telemetry Architecture Overview
+## 1. Telemetry Architecture Overview
 
 ```text
 Client (Zustand Telemetry Store)
@@ -66,7 +66,7 @@ It is strictly for **product improvement** and **system health**.
 
 ---
 
-## 🧱 2. Client Telemetry
+## 2. Client Telemetry
 
 The client batches events in `useTelemetryStore`.
 
@@ -162,7 +162,7 @@ To make logging operationally controllable, standardize on explicit log levels.
 
 ---
 
-## 📡 3. WebSocket Telemetry Events
+## 3. WebSocket Telemetry Events
 
 Telemetry events are delivered via:
 
@@ -203,7 +203,7 @@ Only:
 
 ---
 
-## 🔌 4. Redis Ingestion
+## 4. Redis Ingestion
 
 Raw telemetry events are appended to:
 
@@ -230,7 +230,7 @@ Each entry is a JSON string:
 
 ---
 
-## 📁 5. Backend Logging Streams (Diagnostics, Audit, Performance, Telemetry)
+## 5. Backend Logging Streams (Diagnostics, Audit, Performance, Telemetry)
 
 Backend logging is split by intent so admin workflows can filter and retain correctly.
 
@@ -268,7 +268,7 @@ Operational requirements:
 
 ---
 
-## 🧮 6. Aggregation Worker
+## 6. Aggregation Worker
 
 A background worker periodically:
 
@@ -304,7 +304,7 @@ Aggregated row:
 
 ---
 
-## 🗄️ 7. Postgres Storage
+## 7. Postgres Storage
 
 ### Table: `TelemetryEvent`
 
@@ -330,7 +330,7 @@ model TelemetryEvent {
 
 ---
 
-## 📊 8. Query Patterns
+## 8. Query Patterns
 
 ### 1. Feature Usage
 
@@ -371,7 +371,7 @@ GROUP BY properties->>'source';
 
 ---
 
-## 🔒 9. Privacy & Trust Model
+## 9. Privacy & Trust Model
 
 Telemetry is designed to be:
 
@@ -401,7 +401,7 @@ Stored in Postgres with strict access control.
 
 ---
 
-## 🧠 10. Design Principles
+## 10. Design Principles
 
 ### 1. Telemetry must never impact gameplay
 
@@ -425,7 +425,7 @@ No PII, no tracking, no profiling.
 
 ---
 
-## 🧪 11. Validation Checklist (Logging + Telemetry)
+## 11. Validation Checklist (Logging + Telemetry)
 
 Use this checklist when implementing logging upgrades:
 

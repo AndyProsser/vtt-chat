@@ -83,7 +83,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 🎨 1. Layout Structure
+## 1. Layout Structure
 
 ### **1.1 Top‑Level Regions**
 
@@ -104,7 +104,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 🎛️ 2. Token Mapping (DM Persona)
+## 2. Token Mapping (DM Persona)
 
 ### **2.1 Backgrounds**
 
@@ -142,7 +142,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 🎙️ 3. DM‑Specific Components
+## 3. DM‑Specific Components
 
 ## **3.1 DM Voice Bar**
 
@@ -194,7 +194,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 💬 4. Center Pane (Chat + Notes)
+## 4. Center Pane (Chat + Notes)
 
 ## **4.1 Room Header**
 
@@ -223,7 +223,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 👥 5. Left Rail (Player List)
+## 5. Left Rail (Player List)
 
 ## **5.1 Rooms**
 
@@ -240,7 +240,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 🧭 6. Right Rail Tabs
+## 6. Right Rail Tabs
 
 | Tab      | Icon | Visibility |
 | -------- | ---- | ---------- |
@@ -257,7 +257,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## 🧠 7. Motion Overlays (DM Persona)
+## 7. Motion Overlays (DM Persona)
 
 ### **7.1 Slide‑In Panels**
 
@@ -282,7 +282,7 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## ✔ 8. Summary
+## 8. Summary
 
 This DM Persona mockup includes:
 

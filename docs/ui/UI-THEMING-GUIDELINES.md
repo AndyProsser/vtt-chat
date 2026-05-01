@@ -4,7 +4,7 @@ _Practical implementation rules for applying the VTT‑Chat theme system._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This document explains **how to apply the VTT‑Chat theming system** in code.
 
@@ -21,7 +21,7 @@ This is the authoritative implementation guide for engineers.
 
 ---
 
-## 🎨 2. Core Principles
+## 2. Core Principles
 
 ### **2.1 Tokens only — never raw colors**
 
@@ -64,7 +64,7 @@ Same state → same colors → same behaviour.
 
 ---
 
-## 🧱 3. File Structure
+## 3. File Structure
 
 Recommended structure:
 
@@ -95,7 +95,7 @@ Contain **no colors** — only token references.
 
 ---
 
-## 🎛️ 4. Applying Tokens in CSS
+## 4. Applying Tokens in CSS
 
 ### **4.1 Backgrounds**
 
@@ -151,7 +151,7 @@ pointer-events: none;
 
 ---
 
-## ⚛️ 5. Applying Tokens in React Components
+## 5. Applying Tokens in React Components
 
 ### **5.1 Using CSS modules**
 
@@ -196,7 +196,7 @@ Then:
 
 ---
 
-## 🎭 6. Persona Accent Guidelines
+## 6. Persona Accent Guidelines
 
 Persona accents must be:
 
@@ -235,7 +235,7 @@ Persona accents must be:
 
 ---
 
-## 🌑 7. Dark Mode Implementation
+## 7. Dark Mode Implementation
 
 Dark mode is the **default** token set.
 
@@ -257,7 +257,7 @@ tokens.css
 
 ---
 
-## 🌕 8. Light Mode Implementation
+## 8. Light Mode Implementation
 
 Light mode is a **token override layer**.
 
@@ -286,7 +286,7 @@ Components must not contain:
 
 ---
 
-## ♿ 9. Accessibility Guidelines
+## 9. Accessibility Guidelines
 
 ### **9.1 Minimum contrast**
 
@@ -312,7 +312,7 @@ Use:
 
 ---
 
-## 🚫 10. Anti‑Patterns (Do Not Do)
+## 10. Anti‑Patterns (Do Not Do)
 
 ### **10.1 Hardcoded colors**
 
@@ -338,7 +338,7 @@ Use `--text-muted` instead.
 
 ---
 
-## ✔ 11. Summary
+## 11. Summary
 
 This document defines:
 

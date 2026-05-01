@@ -4,7 +4,7 @@ _A relational schema for campaigns, sessions, presence, chat, notes, audio, and 
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document describes the **Postgres + Prisma** data model used by the VTT‑Chat platform.
 It covers:
@@ -30,7 +30,7 @@ The schema is designed for:
 
 ---
 
-## 🧩 Core Entities
+## Core Entities
 
 ### **User**
 
@@ -145,7 +145,7 @@ Key points:
 
 ---
 
-## 🎭 Sessions
+## Sessions
 
 A session represents a single play session.
 
@@ -165,7 +165,7 @@ Key points:
 
 ---
 
-## 🏠 Rooms
+## Rooms
 
 Rooms represent audio/chat spaces:
 
@@ -188,7 +188,7 @@ Key points:
 
 ---
 
-## 🟢 Presence
+## Presence
 
 Presence is **Redis‑first**, but Postgres stores snapshots for:
 
@@ -206,7 +206,7 @@ Presence is **Redis‑first**, but Postgres stores snapshots for:
 
 ---
 
-## 💬 Chat System
+## Chat System
 
 Chat messages support:
 
@@ -230,7 +230,7 @@ Messages are immutable except for deletion flags.
 
 ---
 
-## 📝 Notes System
+## Notes System
 
 Notes support:
 
@@ -265,7 +265,7 @@ Explicit mapping for individual visibility.
 
 ---
 
-## 🎙️ Audio Presets & DM Controls
+## Audio Presets & DM Controls
 
 Audio effects are stored as:
 
@@ -295,7 +295,7 @@ Stored transiently in Redis, but DB logs:
 
 ---
 
-## 🎧 Recordings & Transcripts
+## Recordings & Transcripts
 
 Recordings are stored externally (S3, etc.) but metadata is stored in DB.
 
@@ -318,7 +318,7 @@ Recordings are stored externally (S3, etc.) but metadata is stored in DB.
 
 ---
 
-## 📓 Journals
+## Journals
 
 Each session has one journal:
 
@@ -328,7 +328,7 @@ Each session has one journal:
 
 ---
 
-## 🔌 External Integrations
+## External Integrations
 
 ### **ExternalIdentity**
 
@@ -433,7 +433,7 @@ Fields include:
 
 ---
 
-## 📦 Import / Export
+## Import / Export
 
 Campaign import/export stores:
 
@@ -457,7 +457,7 @@ Campaign import/export stores:
 
 ---
 
-## 🛠️ Admin & Audit Logs
+## Admin & Audit Logs
 
 ### **AuditLog**
 
@@ -482,7 +482,7 @@ Fields:
 
 ---
 
-## 📡 Telemetry
+## Telemetry
 
 Telemetry events are:
 
@@ -500,7 +500,7 @@ Telemetry events are:
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. **Redis is the source of truth for live state**
 

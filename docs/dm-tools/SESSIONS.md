@@ -5,12 +5,12 @@ _A structured, stateful lifecycle for tabletop play, with green room staging, re
 Status:
 
 - This workflow document includes DM-facing lifecycle concepts that are broader than the shipped runtime naming conventions.
-- Campaign-scoped endpoint examples and lowercase websocket event names in this file should be read as workflow shorthand or target architecture, not the canonical Stage 0-7 contract.
+- Campaign-scoped endpoint examples and lowercase websocket event names in this file should be read as workflow shorthand or planned architecture, not the canonical Stage 0-7 contract.
 - For current runtime contracts, see [../README.md](../README.md#runtime-source-of-truth).
 
 ---
 
-## 📘 Overview
+## Overview
 
 A **session** represents a single play period within a campaign.
 Sessions provide:
@@ -38,7 +38,7 @@ This document defines:
 
 ---
 
-## 🧩 1. Session Lifecycle Overview
+## 1. Session Lifecycle Overview
 
 ```text
 Green Room
@@ -52,7 +52,7 @@ Sessions are **explicit** — they do not start automatically.
 
 ---
 
-## 🟢 2. Green Room
+## 2. Green Room
 
 The **green room** is the pre/post session lobby.
 
@@ -74,7 +74,7 @@ They always land in the green room.
 
 ---
 
-## 🎬 3. Starting a Session
+## 3. Starting a Session
 
 Only the **DM** can start a session.
 
@@ -105,7 +105,7 @@ POST /api/campaigns/:campaignId/sessions/start
 
 ---
 
-## 📜 4. Recap System
+## 4. Recap System
 
 When a session starts, players see a **recap modal**.
 
@@ -130,7 +130,7 @@ Displayed once per user.
 
 ---
 
-## 🏠 5. Rooms During a Session
+## 5. Rooms During a Session
 
 During a session, users can be in:
 
@@ -165,7 +165,7 @@ private.ended
 
 ---
 
-## 🔐 6. Private Rooms
+## 6. Private Rooms
 
 Private rooms are:
 
@@ -201,7 +201,7 @@ Restored on exit.
 
 ---
 
-## 🧭 7. Ending a Session
+## 7. Ending a Session
 
 Only the **DM** can end a session.
 
@@ -232,7 +232,7 @@ POST /api/campaigns/:campaignId/sessions/:sessionId/end
 
 ---
 
-## 📓 8. Session Journaling
+## 8. Session Journaling
 
 Each session has a **journal**:
 
@@ -267,7 +267,7 @@ Occurs:
 
 ---
 
-## 🎧 9. Recording & Transcription
+## 9. Recording & Transcription
 
 Recordings are optional and controlled by DM.
 
@@ -294,7 +294,7 @@ Recordings are optional and controlled by DM.
 
 ---
 
-## 🔄 10. Interaction With Presence
+## 10. Interaction With Presence
 
 Session transitions update presence:
 
@@ -313,7 +313,7 @@ Presence drives:
 
 ---
 
-## 🎙️ 11. Interaction With Audio Engine
+## 11. Interaction With Audio Engine
 
 Session start:
 
@@ -336,7 +336,7 @@ Private rooms:
 
 ---
 
-## 💬 12. Interaction With Chat
+## 12. Interaction With Chat
 
 Session start:
 
@@ -355,7 +355,7 @@ Private rooms:
 
 ---
 
-## 📝 13. Interaction With Notes
+## 13. Interaction With Notes
 
 During session:
 
@@ -370,7 +370,7 @@ After session:
 
 ---
 
-## 🔌 14. Interaction With Extension
+## 14. Interaction With Extension
 
 The browser extension can:
 
@@ -389,7 +389,7 @@ Session boundaries help:
 
 ---
 
-## 🧠 Design Principles
+## Design Principles
 
 ### 1. Sessions are explicit
 

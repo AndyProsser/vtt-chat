@@ -4,7 +4,7 @@ _A complete UX blueprint for DM, Player, and Spectator personas._
 
 ---
 
-## 🧭 Overview
+## Overview
 
 The VTT‑Chat SPA supports **three personas**, each with a different level of control, visibility, and UI complexity:
 
@@ -30,9 +30,9 @@ Detailed persona companion docs:
 
 ---
 
-## 🎭 Persona 1: **DM UI**
+## Persona 1: **DM UI**
 
-### 🎛️ DM UX Principles
+### DM UX Principles
 
 - **Everything visible**: all rooms, all players, all audio states
 - **Everything controllable**: movement, audio, notes, metadata
@@ -40,7 +40,7 @@ Detailed persona companion docs:
 - **Zero clutter**: collapsible panels, context‑aware controls
 - **Session‑aware**: recap, journal, recording, private rooms
 
-### 🧱 DM Layout Structure
+### DM Layout Structure
 
 ```text
 ┌──────────────────────────────────────────────┐
@@ -54,7 +54,7 @@ Detailed persona companion docs:
 └──────────────────────────────────────────────┘
 ```
 
-### 🧩 DM UI Components
+### DM UI Components
 
 #### **1. Top Bar**
 
@@ -123,9 +123,9 @@ Detailed persona companion docs:
 
 ---
 
-## 🎭 Persona 2: **Player UI**
+## Persona 2: **Player UI**
 
-### 🎮 Player UX Principles
+### Player UX Principles
 
 - **Minimal cognitive load**
 - **Fast access to chat + audio controls**
@@ -141,7 +141,7 @@ Players should feel:
 - Empowered to roleplay
 - Not overwhelmed by DM‑level controls
 
-### 🧱 Player Layout Structure
+### Player Layout Structure
 
 ```text
 ┌──────────────────────────────────────────────┐
@@ -153,7 +153,7 @@ Players should feel:
 └──────────────────────────────────────────────┘
 ```
 
-### 🧩 Player UI Components
+### Player UI Components
 
 #### **1. Top Bar**
 
@@ -199,9 +199,9 @@ Players should feel:
 
 ---
 
-## 🎭 Persona 3: **Spectator UI**
+## Persona 3: **Spectator UI**
 
-### 👁️ Spectator UX Principles
+### Spectator UX Principles
 
 - **Read‑only**
 - **Zero clutter**
@@ -212,7 +212,7 @@ Players should feel:
 
 Spectators are observers — not participants.
 
-### 🧱 Spectator Layout Structure
+### Spectator Layout Structure
 
 ```text
 ┌──────────────────────────────────────────────┐
@@ -224,7 +224,7 @@ Spectators are observers — not participants.
 └──────────────────────────────────────────────┘
 ```
 
-### 🧩 Spectator UI Components
+### Spectator UI Components
 
 #### **1. Top Bar**
 
@@ -258,7 +258,7 @@ Spectators are observers — not participants.
 
 ---
 
-## 🧠 Cross‑Persona Behavior Rules
+## Cross‑Persona Behavior Rules
 
 ### **Room Visibility**
 
@@ -298,7 +298,7 @@ Spectators are observers — not participants.
 
 ---
 
-## 🚀 Next Step Options
+## Next Step Options
 
 If you want, I can now generate:
 

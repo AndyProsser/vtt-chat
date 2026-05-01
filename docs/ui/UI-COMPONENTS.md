@@ -4,7 +4,7 @@ _Authoritative reference for all UI components in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This document defines every UI component used in the VTT‑Chat SPA.
 
@@ -26,7 +26,7 @@ No component mutates state directly.
 
 ---
 
-## 🧱 2. Layout Components
+## 2. Layout Components
 
 These components define the structural regions of the SPA.
 
@@ -144,7 +144,7 @@ Secondary tools behind vertical tabs.
 
 ---
 
-## 👥 3. Player List Components
+## 3. Player List Components
 
 ---
 
@@ -191,7 +191,7 @@ DM‑only audio and condition controls.
 
 ---
 
-## 💬 4. Chat & Messaging Components
+## 4. Chat & Messaging Components
 
 ---
 
@@ -272,7 +272,7 @@ Chat‑embedded representation of a note.
 
 ---
 
-## 📝 5. Notes Components
+## 5. Notes Components
 
 ---
 
@@ -302,7 +302,7 @@ Right‑side pop‑out viewer for a single note.
 
 ---
 
-## 🎙️ 6. DM‑Only Components
+## 6. DM‑Only Components
 
 ---
 
@@ -345,7 +345,7 @@ DM audio routing and bulk actions.
 
 ---
 
-## 🔍 7. Search, Journal, History, Settings
+## 7. Search, Journal, History, Settings
 
 ---
 
@@ -397,7 +397,7 @@ User‑specific settings.
 
 ---
 
-## 🧩 8. Tabs & Panels
+## 8. Tabs & Panels
 
 ---
 
@@ -421,7 +421,7 @@ Right‑side slide‑in (180ms, primary easing).
 
 ---
 
-## 🧠 9. Persona Visibility Matrix
+## 9. Persona Visibility Matrix
 
 | Component       | DM   | Player  | Spectator |
 | --------------- | ---- | ------- | --------- |
@@ -439,7 +439,7 @@ Right‑side slide‑in (180ms, primary easing).
 
 ---
 
-## ✔ 10. Summary
+## 10. Summary
 
 This document defines:
 

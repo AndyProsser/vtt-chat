@@ -1,6 +1,6 @@
 # **Developer Quick‑Reference Sheet**
 
-## 🚀 Core Architecture (At a Glance)
+## Core Architecture (At a Glance)
 
 - **Unidirectional flow:**
   `UI → Event → Reducer → Store → UI`
@@ -22,7 +22,7 @@
 
 ---
 
-## 🧩 Event Design Rules
+## Event Design Rules
 
 ### **Event Naming**
 
@@ -54,7 +54,7 @@ Examples:
 
 ---
 
-## 🧠 Reducer Rules
+## Reducer Rules
 
 - Must be **pure**
 - Must be **deterministic**
@@ -70,7 +70,7 @@ Reducers compute the next state _only_ from `(state, event)`.
 
 ---
 
-## 🗂 Store Rules (Zustand)
+## Store Rules (Zustand)
 
 - Use selectors everywhere.
 - No deep nesting.
@@ -80,7 +80,7 @@ Reducers compute the next state _only_ from `(state, event)`.
 
 ---
 
-## 🔐 Privacy & Permissions (Critical)
+## Privacy & Permissions (Critical)
 
 ### **Privacy**
 
@@ -99,7 +99,7 @@ Reducers compute the next state _only_ from `(state, event)`.
 
 ---
 
-## 🎛 UI Rules
+## UI Rules
 
 - Role‑aware (DM/Player/Spectator)
 - Non‑blocking (never interfere with VTT)
@@ -118,7 +118,7 @@ Reducers compute the next state _only_ from `(state, event)`.
 
 ---
 
-## 🧩 Extension Rules
+## Extension Rules
 
 - Overlay‑first
 - Non‑destructive
@@ -129,7 +129,7 @@ Reducers compute the next state _only_ from `(state, event)`.
 
 ---
 
-## 🔄 State Recovery (Rehydration)
+## State Recovery (Rehydration)
 
 Triggered on:
 
@@ -153,7 +153,7 @@ Rules:
 
 ---
 
-## 🧪 Testing Checklist (Manual or Automated)
+## Testing Checklist (Manual or Automated)
 
 Before submitting a PR:
 
@@ -169,7 +169,7 @@ Before submitting a PR:
 
 ---
 
-## 🛠 Prisma Local Recovery (Copy-Paste)
+## Prisma Local Recovery (Copy-Paste)
 
 Use this when local Prisma migrations fail with `P1010` (access denied) or `P3018` (failed migration / drift).
 
@@ -224,7 +224,7 @@ Warning:
 
 ---
 
-## 📁 File & Folder Conventions
+## File & Folder Conventions
 
 ### **Events**
 
@@ -264,7 +264,7 @@ docs/<domain>/<DOCUMENT>.md
 
 ---
 
-## 🧭 When Adding a New Feature
+## When Adding a New Feature
 
 1. Define events
 2. Define reducer logic
@@ -278,7 +278,7 @@ docs/<domain>/<DOCUMENT>.md
 
 ---
 
-## 🛑 Things You Must Never Do
+## Things You Must Never Do
 
 - Mutate state
 - Add side effects to reducers
@@ -292,7 +292,7 @@ docs/<domain>/<DOCUMENT>.md
 
 ---
 
-## 🟢 Things You Should Always Do
+## Things You Should Always Do
 
 - Use selectors
 - Keep reducers pure

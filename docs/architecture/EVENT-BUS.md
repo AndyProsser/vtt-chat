@@ -47,7 +47,7 @@ This enables:
 - State recovery
 - Debugging
 - Time‑travel inspection
-- Session playback (future feature)
+- Session playback (planned feature)
 
 ---
 

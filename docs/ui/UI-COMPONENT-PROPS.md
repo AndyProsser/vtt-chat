@@ -4,7 +4,7 @@ _A complete props reference for all UI components in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This document lists the **props** for every UI component in the VTT‑Chat SPA.
 
@@ -23,7 +23,7 @@ No component mutates state directly.
 
 ---
 
-## 🧱 2. Layout Components
+## 2. Layout Components
 
 ---
 
@@ -93,7 +93,7 @@ No component mutates state directly.
 
 ---
 
-## 👥 3. Player List Components
+## 3. Player List Components
 
 ---
 
@@ -135,7 +135,7 @@ No component mutates state directly.
 
 ---
 
-## 💬 4. Chat & Messaging Components
+## 4. Chat & Messaging Components
 
 ---
 
@@ -202,7 +202,7 @@ No component mutates state directly.
 
 ---
 
-## 📝 5. Notes Components
+## 5. Notes Components
 
 ---
 
@@ -228,7 +228,7 @@ No component mutates state directly.
 
 ---
 
-## 🎙️ 6. DM‑Only Components
+## 6. DM‑Only Components
 
 ---
 
@@ -272,7 +272,7 @@ No component mutates state directly.
 
 ---
 
-## 🔍 7. Search, Journal, History, Settings
+## 7. Search, Journal, History, Settings
 
 ---
 
@@ -318,7 +318,7 @@ No component mutates state directly.
 
 ---
 
-## ✔ 8. Summary
+## 8. Summary
 
 This file provides:
 

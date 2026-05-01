@@ -4,7 +4,7 @@ _Authoritative persona‑specific component architecture for VTT‑Chat._
 
 ---
 
-## 🧱 **0. Shared Root Layout (All Personas)**
+## **0. Shared Root Layout (All Personas)**
 
 All personas share the same structural skeleton.
 Visibility and props differ by persona.
@@ -41,7 +41,7 @@ Visibility and props differ by persona.
 
 ---
 
-## 🎭 **1. DM Component Tree (Full Command Centre)**
+## **1. DM Component Tree (Full Command Centre)**
 
 DM gets **all components**, including overrides, room management, audio routing, and full notes.
 
@@ -105,7 +105,7 @@ DM gets **all components**, including overrides, room management, audio routing,
 
 ---
 
-## 🎮 **2. Player Component Tree (Immersive Cockpit)**
+## **2. Player Component Tree (Immersive Cockpit)**
 
 Players get a **clean, minimal** UI with chat, notes, and personal settings.
 
@@ -162,7 +162,7 @@ Players get a **clean, minimal** UI with chat, notes, and personal settings.
 
 ---
 
-## 👁️ **3. Spectator Component Tree (Observation Deck)**
+## **3. Spectator Component Tree (Observation Deck)**
 
 Spectators get **read‑only everything**.
 
@@ -218,7 +218,7 @@ Spectators get **read‑only everything**.
 
 ---
 
-## 🧩 **4. New/Updated Components (All Documented)**
+## **4. New/Updated Components (All Documented)**
 
 These are **not new subsystems** — they are UI wrappers around existing behaviour.
 
@@ -247,18 +247,18 @@ These components already exist conceptually in your docs — this is just their 
 
 ---
 
-## 🧠 **5. Persona Differences Summary**
+## **5. Persona Differences Summary**
 
 | Component       | DM   | Player  | Spectator |
 | --------------- | ---- | ------- | --------- |
-| Toolbar         | ✔    | ✔      | ✔         |
-| CampaignInfo    | ✔    | ✔      | ✔         |
-| SystemToasts    | ✔    | ✔      | ✔         |
-| DMVoiceBar      | ✔    | ✖      | ✖         |
-| PlayerOverrides | ✔    | ✖      | ✖         |
-| MessageComposer | ✔    | ✔      | ✖         |
+| Toolbar         | ✔    | ✔       | ✔         |
+| CampaignInfo    | ✔    | ✔       | ✔         |
+| SystemToasts    | ✔    | ✔       | ✔         |
+| DMVoiceBar      | ✔    | ✖       | ✖         |
+| PlayerOverrides | ✔    | ✖       | ✖         |
+| MessageComposer | ✔    | ✔       | ✖         |
 | NotesPanel      | Full | Partial | RO        |
 | NotePopout      | Full | Partial | RO        |
-| RoomsPanel      | ✔    | ✖      | ✖        |
-| AudioPanel      | ✔    | ✖      | ✖        |
-| SettingsPanel   | ✔    | ✔      | ✔        |
+| RoomsPanel      | ✔    | ✖       | ✖         |
+| AudioPanel      | ✔    | ✖       | ✖         |
+| SettingsPanel   | ✔    | ✔       | ✔         |

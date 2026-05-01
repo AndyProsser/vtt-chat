@@ -11,7 +11,7 @@ It tracks:
 
 Last updated: 2026-04-29
 
-Mirror reference: Keep this file in sync with operations snapshot [docs/operations/ROADMAP.md](docs/operations/ROADMAP.md).
+This is the canonical project roadmap for delivery stages and progress tracking.
 
 ---
 
@@ -200,7 +200,6 @@ Use this appendix to keep PR slicing concrete and scoped.
 - `docs/changes/AI-CONTEXT-DESIGN-CHANGES.md`
 - `docs/changes/DESIGN-SYSTEM-CHANGES.md`
 - `ROADMAP.md`
-- `docs/operations/ROADMAP.md`
 - `docs/IMPLEMENTATION-PLAN.md`
 - `docs/DEV-QUICK-REFERENCE.md`
 - `docs/README.md`

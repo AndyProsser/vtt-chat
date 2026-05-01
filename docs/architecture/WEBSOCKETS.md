@@ -10,7 +10,7 @@ Status:
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document defines the **WebSocket protocol** used by the VTT‑Chat platform.
 It covers:
@@ -32,11 +32,11 @@ For shipped runtime behavior through Stage 7, the source of truth is:
 - `frontend/src/ws/client.ts`
 - `frontend/src/hooks/useWebSocket.ts`
 
-This document also contains conceptual and future-state material for later stages.
+This document also contains conceptual and planned material for later stages.
 
 ---
 
-## 🔌 Connection Model
+## Connection Model
 
 Current shipped baseline:
 
@@ -81,7 +81,7 @@ Illustrative runtime shape:
 }
 ```
 
-Conceptual legacy connection model retained below for future architecture discussion:
+Conceptual legacy connection model retained below for planned architecture discussion:
 
 ```text
 wss://server/ws/campaign/:campaignId
@@ -96,7 +96,7 @@ The connection is:
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
 Current shipped baseline:
 
@@ -145,7 +145,7 @@ If authentication fails:
 
 ---
 
-## 📦 Event Envelope Format
+## Event Envelope Format
 
 Shipped domain events follow the shared event envelope:
 
@@ -176,7 +176,7 @@ Transport wrappers around domain events are separate from the domain envelope an
 
 ---
 
-## 🧩 Namespaces
+## Namespaces
 
 Current shipped runtime event families are grouped by uppercase domains:
 
@@ -242,7 +242,7 @@ When updating runtime-facing documentation, prefer the shipped uppercase contrac
 
 ## Legacy Reconnect Concept
 
-Earlier protocol sketches described reconnect as an explicit `client.reconnect` request followed by state replay. That is still useful as target architecture, but it is not the shipped runtime behavior.
+Earlier protocol sketches described reconnect as an explicit `client.reconnect` request followed by state replay. That is still useful as planned architecture, but it is not the shipped runtime behavior.
 
 Current shipped baseline instead uses:
 
@@ -253,7 +253,7 @@ Current shipped baseline instead uses:
 
 ---
 
-## 🧠 Versioning Strategy
+## Versioning Strategy
 
 - Shipped runtime domain events include `version: 1`
 - New fields → bump minor version

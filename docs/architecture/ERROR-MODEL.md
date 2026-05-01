@@ -297,7 +297,7 @@ Triggered after reconnect.
 
 #### **8.3 Event Replay**
 
-Future feature for full determinism.
+Planned feature for full determinism.
 
 #### **8.4 Local Reset**
 

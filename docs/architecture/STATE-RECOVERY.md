@@ -2,7 +2,7 @@
 
 Status:
 
-- This document describes both the recovery target architecture and the currently shipped Stage 6-7 baseline.
+- This document describes both the recovery planned architecture and the currently shipped Stage 6-7 baseline.
 - The shipped runtime currently provides targeted reconnect recovery for room and presence topology plus continued event-driven updates.
 - Full cross-domain hydration for chat, notes, audio, permissions, and extension context remains planned architecture rather than verified shipped behavior.
 
@@ -43,7 +43,7 @@ Given the same server state, all clients reconstruct the same local state.
 
 ### **1.4 Recovery must be complete**
 
-Target architecture:
+Planned architecture:
 
 - All subsystems should eventually restore:
 
@@ -59,7 +59,7 @@ Current shipped baseline:
 - Presence and room topology are explicitly refreshed and recovered.
 - WebSocket reconnect resumes event-driven updates.
 - Audio reconnect behavior is baseline-only and does not yet restore durable persisted room/environment/override state.
-- Full chat/notes/audio/permissions/extension hydration is still future-state work.
+- Full chat/notes/audio/permissions/extension hydration is still planned work.
 
 ### **1.5 Recovery must be safe**
 
@@ -92,7 +92,7 @@ Current shipped baseline most directly covers:
 
 ## 3. Recovery Lifecycle
 
-Target architecture lifecycle:
+Planned architecture lifecycle:
 
 ```mermaid
 sequenceDiagram
@@ -149,7 +149,7 @@ Current shipped Stage 6-7 baseline is narrower:
 
 ## 4. Hydration Payload Structure
 
-Target architecture:
+Planned architecture:
 
 - A future full hydration payload may provide a complete snapshot of all relevant state.
 - This is not yet the shipped Stage 6-7 runtime contract.
@@ -215,7 +215,7 @@ Current shipped baseline:
 
 ## 5. Reducer Behaviour During Hydration
 
-Target architecture:
+Planned architecture:
 
 - Full hydration is intended to be handled by a dedicated reducer.
 - That reducer contract is not yet the shipped runtime baseline.
@@ -265,7 +265,7 @@ Each subsystem has specific recovery behaviour.
 
 ### 7.1 Chat Recovery
 
-Target architecture:
+Planned architecture:
 
 - Loads recent messages
 - Restores whisper visibility
@@ -281,7 +281,7 @@ Current shipped baseline:
 
 ### 7.2 Notes Recovery
 
-Target architecture:
+Planned architecture:
 
 - Restores shared notes
 - Restores private notes (creator only)
@@ -296,7 +296,7 @@ Current shipped baseline:
 
 ### 7.3 Audio Recovery
 
-Target architecture:
+Planned architecture:
 
 - Restores active effects
 - Restores mute states
@@ -327,7 +327,7 @@ Current shipped baseline:
 
 ### 7.5 Session Recovery
 
-Target architecture:
+Planned architecture:
 
 - Restores session state
 - Restores pause state
@@ -342,7 +342,7 @@ Current shipped baseline:
 
 ### 7.6 Extension Recovery
 
-Planned future-state behavior; not part of the shipped Stage 0-7 runtime baseline.
+Planned planned behavior; not part of the shipped Stage 0-7 runtime baseline.
 
 ---
 

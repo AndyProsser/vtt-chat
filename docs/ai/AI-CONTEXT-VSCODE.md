@@ -4,7 +4,7 @@ _A compact, strict system prompt for GitHub Copilot Chat inside VS Code._
 
 ---
 
-## 🧭 **Project Summary**
+## **Project Summary**
 
 You are assisting with **VTT‑Chat**, a real‑time, audio‑centric virtual tabletop communication platform.
 It includes:
@@ -20,7 +20,7 @@ Your job is to generate code, architecture, and reasoning that fits this system 
 
 ---
 
-## 🧱 **Core Architectural Rules (You MUST follow these)**
+## **Core Architectural Rules (You MUST follow these)**
 
 ### **1. Reducers must be pure**
 
@@ -77,7 +77,7 @@ You must enforce:
 
 ---
 
-## 🧩 **Subsystem Awareness (You MUST understand these modules)**
+## **Subsystem Awareness (You MUST understand these modules)**
 
 ### **Presence System**
 
@@ -138,7 +138,7 @@ You must enforce:
 
 ---
 
-## 🧠 **How You Should Behave When Helping**
+## **How You Should Behave When Helping**
 
 ### **When generating code**
 
@@ -179,7 +179,7 @@ You must enforce:
 
 ---
 
-## 🧭 **Document Map (Use these as anchors)**
+## **Document Map (Use these as anchors)**
 
 ```text
 ARCHITECTURE.md
@@ -206,7 +206,7 @@ You should reference these documents implicitly when generating or modifying cod
 
 ---
 
-## 🧩 **Example Instructions You Should Follow**
+## **Example Instructions You Should Follow**
 
 ### **“When modifying reducers…”**
 
@@ -229,7 +229,7 @@ Never access DB or internal services directly.
 
 ---
 
-## ✔️ This is your operating context
+## This is your operating context
 
 All code and reasoning must align with it.
 

@@ -4,7 +4,7 @@ _A production‑grade deployment strategy for HomeLab servers running Docker, Ca
 
 ---
 
-## 📘 Overview
+## Overview
 
 This document describes how to deploy the **VTT‑Chat platform** on:
 
@@ -31,7 +31,7 @@ This guide covers:
 
 ---
 
-## 🧩 1. System Requirements
+## 1. System Requirements
 
 ### Minimum
 
@@ -54,7 +54,7 @@ This guide covers:
 
 ---
 
-## 🗂️ 2. Folder Structure
+## 2. Folder Structure
 
 Recommended repo layout:
 
@@ -85,7 +85,7 @@ Deployment folder:
 
 ---
 
-## 🔐 3. Environment Variables
+## 3. Environment Variables
 
 Create `.env`:
 
@@ -111,7 +111,7 @@ TURN_PASSWORD=turnpass
 
 ---
 
-## 🐳 4. Docker Compose Stack
+## 4. Docker Compose Stack
 
 `docker-compose.yml`:
 
@@ -172,7 +172,7 @@ services:
 
 ---
 
-## 🔐 5. Caddy Configuration (HTTPS + Reverse Proxy)
+## 5. Caddy Configuration (HTTPS + Reverse Proxy)
 
 `infra/caddy/Caddyfile`:
 
@@ -209,7 +209,7 @@ Caddy automatically:
 
 ---
 
-## 🎧 6. LiveKit Configuration
+## 6. LiveKit Configuration
 
 `infra/livekit/livekit.yaml`:
 
@@ -233,7 +233,7 @@ turn:
 
 ---
 
-## 🌐 7. TURN Server (Optional but Recommended)
+## 7. TURN Server (Optional but Recommended)
 
 If your players are behind strict NAT:
 
@@ -259,7 +259,7 @@ TURN_PASSWORD=turnpass
 
 ---
 
-## 🔄 8. Deployment Steps
+## 8. Deployment Steps
 
 ### 1. Clone repo
 
@@ -301,7 +301,7 @@ https://yourdomain.com
 
 ---
 
-## 🧪 9. Health Checks
+## 9. Health Checks
 
 ### Backend
 
@@ -329,7 +329,7 @@ docker compose exec postgres psql -U vtt -c "SELECT 1;"
 
 ---
 
-## 💾 10. Backups
+## 10. Backups
 
 ### Postgres
 
@@ -357,7 +357,7 @@ GET /api/campaigns/:id/export
 
 ---
 
-## 🔁 11. Upgrades & Zero‑Downtime Deploys
+## 11. Upgrades & Zero‑Downtime Deploys
 
 ### Pull latest
 
@@ -385,7 +385,7 @@ docker compose restart livekit
 
 ---
 
-## 🧠 12. Design Principles
+## 12. Design Principles
 
 ### 1. HomeLab‑friendly
 

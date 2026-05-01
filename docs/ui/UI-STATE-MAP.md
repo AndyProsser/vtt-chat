@@ -4,7 +4,7 @@ _Authoritative mapping of UI components → Zustand stores → selectors._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 Every UI component in VTT‑Chat derives its state from **Zustand stores**, using **selectors** that expose only the required data.
 
@@ -25,7 +25,7 @@ This document defines:
 
 ---
 
-## 🧱 2. Store Overview
+## 2. Store Overview
 
 The UI uses the following stores (already defined in your architecture):
 
@@ -46,7 +46,7 @@ No new stores are introduced.
 
 ---
 
-## 🧩 3. Layout Components
+## 3. Layout Components
 
 ---
 
@@ -117,7 +117,7 @@ No new stores are introduced.
 
 ---
 
-## 👥 4. Player List Components
+## 4. Player List Components
 
 ---
 
@@ -159,7 +159,7 @@ No new stores are introduced.
 
 ---
 
-## 💬 5. Chat & Messaging Components
+## 5. Chat & Messaging Components
 
 ---
 
@@ -229,7 +229,7 @@ No new stores are introduced.
 
 ---
 
-## 📝 6. Notes Components
+## 6. Notes Components
 
 ---
 
@@ -256,7 +256,7 @@ No new stores are introduced.
 
 ---
 
-## 🎙️ 7. DM‑Only Components
+## 7. DM‑Only Components
 
 ---
 
@@ -296,7 +296,7 @@ No new stores are introduced.
 
 ---
 
-## 🔍 8. Search, Journal, History, Settings
+## 8. Search, Journal, History, Settings
 
 ---
 
@@ -343,7 +343,7 @@ No new stores are introduced.
 
 ---
 
-## 🧠 9. UI‑Only State (uiStore)
+## 9. UI‑Only State (uiStore)
 
 The `uiStore` contains **only UI state**, never domain state.
 
@@ -359,7 +359,7 @@ The `uiStore` contains **only UI state**, never domain state.
 
 ---
 
-## ✔ 10. Summary
+## 10. Summary
 
 This file defines:
 

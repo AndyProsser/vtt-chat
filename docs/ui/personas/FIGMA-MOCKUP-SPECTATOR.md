@@ -1,4 +1,4 @@
-# 🎨 **SPECTATOR PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
+# **SPECTATOR PERSONA — FIGMA‑READY MOCKUP (FULL SPEC)**
 
 _Read‑only. Zero interaction. Maximum visibility._
 
@@ -247,7 +247,7 @@ No DM Voice Bar.
 
 ---
 
-## ✔ **Spectator Persona Figma‑Ready Mockup Complete**
+## **Spectator Persona Figma‑Ready Mockup Complete**
 
 This is the **cleanest**, **most visibility‑optimized**, and **strictly read‑only** persona in your system.
 

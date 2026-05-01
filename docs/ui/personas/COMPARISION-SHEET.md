@@ -4,7 +4,7 @@
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 This sheet defines:
 
@@ -19,7 +19,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🧱 2. High‑Level Persona Summary
+## 2. High‑Level Persona Summary
 
 | Persona       | Role                                                  | Interaction Level | UI Complexity |
 | ------------- | ----------------------------------------------------- | ----------------- | ------------- |
@@ -29,7 +29,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🎨 3. Layout Comparison
+## 3. Layout Comparison
 
 | Region                     | DM                            | Player            | Spectator                     |
 | -------------------------- | ----------------------------- | ----------------- | ----------------------------- |
@@ -43,7 +43,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🎛️ 4. Component Visibility Matrix
+## 4. Component Visibility Matrix
 
 ### **4.1 Top‑Level Components**
 
@@ -86,7 +86,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🧠 5. Interaction Capability Matrix
+## 5. Interaction Capability Matrix
 
 ### **5.1 Chat**
 
@@ -139,7 +139,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🎧 6. Audio & Voice Controls
+## 6. Audio & Voice Controls
 
 | Feature                 | DM  | Player | Spectator |
 | ----------------------- | --- | ------ | --------- |
@@ -152,7 +152,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-## 🎞️ 7. Motion & Animation Rules
+## 7. Motion & Animation Rules
 
 | Motion              | DM  | Player | Spectator   |
 | ------------------- | --- | ------ | ----------- |
@@ -167,7 +167,7 @@ Spectator defaults to **reduced motion** for clarity and readability.
 
 ---
 
-## 🎨 8. Token Usage Differences
+## 8. Token Usage Differences
 
 | Token Category        | DM          | Player          | Spectator          |
 | --------------------- | ----------- | --------------- | ------------------ |
@@ -182,7 +182,7 @@ Spectator uses the same tokens but **fewer interactive states**.
 
 ---
 
-## 🧩 9. Layout Differences (Figma‑Ready)
+## 9. Layout Differences (Figma‑Ready)
 
 | Region       | DM     | Player | Spectator        |
 | ------------ | ------ | ------ | ---------------- |
@@ -197,7 +197,7 @@ Spectator gets the **widest possible chat area**.
 
 ---
 
-## 🧱 10. Component Library Differences
+## 10. Component Library Differences
 
 | Component    | DM          | Player          | Spectator          |
 | ------------ | ----------- | --------------- | ------------------ |
@@ -211,7 +211,7 @@ Spectator gets the **widest possible chat area**.
 
 ---
 
-## ✔ **Combined Persona Comparison Sheet Complete**
+## **Combined Persona Comparison Sheet Complete**
 
 This is the **authoritative persona matrix** for your entire UI system.
 

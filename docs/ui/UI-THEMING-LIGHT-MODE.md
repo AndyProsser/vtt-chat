@@ -4,7 +4,7 @@ _Authoritative specification for light mode behaviour in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 Light mode exists for:
 
@@ -21,7 +21,7 @@ Light mode is the **alternate palette**.
 
 ---
 
-## 🌕 2. Light Mode Philosophy
+## 2. Light Mode Philosophy
 
 Light mode in VTT‑Chat is:
 
@@ -47,7 +47,7 @@ Only token overrides — no component‑level overrides.
 
 ---
 
-## 🎨 3. Light Mode Token Overrides
+## 3. Light Mode Token Overrides
 
 Light mode is activated via:
 
@@ -104,7 +104,7 @@ These remain stable across themes for identity consistency.
 
 ---
 
-## 🧩 4. Component Behaviour in Light Mode
+## 4. Component Behaviour in Light Mode
 
 Below is the **component‑level behaviour** for light mode.
 
@@ -205,7 +205,7 @@ Light mode uses subtle borders to define panel edges.
 
 ---
 
-## 🎭 5. Persona Accent Behaviour in Light Mode
+## 5. Persona Accent Behaviour in Light Mode
 
 Persona accents behave **identically** to dark mode.
 
@@ -227,7 +227,7 @@ This preserves the command‑centre aesthetic.
 
 ---
 
-## 🌓 6. Motion in Light Mode
+## 6. Motion in Light Mode
 
 Motion rules are identical to dark mode:
 
@@ -242,7 +242,7 @@ Glow uses the same accent tokens but with **lower opacity** in light mode to avo
 
 ---
 
-## ♿ 7. Accessibility in Light Mode
+## 7. Accessibility in Light Mode
 
 ### **7.1 Minimum contrast**
 
@@ -264,7 +264,7 @@ Same behaviour as dark mode:
 
 ---
 
-## 🔧 8. Implementation Rules
+## 8. Implementation Rules
 
 ### **8.1 Light mode is a token override only**
 
@@ -292,7 +292,7 @@ Accents remain stable across themes.
 
 ---
 
-## ✔ 9. Summary
+## 9. Summary
 
 This document defines:
 

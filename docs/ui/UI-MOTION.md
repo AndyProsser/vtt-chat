@@ -4,7 +4,7 @@ _A unified motion specification for all UI components in VTT‑Chat._
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 VTT‑Chat uses a **single, unified motion language** across all personas.
 
@@ -27,7 +27,7 @@ This file defines:
 
 ---
 
-## 🎛️ 2. Global Motion Principles
+## 2. Global Motion Principles
 
 ### **2.1 Motion communicates intent**
 
@@ -61,7 +61,7 @@ Every animation answers:
 
 ---
 
-## 🧱 3. Easing Curves
+## 3. Easing Curves
 
 These are the **only** curves used across the UI.
 
@@ -103,13 +103,13 @@ Used for:
 
 ---
 
-## 🧩 4. Component‑Specific Motion
+## 4. Component‑Specific Motion
 
 This section defines the motion rules for every UI component.
 
 ---
 
-## 🧱 4.1 Toolbar
+## 4.1 Toolbar
 
 ### **Connection Status Pulse**
 
@@ -127,7 +127,7 @@ Scale: 1.0 → 0.96 → 1.0
 
 ---
 
-## 🧱 4.2 Campaign Info + Toasts
+## 4.2 Campaign Info + Toasts
 
 ### **System Toasts (Dismissable)**
 
@@ -148,7 +148,7 @@ Transform: translateY(0) → -6px
 
 ---
 
-## 🧱 4.3 Left Rail (Player List)
+## 4.3 Left Rail (Player List)
 
 ### **Collapse → Expand**
 
@@ -186,7 +186,7 @@ Easing: ease-in-out
 
 ---
 
-## 🧱 4.4 Center Pane
+## 4.4 Center Pane
 
 ### **Room Header**
 
@@ -232,7 +232,7 @@ Shadow: subtle glow
 
 ---
 
-## 🧱 4.5 Right Panel (Tabs + Slide‑In Panels)
+## 4.5 Right Panel (Tabs + Slide‑In Panels)
 
 ### **Tab Select**
 
@@ -270,7 +270,7 @@ Transform: translateX(0 → -panelWidth)
 
 ---
 
-## 🧱 4.6 Note Pop‑Out Window
+## 4.6 Note Pop‑Out Window
 
 ### **Open**
 
@@ -291,7 +291,7 @@ Opacity: 1 → 0.85
 
 ---
 
-## 🧱 4.7 DM Voice Bar (DM Only)
+## 4.7 DM Voice Bar (DM Only)
 
 ### **Open**
 
@@ -318,7 +318,7 @@ Flash: red glow 0 → 1 → 0
 
 ---
 
-## 🧱 4.8 Drag‑and‑Drop (DM Only)
+## 4.8 Drag‑and‑Drop (DM Only)
 
 ### **Pickup**
 
@@ -353,7 +353,7 @@ Opacity: 0 → 1 → 0
 
 ---
 
-## 🧱 4.9 Environment Change (Room)
+## 4.9 Environment Change (Room)
 
 ### **Icon Update**
 
@@ -372,7 +372,7 @@ Background: darken by 4% → normal
 
 ---
 
-## 🧠 5. Persona‑Specific Motion Weighting
+## 5. Persona‑Specific Motion Weighting
 
 | Persona       | Motion Weighting                                                    |
 | ------------- | ------------------------------------------------------------------- |
@@ -384,7 +384,7 @@ Spectator mode prioritizes **accessibility** and **read‑only clarity**.
 
 ---
 
-## ✔ 6. Summary
+## 6. Summary
 
 This motion spec:
 

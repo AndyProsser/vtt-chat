@@ -4,7 +4,7 @@ _Authoritative mapping of UI interactions → events → reducers in VTT‑Chat.
 
 ---
 
-## 🧭 1. Overview
+## 1. Overview
 
 All UI interactions in VTT‑Chat follow the same pipeline:
 
@@ -27,7 +27,7 @@ No component mutates state directly.
 
 ---
 
-## 🧱 2. Event Categories
+## 2. Event Categories
 
 UI events fall into these categories:
 
@@ -47,7 +47,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 💬 3. Chat Events
+## 3. Chat Events
 
 ---
 
@@ -95,7 +95,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 📝 4. Notes Events
+## 4. Notes Events
 
 ---
 
@@ -192,7 +192,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 👥 5. Player List Events
+## 5. Player List Events
 
 ---
 
@@ -255,7 +255,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 🏠 6. Room Events (DM Only)
+## 6. Room Events (DM Only)
 
 ---
 
@@ -333,7 +333,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 🎙️ 7. Audio Events (DM Only)
+## 7. Audio Events (DM Only)
 
 ---
 
@@ -416,7 +416,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 🔍 8. Search Events
+## 8. Search Events
 
 ---
 
@@ -456,7 +456,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 📚 9. Journal Events
+## 9. Journal Events
 
 ---
 
@@ -478,7 +478,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 🕒 10. History Events
+## 10. History Events
 
 History is read‑only for Player/Spectator.
 
@@ -486,7 +486,7 @@ No UI‑originating events.
 
 ---
 
-## ⚙️ 11. Settings Events
+## 11. Settings Events
 
 ---
 
@@ -522,7 +522,7 @@ Partial<UISettings>
 
 ---
 
-## 🔔 12. Toast Events
+## 12. Toast Events
 
 ---
 
@@ -544,7 +544,7 @@ Partial<UISettings>
 
 ---
 
-## 🧭 13. UI View Events
+## 13. UI View Events
 
 ---
 
@@ -594,7 +594,7 @@ Partial<UISettings>
 
 ---
 
-## ✔ 14. Summary
+## 14. Summary
 
 This file defines:
 

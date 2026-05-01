@@ -306,7 +306,7 @@ Examples:
 
 ---
 
-## 9. Future Integrations
+## 9. Planned Integrations
 
 Planned enhancements:
 
