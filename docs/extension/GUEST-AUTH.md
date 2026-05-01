@@ -9,7 +9,7 @@ _How the browser extension enables low-friction, invite-link-based onboarding by
 - [EXTENSION-UX.md](EXTENSION-UX.md) — overlay UX and role-aware UI
 - [../architecture/DATA-MODEL.md](../architecture/DATA-MODEL.md) — data schema for external identities
 
-**Extension repository:** https://github.com/AndyProsser/vtt-chat-extension (D&D Beyond front-end and scraping layer — integration with vtt-chat backend is defined by this document)
+**Extension repository:** <https://github.com/AndyProsser/vtt-chat-extension> (D&D Beyond front-end and scraping layer — integration with vtt-chat backend is defined by this document)
 
 ---
 
