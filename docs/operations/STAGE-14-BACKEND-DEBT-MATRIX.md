@@ -16,7 +16,7 @@ It classifies all backend stub/placeholder files found in backend src and assign
 - Planned remove: 42
 - Planned defer: 0
 
-## Execution Status (Stage 14.2 and 14.3)
+## Execution Status (Stage 14.2 through 14.8)
 
 - Stage 14.2 completed in two remove-only passes:
   - Pass 1: 29 high-confidence unused stubs removed.
@@ -25,13 +25,42 @@ It classifies all backend stub/placeholder files found in backend src and assign
   - Replaced metadata `501` placeholder mount with implemented metadata route family.
   - Implemented metadata service/templates/types and mounted `/api/metadata` runtime endpoints for templates, session snapshot, and timeline.
   - Added API regression coverage in `backend/tests/api/metadata-routes.test.ts`.
-- Verification after Stage 14.3 completion:
-  - Backend tests: `npm --prefix backend run test` -> passing (22 files, 113 tests, 6 todo).
+- Stage 14.4 completed:
+  - Implemented durable audio-state persistence and recovery (`AudioRoomState`, `AudioDMOverride`) and wired `/api/audio/state/:sessionId` to authoritative persisted data.
+- Stage 14.5 completed:
+  - Hardened active websocket handlers with domain-integrated behavior for chat/notes/audio/room paths and aligned dispatcher coverage.
+- Stage 14.6 completed:
+  - Consolidated backend type contracts under `backend/src/types/**` and removed drift from placeholder type surfaces.
+- Stage 14.7 completed:
+  - Retired placeholder contract TODO surfaces in favor of executable API/service/ws coverage.
+- Stage 14.8 completed:
+  - Reconciled roadmap/docs references to current runtime module structure and verification evidence.
+- Final verification after Stage 14 closure:
+  - Workspace tests: passing (backend `28` files / `138` tests; frontend `20` files / `130` tests; admin `8` files / `47` tests).
   - Workspace lint: `npm run lint` -> passing.
-- Remaining stub/placeholder files in `backend/src`: 4.
+- Remaining stub/placeholder files in `backend/src`: 0 tracked Stage 14 targets.
 - Remaining Stage 14 tracked scope:
-  - Implement targets remaining: 4.
+  - Implement targets remaining: 0.
   - Remove targets remaining: 0.
+
+## Stage 14 Close-out Sign-off
+
+Stage 14 is now **closed**.
+
+- [x] 14.2 Placeholder/dead-path retirement complete
+- [x] 14.3 Metadata runtime closure complete
+- [x] 14.4 Audio/voice durability complete
+- [x] 14.5 WebSocket handler hardening complete
+- [x] 14.6 Type layer consolidation complete
+- [x] 14.7 Contract/test debt closure complete
+- [x] 14.8 Roadmap/docs reconciliation complete
+- [x] Full verification snapshot recorded (tests + lint passing)
+
+Close-out note:
+
+- Any remaining `NOT_IMPLEMENTED` branches outside this matrix are treated as intentional runtime guardrails (for unsupported WS event types), not Stage 14 placeholder debt.
+
+> Note: The decision table below is preserved as the historical 14.1 planning artifact and therefore references pre-refactor paths (including legacy `backend/src/core/**` planning entries).
 
 ## Decision Matrix
 

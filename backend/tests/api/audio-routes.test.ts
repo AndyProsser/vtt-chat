@@ -7,6 +7,10 @@ const mocks = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
   mockGetSession: vi.fn(),
   mockIsUserInSession: vi.fn(),
+  mockSetRoomEnvironmentState: vi.fn(),
+  mockApplyDMOverrideState: vi.fn(),
+  mockRemoveDMOverrideState: vi.fn(),
+  mockGetSessionAudioState: vi.fn(),
   mockBroadcastToSession: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }))
@@ -19,6 +23,13 @@ vi.mock('@/services/auth.service', () => ({
 vi.mock('@/services/session.service', () => ({
   getSession: mocks.mockGetSession,
   isUserInSession: mocks.mockIsUserInSession,
+}))
+
+vi.mock('@/services/audio-state.service', () => ({
+  setRoomEnvironmentState: mocks.mockSetRoomEnvironmentState,
+  applyDMOverrideState: mocks.mockApplyDMOverrideState,
+  removeDMOverrideState: mocks.mockRemoveDMOverrideState,
+  getSessionAudioState: mocks.mockGetSessionAudioState,
 }))
 
 vi.mock('@/services/event-broadcaster.service', () => ({
@@ -70,6 +81,27 @@ describe('audio routes', () => {
     })
 
     mocks.mockIsUserInSession.mockResolvedValue(true)
+    mocks.mockSetRoomEnvironmentState.mockResolvedValue({
+      roomId: ROOM_ID,
+      environmentName: 'tavern',
+      environmentId: 'env-tavern',
+      parameters: { reverbSend: 0.35, lowpassFreq: 7200, roomGain: -2 },
+      setBy: DM_ID,
+      setAt: 1700000000000,
+    })
+    mocks.mockApplyDMOverrideState.mockResolvedValue({
+      targetUserId: PLAYER_ID,
+      overrideType: 'MUTE',
+      parameters: {},
+      appliedBy: DM_ID,
+      appliedAt: 1700000000100,
+    })
+    mocks.mockRemoveDMOverrideState.mockResolvedValue(undefined)
+    mocks.mockGetSessionAudioState.mockResolvedValue({
+      sessionId: SESSION_ID,
+      environments: [],
+      dmOverrides: [],
+    })
   })
 
   it('returns audio presets for authenticated users', async () => {
@@ -104,6 +136,7 @@ describe('audio routes', () => {
     expect(sessionIdArg).toBe(SESSION_ID)
     expect(event.type).toBe('AUDIO:ENVIRONMENT_SET')
     expect(event.payload.environmentName).toBe('tavern')
+    expect(mocks.mockSetRoomEnvironmentState).toHaveBeenCalledTimes(1)
   })
 
   it('denies environment changes for non-DM users', async () => {
@@ -146,6 +179,7 @@ describe('audio routes', () => {
     expect(event.type).toBe('AUDIO:DM_OVERRIDE_APPLIED')
     expect(event.payload.targetUserId).toBe(PLAYER_ID)
     expect(event.payload.overrideType).toBe('MUTE')
+    expect(mocks.mockApplyDMOverrideState).toHaveBeenCalledTimes(1)
   })
 
   it('removes DM override and emits AUDIO:DM_OVERRIDE_REMOVED', async () => {
@@ -165,5 +199,6 @@ describe('audio routes', () => {
     expect(event.type).toBe('AUDIO:DM_OVERRIDE_REMOVED')
     expect(event.payload.targetUserId).toBe(PLAYER_ID)
     expect(event.payload.overrideType).toBe('MUTE')
+    expect(mocks.mockRemoveDMOverrideState).toHaveBeenCalledTimes(1)
   })
 })
