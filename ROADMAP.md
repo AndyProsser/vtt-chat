@@ -17,7 +17,7 @@ This is the canonical project roadmap for delivery stages and progress tracking.
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-13 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core), with Stage 14 focused on MVP testing-readiness hardening**.
+Current overall status: **Stages 0-13 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core), with Stage 14 focused on backend implementation debt closure and Stage 15 focused on MVP testing-readiness hardening**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -31,7 +31,8 @@ Current overall status: **Stages 0-13 complete for core platform scope (baseline
 - Stage 11 is now complete in the frontend runtime with command-center search, journal, and history panels backed by persisted chat, notes, and session-log data, with placeholder module debt removed across metadata/audio/ui/types/utils surfaces.
 - Stage 13 core scope (13.1-13.3) is complete across backend guest auth, external identity/campaign linking, and frontend guest/spectator route surfaces.
 - Stage 13.4-13.5 extension bridge milestones are now tracked separately in `docs/extension/EXTENSION-ROADMAP.md` and executed in the extension repository.
-- Stage 14 is now defined as the MVP testing-readiness hardening stage for Stage 13 critical test gaps, endpoint edge-case validation, and end-to-end guest/spectator flow verification.
+- Stage 14 is now defined as backend implementation-debt closure (stub retirement, metadata runtime completion, audio durability, WS handler hardening, and type-layer cleanup).
+- Stage 15 is now defined as MVP testing-readiness hardening for Stage 13 critical test gaps, endpoint edge-case validation, and end-to-end guest/spectator flow verification.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -57,23 +58,24 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status   | Completion | Immediate focus                                             |
-| ----- | ----------------------------------- | -------- | ---------- | ----------------------------------------------------------- |
-| 0     | Contract lock                       | Complete | ✅         | Maintain contract/source-of-truth discipline                |
-| 1     | Backend foundation                  | Complete | ✅         | Ongoing hardening + reliability                             |
-| 2     | Frontend transport spine            | Complete | ✅         | Keep reducer/event contract parity                          |
-| 3     | Session lifecycle                   | Complete | ✅         | Regression coverage during later stage work                 |
-| 4     | Chat vertical slice                 | Complete | ✅         | UX/moderation polish as follow-up                           |
-| 5     | Notes vertical slice                | Complete | ✅         | Advanced workflows and audit polish                         |
-| 6     | Presence and rooms                  | Complete | ✅         | Multi-client e2e/load hardening                             |
-| 7     | Audio + LiveKit                     | Complete | ✅         | Multi-client e2e + persistence hardening                    |
-| 8     | Admin + ops baseline                | Complete | ✅         | Stage 10 secure ops workflows + durable telemetry           |
-| 9     | Frontend command-center completion  | Complete | ✅         | Maintain regression coverage during Stage 10+ work          |
-| 10    | Admin UI feature completion         | Complete | ✅         | Stage 11 knowledge surfaces + Stage 13 guest auth prep      |
-| 11    | Metadata/journal/history/search     | Complete | ✅         | Maintain coverage + contract parity                         |
-| 12    | Import/export + recordings metadata | Complete | ✅         | Maintain schema + portability regression coverage           |
-| 13    | Guest auth + external identity core | Complete | ✅         | Maintain regression coverage; execute Stage 14 hardening    |
-| 14    | MVP testing readiness hardening     | Planned  | ⬜ Planned | Close Stage 13 critical test gaps and launch-readiness docs |
+| Stage | Area                                | Status      | Completion     | Immediate focus                                             |
+| ----- | ----------------------------------- | ----------- | -------------- | ----------------------------------------------------------- |
+| 0     | Contract lock                       | Complete    | ✅             | Maintain contract/source-of-truth discipline                |
+| 1     | Backend foundation                  | Complete    | ✅             | Ongoing hardening + reliability                             |
+| 2     | Frontend transport spine            | Complete    | ✅             | Keep reducer/event contract parity                          |
+| 3     | Session lifecycle                   | Complete    | ✅             | Regression coverage during later stage work                 |
+| 4     | Chat vertical slice                 | Complete    | ✅             | UX/moderation polish as follow-up                           |
+| 5     | Notes vertical slice                | Complete    | ✅             | Advanced workflows and audit polish                         |
+| 6     | Presence and rooms                  | Complete    | ✅             | Multi-client e2e/load hardening                             |
+| 7     | Audio + LiveKit                     | Complete    | ✅             | Multi-client e2e + persistence hardening                    |
+| 8     | Admin + ops baseline                | Complete    | ✅             | Stage 10 secure ops workflows + durable telemetry           |
+| 9     | Frontend command-center completion  | Complete    | ✅             | Maintain regression coverage during Stage 10+ work          |
+| 10    | Admin UI feature completion         | Complete    | ✅             | Stage 11 knowledge surfaces + Stage 13 guest auth prep      |
+| 11    | Metadata/journal/history/search     | Complete    | ✅             | Maintain coverage + contract parity                         |
+| 12    | Import/export + recordings metadata | Complete    | ✅             | Maintain schema + portability regression coverage           |
+| 13    | Guest auth + external identity core | Complete    | ✅             | Maintain regression coverage; execute Stage 14 closure plan |
+| 14    | Backend completion debt closure     | In progress | 🟨 In progress | Stage 14.2 complete; execute 14.3-14.8                      |
+| 15    | MVP testing readiness hardening     | Planned     | ⬜ Planned     | Close Stage 13 critical test gaps and launch-readiness docs |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -860,11 +862,81 @@ Extension-specific continuation:
 Exit criteria:
 
 - Core guest-auth, spectator, external-identity, and SPA guest UX flows for 13.1-13.3 are implemented and integrated in the main platform runtime. ✅
-- Remaining hardening and test-gap closure is tracked under Stage 14. ✅
+- Remaining hardening and test-gap closure is tracked under Stage 15. ✅
 
 ---
 
-### Stage 14: MVP Testing Readiness Hardening
+### Stage 14: Backend Completion Debt Closure
+
+Status: **In progress**
+
+Goal:
+
+- Convert remaining backend placeholders/stubs into implemented runtime behavior or remove dead paths.
+- Reduce ambiguity between documented architecture and active runtime wiring.
+- Close durability gaps in audio/voice and websocket domain execution before final production-readiness hardening.
+
+#### **Stage 14.1: Inventory and Ownership Lock**
+
+- Build a backend debt matrix for all remaining stage stubs/placeholders and classify each file as `implement`, `remove`, or `defer`.
+- Include owner, target stage, and effort estimate for each item.
+- Current execution artifact: [docs/operations/STAGE-14-BACKEND-DEBT-MATRIX.md](docs/operations/STAGE-14-BACKEND-DEBT-MATRIX.md).
+- Exit criteria:
+  - A single source-of-truth implementation backlog exists for all backend stubs/placeholders. ✅
+
+#### **Stage 14.2: Placeholder/Dead-Path Retirement**
+
+- Remove or archive unused placeholder modules in `infra/` and `types/` where runtime wiring already uses canonical alternatives.
+- Eliminate duplicate module surfaces that create confusion about active paths.
+- Status update: completed remove-target retirement from Stage 14 matrix (42/42 remove targets closed; 8 implement targets remain).
+- Exit criteria:
+  - No dead placeholder module remains in active backend source folders. ✅
+
+#### **Stage 14.3: Metadata Runtime Closure**
+
+- Replace metadata `501 NOT_IMPLEMENTED` behavior in API routing with implemented handlers or explicit feature-flagged behavior.
+- Add service/repository/authz coverage for metadata runtime paths.
+- Exit criteria:
+  - Metadata API no longer returns generic not-implemented responses in normal runtime mode.
+
+#### **Stage 14.4: Audio/Voice Durability Implementation**
+
+- Implement durable persisted audio state for room environment state and DM override state.
+- Add recovery/hydration path for reconnect/restart (`/api/audio/state/:sessionId` parity with emitted controls).
+- Exit criteria:
+  - Audio state endpoint returns authoritative persisted state (not baseline null/empty placeholders).
+
+#### **Stage 14.5: WebSocket Handler Hardening**
+
+- Replace pass-through/no-op websocket handlers with domain-integrated behavior where required (chat/notes/audio/room domains).
+- Keep dispatcher registrations aligned with implemented handler behavior and test assertions.
+- Exit criteria:
+  - WS handlers provide meaningful stateful behavior or are explicitly retired from dispatcher registration.
+
+#### **Stage 14.6: Type Layer Consolidation**
+
+- Remove placeholder per-domain type files or replace them with real domain definitions.
+- Reduce drift between `backend/src/types/index.ts` and fragmented placeholder type surfaces.
+- Exit criteria:
+  - Backend type definitions are canonicalized and placeholder type files are eliminated.
+
+#### **Stage 14.7: Contract/Test Debt Closure**
+
+- Replace placeholder contract TODO tests with concrete assertions for implemented modules.
+- Add integration/regression coverage for metadata runtime behavior and audio durability recovery.
+- Exit criteria:
+  - Placeholder contract TODOs are removed or converted to actionable, executable coverage.
+
+#### **Stage 14.8: Roadmap/Docs Reconciliation**
+
+- Align architecture and roadmap language with implemented backend runtime behavior.
+- Clarify baseline-complete versus durability-hardening-complete statuses across Stage 6/7/metadata references.
+- Exit criteria:
+  - Documentation claims are consistent with runtime module wiring and test evidence.
+
+---
+
+### Stage 15: MVP Testing Readiness Hardening
 
 Status: **Planned**
 
@@ -873,7 +945,7 @@ Goal:
 - Close all high-priority Stage 13 testing and validation gaps before MVP production testing.
 - Formalize launch-readiness validation and documentation for alpha/beta/RC handoff.
 
-#### **Stage 14.1: Backend Test Completeness (Critical Endpoint Coverage)**
+#### **Stage 15.1: Backend Test Completeness (Critical Endpoint Coverage)**
 
 - Scope: Expand backend API coverage for guest auth, spectator joins/waitlist behavior, sync-policy matrix, and blocked-system/error paths.
 - Primary test targets:
@@ -887,7 +959,7 @@ Goal:
 - Exit criteria:
   - Stage 13.1/13.2 backend endpoints have explicit happy-path + error-path assertions with race-condition coverage where applicable.
 
-#### **Stage 14.2: Frontend Test Completeness (Guest UX + Auth Transitions)**
+#### **Stage 15.2: Frontend Test Completeness (Guest UX + Auth Transitions)**
 
 - Scope: Expand frontend test coverage for extension guest-login packet handling, guest upgrade token swap, and restricted-flow enforcement.
 - Primary test targets:
@@ -901,7 +973,7 @@ Goal:
 - Exit criteria:
   - Stage 13.3 frontend routes and auth transitions are covered by deterministic integration/component tests with no known flaky async assertions.
 
-#### **Stage 14.3: Backend Endpoint Validation (Browse + Waitlist + Authz Boundaries)**
+#### **Stage 15.3: Backend Endpoint Validation (Browse + Waitlist + Authz Boundaries)**
 
 - Scope: Add focused endpoint-validation suites for policy/filter/authz behavior not fully covered by existing Stage 13 tests.
 - Primary test targets:
@@ -915,7 +987,7 @@ Goal:
 - Exit criteria:
   - Browse, waitlist-status, and external-link authorization boundaries are enforced and regression-tested across policy variants.
 
-#### **Stage 14.4: End-to-End Flow Validation (Multi-Step Journeys)**
+#### **Stage 15.4: End-to-End Flow Validation (Multi-Step Journeys)**
 
 - Scope: Add integration tests that validate complete user journeys, not just endpoint-level correctness.
 - Primary test target:
@@ -928,7 +1000,7 @@ Goal:
 - Exit criteria:
   - End-to-end integration suite validates Stage 13 flows with database state + audit assertions at each critical transition.
 
-#### **Stage 14.5: Documentation and Launch Readiness Alignment**
+#### **Stage 15.5: Documentation and Launch Readiness Alignment**
 
 - Scope: Align roadmap, extension docs, and testing-readiness operations guidance to actual validation status.
 - Primary documentation targets:
@@ -948,29 +1020,41 @@ Goal:
 
 Priority 1:
 
-- Stage 14.1 backend hardening: close critical endpoint coverage gaps for guest-login, spectator guest-join, waitlist promotion, and external sync policy enforcement.
+- Stage 14.3 metadata runtime closure: replace runtime `NOT_IMPLEMENTED` metadata behavior with implemented or feature-flagged routes.
 
 Priority 2:
 
-- Stage 14.2 frontend hardening: complete full-flow coverage for `/join/:code`, guest upgrade token swap, and guest rejection paths.
+- Stage 14.4 audio/voice durability: persist and recover room environment and DM override state.
 
 Priority 3:
 
-- Stage 14.4 end-to-end flow validation: add integrated multi-step journey coverage for player invite, spectator invite, guest upgrade, and DM invite-link management.
+- Stage 14.5 websocket handler hardening in active dispatcher paths.
 
 Priority 4:
 
-- Stage 14.3 endpoint policy/authz validation: browse filtering, waitlist-status transitions, and campaign external-links authorization boundaries.
+- Stage 15.1 backend hardening: close critical endpoint coverage gaps for guest-login, spectator guest-join, waitlist promotion, and external sync policy enforcement.
 
 Priority 5:
 
-- Stage 14.5 documentation alignment: roadmap + extension + testing-readiness updates to production-test gate criteria.
+- Stage 15.2 frontend hardening: complete full-flow coverage for `/join/:code`, guest upgrade token swap, and guest rejection paths.
 
 Priority 6:
 
-- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+- Stage 15.4 end-to-end flow validation: add integrated multi-step journey coverage for player invite, spectator invite, guest upgrade, and DM invite-link management.
 
 Priority 7:
+
+- Stage 15.3 endpoint policy/authz validation: browse filtering, waitlist-status transitions, and campaign external-links authorization boundaries.
+
+Priority 8:
+
+- Stage 15.5 documentation alignment: roadmap + extension + testing-readiness updates to production-test gate criteria.
+
+Priority 9:
+
+- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+
+Priority 10:
 
 - Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
@@ -1015,6 +1099,12 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Stage 14.2 completed. Retired all remove-target backend placeholders/stubs from the Stage 14 matrix (42 files removed total), leaving only 8 implement-target modules (metadata + audio durability surfaces). Verification after completion: backend tests and workspace lint passing.
+
+- 2026-05: Stage 14.2 pass 1 completed. Removed 29 high-confidence unused backend placeholders/stubs (`infra/*`, legacy `types/*`, legacy `ws/*` stubs, and unused stub API route files), reducing backend stub/placeholder footprint from 50 to 21 files. Verification: backend tests and workspace lint passing.
+
+- 2026-05: Stage 14 started. Completed Stage 14.1 inventory and ownership lock with a file-level backend debt matrix (`docs/operations/STAGE-14-BACKEND-DEBT-MATRIX.md`) classifying all remaining backend stage stubs/placeholders into implement/remove actions and dependency-ordered execution.
 
 - 2026-05: Stage 13 core closure recorded. Marked Stage 13.1-13.3 as complete for main-platform scope (backend guest/spectator auth, external identity linking, and frontend guest/spectator UX), and moved Stage 13.4-13.5 extension bridge milestones to `docs/extension/EXTENSION-ROADMAP.md` for tracking in the extension repository.
 

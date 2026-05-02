@@ -1,20 +1,15 @@
 import { lazy, Suspense, useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID } from '@shared'
-import { BrowseCampaignsPage } from './components/auth/BrowseCampaignsPage'
 import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
-import { InviteJoinPage } from './components/auth/InviteJoinPage'
-import { LoginForm } from './components/auth/LoginForm'
-import { SpectatorInvitePage } from './components/auth/SpectatorInvitePage'
+import { AppMainRouteView } from './components/routes/AppMainRouteView'
+import { BrowseRouteView } from './components/routes/BrowseRouteView'
+import { JoinRouteView } from './components/routes/JoinRouteView'
+import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { cn } from './utils/cn'
-
-const SessionInit = lazy(async () => {
-  const module = await import('./components/session/SessionInit')
-  return { default: module.SessionInit }
-})
 
 const AudioPanel = lazy(async () => {
   const module = await import('./components/audio/AudioPanel')
@@ -70,6 +65,40 @@ export default function App() {
   )
   const showUpgradePrompt =
     routeView.kind === 'app' && isGuestAccount && !upgradePromptDismissed && !currentSessionId
+
+  const renderRouteView = () => {
+    switch (routeView.kind) {
+      case 'join':
+        return (
+          <JoinRouteView
+            apiUrl={apiUrl}
+            inviteCode={routeView.inviteCode}
+            authToken={auth.token}
+            onAuthenticated={handleGuestExtensionAuthenticated}
+          />
+        )
+      case 'watch':
+        return (
+          <WatchRouteView
+            apiUrl={apiUrl}
+            inviteCode={routeView.inviteCode}
+            onAuthenticated={handleGuestSpectatorAuthenticated}
+          />
+        )
+      case 'browse':
+        return <BrowseRouteView apiUrl={apiUrl} authToken={auth.token} />
+      case 'app':
+      default:
+        return (
+          <AppMainRouteView
+            apiUrl={apiUrl}
+            wsUrl={wsUrl}
+            auth={auth}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        )
+    }
+  }
 
   return (
     <div className="min-h-screen bg-ui-surface-subtle font-sans text-ui-primary">
@@ -129,73 +158,7 @@ export default function App() {
         />
       )}
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        {routeView.kind === 'join' ? (
-          <InviteJoinPage
-            apiUrl={apiUrl}
-            inviteCode={routeView.inviteCode}
-            authToken={auth.token}
-            onAuthenticated={handleGuestExtensionAuthenticated}
-          />
-        ) : routeView.kind === 'watch' ? (
-          <SpectatorInvitePage
-            apiUrl={apiUrl}
-            inviteCode={routeView.inviteCode}
-            onAuthenticated={handleGuestSpectatorAuthenticated}
-          />
-        ) : routeView.kind === 'browse' ? (
-          <BrowseCampaignsPage apiUrl={apiUrl} authToken={auth.token} />
-        ) : !auth.token || !auth.user ? (
-          <>
-            <section className="mb-8 text-center">
-              <h2 className="text-3xl font-semibold text-ui-primary">Welcome to VTT-Chat</h2>
-              <p className="mx-auto mt-2 max-w-xl text-ui-secondary">
-                Stage 7 adds room voice, LiveKit transport, and the client audio engine. Start a
-                session to unlock chat, room state, and the mounted audio controls.
-              </p>
-            </section>
-
-            <LoginForm apiUrl={apiUrl} onLoginSuccess={handleLoginSuccess} />
-
-            <section className="mx-auto mt-8 max-w-2xl rounded-ui-lg border border-blue-300 bg-blue-50 p-6 text-sm text-blue-900">
-              <h3 className="mt-0 text-base font-semibold">Test Credentials</h3>
-              <ul className="my-2 list-disc pl-5">
-                <li>
-                  <strong>Username:</strong> Any 3-32 character username (alphanumeric + underscore)
-                </li>
-                <li>
-                  <strong>Role:</strong> DM, PLAYER, or SPECTATOR
-                </li>
-                <li>
-                  <strong>Password:</strong> Not required in Stage 1 (for testing)
-                </li>
-              </ul>
-              <p className="mt-2">
-                After login, you&apos;ll be able to create sessions and see real-time WebSocket
-                state, room updates, and audio controls activate together.
-              </p>
-            </section>
-          </>
-        ) : (
-          <Suspense
-            fallback={
-              <div className="rounded-ui-md border border-ui-border bg-ui-surface p-4">
-                Loading session surface...
-              </div>
-            }
-          >
-            <SessionInit
-              apiUrl={apiUrl}
-              wsUrl={wsUrl}
-              token={auth.token}
-              user={auth.user}
-              onSessionCreated={(sessionId) => {
-                void sessionId
-              }}
-            />
-          </Suspense>
-        )}
-      </main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8">{renderRouteView()}</main>
 
       {routeView.kind === 'app' && auth.token && currentSessionId && activeRoomId && (
         <Suspense
