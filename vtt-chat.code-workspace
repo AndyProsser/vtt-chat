@@ -49,6 +49,8 @@
       "npx prettier": true,
       "npm --prefix backend": true,
       "npm run lint": true,
+      "npm run -s build": true,
+      "npm run -s test:coverage": true,
     },
   },
 }

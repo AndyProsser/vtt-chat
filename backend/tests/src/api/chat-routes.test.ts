@@ -1,0 +1,230 @@
+import express from 'express'
+import request from 'supertest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MessageType, SessionState } from '@shared'
+
+const mocks = vi.hoisted(() => ({
+  extractTokenFromHeader: vi.fn(),
+  verifyToken: vi.fn(),
+  getSession: vi.fn(),
+  sendMessage: vi.fn(),
+  editMessage: vi.fn(),
+  deleteMessage: vi.fn(),
+  getMessages: vi.fn(),
+  broadcastEventToSession: vi.fn(),
+}))
+
+vi.mock('@/services/auth.service', () => ({
+  extractTokenFromHeader: mocks.extractTokenFromHeader,
+  verifyToken: mocks.verifyToken,
+}))
+
+vi.mock('@/services/session.service', () => ({
+  getSession: mocks.getSession,
+}))
+
+vi.mock('@/services/chat.service', () => ({
+  sendMessage: mocks.sendMessage,
+  editMessage: mocks.editMessage,
+  deleteMessage: mocks.deleteMessage,
+  getMessages: mocks.getMessages,
+}))
+
+import chatRoutes from '@/api/chat.routes'
+
+const SESSION_ID = '11111111-1111-4111-8111-111111111111'
+const MESSAGE_ID = '22222222-2222-4222-8222-222222222222'
+const USER_ID = '33333333-3333-4333-8333-333333333333'
+const DM_ID = '44444444-4444-4444-8444-444444444444'
+const RECIPIENT_ID = '55555555-5555-4555-8555-555555555555'
+
+function buildApp() {
+  const app = express()
+  app.use(express.json())
+  app.locals.wsManager = {
+    broadcastEventToSession: mocks.broadcastEventToSession,
+  }
+  app.use('/api/chat', chatRoutes)
+  return app
+}
+
+describe('chat routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    mocks.extractTokenFromHeader.mockReturnValue('token')
+    mocks.verifyToken.mockReturnValue({
+      userId: USER_ID,
+      username: 'alice',
+      role: 'PLAYER',
+    })
+
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.ACTIVE,
+    })
+
+    mocks.sendMessage.mockResolvedValue({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      authorId: USER_ID,
+      authorUsername: 'alice',
+      content: 'hello',
+      type: MessageType.OOC,
+      isDmOnly: false,
+      visibleTo: undefined,
+      createdAt: 1700000000000,
+    })
+
+    mocks.editMessage.mockResolvedValue({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      content: 'edited',
+      visibleTo: [USER_ID],
+      editedAt: 1700000000100,
+    })
+
+    mocks.deleteMessage.mockResolvedValue({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      deletedAt: 1700000000200,
+    })
+
+    mocks.getMessages.mockResolvedValue([])
+  })
+
+  it('returns 401 when auth header is missing', async () => {
+    const app = buildApp()
+    mocks.extractTokenFromHeader.mockReturnValue(undefined)
+
+    const response = await request(app).post('/api/chat/message').send({})
+
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('UNAUTHORIZED')
+  })
+
+  it('returns 403 for spectator IC message', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({
+      userId: USER_ID,
+      username: 'watcher',
+      role: 'SPECTATOR',
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        content: 'in character',
+        type: MessageType.IC,
+      })
+
+    expect(response.status).toBe(403)
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for whisper without valid recipient', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        content: 'psst',
+        type: MessageType.WHISPER,
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body.field).toBe('recipientId')
+  })
+
+  it('returns 409 when session is not active', async () => {
+    const app = buildApp()
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.PAUSED,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        content: 'hello',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(409)
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('sends a message and broadcasts websocket event', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        content: 'hello world',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
+
+    const [sessionIdArg, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
+    expect(sessionIdArg).toBe(SESSION_ID)
+    expect(eventArg.type).toBe('CHAT:MESSAGE_SENT')
+  })
+
+  it('returns session messages for authenticated user', async () => {
+    const app = buildApp()
+    mocks.getMessages.mockResolvedValue([{ id: MESSAGE_ID }])
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
+    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER')
+  })
+
+  it('edits a message and broadcasts update', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .put(`/api/chat/message/${MESSAGE_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({ content: 'edited' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.editMessage).toHaveBeenCalledWith(MESSAGE_ID, USER_ID, 'PLAYER', 'edited')
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
+
+    const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
+    expect(eventArg.type).toBe('CHAT:MESSAGE_EDITED')
+  })
+
+  it('deletes a message and broadcasts deletion', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .delete(`/api/chat/message/${MESSAGE_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(response.body.ok).toBe(true)
+    expect(mocks.deleteMessage).toHaveBeenCalledWith(MESSAGE_ID, USER_ID, 'PLAYER')
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
+
+    const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
+    expect(eventArg.type).toBe('CHAT:MESSAGE_DELETED')
+  })
+})

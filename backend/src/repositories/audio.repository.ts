@@ -1,6 +1,11 @@
 import { getPrismaClient } from '@/infra/db'
+import { Prisma } from '@prisma/client'
 
 const prisma = getPrismaClient()
+
+function toInputJsonValue(value: Record<string, unknown> | undefined): Prisma.InputJsonValue {
+  return (value || {}) as Prisma.InputJsonValue
+}
 
 export async function upsertAudioRoomStateRecord(params: {
   sessionId: string
@@ -23,14 +28,14 @@ export async function upsertAudioRoomStateRecord(params: {
       roomId: params.roomId,
       environmentName: params.environmentName,
       environmentId: params.environmentId,
-      parameters: params.parameters || {},
+      parameters: toInputJsonValue(params.parameters),
       setBy: params.setBy,
       setAt: params.setAt,
     },
     update: {
       environmentName: params.environmentName,
       environmentId: params.environmentId,
-      parameters: params.parameters || {},
+      parameters: toInputJsonValue(params.parameters),
       setBy: params.setBy,
       setAt: params.setAt,
     },
@@ -84,12 +89,12 @@ export async function upsertAudioDMOverrideRecord(params: {
       sessionId: params.sessionId,
       targetUserId: params.targetUserId,
       overrideType: params.overrideType,
-      parameters: params.parameters || {},
+      parameters: toInputJsonValue(params.parameters),
       appliedBy: params.appliedBy,
       appliedAt: params.appliedAt,
     },
     update: {
-      parameters: params.parameters || {},
+      parameters: toInputJsonValue(params.parameters),
       appliedBy: params.appliedBy,
       appliedAt: params.appliedAt,
     },
