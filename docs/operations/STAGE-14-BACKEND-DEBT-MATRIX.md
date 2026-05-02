@@ -36,7 +36,8 @@ It classifies all backend stub/placeholder files found in backend src and assign
 - Stage 14.8 completed:
   - Reconciled roadmap/docs references to current runtime module structure and verification evidence.
 - Final verification after Stage 14 closure:
-  - Workspace tests: passing (backend `28` files / `138` tests; frontend `20` files / `130` tests; admin `8` files / `47` tests).
+  - Workspace build: passing (`npm run build`).
+  - Workspace tests: passing (backend `40` files / `209` tests; frontend `20` files / `130` tests; admin `8` files / `47` tests).
   - Workspace lint: `npm run lint` -> passing.
 - Remaining stub/placeholder files in `backend/src`: 0 tracked Stage 14 targets.
 - Remaining Stage 14 tracked scope:

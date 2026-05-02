@@ -51,7 +51,7 @@ Latest verification:
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
 - Current frontend verification: `20` test files / `130` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `28` passed test files; `138` passing tests.
+- Current backend verification: `40` passed test files / `209` passing tests.
 - Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
 - Current admin verification: `8` passed test files; `47` passing tests.
 - Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
@@ -1094,7 +1094,9 @@ The following references support the corrected stage labels and current model te
 
 ## 5) Progress Log (Condensed)
 
-- 2026-05: Stage 14 completed. Closed 14.4-14.8 with durable audio-state persistence/hydration (`audio room state` + `DM override` storage), ws handler hardening, type-layer consolidation under `backend/src/types/**`, placeholder contract test retirement, and roadmap/docs reconciliation to post-`src/core` service-layer paths. Verification snapshot: workspace lint passing and full workspace tests passing (backend `28/28` files, `138` tests; frontend `20/20` files, `130` tests; admin `8/8` files, `47` tests).
+- 2026-05: Stage 14 close-out reviewed and refreshed against the current repo state. Workspace build, workspace lint, and full workspace tests all pass after backend test-tree flattening and test lint cleanup. Current verification snapshot: backend `40/40` files / `209` tests, frontend `20/20` files / `130` tests, admin `8/8` files / `47` tests.
+
+- 2026-05: Stage 14 completed. Closed 14.4-14.8 with durable audio-state persistence/hydration (`audio room state` + `DM override` storage), ws handler hardening, type-layer consolidation under `backend/src/types/**`, placeholder contract test retirement, and roadmap/docs reconciliation to post-`src/core` service-layer paths. Verification snapshot at closure time: workspace lint passing and full workspace tests passing (backend `28/28` files, `138` tests; frontend `20/20` files, `130` tests; admin `8/8` files, `47` tests).
 
 - 2026-05: Stage 14.3 completed. Replaced metadata `NOT_IMPLEMENTED` API behavior with mounted runtime metadata routes (`/api/metadata/templates`, `/api/metadata/:sessionId`, `/api/metadata/:sessionId/timeline`) backed by implemented metadata service/templates/types with session-member authz and timeline mapping. Added API regression coverage in `backend/tests/api/metadata-routes.test.ts`; verification: workspace lint passing and backend tests passing (`22` files, `113` tests, `6` todo).
 
