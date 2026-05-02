@@ -68,7 +68,6 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
     audioEngine.setLocalGain(vol / 100)
   }
 
-  const statusColor = livekit.isConnected ? '#22c55e' : livekit.isConnecting ? '#f59e0b' : '#6b7280'
   const statusState = livekit.isConnected
     ? 'connected'
     : livekit.isConnecting

@@ -4,7 +4,6 @@ import type {
   NoteEntity,
   NoteVisibility,
   PresenceEntity,
-  Role,
   RoomEntity,
   RoomType,
   SessionEntity,

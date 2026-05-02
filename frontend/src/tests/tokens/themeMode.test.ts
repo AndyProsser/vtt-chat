@@ -39,10 +39,14 @@ describe('themeMode', () => {
 
   function installMatchMedia(matchesDark: boolean) {
     let listener: ChangeListener | null = null
-    const addEventListener = vi.fn((_event: string, cb: ChangeListener) => {
+    const addEventListener = vi.fn((event: string, cb: ChangeListener) => {
+      void event
       listener = cb
     })
-    const removeEventListener = vi.fn((_event: string, _cb: ChangeListener) => {})
+    const removeEventListener = vi.fn((event: string, cb: ChangeListener) => {
+      void event
+      void cb
+    })
 
     window.matchMedia = vi.fn().mockReturnValue({
       matches: matchesDark,
