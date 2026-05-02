@@ -1,23 +1,7 @@
-import { useEffect, useState } from 'react'
-import { SparklineChart } from '../components/SparklineChart'
+import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
 import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
-import { getJson } from '../utils/api'
-
-interface StatusTelemetry {
-  cards: {
-    cpuPercent: number
-    memoryPercent: number
-    diskPercent: number
-    networkLatencyMs: number
-    livekitStatus: string
-    databaseStatus: string
-  }
-  charts: {
-    cpuLoad24h: Array<{ x: number; y: number }>
-    messageThroughput24h: Array<{ x: number; y: number }>
-  }
-  uptimeSec: number
-}
+import { MonitoringAreaChart } from '../features/monitoring/MonitoringAreaChart'
+import { useMonitoringTelemetry } from '../features/monitoring/useMonitoringTelemetry'
 
 function statusLabelFromPercent(value: number): string {
   if (value >= 85) return 'Critical'
@@ -26,120 +10,110 @@ function statusLabelFromPercent(value: number): string {
 }
 
 export default function PlatformStatus() {
-  const [data, setData] = useState<StatusTelemetry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await getJson<StatusTelemetry>('/telemetry/status', controller.signal)
-        setData(result)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load status telemetry')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void load()
-    const interval = setInterval(() => void load(), 20_000)
-    return () => {
-      controller.abort()
-      clearInterval(interval)
-    }
-  }, [])
+  const { status, loading, error } = useMonitoringTelemetry({ refreshMs: 20_000 })
 
   return (
-    <section className="admin-page">
-      <h2 className="admin-page-title">System Health</h2>
-      <p className="admin-page-subtitle">Runtime metrics and dependency status.</p>
+    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
+      <Typography variant="h5">System Health</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Runtime metrics and dependency status.
+      </Typography>
 
-      {loading && <p className="admin-inline-status">Loading status telemetry...</p>}
-      {error && <p className="admin-inline-error">{error}</p>}
+      {loading && <Alert severity="info">Loading status telemetry...</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
 
-      <div className="admin-card-grid three-col">
+      <Box className="admin-card-grid three-col">
         <TelemetryMetricCard
           title="CPU"
-          value={typeof data?.cards.cpuPercent === 'number' ? `${data.cards.cpuPercent}%` : '--'}
+          value={
+            typeof status?.cards.cpuPercent === 'number' ? `${status.cards.cpuPercent}%` : '--'
+          }
           subtitle={`Status: ${
-            typeof data?.cards.cpuPercent === 'number'
-              ? statusLabelFromPercent(data.cards.cpuPercent)
+            typeof status?.cards.cpuPercent === 'number'
+              ? statusLabelFromPercent(status.cards.cpuPercent)
               : '--'
           }`}
         />
         <TelemetryMetricCard
           title="Memory"
           value={
-            typeof data?.cards.memoryPercent === 'number' ? `${data.cards.memoryPercent}%` : '--'
+            typeof status?.cards.memoryPercent === 'number'
+              ? `${status.cards.memoryPercent}%`
+              : '--'
           }
           subtitle={`Status: ${
-            typeof data?.cards.memoryPercent === 'number'
-              ? statusLabelFromPercent(data.cards.memoryPercent)
+            typeof status?.cards.memoryPercent === 'number'
+              ? statusLabelFromPercent(status.cards.memoryPercent)
               : '--'
           }`}
         />
         <TelemetryMetricCard
           title="Disk"
-          value={typeof data?.cards.diskPercent === 'number' ? `${data.cards.diskPercent}%` : '--'}
+          value={
+            typeof status?.cards.diskPercent === 'number' ? `${status.cards.diskPercent}%` : '--'
+          }
           subtitle={`Status: ${
-            typeof data?.cards.diskPercent === 'number'
-              ? statusLabelFromPercent(data.cards.diskPercent)
+            typeof status?.cards.diskPercent === 'number'
+              ? statusLabelFromPercent(status.cards.diskPercent)
               : '--'
           }`}
         />
         <TelemetryMetricCard
           title="Network"
           value={
-            typeof data?.cards.networkLatencyMs === 'number'
-              ? `${data.cards.networkLatencyMs}ms`
+            typeof status?.cards.networkLatencyMs === 'number'
+              ? `${status.cards.networkLatencyMs}ms`
               : '--'
           }
           subtitle="Status: Healthy"
         />
         <TelemetryMetricCard
           title="LiveKit"
-          value={data?.cards.livekitStatus ?? '--'}
+          value={status?.cards.livekitStatus ?? '--'}
           subtitle="Status: Healthy"
         />
         <TelemetryMetricCard
           title="Database"
-          value={data?.cards.databaseStatus ?? '--'}
+          value={status?.cards.databaseStatus ?? '--'}
           subtitle="Status: Healthy"
         />
-      </div>
+      </Box>
 
-      <div className="admin-card-grid two-col">
-        <article className="admin-card">
-          <h3>CPU Load (24h)</h3>
-          <SparklineChart
-            points={data?.charts.cpuLoad24h || []}
-            colorClassName="sparkline-chart-line-cpu"
-            valueSuffix="%"
-          />
-        </article>
-        <article className="admin-card">
-          <h3>Message Throughput (24h)</h3>
-          <SparklineChart
-            points={data?.charts.messageThroughput24h || []}
-            colorClassName="sparkline-chart-line-throughput"
-            valueSuffix="/min"
-          />
-        </article>
-      </div>
+      <Box className="admin-card-grid two-col">
+        <Card variant="outlined" className="admin-card">
+          <CardContent>
+            <MonitoringAreaChart
+              title="CPU Load (24h)"
+              points={status?.charts.cpuLoad24h || []}
+              color="#f59e0b"
+              ySuffix="%"
+            />
+          </CardContent>
+        </Card>
+        <Card variant="outlined" className="admin-card">
+          <CardContent>
+            <MonitoringAreaChart
+              title="Message Throughput (24h)"
+              points={status?.charts.messageThroughput24h || []}
+              color="#22c55e"
+              ySuffix="/min"
+            />
+          </CardContent>
+        </Card>
+      </Box>
 
-      <section className="admin-card">
-        <h3>Process Uptime</h3>
-        <p>
-          {typeof data?.uptimeSec === 'number'
-            ? `${Math.floor(data.uptimeSec / 60)} minutes`
-            : '--'}
-        </p>
-      </section>
-    </section>
+      <Card variant="outlined" className="admin-card">
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Process Uptime
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {typeof status?.uptimeSec === 'number'
+              ? `${Math.floor(status.uptimeSec / 60)} minutes`
+              : '--'}
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
   )
 }

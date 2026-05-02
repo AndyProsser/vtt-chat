@@ -31,7 +31,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // Make wsManager available to route handlers via req.app.locals
   app.locals.wsManager = wsManager
 
-  logger.info('bootstrap', 'Initializing VTT-Chat backend Stage 1')
+  logger.info('bootstrap', 'Initializing VTT-Chat backend')
 
   // ========================================================================
   // Middleware Setup

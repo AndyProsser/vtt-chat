@@ -1,50 +1,9 @@
-import { useEffect, useState } from 'react'
 import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
 import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
-import { getJson } from '../utils/api'
-
-interface DashboardTelemetry {
-  activeUsers: number
-  activeRooms: number
-  recentErrors: number
-  systemLoadPercent: number
-  messageThroughputPerMinute: number
-  storageUsagePercent: number
-  totalUsers: number
-  suspendedUsers: number
-  activeCampaigns: number
-  recentModerationActions: number
-}
+import { useMonitoringTelemetry } from '../features/monitoring/useMonitoringTelemetry'
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardTelemetry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await getJson<DashboardTelemetry>('/telemetry/dashboard', controller.signal)
-        setData(result)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard telemetry')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void load()
-    const interval = setInterval(() => void load(), 15_000)
-
-    return () => {
-      controller.abort()
-      clearInterval(interval)
-    }
-  }, [])
+  const { dashboard, loading, error } = useMonitoringTelemetry({ refreshMs: 15_000 })
 
   return (
     <Box component="section" sx={{ display: 'grid', gap: 2 }}>
@@ -59,29 +18,33 @@ export default function Dashboard() {
       <Box className="admin-card-grid three-col">
         <TelemetryMetricCard
           title="Active Users"
-          value={data?.activeUsers ?? '--'}
+          value={dashboard?.activeUsers ?? '--'}
           subtitle="Live WebSocket connections"
         />
         <TelemetryMetricCard
           title="Active Rooms"
-          value={data?.activeRooms ?? '--'}
+          value={dashboard?.activeRooms ?? '--'}
           subtitle="Sessions currently active"
         />
         <TelemetryMetricCard
           title="Recent Errors"
-          value={data?.recentErrors ?? '--'}
+          value={dashboard?.recentErrors ?? '--'}
           subtitle="Last 24 hours"
         />
         <TelemetryMetricCard
           title="System Load"
-          value={typeof data?.systemLoadPercent === 'number' ? `${data.systemLoadPercent}%` : '--'}
+          value={
+            typeof dashboard?.systemLoadPercent === 'number'
+              ? `${dashboard.systemLoadPercent}%`
+              : '--'
+          }
           subtitle="Approximate process load"
         />
         <TelemetryMetricCard
           title="Message Throughput"
           value={
-            typeof data?.messageThroughputPerMinute === 'number'
-              ? `${data.messageThroughputPerMinute}/min`
+            typeof dashboard?.messageThroughputPerMinute === 'number'
+              ? `${dashboard.messageThroughputPerMinute}/min`
               : '--'
           }
           subtitle="Messages in last minute"
@@ -89,23 +52,25 @@ export default function Dashboard() {
         <TelemetryMetricCard
           title="Storage Usage"
           value={
-            typeof data?.storageUsagePercent === 'number' ? `${data.storageUsagePercent}%` : '--'
+            typeof dashboard?.storageUsagePercent === 'number'
+              ? `${dashboard.storageUsagePercent}%`
+              : '--'
           }
           subtitle="Heap usage proxy"
         />
         <TelemetryMetricCard
           title="Total Users"
-          value={data?.totalUsers ?? '--'}
+          value={dashboard?.totalUsers ?? '--'}
           subtitle="Persisted user records"
         />
         <TelemetryMetricCard
           title="Suspended Users"
-          value={data?.suspendedUsers ?? '--'}
+          value={dashboard?.suspendedUsers ?? '--'}
           subtitle="Currently inactive by moderation"
         />
         <TelemetryMetricCard
           title="Moderation Actions"
-          value={data?.recentModerationActions ?? '--'}
+          value={dashboard?.recentModerationActions ?? '--'}
           subtitle="Last 24 hours"
         />
       </Box>

@@ -106,9 +106,7 @@ export default function App() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
           <div>
             <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
-            <p className="mt-1 text-sm text-ui-secondary">
-              Stage 7: Audio &amp; LiveKit Integration
-            </p>
+            <p className="mt-1 text-sm text-ui-secondary">Audio and LiveKit integration</p>
           </div>
 
           {auth.user && (
@@ -173,9 +171,7 @@ export default function App() {
       )}
 
       <footer className="mt-8 border-t border-ui-border bg-ui-surface px-4 py-4 text-center text-sm text-ui-secondary">
-        <p className="m-0">
-          Stage 7 Active: Audio &amp; LiveKit Integration (voice rooms, DSP engine, DM overrides)
-        </p>
+        <p className="m-0">Audio and LiveKit are enabled (voice rooms, DSP engine, DM overrides)</p>
       </footer>
     </div>
   )

@@ -4,7 +4,7 @@
  *
  * Reference: docs/architecture/ADMIN-ARCHITECTURE.md
  *
- * Stage note: Metadata WS events are planned but not yet dispatched by the client.
+ * Note: Metadata WS events are planned but not yet dispatched by the client.
  * Handlers are stubbed here ready for wiring once METADATA:* event types are added
  * to the shared event contract.
  */

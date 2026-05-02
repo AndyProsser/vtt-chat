@@ -9,7 +9,7 @@ export function SessionToolbar({ actions }: SessionToolbarProps) {
   return (
     <div className="space-y-2" data-testid="session-toolbar">
       <h4 className="m-0 text-base font-semibold text-ui-primary">Toolbar</h4>
-      <p className="m-0 text-xs text-ui-secondary">Stage 9.1 action model</p>
+      <p className="m-0 text-xs text-ui-secondary">Session action model</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <Tabs
@@ -53,7 +53,7 @@ export function SessionToolbar({ actions }: SessionToolbarProps) {
             key={action.id}
             type="button"
             disabled
-            title="Planned in future Stage 9 work"
+            title="Planned for future releases"
             className="cursor-not-allowed rounded-ui-sm border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
           >
             {action.label}

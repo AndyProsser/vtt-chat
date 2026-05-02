@@ -22,8 +22,7 @@ import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth.
 import type { RemoveUserFromSessionResult } from '@/types/session.types'
 
 /**
- * Generate a deterministic UUID for Stage 1
- * (In production, use a real UUID library)
+ * Generate a UUID for session creation.
  */
 function generateUUID(): UUID {
   return randomUUID() as UUID
@@ -77,7 +76,7 @@ export async function getSession(sessionId: UUID): Promise<Session | null> {
 }
 
 /**
- * Get all sessions (Stage 1: return all; later filter by user)
+ * Get all sessions.
  */
 export async function getAllSessions(): Promise<Session[]> {
   const sessions = await listSessions()
@@ -93,8 +92,7 @@ export async function getAllSessions(): Promise<Session[]> {
 }
 
 /**
- * Update session state (start, pause, resume, end)
- * Validates state transitions per Stage 0 contracts.
+ * Update session state (start, pause, resume, end).
  */
 export function updateSessionState(
   sessionId: UUID,
@@ -236,7 +234,7 @@ export async function isUserInSession(sessionId: UUID, userId: UUID): Promise<bo
 }
 
 /**
- * Delete a session (DM-only, stage-safe)
+ * Delete a session (DM-only).
  */
 export async function deleteSession(sessionId: UUID, dmId: UUID): Promise<boolean> {
   const session = await findSessionById(sessionId)

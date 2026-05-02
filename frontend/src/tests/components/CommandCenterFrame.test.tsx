@@ -52,7 +52,7 @@ describe('getRightRailTabsForRole', () => {
     ])
   })
 
-  it('returns stage 11 toolset for PLAYER', () => {
+  it('returns full player toolset for PLAYER', () => {
     expect(getRightRailTabsForRole(Role.PLAYER)).toEqual([
       'rooms',
       'audio',

@@ -1,6 +1,6 @@
 /**
  * CommandCenterFrame layout
- * Stage 9.3: Uses CSS custom properties from theme.css for dark/light parity.
+ * Uses CSS custom properties from theme.css for dark/light parity.
  * Motion rules added for rail open/close and slide-in panels.
  * Import theme.css from this file so all CommandCenter sub-trees inherit tokens.
  */

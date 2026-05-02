@@ -287,7 +287,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 /**
  * POST /api/auth/login
  * Login with username and optional role.
- * Stage 1: No password validation, just accept username.
+ * No password validation; accepts username and role.
  * Returns JWT token.
  */
 router.post('/login', loginRateLimit, async (req: Request, res: Response) => {

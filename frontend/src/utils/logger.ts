@@ -1,6 +1,6 @@
 /**
  * Frontend Logger Utility
- * Stage 9.3: explicit log-level controls with runtime/browser/env precedence.
+ * Explicit log-level controls with runtime/browser/env precedence.
  */
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'

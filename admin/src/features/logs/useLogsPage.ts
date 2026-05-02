@@ -1,33 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { requestJson } from '../../utils/api'
-
-export type LogSeverity = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
-export type LogSortBy = 'timestamp' | 'severity' | 'source' | 'message'
-export type LogSortDir = 'asc' | 'desc'
-export type LogTimeRange = '1h' | '24h' | '7d'
-
-export interface AdminLogRow {
-  id: string
-  timestamp: string
-  severity: LogSeverity
-  source: string
-  message: string
-  details?: Record<string, unknown> | null
-}
-
-interface LogsListResponse {
-  logs: AdminLogRow[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-  sortBy: LogSortBy
-  sortDir: LogSortDir
-}
-
-interface LogDetailResponse {
-  log: AdminLogRow
-}
+import type {
+  AdminLogRow,
+  LogDetailResponse,
+  LogsListResponse,
+  LogSortBy,
+  LogSortDir,
+  LogTimeRange,
+} from './types'
 
 export function useLogsPage() {
   const [timeRange, setTimeRange] = useState<LogTimeRange>('24h')

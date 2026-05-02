@@ -85,7 +85,7 @@ function buildApp() {
   return app
 }
 
-describe('Stage 13.2 external integration endpoint behavior', () => {
+describe('external integration endpoints', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -118,6 +118,20 @@ describe('Stage 13.2 external integration endpoint behavior', () => {
 
     expect(response.status).toBe(400)
     expect(response.body.field).toBe('campaignId')
+  })
+
+  it('returns 401 for sync requests without auth', async () => {
+    const app = buildApp()
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(null)
+
+    const response = await request(app).post('/api/integrations/external/sync').send({
+      campaignId: CAMPAIGN_ID,
+      externalSystem: 'dndbeyond',
+      source: 'player',
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('UNAUTHORIZED')
   })
 
   it('returns 403 for non-members attempting sync', async () => {
@@ -181,6 +195,69 @@ describe('Stage 13.2 external integration endpoint behavior', () => {
 
     expect(response.status).toBe(403)
     expect(response.body.code).toBe('SYNC_POLICY_VIOLATION')
+  })
+
+  it('allows DM_ONLY sync updates from the campaign DM', async () => {
+    const app = buildApp()
+
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: DM_ID,
+      username: 'dm-one',
+      role: 'DM',
+      authType: 'FULL',
+    })
+
+    mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+      campaign: {
+        extensionSyncPolicy: 'DM_ONLY',
+        currentDmId: DM_ID,
+      },
+    })
+
+    const response = await request(app)
+      .post('/api/integrations/external/sync')
+      .set('Authorization', 'Bearer token')
+      .send({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'dm',
+        campaignUpdate: {
+          title: 'Updated Campaign Name',
+        },
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.applied).toEqual({
+      characterUpdate: false,
+      campaignUpdate: true,
+    })
+    expect(mocks.mockAdminAuditLogCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 400 when character sync payload omits externalCharacterId', async () => {
+    const app = buildApp()
+
+    mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+      campaign: {
+        extensionSyncPolicy: 'DM_AND_PLAYERS',
+        currentDmId: DM_ID,
+      },
+    })
+
+    const response = await request(app)
+      .post('/api/integrations/external/sync')
+      .set('Authorization', 'Bearer token')
+      .send({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        characterUpdate: {
+          level: 8,
+        },
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body.field).toBe('characterUpdate.externalCharacterId')
   })
 
   it('applies character updates and audit logging under DM_AND_PLAYERS policy', async () => {
@@ -271,6 +348,19 @@ describe('Stage 13.2 external integration endpoint behavior', () => {
 
     expect(response.status).toBe(403)
     expect(response.body.code).toBe('FORBIDDEN')
+  })
+
+  it('returns 404 when campaign external-links are requested for missing campaign', async () => {
+    const app = buildApp()
+
+    mocks.mockCampaignFindUnique.mockResolvedValueOnce(null)
+
+    const response = await request(app)
+      .get(`/api/campaigns/${CAMPAIGN_ID}/external-links`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(404)
+    expect(response.body.code).toBe('NOT_FOUND')
   })
 
   it('creates new campaign external link for DM', async () => {

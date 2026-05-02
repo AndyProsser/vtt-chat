@@ -481,9 +481,7 @@ export function DMAudioControls({
   }, [controllableParticipants, participantRoomById, rooms])
 
   if (role !== 'DM') {
-    return (
-      <p className="m-0 text-sm text-ui-secondary">Audio controls are DM-only during Stage 9.2.</p>
-    )
+    return <p className="m-0 text-sm text-ui-secondary">Audio controls are DM-only.</p>
   }
 
   const activeOverride = selectedTargetUserId ? dmOverrides.get(selectedTargetUserId) : undefined

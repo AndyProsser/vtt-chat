@@ -200,7 +200,7 @@ describe('SessionInit integration', () => {
     expect(screen.queryByText('Muted')).toBeNull()
   })
 
-  it('wires stage 11 knowledge tabs into the right rail for players', async () => {
+  it('wires knowledge tabs into the right rail for players', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)
 

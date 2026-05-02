@@ -43,6 +43,17 @@ Full-account users can also find and join campaigns that advertise themselves as
 
 The DM has ultimate authority over spectator access: whether spectators are permitted at all, what account types are allowed, how many can be present simultaneously, and whether a waitlist is maintained.
 
+### Current validation status (2026-05)
+
+Core guest/spectator runtime validation is complete in the main repository:
+
+- Backend guest and spectator API paths are covered for success/error/authz boundaries, including waitlist status transitions.
+- External integration sync-policy and campaign external-link authorization boundaries are regression-tested.
+- Frontend join/watch/browse and guest-upgrade auth transition paths are covered by deterministic component/integration tests.
+- Multi-step backend integration tests now validate invite/preflight/guest-login and spectator waitlist-to-promotion journeys.
+
+Extension-specific bridge milestones remain tracked and executed in the extension repository roadmap.
+
 ---
 
 ## 1. Trust Model

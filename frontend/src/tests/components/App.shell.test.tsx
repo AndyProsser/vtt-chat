@@ -115,16 +115,14 @@ describe('App shell', () => {
     expect(screen.queryByText('Mock Login Form')).toBeNull()
   })
 
-  it('renders stage footer metadata for active integration stage', async () => {
+  it('renders audio/livekit metadata in app chrome', async () => {
     const { default: App } = await import('../../App')
 
     render(<App />)
 
-    expect(screen.getByText('Stage 7: Audio & LiveKit Integration')).toBeTruthy()
+    expect(screen.getByText('Audio and LiveKit integration')).toBeTruthy()
     expect(
-      screen.getByText(
-        'Stage 7 Active: Audio & LiveKit Integration (voice rooms, DSP engine, DM overrides)'
-      )
+      screen.getByText('Audio and LiveKit are enabled (voice rooms, DSP engine, DM overrides)')
     ).toBeTruthy()
   })
 })

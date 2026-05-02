@@ -1,6 +1,6 @@
 /**
  * Event Dispatcher
- * Validates incoming events against Stage 0 contracts and dispatches to handlers.
+ * Validates incoming events against shared contracts and dispatches to handlers.
  */
 
 import type { EventEnvelope } from '@shared'

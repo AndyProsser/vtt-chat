@@ -13,7 +13,7 @@ const SESSION_ID = asUuid('22222222-2222-4222-8222-222222222222')
 const ROOM_ID = asUuid('66666666-6666-4666-8666-666666666666')
 const PLAYER_ID = asUuid('44444444-4444-4444-8444-444444444444')
 
-describe('Stage 11 knowledge panels', () => {
+describe('knowledge panels', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     const store = useStore.getState()

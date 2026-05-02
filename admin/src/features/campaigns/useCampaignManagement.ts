@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
-import { requestJson } from '../../utils/api'
 import type {
-  CampaignExportResponse,
-  CampaignImportResponse,
-  CampaignListResponse,
-  CampaignRecordingsResponse,
   CampaignRoomsResponse,
   CampaignStatusFilter,
   CampaignSummary,
   RecordingDraft,
   RecordingSummary,
 } from './types'
+import {
+  fetchCampaigns,
+  fetchCampaignRecordings,
+  fetchCampaignRooms,
+  requestArchiveToggle,
+  requestCampaignExport,
+  requestCampaignImport,
+  requestMovePlayer,
+  requestRecordingCreate,
+  requestSessionEnd,
+} from './campaignManagementApi'
+import {
+  buildCampaignQueryString,
+  sanitizeDurationSeconds,
+  selectInitialMemberRoom,
+  withSessionRoomRetained,
+} from './campaignManagementUtils'
 
 const EMPTY_RECORDING_DRAFT: RecordingDraft = {
   title: '',
@@ -59,13 +71,12 @@ export function useCampaignManagement() {
   const [recordingDraft, setRecordingDraft] = useState<RecordingDraft>(EMPTY_RECORDING_DRAFT)
 
   const queryString = useMemo(() => {
-    const params = new URLSearchParams({
+    return buildCampaignQueryString({
       search,
       status: statusFilter,
-      page: String(page),
-      pageSize: String(pageSize),
+      page,
+      pageSize,
     })
-    return params.toString()
   }, [page, pageSize, search, statusFilter])
 
   const selectedCampaign = useMemo(() => {
@@ -82,9 +93,7 @@ export function useCampaignManagement() {
       setError(null)
 
       try {
-        const response = await requestJson<CampaignListResponse>(`/campaigns?${queryString}`, {
-          method: 'GET',
-        })
+        const response = await fetchCampaigns(queryString)
 
         setCampaigns(response.campaigns)
         setTotal(response.total)
@@ -112,38 +121,28 @@ export function useCampaignManagement() {
       setRoomsError(null)
 
       try {
-        const response = await requestJson<CampaignRoomsResponse>(
-          `/campaigns/${selectedCampaign.id}/rooms${
-            selectedCampaign.latestSession ? `?sessionId=${selectedCampaign.latestSession.id}` : ''
-          }`,
-          {
-            method: 'GET',
-          }
+        const response = await fetchCampaignRooms(
+          selectedCampaign.id,
+          selectedCampaign.latestSession?.id
         )
 
         const members = response.members || []
         const rooms = response.rooms || []
 
-        if (members.length && rooms.length) {
-          const preferredMember = members.find((member) => member.role !== 'DM') || members[0]
-          const nextMemberId = selectedMemberId || preferredMember.userId
-          const member = members.find((item) => item.userId === nextMemberId) || preferredMember
-          const roomForMember =
-            rooms.find((room) => room.id === member.primaryRoomId)?.id ||
-            rooms.find((room) => room.id !== member.primaryRoomId)?.id ||
-            rooms[0].id
+        const initialSelection = selectInitialMemberRoom(members, rooms, selectedMemberId)
 
+        if (initialSelection) {
           if (!selectedMemberId) {
-            setSelectedMemberId(nextMemberId)
+            setSelectedMemberId(initialSelection.memberId)
           }
           if (!targetRoomId) {
-            setTargetRoomId(roomForMember)
+            setTargetRoomId(initialSelection.roomId)
           }
 
           setRecordingDraft((current) => ({
             ...current,
             sessionId: current.sessionId || response.session?.id || '',
-            roomId: current.roomId || roomForMember,
+            roomId: current.roomId || initialSelection.roomId,
           }))
         }
 
@@ -168,12 +167,7 @@ export function useCampaignManagement() {
       setRecordingsError(null)
 
       try {
-        const response = await requestJson<CampaignRecordingsResponse>(
-          `/campaigns/${selectedCampaign.id}/recordings`,
-          {
-            method: 'GET',
-          }
-        )
+        const response = await fetchCampaignRecordings(selectedCampaign.id)
         setRecordings(response.recordings || [])
       } catch (err) {
         setRecordingsError(err instanceof Error ? err.message : 'Failed to load recordings')
@@ -186,9 +180,7 @@ export function useCampaignManagement() {
   }, [selectedCampaign])
 
   const refreshCampaigns = async () => {
-    const refreshed = await requestJson<CampaignListResponse>(`/campaigns?${queryString}`, {
-      method: 'GET',
-    })
+    const refreshed = await fetchCampaigns(queryString)
 
     setCampaigns(refreshed.campaigns)
     setTotal(refreshed.total)
@@ -196,12 +188,7 @@ export function useCampaignManagement() {
   }
 
   const refreshRecordings = async (campaignId: string) => {
-    const response = await requestJson<CampaignRecordingsResponse>(
-      `/campaigns/${campaignId}/recordings`,
-      {
-        method: 'GET',
-      }
-    )
+    const response = await fetchCampaignRecordings(campaignId)
 
     setRecordings(response.recordings || [])
   }
@@ -224,13 +211,7 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      await requestJson<{ message: string }>(
-        `/campaigns/${campaign.id}/sessions/${campaign.latestSession.id}/end`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ reason: 'Admin operation: ended from Rooms & Campaigns page' }),
-        }
-      )
+      await requestSessionEnd(campaign, 'Admin operation: ended from Rooms & Campaigns page')
       await refreshCampaigns()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to end session')
@@ -250,12 +231,10 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      await requestJson<{ message: string }>(
-        `/campaigns/${campaign.id}/${shouldArchive ? 'archive' : 'restore'}`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ reason: `Admin operation: ${actionLabel} campaign` }),
-        }
+      await requestArchiveToggle(
+        campaign,
+        shouldArchive,
+        `Admin operation: ${actionLabel} campaign`
       )
 
       await refreshCampaigns()
@@ -286,22 +265,17 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      await requestJson<{ message: string }>(
-        `/campaigns/${selectedCampaign.id}/sessions/${selectedCampaignRooms.session.id}/rooms/${targetRoomId}/move-player`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            targetUserId: member.userId,
-            reason: 'Admin operation: move player from campaign control panel',
-          }),
-        }
-      )
+      await requestMovePlayer({
+        campaignId: selectedCampaign.id,
+        sessionId: selectedCampaignRooms.session.id,
+        roomId: targetRoomId,
+        targetUserId: member.userId,
+        reason: 'Admin operation: move player from campaign control panel',
+      })
 
-      const refreshedRooms = await requestJson<CampaignRoomsResponse>(
-        `/campaigns/${selectedCampaign.id}/rooms?sessionId=${selectedCampaignRooms.session.id}`,
-        {
-          method: 'GET',
-        }
+      const refreshedRooms = await fetchCampaignRooms(
+        selectedCampaign.id,
+        selectedCampaignRooms.session.id
       )
 
       setSelectedCampaignRooms(refreshedRooms)
@@ -318,12 +292,7 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      const response = await requestJson<CampaignExportResponse>(
-        `/campaigns/${campaign.id}/export`,
-        {
-          method: 'GET',
-        }
-      )
+      const response = await requestCampaignExport(campaign.id)
 
       setExportBundleText(JSON.stringify(response.bundle, null, 2))
       setPortabilityMessage(`${response.message} (${response.artifactId})`)
@@ -353,10 +322,7 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      const response = await requestJson<CampaignImportResponse>('/campaigns/import', {
-        method: 'POST',
-        body: JSON.stringify({ bundle }),
-      })
+      const response = await requestCampaignImport(bundle)
 
       await refreshCampaigns()
       setSelectedCampaignId(response.campaign.id)
@@ -391,38 +357,26 @@ export function useCampaignManagement() {
     setPortabilityMessage(null)
 
     try {
-      const durationSeconds = recordingDraft.durationSeconds.trim()
-        ? Number(recordingDraft.durationSeconds)
-        : undefined
+      const durationSeconds = sanitizeDurationSeconds(recordingDraft.durationSeconds)
 
-      await requestJson<{ message: string }>(`/campaigns/${selectedCampaign.id}/recordings`, {
-        method: 'POST',
-        body: JSON.stringify({
-          title: recordingDraft.title,
-          sessionId: recordingDraft.sessionId || undefined,
-          roomId: recordingDraft.roomId || undefined,
-          sourceUrl: recordingDraft.sourceUrl || undefined,
-          storageKey: recordingDraft.storageKey || undefined,
-          durationSeconds:
-            typeof durationSeconds === 'number' && Number.isFinite(durationSeconds)
-              ? durationSeconds
-              : undefined,
-          startedAt: recordingDraft.startedAt || undefined,
-          endedAt: recordingDraft.endedAt || undefined,
-          journalSummary: recordingDraft.journalSummary || undefined,
-          metadata: {
-            source: 'admin-console',
-          },
-        }),
+      await requestRecordingCreate(selectedCampaign.id, {
+        title: recordingDraft.title,
+        sessionId: recordingDraft.sessionId || undefined,
+        roomId: recordingDraft.roomId || undefined,
+        sourceUrl: recordingDraft.sourceUrl || undefined,
+        storageKey: recordingDraft.storageKey || undefined,
+        durationSeconds,
+        startedAt: recordingDraft.startedAt || undefined,
+        endedAt: recordingDraft.endedAt || undefined,
+        journalSummary: recordingDraft.journalSummary || undefined,
+        metadata: {
+          source: 'admin-console',
+        },
       })
 
       await refreshRecordings(selectedCampaign.id)
       setPortabilityMessage('Recording metadata saved successfully')
-      setRecordingDraft((current) => ({
-        ...EMPTY_RECORDING_DRAFT,
-        sessionId: current.sessionId,
-        roomId: current.roomId,
-      }))
+      setRecordingDraft((current) => withSessionRoomRetained(current, EMPTY_RECORDING_DRAFT))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save recording metadata')
     } finally {

@@ -4,7 +4,7 @@ import { BrowseCampaignsPage } from '../../components/auth/BrowseCampaignsPage'
 import { InviteJoinPage } from '../../components/auth/InviteJoinPage'
 import { SpectatorInvitePage } from '../../components/auth/SpectatorInvitePage'
 
-describe('Stage 13.3 guest auth route surfaces', () => {
+describe('guest auth route surfaces', () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
@@ -103,6 +103,120 @@ describe('Stage 13.3 guest auth route surfaces', () => {
         username: 'Aria Player',
         role: 'PLAYER',
       })
+    })
+  })
+
+  it('sends campaignPacket fields during extension guest-login', async () => {
+    const onAuthenticated = vi.fn()
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method || 'GET'
+
+      if (url.includes('/api/campaigns/invite/BOOT123/validate') && method === 'GET') {
+        return {
+          ok: true,
+          json: async () => ({
+            valid: true,
+            type: 'player',
+            campaign: {
+              id: 'campaign-boot',
+              name: 'Boot Campaign',
+              dmDisplayName: 'Mira',
+            },
+            platformStatus: {
+              online: true,
+              version: '0.5.3',
+              activeUsers: 10,
+              activeCampaigns: 2,
+              activeSessions: 1,
+            },
+          }),
+        }
+      }
+
+      if (url.includes('/api/auth/extension/preflight') && method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            accountStatus: 'none',
+            suggestedFlow: 'guest',
+          }),
+        }
+      }
+
+      if (url.includes('/api/auth/extension/guest-login') && method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            token: 'guest-token',
+            user: {
+              id: 'user-boot',
+              role: 'PLAYER',
+              authType: 'GUEST',
+              displayName: 'Boot User',
+            },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${method} ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <InviteJoinPage
+        apiUrl="http://localhost:3000"
+        inviteCode="BOOT123"
+        authToken={null}
+        onAuthenticated={onAuthenticated}
+      />
+    )
+
+    await screen.findByText('Player Invite')
+
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'boot@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('External System'), {
+      target: { value: 'dndbeyond' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run preflight' }))
+    await screen.findByText(/suggestedFlow:/)
+
+    fireEvent.change(screen.getByLabelText('External User ID'), {
+      target: { value: 'ddb-user-boot' },
+    })
+    fireEvent.change(screen.getByLabelText('External Campaign ID (optional)'), {
+      target: { value: 'ddb-campaign-boot' },
+    })
+    fireEvent.change(screen.getByLabelText('DM External User ID (optional)'), {
+      target: { value: 'ddb-dm-boot' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Extension Guest Login' }))
+
+    await waitFor(() => {
+      expect(onAuthenticated).toHaveBeenCalledWith('guest-token', {
+        id: 'user-boot',
+        username: 'Boot User',
+        role: 'PLAYER',
+      })
+    })
+
+    const guestLoginCall = fetchMock.mock.calls.find(([input, init]) => {
+      return (
+        String(input).includes('/api/auth/extension/guest-login') &&
+        (init?.method || 'GET') === 'POST'
+      )
+    })
+    expect(guestLoginCall).toBeTruthy()
+    const payload = JSON.parse(String(guestLoginCall?.[1]?.body || '{}'))
+    expect(payload.campaignPacket).toEqual({
+      externalCampaignId: 'ddb-campaign-boot',
+      dmExternalUserId: 'ddb-dm-boot',
     })
   })
 
@@ -359,5 +473,30 @@ describe('Stage 13.3 guest auth route surfaces', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons[0]).toHaveProperty('disabled', false)
     expect(buttons[1]).toHaveProperty('disabled', true)
+  })
+
+  it('shows browse access errors for guest-restricted responses', async () => {
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method || 'GET'
+
+      if (url.includes('/api/campaigns/browse') && method === 'GET') {
+        return {
+          ok: false,
+          json: async () => ({
+            code: 'FULL_ACCOUNT_REQUIRED',
+            message: 'Only full accounts may browse spectator campaigns',
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${method} ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<BrowseCampaignsPage apiUrl="http://localhost:3000" authToken="guest-token" />)
+
+    await screen.findByText('Only full accounts may browse spectator campaigns')
   })
 })

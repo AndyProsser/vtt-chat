@@ -1,4 +1,4 @@
-import type { LogTimeRange } from './useLogsPage'
+import type { LogTimeRange } from './types'
 
 interface LogFiltersProps {
   timeRange: LogTimeRange

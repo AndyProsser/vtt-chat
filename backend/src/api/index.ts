@@ -23,7 +23,7 @@ const router = Router()
 router.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
-    mode: 'stage-1',
+    mode: 'standard',
     timestamp: new Date().toISOString(),
     message: 'Backend is running with auth, session, and websocket support',
   })

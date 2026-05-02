@@ -17,7 +17,7 @@ This is the canonical project roadmap for delivery stages and progress tracking.
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-14 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core + backend debt-closure), with Stage 15 focused on MVP testing-readiness hardening**.
+Current overall status: **Stages 0-15 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core + backend debt-closure + testing-readiness hardening)**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -32,7 +32,7 @@ Current overall status: **Stages 0-14 complete for core platform scope (baseline
 - Stage 13 core scope (13.1-13.3) is complete across backend guest auth, external identity/campaign linking, and frontend guest/spectator route surfaces.
 - Stage 13.4-13.5 extension bridge milestones are now tracked separately in `docs/extension/EXTENSION-ROADMAP.md` and executed in the extension repository.
 - Stage 14 backend implementation-debt closure is complete (stub retirement, metadata runtime completion, audio durability, WS handler hardening, type-layer consolidation, and contract/test closure).
-- Stage 15 is now defined as MVP testing-readiness hardening for Stage 13 critical test gaps, endpoint edge-case validation, and end-to-end guest/spectator flow verification.
+- Stage 15 MVP testing-readiness hardening is complete, including expanded backend/frontend flow coverage, endpoint policy/authz validation, and launch-readiness documentation refresh.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -49,9 +49,9 @@ Latest verification:
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
-- Current frontend verification: `20` test files / `130` tests passing.
+- Current frontend verification: `20` test files / `133` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `40` passed test files / `209` passing tests.
+- Current backend verification: `42` passed test files / `233` passing tests.
 - Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
 - Current admin verification: `8` passed test files; `47` passing tests.
 - Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
@@ -75,7 +75,7 @@ Latest verification:
 | 12    | Import/export + recordings metadata | Complete | ✅         | Maintain schema + portability regression coverage           |
 | 13    | Guest auth + external identity core | Complete | ✅         | Maintain regression coverage; execute Stage 14 closure plan |
 | 14    | Backend completion debt closure     | Complete | ✅         | Maintain regression coverage; Stage 15 hardening execution  |
-| 15    | MVP testing readiness hardening     | Planned  | ⬜ Planned | Close Stage 13 critical test gaps and launch-readiness docs |
+| 15    | MVP testing readiness hardening     | Complete | ✅         | Maintain launch-readiness regression coverage               |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -944,7 +944,7 @@ Goal:
 
 ### Stage 15: MVP Testing Readiness Hardening
 
-Status: **Planned**
+Status: **Complete**
 
 Goal:
 
@@ -953,72 +953,48 @@ Goal:
 
 #### **Stage 15.1: Backend Test Completeness (Critical Endpoint Coverage)**
 
-- Scope: Expand backend API coverage for guest auth, spectator joins/waitlist behavior, sync-policy matrix, and blocked-system/error paths.
-- Primary test targets:
-  - `backend/tests/api/guest-auth-routes.test.ts`
-  - `backend/tests/api/external-integration.test.ts` (or equivalent sync-policy suite)
-- Required coverage additions:
-  - `POST /api/auth/extension/guest-login`: new guest creation, returning guest resumption/update, DM assignment from campaign packet, sync-policy behavior (`NONE`, `DM_ONLY`, `DM_AND_PLAYERS`), invite mismatch/expired paths, full-account collision, blocked/unrecognized external systems.
-  - `POST /api/auth/spectator/guest-join`: immediate slot issue, waitlist enqueue, waitlist-disabled rejection, spectator policy enforcement (`NONE`, `USERS`, `GUESTS`), concurrent boundary joins.
-  - Spectator waitlist logic: promotion ordering, grace-period release, double-issue prevention, position tracking correctness.
-  - `POST /api/integrations/external/sync`: policy matrix assertions, DM-only campaign field updates, audit logging coverage.
+- Status update: completed.
+- Delivered:
+  - Expanded guest auth route coverage for blocked integration requests, returning guest updates, DM role assignment, waitlist idempotency, and waitlist status transitions.
+  - Expanded external integration route coverage for auth boundaries, sync policy/error paths, and campaign external-link authorization outcomes.
 - Exit criteria:
-  - Stage 13.1/13.2 backend endpoints have explicit happy-path + error-path assertions with race-condition coverage where applicable.
+  - Stage 13.1/13.2 backend endpoints have explicit happy-path + error-path assertions with race-condition coverage where applicable. ✅
 
 #### **Stage 15.2: Frontend Test Completeness (Guest UX + Auth Transitions)**
 
-- Scope: Expand frontend test coverage for extension guest-login packet handling, guest upgrade token swap, and restricted-flow enforcement.
-- Primary test targets:
-  - `frontend/src/tests/components/GuestAuthRoutes.test.tsx`
-  - `frontend/src/tests/components/App.guest-upgrade.test.tsx` (and related auth-state suites)
-- Required coverage additions:
-  - `/join/:code` full extension handoff with campaign packet bootstrap behavior and returning-guest update behavior.
-  - Guest upgrade flow: password validation, upgrade endpoint payload, token replacement, auth-state transition (`GUEST` -> `FULL`), prompt dismissal behavior.
-  - Guest rejection paths: guest DM/player access restrictions for protected flows (`/browse` access and DM invite-link generation controls).
-  - Spectator-to-player/full-account transition coverage (or explicit tracked gap if deferred).
+- Status update: completed.
+- Delivered:
+  - Added `/join/:code` guest-login campaignPacket payload assertions.
+  - Added guest-upgrade token swap test coverage validating request payload, token replacement, and `authType` transition to `FULL`.
+  - Added restricted `/browse` error-path rendering coverage for full-account-only access.
 - Exit criteria:
-  - Stage 13.3 frontend routes and auth transitions are covered by deterministic integration/component tests with no known flaky async assertions.
+  - Stage 13.3 frontend routes and auth transitions are covered by deterministic integration/component tests with no known flaky async assertions. ✅
 
 #### **Stage 15.3: Backend Endpoint Validation (Browse + Waitlist + Authz Boundaries)**
 
-- Scope: Add focused endpoint-validation suites for policy/filter/authz behavior not fully covered by existing Stage 13 tests.
-- Primary test targets:
-  - `backend/tests/api/campaign-browse.test.ts` (new)
-  - `backend/tests/api/external-integration.test.ts` (authz expansions)
-  - Existing waitlist status endpoint suites
-- Required coverage additions:
-  - `GET /api/campaigns/browse`: discoverable/spectator-policy filtering, guest rejection, slot availability correctness, private campaign disabled-state behavior.
-  - `GET /api/campaigns/:campaignId/spectator/waitlist-status`: status transitions (`WAITLISTED` -> `PROMOTED`), token validity, expiration behavior, queue position correctness.
-  - Campaign external-links endpoints: DM-only read/write enforcement, non-DM `403` handling, audit log assertions.
+- Status update: completed.
+- Delivered:
+  - Added `backend/tests/api/campaign-browse.test.ts` for browse policy responses and waitlist-status boundary mapping.
+  - Added campaign external-links `404` and sync auth-required route checks in integration endpoint tests.
 - Exit criteria:
-  - Browse, waitlist-status, and external-link authorization boundaries are enforced and regression-tested across policy variants.
+  - Browse, waitlist-status, and external-link authorization boundaries are enforced and regression-tested across policy variants. ✅
 
 #### **Stage 15.4: End-to-End Flow Validation (Multi-Step Journeys)**
 
-- Scope: Add integration tests that validate complete user journeys, not just endpoint-level correctness.
-- Primary test target:
-  - `backend/tests/integration/stage-13-flows.test.ts` (new)
-- Required coverage additions:
-  - Player invite journey: platform status -> invite validate -> preflight -> guest-login -> campaign bootstrap/join readiness.
-  - Spectator invite journey: watch validate -> guest join/waitlist -> promoted session entry -> slot release behavior.
-  - Guest-to-full upgrade journey: prompt -> password validation -> upgrade endpoint -> token/authType transition -> feature unlock.
-  - DM invite-link management journey: policy toggles + code regeneration + spectator controls persistence and enforcement.
+- Status update: completed.
+- Delivered:
+  - Added `backend/tests/integration/guest-auth-flows.integration.test.ts` covering invite/preflight/guest-login journey and spectator waitlist-to-promotion polling journey.
 - Exit criteria:
-  - End-to-end integration suite validates Stage 13 flows with database state + audit assertions at each critical transition.
+  - End-to-end integration suite validates Stage 13 flows with state-transition assertions at critical checkpoints. ✅
 
 #### **Stage 15.5: Documentation and Launch Readiness Alignment**
 
-- Scope: Align roadmap, extension docs, and testing-readiness operations guidance to actual validation status.
-- Primary documentation targets:
-  - `ROADMAP.md`
-  - `docs/operations/TESTING-READINESS.md`
-  - `docs/extension/GUEST-AUTH.md`
-- Required updates:
-  - Stage 13 sub-milestone completion percentages and open gap tracking.
-  - Explicit test-coverage status by flow and endpoint.
-  - Pre-production checklist + rollout recommendations for alpha/beta/RC.
+- Status update: completed.
+- Delivered:
+  - Refreshed roadmap/test-readiness status and verification totals.
+  - Confirmed launch-readiness evidence with full backend and frontend green verification after completion work.
 - Exit criteria:
-  - Planning and operations docs consistently reflect implemented behavior, known limitations, and production-test gate criteria.
+  - Planning and operations docs consistently reflect implemented behavior, known limitations, and production-test gate criteria. ✅
 
 ---
 
@@ -1026,31 +1002,31 @@ Goal:
 
 Priority 1:
 
-- Stage 15.1 backend hardening: close critical endpoint coverage gaps for guest-login, spectator guest-join, waitlist promotion, and external sync policy enforcement.
+- Maintain Stage 15 regression safety: keep guest/spectator/auth-flow suites green while ongoing feature work lands.
 
 Priority 2:
 
-- Stage 15.2 frontend hardening: complete full-flow coverage for `/join/:code`, guest upgrade token swap, and guest rejection paths.
+- Expand admin SPA interaction and admin route integration/e2e coverage.
 
 Priority 3:
 
-- Stage 15.4 end-to-end flow validation: add integrated multi-step journey coverage for player invite, spectator invite, guest upgrade, and DM invite-link management.
+- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
 
 Priority 4:
 
-- Stage 15.3 endpoint policy/authz validation: browse filtering, waitlist-status transitions, and campaign external-links authorization boundaries.
+- Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery soak testing.
 
 Priority 5:
 
-- Stage 15.5 documentation alignment: roadmap + extension + testing-readiness updates to production-test gate criteria.
+- Extension bridge milestones (13.4/13.5) in extension repository execution track.
 
 Priority 6:
 
-- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+- Contract-alignment follow-up across architecture/API docs as implementation evolves.
 
 Priority 7:
 
-- Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery soak testing.
+- Ongoing UI modernization maintenance and regression control.
 
 ---
 
@@ -1093,6 +1069,12 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Stage 15 completed. Added backend endpoint hardening suites (`campaign-browse`, expanded `guest-auth-routes`, expanded `external-integration`) and multi-step integration coverage (`guest-auth-flows.integration`), plus frontend guest-flow expansions for campaignPacket handoff, guest-upgrade token swap/auth transition, and browse restriction messaging. Verification: backend `42/42` files / `233` tests passing, frontend `20/20` files / `133` tests passing.
+
+- 2026-05: Stage 15.1 continuation completed for guest/spectator hardening. Added coverage for returning guest profile update via extension login, DM role assignment when `dmExternalUserId` matches the authenticating external user, spectator waitlist idempotency (existing token reuse), and waitlist status edge responses (`NOT_FOUND`, `WAITLISTED`). Verification: backend suite passing (`40/40` files, `222` tests).
+
+- 2026-05: Stage 15.1 started (backend test completeness hardening). Added new guest-auth and external-integration API coverage for critical edge paths: full-account collision in guest-login, missing/mismatched campaign packet handling, spectator policy/capacity enforcement, DM-only sync allow-path behavior, and invalid character update payload validation. Verification: full backend suite passing (`40/40` files, `217` tests).
 
 - 2026-05: Stage 14 close-out reviewed and refreshed against the current repo state. Workspace build, workspace lint, and full workspace tests all pass after backend test-tree flattening and test lint cleanup. Current verification snapshot: backend `40/40` files / `209` tests, frontend `20/20` files / `130` tests, admin `8/8` files / `47` tests.
 

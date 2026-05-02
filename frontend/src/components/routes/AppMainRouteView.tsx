@@ -23,8 +23,8 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
         <section className="mb-8 text-center">
           <h2 className="text-3xl font-semibold text-ui-primary">Welcome to VTT-Chat</h2>
           <p className="mx-auto mt-2 max-w-xl text-ui-secondary">
-            Stage 7 adds room voice, LiveKit transport, and the client audio engine. Start a session
-            to unlock chat, room state, and the mounted audio controls.
+            Room voice, LiveKit transport, and the client audio engine are available. Start a
+            session to unlock chat, room state, and mounted audio controls.
           </p>
         </section>
 
@@ -40,7 +40,7 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
               <strong>Role:</strong> DM, PLAYER, or SPECTATOR
             </li>
             <li>
-              <strong>Password:</strong> Not required in Stage 1 (for testing)
+              <strong>Password:</strong> Not required in this test flow
             </li>
           </ul>
           <p className="mt-2">

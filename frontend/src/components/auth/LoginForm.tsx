@@ -113,7 +113,7 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       </button>
 
       <p className="mt-4 text-center text-xs text-ui-secondary">
-        Stage 1: No password required. Username is verified by length and format only.
+        No password required. Username is verified by length and format only.
       </p>
     </form>
   )

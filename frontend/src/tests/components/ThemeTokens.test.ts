@@ -1,5 +1,5 @@
 /**
- * Stage 9.3 — Theme token parity tests
+ * Theme token parity tests
  * Validates that the theme.css file defines the expected CSS custom properties
  * for both light and dark mode token sets, ensuring dark/light parity.
  *

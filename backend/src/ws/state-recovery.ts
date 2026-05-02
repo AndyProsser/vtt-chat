@@ -20,8 +20,8 @@ export interface ConnectionState {
 }
 
 /**
- * Event log for state recovery
- * In Stage 1: in-memory; later stages use Redis/database
+ * Event log for state recovery.
+ * Uses in-memory buffering for replay.
  */
 class EventLog {
   private events: Map<string, EventEnvelope[]> = new Map()

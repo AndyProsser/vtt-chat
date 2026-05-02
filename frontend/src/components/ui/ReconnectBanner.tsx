@@ -1,6 +1,6 @@
 /**
  * ReconnectBanner Component
- * Stage 9.3: Atomic reconnect/hydration UX.
+ * Atomic reconnect/hydration UX.
  *
  * Shown as a top-of-surface banner whenever the WebSocket is in a
  * non-connected state. Hides automatically once the connection is restored

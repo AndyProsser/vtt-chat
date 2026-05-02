@@ -1,7 +1,7 @@
 /**
  * Chat Routes
  * REST endpoints for sending, editing, and fetching messages.
- * Stage 4: IC/OOC/Whisper message pipeline with visibility filtering.
+ * IC/OOC/Whisper message pipeline with visibility filtering.
  */
 
 import { Router, Request, Response, NextFunction } from 'express'

@@ -30,7 +30,7 @@ describe('DMAudioControls', () => {
       />
     )
 
-    expect(screen.getByText('Audio controls are DM-only during Stage 9.2.')).toBeTruthy()
+    expect(screen.getByText('Audio controls are DM-only.')).toBeTruthy()
   })
 
   it('loads presets and applies environment for DMs', async () => {

@@ -1,5 +1,5 @@
 /**
- * Stage 9.3 — ReconnectBanner component tests
+ * ReconnectBanner component tests
  * Validates:
  *  - Hidden when wsState === 'connected' and not hydrating
  *  - Renders reconnecting banner for 'reconnecting' state
@@ -83,7 +83,7 @@ describe('ReconnectBanner', () => {
  *   2. 'connected' + isHydrating=true → shows "Refreshing" banner (atomic snapshot applying)
  *   3. 'connected' + isHydrating=false → banner disappears (hydration complete)
  *
- * This validates the UX contract from Stage 9.3: users see a persistent
+ * This validates the reconnect UX contract: users see a persistent
  * status indicator throughout the reconnect→hydration pipeline, not just
  * during the socket reconnect phase.
  */

@@ -785,7 +785,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         {/* Chat panel — only shown when a session is ACTIVE */}
         {showChat && currentSession && (
           <div className="session-command-center">
-            <h3 className="session-command-center-title">Command Center (Stage 9.1)</h3>
+            <h3 className="session-command-center-title">Command Center</h3>
             <p className="session-command-center-subtitle">
               Role-aware panel shell with center chat/notes switching and right-rail tools.
             </p>
@@ -881,11 +881,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   audio: '',
                   notes:
                     'Shared notes shortcuts and filters will be expanded in a dedicated right-rail notes tool.',
-                  search: 'Cross-session search tools are planned for Stage 11.',
-                  journal: 'Journal surfaces are planned for Stage 11.',
-                  history: 'History timeline tools are planned for Stage 11.',
+                  search: 'Cross-session search tools are planned for a future release.',
+                  journal: 'Journal surfaces are planned for a future release.',
+                  history: 'History timeline tools are planned for a future release.',
                   settings:
-                    'Session-level command center settings are planned in later Stage 9 milestones.',
+                    'Session-level command center settings are planned for a future release.',
                 }
 
                 if (tab === 'audio') {

@@ -1,5 +1,5 @@
 /**
- * Stage 9.3 — Toast component tests
+ * Toast component tests
  * Validates:
  *  - Correct ARIA role/live region per variant (persona-safe message exposure)
  *  - Dismiss button wiring

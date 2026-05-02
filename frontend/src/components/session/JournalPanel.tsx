@@ -3,7 +3,7 @@ import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import type { Note } from '../../state/notesSlice'
-import '../../styles/components/session/Stage11Panels.css'
+import '../../styles/components/session/KnowledgePanels.css'
 
 interface JournalPanelProps {
   apiUrl: string
@@ -103,7 +103,7 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
     <section className="knowledge-panel" data-testid="journal-panel">
       <header className="knowledge-panel-header">
         <div>
-          <p className="knowledge-panel-eyebrow">Stage 11</p>
+          <p className="knowledge-panel-eyebrow">Knowledge</p>
           <h3 className="knowledge-panel-title">Journal</h3>
         </div>
         <span className="knowledge-panel-badge">

@@ -1,60 +1,11 @@
-import { useEffect, useState } from 'react'
 import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
-import { SparklineChart } from '../components/SparklineChart'
 import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
-import { getJson } from '../utils/api'
-
-interface DashboardTelemetry {
-  activeUsers: number
-  activeRooms: number
-  recentErrors: number
-  messageThroughputPerMinute: number
-  activeCampaigns: number
-}
-
-interface StatusTelemetry {
-  charts: {
-    cpuLoad24h: Array<{ x: number; y: number }>
-    messageThroughput24h: Array<{ x: number; y: number }>
-  }
-}
+import { MonitoringAreaChart } from '../features/monitoring/MonitoringAreaChart'
+import { TopEventsChart } from '../features/monitoring/TopEventsChart'
+import { useMonitoringTelemetry } from '../features/monitoring/useMonitoringTelemetry'
 
 export default function Analytics() {
-  const [dashboard, setDashboard] = useState<DashboardTelemetry | null>(null)
-  const [status, setStatus] = useState<StatusTelemetry | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const [dashboardResult, statusResult] = await Promise.all([
-          getJson<DashboardTelemetry>('/telemetry/dashboard', controller.signal),
-          getJson<StatusTelemetry>('/telemetry/status', controller.signal),
-        ])
-
-        setDashboard(dashboardResult)
-        setStatus(statusResult)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load analytics data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void load()
-    const interval = setInterval(() => void load(), 20_000)
-
-    return () => {
-      controller.abort()
-      clearInterval(interval)
-    }
-  }, [])
+  const { dashboard, status, loading, error } = useMonitoringTelemetry({ refreshMs: 20_000 })
 
   return (
     <Box component="section" sx={{ display: 'grid', gap: 2 }}>
@@ -91,30 +42,32 @@ export default function Analytics() {
       <Box className="admin-card-grid two-col">
         <Card variant="outlined" className="admin-card">
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              CPU Trend (24h)
-            </Typography>
-            <SparklineChart
+            <MonitoringAreaChart
+              title="CPU Trend (24h)"
               points={status?.charts.cpuLoad24h || []}
-              colorClassName="sparkline-chart-line-cpu"
-              valueSuffix="%"
+              color="#f59e0b"
+              ySuffix="%"
             />
           </CardContent>
         </Card>
 
         <Card variant="outlined" className="admin-card">
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Message Trend (24h)
-            </Typography>
-            <SparklineChart
+            <MonitoringAreaChart
+              title="Message Trend (24h)"
               points={status?.charts.messageThroughput24h || []}
-              colorClassName="sparkline-chart-line-throughput"
-              valueSuffix="/min"
+              color="#22c55e"
+              ySuffix="/min"
             />
           </CardContent>
         </Card>
       </Box>
+
+      <Card variant="outlined" className="admin-card">
+        <CardContent>
+          <TopEventsChart events={dashboard?.topClientEvents || []} />
+        </CardContent>
+      </Card>
 
       <Card variant="outlined" className="admin-card">
         <CardContent>
@@ -127,6 +80,10 @@ export default function Analytics() {
             </Typography>
             <Typography variant="body2">
               <strong>Recent Errors (24h):</strong> {dashboard?.recentErrors ?? '--'}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Client Events (1h):</strong>{' '}
+              {dashboard?.clientTelemetryEventsLastHour ?? '--'}
             </Typography>
           </Box>
         </CardContent>

@@ -5,7 +5,7 @@ import { useStore } from '../../hooks/useStore'
 import type { Message } from '../../state/chatSlice'
 import type { Note } from '../../state/notesSlice'
 import type { SessionPresence } from '../../state/roomSlice'
-import '../../styles/components/session/Stage11Panels.css'
+import '../../styles/components/session/KnowledgePanels.css'
 
 interface SearchPanelProps {
   apiUrl: string
@@ -235,7 +235,7 @@ export function SearchPanel({
     <section className="knowledge-panel" data-testid="search-panel">
       <header className="knowledge-panel-header">
         <div>
-          <p className="knowledge-panel-eyebrow">Stage 11</p>
+          <p className="knowledge-panel-eyebrow">Knowledge</p>
           <h3 className="knowledge-panel-title">Search</h3>
         </div>
         <span className="knowledge-panel-badge">{role === 'DM' ? 'Live index' : 'Read only'}</span>

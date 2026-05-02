@@ -1,5 +1,5 @@
 /**
- * Stage 9.3 — SystemToasts component tests
+ * SystemToasts component tests
  * Validates:
  *  - Empty state renders without message
  *  - Delegates to Toast with correct variant and message

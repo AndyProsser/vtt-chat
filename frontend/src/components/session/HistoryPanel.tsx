@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Role, UUID } from '@shared'
-import '../../styles/components/session/Stage11Panels.css'
+import '../../styles/components/session/KnowledgePanels.css'
 
 interface HistoryPanelProps {
   apiUrl: string
@@ -75,7 +75,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role }: HistoryPanelPro
     <section className="knowledge-panel" data-testid="history-panel">
       <header className="knowledge-panel-header">
         <div>
-          <p className="knowledge-panel-eyebrow">Stage 11</p>
+          <p className="knowledge-panel-eyebrow">Knowledge</p>
           <h3 className="knowledge-panel-title">History</h3>
         </div>
         <span className="knowledge-panel-badge">

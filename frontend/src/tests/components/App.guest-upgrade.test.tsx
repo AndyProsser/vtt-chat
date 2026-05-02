@@ -53,7 +53,7 @@ vi.mock('../../components/audio/AudioPanel', () => ({
   ),
 }))
 
-describe('Stage 13.3 guest upgrade prompt visibility', () => {
+describe('guest upgrade prompt visibility', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -216,5 +216,88 @@ describe('Stage 13.3 guest upgrade prompt visibility', () => {
     await waitFor(() => {
       expect(screen.queryByText('Guest Account')).toBeNull()
     })
+  })
+
+  it('upgrades guest account and swaps token/session auth type', async () => {
+    sessionStorage.setItem('authToken', 'guest-token')
+    sessionStorage.setItem(
+      'user',
+      JSON.stringify({
+        id: 'user-1',
+        username: 'guest-player',
+        role: 'PLAYER',
+        authType: 'GUEST',
+      })
+    )
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method || 'GET'
+
+      if (url.includes('/api/auth/me') && method === 'GET') {
+        const authorizationHeader = String(
+          init?.headers ? (init.headers as Record<string, string>).Authorization || '' : ''
+        )
+        const isFullSession = authorizationHeader.includes('full-token')
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'user-1',
+            username: 'guest-player',
+            role: 'PLAYER',
+            authType: isFullSession ? 'FULL' : 'GUEST',
+            adminRole: null,
+            hasAdminAccess: false,
+            isFullAccount: isFullSession,
+            requiresUpgradeForAdmin: !isFullSession,
+            email: 'guest@example.com',
+          }),
+        }
+      }
+
+      if (url.includes('/api/auth/upgrade') && method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            token: 'full-token',
+            user: {
+              id: 'user-1',
+              username: 'guest-player',
+              role: 'PLAYER',
+              authType: 'FULL',
+            },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${method} ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { default: App } = await import('../../App')
+    render(<App />)
+
+    await screen.findByText('Guest Account')
+    fireEvent.change(screen.getByPlaceholderText('Create a secure password'), {
+      target: { value: 'VeryStrongPass!123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade' }))
+
+    await screen.findByText('Account upgraded successfully.')
+    await waitFor(() => {
+      expect(screen.queryByText('Guest Account')).toBeNull()
+    })
+
+    const upgradeCall = fetchMock.mock.calls.find(([input, init]) => {
+      return String(input).includes('/api/auth/upgrade') && (init?.method || 'GET') === 'POST'
+    })
+    expect(upgradeCall).toBeTruthy()
+    const body = JSON.parse(String(upgradeCall?.[1]?.body || '{}'))
+    expect(body.password).toBe('VeryStrongPass!123')
+
+    expect(sessionStorage.getItem('authToken')).toBe('full-token')
+    const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+    expect(storedUser.authType).toBe('FULL')
   })
 })

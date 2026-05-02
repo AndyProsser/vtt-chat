@@ -1,6 +1,6 @@
 /**
  * LoadingSpinner Component
- * Stage 9.3: Accessible, spec-conformant loading indicator.
+ * Accessible, spec-conformant loading indicator.
  * Uses CSS custom properties from theme.css.
  * The `spinner-spin` keyframe is defined in theme.css.
  */

@@ -1,7 +1,7 @@
 /**
  * Frontend telemetry client utility.
  *
- * Stage 9.3 goals:
+ * Goals:
  * - Bounded queue and batch flush controls.
  * - Privacy-safe property sanitization.
  * - Emission pathway independent from console log-level controls.

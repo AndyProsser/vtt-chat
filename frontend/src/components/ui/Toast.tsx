@@ -1,6 +1,6 @@
 /**
  * Toast Component
- * Stage 9.3: Non-blocking, persona-safe error/info/warn/success toasts.
+ * Non-blocking, persona-safe error/info/warn/success toasts.
  * Uses CSS custom properties from theme.css for dark/light token parity.
  * Animation via `toast-slide-in` keyframe defined in theme.css.
  */

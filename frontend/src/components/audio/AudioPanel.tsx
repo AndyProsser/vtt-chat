@@ -1,6 +1,6 @@
 /**
  * AudioPanel
- * Stage 7: Audio & LiveKit integration surface.
+ * Audio and LiveKit integration surface.
  *
  * Composes useLiveKit + useAudioEngine into a single mounted component so that:
  *  - Remote tracks from LiveKit are piped into the WebAudio DSP graph.

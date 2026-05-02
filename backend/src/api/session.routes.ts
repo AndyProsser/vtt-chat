@@ -1,7 +1,7 @@
 /**
  * Session Routes (formerly Campaign Routes)
  * CRUD operations for game sessions.
- * Stage 1: In-memory store; later stages add persistence.
+ * Uses persistent storage for session state.
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
