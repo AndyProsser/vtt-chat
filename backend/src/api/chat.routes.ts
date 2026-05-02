@@ -7,13 +7,8 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
-import {
-  sendMessage,
-  editMessage,
-  deleteMessage,
-  getMessages,
-  type StoredMessage,
-} from '@/services/chat.service'
+import { sendMessage, editMessage, deleteMessage, getMessages } from '@/services/chat.service'
+import type { StoredMessage } from '@/types/chat.types'
 import { isValidUUID, isValidMessageContent, isValidMessageType } from '@shared'
 import { ErrorCode } from '@shared'
 import type { UUID } from '@shared'

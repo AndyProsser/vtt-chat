@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { PortabilityArtifactType, PresenceState, Prisma, PrismaClient } from '@prisma/client'
 import type { CampaignTransferBundle, OperationalExportBundle } from '@/types/portability.types'
+import type { Role } from '@prisma/client'
 
 export const PORTABILITY_FORMAT_VERSION = 1
 
