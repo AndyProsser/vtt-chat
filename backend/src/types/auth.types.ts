@@ -1,9 +1,13 @@
-import type { UUID } from '@shared'
+import type { Role, UUID } from '@shared'
+
+export type SharedRoleValue = `${Role}`
+export type PlayerFacingRole = Exclude<SharedRoleValue, 'SYSTEM'>
+export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
 
 export type TokenPayload = {
   userId: UUID
   username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR'
+  role: PlayerFacingRole
   authType?: 'FULL' | 'GUEST'
   sessionId?: UUID
   iat?: number
@@ -13,7 +17,7 @@ export type TokenPayload = {
 export interface AuthToken {
   userId: string
   username: string
-  role: 'PLAYER' | 'DM' | 'SPECTATOR'
+  role: PlayerFacingRole
   authType: 'FULL' | 'GUEST'
   sessionId: string
   iat: number
@@ -23,7 +27,7 @@ export interface AuthToken {
 export interface AdminAuthToken {
   userId: string
   username: string
-  adminRole: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
+  adminRole: AdminRole
   iat: number
   exp: number
 }

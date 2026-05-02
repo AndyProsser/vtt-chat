@@ -1,8 +1,13 @@
+import type { Role } from '@shared'
+import type { AdminRole } from '@/types/auth.types'
+
+type SharedRoleValue = `${Role}`
+
 export type UserAuthContext = {
   id: string
   username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
-  adminRole: string | null
+  role: SharedRoleValue
+  adminRole: AdminRole | null
   isActive: boolean
   password: string | null
   displayName: string
@@ -18,11 +23,11 @@ export type UserAuthContext = {
 export type HandoffExchangeUser = {
   id: string
   username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
+  role: SharedRoleValue
   displayName: string
   avatarUrl: string | null
   isActive: boolean
-  adminRole: string | null
+  adminRole: AdminRole | null
   password: string | null
   authType: 'FULL' | 'GUEST'
 }

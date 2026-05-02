@@ -1,4 +1,10 @@
-import type { SessionState } from '@shared'
+import type { SessionEntity, SessionState } from '@shared'
+
+type MetadataSessionCore = Pick<SessionEntity, 'name' | 'state'> & {
+  id: string
+  dmId: string
+  description: string | null
+}
 
 export type MetadataTemplate = {
   id: string
@@ -44,12 +50,7 @@ export type MetadataTimelineEntry = {
 export type MetadataAccessResult =
   | {
       ok: true
-      session: {
-        id: string
-        name: string
-        description: string | null
-        state: SessionState
-        dmId: string
+      session: MetadataSessionCore & {
         createdAt: Date
         updatedAt: Date
         campaign: { id: string; name: string } | null

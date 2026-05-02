@@ -1,3 +1,9 @@
+import type { NoteVisibility, Role, RoomType, UserEntity } from '@shared'
+
+type SharedRoleValue = `${Role}`
+type SharedRoomTypeValue = `${RoomType}`
+type SharedNoteVisibilityValue = `${NoteVisibility}`
+
 export interface LoginRequest {
   username: string
   password: string
@@ -8,11 +14,9 @@ export interface LoginResponse {
   user: UserDTO
 }
 
-export interface UserDTO {
-  id: string
-  username: string
+export interface UserDTO extends Pick<UserEntity, 'id' | 'username'> {
   email: string | null
-  role: 'PLAYER' | 'DM'
+  role: Extract<SharedRoleValue, 'PLAYER' | 'DM'>
   createdAt: string
 }
 
@@ -32,7 +36,7 @@ export interface RoomDTO {
   id: string
   sessionId: string
   name: string
-  type: 'MAIN' | 'GROUP' | 'PRIVATE'
+  type: SharedRoomTypeValue
   isActive: boolean
   environmentId: string | null
   environmentName: string | null
@@ -70,7 +74,7 @@ export interface NoteDTO {
   title: string
   content: string
   authorId: string
-  visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
+  visibility: SharedNoteVisibilityValue
   tags: string[]
   createdAt: string
   updatedAt: string
