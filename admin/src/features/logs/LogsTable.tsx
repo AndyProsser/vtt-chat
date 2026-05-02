@@ -1,4 +1,4 @@
-import type { AdminLogRow, LogSortBy } from './types'
+import type { AdminLogRow, LogSortBy } from '@/types/logs'
 
 interface LogsTableProps {
   rows: AdminLogRow[]

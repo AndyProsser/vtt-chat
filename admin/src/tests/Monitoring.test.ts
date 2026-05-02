@@ -54,7 +54,7 @@ vi.mock('@mui/material', async (importOriginal) => {
 import { useMonitoringTelemetry } from '../features/monitoring/useMonitoringTelemetry'
 import { MonitoringAreaChart } from '../features/monitoring/MonitoringAreaChart'
 import { TopEventsChart } from '../features/monitoring/TopEventsChart'
-import type { DashboardTelemetry, StatusTelemetry } from '../features/monitoring/types'
+import type { DashboardTelemetry, StatusTelemetry } from '@/types/monitoring'
 
 // ─── shared mock data ───
 

@@ -1,24 +1,7 @@
 import { create } from 'zustand'
+import type { AdminUser, AuthState } from '@/types/auth'
 
-interface AdminUser {
-  id: string
-  username: string
-  email: string
-  adminRole?: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
-}
-
-interface AuthState {
-  token: string | null
-  admin: AdminUser | null
-  isAuthenticated: boolean
-  loading: boolean
-  error: string | null
-  login: (username: string, password: string) => Promise<void>
-  logout: () => void
-  setToken: (token: string, admin: AdminUser) => void
-  initializeAuth: () => void
-  clearError: () => void
-}
+export type { AdminUser, AuthState }
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 

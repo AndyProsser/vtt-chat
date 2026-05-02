@@ -1,6 +1,6 @@
 import { Box, Typography, useTheme } from '@mui/material'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import type { DashboardTelemetry } from './types'
+import type { DashboardTelemetry } from '@/types/monitoring'
 
 interface TopEventsChartProps {
   events: DashboardTelemetry['topClientEvents']

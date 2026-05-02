@@ -1,5 +1,5 @@
-import type { AdminUserRow } from './types'
-import { roleLabel } from './types'
+import type { AdminUserRow } from '@/types/users'
+import { roleLabel } from '@/types/users'
 
 interface UserTableProps {
   rows: AdminUserRow[]

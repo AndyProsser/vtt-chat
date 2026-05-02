@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getJson } from '../../utils/api'
-import type { DashboardTelemetry, StatusTelemetry } from './types'
+import type { DashboardTelemetry, StatusTelemetry } from '@/types/monitoring'
 
 interface UseMonitoringTelemetryOptions {
   refreshMs?: number

@@ -1,4 +1,4 @@
-import type { CampaignRoomsResponse } from './types'
+import type { CampaignRoomsResponse } from '@/types/campaigns'
 
 interface CampaignRoomGridProps {
   rooms: CampaignRoomsResponse

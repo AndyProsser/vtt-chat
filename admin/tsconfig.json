@@ -12,7 +12,12 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }

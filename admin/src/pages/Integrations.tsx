@@ -1,26 +1,6 @@
 import { useEffect, useState } from 'react'
 import { requestJson } from '../utils/api'
-
-type AuthorizationState = 'AUTHORIZED' | 'LOG_ONLY' | 'BLOCKED'
-
-type Scope = 'auth' | 'log_ingestion' | 'metadata_sync'
-
-interface IntegrationSystem {
-  system: string
-  displayName: string
-  authCapable: boolean
-  logIngestionCapable: boolean
-  metadataSyncCapable: boolean
-  authorizationState: AuthorizationState
-  allowedScopes: Scope[]
-  notes: string
-  lastUpdatedAt: string
-  metrics: {
-    linkedUsers: number
-    requests24h: number
-    lastSeenAt: string | null
-  }
-}
+import type { IntegrationSystem } from '@/types/integrations'
 
 export default function Integrations() {
   const [systems, setSystems] = useState<IntegrationSystem[]>([])

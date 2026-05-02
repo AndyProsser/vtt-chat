@@ -27,22 +27,8 @@ import InviteOnboarding from './pages/InviteOnboarding'
 import { useAuthStore } from './store'
 import { getAdminTheme } from './theme'
 import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
+import type { AdminPage, NavItem } from '@/types/nav'
 import './styles/App.css'
-
-type AdminPage =
-  | 'dashboard'
-  | 'analytics'
-  | 'users'
-  | 'campaigns'
-  | 'status'
-  | 'logs'
-  | 'settings'
-  | 'integrations'
-
-interface NavItem {
-  key: AdminPage
-  label: string
-}
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard' },

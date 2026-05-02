@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { requestJson } from '../../utils/api'
-import type { AdminUserRow, InviteRole, UserListResponse, UserImportPreviewResponse } from './types'
+import type {
+  AdminUserRow,
+  InviteRole,
+  UserListResponse,
+  UserImportPreviewResponse,
+} from '@/types/users'
 
 export function useUserManagement() {
   const [search, setSearch] = useState('')

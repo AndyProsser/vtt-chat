@@ -1,6 +1,6 @@
 import { SettingsField } from './SettingsField'
 import { SettingsSection } from './SettingsSection'
-import type { RuntimeSettings } from './types'
+import type { RuntimeSettings } from '@/types/settings'
 
 interface FeatureFlagsSectionProps {
   settings: RuntimeSettings

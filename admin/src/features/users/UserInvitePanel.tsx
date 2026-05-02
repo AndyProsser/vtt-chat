@@ -1,4 +1,4 @@
-import type { InviteRole } from './types'
+import type { InviteRole } from '@/types/users'
 
 interface UserInvitePanelProps {
   inviteEmail: string

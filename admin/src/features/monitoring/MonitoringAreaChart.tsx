@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TimelinePoint } from './types'
+import type { TimelinePoint } from '@/types/monitoring'
 
 interface MonitoringAreaChartProps {
   title: string

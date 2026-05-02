@@ -1,5 +1,7 @@
+import type { AdminRole } from '@/types/auth'
+
+export type { AdminRole }
 export type UserRole = 'DM' | 'PLAYER' | 'SPECTATOR'
-export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
 export type InviteRole = 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
 
 export interface AdminUserRow {

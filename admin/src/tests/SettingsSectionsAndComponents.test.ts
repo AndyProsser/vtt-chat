@@ -4,7 +4,7 @@
 import React, { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, Root } from 'react-dom/client'
-import type { RuntimeSettings } from '../features/settings/types'
+import type { RuntimeSettings } from '@/types/settings'
 
 const MOCK_SETTINGS: RuntimeSettings = {
   primaryRegion: 'us-east-1',

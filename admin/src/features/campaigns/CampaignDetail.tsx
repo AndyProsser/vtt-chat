@@ -6,7 +6,7 @@ import type {
   CampaignSummary,
   RecordingDraft,
   RecordingSummary,
-} from './types'
+} from '@/types/campaigns'
 
 interface CampaignDetailProps {
   selectedCampaign: CampaignSummary | null

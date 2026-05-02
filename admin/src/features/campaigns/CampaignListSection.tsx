@@ -1,7 +1,7 @@
 import { AdminPagination } from '../../components/AdminPagination'
 import { CampaignFilters } from './CampaignFilters'
 import { CampaignTable } from './CampaignTable'
-import type { CampaignStatusFilter, CampaignSummary } from './types'
+import type { CampaignStatusFilter, CampaignSummary } from '@/types/campaigns'
 
 interface CampaignListSectionProps {
   search: string

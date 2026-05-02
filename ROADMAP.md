@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 This is the canonical project roadmap for delivery stages and progress tracking.
 
@@ -1011,7 +1011,8 @@ Priority 2:
 
 - Expand admin SPA interaction and admin route integration/e2e coverage.
 - Current execution status: complete. Route-level integration/e2e flows added for all four areas: users (list/filter/export/import-preview), telemetry logs (list/filter/sort/drill-down), campaign actions (list/rooms/session-end/archive/restore), and settings (GET/PUT/backup-trigger/ops-export). Backend suite now at `46` files / `297` tests passing.
-- Immediate next action: run coverage report to verify admin.routes.ts branch coverage has improved toward 80; update admin verification totals in roadmap header if materially changed.
+- Admin codebase normalization complete: extracted inline types from `App.tsx`, `store.ts`, and `pages/Integrations.tsx` into a dedicated `admin/src/types/` directory (`auth.ts`, `nav.ts`, `integrations.ts`, `common.ts`, `index.ts`). `AdminRole` is now the canonical definition in `types/auth.ts` with `features/users/types.ts` re-exporting it.
+- Immediate next action: no further action required for this priority — advance to Priority 3.
 
 Priority 3:
 
@@ -1084,6 +1085,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Admin codebase normalization completed. Extracted inline types from `App.tsx` (`AdminPage`, `NavItem`), `store.ts` (`AdminUser`, `AuthState`), and `pages/Integrations.tsx` (`AuthorizationState`, `IntegrationScope`, `IntegrationSystem`) into a new `admin/src/types/` directory. `AdminRole` consolidated as canonical definition in `types/auth.ts` with `features/users/types.ts` re-exporting it. Admin build and tests remain green (16/16 files, 137 tests).
 
 - 2026-05: Priority 2 route-level admin integration tests completed. Added four new backend test files covering all key admin route areas: `admin-users-routes.test.ts` (users list/filter/export-json/export-csv/import-preview with conflict detection and authz gates), `admin-logs-routes.test.ts` (telemetry/logs list with merged sources/filter/sort, drill-down for diagnostic/audit/telemetry prefixes), `admin-campaigns-routes.test.ts` (campaign list/filter/rooms-endpoint/session-force-end/archive/restore with idempotency and NOT_FOUND branches), and `admin-settings-routes.test.ts` (GET/PUT settings with retention update, backup-trigger audit, and operations export). Backend verification now `46` test files / `297` tests passing.
 

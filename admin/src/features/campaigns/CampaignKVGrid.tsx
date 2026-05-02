@@ -1,4 +1,4 @@
-import type { CampaignSummary } from './types'
+import type { CampaignSummary } from '@/types/campaigns'
 
 interface CampaignKVGridProps {
   campaign: CampaignSummary

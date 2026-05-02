@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { requestJson } from '../../utils/api'
-import type { RuntimeSettings } from './types'
+import type { RuntimeSettings } from '@/types/settings'
 
 export function useRuntimeSettings() {
   const [settings, setSettings] = useState<RuntimeSettings | null>(null)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { UserImportPreviewResponse } from './types'
+import type { UserImportPreviewResponse } from '@/types/users'
 
 interface UserExportImportPanelProps {
   exportBusy: boolean

@@ -1,5 +1,5 @@
-import type { CampaignSummary } from './types'
-import { prettyState, statusClass } from './types'
+import type { CampaignSummary } from '@/types/campaigns'
+import { prettyState, statusClass } from '@/types/campaigns'
 
 interface CampaignTableProps {
   campaigns: CampaignSummary[]

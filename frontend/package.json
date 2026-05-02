@@ -1,6 +1,6 @@
 {
   "name": "vtt-chat-frontend",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "private": true,
   "description": "Frontend SPA for VTT-Chat: a DM-grade, session-aware tabletop voice & chat platform.",
   "scripts": {

@@ -1,4 +1,4 @@
-import type { CampaignStatusFilter } from './types'
+import type { CampaignStatusFilter } from '@/types/campaigns'
 
 interface CampaignFiltersProps {
   search: string

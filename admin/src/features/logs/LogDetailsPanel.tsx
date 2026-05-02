@@ -1,4 +1,4 @@
-import type { AdminLogRow } from './types'
+import type { AdminLogRow } from '@/types/logs'
 
 interface LogDetailsPanelProps {
   log: AdminLogRow

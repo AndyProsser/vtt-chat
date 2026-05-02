@@ -6,7 +6,7 @@ import type {
   CampaignRecordingsResponse,
   CampaignRoomsResponse,
   CampaignSummary,
-} from './types'
+} from '@/types/campaigns'
 
 export async function fetchCampaigns(queryString: string): Promise<CampaignListResponse> {
   return requestJson<CampaignListResponse>(`/campaigns?${queryString}`, {

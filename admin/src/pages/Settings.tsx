@@ -4,7 +4,7 @@ import { LogSinkPoliciesSection } from '../features/settings/LogSinkPoliciesSect
 import { SettingsSection } from '../features/settings/SettingsSection'
 import { StorageSection } from '../features/settings/StorageSection'
 import { SystemConfigSection } from '../features/settings/SystemConfigSection'
-import type { RuntimeSettings } from '../features/settings/types'
+import type { RuntimeSettings } from '@/types/settings'
 import { useRuntimeSettings } from '../features/settings/useRuntimeSettings'
 import '../styles/Settings.css'
 

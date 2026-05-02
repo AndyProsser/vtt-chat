@@ -5,7 +5,7 @@ import type {
   CampaignSummary,
   RecordingDraft,
   RecordingSummary,
-} from './types'
+} from '@/types/campaigns'
 import {
   fetchCampaigns,
   fetchCampaignRecordings,

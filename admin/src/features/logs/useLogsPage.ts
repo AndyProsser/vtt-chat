@@ -7,7 +7,7 @@ import type {
   LogSortBy,
   LogSortDir,
   LogTimeRange,
-} from './types'
+} from '@/types/logs'
 
 export function useLogsPage() {
   const [timeRange, setTimeRange] = useState<LogTimeRange>('24h')

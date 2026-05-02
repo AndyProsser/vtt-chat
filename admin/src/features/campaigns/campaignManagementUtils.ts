@@ -1,4 +1,4 @@
-import type { CampaignMember, CampaignRoom, RecordingDraft } from './types'
+import type { CampaignMember, CampaignRoom, RecordingDraft } from '@/types/campaigns'
 
 export interface MemberRoomSelection {
   memberId: string

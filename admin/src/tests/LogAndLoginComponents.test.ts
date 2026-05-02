@@ -8,7 +8,7 @@ import { createRoot, Root } from 'react-dom/client'
 // ──────────────────────── LogFilters ────────────────────────
 
 import { LogFilters } from '../features/logs/LogFilters'
-import type { LogTimeRange } from '../features/logs/types'
+import type { LogTimeRange } from '@/types/logs'
 
 describe('LogFilters', () => {
   let container: HTMLDivElement
@@ -183,7 +183,7 @@ describe('LogFilters', () => {
 // ──────────────────────── LogsTable ────────────────────────
 
 import { LogsTable } from '../features/logs/LogsTable'
-import type { AdminLogRow } from '../features/logs/types'
+import type { AdminLogRow } from '@/types/logs'
 
 const SAMPLE_LOG: AdminLogRow = {
   id: 'log-1',
@@ -191,8 +191,6 @@ const SAMPLE_LOG: AdminLogRow = {
   severity: 'INFO',
   source: 'runtime',
   message: 'User joined campaign',
-  userId: 'user-1',
-  roomId: 'room-1',
   details: { key: 'value' },
 }
 

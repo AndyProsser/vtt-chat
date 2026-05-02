@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -19,6 +20,11 @@ function getVendorChunk(id: string): string | undefined {
 export default defineConfig({
   plugins: [react()],
   base: '/admin/',
+  resolve: {
+    alias: {
+      '@': path.resolve(import.meta.dirname, 'src'),
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5174,
