@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-02
+Last updated: 2026-05-03
 
 This is the canonical project roadmap for delivery stages and progress tracking.
 
@@ -51,10 +51,11 @@ Latest verification:
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
 - Current frontend verification: `20` test files / `133` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `42` passed test files / `233` passing tests.
-- Admin tests now include dedicated suites for auth-store lifecycle and admin API utility behavior.
-- Current admin verification: `8` passed test files; `47` passing tests.
-- Admin SPA interaction and admin route integration/e2e suites remain planned follow-up work.
+- Current backend verification: `46` passed test files / `297` passing tests.
+- Admin tests now include expanded SPA guard/component/hook suites covering auth transitions, setup/invite workflows, logs/user wiring, and user-management hook branch behavior.
+- Current admin verification: `16` passed test files / `137` passing tests.
+- Current admin coverage verification: statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`.
+- Admin SPA interaction and admin route integration/e2e suites remain an active follow-up workstream.
 
 ### Stage Completion Checklist (At a Glance)
 
@@ -1003,30 +1004,44 @@ Goal:
 Priority 1:
 
 - Maintain Stage 15 regression safety: keep guest/spectator/auth-flow suites green while ongoing feature work lands.
+- Current execution status: active. Nightly/merge-gate expectation remains full backend/frontend/admin test and lint/build green.
+- Immediate next action: add a single workspace-level CI check artifact that reports test + coverage deltas per package on each merge.
 
 Priority 2:
 
 - Expand admin SPA interaction and admin route integration/e2e coverage.
+- Current execution status: complete. Route-level integration/e2e flows added for all four areas: users (list/filter/export/import-preview), telemetry logs (list/filter/sort/drill-down), campaign actions (list/rooms/session-end/archive/restore), and settings (GET/PUT/backup-trigger/ops-export). Backend suite now at `46` files / `297` tests passing.
+- Immediate next action: run coverage report to verify admin.routes.ts branch coverage has improved toward 80; update admin verification totals in roadmap header if materially changed.
 
 Priority 3:
 
 - Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+- Current execution status: queued.
+- Immediate next action: add restart-survival verification tests for telemetry/diagnostic sinks and document operator runbook checks.
 
 Priority 4:
 
 - Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery soak testing.
+- Current execution status: queued.
+- Immediate next action: add multi-client reconnect soak scenario and audio-state persistence/recovery soak assertions.
 
 Priority 5:
 
 - Extension bridge milestones (13.4/13.5) in extension repository execution track.
+- Current execution status: externally tracked.
+- Immediate next action: keep this roadmap linked to extension milestone status snapshots only (no in-repo implementation drift).
 
 Priority 6:
 
 - Contract-alignment follow-up across architecture/API docs as implementation evolves.
+- Current execution status: active follow-up.
+- Immediate next action: run a docs parity pass for admin/auth/handoff and telemetry route behavior against current runtime and tests.
 
 Priority 7:
 
 - Ongoing UI modernization maintenance and regression control.
+- Current execution status: ongoing maintenance mode.
+- Immediate next action: continue enforcing migration boundaries and coverage-backed regression checks for touched UI surfaces.
 
 ---
 
@@ -1069,6 +1084,10 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Priority 2 route-level admin integration tests completed. Added four new backend test files covering all key admin route areas: `admin-users-routes.test.ts` (users list/filter/export-json/export-csv/import-preview with conflict detection and authz gates), `admin-logs-routes.test.ts` (telemetry/logs list with merged sources/filter/sort, drill-down for diagnostic/audit/telemetry prefixes), `admin-campaigns-routes.test.ts` (campaign list/filter/rooms-endpoint/session-force-end/archive/restore with idempotency and NOT_FOUND branches), and `admin-settings-routes.test.ts` (GET/PUT settings with retention update, backup-trigger audit, and operations export). Backend verification now `46` test files / `297` tests passing.
+
+- 2026-05: Current Priority Queue execution pass completed (admin-focused increment). Expanded admin branch-path coverage with dedicated `useUserManagement` hook suite and additional App/setup branch tests; admin verification now `16/16` files and `137` tests passing, with admin coverage at statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`. Priority queue section converted to explicit status + immediate-action format for active execution tracking.
 
 - 2026-05: Stage 15 completed. Added backend endpoint hardening suites (`campaign-browse`, expanded `guest-auth-routes`, expanded `external-integration`) and multi-step integration coverage (`guest-auth-flows.integration`), plus frontend guest-flow expansions for campaignPacket handoff, guest-upgrade token swap/auth transition, and browse restriction messaging. Verification: backend `42/42` files / `233` tests passing, frontend `20/20` files / `133` tests passing.
 
