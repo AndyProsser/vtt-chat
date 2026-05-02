@@ -7,83 +7,25 @@
 import type { StateCreator } from 'zustand'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
+import type {
+  AudioDeviceState,
+  EnvironmentPreset,
+  DistancePreset,
+  ConditionPreset,
+  VoicePreset,
+  ICPreset,
+  AudioDMOverride,
+} from '@/types/audio'
 
-// ============================================================================
-// Device & Transport
-// ============================================================================
-
-export interface AudioDeviceState {
-  /** Audio enabled (device permission granted) */
-  enabled: boolean
-  /** Microphone active (publishing audio) */
-  microphoneOn: boolean
-  /** Microphone gain (0-100) */
-  micGain: number
-  /** Master volume (0-100) */
-  volumeLevel: number
-  /** Currently speaking (VAD detection) */
-  isSpeaking: boolean
-  /** Current audio devices */
-  selectedMicDeviceId?: string
-  selectedSpeakerDeviceId?: string
-}
-
-// ============================================================================
-// Presets
-// ============================================================================
-
-export interface EnvironmentPreset {
-  id: UUID
-  name: string // 'tavern', 'cave', 'cathedral', etc.
-  reverbSend: number // 0-1
-  lowpassFreq: number // Hz
-  roomGain: number // dB
-  description?: string
-}
-
-export interface DistancePreset {
-  id: UUID
-  name: string // 'close', 'near', 'far', 'distant', 'out of earshot'
-  lowpassFreq: number // Hz
-  gainReduction: number // dB
-  reverbSend: number // 0-1
-}
-
-export interface ConditionPreset {
-  id: UUID
-  name: string // 'silenced', 'underwater', 'drunk', 'confused', etc.
-  effects: Record<string, any> // Filter types, formant shifts, etc.
-}
-
-export interface VoicePreset {
-  id: UUID
-  name: string // 'narrator', 'demon', 'angel', 'whisper', 'robot', 'god voice'
-  pitchShift: number // semitones
-  formantShift: number // semitones
-  distortion?: number // 0-1
-  dryWet?: number // 0-1 (mix)
-}
-
-export interface ICPreset {
-  id: UUID
-  name: string // 'whisper', 'goblin', 'dramatic echo', 'raspy', 'deep voice'
-  effects: Record<string, any>
-}
-
-// ============================================================================
-// DM Overrides
-// ============================================================================
-
-export interface AudioDMOverride {
-  userId: UUID
-  overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
-  parameters?: Record<string, any> // {'gain': 0.5, 'frequency': 2000}
-  appliedAt: number
-}
-
-// ============================================================================
-// Main Slice State
-// ============================================================================
+export type {
+  AudioDeviceState,
+  EnvironmentPreset,
+  DistancePreset,
+  ConditionPreset,
+  VoicePreset,
+  ICPreset,
+  AudioDMOverride,
+} from '@/types/audio'
 
 export interface AudioSlice {
   // ========== Device State ==========

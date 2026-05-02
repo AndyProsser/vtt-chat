@@ -6,12 +6,9 @@
 
 import type { EventEnvelope } from '@shared'
 import { logger } from '../utils/logger'
+import type { EventHandler } from '@/types/ws'
 
-/**
- * Handler function that processes an event.
- * Receives the event and has access to store dispatch.
- */
-export type EventHandler = (event: EventEnvelope) => void
+export type { EventHandler } from '@/types/ws'
 
 /**
  * Event dispatcher that routes events to registered handlers.

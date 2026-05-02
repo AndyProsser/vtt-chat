@@ -1,7 +1,7 @@
 import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
-import type { AudioDMOverride } from '../../state/audioSlice'
-import type { RoomUser } from '../../state/roomSlice'
+import type { AudioDMOverride } from '@/types/audio'
+import type { RoomUser } from '@/types/room'
 import { LeftRailSummary } from './LeftRailSummary'
 import { RoomSelector } from '../rooms/RoomSelector'
 

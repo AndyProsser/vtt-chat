@@ -1,8 +1,7 @@
 import type { NoteVisibility, UUID } from '@shared'
 
-export interface SessionNote {
+export interface Note {
   id: UUID
-  sessionId: UUID
   ownerId: UUID
   ownerUsername: string
   title: string

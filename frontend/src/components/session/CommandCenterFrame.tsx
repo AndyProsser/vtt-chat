@@ -2,19 +2,11 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../core-ui'
-import type { ToolbarCenterPaneView } from '../../state/commandCenterSlice'
+import type { CenterPaneView, RightRailTab } from '@/types/ui'
 import { telemetryClient } from '../../utils/telemetry'
 import '../../styles/components/session/CommandCenterFrame.css'
 
-export type CenterPaneView = ToolbarCenterPaneView
-export type RightRailTab =
-  | 'rooms'
-  | 'audio'
-  | 'notes'
-  | 'search'
-  | 'journal'
-  | 'history'
-  | 'settings'
+export type { CenterPaneView, RightRailTab } from '@/types/ui'
 
 export interface ToolbarPlaceholderAction {
   id: string

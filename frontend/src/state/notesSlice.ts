@@ -7,20 +7,9 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, NoteVisibility } from '@shared'
 import type { EventEnvelope } from '@shared'
+import type { Note } from '@/types/notes'
 
-export interface Note {
-  id: UUID
-  ownerId: UUID
-  ownerUsername: string
-  title: string
-  content: string
-  visibility: NoteVisibility
-  tags: string[]
-  allowedUsers?: UUID[]
-  publishedAt?: number
-  createdAt: number
-  updatedAt: number
-}
+export type { Note } from '@/types/notes'
 
 export interface NotesSlice {
   // State

@@ -1,0 +1,34 @@
+/* ReconnectBanner — top-of-surface connection state indicator.
+   State-specific colours use CSS custom properties from theme.css.
+   The toast-slide-in keyframe is defined in theme.css. */
+
+.vtt-reconnect-banner {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-align: center;
+  animation: toast-slide-in var(--duration-fast) var(--ease-out);
+  border-top-width: 2px;
+  border-top-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+}
+
+.vtt-reconnect-banner[data-ws-state='connecting'],
+.vtt-reconnect-banner[data-ws-state='reconnecting'] {
+  background-color: var(--color-warn-surface);
+  border-color: var(--color-warn);
+  color: var(--color-warn-text);
+}
+
+.vtt-reconnect-banner[data-ws-state='disconnected'] {
+  background-color: var(--color-error-surface);
+  border-color: var(--color-error);
+  color: var(--color-error-text);
+}
+
+.vtt-reconnect-banner[data-hydrating='true'] {
+  background-color: var(--color-info-surface);
+  border-color: var(--color-info);
+  color: var(--color-info-text);
+}

@@ -4,7 +4,7 @@
  * Messages arrive pre-filtered by the server (visibility-safe).
  */
 
-import type { Message } from '../../state/chatSlice'
+import type { Message } from '@/types/chat'
 import { MessageType } from '@shared'
 
 interface MessageListProps {

@@ -1,5 +1,11 @@
 import type { PresenceState, Role, UUID } from '@shared'
 
+export interface User {
+  id: UUID
+  username: string
+  role: Role
+}
+
 export interface SessionUser {
   id: UUID
   username: string

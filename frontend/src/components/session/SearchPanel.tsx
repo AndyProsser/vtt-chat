@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { Role, RoomType, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
-import type { Message } from '../../state/chatSlice'
-import type { Note } from '../../state/notesSlice'
-import type { SessionPresence } from '../../state/roomSlice'
+import type { Message } from '@/types/chat'
+import type { Note } from '@/types/notes'
+import type { SessionPresence } from '@/types/room'
 import '../../styles/components/session/KnowledgePanels.css'
 
 interface SearchPanelProps {

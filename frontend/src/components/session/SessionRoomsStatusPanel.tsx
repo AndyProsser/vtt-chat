@@ -1,6 +1,6 @@
 import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
-import type { RoomUser } from '../../state/roomSlice'
+import type { RoomUser } from '@/types/room'
 
 interface SessionRoomsStatusPanelProps {
   rooms: Array<{ id: UUID; name: string; type: RoomType }>

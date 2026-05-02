@@ -7,18 +7,9 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
+import type { Session } from '@/types/session'
 
-export interface Session {
-  id: UUID
-  name: string
-  dmId: UUID
-  state: SessionState
-  description?: string
-  createdAt: number
-  startedAt?: number
-  pausedAt?: number
-  endedAt?: number
-}
+export type { Session } from '@/types/session'
 
 export interface SessionSlice {
   // State

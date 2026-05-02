@@ -1,8 +1,7 @@
 import type { MessageType, UUID } from '@shared'
 
-export interface ChatMessage {
+export interface Message {
   id: UUID
-  sessionId: UUID
   authorId: UUID
   authorUsername: string
   content: string
@@ -12,9 +11,10 @@ export interface ChatMessage {
   editedAt?: number
 }
 
-export interface ChatTypingState {
+export interface TypingIndicator {
   userId: UUID
   username: string
+  /** Timestamp when typing indicator should expire. */
   until: number
 }
 

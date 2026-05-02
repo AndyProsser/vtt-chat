@@ -1,0 +1,13 @@
+/* AudioPanel — audio transport status and control surface */
+
+.audio-panel__status-dot[data-state='connected'] {
+  background-color: var(--color-success);
+}
+
+.audio-panel__status-dot[data-state='connecting'] {
+  background-color: var(--color-warn);
+}
+
+.audio-panel__status-dot[data-state='disconnected'] {
+  background-color: var(--color-text-muted);
+}

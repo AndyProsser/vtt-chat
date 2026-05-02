@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand'
+import type { CenterPaneView } from '@/types/ui'
 
-export type ToolbarCenterPaneView = 'chat' | 'notes'
+export type ToolbarCenterPaneView = CenterPaneView
+export type { CenterPaneView } from '@/types/ui'
 
 export interface CommandCenterSlice {
   toolbarCenterPaneView: ToolbarCenterPaneView

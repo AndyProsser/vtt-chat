@@ -1,6 +1,6 @@
 import type { PresenceState, RoomType, SessionState, UUID } from '@shared'
 
-export interface SessionRoom {
+export interface Room {
   id: UUID
   sessionId: UUID
   name: string
@@ -9,14 +9,14 @@ export interface SessionRoom {
   createdBy: UUID
 }
 
-export interface SessionRoomMember {
+export interface RoomUser {
   userId: UUID
   username: string
   presenceState: PresenceState
   joinedAt: number
 }
 
-export interface SessionPresenceEntry {
+export interface SessionPresence {
   userId: UUID
   username: string
   state: PresenceState
@@ -25,12 +25,13 @@ export interface SessionPresenceEntry {
   lastSeenAt: number
 }
 
-export interface SessionTransitionSummary {
+export interface SessionTransitionNotice {
   eventId: string
   sessionId: UUID
   previousState: SessionState | null
   nextState: SessionState
   movedUsers: number
+  targetState: PresenceState
   targetRoomId: UUID
   targetRoomName: string
   timestamp: number

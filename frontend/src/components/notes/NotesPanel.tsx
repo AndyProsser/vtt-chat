@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
-import type { Note } from '../../state/notesSlice'
+import type { Note } from '@/types/notes'
 import { NoteCard } from './NoteCard'
 
 interface NotesPanelProps {

@@ -26,12 +26,12 @@ import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { Toast } from '../ui/Toast'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
-import type { Session as SessionRecord } from '../../state/sessionSlice'
+import type { Session as SessionRecord } from '@/types/session'
 import type {
   Room as RoomRecord,
   RoomUser as RoomMember,
   SessionPresence as PresenceRecord,
-} from '../../state/roomSlice'
+} from '@/types/room'
 import '../../styles/components/session/SessionInit.css'
 
 interface SessionInitProps {

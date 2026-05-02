@@ -1,0 +1,12 @@
+export type ToastVariant = 'info' | 'warn' | 'error' | 'success'
+
+export type CenterPaneView = 'chat' | 'notes'
+
+export type RightRailTab =
+  | 'rooms'
+  | 'audio'
+  | 'notes'
+  | 'search'
+  | 'journal'
+  | 'history'
+  | 'settings'

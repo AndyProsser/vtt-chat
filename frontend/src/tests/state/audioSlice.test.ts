@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { UUID } from '@shared'
 import { useStore } from '../../state/store'
-import type { DistancePreset, ConditionPreset, AudioDMOverride } from '../../state/audioSlice'
+import type { DistancePreset, ConditionPreset, AudioDMOverride } from '@/types/audio'
 
 const TEST_USER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
 const TEST_PRESET_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID

@@ -243,7 +243,7 @@ export function useAudioEngine(): UseAudioEngineReturn {
           return
         }
         if (dmOverride.overrideType === 'GAIN' && dmOverride.parameters?.gain) {
-          node.trackGainNode.gain.value = dmOverride.parameters.gain
+          node.trackGainNode.gain.value = dmOverride.parameters.gain as number
         }
       }
 

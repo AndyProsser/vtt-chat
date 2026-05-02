@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
-import type { Note } from '../../state/notesSlice'
+import type { Note } from '@/types/notes'
 
 interface NoteCardProps {
   note: Note

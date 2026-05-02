@@ -14,6 +14,7 @@ import { useCallback } from 'react'
 import { useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
+import '../../styles/components/audio/AudioPanel.css'
 
 interface AudioPanelProps {
   sessionId: string
@@ -68,6 +69,11 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
   }
 
   const statusColor = livekit.isConnected ? '#22c55e' : livekit.isConnecting ? '#f59e0b' : '#6b7280'
+  const statusState = livekit.isConnected
+    ? 'connected'
+    : livekit.isConnecting
+      ? 'connecting'
+      : 'disconnected'
   const statusLabel = livekit.isConnected
     ? 'Connected'
     : livekit.isConnecting
@@ -79,8 +85,8 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
       {/* Connection status */}
       <span className="flex items-center gap-1.5">
         <span
-          className="inline-block h-2 w-2 rounded-full"
-          style={{ backgroundColor: statusColor }}
+          data-state={statusState}
+          className="audio-panel__status-dot inline-block h-2 w-2 rounded-full"
         />
         {statusLabel}
       </span>

@@ -1,26 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Role, UUID } from '@shared'
+import type { AuthUser, AuthState, AuthProfile } from '@/types/auth'
 
-export interface AuthUser {
-  id: UUID
-  username: string
-  role: Role
-  authType?: 'FULL' | 'GUEST'
-}
-
-export interface AuthState {
-  token: string | null
-  user: AuthUser | null
-}
-
-export interface AuthProfile {
-  adminRole: 'SUPER_ADMIN' | 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY' | null
-  hasAdminAccess: boolean
-  isFullAccount: boolean
-  requiresUpgradeForAdmin: boolean
-  authType: 'FULL' | 'GUEST'
-  email: string | null
-}
+export type { AuthUser, AuthState, AuthProfile } from '@/types/auth'
 
 interface UseAuthSessionParams {
   apiUrl: string

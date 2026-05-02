@@ -7,23 +7,9 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, MessageType } from '@shared'
 import type { EventEnvelope } from '@shared'
+import type { Message, TypingIndicator } from '@/types/chat'
 
-export interface Message {
-  id: UUID
-  authorId: UUID
-  authorUsername: string
-  content: string
-  type: MessageType
-  isDmOnly: boolean
-  createdAt: number
-  editedAt?: number
-}
-
-export interface TypingIndicator {
-  userId: UUID
-  username: string
-  until: number // timestamp when typing should expire
-}
+export type { Message, TypingIndicator } from '@/types/chat'
 
 export interface ChatSlice {
   // State

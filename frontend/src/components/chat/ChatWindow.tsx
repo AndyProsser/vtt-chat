@@ -10,7 +10,7 @@ import { MessageType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
-import type { Message } from '../../state/chatSlice'
+import type { Message } from '@/types/chat'
 
 interface ChatWindowProps {
   apiUrl: string

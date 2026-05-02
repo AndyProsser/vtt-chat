@@ -4,6 +4,8 @@
  * Uses CSS custom properties from theme.css.
  * The `spinner-spin` keyframe is defined in theme.css.
  */
+import type React from 'react'
+import '../../styles/components/ui/LoadingSpinner.css'
 
 export interface LoadingSpinnerProps {
   /** Accessible label announced to screen-readers. Default: "Loading…" */
@@ -26,17 +28,8 @@ export function LoadingSpinner({ label = 'Loading…', size = 'md' }: LoadingSpi
       role="status"
       aria-label={label}
       data-testid="loading-spinner"
-      style={{
-        display: 'inline-block',
-        width: px,
-        height: px,
-        border: '2px solid var(--color-border)',
-        borderTopColor: 'var(--color-brand)',
-        borderRadius: '50%',
-        animation: 'spinner-spin 0.75s linear infinite',
-        verticalAlign: 'middle',
-        flexShrink: 0,
-      }}
+      className="vtt-spinner"
+      style={{ '--spinner-size': px } as React.CSSProperties}
     />
   )
 }

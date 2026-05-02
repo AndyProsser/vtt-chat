@@ -6,12 +6,9 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, Role } from '@shared'
 import type { EventEnvelope } from '@shared'
+import type { User } from '@/types/user'
 
-export interface User {
-  id: UUID
-  username: string
-  role: Role
-}
+export type { User } from '@/types/user'
 
 export interface MetadataSlice {
   // State

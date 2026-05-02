@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
-import type { Note } from '../../state/notesSlice'
+import type { Note } from '@/types/notes'
 import '../../styles/components/session/KnowledgePanels.css'
 
 interface JournalPanelProps {

@@ -1,0 +1,52 @@
+/* Toast — non-blocking persona-safe notification.
+   Variant-specific colours use CSS custom properties from theme.css.
+   The toast-slide-in keyframe is defined in theme.css. */
+
+.vtt-toast {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border-width: 1px;
+  border-style: solid;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: 0.82rem;
+  animation: toast-slide-in var(--duration-normal) var(--ease-out);
+}
+
+.vtt-toast[data-variant='info'] {
+  background-color: var(--color-info-surface);
+  border-color: var(--color-info);
+  color: var(--color-info-text);
+}
+
+.vtt-toast[data-variant='warn'] {
+  background-color: var(--color-warn-surface);
+  border-color: var(--color-warn);
+  color: var(--color-warn-text);
+}
+
+.vtt-toast[data-variant='error'] {
+  background-color: var(--color-error-surface);
+  border-color: var(--color-error);
+  color: var(--color-error-text);
+}
+
+.vtt-toast[data-variant='success'] {
+  background-color: var(--color-success-surface);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
+.vtt-toast__dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
