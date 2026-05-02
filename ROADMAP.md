@@ -74,7 +74,7 @@ Latest verification:
 | 11    | Metadata/journal/history/search     | Complete    | ✅             | Maintain coverage + contract parity                         |
 | 12    | Import/export + recordings metadata | Complete    | ✅             | Maintain schema + portability regression coverage           |
 | 13    | Guest auth + external identity core | Complete    | ✅             | Maintain regression coverage; execute Stage 14 closure plan |
-| 14    | Backend completion debt closure     | In progress | 🟨 In progress | Stage 14.2 complete; execute 14.3-14.8                      |
+| 14    | Backend completion debt closure     | In progress | 🟨 In progress | Stage 14.3 complete; execute 14.4-14.8                      |
 | 15    | MVP testing readiness hardening     | Planned     | ⬜ Planned     | Close Stage 13 critical test gaps and launch-readiness docs |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
@@ -896,8 +896,9 @@ Goal:
 
 - Replace metadata `501 NOT_IMPLEMENTED` behavior in API routing with implemented handlers or explicit feature-flagged behavior.
 - Add service/repository/authz coverage for metadata runtime paths.
+- Status update: completed. Metadata API is now mounted and backed by implemented service/templates/types with route-level authz and API coverage (`backend/tests/api/metadata-routes.test.ts`).
 - Exit criteria:
-  - Metadata API no longer returns generic not-implemented responses in normal runtime mode.
+  - Metadata API no longer returns generic not-implemented responses in normal runtime mode. ✅
 
 #### **Stage 14.4: Audio/Voice Durability Implementation**
 
@@ -1020,15 +1021,15 @@ Goal:
 
 Priority 1:
 
-- Stage 14.3 metadata runtime closure: replace runtime `NOT_IMPLEMENTED` metadata behavior with implemented or feature-flagged routes.
+- Stage 14.4 audio/voice durability: persist and recover room environment and DM override state.
 
 Priority 2:
 
-- Stage 14.4 audio/voice durability: persist and recover room environment and DM override state.
+- Stage 14.5 websocket handler hardening in active dispatcher paths.
 
 Priority 3:
 
-- Stage 14.5 websocket handler hardening in active dispatcher paths.
+- Stage 14.6 type-layer consolidation with post-metadata cleanup validation.
 
 Priority 4:
 
@@ -1099,6 +1100,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Stage 14.3 completed. Replaced metadata `NOT_IMPLEMENTED` API behavior with mounted runtime metadata routes (`/api/metadata/templates`, `/api/metadata/:sessionId`, `/api/metadata/:sessionId/timeline`) backed by implemented metadata service/templates/types with session-member authz and timeline mapping. Added API regression coverage in `backend/tests/api/metadata-routes.test.ts`; verification: workspace lint passing and backend tests passing (`22` files, `113` tests, `6` todo).
 
 - 2026-05: Stage 14.2 completed. Retired all remove-target backend placeholders/stubs from the Stage 14 matrix (42 files removed total), leaving only 8 implement-target modules (metadata + audio durability surfaces). Verification after completion: backend tests and workspace lint passing.
 

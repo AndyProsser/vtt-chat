@@ -1,8 +1,4 @@
-export type SessionBoundaryType =
-  | 'SESSION_STARTED'
-  | 'SESSION_PAUSED'
-  | 'SESSION_RESUMED'
-  | 'SESSION_ENDED'
+import type { SessionBoundaryType } from '@/types/session-boundary.types'
 
 const boundaryTemplates: Record<SessionBoundaryType, (sessionName: string) => string> = {
   SESSION_STARTED: (sessionName) => `[Session Started] ${sessionName}`,

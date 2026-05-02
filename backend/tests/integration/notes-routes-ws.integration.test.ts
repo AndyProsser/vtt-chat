@@ -26,7 +26,7 @@ vi.mock('@/services/session.service', () => ({
   getSession: mocks.mockGetSession,
 }))
 
-vi.mock('@/core/notes/notes.service', () => ({
+vi.mock('@/services/notes.service', () => ({
   createNote: mocks.mockCreateNote,
   deleteNote: mocks.mockDeleteNote,
   getNoteById: mocks.mockGetNoteById,
@@ -35,7 +35,7 @@ vi.mock('@/core/notes/notes.service', () => ({
   updateNote: mocks.mockUpdateNote,
 }))
 
-vi.mock('@/core/chat/chat.service', () => ({
+vi.mock('@/services/chat.service', () => ({
   sendMessage: mocks.mockSendMessage,
 }))
 

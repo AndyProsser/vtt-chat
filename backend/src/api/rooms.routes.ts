@@ -11,7 +11,7 @@ import {
   getRooms,
   joinRoom,
   leaveRoom,
-} from '@/core/rooms/room.service'
+} from '@/services/room.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()

@@ -25,7 +25,7 @@ vi.mock('@/services/session.service', () => ({
   getSessionUsers: mocks.mockGetSessionUsers,
 }))
 
-vi.mock('@/core/rooms/room.service', () => ({
+vi.mock('@/services/room.service', () => ({
   ensurePresenceRecoveredFromSnapshots: vi.fn(),
   getSessionPresence: mocks.mockGetSessionPresence,
   getRoom: mocks.mockGetRoom,

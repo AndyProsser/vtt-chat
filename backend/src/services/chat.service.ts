@@ -6,6 +6,7 @@
 
 import { MessageType } from '@shared'
 import type { UUID } from '@shared'
+import type { StoredMessage } from '@/types/chat.types'
 import {
   createChatMessageRecord,
   deleteSessionMessages,
@@ -15,21 +16,6 @@ import {
   softDeleteMessageRecord,
   updateMessageRecord,
 } from '@/repositories/chat.repository'
-
-export interface StoredMessage {
-  id: UUID
-  sessionId: UUID
-  authorId: UUID
-  authorUsername: string
-  content: string
-  type: MessageType
-  isDmOnly: boolean
-  visibleTo?: UUID[]
-  createdAt: number
-  editedAt?: number
-  deletedAt?: number
-  deletedBy?: UUID
-}
 
 function parseUUIDArray(value: unknown): UUID[] | undefined {
   if (!Array.isArray(value)) return undefined

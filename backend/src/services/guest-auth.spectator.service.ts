@@ -5,13 +5,13 @@ import {
   sanitizeEmail,
   sanitizeInviteCode,
   slugify,
-} from '@/services/guest-auth.helpers'
+} from '@/utils/guest-auth.helpers'
 import type {
   BrowseCampaignResult,
   GuestSpectatorJoinResult,
   SpectatorPromotionResult,
   SpectatorWaitlistStatusResult,
-} from '@/services/guest-auth.types'
+} from '@/types/guest-auth.types'
 import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()

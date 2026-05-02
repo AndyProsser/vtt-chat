@@ -2,10 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getUserProfileById, listCharactersForUser } from '@/repositories/campaign.repository'
-import { getPrismaClient } from '@/infra/db'
+import { validateUserAuthState } from '@/services/auth-user-context.service'
 
 const router = Router()
-const prisma = getPrismaClient()
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -22,25 +21,18 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
       .json({ code: ErrorCode.UNAUTHORIZED, message: 'Authentication required' })
   }
 
-  prisma.user
-    .findUnique({
-      where: { id: user.userId },
-      select: { isActive: true, tokenInvalidBefore: true },
-    })
-    .then((dbUser) => {
-      if (!dbUser || !dbUser.isActive) {
+  validateUserAuthState(user.userId, user.iat)
+    .then((state) => {
+      if (!state.ok && state.code === 'INACTIVE_OR_MISSING') {
         return res
           .status(401)
           .json({ code: ErrorCode.UNAUTHORIZED, message: 'Account is inactive or unavailable' })
       }
 
-      if (dbUser.tokenInvalidBefore) {
-        const issuedAtMs = (user.iat || 0) * 1000
-        if (issuedAtMs < dbUser.tokenInvalidBefore.getTime()) {
-          return res
-            .status(401)
-            .json({ code: ErrorCode.UNAUTHORIZED, message: 'Session is no longer valid' })
-        }
+      if (!state.ok && state.code === 'TOKEN_INVALIDATED') {
+        return res
+          .status(401)
+          .json({ code: ErrorCode.UNAUTHORIZED, message: 'Session is no longer valid' })
       }
 
       ;(req as any).user = user

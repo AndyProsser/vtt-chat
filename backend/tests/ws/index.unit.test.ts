@@ -89,7 +89,7 @@ vi.mock('@/services/event-broadcaster.service', () => ({
   },
 }))
 
-vi.mock('@/core/rooms/room.service', () => ({
+vi.mock('@/services/room.service', () => ({
   ensurePresenceRecoveredFromSnapshots: vi.fn(async () => undefined),
   snapshotSessionPresence: vi.fn(async () => undefined),
   updatePresenceState: vi.fn(async () => undefined),

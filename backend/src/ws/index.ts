@@ -30,7 +30,7 @@ import {
   ensurePresenceRecoveredFromSnapshots,
   snapshotSessionPresence,
   updatePresenceState,
-} from '@/core/rooms/room.service'
+} from '@/services/room.service'
 
 const AUTH_TIMEOUT_MS = 5000
 const MAX_WS_MESSAGE_SIZE = 64 * 1024

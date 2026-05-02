@@ -38,7 +38,7 @@ vi.mock('@/services/admin.service', () => ({
   },
 }))
 
-vi.mock('@/core/portability/admin-portability', () => ({
+vi.mock('@/services/admin-portability.service', () => ({
   buildCampaignExport: mocks.mockBuildCampaignExport,
   importCampaignBundle: mocks.mockImportCampaignBundle,
   isValidTransferBundle: (input: unknown) => Boolean(input && typeof input === 'object'),

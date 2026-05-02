@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { NoteVisibility } from '@shared'
 import type { UUID } from '@shared'
+import type { StoredNote } from '@/types/notes.types'
 import {
   createNoteRecord,
   deleteNoteRecord,
@@ -8,21 +9,6 @@ import {
   listSessionNotes,
   updateNoteRecord,
 } from '@/repositories/notes.repository'
-
-export interface StoredNote {
-  id: UUID
-  sessionId: UUID
-  authorId: UUID
-  authorUsername: string
-  title: string
-  content: string
-  visibility: NoteVisibility
-  tags: string[]
-  allowedUsers?: UUID[]
-  publishedAt?: number
-  createdAt: number
-  updatedAt: number
-}
 
 function parseUUIDArray(value: unknown): UUID[] {
   if (!Array.isArray(value)) return []

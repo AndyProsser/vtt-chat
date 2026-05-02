@@ -12,9 +12,9 @@ import { createRateLimit } from '@/infra/http/rate-limit'
 import type { UUID } from '@shared'
 import { ErrorCode, isValidUsername } from '@shared'
 import { upsertUserAccount } from '@/repositories/campaign.repository'
-import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
+import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth-user-context.service'
 import {
   joinGuestSpectatorViaInvite,
   getExtensionPreflight,
@@ -23,7 +23,6 @@ import {
 } from '@/services/guest-auth.service'
 
 const router = Router()
-const prisma = getPrismaClient()
 
 const loginRateLimit = createRateLimit({
   windowMs: 5 * 60 * 1000,
@@ -285,40 +284,6 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
     })
 }
 
-async function getUserAuthContext(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      username: true,
-      role: true,
-      adminRole: true,
-      isActive: true,
-      password: true,
-      displayName: true,
-      avatarUrl: true,
-      email: true,
-      tokenInvalidBefore: true,
-      authType: true,
-    },
-  })
-
-  if (!user) {
-    return null
-  }
-
-  const isFullAccount = user.authType === 'FULL'
-  const hasAdminAccess = Boolean(user.adminRole) || user.role === 'DM'
-
-  return {
-    ...user,
-    authType: user.authType,
-    isFullAccount,
-    hasAdminAccess,
-    requiresUpgradeForAdmin: user.authType === 'GUEST',
-  }
-}
-
 /**
  * POST /api/auth/login
  * Login with username and optional role.
@@ -533,20 +498,7 @@ router.post('/handoff/exchange', async (req: Request, res: Response) => {
     return
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: consumed.userId },
-    select: {
-      id: true,
-      username: true,
-      role: true,
-      displayName: true,
-      avatarUrl: true,
-      isActive: true,
-      adminRole: true,
-      password: true,
-      authType: true,
-    },
-  })
+  const user = await getHandoffExchangeUser(consumed.userId)
 
   if (!user || !user.isActive) {
     res.status(403).json({

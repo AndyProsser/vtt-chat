@@ -19,14 +19,17 @@ import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
 import { ErrorCode, Role } from '@shared'
 import type { UUID, SessionState } from '@shared'
-import { emitSessionBoundarySystemMessage } from '@/core/chat/system-messages'
-import { applySessionStateRoomTransition } from '@/core/rooms/room.service'
+import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
+import { applySessionStateRoomTransition } from '@/services/room.service'
 import {
   logSessionJoin,
   logSessionLeave,
   logSessionStateChange,
-  getSessionEventHistory,
 } from '@/services/session-logs.service'
+import {
+  listSessionLogsForRequester,
+  listSessionUsersForRequester,
+} from '@/services/session-access.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -161,34 +164,80 @@ router.get('/:id/users', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
-    const session = await getSession(id as UUID)
-    if (!session) {
-      return res.status(404).json({
-        code: ErrorCode.SESSION_NOT_FOUND,
-        message: 'Session not found',
-      })
-    }
+    const result = await listSessionUsersForRequester({
+      sessionId: id as UUID,
+      requester: {
+        userId: user.userId,
+        role: user.role,
+      },
+    })
 
-    const users = await getSessionUsers(id as UUID)
-    const canReadUsers =
-      user.role === 'DM' ||
-      session.dmId === (user.userId as UUID) ||
-      users.some((u) => u.id === user.userId)
+    if (!result.ok) {
+      if (result.code === 'SESSION_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: result.message,
+        })
+      }
 
-    if (!canReadUsers) {
       return res.status(403).json({
         code: ErrorCode.FORBIDDEN,
-        message: 'Not a session member',
+        message: result.message,
       })
     }
 
     return res.status(200).json({
-      users: users.map((u) => ({
-        id: u.id,
-        username: u.username,
-        role: u.role,
-      })),
+      users: result.users,
     })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * GET /api/session/:id/logs
+ * Get session event logs
+ */
+router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200)
+  const offset = parseInt(req.query.offset as string) || 0
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const result = await listSessionLogsForRequester({
+      sessionId: id as UUID,
+      requester: {
+        userId: user.userId,
+        role: user.role,
+      },
+      limit,
+      offset,
+    })
+
+    if (!result.ok) {
+      if (result.code === 'SESSION_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: result.message,
+        })
+      }
+
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: result.message,
+      })
+    }
+
+    return res.status(200).json({ logs: result.logs })
   } catch {
     return internalErrorResponse(res)
   }
@@ -532,54 +581,6 @@ router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
         role: u.role,
       })),
     })
-  } catch {
-    return internalErrorResponse(res)
-  }
-})
-
-/**
- * GET /api/session/:id/logs
- * Get session event logs
- */
-router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const { id } = req.params
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200)
-  const offset = parseInt(req.query.offset as string) || 0
-
-  if (!isValidUUID(id)) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_SESSION,
-      message: 'Invalid session ID',
-      field: 'id',
-    })
-  }
-
-  try {
-    const session = await getSession(id as UUID)
-    if (!session) {
-      return res.status(404).json({
-        code: ErrorCode.SESSION_NOT_FOUND,
-        message: 'Session not found',
-      })
-    }
-
-    // Check if user can read logs (DM or session member)
-    const users = await getSessionUsers(id as UUID)
-    const canReadLogs =
-      user.role === 'DM' ||
-      session.dmId === (user.userId as UUID) ||
-      users.some((u) => u.id === user.userId)
-
-    if (!canReadLogs) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'Not authorized to view session logs',
-      })
-    }
-
-    const logs = await getSessionEventHistory(id as UUID, limit, offset)
-    res.status(200).json({ logs })
   } catch {
     return internalErrorResponse(res)
   }

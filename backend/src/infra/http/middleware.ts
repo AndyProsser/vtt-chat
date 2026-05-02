@@ -1,30 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyAdminToken } from '@/utils'
 import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
+import { validateUserAuthState } from '@/services/auth-user-context.service'
 import { AuthToken, AdminAuthToken, AuthError, AppError } from '@/types'
 import { logger } from '@/utils/logger'
 import { randomUUID } from 'crypto'
-import { getPrismaClient } from '@/infra/db'
-
-const prisma = getPrismaClient()
-
-async function validateUserAuthState(userId: string, tokenIat?: number): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isActive: true, tokenInvalidBefore: true },
-  })
-
-  if (!user || !user.isActive) {
-    return false
-  }
-
-  if (!user.tokenInvalidBefore) {
-    return true
-  }
-
-  const issuedAtMs = (tokenIat || 0) * 1000
-  return issuedAtMs >= user.tokenInvalidBefore.getTime()
-}
 
 // ============================================================================
 // Extended Express Types
@@ -59,8 +39,8 @@ export const authMiddleware = async (
       throw new AuthError('Invalid token')
     }
 
-    const allowed = await validateUserAuthState(decoded.userId, decoded.iat)
-    if (!allowed) {
+    const state = await validateUserAuthState(decoded.userId, decoded.iat)
+    if (!state.ok) {
       throw new AuthError('Session is no longer valid')
     }
 
@@ -124,8 +104,8 @@ export const adminAuthMiddleware = async (
 
     const decoded = verifyAdminToken(token)
 
-    const allowed = await validateUserAuthState(decoded.userId, decoded.iat)
-    if (!allowed) {
+    const state = await validateUserAuthState(decoded.userId, decoded.iat)
+    if (!state.ok) {
       throw new AuthError('Session is no longer valid')
     }
 

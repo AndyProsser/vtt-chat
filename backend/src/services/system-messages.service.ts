@@ -3,7 +3,8 @@ import type { Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import { sendMessage } from './chat.service'
-import { buildSessionBoundaryMessage, type SessionBoundaryType } from './session-boundaries'
+import { buildSessionBoundaryMessage } from './session-boundaries.service'
+import type { SessionBoundaryType } from '@/types/session-boundary.types'
 
 function buildSystemChatEvent(message: {
   id: UUID

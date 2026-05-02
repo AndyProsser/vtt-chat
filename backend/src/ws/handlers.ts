@@ -7,7 +7,7 @@
 import type { EventEnvelope } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { logger } from '@/utils'
-import { createRoom, joinRoom, leaveRoom, updatePresenceState } from '@/core/rooms/room.service'
+import { createRoom, joinRoom, leaveRoom, updatePresenceState } from '@/services/room.service'
 
 function logHandled(eventType: string, event: EventEnvelope): void {
   logger.debug('ws.handlers', `Handled ${eventType}`, {

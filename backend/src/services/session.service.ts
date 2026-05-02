@@ -18,10 +18,8 @@ import {
   updateSessionStateRecord,
   upsertSessionMember,
 } from '@/repositories/session.repository'
-import {
-  promoteNextWaitlistedSpectatorForSession,
-  type SpectatorPromotionResult,
-} from '@/services/guest-auth.service'
+import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth.service'
+import type { RemoveUserFromSessionResult } from '@/types/session.types'
 
 /**
  * Generate a deterministic UUID for Stage 1
@@ -181,10 +179,7 @@ export async function addUserToSession(sessionId: UUID, user: User): Promise<boo
 /**
  * Remove a user from a session
  */
-export type RemoveUserFromSessionResult = {
-  removed: boolean
-  promotedSpectator: SpectatorPromotionResult
-}
+export type { RemoveUserFromSessionResult } from '@/types/session.types'
 
 export async function removeUserFromSession(
   sessionId: UUID,

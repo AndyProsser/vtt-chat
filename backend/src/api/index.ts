@@ -13,6 +13,7 @@ import audioRoutes from './audio.routes'
 import telemetryRoutes from './telemetry.routes'
 import platformRoutes from './platform.routes'
 import integrationsRoutes from './integrations.routes'
+import metadataRoutes from './metadata.routes'
 
 const router = Router()
 
@@ -45,22 +46,6 @@ router.use('/livekit', liveKitRoutes)
 router.use('/audio', audioRoutes)
 router.use('/telemetry', telemetryRoutes)
 router.use('/integrations', integrationsRoutes)
-
-/**
- * Placeholder routes (not yet implemented)
- */
-function notImplemented(domain: string) {
-  return (_req: Request, res: Response) => {
-    res.status(501).json({
-      code: 'NOT_IMPLEMENTED',
-      domain,
-      message: `${domain} not yet implemented`,
-      stage: 'stage-1',
-    })
-  }
-}
-
-// Stubs for future stages
-router.use('/metadata', (_req: Request, res: Response) => notImplemented('metadata')(_req, res))
+router.use('/metadata', metadataRoutes)
 
 export default router

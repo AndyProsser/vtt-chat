@@ -11,7 +11,7 @@ const { createRoomMock, joinRoomMock, leaveRoomMock, updatePresenceStateMock, lo
     loggerDebugMock: vi.fn(),
   }))
 
-vi.mock('@/core/rooms/room.service', () => ({
+vi.mock('@/services/room.service', () => ({
   createRoom: createRoomMock,
   joinRoom: joinRoomMock,
   leaveRoom: leaveRoomMock,

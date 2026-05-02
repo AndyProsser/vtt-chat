@@ -27,7 +27,7 @@ vi.mock('@/repositories/chat.repository', () => ({
   updateMessageRecord: repositoryMocks.updateMessageRecord,
 }))
 
-import { deleteMessage, editMessage } from '../../../src/core/chat/chat.service'
+import { deleteMessage, editMessage } from '../../../src/services/chat.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const MESSAGE_ID = '22222222-2222-4222-8222-222222222222'

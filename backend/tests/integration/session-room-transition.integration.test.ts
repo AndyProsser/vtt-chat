@@ -31,11 +31,11 @@ vi.mock('@/services/session.service', () => ({
   getSessionUsers: mocks.mockGetSessionUsers,
 }))
 
-vi.mock('@/core/rooms/room.service', () => ({
+vi.mock('@/services/room.service', () => ({
   applySessionStateRoomTransition: mocks.mockApplySessionStateRoomTransition,
 }))
 
-vi.mock('@/core/chat/system-messages', () => ({
+vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
 }))
 

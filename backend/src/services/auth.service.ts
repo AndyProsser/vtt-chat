@@ -6,24 +6,13 @@
 
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
-import type { UUID } from '@shared'
+import type { TokenPayload } from '@/types/auth.types'
 import { config } from '@/infra/config'
 
 const BCRYPT_ROUNDS = 10
 const JWT_ISSUER = 'vtt-chat'
 
-/**
- * JWT token payload shape
- */
-export interface TokenPayload {
-  userId: UUID
-  username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR'
-  authType?: 'FULL' | 'GUEST'
-  sessionId?: UUID
-  iat?: number
-  exp?: number
-}
+export type { TokenPayload } from '@/types/auth.types'
 
 /**
  * Hash a password (for user registration/password change)

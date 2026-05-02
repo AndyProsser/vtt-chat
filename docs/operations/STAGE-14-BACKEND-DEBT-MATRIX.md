@@ -16,17 +16,21 @@ It classifies all backend stub/placeholder files found in backend src and assign
 - Planned remove: 42
 - Planned defer: 0
 
-## Execution Status (Stage 14.2)
+## Execution Status (Stage 14.2 and 14.3)
 
 - Stage 14.2 completed in two remove-only passes:
   - Pass 1: 29 high-confidence unused stubs removed.
   - Pass 2: 13 remaining remove-target core duplicate stubs removed.
-- Verification after pass 2:
-  - Backend tests: `npm --prefix backend run test` -> passing (21 files, 109 tests, 6 todo).
+- Stage 14.3 completed:
+  - Replaced metadata `501` placeholder mount with implemented metadata route family.
+  - Implemented metadata service/templates/types and mounted `/api/metadata` runtime endpoints for templates, session snapshot, and timeline.
+  - Added API regression coverage in `backend/tests/api/metadata-routes.test.ts`.
+- Verification after Stage 14.3 completion:
+  - Backend tests: `npm --prefix backend run test` -> passing (22 files, 113 tests, 6 todo).
   - Workspace lint: `npm run lint` -> passing.
-- Remaining stub/placeholder files in `backend/src`: 8.
+- Remaining stub/placeholder files in `backend/src`: 4.
 - Remaining Stage 14 tracked scope:
-  - Implement targets remaining: 8.
+  - Implement targets remaining: 4.
   - Remove targets remaining: 0.
 
 ## Decision Matrix

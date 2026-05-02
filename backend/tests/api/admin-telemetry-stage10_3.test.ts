@@ -43,7 +43,7 @@ vi.mock('@/infra/telemetry-store', () => ({
   updateLogRetentionSettings: mocks.mockUpdateLogRetentionSettings,
 }))
 
-vi.mock('@/core/portability/admin-portability', () => ({
+vi.mock('@/services/admin-portability.service', () => ({
   buildCampaignExport: vi.fn(),
   importCampaignBundle: vi.fn(),
   isValidTransferBundle: vi.fn().mockReturnValue(true),

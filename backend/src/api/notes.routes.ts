@@ -18,9 +18,9 @@ import {
   getVisibleNotes,
   markNotePublished,
   updateNote,
-} from '@/core/notes/notes.service'
+} from '@/services/notes.service'
 import { MessageType } from '@shared'
-import { sendMessage } from '@/core/chat/chat.service'
+import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
 import { logger } from '@/utils/logger'
 

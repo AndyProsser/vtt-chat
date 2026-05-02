@@ -4,14 +4,14 @@ import {
   sanitizeEmail,
   sanitizeExternalSystem,
   sanitizeInviteCode,
-} from '@/services/guest-auth.helpers'
+} from '@/utils/guest-auth.helpers'
 import type {
   InviteValidationResult,
   PlatformStatus,
   PreflightResult,
   SpectatorCharacterSummary,
   SpectatorInviteValidationResult,
-} from '@/services/guest-auth.types'
+} from '@/types/guest-auth.types'
 
 const prisma = getPrismaClient()
 

@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto'
+import type { HandoffTarget } from '@/types/handoff.types'
 
-export type HandoffTarget = 'admin' | 'app'
+export type { HandoffTarget } from '@/types/handoff.types'
 
 interface HandoffRecord {
   token: string

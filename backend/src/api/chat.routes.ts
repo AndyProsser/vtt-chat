@@ -13,7 +13,7 @@ import {
   deleteMessage,
   getMessages,
   type StoredMessage,
-} from '@/core/chat/chat.service'
+} from '@/services/chat.service'
 import { isValidUUID, isValidMessageContent, isValidMessageType } from '@shared'
 import { ErrorCode } from '@shared'
 import type { UUID } from '@shared'

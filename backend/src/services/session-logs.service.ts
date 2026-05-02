@@ -4,19 +4,12 @@
  */
 
 import type { UUID } from '@shared'
+import type { SessionLogEntry } from '@/types/session-log.types'
 import {
   countSessionLogs,
   createSessionLog,
   getSessionLogs,
 } from '@/repositories/session-logs.repository'
-
-export interface SessionLogData {
-  sessionId: UUID
-  userId?: UUID
-  username: string
-  eventType: 'JOINED' | 'LEFT' | 'STATE_CHANGED'
-  detail?: string
-}
 
 /**
  * Log a user joining a session
@@ -78,17 +71,7 @@ export async function getSessionEventHistory(
   sessionId: UUID,
   limit: number = 50,
   offset: number = 0
-): Promise<
-  Array<{
-    id: string
-    sessionId: string
-    userId: string | null
-    username: string
-    eventType: string
-    detail: string | null
-    createdAt: Date
-  }>
-> {
+): Promise<SessionLogEntry[]> {
   return getSessionLogs(sessionId, limit, offset)
 }
 

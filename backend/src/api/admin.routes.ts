@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import os from 'os'
 import { getAllSessions } from '@/services/session.service'
-import { getChatTelemetrySnapshot } from '@/core/chat/chat.service'
+import { getChatTelemetrySnapshot } from '@/services/chat.service'
 import { logger } from '@/utils/logger'
 import { AdminService } from '@/services/admin.service'
 import { createAdminToken } from '@/utils/auth'
@@ -25,7 +25,7 @@ import {
   importCampaignBundle,
   isValidTransferBundle,
   listRecordingMetadata,
-} from '@/core/portability/admin-portability'
+} from '@/services/admin-portability.service'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { hashPassword } from '@/services/auth.service'

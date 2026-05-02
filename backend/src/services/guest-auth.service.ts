@@ -5,14 +5,14 @@ import {
   sanitizeExternalSystem,
   sanitizeInviteCode,
   slugify,
-} from '@/services/guest-auth.helpers'
-import type { GuestCharacterInput, GuestLoginInput } from '@/services/guest-auth.types'
+} from '@/utils/guest-auth.helpers'
+import type { GuestCharacterInput, GuestLoginInput } from '@/types/guest-auth.types'
 import { validatePassword } from '@/utils/password'
 import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()
 
-export * from '@/services/guest-auth.types'
+export * from '@/types/guest-auth.types'
 export {
   getExtensionPreflight,
   getPlatformStatus,

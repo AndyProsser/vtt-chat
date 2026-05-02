@@ -1,6 +1,12 @@
 import { randomUUID } from 'crypto'
 import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
+import type {
+  RealtimePresence,
+  SessionRoomTransitionResult,
+  SessionTransitionUser,
+  StoredRoom,
+} from '@/types/room.types'
 import { getRedisClient } from '@/infra/redis'
 import {
   createRoomRecord,
@@ -9,43 +15,6 @@ import {
   listRoomsBySession,
   upsertPresenceSnapshotRecord,
 } from '@/repositories/room.repository'
-
-export interface StoredRoom {
-  id: UUID
-  sessionId: UUID
-  name: string
-  type: RoomType
-  createdBy: UUID
-  createdAt: number
-  updatedAt: number
-}
-
-export interface RealtimePresence {
-  sessionId: UUID
-  campaignId?: UUID
-  userId: UUID
-  username: string
-  primaryRoomId?: UUID
-  privateRoomId?: UUID
-  state: PresenceState
-  lastSeenAt: number
-}
-
-export interface SessionTransitionUser {
-  id: UUID
-  username: string
-}
-
-export interface SessionRoomTransitionResult {
-  mainRoomId: UUID
-  mainRoomName: string
-  greenRoomId: UUID
-  greenRoomName: string
-  targetRoomId: UUID
-  targetRoomName: string
-  movedUsers: number
-  targetState: PresenceState
-}
 
 const MAIN_ROOM_NAME = 'Main Room'
 const GREEN_ROOM_NAME = 'Green Room'

@@ -18,6 +18,10 @@ import {
   validatePlayerInviteCode,
   validateSpectatorInviteCode,
 } from '@/services/guest-auth.service'
+import {
+  listCampaignExternalLinks,
+  upsertCampaignExternalLink,
+} from '@/services/campaign-external-links.service'
 
 const router = Router()
 
@@ -342,52 +346,27 @@ router.get('/:campaignId/external-links', requireAuth, async (req: Request, res:
   }
 
   try {
-    // Get prisma for database access
-    const { getPrismaClient } = await import('@/infra/db')
-    const prisma = getPrismaClient()
-
-    // Verify DM status
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: campaignId },
-      select: { currentDmId: true },
+    const result = await listCampaignExternalLinks({
+      campaignId,
+      requesterUserId: user.userId,
     })
 
-    if (!campaign) {
-      return res.status(404).json({
-        code: ErrorCode.NOT_FOUND,
-        message: 'Campaign not found',
-      })
-    }
+    if (!result.ok) {
+      if (result.code === 'CAMPAIGN_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Campaign not found',
+        })
+      }
 
-    if (campaign.currentDmId !== user.userId) {
       return res.status(403).json({
         code: ErrorCode.FORBIDDEN,
         message: 'Only the campaign DM can view external links',
       })
     }
 
-    // Fetch external links
-    const links = await prisma.campaignExternalLink.findMany({
-      where: { campaignId },
-      select: {
-        id: true,
-        externalSystem: true,
-        externalId: true,
-        linkedAt: true,
-        linkedByUser: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-          },
-        },
-      },
-      orderBy: { linkedAt: 'desc' },
-    })
-
-    return res.status(200).json({ links })
-  } catch (error) {
-    console.error('[campaigns.getExternalLinks]', error)
+    return res.status(200).json({ links: result.links })
+  } catch {
     return res.status(500).json({
       code: ErrorCode.INTERNAL_ERROR,
       message: 'Failed to retrieve external links',
@@ -425,125 +404,44 @@ router.post('/:campaignId/external-links', requireAuth, async (req: Request, res
   }
 
   try {
-    // Get prisma for database access
-    const { getPrismaClient } = await import('@/infra/db')
-    const prisma = getPrismaClient()
-
-    // Verify DM status
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: campaignId },
-      select: { currentDmId: true },
-    })
-
-    if (!campaign) {
-      return res.status(404).json({
-        code: ErrorCode.NOT_FOUND,
-        message: 'Campaign not found',
-      })
-    }
-
-    if (campaign.currentDmId !== user.userId) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'Only the campaign DM can link external systems',
-      })
-    }
-
-    // Check if a link already exists for this system
-    const existingLink = await prisma.campaignExternalLink.findFirst({
-      where: {
-        campaignId,
-        externalSystem,
+    const result = await upsertCampaignExternalLink({
+      campaignId,
+      externalSystem,
+      externalId,
+      actor: {
+        userId: user.userId,
+        username: user.username,
+        role: user.role,
+        adminRole: user.adminRole,
       },
     })
 
-    if (existingLink && existingLink.externalId !== externalId) {
-      // Update existing link
-      const updated = await prisma.campaignExternalLink.update({
-        where: { id: existingLink.id },
-        data: {
-          externalId,
-          linkedAt: new Date(),
-        },
-        select: {
-          id: true,
-          externalSystem: true,
-          externalId: true,
-          linkedAt: true,
-        },
-      })
+    if (!result.ok) {
+      if (result.code === 'CAMPAIGN_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.NOT_FOUND,
+          message: 'Campaign not found',
+        })
+      }
 
-      // Audit log
-      await prisma.adminAuditLog.create({
-        data: {
-          actorUserId: user.userId,
-          actorName: user.username,
-          actorRole: user.role || user.adminRole,
-          action: 'campaign_external_link_update',
-          targetType: 'CampaignExternalLink',
-          targetId: updated.id,
-          outcome: 'SUCCESS',
-          metadata: {
-            externalSystem,
-            previousExternalId: existingLink.externalId,
-            newExternalId: externalId,
-          },
-        },
-      })
+      if (result.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: result.message,
+        })
+      }
 
-      return res.status(200).json({
-        message: 'External link updated',
-        link: updated,
-      })
-    }
-
-    if (existingLink && existingLink.externalId === externalId) {
-      // Already linked
       return res.status(409).json({
-        code: 'LINK_ALREADY_EXISTS',
-        message: `Campaign is already linked to ${externalSystem} campaign ${externalId}`,
+        code: result.code,
+        message: result.message,
       })
     }
 
-    // Create new link
-    const link = await prisma.campaignExternalLink.create({
-      data: {
-        campaignId,
-        externalSystem,
-        externalId,
-        linkedBy: user.userId,
-      },
-      select: {
-        id: true,
-        externalSystem: true,
-        externalId: true,
-        linkedAt: true,
-      },
+    return res.status(result.status === 'created' ? 201 : 200).json({
+      message: result.message,
+      link: result.link,
     })
-
-    // Audit log
-    await prisma.adminAuditLog.create({
-      data: {
-        actorUserId: user.userId,
-        actorName: user.username,
-        actorRole: user.role || user.adminRole,
-        action: 'campaign_external_link_create',
-        targetType: 'CampaignExternalLink',
-        targetId: link.id,
-        outcome: 'SUCCESS',
-        metadata: {
-          externalSystem,
-          externalId,
-        },
-      },
-    })
-
-    return res.status(201).json({
-      message: 'External link created',
-      link,
-    })
-  } catch (error) {
-    console.error('[campaigns.createExternalLink]', error)
+  } catch {
     return res.status(500).json({
       code: ErrorCode.INTERNAL_ERROR,
       message: 'Failed to create external link',
