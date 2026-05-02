@@ -9,9 +9,9 @@ export interface SessionLogData {
 }
 
 export interface SessionLogEntry {
-  id: string
-  sessionId: string
-  userId: string | null
+  id: UUID
+  sessionId: UUID
+  userId: UUID | null
   username: string
   eventType: string
   detail: string | null

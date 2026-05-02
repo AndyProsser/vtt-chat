@@ -1,85 +1,94 @@
-export interface WebSocketEvent {
-  type: string
-  sessionId: string
-  roomId: string
-  timestamp: number
-  payload: Record<string, any>
+import type { EventEnvelope, Role, UUID } from '@shared'
+
+/**
+ * Legacy WS event compatibility types.
+ *
+ * Runtime transport uses shared EventEnvelope with namespaced event types
+ * (`ROOM:USER_JOINED`, `CHAT:MESSAGE_SENT`, etc). These aliases retain
+ * backward-compatible typing for any older call-sites while composing from the
+ * canonical shared envelope.
+ */
+
+type LegacyEventEnvelope<TPayload, TType extends string> = Omit<EventEnvelope<TPayload>, 'type'> & {
+  type: TType
 }
 
-export interface ChatMessageEvent extends WebSocketEvent {
-  type: 'CHAT_MESSAGE'
-  payload: {
-    messageId: string
-    authorId: string
+export type WebSocketEvent = EventEnvelope<Record<string, unknown>>
+
+export type ChatMessageEvent = LegacyEventEnvelope<
+  {
+    messageId: UUID
+    authorId: UUID
     content: string
     isDmOnly: boolean
-  }
-}
+  },
+  'CHAT_MESSAGE'
+>
 
-export interface UserJoinedEvent extends WebSocketEvent {
-  type: 'USER_JOINED'
-  payload: {
-    userId: string
+export type UserJoinedEvent = LegacyEventEnvelope<
+  {
+    userId: UUID
     username: string
-    role: 'PLAYER' | 'DM'
-  }
-}
+    role: Exclude<`${Role}`, 'SYSTEM'>
+  },
+  'USER_JOINED'
+>
 
-export interface UserLeftEvent extends WebSocketEvent {
-  type: 'USER_LEFT'
-  payload: {
-    userId: string
+export type UserLeftEvent = LegacyEventEnvelope<
+  {
+    userId: UUID
     username: string
-  }
-}
+  },
+  'USER_LEFT'
+>
 
-export interface ConditionAppliedEvent extends WebSocketEvent {
-  type: 'CONDITION_APPLIED'
-  payload: {
-    userId: string
+export type ConditionAppliedEvent = LegacyEventEnvelope<
+  {
+    userId: UUID
     condition: string
-  }
-}
+  },
+  'CONDITION_APPLIED'
+>
 
-export interface ConditionRemovedEvent extends WebSocketEvent {
-  type: 'CONDITION_REMOVED'
-  payload: {
-    userId: string
+export type ConditionRemovedEvent = LegacyEventEnvelope<
+  {
+    userId: UUID
     condition: string
-  }
-}
+  },
+  'CONDITION_REMOVED'
+>
 
-export interface EnvironmentChangedEvent extends WebSocketEvent {
-  type: 'ENVIRONMENT_CHANGED'
-  payload: {
+export type EnvironmentChangedEvent = LegacyEventEnvelope<
+  {
     environmentId: string
     environmentName: string
-  }
-}
+  },
+  'ENVIRONMENT_CHANGED'
+>
 
-export interface SessionEndedEvent extends WebSocketEvent {
-  type: 'SESSION_ENDED'
-  payload: {
-    sessionId: string
+export type SessionEndedEvent = LegacyEventEnvelope<
+  {
+    sessionId: UUID
     endedAt: string
-  }
-}
+  },
+  'SESSION_ENDED'
+>
 
-export interface RoomChangedEvent extends WebSocketEvent {
-  type: 'ROOM_CHANGED'
-  payload: {
-    userId: string
-    fromRoomId: string
-    toRoomId: string
-  }
-}
+export type RoomChangedEvent = LegacyEventEnvelope<
+  {
+    userId: UUID
+    fromRoomId: UUID
+    toRoomId: UUID
+  },
+  'ROOM_CHANGED'
+>
 
-export interface MetadataCreatedEvent extends WebSocketEvent {
-  type: 'METADATA_CREATED'
-  payload: {
-    metadataId: string
+export type MetadataCreatedEvent = LegacyEventEnvelope<
+  {
+    metadataId: UUID
     type: string
     title: string
     tags: string[]
-  }
-}
+  },
+  'METADATA_CREATED'
+>

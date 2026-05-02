@@ -53,6 +53,8 @@ Latest verification:
 - Current frontend verification: `31` test files / `254` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
 - Current backend verification: `47` passed test files / `301` passing tests.
+- Current backend verification: `47` passed test files / `308` passing tests.
+- Current backend coverage verification: statements `60.99`, branches `51.69`, functions `60.17`, lines `61.35`.
 - Admin tests now include expanded SPA guard/component/hook suites covering auth transitions, setup/invite workflows, logs/user wiring, and user-management hook branch behavior.
 - Current admin verification: `17` passed test files / `139` passing tests.
 - Current admin coverage verification: statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`.

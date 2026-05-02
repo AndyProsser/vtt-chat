@@ -3,8 +3,10 @@
  * Covers environment presets, DM voice overrides, and session audio state.
  */
 
+import type { UUID } from '@shared'
+
 export interface AudioPreset {
-  id: string
+  id: UUID
   name: string
   category: 'VOICE' | 'DISTANCE' | 'ENVIRONMENT' | 'CONDITION' | 'IC'
 }
@@ -13,11 +15,11 @@ export interface AudioPreset {
  * Persisted state of a room's audio environment (set by DM via AUDIO:ENVIRONMENT_SET).
  */
 export interface AudioEnvironmentState {
-  roomId: string
+  roomId: UUID
   environmentName: string
   environmentId: string
   parameters: Record<string, unknown>
-  setBy: string
+  setBy: UUID
   setAt: number
 }
 
@@ -25,10 +27,10 @@ export interface AudioEnvironmentState {
  * Persisted DM override applied to a specific user (AUDIO:DM_OVERRIDE_APPLIED).
  */
 export interface AudioDMOverrideState {
-  targetUserId: string
+  targetUserId: UUID
   overrideType: string
   parameters: Record<string, unknown>
-  appliedBy: string
+  appliedBy: UUID
   appliedAt: number
 }
 
@@ -36,7 +38,7 @@ export interface AudioDMOverrideState {
  * Full audio state for a session — returned by GET /api/audio/state/:sessionId.
  */
 export interface AudioSessionState {
-  sessionId: string
+  sessionId: UUID
   environments: AudioEnvironmentState[]
   dmOverrides: AudioDMOverrideState[]
 }

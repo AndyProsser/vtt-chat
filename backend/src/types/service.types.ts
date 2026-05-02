@@ -1,55 +1,57 @@
+import type { NoteVisibility, SessionEntity, UUID } from '@shared'
+
 export interface CreateSessionRequest {
-  name: string
+  name: SessionEntity['name']
   description?: string
-  dmId: string
+  dmId: UUID
 }
 
 export interface JoinSessionRequest {
-  sessionId: string
-  userId: string
+  sessionId: UUID
+  userId: UUID
 }
 
 export interface SendMessageRequest {
-  sessionId: string
-  roomId: string
-  authorId: string
+  sessionId: UUID
+  roomId: UUID
+  authorId: UUID
   content: string
   isDmOnly?: boolean
 }
 
 export interface ApplyConditionRequest {
-  sessionId: string
-  userId: string
+  sessionId: UUID
+  userId: UUID
   condition: string
 }
 
 export interface RemoveConditionRequest {
-  sessionId: string
-  userId: string
+  sessionId: UUID
+  userId: UUID
   condition: string
 }
 
 export interface SetRoomEnvironmentRequest {
-  roomId: string
+  roomId: UUID
   environmentId: string
 }
 
 export interface CreateMetadataRequest {
-  sessionId: string
-  roomId: string
-  authorId: string
+  sessionId: UUID
+  roomId: UUID
+  authorId: UUID
   type: string
   title: string
   description?: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   tags?: string[]
 }
 
 export interface CreateNoteRequest {
-  sessionId: string
+  sessionId: UUID
   title: string
   content: string
-  authorId: string
-  visibility?: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
+  authorId: UUID
+  visibility?: NoteVisibility
   tags?: string[]
 }

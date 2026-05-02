@@ -1,10 +1,11 @@
 import type { Role } from '@shared'
+import type { UUID } from '@shared'
 import type { AdminRole } from '@/types/auth.types'
 
 type SharedRoleValue = `${Role}`
 
 export type UserAuthContext = {
-  id: string
+  id: UUID
   username: string
   role: SharedRoleValue
   adminRole: AdminRole | null
@@ -21,7 +22,7 @@ export type UserAuthContext = {
 }
 
 export type HandoffExchangeUser = {
-  id: string
+  id: UUID
   username: string
   role: SharedRoleValue
   displayName: string

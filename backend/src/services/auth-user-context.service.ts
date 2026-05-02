@@ -1,4 +1,5 @@
 import { getPrismaClient } from '@/infra/db'
+import type { UUID } from '@shared'
 import type {
   HandoffExchangeUser,
   UserAuthContext,
@@ -34,6 +35,7 @@ export async function getUserAuthContext(userId: string): Promise<UserAuthContex
 
   return {
     ...user,
+    id: user.id as UUID,
     isFullAccount,
     hasAdminAccess,
     requiresUpgradeForAdmin: user.authType === 'GUEST',
@@ -41,7 +43,7 @@ export async function getUserAuthContext(userId: string): Promise<UserAuthContex
 }
 
 export async function getHandoffExchangeUser(userId: string): Promise<HandoffExchangeUser | null> {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -55,6 +57,15 @@ export async function getHandoffExchangeUser(userId: string): Promise<HandoffExc
       authType: true,
     },
   })
+
+  if (!user) {
+    return null
+  }
+
+  return {
+    ...user,
+    id: user.id as UUID,
+  }
 }
 
 export async function validateUserAuthState(

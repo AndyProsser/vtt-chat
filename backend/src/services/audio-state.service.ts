@@ -99,18 +99,18 @@ export async function getSessionAudioState(sessionId: UUID): Promise<AudioSessio
   return {
     sessionId,
     environments: environments.map((row) => ({
-      roomId: row.roomId,
+      roomId: row.roomId as UUID,
       environmentName: row.environmentName,
       environmentId: row.environmentId,
       parameters: toRecord(row.parameters),
-      setBy: row.setBy,
+      setBy: row.setBy as UUID,
       setAt: row.setAt.getTime(),
     })),
     dmOverrides: dmOverrides.map((row) => ({
-      targetUserId: row.targetUserId,
+      targetUserId: row.targetUserId as UUID,
       overrideType: row.overrideType,
       parameters: toRecord(row.parameters),
-      appliedBy: row.appliedBy,
+      appliedBy: row.appliedBy as UUID,
       appliedAt: row.appliedAt.getTime(),
     })),
   }

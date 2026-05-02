@@ -72,7 +72,13 @@ export async function getSessionEventHistory(
   limit: number = 50,
   offset: number = 0
 ): Promise<SessionLogEntry[]> {
-  return getSessionLogs(sessionId, limit, offset)
+  const rows = await getSessionLogs(sessionId, limit, offset)
+  return rows.map((row) => ({
+    ...row,
+    id: row.id as UUID,
+    sessionId: row.sessionId as UUID,
+    userId: (row.userId as UUID | null) ?? null,
+  }))
 }
 
 /**

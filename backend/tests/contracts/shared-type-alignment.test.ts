@@ -13,6 +13,8 @@ import type { UserDTO, RoomDTO, NoteDTO } from '@/types/api.types'
 import type { PlayerFacingRole, AdminRole, SharedRoleValue } from '@/types/auth.types'
 import type { HandoffExchangeUser, UserAuthContext } from '@/types/auth-user-context.types'
 import type { MetadataAccessResult } from '@/types/metadata.types'
+import type { CreateNoteRequest, CreateSessionRequest } from '@/types/service.types'
+import type { WebSocketEvent } from '@/types/ws.types'
 import type { StoredMessage } from '@/types/chat.types'
 import type { StoredNote } from '@/types/notes.types'
 import type { RealtimePresence, StoredRoom } from '@/types/room.types'
@@ -57,5 +59,14 @@ describe('shared type alignment (backend)', () => {
   it('metadata access success session composes shared session contract', () => {
     type AccessSession = Extract<MetadataAccessResult, { ok: true }>['session']
     expectTypeOf<AccessSession>().toMatchTypeOf<Pick<SessionEntity, 'name' | 'state'>>()
+  })
+
+  it('service dto enums align with shared contracts', () => {
+    expectTypeOf<CreateNoteRequest['visibility']>().toMatchTypeOf<`${NoteVisibility}` | undefined>()
+    expectTypeOf<CreateSessionRequest['name']>().toMatchTypeOf<SessionEntity['name']>()
+  })
+
+  it('websocket base event composes shared event envelope shape', () => {
+    expectTypeOf<WebSocketEvent['payload']>().toMatchTypeOf<Record<string, unknown>>()
   })
 })
