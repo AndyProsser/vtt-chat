@@ -20,6 +20,7 @@ This is the canonical project roadmap for delivery stages and progress tracking.
 Current overall status: **Stages 0-15 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core + backend debt-closure + testing-readiness hardening)**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
+- Cross-system contract normalization milestone (v0.6.0) is complete: frontend domain types now align to shared canonical entities, backend stored models extend shared canonical entities, admin session/role contracts are aligned to shared enums, and shared utility helpers now serve format/ws/session-state logic across app boundaries.
 - Core backend/frontend spine is operational.
 - Session lifecycle and chat vertical slices are implemented and building.
 - Admin auth, moderation, invite onboarding, audit logging, and readonly telemetry baseline are now implemented.
@@ -49,11 +50,11 @@ Latest verification:
 - Monorepo build passes (`backend`, `frontend`, `admin`).
 - Workspace lint passes (`npm run lint`).
 - Frontend tests pass for app shell, websocket dispatcher wiring, LiveKit hook race-safety behavior, audio engine behavior, store system wiring, and command-center shell persona/panel behavior.
-- Current frontend verification: `20` test files / `133` tests passing.
+- Current frontend verification: `31` test files / `254` tests passing.
 - Backend tests pass for chat system-message protections, notes visibility transitions, notes websocket propagation, campaign/users API coverage, WS dispatcher/handlers/state-recovery units, room recovery/transition sequencing integration coverage, and audio/livekit event envelope coverage.
-- Current backend verification: `46` passed test files / `297` passing tests.
+- Current backend verification: `47` passed test files / `301` passing tests.
 - Admin tests now include expanded SPA guard/component/hook suites covering auth transitions, setup/invite workflows, logs/user wiring, and user-management hook branch behavior.
-- Current admin verification: `16` passed test files / `137` passing tests.
+- Current admin verification: `17` passed test files / `139` passing tests.
 - Current admin coverage verification: statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`.
 - Admin SPA interaction and admin route integration/e2e suites remain an active follow-up workstream.
 

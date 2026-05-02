@@ -1,10 +1,6 @@
-import type { PresenceState, Role, UUID } from '@shared'
+import type { PresenceState, Role, UserEntity, UUID } from '@shared'
 
-export interface User {
-  id: UUID
-  username: string
-  role: Role
-}
+export type User = UserEntity
 
 export interface SessionUser {
   id: UUID

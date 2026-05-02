@@ -1,4 +1,7 @@
-export type SessionState = 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+import type { Role, SessionState } from '@shared'
+import { prettySessionState, sessionStatusClass } from '@shared/utils/session-state'
+
+export type { SessionState }
 export type CampaignStatusFilter = 'all' | 'active' | 'idle' | 'ended' | 'no_session'
 
 export interface CampaignSummary {
@@ -42,7 +45,7 @@ export interface CampaignListResponse {
 export interface CampaignMember {
   userId: string
   username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
+  role: Role
   primaryRoomId: string | null
   presenceState: string
 }
@@ -150,16 +153,9 @@ export interface RecordingDraft {
 }
 
 export function prettyState(state: SessionState): string {
-  if (state === 'IDLE') return 'Idle'
-  if (state === 'ACTIVE') return 'Active'
-  if (state === 'PAUSED') return 'Paused'
-  return 'Ended'
+  return prettySessionState(state)
 }
 
 export function statusClass(state: SessionState | 'NO_SESSION'): string {
-  if (state === 'ACTIVE') return 'status-active'
-  if (state === 'PAUSED') return 'status-paused'
-  if (state === 'ENDED') return 'status-ended'
-  if (state === 'IDLE') return 'status-idle'
-  return 'status-none'
+  return sessionStatusClass(state)
 }

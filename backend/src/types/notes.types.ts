@@ -1,16 +1,7 @@
-import type { NoteVisibility, UUID } from '@shared'
+import type { NoteEntity, UUID } from '@shared'
 
-export interface StoredNote {
-  id: UUID
+export interface StoredNote extends NoteEntity {
   sessionId: UUID
   authorId: UUID
   authorUsername: string
-  title: string
-  content: string
-  visibility: NoteVisibility
-  tags: string[]
-  allowedUsers?: UUID[]
-  publishedAt?: number
-  createdAt: number
-  updatedAt: number
 }

@@ -107,3 +107,12 @@ export interface Metadata {
   createdAt: number
   updatedAt: number
 }
+
+export type {
+  UserEntity,
+  SessionEntity,
+  RoomEntity,
+  MessageEntity,
+  NoteEntity,
+  PresenceEntity,
+} from './entities'

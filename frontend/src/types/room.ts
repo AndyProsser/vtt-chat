@@ -1,13 +1,6 @@
-import type { PresenceState, RoomType, SessionState, UUID } from '@shared'
+import type { PresenceEntity, PresenceState, RoomEntity, SessionState, UUID } from '@shared'
 
-export interface Room {
-  id: UUID
-  sessionId: UUID
-  name: string
-  type: RoomType
-  createdAt: number
-  createdBy: UUID
-}
+export type Room = RoomEntity
 
 export interface RoomUser {
   userId: UUID
@@ -16,14 +9,7 @@ export interface RoomUser {
   joinedAt: number
 }
 
-export interface SessionPresence {
-  userId: UUID
-  username: string
-  state: PresenceState
-  primaryRoomId?: UUID
-  privateRoomId?: UUID
-  lastSeenAt: number
-}
+export type SessionPresence = PresenceEntity
 
 export interface SessionTransitionNotice {
   eventId: string

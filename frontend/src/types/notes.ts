@@ -1,18 +1,6 @@
-import type { NoteVisibility, UUID } from '@shared'
+import type { NoteEntity, NoteVisibility, UUID } from '@shared'
 
-export interface Note {
-  id: UUID
-  ownerId: UUID
-  ownerUsername: string
-  title: string
-  content: string
-  visibility: NoteVisibility
-  tags: string[]
-  allowedUsers?: UUID[]
-  publishedAt?: number
-  createdAt: number
-  updatedAt: number
-}
+export type Note = NoteEntity
 
 export interface NoteDraft {
   title: string

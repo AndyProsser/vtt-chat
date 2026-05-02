@@ -1,24 +1,13 @@
-import type { PresenceState, RoomType, UUID } from '@shared'
+import type { PresenceEntity, PresenceState, RoomEntity, UUID } from '@shared'
 
-export interface StoredRoom {
-  id: UUID
-  sessionId: UUID
-  name: string
-  type: RoomType
+export interface StoredRoom extends RoomEntity {
   createdBy: UUID
-  createdAt: number
   updatedAt: number
 }
 
-export interface RealtimePresence {
+export interface RealtimePresence extends PresenceEntity {
   sessionId: UUID
   campaignId?: UUID
-  userId: UUID
-  username: string
-  primaryRoomId?: UUID
-  privateRoomId?: UUID
-  state: PresenceState
-  lastSeenAt: number
 }
 
 export interface SessionTransitionUser {

@@ -1,15 +1,10 @@
-import type { MessageType, UUID } from '@shared'
+import type { MessageEntity, UUID } from '@shared'
 
-export interface StoredMessage {
-  id: UUID
+export interface StoredMessage extends MessageEntity {
   sessionId: UUID
-  authorId: UUID
   authorUsername: string
-  content: string
-  type: MessageType
   isDmOnly: boolean
   visibleTo?: UUID[]
-  createdAt: number
   editedAt?: number
   deletedAt?: number
   deletedBy?: UUID

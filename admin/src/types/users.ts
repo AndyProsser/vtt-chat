@@ -1,7 +1,8 @@
 import type { AdminRole } from '@/types/auth'
+import type { Role } from '@shared'
 
 export type { AdminRole }
-export type UserRole = 'DM' | 'PLAYER' | 'SPECTATOR'
+export type UserRole = Exclude<Role, 'SYSTEM'>
 export type InviteRole = 'ADMIN' | 'CAMPAIGN_DM' | 'READ_ONLY'
 
 export interface AdminUserRow {

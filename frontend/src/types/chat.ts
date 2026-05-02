@@ -1,15 +1,6 @@
-import type { MessageType, UUID } from '@shared'
+import type { MessageEntity, UUID } from '@shared'
 
-export interface Message {
-  id: UUID
-  authorId: UUID
-  authorUsername: string
-  content: string
-  type: MessageType
-  isDmOnly: boolean
-  createdAt: number
-  editedAt?: number
-}
+export type Message = MessageEntity
 
 export interface TypingIndicator {
   userId: UUID
