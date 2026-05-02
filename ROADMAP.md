@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-04
+Last updated: 2026-05-03
 
 This is the canonical project roadmap for delivery stages and progress tracking.
 
@@ -468,14 +468,14 @@ Completed so far:
 
 Remaining scope:
 
-- Persist room-scoped audio control state and DM overrides for durable restart recovery.
-- Align LiveKit/recovery documentation to distinguish shipped baseline behavior from future-state reconnect and hydration flows.
-- Add multi-client end-to-end validation for token flow, audio event fanout, and override behavior.
+- Audio durability (persisted room environment and DM override state) was completed in Stage 14.4.
+- Remaining Stage 7 hardening items (multi-client end-to-end validation, token flow fanout, LiveKit/recovery documentation alignment) are tracked under Priority 4.
 - Expand audit/telemetry detail for audio control mutations.
 
 Exit criteria:
 
 - Stable realtime audio baseline without advanced effects dependency or durable persisted recovery. ✅
+- Durable audio state persisted and hydrated via `/api/audio/state/:sessionId`. ✅ (completed Stage 14.4)
 
 ---
 
@@ -1009,9 +1009,9 @@ Priority 1:
 
 Priority 2:
 
-- Expand admin SPA interaction and admin route integration/e2e coverage.
+- Expand admin SPA interaction and admin route integration/e2e coverage; normalize admin codebase type architecture.
 - Current execution status: complete. Route-level integration/e2e flows added for all four areas: users (list/filter/export/import-preview), telemetry logs (list/filter/sort/drill-down), campaign actions (list/rooms/session-end/archive/restore), and settings (GET/PUT/backup-trigger/ops-export). Backend suite now at `46` files / `297` tests passing.
-- Admin codebase normalization complete: extracted inline types from `App.tsx`, `store.ts`, and `pages/Integrations.tsx` into a dedicated `admin/src/types/` directory (`auth.ts`, `nav.ts`, `integrations.ts`, `common.ts`, `index.ts`). `AdminRole` is now the canonical definition in `types/auth.ts` with `features/users/types.ts` re-exporting it.
+- Admin type architecture normalized: all domain types centralized under `admin/src/types/` (nine domain modules + barrel index). Feature-local `types.ts` shim files removed. `@/` path alias configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts` so all admin imports use `@/types/*`. `AdminRole` is the single canonical definition in `types/auth.ts`.
 - Immediate next action: no further action required for this priority — advance to Priority 3.
 
 Priority 3:
@@ -1050,11 +1050,9 @@ Priority 7:
 
 Key risks:
 
-- Admin telemetry currently mixes real signals with baseline placeholders in some metrics.
-- Some admin surfaces are still scaffolds (`Rooms & Campaigns`, `Settings`) even though Stage 8 auth/moderation/invite baseline is complete.
-- In-memory admin log history and WS recovery state are not durable across process restarts.
-- Admin-specific automated coverage is thinner than the core runtime slices; current verification is stronger on builds and shared backend/frontend flows than on dedicated admin route/UI tests.
-- UI specification breadth is large (layout, motion, theming, loading, recovery, error handling) and may drift without stage-specific delivery checkpoints.
+- Admin telemetry mixes some real signals with proxy/synthetic values in dashboard and status cards — hardening tracked under Priority 3.
+- Multi-client end-to-end validation for presence/rooms reconnect and audio state recovery remains queued under Priority 4.
+- UI specification breadth (layout, motion, theming, loading, recovery, error handling) may drift without stage-specific delivery checkpoints.
 - Extension bridge domains (13.4/13.5) remain intentionally out-of-repo and are tracked in `docs/extension/EXTENSION-ROADMAP.md`.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
 - Custom-share recipient UX depends on session membership hydration (users appear after joining session).
@@ -1085,6 +1083,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Admin type architecture fully centralized. All domain types moved from five feature-local `types.ts` files to `admin/src/types/` (nine modules: `auth`, `nav`, `integrations`, `common`, `campaigns`, `logs`, `monitoring`, `settings`, `users` + `index` barrel). Feature-local shim files deleted. `@/` path alias configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`; all 33 consumer imports updated to `@/types/*`. Admin build and type-check remain green (16/16 files, 137 tests).
 
 - 2026-05: Admin codebase normalization completed. Extracted inline types from `App.tsx` (`AdminPage`, `NavItem`), `store.ts` (`AdminUser`, `AuthState`), and `pages/Integrations.tsx` (`AuthorizationState`, `IntegrationScope`, `IntegrationSystem`) into a new `admin/src/types/` directory. `AdminRole` consolidated as canonical definition in `types/auth.ts` with `features/users/types.ts` re-exporting it. Admin build and tests remain green (16/16 files, 137 tests).
 
