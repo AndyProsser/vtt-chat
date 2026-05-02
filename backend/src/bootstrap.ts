@@ -61,7 +61,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   })
 
   // ========================================================================
-  // API Routes (baseline placeholders)
+  // API routes
   // ========================================================================
 
   app.use('/api', apiRouter)

@@ -1,8 +1,4 @@
 /**
- * Baseline placeholder module.
- * This implementation is intentionally disabled for staged rebuild.
- */
-/**
  * AudioPanel
  * Stage 7: Audio & LiveKit integration surface.
  *

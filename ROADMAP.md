@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-04-29
+Last updated: 2026-05-02
 
 This is the canonical project roadmap for delivery stages and progress tracking.
 
@@ -17,7 +17,7 @@ This is the canonical project roadmap for delivery stages and progress tracking.
 
 ## 1) Executive Status
 
-Current overall status: **Stages 0-12 complete (baseline + command-center + secure admin ops + knowledge surfaces + portability), Stage 13 now in progress**.
+Current overall status: **Stages 0-13 complete for core platform scope (baseline + command-center + secure admin ops + knowledge surfaces + portability + guest-auth core), with Stage 14 focused on MVP testing-readiness hardening**.
 
 - Shared runtime contract baseline is in place; several architecture/API docs remain broader conceptual references and still require continued contract-alignment follow-up. See [docs/README.md](docs/README.md#runtime-source-of-truth).
 - Core backend/frontend spine is operational.
@@ -29,7 +29,9 @@ Current overall status: **Stages 0-12 complete (baseline + command-center + secu
 - Frontend command-center Stage 9.1 layout/persona shell parity is now complete (three-panel shell, toolbar action model, extracted shell components, persona tab matrix, and responsive layout tests).
 - Stage 9.2 is now advanced beyond the initial slice: DM control surfaces now include advanced player overrides (distance/condition/filter), DM voice preset controls, and authoritative drag/drop room movement via backend room-move endpoint + websocket reconciliation.
 - Stage 11 is now complete in the frontend runtime with command-center search, journal, and history panels backed by persisted chat, notes, and session-log data, with placeholder module debt removed across metadata/audio/ui/types/utils surfaces.
-- Stage 13 has advanced through backend guest-auth/linking foundations and now has initial frontend Stage 13.3 route surfaces (`/join/:code`, `/watch/:code`, `/browse`) plus guest upgrade UX wiring in the SPA shell.
+- Stage 13 core scope (13.1-13.3) is complete across backend guest auth, external identity/campaign linking, and frontend guest/spectator route surfaces.
+- Stage 13.4-13.5 extension bridge milestones are now tracked separately in `docs/extension/EXTENSION-ROADMAP.md` and executed in the extension repository.
+- Stage 14 is now defined as the MVP testing-readiness hardening stage for Stage 13 critical test gaps, endpoint edge-case validation, and end-to-end guest/spectator flow verification.
 - A dedicated UI modernization track is now defined to standardize frontend core UI on Radix UI + Tailwind + tokens and admin UI on MUI, without blocking active feature-stage delivery.
 
 UI modernization status:
@@ -55,22 +57,23 @@ Latest verification:
 
 ### Stage Completion Checklist (At a Glance)
 
-| Stage | Area                                | Status      | Completion | Immediate focus                                            |
-| ----- | ----------------------------------- | ----------- | ---------- | ---------------------------------------------------------- |
-| 0     | Contract lock                       | Complete    | ✅         | Maintain contract/source-of-truth discipline               |
-| 1     | Backend foundation                  | Complete    | ✅         | Ongoing hardening + reliability                            |
-| 2     | Frontend transport spine            | Complete    | ✅         | Keep reducer/event contract parity                         |
-| 3     | Session lifecycle                   | Complete    | ✅         | Regression coverage during later stage work                |
-| 4     | Chat vertical slice                 | Complete    | ✅         | UX/moderation polish as follow-up                          |
-| 5     | Notes vertical slice                | Complete    | ✅         | Advanced workflows and audit polish                        |
-| 6     | Presence and rooms                  | Complete    | ✅         | Multi-client e2e/load hardening                            |
-| 7     | Audio + LiveKit                     | Complete    | ✅         | Multi-client e2e + persistence hardening                   |
-| 8     | Admin + ops baseline                | Complete    | ✅         | Stage 10 secure ops workflows + durable telemetry          |
-| 9     | Frontend command-center completion  | Complete    | ✅         | Maintain regression coverage during Stage 10+ work         |
-| 10    | Admin UI feature completion         | Complete    | ✅         | Stage 11 knowledge surfaces + Stage 13 guest auth prep     |
-| 11    | Metadata/journal/history/search     | Complete    | ✅         | Maintain coverage + contract parity                        |
-| 12    | Import/export + recordings metadata | Complete    | ✅         | Maintain schema + portability regression coverage          |
-| 13    | Extension + guest auth integration  | In progress | 🟨 Started | Spectator path, browse flow, frontend guest UX, VTT bridge |
+| Stage | Area                                | Status   | Completion | Immediate focus                                             |
+| ----- | ----------------------------------- | -------- | ---------- | ----------------------------------------------------------- |
+| 0     | Contract lock                       | Complete | ✅         | Maintain contract/source-of-truth discipline                |
+| 1     | Backend foundation                  | Complete | ✅         | Ongoing hardening + reliability                             |
+| 2     | Frontend transport spine            | Complete | ✅         | Keep reducer/event contract parity                          |
+| 3     | Session lifecycle                   | Complete | ✅         | Regression coverage during later stage work                 |
+| 4     | Chat vertical slice                 | Complete | ✅         | UX/moderation polish as follow-up                           |
+| 5     | Notes vertical slice                | Complete | ✅         | Advanced workflows and audit polish                         |
+| 6     | Presence and rooms                  | Complete | ✅         | Multi-client e2e/load hardening                             |
+| 7     | Audio + LiveKit                     | Complete | ✅         | Multi-client e2e + persistence hardening                    |
+| 8     | Admin + ops baseline                | Complete | ✅         | Stage 10 secure ops workflows + durable telemetry           |
+| 9     | Frontend command-center completion  | Complete | ✅         | Maintain regression coverage during Stage 10+ work          |
+| 10    | Admin UI feature completion         | Complete | ✅         | Stage 11 knowledge surfaces + Stage 13 guest auth prep      |
+| 11    | Metadata/journal/history/search     | Complete | ✅         | Maintain coverage + contract parity                         |
+| 12    | Import/export + recordings metadata | Complete | ✅         | Maintain schema + portability regression coverage           |
+| 13    | Guest auth + external identity core | Complete | ✅         | Maintain regression coverage; execute Stage 14 hardening    |
+| 14    | MVP testing readiness hardening     | Planned  | ⬜ Planned | Close Stage 13 critical test gaps and launch-readiness docs |
 
 Legend: ✅ complete, 🟨 in progress, ⬜ planned/not started.
 
@@ -789,14 +792,13 @@ Exit criteria:
 
 ---
 
-### Stage 13: Extension and Guest Auth Integration
+### Stage 13: Guest Auth and External Identity Core Integration
 
-Status: **In progress**
+Status: **Complete (13.1-13.3 complete)**
 
 Goal:
 
-- Deliver the browser extension integration with the vtt-chat backend: guest/invite-link authentication, external identity management, data sync, pre-flight validation, and VTT overlay contracts.
-- The extension front-end and D&D Beyond scraping layer already exist at <https://github.com/AndyProsser/vtt-chat-extension>. This stage delivers the backend integration surface and wires the extension to the vtt-chat platform.
+- Deliver core-platform guest authentication, spectator access, external identity linking, and frontend guest/spectator UX required by the main vtt-chat product.
 
 Design reference: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md), [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md), [docs/extension/THIRD-PARTY-INTEGRATIONS.md](docs/extension/THIRD-PARTY-INTEGRATIONS.md)
 
@@ -804,161 +806,141 @@ Design reference: [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md), 
 
 #### **Stage 13.1: Backend Guest Auth, Spectator Access, and Invite Flow**
 
-Completed so far:
+Status: **Complete**
 
-- Implemented `GET /api/platform/status` public platform snapshot endpoint.
-- Implemented `GET /api/campaigns/invite/:code/validate` public player-invite validation endpoint.
-- Implemented `POST /api/auth/extension/preflight` with `accountStatus` / `suggestedFlow` response branches.
-- Replaced the Stage 13 guest-login stub with a real `POST /api/auth/extension/guest-login` flow gated by external-system authorization.
-- Implemented `POST /api/auth/upgrade` for guest-to-full account upgrade.
-- Added initial Prisma schema/runtime support for `User.authType`, `ExternalIdentity`, `Campaign.inviteActive`, `CampaignExternalLink`, and external character linkage fields.
-- Added backend route coverage for platform status, invite validation, preflight, guest login, and guest account upgrade.
+Completed scope:
 
-Remaining in this slice:
-
-- Spectator invite validation, guest spectator join, waitlist, and browse endpoints.
-- Reduced-lifetime guest token policy and richer guest/full-account merge rules.
-- Campaign-level spectator and sync-policy fields plus associated guardrails.
-
-- Scope: All backend endpoints required for player guest auth (extension) and spectator access (web). Includes spectator policy enforcement, slot management, and waitlist.
-- Prerequisite: Stage 10.4 external system authorization panel must be complete so production systems are gated from day one.
-- Endpoints to implement (player path):
-  - `GET /api/platform/status` — public, returns platform health + active users/campaigns/sessions
-  - `GET /api/campaigns/invite/:code/validate` — public, validates player invite code + returns campaign display info
-  - `POST /api/auth/extension/preflight` — public, account status check for email without issuing token
-  - `POST /api/auth/extension/guest-login` — creates or resumes guest player account from extension-scraped identity; validates invite code and authorized external system
-  - `POST /api/auth/upgrade` — guest token required; sets password and converts account to FULL
-- Endpoints to implement (spectator path):
-  - `GET /api/campaigns/watch/:code/validate` — public, validates spectator invite code + returns campaign info, character roster, slot availability
-  - `POST /api/auth/spectator/guest-join` — public, creates guest spectator account and issues token (or waitlist position)
-  - `GET /api/campaigns/:id/spectator/waitlist-status` — poll for waitlist promotion using `waitlistToken`
-  - `GET /api/campaigns/browse` — authenticated (full account only), lists discoverable campaigns with spectator slots
-- Data changes required:
-  - `User.authType` enum: add `GUEST` variant
-  - `ExternalIdentity` table: `(userId, externalSystem, externalUserId, email, lastSeenAt)`
-  - `Campaign.inviteActive`, `Campaign.spectatorInviteCode`, `Campaign.spectatorInviteActive`
-  - `Campaign.spectatorPolicy` (`NONE | GUESTS | USERS`), `spectatorMax`, `spectatorWaitlistEnabled`, `spectatorReconnectGraceSecs`, `discoverable`
-  - `Campaign.extensionSyncPolicy` (`NONE | DM_ONLY | DM_AND_PLAYERS`)
-  - `SpectatorWaitlist` table: `(campaignId, userId, joinedAt, waitlistToken, promoted, promotedAt)`
-  - `ExternalSystem` registry table (links to Stage 10.4 admin controls)
-- Target validation tests:
-  - Unit tests for guest-login: new user creation, returning guest match by email+system, invite code validation, blocked system rejection.
-  - Unit tests for preflight: all four `accountStatus` variants and correct `suggestedFlow` mapping.
-  - Unit tests for spectator guest-join: slot available → token issued; at capacity + waitlist enabled → waitlist entry created; `spectatorPolicy = NONE` → 403; `spectatorPolicy = USERS` + guest account → 403.
-  - Tests for waitlist auto-promotion: slot released (disconnect + grace period) → first waitlist entry promoted → token issued.
-  - Tests for reconnect grace period: disconnected spectator slot not released until grace period expires.
-  - Integration tests for invite/watch validate endpoints: valid/expired/nonexistent codes.
-  - Integration tests for campaign browse: only discoverable campaigns returned; private campaigns excluded; guest player accounts rejected.
-  - Tests asserting guest token has reduced lifetime and `authType: GUEST` claim.
-  - Tests for account upgrade: password set, `authType` change, token reissued, campaign/character history preserved.
-  - Tests asserting DMs with guest accounts cannot call invite-link generation endpoints.
-
----
+- Platform status, player invite validation, extension preflight, extension guest-login, and guest upgrade endpoints are implemented and mounted.
+- Spectator invite validation, spectator guest join, waitlist status polling, and browse route surface are implemented with policy-aware access constraints.
+- External-system authorization guardrails (Stage 10.4 dependency) are enforced across guest auth entry points.
+- Core schema/runtime support for guest accounts (`authType`), external identities, campaign spectator/sync controls, and waitlist state is in place.
 
 #### **Stage 13.2: External Identity and Campaign Linking**
 
-Completed so far:
+Status: **Complete**
 
-- Runtime route surface is implemented and mounted for external sync + campaign external links.
-- Campaign sync policy checks (`NONE`, `DM_ONLY`, `DM_AND_PLAYERS`) are enforced in the sync endpoint.
-- Campaign external link create/list/update flows are implemented with DM-only authorization checks.
-- External-link and sync actions write audit-log entries.
+Completed scope:
 
-Remaining in this slice:
-
-- Restore full assertion coverage for Stage 13.2 endpoint behavior (temporary placeholder tests must be replaced with real route assertions).
-
-- Scope: Persistence and retrieval of external identities and campaign-to-external-system links.
-- Endpoints to implement:
-  - `POST /api/integrations/external/sync` — push character or campaign updates from extension; applies per `extensionSyncPolicy` and caller role
-  - `GET /api/campaigns/:campaignId/external-links` — DM-only; list linked external systems
-  - `POST /api/campaigns/:campaignId/external-links` — DM-only; manually link an external campaign ID
-- Data changes required:
-  - `CampaignExternalLink` table: `(campaignId, externalSystem, externalId, linkedAt, linkedBy)`
-  - `Character.externalSystem`, `Character.externalId` fields
-- Target validation tests:
-  - Tests for sync endpoint respecting `NONE`, `DM_ONLY`, and `DM_AND_PLAYERS` policy variants.
-  - Tests asserting campaign-level fields (name, structure) can only be updated by DM-role callers regardless of sync policy.
-  - Tests preventing duplicate `ExternalIdentity` records for same (email, system) pair.
-  - Tests preventing duplicate character records for same `(externalSystem, externalId)` pair.
-  - Tests asserting email-based user matching links identities from different external systems to the same vtt-chat user.
-
----
+- External sync route surface is implemented and mounted.
+- Sync policy variants (`NONE`, `DM_ONLY`, `DM_AND_PLAYERS`) are enforced.
+- Campaign external-link create/list/update flows are implemented with DM-only authorization.
+- External-link and sync actions emit audit-log entries.
 
 #### **Stage 13.3: Frontend Guest Auth UX, Spectator Invite Page, and Account Upgrade**
 
-Completed so far:
+Status: **Complete**
 
-- Added SPA route handling for `/join/:code`, `/watch/:code`, and `/browse` in the frontend app shell.
-- Added player invite page flow with invite validation, extension preflight trigger, and authenticated fallback campaign join.
-- Added spectator invite page flow with campaign/roster display, guest spectator join, waitlist status polling, and auto-promotion token adoption.
-- Added guest upgrade prompt UX in the app shell (dismissible, hidden during active session play) plus authenticated upgrade call/token swap.
-- Added `authType`-aware frontend session persistence and profile hydration for guest/full account handling.
-- Added authenticated profile `email` field on `GET /api/auth/me` to support read-only upgrade form rendering.
+Completed scope:
 
-Remaining in this slice:
+- SPA route handling for `/join/:code`, `/watch/:code`, and `/browse` is implemented.
+- Player invite flow supports invite validation and extension preflight pathing.
+- Spectator invite page supports validate/join/waitlist/promotion UX.
+- Guest account upgrade UX and token-swap flow are implemented in the app shell.
+- Auth profile hydration supports guest/full account behavior, including read-only email hydration for upgrade.
 
-- Add dedicated frontend automated coverage for new `/join`, `/watch`, `/browse`, and guest-upgrade flows.
-- Extend `/join/:code` UX to complete extension guest-login branch handoff (beyond preflight + standard join fallback).
-- Implement DM invite-link management controls in Campaign Settings for player/spectator invite policies.
+#### Required vtt-chat integration touchpoints (owned in this repo)
 
-- Scope: SPA-side support for guest player sessions, the spectator invite/watch page, campaign browse, and account upgrade flow.
-- Changes required:
-  - Auth store must handle `authType: GUEST` tokens (player and spectator) and expose upgrade affordance.
-  - App header/profile panel: persistent (but dismissible) upgrade prompt for guest users, hidden during active session play.
-  - Account upgrade flow: email pre-filled (read-only), password entry, `POST /api/auth/upgrade`, token swap.
-  - **Player invite route** (`/join/:code`): initiates extension pre-flight or falls back to standard invite join for non-extension users.
-  - **Spectator invite page** (`/watch/:code`): no extension required. Shows campaign name, DM display name, character roster with connection status, session status, slot count, and waitlist position. Provides name + email form for guest spectators. Full-account users see login prompt if not already authenticated.
-  - **Campaign browse page** (`/browse`): lists active discoverable campaigns for full-account users. Shows campaign name, DM, session status, slot availability. Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear as private (no join option). Guest player accounts cannot access this page.
-  - **Waitlist UX**: guest spectators placed on the waitlist see their position and a live status indicator. Auto-promoted when a slot opens (no user action required); JWT issued and session view loads.
-  - **Invite link management UI** in Campaign Settings: separate controls for player invite and spectator invite. Spectator controls include: spectatorPolicy selector (None / Guests / Full Accounts Only), max spectator count input, waitlist toggle, and discoverable toggle.
-- Target validation tests:
-  - Frontend store tests for guest token handling and `authType` awareness (player and spectator variants).
-  - Component tests for upgrade prompt visibility (shown outside active session, hidden during play, dismissible).
-  - Integration tests for `/join/:code`: valid invite → correct auth branch; invalid invite → user-friendly error.
-  - Integration tests for `/watch/:code`: valid spectator invite → invite page render; slots available → guest join; at capacity + waitlist → waitlist UX; `spectatorPolicy = NONE` → "spectators not enabled" message.
-  - Frontend tests for campaign browse: discoverable campaigns visible; private campaigns shown but join disabled; guest player accounts redirected away.
-  - Frontend tests for spectator controls visibility (DM only; full-account DM only for invite generation).
+- [x] `GET /api/platform/status` is implemented and publicly reachable.
+- [x] `GET /api/campaigns/invite/:code/validate` and `GET /api/campaigns/watch/:code/validate` are implemented for invite pre-validation.
+- [x] `POST /api/auth/extension/preflight` and `POST /api/auth/extension/guest-login` are implemented with external-system authorization enforcement.
+- [x] `POST /api/auth/upgrade` guest-to-full upgrade flow is implemented.
+- [x] Spectator join/waitlist touchpoints are implemented: `POST /api/auth/spectator/guest-join` and `GET /api/campaigns/:campaignId/spectator/waitlist-status`.
+- [x] External sync/link touchpoints are implemented: `POST /api/integrations/external/sync`, `GET /api/campaigns/:campaignId/external-links`, `POST /api/campaigns/:campaignId/external-links`.
+- [x] Frontend route surfaces are implemented for `/join/:code`, `/watch/:code`, and `/browse`.
+- [x] Integration touchpoint coverage is present in repo-owned tests:
+  - `backend/tests/api/guest-auth-routes.test.ts`
+  - `backend/tests/api/external-integration.test.ts`
+  - `frontend/src/tests/components/GuestAuthRoutes.test.tsx`
+- Stage 13.4/13.5 ownership: extension repo only.
 
----
+Extension-specific continuation:
 
-#### **Stage 13.4: Extension Backend Contract Integration (D&D Beyond)**
-
-- Scope: Wire the existing <https://github.com/AndyProsser/vtt-chat-extension> front-end and scraping layer to the vtt-chat backend endpoints implemented in 13.1–13.3.
-- Extension changes required (in extension repo):
-  - Background script: implement pre-flight sequence (`/api/platform/status` → `/api/campaigns/invite/:code/validate` → `/api/auth/extension/preflight`).
-  - Background script: implement guest-login call and in-memory JWT storage with silent renewal.
-  - Background script: implement sync update calls on character level-up/class change events.
-  - Popup UI: display pre-flight results (platform status, invite validity, account status branch).
-  - Popup UI: login form for full-account users (email pre-filled, password entry).
-  - Popup UI: display "platform not enabled" message for blocked systems.
-- Backend contract requirements (already specified in Stage 13.1–13.3, no new endpoints).
-- Target validation tests:
-  - Contract tests asserting extension-submitted payloads match backend schema (character fields, invite code format, externalSystem enum).
-  - Integration tests for the full pre-flight → guest-login → token storage sequence against a local backend.
-  - Tests for silent token renewal behavior when guest JWT is within renewal window.
-  - Tests asserting extension handles backend errors gracefully (platform offline, invite expired, system blocked).
-
----
-
-#### **Stage 13.5: VTT Overlay Bridge Contracts (Roll20, Foundry, Others)**
-
-- Scope: Extend the integration layer to Roll20 and Foundry VTT once D&D Beyond integration is validated. Add platform-level support for additional external systems via the ExternalSystem registry.
-- Remaining scope:
-  - Register Roll20 and Foundry as systems in the ExternalSystem registry (initially in `LOG_ONLY` or `BLOCKED` state).
-  - Implement bridge contracts for Roll20/Foundry log ingestion normalization.
-  - Implement overlay UX and event synchronization with core app state/privacy constraints for those platforms.
-  - Validate extension-side role/privacy enforcement and reconnection/state recovery behavior for each new system.
-- This milestone is intentionally deferred until Stage 13.4 (D&D Beyond end-to-end) is validated.
+- Stage 13.4 and Stage 13.5 have been moved to [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md) and are tracked in the extension repository as optional supporting milestones.
 
 Exit criteria:
 
-- Platform status, invite validation, pre-flight, guest login, and account upgrade endpoints are implemented and tested.
-- External identity and campaign linking persistence is in place with correct sync policy enforcement.
-- SPA handles guest tokens, shows the upgrade prompt, and provides invite-link management for DMs.
-- The existing D&D Beyond extension is wired end-to-end to the vtt-chat backend.
-- All new endpoints are guarded by external system authorization checks (ExternalSystem registry from Stage 10.4).
-- Extension workflows integrate cleanly with core state/event architecture without privacy regressions.
+- Core guest-auth, spectator, external-identity, and SPA guest UX flows for 13.1-13.3 are implemented and integrated in the main platform runtime. ✅
+- Remaining hardening and test-gap closure is tracked under Stage 14. ✅
+
+---
+
+### Stage 14: MVP Testing Readiness Hardening
+
+Status: **Planned**
+
+Goal:
+
+- Close all high-priority Stage 13 testing and validation gaps before MVP production testing.
+- Formalize launch-readiness validation and documentation for alpha/beta/RC handoff.
+
+#### **Stage 14.1: Backend Test Completeness (Critical Endpoint Coverage)**
+
+- Scope: Expand backend API coverage for guest auth, spectator joins/waitlist behavior, sync-policy matrix, and blocked-system/error paths.
+- Primary test targets:
+  - `backend/tests/api/guest-auth-routes.test.ts`
+  - `backend/tests/api/external-integration.test.ts` (or equivalent sync-policy suite)
+- Required coverage additions:
+  - `POST /api/auth/extension/guest-login`: new guest creation, returning guest resumption/update, DM assignment from campaign packet, sync-policy behavior (`NONE`, `DM_ONLY`, `DM_AND_PLAYERS`), invite mismatch/expired paths, full-account collision, blocked/unrecognized external systems.
+  - `POST /api/auth/spectator/guest-join`: immediate slot issue, waitlist enqueue, waitlist-disabled rejection, spectator policy enforcement (`NONE`, `USERS`, `GUESTS`), concurrent boundary joins.
+  - Spectator waitlist logic: promotion ordering, grace-period release, double-issue prevention, position tracking correctness.
+  - `POST /api/integrations/external/sync`: policy matrix assertions, DM-only campaign field updates, audit logging coverage.
+- Exit criteria:
+  - Stage 13.1/13.2 backend endpoints have explicit happy-path + error-path assertions with race-condition coverage where applicable.
+
+#### **Stage 14.2: Frontend Test Completeness (Guest UX + Auth Transitions)**
+
+- Scope: Expand frontend test coverage for extension guest-login packet handling, guest upgrade token swap, and restricted-flow enforcement.
+- Primary test targets:
+  - `frontend/src/tests/components/GuestAuthRoutes.test.tsx`
+  - `frontend/src/tests/components/App.guest-upgrade.test.tsx` (and related auth-state suites)
+- Required coverage additions:
+  - `/join/:code` full extension handoff with campaign packet bootstrap behavior and returning-guest update behavior.
+  - Guest upgrade flow: password validation, upgrade endpoint payload, token replacement, auth-state transition (`GUEST` -> `FULL`), prompt dismissal behavior.
+  - Guest rejection paths: guest DM/player access restrictions for protected flows (`/browse` access and DM invite-link generation controls).
+  - Spectator-to-player/full-account transition coverage (or explicit tracked gap if deferred).
+- Exit criteria:
+  - Stage 13.3 frontend routes and auth transitions are covered by deterministic integration/component tests with no known flaky async assertions.
+
+#### **Stage 14.3: Backend Endpoint Validation (Browse + Waitlist + Authz Boundaries)**
+
+- Scope: Add focused endpoint-validation suites for policy/filter/authz behavior not fully covered by existing Stage 13 tests.
+- Primary test targets:
+  - `backend/tests/api/campaign-browse.test.ts` (new)
+  - `backend/tests/api/external-integration.test.ts` (authz expansions)
+  - Existing waitlist status endpoint suites
+- Required coverage additions:
+  - `GET /api/campaigns/browse`: discoverable/spectator-policy filtering, guest rejection, slot availability correctness, private campaign disabled-state behavior.
+  - `GET /api/campaigns/:campaignId/spectator/waitlist-status`: status transitions (`WAITLISTED` -> `PROMOTED`), token validity, expiration behavior, queue position correctness.
+  - Campaign external-links endpoints: DM-only read/write enforcement, non-DM `403` handling, audit log assertions.
+- Exit criteria:
+  - Browse, waitlist-status, and external-link authorization boundaries are enforced and regression-tested across policy variants.
+
+#### **Stage 14.4: End-to-End Flow Validation (Multi-Step Journeys)**
+
+- Scope: Add integration tests that validate complete user journeys, not just endpoint-level correctness.
+- Primary test target:
+  - `backend/tests/integration/stage-13-flows.test.ts` (new)
+- Required coverage additions:
+  - Player invite journey: platform status -> invite validate -> preflight -> guest-login -> campaign bootstrap/join readiness.
+  - Spectator invite journey: watch validate -> guest join/waitlist -> promoted session entry -> slot release behavior.
+  - Guest-to-full upgrade journey: prompt -> password validation -> upgrade endpoint -> token/authType transition -> feature unlock.
+  - DM invite-link management journey: policy toggles + code regeneration + spectator controls persistence and enforcement.
+- Exit criteria:
+  - End-to-end integration suite validates Stage 13 flows with database state + audit assertions at each critical transition.
+
+#### **Stage 14.5: Documentation and Launch Readiness Alignment**
+
+- Scope: Align roadmap, extension docs, and testing-readiness operations guidance to actual validation status.
+- Primary documentation targets:
+  - `ROADMAP.md`
+  - `docs/operations/TESTING-READINESS.md`
+  - `docs/extension/GUEST-AUTH.md`
+- Required updates:
+  - Stage 13 sub-milestone completion percentages and open gap tracking.
+  - Explicit test-coverage status by flow and endpoint.
+  - Pre-production checklist + rollout recommendations for alpha/beta/RC.
+- Exit criteria:
+  - Planning and operations docs consistently reflect implemented behavior, known limitations, and production-test gate criteria.
 
 ---
 
@@ -966,31 +948,31 @@ Exit criteria:
 
 Priority 1:
 
-- Stage 13.3 frontend hardening: add test coverage for `/join`, `/watch`, `/browse`, and guest-upgrade/session token-swap behavior.
+- Stage 14.1 backend hardening: close critical endpoint coverage gaps for guest-login, spectator guest-join, waitlist promotion, and external sync policy enforcement.
 
 Priority 2:
 
-- Stage 13 frontend/extension continuation: complete `/join/:code` extension guest-login branch and finalize extension contract wiring.
+- Stage 14.2 frontend hardening: complete full-flow coverage for `/join/:code`, guest upgrade token swap, and guest rejection paths.
 
 Priority 3:
 
-- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+- Stage 14.4 end-to-end flow validation: add integrated multi-step journey coverage for player invite, spectator invite, guest upgrade, and DM invite-link management.
 
 Priority 4:
 
-- Stage 6 presence/rooms hardening: multi-client e2e/load validation + rollout strategy.
+- Stage 14.3 endpoint policy/authz validation: browse filtering, waitlist-status transitions, and campaign external-links authorization boundaries.
 
 Priority 5:
 
-- Stage 7 runtime integration hardening: multi-client validation, reconnect coverage, and durable audio-state recovery.
+- Stage 14.5 documentation alignment: roadmap + extension + testing-readiness updates to production-test gate criteria.
 
 Priority 6:
 
-- Stage 13 extension and guest auth integration after Stage 10.4 external system authorization.
+- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
 
 Priority 7:
 
-- Stage 9.3 UX reliability and spec compliance (loading/error/recovery/theming/motion) after 9.2 control-surface delivery stabilizes.
+- Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery.
 
 ---
 
@@ -1018,21 +1000,23 @@ Dependencies before later stages:
 
 The following references support the corrected stage labels and current model terminology.
 
-| Claim                                       | Status                                 | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stage 5 (Notes) vertical slice              | Complete                               | Notes routes mounted: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts). Persisted service/repository flow: [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [backend/src/repositories/notes.repository.ts](backend/src/repositories/notes.repository.ts). Frontend panel/card wiring and custom-share selector UX: [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx), [frontend/src/components/notes/NoteCard.tsx](frontend/src/components/notes/NoteCard.tsx), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Tests: [backend/tests/core/notes/notes-visibility.test.ts](backend/tests/core/notes/notes-visibility.test.ts), [backend/tests/integration/notes-routes-ws.integration.test.ts](backend/tests/integration/notes-routes-ws.integration.test.ts). Publish audit hook: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Stage 6 (Presence and Rooms) vertical slice | Complete                               | Mounted APIs: [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts), [backend/src/api/presence.routes.ts](backend/src/api/presence.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Redis-first room/presence service + transition orchestration: [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts), [backend/src/infra/redis/index.ts](backend/src/infra/redis/index.ts). DB snapshots + schema: [backend/src/repositories/room.repository.ts](backend/src/repositories/room.repository.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Frontend sync/indicators and atomic reconnect hydration: [frontend/src/state/roomSlice.ts](frontend/src/state/roomSlice.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx). Tests: [backend/tests/integration/room-service-recovery.integration.test.ts](backend/tests/integration/room-service-recovery.integration.test.ts), [backend/tests/integration/session-room-transition.integration.test.ts](backend/tests/integration/session-room-transition.integration.test.ts), [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Validation: `prisma migrate status` reports "Database schema is up to date". |
-| Stage 7 (Audio and LiveKit) vertical slice  | Complete (baseline)                    | Token route and service are implemented: [backend/src/api/livekit.routes.ts](backend/src/api/livekit.routes.ts), [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts). Frontend lifecycle/audio hooks are implemented and runtime-mounted via [frontend/src/components/audio/AudioPanel.tsx](frontend/src/components/audio/AudioPanel.tsx) and [frontend/src/App.tsx](frontend/src/App.tsx): [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts). WS audio handlers are dispatcher-registered: [backend/src/ws/handlers.ts](backend/src/ws/handlers.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Audio control API routes are implemented and mounted: [backend/src/api/audio.routes.ts](backend/src/api/audio.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Tests validate envelope + route role gating/emission behavior: [backend/tests/contracts/audio-livekit-integration.test.ts](backend/tests/contracts/audio-livekit-integration.test.ts), [backend/tests/api/audio-routes.test.ts](backend/tests/api/audio-routes.test.ts).                                                                                                                                                                                                                                                                                      |
-| Stage 8 (Admin and Ops) baseline            | Complete (baseline)                    | Authenticated admin routes, invite onboarding, moderation actions, audit logging, and telemetry are implemented in [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/infra/http/middleware.ts](backend/src/infra/http/middleware.ts), [backend/src/services/admin.service.ts](backend/src/services/admin.service.ts), and [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Admin SPA setup/login/handoff and operational pages are wired in [admin/src/App.tsx](admin/src/App.tsx), [admin/src/pages/UserManagement.tsx](admin/src/pages/UserManagement.tsx), [admin/src/pages/InviteOnboarding.tsx](admin/src/pages/InviteOnboarding.tsx), [admin/src/pages/Logs.tsx](admin/src/pages/Logs.tsx), [admin/src/pages/Dashboard.tsx](admin/src/pages/Dashboard.tsx), and [admin/src/pages/PlatformStatus.tsx](admin/src/pages/PlatformStatus.tsx). Remaining gaps are Stage 10 concerns: scaffold-only room/settings surfaces, more durable telemetry, and deeper admin-specific automated coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Stage 9 (Command-center UI)                 | In progress (9.2 advanced)             | Stage 9.1 shell parity is complete and Stage 9.2 DM control-surface work is active in runtime. Command-center frame and session integration are implemented in [frontend/src/components/session/CommandCenterFrame.tsx](frontend/src/components/session/CommandCenterFrame.tsx) and [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx), with advanced DM controls mounted via [frontend/src/components/session/DMAudioControls.tsx](frontend/src/components/session/DMAudioControls.tsx). Authoritative drag/drop room movement is now backed by [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts) (`POST /api/rooms/:roomId/move-user`) with DM-only authz coverage in [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Current automated coverage for this slice includes [frontend/src/tests/components/CommandCenterFrame.test.tsx](frontend/src/tests/components/CommandCenterFrame.test.tsx) and [frontend/src/tests/components/DMAudioControls.test.tsx](frontend/src/tests/components/DMAudioControls.test.tsx). Remaining Stage 9.2/9.3 work includes websocket emission contracts, richer realtime integration coverage, and recovery/theming/motion compliance.                                                                                                                                                                                                  |
-| Stage 4 chat boundary/system behavior       | Complete                               | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/core/chat/chat-system-messages.test.ts](backend/tests/core/chat/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Character status field terminology          | Aligned                                | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/api/campaign-users-api.test.ts](backend/tests/api/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Frontend command-center UI scope            | Planned and now explicitly tracked     | UI layout/components/flows/recovery/theming/motion specs define broader SPA surface than currently closed stages: [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [docs/ui/UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md), [docs/ui/UI-STATE-RECOVERY.md](docs/ui/UI-STATE-RECOVERY.md), [docs/ui/UI-LOADING-STATES.md](docs/ui/UI-LOADING-STATES.md), [docs/ui/UI-ERROR-HANDLING.md](docs/ui/UI-ERROR-HANDLING.md), [docs/ui/UI-THEMING.md](docs/ui/UI-THEMING.md), [docs/ui/UI-MOTION.md](docs/ui/UI-MOTION.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Post-Stage knowledge/portability domains    | Stage 12 implemented; Stage 13 planned | Stage 12 portability/recordings workflows are implemented in admin runtime routes and schema: [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/core/portability/admin-portability.ts](backend/src/core/portability/admin-portability.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma), [admin/src/pages/CampaignManagement.tsx](admin/src/pages/CampaignManagement.tsx), [admin/src/pages/Settings.tsx](admin/src/pages/Settings.tsx). Remaining placeholder runtime domain in API index is metadata-only: [backend/src/api/index.ts](backend/src/api/index.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Claim                                       | Status                                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stage 5 (Notes) vertical slice              | Complete                                     | Notes routes mounted: [backend/src/api/index.ts](backend/src/api/index.ts), [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts). Persisted service/repository flow: [backend/src/core/notes/notes.service.ts](backend/src/core/notes/notes.service.ts), [backend/src/repositories/notes.repository.ts](backend/src/repositories/notes.repository.ts). Frontend panel/card wiring and custom-share selector UX: [frontend/src/components/notes/NotesPanel.tsx](frontend/src/components/notes/NotesPanel.tsx), [frontend/src/components/notes/NoteCard.tsx](frontend/src/components/notes/NoteCard.tsx), [frontend/src/state/notesSlice.ts](frontend/src/state/notesSlice.ts). Tests: [backend/tests/core/notes/notes-visibility.test.ts](backend/tests/core/notes/notes-visibility.test.ts), [backend/tests/integration/notes-routes-ws.integration.test.ts](backend/tests/integration/notes-routes-ws.integration.test.ts). Publish audit hook: [backend/src/api/notes.routes.ts](backend/src/api/notes.routes.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Stage 6 (Presence and Rooms) vertical slice | Complete                                     | Mounted APIs: [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts), [backend/src/api/presence.routes.ts](backend/src/api/presence.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Redis-first room/presence service + transition orchestration: [backend/src/core/rooms/room.service.ts](backend/src/core/rooms/room.service.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts), [backend/src/infra/redis/index.ts](backend/src/infra/redis/index.ts). DB snapshots + schema: [backend/src/repositories/room.repository.ts](backend/src/repositories/room.repository.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Frontend sync/indicators and atomic reconnect hydration: [frontend/src/state/roomSlice.ts](frontend/src/state/roomSlice.ts), [frontend/src/hooks/useWebSocket.ts](frontend/src/hooks/useWebSocket.ts), [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx). Tests: [backend/tests/integration/room-service-recovery.integration.test.ts](backend/tests/integration/room-service-recovery.integration.test.ts), [backend/tests/integration/session-room-transition.integration.test.ts](backend/tests/integration/session-room-transition.integration.test.ts), [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Validation: `prisma migrate status` reports "Database schema is up to date". |
+| Stage 7 (Audio and LiveKit) vertical slice  | Complete (baseline)                          | Token route and service are implemented: [backend/src/api/livekit.routes.ts](backend/src/api/livekit.routes.ts), [backend/src/infra/livekit/token.service.ts](backend/src/infra/livekit/token.service.ts). Frontend lifecycle/audio hooks are implemented and runtime-mounted via [frontend/src/components/audio/AudioPanel.tsx](frontend/src/components/audio/AudioPanel.tsx) and [frontend/src/App.tsx](frontend/src/App.tsx): [frontend/src/hooks/useLiveKit.ts](frontend/src/hooks/useLiveKit.ts), [frontend/src/hooks/useAudioEngine.ts](frontend/src/hooks/useAudioEngine.ts). WS audio handlers are dispatcher-registered: [backend/src/ws/handlers.ts](backend/src/ws/handlers.ts), [backend/src/ws/index.ts](backend/src/ws/index.ts). Audio control API routes are implemented and mounted: [backend/src/api/audio.routes.ts](backend/src/api/audio.routes.ts), [backend/src/api/index.ts](backend/src/api/index.ts). Tests validate envelope + route role gating/emission behavior: [backend/tests/contracts/audio-livekit-integration.test.ts](backend/tests/contracts/audio-livekit-integration.test.ts), [backend/tests/api/audio-routes.test.ts](backend/tests/api/audio-routes.test.ts).                                                                                                                                                                                                                                                                                      |
+| Stage 8 (Admin and Ops) baseline            | Complete (baseline)                          | Authenticated admin routes, invite onboarding, moderation actions, audit logging, and telemetry are implemented in [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/infra/http/middleware.ts](backend/src/infra/http/middleware.ts), [backend/src/services/admin.service.ts](backend/src/services/admin.service.ts), and [backend/prisma/schema.prisma](backend/prisma/schema.prisma). Admin SPA setup/login/handoff and operational pages are wired in [admin/src/App.tsx](admin/src/App.tsx), [admin/src/pages/UserManagement.tsx](admin/src/pages/UserManagement.tsx), [admin/src/pages/InviteOnboarding.tsx](admin/src/pages/InviteOnboarding.tsx), [admin/src/pages/Logs.tsx](admin/src/pages/Logs.tsx), [admin/src/pages/Dashboard.tsx](admin/src/pages/Dashboard.tsx), and [admin/src/pages/PlatformStatus.tsx](admin/src/pages/PlatformStatus.tsx). Remaining gaps are Stage 10 concerns: scaffold-only room/settings surfaces, more durable telemetry, and deeper admin-specific automated coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Stage 9 (Command-center UI)                 | In progress (9.2 advanced)                   | Stage 9.1 shell parity is complete and Stage 9.2 DM control-surface work is active in runtime. Command-center frame and session integration are implemented in [frontend/src/components/session/CommandCenterFrame.tsx](frontend/src/components/session/CommandCenterFrame.tsx) and [frontend/src/components/session/SessionInit.tsx](frontend/src/components/session/SessionInit.tsx), with advanced DM controls mounted via [frontend/src/components/session/DMAudioControls.tsx](frontend/src/components/session/DMAudioControls.tsx). Authoritative drag/drop room movement is now backed by [backend/src/api/rooms.routes.ts](backend/src/api/rooms.routes.ts) (`POST /api/rooms/:roomId/move-user`) with DM-only authz coverage in [backend/tests/api/presence-rooms-authz.test.ts](backend/tests/api/presence-rooms-authz.test.ts). Current automated coverage for this slice includes [frontend/src/tests/components/CommandCenterFrame.test.tsx](frontend/src/tests/components/CommandCenterFrame.test.tsx) and [frontend/src/tests/components/DMAudioControls.test.tsx](frontend/src/tests/components/DMAudioControls.test.tsx). Remaining Stage 9.2/9.3 work includes websocket emission contracts, richer realtime integration coverage, and recovery/theming/motion compliance.                                                                                                                                                                                                  |
+| Stage 4 chat boundary/system behavior       | Complete                                     | Session boundary/system message emission: [backend/src/core/chat/session-boundaries.ts](backend/src/core/chat/session-boundaries.ts), [backend/src/core/chat/system-messages.ts](backend/src/core/chat/system-messages.ts), [backend/src/api/session.routes.ts](backend/src/api/session.routes.ts). System-message immutability: [backend/src/core/chat/chat.service.ts](backend/src/core/chat/chat.service.ts). Frontend WS wrapper compatibility: [frontend/src/ws/client.ts](frontend/src/ws/client.ts). Tests: [backend/tests/core/chat/chat-system-messages.test.ts](backend/tests/core/chat/chat-system-messages.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Character status field terminology          | Aligned                                      | Data-model terminology: [docs/architecture/DATA-MODEL.md](docs/architecture/DATA-MODEL.md) ("status" values: alive, dead, left, unknown). Persisted schema enum: [backend/prisma/schema.prisma](backend/prisma/schema.prisma) (`CharacterStatus`: `ALIVE`, `DEAD`, `LEFT`, `UNKNOWN`). API validation and persistence path: [backend/src/api/campaign.routes.ts](backend/src/api/campaign.routes.ts), [backend/src/repositories/campaign.repository.ts](backend/src/repositories/campaign.repository.ts), [backend/tests/api/campaign-users-api.test.ts](backend/tests/api/campaign-users-api.test.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Frontend command-center UI scope            | Planned and now explicitly tracked           | UI layout/components/flows/recovery/theming/motion specs define broader SPA surface than currently closed stages: [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [docs/ui/UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md), [docs/ui/UI-STATE-RECOVERY.md](docs/ui/UI-STATE-RECOVERY.md), [docs/ui/UI-LOADING-STATES.md](docs/ui/UI-LOADING-STATES.md), [docs/ui/UI-ERROR-HANDLING.md](docs/ui/UI-ERROR-HANDLING.md), [docs/ui/UI-THEMING.md](docs/ui/UI-THEMING.md), [docs/ui/UI-MOTION.md](docs/ui/UI-MOTION.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Post-Stage knowledge/portability domains    | Stage 12 implemented; Stage 13 core complete | Stage 12 portability/recordings workflows are implemented in admin runtime routes and schema: [backend/src/api/admin.routes.ts](backend/src/api/admin.routes.ts), [backend/src/core/portability/admin-portability.ts](backend/src/core/portability/admin-portability.ts), [backend/prisma/schema.prisma](backend/prisma/schema.prisma), [admin/src/pages/CampaignManagement.tsx](admin/src/pages/CampaignManagement.tsx), [admin/src/pages/Settings.tsx](admin/src/pages/Settings.tsx). Stage 13 core guest-auth and external-identity flows are implemented in the main runtime; extension bridge continuation is tracked in [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md). Remaining placeholder runtime domain in API index is metadata-only: [backend/src/api/index.ts](backend/src/api/index.ts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: Stage 13 core closure recorded. Marked Stage 13.1-13.3 as complete for main-platform scope (backend guest/spectator auth, external identity linking, and frontend guest/spectator UX), and moved Stage 13.4-13.5 extension bridge milestones to `docs/extension/EXTENSION-ROADMAP.md` for tracking in the extension repository.
 
 - 2026-04: Stage 13.3 frontend kickoff delivered. Added app-level route support for `/join/:code`, `/watch/:code`, and `/browse`; implemented spectator guest-join + waitlist polling/auto-promotion UX; added guest-account upgrade prompt/token-swap flow in app shell; and extended `GET /api/auth/me` to return email for read-only upgrade form hydration.
 
@@ -1090,6 +1074,6 @@ The following references support the corrected stage labels and current model te
 
 Roadmap complete when:
 
-- Stages 0-13 all meet their exit criteria.
+- Stages 0-14 all meet their exit criteria.
 - Security and auditability requirements are met for internet-facing operation.
 - Monorepo builds cleanly and stage-critical user journeys are test-covered.

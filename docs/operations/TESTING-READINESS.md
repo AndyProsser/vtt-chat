@@ -370,6 +370,67 @@ Use this before moving to alpha, beta, and general availability:
 
 ## 6. Rollout Strategy
 
+## 6.1 MVP Execution Plan (Recommended)
+
+The following execution plan operationalizes the Stage 14 testing hardening scope and should be tracked as the active testing/launch planning sequence.
+
+### Phase 1: Backend Hardening (1-2 weeks)
+
+**Priority:** HIGH
+
+1. Expand `backend/tests/api/guest-auth-routes.test.ts` with comprehensive guest-login/spectator-join assertions and error-path coverage.
+2. Add `backend/tests/api/campaign-browse.test.ts` for discoverability/privacy/spectator-policy filtering and slot availability rules.
+3. Verify spectator waitlist atomicity with concurrent join boundary tests and grace-period promotion checks.
+
+Success criteria:
+
+- All Stage 13.1-13.3 backend endpoints have >85% line coverage.
+- Edge cases and error paths are explicitly asserted in tests.
+- No Stage 0-12 regression failures.
+
+### Phase 2: Frontend Integration Testing (1 week)
+
+**Priority:** MEDIUM-HIGH
+
+1. Expand `/join` and `/watch` component/integration tests for extension campaign packet handling and waitlist/promotion behavior.
+2. Add/expand guest-upgrade tests for token replacement and auth-state transition validation.
+3. Add cross-component guest-flow tests validating unauthenticated -> guest -> full transitions and session entry behavior.
+
+Success criteria:
+
+- Guest auth route surfaces have dedicated coverage for happy/error paths.
+- Upgrade/token swap behavior is validated end-to-end at the SPA auth-state layer.
+- Async state transition tests are stable and non-flaky.
+
+### Phase 3: End-to-End Integration Validation (1-2 weeks)
+
+**Priority:** MEDIUM
+
+1. Implement `backend/tests/integration/stage-13-flows.test.ts` with complete multi-step player/spectator/upgrade journeys.
+2. Add database-state and audit-log assertions at each key workflow checkpoint.
+3. Validate waitlist and promotion behavior in realistic timing scenarios.
+
+Success criteria:
+
+- Full guest/spectator flows are validated end-to-end.
+- Audit and state consistency checks pass for all modeled journeys.
+- Known limitations for beta/RC are documented from test outcomes.
+
+### Phase 4: Documentation Alignment (1 week)
+
+**Priority:** MEDIUM
+
+1. Update `ROADMAP.md` with current Stage 13/14 status and test-gap closure progress.
+2. Keep this document synchronized with actual test readiness and launch criteria.
+3. Update `docs/extension/GUEST-AUTH.md` with test coverage status, expected error codes, and retry guidance.
+
+Success criteria:
+
+- Planning and operations docs are consistent with test reality.
+- Remaining limitations and rollout strategy are explicit and current.
+
+---
+
 ### Alpha (Internal Testing)
 
 **Duration:** 2–3 weeks

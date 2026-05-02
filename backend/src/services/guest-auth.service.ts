@@ -1,8 +1,14 @@
 import { getPrismaClient } from '@/infra/db'
 import { createToken, hashPassword, type TokenPayload } from '@/services/auth.service'
+import {
+  randomOpaqueToken,
+  sanitizeEmail,
+  sanitizeExternalSystem,
+  sanitizeInviteCode,
+  slugify,
+} from '@/services/guest-auth.helpers'
 import { validatePassword } from '@/utils/password'
 import type { UUID } from '@shared'
-import { randomBytes } from 'crypto'
 
 const prisma = getPrismaClient()
 
@@ -158,32 +164,6 @@ export type SpectatorPromotionResult =
   | {
       promoted: false
     }
-
-function sanitizeEmail(email: string): string {
-  return email.trim().toLowerCase()
-}
-
-function sanitizeInviteCode(inviteCode: string): string {
-  return inviteCode.trim().toUpperCase()
-}
-
-function sanitizeExternalSystem(externalSystem: string): string {
-  return externalSystem.trim().toLowerCase()
-}
-
-function randomOpaqueToken(bytes = 18): string {
-  return randomBytes(bytes).toString('base64url')
-}
-
-function slugify(value: string): string {
-  return value
-    .normalize('NFKD')
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
 
 async function generateUniqueUsername(displayName: string, email: string): Promise<string> {
   const emailBase = email.split('@')[0] || 'guest'

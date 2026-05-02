@@ -1,7 +1,5 @@
-import { AdminPagination } from '../components/AdminPagination'
 import { CampaignDetail } from '../features/campaigns/CampaignDetail'
-import { CampaignFilters } from '../features/campaigns/CampaignFilters'
-import { CampaignTable } from '../features/campaigns/CampaignTable'
+import { CampaignListSection } from '../features/campaigns/CampaignListSection'
 import { useCampaignManagement } from '../features/campaigns/useCampaignManagement'
 import '../styles/CampaignManagement.css'
 
@@ -63,45 +61,25 @@ export default function CampaignManagement() {
       {error && <p className="admin-inline-error">{error}</p>}
       {portabilityMessage && <p className="admin-inline-success">{portabilityMessage}</p>}
 
-      <CampaignFilters
+      <CampaignListSection
         search={search}
         statusFilter={statusFilter}
         pageSize={pageSize}
-        onSearchChange={(value) => {
-          setSearch(value)
-          setPage(1)
-        }}
-        onStatusFilterChange={(value) => {
-          setStatusFilter(value)
-          setPage(1)
-        }}
-        onPageSizeChange={(value) => {
-          setPageSize(value)
-          setPage(1)
-        }}
-      />
-
-      <p className="admin-page-subtitle">
-        Showing {campaigns.length} of {total} campaigns (page {page}/{totalPages})
-      </p>
-
-      <CampaignTable
         campaigns={campaigns}
+        total={total}
+        totalPages={totalPages}
+        page={page}
         loading={loading}
         selectedCampaignId={selectedCampaignId}
         endingSessionId={endingSessionId}
         archivingCampaignId={archivingCampaignId}
+        onSearchChange={setSearch}
+        onStatusFilterChange={setStatusFilter}
+        onPageSizeChange={setPageSize}
+        onPageChange={setPage}
         onSelectCampaign={setSelectedCampaignId}
         onEndSession={(campaign) => void endSession(campaign)}
         onToggleArchive={(campaign, shouldArchive) => void toggleArchive(campaign, shouldArchive)}
-      />
-
-      <AdminPagination
-        page={page}
-        totalPages={totalPages}
-        loading={loading}
-        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
       />
 
       <CampaignDetail
