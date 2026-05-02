@@ -16,7 +16,7 @@ interface CampaignListSectionProps {
   endingSessionId: string | null
   archivingCampaignId: string | null
   onSearchChange: (value: string) => void
-  onStatusFilterChange: (value: string) => void
+  onStatusFilterChange: (value: CampaignStatusFilter) => void
   onPageSizeChange: (value: number) => void
   onPageChange: (nextPage: number | ((current: number) => number)) => void
   onSelectCampaign: (campaignId: string) => void

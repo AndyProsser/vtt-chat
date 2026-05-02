@@ -3,6 +3,7 @@ import { AdminPagination } from '../components/AdminPagination'
 import { UserFilters } from '../features/users/UserFilters'
 import { UserInvitePanel } from '../features/users/UserInvitePanel'
 import { UserTable } from '../features/users/UserTable'
+import { UserExportImportPanel } from '../features/users/UserExportImportPanel'
 import { useUserManagement } from '../features/users/useUserManagement'
 
 export default function UserManagement() {
@@ -31,6 +32,13 @@ export default function UserManagement() {
     creatingInvite,
     runAction,
     createInvite,
+    exportBusy,
+    exportUsers,
+    importPreview,
+    importBusy,
+    importError,
+    previewImport,
+    clearImportPreview,
   } = useUserManagement()
 
   return (
@@ -74,6 +82,16 @@ export default function UserManagement() {
         onInviteEmailChange={setInviteEmail}
         onInviteRoleChange={setInviteRole}
         onCreateInvite={() => void createInvite()}
+      />
+
+      <UserExportImportPanel
+        exportBusy={exportBusy}
+        importPreview={importPreview}
+        importBusy={importBusy}
+        importError={importError}
+        onExport={(format) => void exportUsers(format)}
+        onPreviewImport={(text) => void previewImport(text)}
+        onClearImport={clearImportPreview}
       />
 
       <Typography variant="body2" color="text.secondary">

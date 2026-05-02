@@ -207,6 +207,145 @@ router.get('/users', adminAuthMiddleware, async (req: Request, res: Response) =>
   }
 })
 
+router.get('/users/export', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+      return
+    }
+    if (!hasRole(actor.adminRole, 'ADMIN')) {
+      res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+      return
+    }
+
+    const format = String(req.query.format || 'json').toLowerCase()
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        displayName: true,
+        role: true,
+        adminRole: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    const rows = users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email ?? '',
+      displayName: u.displayName,
+      role: u.role,
+      adminRole: u.adminRole ?? '',
+      isActive: u.isActive,
+      createdAt: u.createdAt.toISOString(),
+      updatedAt: u.updatedAt.toISOString(),
+    }))
+
+    await writeAudit({
+      actor,
+      action: 'EXPORT_USERS',
+      targetType: 'user',
+      outcome: 'SUCCESS',
+      metadata: { count: rows.length, format },
+    })
+
+    if (format === 'csv') {
+      const headers = [
+        'id',
+        'username',
+        'email',
+        'displayName',
+        'role',
+        'adminRole',
+        'isActive',
+        'createdAt',
+        'updatedAt',
+      ]
+      const escape = (v: string | boolean) => {
+        const s = String(v)
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"`
+          : s
+      }
+      const csv = [
+        headers.join(','),
+        ...rows.map((r) => headers.map((h) => escape((r as any)[h])).join(',')),
+      ].join('\n')
+      res.setHeader('Content-Type', 'text/csv')
+      res.setHeader('Content-Disposition', 'attachment; filename="users-export.csv"')
+      res.status(200).send(csv)
+    } else {
+      res.setHeader('Content-Type', 'application/json')
+      res.setHeader('Content-Disposition', 'attachment; filename="users-export.json"')
+      res
+        .status(200)
+        .json({ exportedAt: new Date().toISOString(), count: rows.length, users: rows })
+    }
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
+router.post('/users/import/preview', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const actor = req.admin
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+      return
+    }
+    if (!hasRole(actor.adminRole, 'SUPER_ADMIN')) {
+      res
+        .status(403)
+        .json({ error: 'Insufficient permissions — Super Admin required', code: 'FORBIDDEN' })
+      return
+    }
+
+    const { users } = req.body as {
+      users: Array<{ username?: string; email?: string; displayName?: string; role?: string }>
+    }
+    if (!Array.isArray(users) || users.length === 0) {
+      res
+        .status(400)
+        .json({ error: 'Body must contain a non-empty users array', code: 'INVALID_BODY' })
+      return
+    }
+    if (users.length > 500) {
+      res
+        .status(400)
+        .json({ error: 'Import preview limited to 500 rows per batch', code: 'TOO_MANY_ROWS' })
+      return
+    }
+
+    const usernames = users.map((u) => u.username).filter(Boolean) as string[]
+    const existing = await prisma.user.findMany({
+      where: { username: { in: usernames } },
+      select: { username: true },
+    })
+    const existingSet = new Set(existing.map((u) => u.username))
+
+    const preview = users.map((u, idx) => ({
+      index: idx,
+      username: u.username ?? '',
+      email: u.email ?? '',
+      displayName: u.displayName ?? u.username ?? '',
+      role: u.role ?? 'PLAYER',
+      conflict: existingSet.has(u.username ?? ''),
+      valid: Boolean(u.username && u.username.trim().length >= 2),
+    }))
+
+    const importable = preview.filter((r) => r.valid && !r.conflict).length
+    res.status(200).json({ preview, importable, total: users.length })
+  } catch (error) {
+    errorHandler(error as any, req, res, () => {})
+  }
+})
+
 router.get('/campaigns', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const actor = req.admin

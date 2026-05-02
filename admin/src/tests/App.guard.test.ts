@@ -107,6 +107,36 @@ describe('admin app guard behavior', () => {
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/admin/setup-status')
   })
 
+  it('shows setup wizard when setup is required', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: true }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+
+    expect(container.textContent).toContain('SetupPage')
+    expect(container.textContent).not.toContain('LoginPage')
+  })
+
+  it('shows invite onboarding when invite token is in URL', async () => {
+    window.history.replaceState({}, document.title, '/?invite=test-invite-token')
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+
+    expect(container.textContent).toContain('InviteOnboardingPage')
+    expect(container.textContent).not.toContain('LoginPage')
+  })
+
   it('renders dashboard when authenticated and session validation succeeds', async () => {
     sessionStorage.setItem('admin-token', 'valid-admin-token')
     useAuthStore.setState({
@@ -180,5 +210,171 @@ describe('admin app guard behavior', () => {
     expect(container.textContent).toContain('Admin session expired. Please sign in again.')
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
     expect(sessionStorage.getItem('admin-token')).toBeNull()
+  })
+
+  it('switches to users page when nav item is clicked while authenticated', async () => {
+    sessionStorage.setItem('admin-token', 'valid-admin-token')
+    useAuthStore.setState({
+      token: 'valid-admin-token',
+      admin: { id: 'admin-1', username: 'admin', email: 'admin@example.com' },
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+    })
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { admin: { id: 'admin-1' } }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+    await flushEffects()
+
+    const usersNavButton = Array.from(
+      container.querySelectorAll('div[role="button"], button')
+    ).find((node) => node.textContent?.includes('Users')) as HTMLElement
+
+    await act(async () => {
+      usersNavButton.click()
+    })
+
+    expect(container.textContent).toContain('UsersPage')
+  })
+
+  it('handles session expired event by logging out and showing error', async () => {
+    sessionStorage.setItem('admin-token', 'valid-admin-token')
+    useAuthStore.setState({
+      token: 'valid-admin-token',
+      admin: { id: 'admin-1', username: 'admin', email: 'admin@example.com' },
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+    })
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { admin: { id: 'admin-1' } }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+    await flushEffects()
+
+    await act(async () => {
+      window.dispatchEvent(new Event('vtt-admin:session-expired'))
+    })
+
+    expect(container.textContent).toContain('LoginPage')
+    expect(container.textContent).toContain('Admin session expired. Please sign in again.')
+  })
+
+  it('shows handoff exchange error when launch token exchange fails', async () => {
+    window.history.replaceState({}, document.title, '/?handoff=bad-token')
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+      .mockResolvedValueOnce(
+        createFetchResponse(false, 400, {
+          error: 'Invalid handoff token',
+        })
+      )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+    await flushEffects()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3000/api/admin/auth/handoff/exchange',
+      expect.objectContaining({ method: 'POST' })
+    )
+    expect(container.textContent).toContain('Invalid handoff token')
+    expect(container.textContent).toContain('LoginPage')
+  })
+
+  it('shows missing token error when Open App is clicked without token', async () => {
+    sessionStorage.setItem('admin-token', 'valid-admin-token')
+    useAuthStore.setState({
+      token: 'valid-admin-token',
+      admin: { id: 'admin-1', username: 'admin', email: 'admin@example.com' },
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+    })
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { admin: { id: 'admin-1' } }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+    await flushEffects()
+
+    await act(async () => {
+      useAuthStore.setState({ token: null, isAuthenticated: true })
+    })
+    await flushEffects()
+
+    const openAppButton = container.querySelector(
+      'button[aria-label="Open frontend"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      openAppButton.click()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(openAppButton.textContent).toContain('Open App')
+  })
+
+  it('shows missing handoff token error when Open App response is incomplete', async () => {
+    sessionStorage.setItem('admin-token', 'valid-admin-token')
+    useAuthStore.setState({
+      token: 'valid-admin-token',
+      admin: { id: 'admin-1', username: 'admin', email: 'admin@example.com' },
+      isAuthenticated: true,
+      loading: false,
+      error: null,
+    })
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { setupRequired: false }))
+      .mockResolvedValueOnce(createFetchResponse(true, 200, { admin: { id: 'admin-1' } }))
+      .mockResolvedValueOnce(createFetchResponse(true, 200, {}))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await renderApp()
+    await flushEffects()
+    await flushEffects()
+
+    const openAppButton = container.querySelector(
+      'button[aria-label="Open frontend"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      openAppButton.click()
+    })
+
+    await flushEffects()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3000/api/admin/handoff/app',
+      expect.objectContaining({ method: 'POST' })
+    )
+    expect(openAppButton.textContent).toContain('Open App')
   })
 })

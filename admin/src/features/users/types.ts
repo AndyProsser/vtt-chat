@@ -24,6 +24,40 @@ export interface UserListResponse {
   totalPages: number
 }
 
+export interface UserExportRow {
+  id: string
+  username: string
+  email: string
+  displayName: string
+  role: string
+  adminRole: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserExportResponse {
+  exportedAt: string
+  count: number
+  users: UserExportRow[]
+}
+
+export interface UserImportPreviewRow {
+  index: number
+  username: string
+  email: string
+  displayName: string
+  role: string
+  conflict: boolean
+  valid: boolean
+}
+
+export interface UserImportPreviewResponse {
+  preview: UserImportPreviewRow[]
+  importable: number
+  total: number
+}
+
 export function roleLabel(role: UserRole, adminRole: AdminRole | null): string {
   if (adminRole) return `${role} / ${adminRole}`
   return role
