@@ -1,7 +1,5 @@
 /**
- * Stage stub module.
- * Intentionally retained as a typed stub until this domain is implemented.
+ * Audio conditions service — planned for a future audio-hardening stage.
+ * Will implement per-user audio effect conditions (reverb, distortion, pitch shift, etc.).
  */
-import type { StageStubState } from '@/types/audio.types'
-
-export const stageStubState: StageStubState = 'planned'
+export const MODULE_STATUS = 'planned' as const

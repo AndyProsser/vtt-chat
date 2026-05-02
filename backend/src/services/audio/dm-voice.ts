@@ -1,7 +1,5 @@
 /**
- * Stage stub module.
- * Intentionally retained as a typed stub until this domain is implemented.
+ * DM voice control service — planned for a future audio-hardening stage.
+ * Will implement DM-controlled voice presets and voice modulation for session participants.
  */
-import type { StageStubState } from '@/types/audio.types'
-
-export const stageStubState: StageStubState = 'planned'
+export const MODULE_STATUS = 'planned' as const

@@ -3,6 +3,12 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { ErrorCode, type EventEnvelope, type UUID, isValidUUID } from '@shared'
 import { extractTokenFromHeader, verifyToken, type TokenPayload } from '@/services/auth.service'
 import { getSession, isUserInSession } from '@/services/session.service'
+import {
+  applyDMOverrideState,
+  getSessionAudioState,
+  removeDMOverrideState,
+  setRoomEnvironmentState,
+} from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
 
@@ -192,18 +198,29 @@ router.post('/environment', requireAuth, async (req: Request, res: Response) => 
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
 
+  const setAt = Date.now()
+  const persisted = await setRoomEnvironmentState({
+    sessionId: sessionId as UUID,
+    roomId: roomId as UUID,
+    environmentName,
+    environmentId: `env-${environmentName}`,
+    parameters: typeof parameters === 'object' && parameters ? parameters : {},
+    setBy: user.userId as UUID,
+    setAt,
+  })
+
   const event = createEvent({
     type: 'AUDIO:ENVIRONMENT_SET',
     user,
     sessionId: sessionId as UUID,
     roomId: roomId as UUID,
     payload: {
-      environmentId: `env-${environmentName}`,
-      environmentName,
-      roomId,
-      setBy: user.userId,
-      setAt: Date.now(),
-      parameters: typeof parameters === 'object' && parameters ? parameters : {},
+      environmentId: persisted.environmentId,
+      environmentName: persisted.environmentName,
+      roomId: persisted.roomId,
+      setBy: persisted.setBy,
+      setAt: persisted.setAt,
+      parameters: persisted.parameters,
     },
   })
 
@@ -251,17 +268,27 @@ router.post('/dm-override/apply', requireAuth, async (req: Request, res: Respons
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
 
+  const appliedAt = Date.now()
+  const persisted = await applyDMOverrideState({
+    sessionId: sessionId as UUID,
+    targetUserId: targetUserId as UUID,
+    overrideType,
+    parameters: typeof parameters === 'object' && parameters ? parameters : {},
+    appliedBy: user.userId as UUID,
+    appliedAt,
+  })
+
   const event = createEvent({
     type: 'AUDIO:DM_OVERRIDE_APPLIED',
     user,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {
-      targetUserId,
-      dmId: user.userId,
-      overrideType,
-      parameters: typeof parameters === 'object' && parameters ? parameters : {},
-      appliedAt: Date.now(),
+      targetUserId: persisted.targetUserId,
+      dmId: persisted.appliedBy,
+      overrideType: persisted.overrideType,
+      parameters: persisted.parameters,
+      appliedAt: persisted.appliedAt,
     },
   })
 
@@ -300,6 +327,12 @@ router.post('/dm-override/remove', requireAuth, async (req: Request, res: Respon
   if (!authz.ok) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
+
+  await removeDMOverrideState({
+    sessionId: sessionId as UUID,
+    targetUserId: targetUserId as UUID,
+    overrideType: typeof overrideType === 'string' ? overrideType : 'UNKNOWN',
+  })
 
   const event = createEvent({
     type: 'AUDIO:DM_OVERRIDE_REMOVED',
@@ -342,12 +375,15 @@ router.get('/state/:sessionId', requireAuth, async (req: Request, res: Response)
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
 
-  // Stage 7 baseline: control events are authoritative and realtime.
-  // This endpoint exists to keep a stable API surface for stage expansion.
+  const state = await getSessionAudioState(sessionId as UUID)
+  const latestEnvironment = state.environments[0] || null
+
   return res.status(200).json({
-    sessionId,
-    environment: null,
-    dmOverrides: [],
+    sessionId: state.sessionId,
+    // Backward-compatible field retained for older callers.
+    environment: latestEnvironment,
+    environments: state.environments,
+    dmOverrides: state.dmOverrides,
   })
 })
 

@@ -7,7 +7,11 @@
 
 import type { EventEnvelope } from '@shared'
 import { logger } from '@/utils'
-import eventBroadcaster from '@/services/event-broadcaster.service'
+import {
+  applyDMOverrideState,
+  removeDMOverrideState,
+  setRoomEnvironmentState,
+} from '@/services/audio-state.service'
 
 // ============================================================================
 // Handler Interface
@@ -64,11 +68,6 @@ export const audioHandlers: AudioHandlers = {
         'audio',
         `Effect ${payload.effectName} applied by ${payload.appliedBy}: target=${payload.targetUserId || payload.targetRoomId}`
       )
-
-      // Broadcast event to room members (only room effects)
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
-      }
     } catch (error) {
       logger.error(
         'audio',
@@ -101,11 +100,6 @@ export const audioHandlers: AudioHandlers = {
         'audio',
         `Effect ${payload.effectId} removed by ${payload.removedBy} at ${payload.removedAt}`
       )
-
-      // Broadcast removal event to room
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
-      }
     } catch (error) {
       logger.error(
         'audio',
@@ -149,11 +143,6 @@ export const audioHandlers: AudioHandlers = {
         'audio',
         `Preset ${payload.presetName} loaded by ${payload.loadedBy} for ${payload.targetUserId || 'self'}`
       )
-
-      // Broadcast preset loaded event to room
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
-      }
     } catch (error) {
       logger.error(
         'audio',
@@ -201,9 +190,16 @@ export const audioHandlers: AudioHandlers = {
         `Environment ${payload.environmentName} set by ${payload.setBy} in room ${payload.roomId}`
       )
 
-      // Broadcast environment change to all room members
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
+      if (payload.environmentName && payload.environmentId && payload.roomId && payload.setBy) {
+        await setRoomEnvironmentState({
+          sessionId: event.sessionId as any,
+          roomId: payload.roomId as any,
+          environmentName: payload.environmentName,
+          environmentId: payload.environmentId,
+          parameters: payload.parameters || {},
+          setBy: payload.setBy as any,
+          setAt: payload.setAt,
+        })
       }
     } catch (error) {
       logger.error(
@@ -250,9 +246,15 @@ export const audioHandlers: AudioHandlers = {
         `DM override ${payload.overrideType} applied by ${payload.dmId} to user ${payload.targetUserId}`
       )
 
-      // Broadcast override to affected user and DM
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
+      if (payload.targetUserId && payload.dmId && payload.overrideType) {
+        await applyDMOverrideState({
+          sessionId: event.sessionId as any,
+          targetUserId: payload.targetUserId as any,
+          overrideType: payload.overrideType,
+          parameters: payload.parameters || {},
+          appliedBy: payload.dmId as any,
+          appliedAt: payload.appliedAt,
+        })
       }
     } catch (error) {
       logger.error(
@@ -289,9 +291,12 @@ export const audioHandlers: AudioHandlers = {
         `DM override ${payload.overrideType} removed by ${payload.dmId} from user ${payload.targetUserId}`
       )
 
-      // Broadcast override removal to affected user and DM
-      if (event.sessionId) {
-        eventBroadcaster.broadcastToSession(event.sessionId, event)
+      if (payload.targetUserId && payload.overrideType) {
+        await removeDMOverrideState({
+          sessionId: event.sessionId as any,
+          targetUserId: payload.targetUserId as any,
+          overrideType: payload.overrideType,
+        })
       }
     } catch (error) {
       logger.error(

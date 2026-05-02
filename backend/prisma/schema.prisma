@@ -7,24 +7,26 @@ datasource db {
 }
 
 model Session {
-  id          String              @id @default(uuid()) @db.Uuid
-  campaignId  String?             @db.Uuid
-  campaign    Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  name        String
-  description String?
-  dmId        String              @db.Uuid
-  state       SessionState        @default(IDLE)
-  members     SessionMember[]
-  rooms       Room[]
-  presence    PresenceSnapshot[]
-  messages    ChatMessage[]
-  notes       Note[]
-  logs        SessionLog[]
-  recordings  RecordingMetadata[]
-  createdAt   DateTime            @default(now())
-  startedAt   DateTime?
-  endedAt     DateTime?
-  updatedAt   DateTime            @updatedAt
+  id               String              @id @default(uuid()) @db.Uuid
+  campaignId       String?             @db.Uuid
+  campaign         Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  name             String
+  description      String?
+  dmId             String              @db.Uuid
+  state            SessionState        @default(IDLE)
+  members          SessionMember[]
+  rooms            Room[]
+  presence         PresenceSnapshot[]
+  messages         ChatMessage[]
+  notes            Note[]
+  logs             SessionLog[]
+  recordings       RecordingMetadata[]
+  audioRoomStates  AudioRoomState[]
+  audioDMOverrides AudioDMOverride[]
+  createdAt        DateTime            @default(now())
+  startedAt        DateTime?
+  endedAt          DateTime?
+  updatedAt        DateTime            @updatedAt
 
   @@index([dmId])
   @@index([campaignId])
@@ -362,6 +364,40 @@ model ImportExportArtifact {
   @@index([campaignId])
   @@index([createdByUserId])
   @@index([createdAt])
+}
+
+model AudioRoomState {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @db.Uuid
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roomId          String   @db.Uuid
+  environmentName String
+  environmentId   String
+  parameters      Json?
+  setBy           String   @db.Uuid
+  setAt           DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([sessionId, roomId])
+  @@index([sessionId])
+}
+
+model AudioDMOverride {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionId    String   @db.Uuid
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  targetUserId String   @db.Uuid
+  overrideType String
+  parameters   Json?
+  appliedBy    String   @db.Uuid
+  appliedAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([sessionId, targetUserId, overrideType])
+  @@index([sessionId])
+  @@index([targetUserId])
 }
 
 enum AdminRole {

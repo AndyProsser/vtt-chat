@@ -2,14 +2,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EventEnvelope, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 
-const { createRoomMock, joinRoomMock, leaveRoomMock, updatePresenceStateMock, loggerDebugMock } =
-  vi.hoisted(() => ({
-    createRoomMock: vi.fn(async () => null),
-    joinRoomMock: vi.fn(async () => null),
-    leaveRoomMock: vi.fn(async () => null),
-    updatePresenceStateMock: vi.fn(async () => null),
-    loggerDebugMock: vi.fn(),
-  }))
+const {
+  createRoomMock,
+  joinRoomMock,
+  leaveRoomMock,
+  updatePresenceStateMock,
+  applyDMOverrideStateMock,
+  removeDMOverrideStateMock,
+  setRoomEnvironmentStateMock,
+  loggerDebugMock,
+  loggerInfoMock,
+  loggerErrorMock,
+} = vi.hoisted(() => ({
+  createRoomMock: vi.fn(async () => null),
+  joinRoomMock: vi.fn(async () => null),
+  leaveRoomMock: vi.fn(async () => null),
+  updatePresenceStateMock: vi.fn(async () => null),
+  applyDMOverrideStateMock: vi.fn(async () => null),
+  removeDMOverrideStateMock: vi.fn(async () => null),
+  setRoomEnvironmentStateMock: vi.fn(async () => null),
+  loggerDebugMock: vi.fn(),
+  loggerInfoMock: vi.fn(),
+  loggerErrorMock: vi.fn(),
+}))
 
 vi.mock('@/services/room.service', () => ({
   createRoom: createRoomMock,
@@ -18,9 +33,17 @@ vi.mock('@/services/room.service', () => ({
   updatePresenceState: updatePresenceStateMock,
 }))
 
+vi.mock('@/services/audio-state.service', () => ({
+  applyDMOverrideState: applyDMOverrideStateMock,
+  removeDMOverrideState: removeDMOverrideStateMock,
+  setRoomEnvironmentState: setRoomEnvironmentStateMock,
+}))
+
 vi.mock('@/utils', () => ({
   logger: {
     debug: loggerDebugMock,
+    info: loggerInfoMock,
+    error: loggerErrorMock,
   },
 }))
 
@@ -44,7 +67,12 @@ describe('ws handlers', () => {
     joinRoomMock.mockClear()
     leaveRoomMock.mockClear()
     updatePresenceStateMock.mockClear()
+    applyDMOverrideStateMock.mockClear()
+    removeDMOverrideStateMock.mockClear()
+    setRoomEnvironmentStateMock.mockClear()
     loggerDebugMock.mockClear()
+    loggerInfoMock.mockClear()
+    loggerErrorMock.mockClear()
   })
 
   it('handleRoomCreated creates room with fallbacks and logs event', async () => {
@@ -149,7 +177,7 @@ describe('ws handlers', () => {
     })
   })
 
-  it('chat/session/notes/audio handlers log the handled event type', async () => {
+  it('chat/session/notes handlers log the handled event type', async () => {
     const { chatHandlers, sessionHandlers, notesHandlers, audioHandlers } =
       await import('@/ws/handlers')
 
@@ -164,8 +192,10 @@ describe('ws handlers', () => {
         'Handled CHAT:TYPING_STOPPED',
         'Handled SESSION:PAUSED',
         'Handled NOTES:UPDATED',
-        'Handled AUDIO:DM_OVERRIDE_REMOVED',
       ])
     )
+
+    expect(removeDMOverrideStateMock).not.toHaveBeenCalled()
+    expect(loggerInfoMock).toHaveBeenCalled()
   })
 })

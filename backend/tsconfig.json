@@ -18,6 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@/types": ["src/types/index.ts"],
+      "@/types/*": ["src/types/*"],
       "@shared": ["../shared/index.ts"],
       "@shared/*": ["../shared/*"]
     }

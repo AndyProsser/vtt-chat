@@ -1,7 +1,5 @@
 /**
- * Stage stub module.
- * Intentionally retained as a typed stub until this domain is implemented.
+ * Audio environment presets service — planned for a future audio-hardening stage.
+ * Core environment persistence is handled by audio-state.service.ts.
  */
-import type { StageStubState } from '@/types/audio.types'
-
-export const stageStubState: StageStubState = 'planned'
+export const MODULE_STATUS = 'planned' as const
