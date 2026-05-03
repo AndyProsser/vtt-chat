@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../core-ui'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../../core-ui'
 import type { CenterPaneView, RightRailTab } from '@/types/ui'
+import { Icon } from '../ui/Icon'
 import { telemetryClient } from '../../utils/telemetry'
 import '../../styles/components/session/CommandCenterFrame.css'
 
@@ -61,6 +71,29 @@ function formatTabLabel(tab: RightRailTab): string {
   }
 }
 
+function iconForTab(
+  tab: RightRailTab
+): 'rooms' | 'voice' | 'notes' | 'search' | 'journal' | 'history' | 'settings' {
+  switch (tab) {
+    case 'rooms':
+      return 'rooms'
+    case 'audio':
+      return 'voice'
+    case 'notes':
+      return 'notes'
+    case 'search':
+      return 'search'
+    case 'journal':
+      return 'journal'
+    case 'history':
+      return 'history'
+    case 'settings':
+      return 'settings'
+    default:
+      return 'settings'
+  }
+}
+
 function isRightRailTab(value: string, tabs: RightRailTab[]): value is RightRailTab {
   return tabs.includes(value as RightRailTab)
 }
@@ -73,6 +106,16 @@ interface CommandCenterFrameProps {
   renderLeftRail: () => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
+  rightRailIndicators?: Partial<Record<RightRailTab, number>>
+}
+
+function normalizeIndicatorCount(rawCount: number | undefined): number {
+  if (!Number.isFinite(rawCount)) return 0
+  return Math.max(0, Math.floor(rawCount ?? 0))
+}
+
+function formatIndicatorCount(count: number): string {
+  return count > 99 ? '99+' : String(count)
 }
 
 export function CommandCenterFrame({
@@ -83,6 +126,7 @@ export function CommandCenterFrame({
   renderLeftRail,
   renderCenterPane,
   renderRightRailTab,
+  rightRailIndicators = {},
 }: CommandCenterFrameProps) {
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
   const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)
@@ -190,22 +234,49 @@ export function CommandCenterFrame({
                 setSelectedRightRailTab(nextTab)
               }}
             >
-              <TabsList className="mb-3 h-auto w-full flex-wrap gap-2 rounded-ui-md bg-ui-surface-subtle p-1">
-                {tabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab}
-                    value={tab}
-                    aria-label={`Tool ${formatTabLabel(tab)}`}
-                    className="rounded-ui-sm text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
-                  >
-                    {formatTabLabel(tab)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="command-center-right-rail-layout">
+                <TooltipProvider delayDuration={140}>
+                  <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
+                    {tabs.map((tab) => {
+                      const label = formatTabLabel(tab)
+                      const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
 
-              <TabsContent value={activeRightRailTab} data-testid="right-rail-content">
-                {renderRightRailTab(activeRightRailTab)}
-              </TabsContent>
+                      return (
+                        <Tooltip key={tab}>
+                          <TooltipTrigger asChild>
+                            <TabsTrigger
+                              value={tab}
+                              aria-label={`Tool ${label}`}
+                              className="command-center-right-rail-trigger"
+                            >
+                              <Icon name={iconForTab(tab)} />
+                              {indicatorCount > 0 ? (
+                                <span
+                                  className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
+                                  aria-hidden="true"
+                                >
+                                  {formatIndicatorCount(indicatorCount)}
+                                </span>
+                              ) : null}
+                            </TabsTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="command-center-right-rail-tooltip">
+                            {label}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    })}
+                  </TabsList>
+                </TooltipProvider>
+
+                <TabsContent
+                  value={activeRightRailTab}
+                  data-testid="right-rail-content"
+                  className="command-center-right-rail-content"
+                >
+                  {renderRightRailTab(activeRightRailTab)}
+                </TabsContent>
+              </div>
             </Tabs>
           </aside>
         )}

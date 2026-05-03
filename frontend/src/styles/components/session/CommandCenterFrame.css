@@ -52,6 +52,103 @@
   animation: slide-in-from-right var(--duration-normal) var(--ease-out);
 }
 
+.command-center-right-rail-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.command-center-right-rail-toolbar {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-subtle) 86%, transparent);
+  padding: 0.35rem;
+}
+
+.command-center-right-rail-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.command-center-right-rail-trigger:hover {
+  color: var(--color-text-primary);
+}
+
+.command-center-right-rail-trigger[data-state='active'] {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.command-center-right-rail-indicator {
+  position: absolute;
+  right: -0.24rem;
+  bottom: -0.24rem;
+  min-width: 0.95rem;
+  height: 0.95rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  background: #ef4444;
+  border: 1px solid var(--color-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.command-center-right-rail-indicator--rooms {
+  background: #10b981;
+}
+
+.command-center-right-rail-indicator--audio {
+  background: #06b6d4;
+}
+
+.command-center-right-rail-indicator--notes,
+.command-center-right-rail-indicator--journal {
+  background: #3b82f6;
+}
+
+.command-center-right-rail-indicator--search {
+  background: #8b5cf6;
+}
+
+.command-center-right-rail-indicator--history {
+  background: #f59e0b;
+}
+
+.command-center-right-rail-indicator--settings {
+  background: #64748b;
+}
+
+.command-center-right-rail-tooltip {
+  background: #111827;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.command-center-right-rail-content {
+  min-width: 0;
+}
+
 @keyframes slide-in-from-right {
   from {
     opacity: 0;

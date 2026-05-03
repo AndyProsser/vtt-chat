@@ -22,15 +22,33 @@ const TYPE_LABELS: Record<string, string> = {
   [MessageType.SYSTEM]: 'System',
 }
 
-const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  [MessageType.IC]: { bg: 'bg-sky-100', text: 'text-sky-800' },
-  [MessageType.OOC]: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
-  [MessageType.WHISPER]: { bg: 'bg-violet-100', text: 'text-violet-800' },
-  [MessageType.SYSTEM]: { bg: 'bg-slate-200', text: 'text-slate-700' },
+const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'system'> = {
+  [MessageType.IC]: 'ic',
+  [MessageType.OOC]: 'ooc',
+  [MessageType.WHISPER]: 'whisper',
+  [MessageType.SYSTEM]: 'system',
 }
 
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+function formatRelativeTime(ts: number): string {
+  const diffMs = Date.now() - ts
+  const seconds = Math.max(1, Math.floor(diffMs / 1000))
+
+  if (seconds < 60) {
+    return `${seconds} second${seconds === 1 ? '' : 's'} ago`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  }
+
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
 export function MessageList({
@@ -46,7 +64,7 @@ export function MessageList({
     <div className="chat-message-list">
       {messages.map((msg, index) => {
         const previous = index > 0 ? messages[index - 1] : undefined
-        const colors = TYPE_COLORS[msg.type] ?? TYPE_COLORS[MessageType.OOC]
+        const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
         const isSelf = msg.authorId === currentUserId
         const isGroupedWithPrevious = Boolean(
           groupingWindowMs > 0 &&
@@ -60,23 +78,24 @@ export function MessageList({
             key={msg.id}
             className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
           >
-            {/* Author + type badge */}
+            {/* Author */}
             {!isGroupedWithPrevious ? (
               <div className="chat-message__meta">
-                {!isSelf && <span className="font-semibold">{msg.authorUsername}</span>}
-                <span
-                  className={`chat-message__type rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
-                >
-                  {TYPE_LABELS[msg.type] ?? msg.type}
-                </span>
-                {msg.editedAt && <span className="italic">edited</span>}
-                <span>{formatTime(msg.createdAt)}</span>
+                <span className="chat-message__author">{msg.authorUsername}</span>
               </div>
             ) : null}
 
             {/* Message bubble */}
             <div className={`chat-message__bubble ${isSelf ? 'chat-message__bubble--self' : ''}`}>
+              <span className={`chat-message__type chat-message__type--${variant}`}>
+                {TYPE_LABELS[msg.type] ?? msg.type}
+              </span>{' '}
               {msg.content}
+            </div>
+
+            <div className="chat-message__timestamp">
+              {msg.editedAt ? 'edited · ' : ''}
+              {formatRelativeTime(msg.createdAt)}
             </div>
           </article>
         )

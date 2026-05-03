@@ -134,6 +134,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const rooms = useStore((state) => state.rooms)
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
+  const notes = useStore((state) => state.notes)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
@@ -161,6 +162,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const currentTransitionNotice = currentSession
     ? sessionTransitionNotice[currentSession.id]
     : undefined
+  const currentSessionNoteCount = currentSession
+    ? Object.keys(notes[currentSession.id] ?? {}).length
+    : 0
   const selectedRoomId = useMemo<UUID | ''>(() => {
     if (!currentRooms.length) {
       return ''
@@ -177,6 +181,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
       ? currentTransitionNotice
       : undefined
+  const rightRailIndicators = useMemo<Partial<Record<RightRailTab, number>>>(
+    () => ({
+      notes: currentSessionNoteCount,
+      journal: currentSessionNoteCount,
+      history: activeTransitionNotice ? 1 : 0,
+    }),
+    [activeTransitionNotice, currentSessionNoteCount]
+  )
 
   const hideTransitionToast = useCallback(() => {
     if (!activeTransitionNotice) {
@@ -825,6 +837,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
             <CommandCenterFrame
               role={user.role}
+              rightRailIndicators={rightRailIndicators}
               renderToolbar={(actions) => <SessionToolbar actions={actions} />}
               renderCampaignInfo={() => {
                 const selectedCampaign = campaigns.find(
