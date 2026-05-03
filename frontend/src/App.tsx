@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
@@ -26,7 +26,9 @@ export default function App() {
     }
   }
 
-  const [routeView] = useState<RouteView>(() => resolveRoute(window.location.pathname))
+  const [routeView, setRouteView] = useState<RouteView>(() =>
+    resolveRoute(window.location.pathname)
+  )
   const browserOrigin = window.location.origin
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
   const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
@@ -81,6 +83,17 @@ export default function App() {
   )
   const showUpgradePrompt =
     routeView.kind === 'app' && isGuestAccount && !upgradePromptDismissed && !currentSessionId
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setRouteView(resolveRoute(window.location.pathname))
+    }
+
+    window.addEventListener('popstate', handleRouteChange)
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange)
+    }
+  }, [])
 
   const renderRouteView = () => {
     switch (routeView.kind) {

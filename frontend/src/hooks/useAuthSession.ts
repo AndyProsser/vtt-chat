@@ -23,7 +23,10 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     setAuth({ token, user })
   }
 
-  const handleLoginSuccess = (token: string, user: { id: UUID; username: string; role: Role }) => {
+  const handleLoginSuccess = (
+    token: string,
+    user: { id: UUID; username: string; role: Role; accessMode?: 'USER' | 'CAMPAIGN' }
+  ) => {
     storeAuthSession(token, {
       ...user,
       authType: 'FULL',

@@ -5,8 +5,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SessionState } from '@shared'
-import type { UUID, Role } from '@shared'
+import { SessionState, Role } from '@shared'
+import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
@@ -25,9 +25,10 @@ import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
 import { AudioPanel } from '../audio/AudioPanel'
-import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { Toast } from '../ui/Toast'
+import { Icon } from '../ui/Icon'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
+import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
 import type {
   Room as RoomRecord,
@@ -153,22 +154,56 @@ function getPrivacyCounterLabel(label: string | undefined, rounded: number | und
   return `~${rounded}`
 }
 
+function parsePlayerInviteCode(input: string): string {
+  const raw = input.trim()
+  if (!raw) {
+    return ''
+  }
+
+  try {
+    const parsedUrl = new URL(raw)
+    const joinMatch = parsedUrl.pathname.match(/\/join\/([^/?#]+)/i)
+    if (joinMatch?.[1]) {
+      return decodeURIComponent(joinMatch[1]).trim().toUpperCase()
+    }
+  } catch {
+    // Input may be plain invite code or a relative join path.
+  }
+
+  const pathMatch = raw.match(/\/join\/([^/?#]+)/i)
+  if (pathMatch?.[1]) {
+    return decodeURIComponent(pathMatch[1]).trim().toUpperCase()
+  }
+
+  return raw.toUpperCase()
+}
+
 export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: SessionInitProps) {
+  const detectThemeMode = (): FrontendThemeMode => {
+    if (typeof document === 'undefined') {
+      return 'light'
+    }
+
+    return document.documentElement.classList.contains(FRONTEND_THEME_CLASSES.dark)
+      ? 'dark'
+      : 'light'
+  }
+
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState<UUID | ''>('')
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
   const [newCampaignName, setNewCampaignName] = useState('')
   const [newCampaignDescription, setNewCampaignDescription] = useState('')
-  const [joinCampaignId, setJoinCampaignId] = useState('')
-  const [joinInviteCode, setJoinInviteCode] = useState('')
+  const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false)
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
+  const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
   const [selectedRoomIdOverride, setSelectedRoomIdOverride] = useState<UUID | ''>('')
   const [error, setError] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
-  const [isHydrating, setIsHydrating] = useState(false)
+  const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
     if (typeof window === 'undefined') {
       return DEFAULT_CHAT_GROUPING_WINDOW_MS
@@ -267,7 +302,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const handleToggleVoiceOfGod = useCallback(
     async (enabled: boolean) => {
-      if (!currentSession || user.role !== 'DM') {
+      if (!currentSession || currentSession.dmId !== user.id) {
         return
       }
 
@@ -303,7 +338,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setVoiceOfGodState({ enabled })
       }
     },
-    [apiUrl, currentSession, setVoiceOfGodState, token, user.role]
+    [apiUrl, currentSession, setVoiceOfGodState, token, user.id]
   )
 
   useEffect(() => {
@@ -449,7 +484,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     const loadPresenceAndRooms = async () => {
-      setIsHydrating(true)
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
           fetch(`${apiUrl}/api/rooms/${currentSession.id}`, {
@@ -518,8 +552,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
       } catch {
         // Event-driven WebSocket updates continue to flow even if hydration fails.
-      } finally {
-        setIsHydrating(false)
       }
     }
 
@@ -571,13 +603,37 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setIsJoiningCampaign(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/campaigns/${joinCampaignId}/join`, {
+      const inviteCode = parsePlayerInviteCode(joinInviteInput)
+      if (!inviteCode) {
+        throw new Error('Invite code or join link is required')
+      }
+
+      const validateResponse = await fetch(
+        `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
+      )
+
+      if (!validateResponse.ok) {
+        const validateErrorData = await validateResponse.json().catch(() => ({}))
+        throw new Error(validateErrorData.message || 'Invalid or expired invite code')
+      }
+
+      const validateData = (await validateResponse.json()) as {
+        valid?: boolean
+        campaign?: { id?: UUID }
+      }
+
+      const campaignId = validateData.campaign?.id
+      if (!validateData.valid || !campaignId) {
+        throw new Error('Invalid or expired invite code')
+      }
+
+      const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ inviteCode: joinInviteCode }),
+        body: JSON.stringify({ inviteCode }),
       })
 
       if (!response.ok) {
@@ -599,10 +655,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const campaignsData = await campaignsResponse.json()
       const nextCampaigns = (campaignsData.campaigns || []) as CampaignSummary[]
       setCampaigns(nextCampaigns)
-      setSelectedCampaignId(joinCampaignId as UUID)
+      setSelectedCampaignId(campaignId as UUID)
       setShowJoinCampaignModal(false)
-      setJoinCampaignId('')
-      setJoinInviteCode('')
+      setJoinInviteInput('')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -631,7 +686,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    if (user.role !== 'DM') {
+    const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
+    const canStartAsDm = targetCampaign?.currentDmId === user.id
+
+    if (!canStartAsDm) {
       setError('No campaign chapter is available yet. Wait for the DM to start the session.')
       return
     }
@@ -664,7 +722,25 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const handleOpenCampaignSettingsRoute = (campaignId: UUID) => {
-    window.location.href = `/campaigns/${campaignId}/settings`
+    window.history.pushState({}, '', `/campaigns/${campaignId}/settings`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const handleToggleTheme = () => {
+    const nextTheme: FrontendThemeMode = themeMode === 'dark' ? 'light' : 'dark'
+    document.documentElement.classList.remove(
+      FRONTEND_THEME_CLASSES.light,
+      FRONTEND_THEME_CLASSES.dark
+    )
+    document.documentElement.classList.add(FRONTEND_THEME_CLASSES[nextTheme])
+    window.localStorage.setItem('vtt-theme-mode', nextTheme)
+    setThemeMode(nextTheme)
+  }
+
+  const handleLogoff = () => {
+    sessionStorage.removeItem('authToken')
+    sessionStorage.removeItem('user')
+    window.location.assign('/')
   }
 
   const handleStartSession = async (sessionId: UUID) => {
@@ -715,17 +791,18 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const hasSessionSelected = currentSession !== null
   const isSessionActive = currentSession?.state === SessionState.ACTIVE
+  const effectiveSessionRole: Role =
+    currentSession && currentSession.dmId === user.id ? Role.DM : user.role
+  const effectiveSessionUser =
+    effectiveSessionRole === user.role ? user : { ...user, role: effectiveSessionRole }
   const canStartFromGreenroom =
-    user.role === 'DM' &&
+    currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.PAUSED)
-  const canStopFromActive = user.role === 'DM' && isSessionActive
+  const canStopFromActive = currentSession?.dmId === user.id && isSessionActive
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
 
   return (
     <>
-      {/* Reconnect / hydration banner — sits above the main surface */}
-      <ReconnectBanner wsState={wsState} isHydrating={isHydrating} />
-
       <div
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home'}`}
       >
@@ -762,19 +839,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </span>
               </div>
 
-              <div className="session-toolbar__zone session-toolbar__zone--center">
-                <span className="session-toolbar__status-pill">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    shield_person
-                  </span>
-                  <span>User</span>
-                </span>
-              </div>
-
               <div className="session-toolbar__zone session-toolbar__zone--right">
                 <button
                   type="button"
-                  className="session-toolbar__action"
+                  className="session-toolbar__icon-btn"
+                  onClick={() => setShowCreateCampaignModal(true)}
+                  disabled={isCreatingCampaign}
+                  title="Create campaign"
+                  aria-label="Create campaign"
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    add_circle
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="session-toolbar__icon-btn"
                   onClick={() => setShowJoinCampaignModal(true)}
                   disabled={isJoiningCampaign}
                   title="Join campaign"
@@ -783,17 +863,41 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   <span className="material-symbols-outlined" aria-hidden="true">
                     group_add
                   </span>
-                  <span>Join Campaign</span>
+                </button>
+                <button
+                  type="button"
+                  className="session-toolbar__icon-btn"
+                  onClick={() => setShowUserSettingsModal(true)}
+                  title="Open user settings"
+                  aria-label="Open user settings"
+                >
+                  <Icon name="settings" />
+                </button>
+                <button
+                  type="button"
+                  className="session-toolbar__icon-btn"
+                  onClick={handleToggleTheme}
+                  title="Toggle theme"
+                  aria-label="Toggle theme"
+                >
+                  <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
                 </button>
                 <span
                   className={`session-toolbar__connection session-toolbar__connection--${wsState}`}
                   aria-label={`Connection ${wsState}`}
                   role="status"
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    fiber_manual_record
-                  </span>
+                  <Icon name="status" />
                 </span>
+                <button
+                  type="button"
+                  className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
+                  onClick={handleLogoff}
+                  title="Log off"
+                  aria-label="Log off"
+                >
+                  <Icon name="logout" />
+                </button>
               </div>
             </div>
 
@@ -805,19 +909,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     Choose a campaign to enter. Session chapter details are handled automatically.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="session-button session-button-brand session-card-create-button"
-                  onClick={() => setShowCreateCampaignModal(true)}
-                  disabled={isCreatingCampaign}
-                  title="Create campaign"
-                  aria-label="Create campaign"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    add_circle
-                  </span>
-                  <span>Create Campaign</span>
-                </button>
               </div>
 
               {error && (
@@ -965,13 +1056,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         {hasSessionSelected && currentSession && (
           <div className="session-command-center">
             <CommandCenterFrame
-              role={user.role}
+              role={effectiveSessionRole}
               rightRailIndicators={rightRailIndicators}
               renderToolbar={(actions) => (
                 <SessionToolbar
                   actions={actions}
                   campaignName={selectedCampaign?.name || 'No campaign selected'}
-                  role={user.role}
+                  role={effectiveSessionRole}
                   wsState={wsState}
                   sessionState={currentSession.state}
                   canStartSession={canStartFromGreenroom}
@@ -1002,7 +1093,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     apiUrl={apiUrl}
                     token={token}
                     sessionId={currentSession.id}
-                    role={user.role}
+                    role={effectiveSessionRole}
                     username={user.username}
                     sessionName={currentSession.name}
                     sessionState={currentSession.state}
@@ -1042,7 +1133,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                             token={token}
                             sessionId={currentSession.id}
                             roomId={selectedRoomId}
-                            user={user}
+                            user={effectiveSessionUser}
                             messageGroupingWindowMs={messageGroupingWindowMs}
                           />
                         ) : (
@@ -1061,7 +1152,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
-                      user={user}
+                      user={effectiveSessionUser}
                     />
                   )}
                 </div>
@@ -1086,7 +1177,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     <DMAudioControls
                       apiUrl={apiUrl}
                       token={token}
-                      role={user.role}
+                      role={effectiveSessionRole}
                       sessionId={currentSession.id}
                       dmUserId={currentSession.dmId}
                       rooms={currentRooms.map((room) => ({
@@ -1110,7 +1201,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
-                      role={user.role}
+                      role={effectiveSessionRole}
                       rooms={currentRooms.map((room) => ({
                         id: room.id,
                         name: room.name,
@@ -1130,7 +1221,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
-                      role={user.role}
+                      role={effectiveSessionRole}
                       onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
                     />
                   )
@@ -1143,7 +1234,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
-                      role={user.role}
+                      role={effectiveSessionRole}
                       userId={user.id}
                     />
                   )
@@ -1156,7 +1247,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
-                      role={user.role}
+                      role={effectiveSessionRole}
                       userId={user.id}
                     />
                   )
@@ -1240,18 +1331,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             <form onSubmit={handleJoinCampaign}>
               <input
                 type="text"
-                value={joinCampaignId}
-                onChange={(e) => setJoinCampaignId(e.target.value)}
-                placeholder="Campaign ID"
-                className="session-input"
-                disabled={isJoiningCampaign}
-                required
-              />
-              <input
-                type="text"
-                value={joinInviteCode}
-                onChange={(e) => setJoinInviteCode(e.target.value)}
-                placeholder="Invite code"
+                value={joinInviteInput}
+                onChange={(e) => setJoinInviteInput(e.target.value)}
+                placeholder="Invite code or /join link"
                 className="session-input"
                 disabled={isJoiningCampaign}
                 required
@@ -1259,7 +1341,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               <div className="session-action-row">
                 <button
                   type="submit"
-                  disabled={isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()}
+                  disabled={isJoiningCampaign || !joinInviteInput.trim()}
                   className="session-button session-button-indigo"
                 >
                   {isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
@@ -1273,6 +1355,32 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showUserSettingsModal && (
+        <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal session-user-settings-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="User settings"
+          >
+            <h4 className="session-inline-form-title">User Settings</h4>
+            <SessionUserSettingsPanel
+              messageGroupingWindowMs={messageGroupingWindowMs}
+              onMessageGroupingWindowChange={setMessageGroupingWindowMs}
+            />
+            <div className="session-action-row">
+              <button
+                type="button"
+                className="session-button session-button-neutral"
+                onClick={() => setShowUserSettingsModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

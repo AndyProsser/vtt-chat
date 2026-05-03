@@ -409,6 +409,7 @@
 
 .session-toolbar--lobby {
   margin-bottom: 1rem;
+  grid-template-columns: minmax(280px, 1fr) auto;
 }
 
 .session-toolbar--lobby .material-symbols-outlined {
@@ -597,6 +598,34 @@
   margin: 0.45rem 0 0;
   font-size: 0.72rem;
   color: var(--color-text-secondary);
+}
+
+.session-settings-item__heading {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.session-settings-item__range {
+  width: 100%;
+  margin: 0.2rem 0 0.55rem;
+}
+
+.session-settings-item__toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.session-settings-item__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.session-user-settings-modal {
+  width: min(720px, 100%);
 }
 
 .voice-rail-summary {

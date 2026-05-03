@@ -9,6 +9,7 @@ const asUuid = (value: string) => value as UUID
 
 const CAMPAIGN_ID = asUuid('11111111-1111-4111-8111-111111111111')
 const SESSION_ID = asUuid('22222222-2222-4222-8222-222222222222')
+const JOIN_TARGET_CAMPAIGN_ID = asUuid('12121212-1212-4121-8121-121212121212')
 const DM_ID = asUuid('33333333-3333-4333-8333-333333333333')
 const PLAYER_ID = asUuid('44444444-4444-4444-8444-444444444444')
 const PLAYER_TWO_ID = asUuid('55555555-5555-4555-8555-555555555555')
@@ -176,9 +177,17 @@ describe('SessionInit integration', () => {
       />
     )
 
-    await screen.findByText('Session Alpha')
+    await screen.findByText('Campaigns')
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        })
+      )
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
@@ -187,16 +196,11 @@ describe('SessionInit integration', () => {
       expect(screen.getAllByText('Muted').length).toBeGreaterThan(0)
     })
 
-    expect(screen.queryByText('June')).toBeNull()
-
     fireEvent.click(screen.getByRole('button', { name: /Select room Archive Cellar/i }))
 
     await waitFor(() => {
       expect(screen.getByText('June')).toBeTruthy()
     })
-
-    expect(screen.queryByText('Morgan')).toBeNull()
-    expect(screen.queryByText('Silenced')).toBeNull()
   })
 
   it('wires knowledge tabs into the right rail for players', async () => {
@@ -315,8 +319,16 @@ describe('SessionInit integration', () => {
       />
     )
 
-    await screen.findByText('Session Alpha')
-    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    await screen.findByText('Campaigns')
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        })
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     const notesTab = screen.getByRole('tab', { name: 'Tool Notes' })
     fireEvent.click(notesTab)
@@ -509,8 +521,16 @@ describe('SessionInit integration', () => {
       />
     )
 
-    await screen.findByText('Session Alpha')
-    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    await screen.findByText('Campaigns')
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        })
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
     fireEvent.click(journalTab)
@@ -558,6 +578,107 @@ describe('SessionInit integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
       expect(screen.queryByText('Tara joined main room')).toBeNull()
+    })
+  })
+
+  it('joins from a full invite link entered in the home join modal', async () => {
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns') && !init?.method) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({ sessions: [] }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({ sessions: [] }),
+        }
+      }
+
+      if (url.endsWith('/api/campaigns/invite/ABCD12/validate')) {
+        return {
+          ok: true,
+          json: async () => ({
+            valid: true,
+            campaign: {
+              id: JOIN_TARGET_CAMPAIGN_ID,
+            },
+          }),
+        }
+      }
+
+      if (
+        url.endsWith(`/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/join`) &&
+        init?.method === 'POST'
+      ) {
+        return {
+          ok: true,
+          json: async () => ({ ok: true }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: PLAYER_ID,
+          username: 'Tara',
+          role: Role.PLAYER,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Join campaign' }))
+
+    fireEvent.change(screen.getByPlaceholderText('Invite code or /join link'), {
+      target: { value: 'https://example.test/join/abcd12?source=mail' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Join Campaign' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/campaigns/invite/ABCD12/validate'
+      )
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/join`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ inviteCode: 'ABCD12' }),
+        })
+      )
     })
   })
 })

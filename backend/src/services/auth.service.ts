@@ -37,6 +37,7 @@ export function createToken(payload: TokenPayload): string {
       userId: payload.userId,
       username: payload.username,
       role: payload.role,
+      accessMode: payload.accessMode || 'CAMPAIGN',
       authType: payload.authType || 'FULL',
       sessionId: payload.sessionId,
     } as any,

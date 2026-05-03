@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 Related roadmap:
 
@@ -46,8 +46,8 @@ Deliver the end-to-end campaign flow so users move cleanly from home screen to g
 Status legend: `Planned`, `In Progress`, `Done`
 
 1. Home/Campaign list and derived-state model - Done
-2. Privacy-rounded home dashboard metrics - Planned
-3. Player/spectator invite + code/link entry flow alignment - In Progress
+2. Privacy-rounded home dashboard metrics - Done
+3. Player/spectator invite + code/link entry flow alignment - Done
 4. Greenroom default-ephemeral chat with campaign override - In Progress
 5. Session lifecycle enforcement (Start/Pause/Resume/Stop) - In Progress
 6. Spectator runtime gating (active/waiting/paused/ended) - In Progress

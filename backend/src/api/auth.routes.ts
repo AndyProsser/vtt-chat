@@ -286,12 +286,12 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 
 /**
  * POST /api/auth/login
- * Login with username and optional role.
- * No password validation; accepts username and role.
+ * Login with username and explicit access mode.
+ * No password validation; local smoke-test login defaults to user-level access.
  * Returns JWT token.
  */
 router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
-  const { username, role, displayName, avatarUrl } = req.body
+  const { username, role, accessMode, displayName, avatarUrl } = req.body
 
   // Validate input
   if (!username || !isValidUsername(username)) {
@@ -302,17 +302,25 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     })
   }
 
-  if (!role || !['DM', 'PLAYER', 'SPECTATOR'].includes(role)) {
+  const normalizedAccessMode = String(accessMode || 'USER')
+    .trim()
+    .toUpperCase()
+  if (!['USER', 'CAMPAIGN'].includes(normalizedAccessMode)) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
-      message: 'Invalid role',
-      field: 'role',
+      message: 'Invalid accessMode',
+      field: 'accessMode',
     })
   }
 
+  const compatibilityRole =
+    typeof role === 'string' && ['DM', 'PLAYER', 'SPECTATOR'].includes(role)
+      ? (role as 'DM' | 'PLAYER' | 'SPECTATOR')
+      : 'PLAYER'
+
   const persistedUser = await upsertUserAccount({
     username,
-    role: role as 'DM' | 'PLAYER' | 'SPECTATOR',
+    role: compatibilityRole,
     displayName: typeof displayName === 'string' ? displayName : undefined,
     avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
   })
@@ -321,18 +329,21 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
   const token = createToken({
     userId,
     username: persistedUser.username,
-    role: role as 'DM' | 'PLAYER' | 'SPECTATOR',
+    role: compatibilityRole,
+    accessMode: normalizedAccessMode as 'USER' | 'CAMPAIGN',
     authType: 'FULL',
   })
 
   res.status(200).json({
     token,
+    accessMode: normalizedAccessMode,
     user: {
       id: userId,
       username: persistedUser.username,
       displayName: persistedUser.displayName,
       avatarUrl: persistedUser.avatarUrl,
       role: persistedUser.role,
+      accessMode: normalizedAccessMode,
       authType: 'FULL',
     },
   })
@@ -356,6 +367,7 @@ router.post('/refresh', tokenRefreshRateLimit, authMiddleware, (req: Request, re
     userId: user.userId,
     username: user.username,
     role: user.role,
+    accessMode: user.accessMode || 'CAMPAIGN',
     authType: user.authType || 'FULL',
     sessionId: user.sessionId,
   })
@@ -378,6 +390,7 @@ router.get('/validate', authMiddleware, (req: Request, res: Response) => {
       id: user.userId,
       username: user.username,
       role: user.role,
+      accessMode: user.accessMode || 'CAMPAIGN',
       authType: user.authType || 'FULL',
       sessionId: user.sessionId || null,
     },
@@ -405,6 +418,7 @@ router.get('/me', authMiddleware, (req: Request, res: Response) => {
         id: dbUser.id,
         username: dbUser.username,
         role: dbUser.role,
+        accessMode: user.accessMode || 'CAMPAIGN',
         sessionId: user.sessionId || null,
         email: dbUser.email,
         authType: dbUser.authType,

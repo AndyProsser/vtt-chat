@@ -8,6 +8,7 @@ export type TokenPayload = {
   userId: UUID
   username: string
   role: PlayerFacingRole
+  accessMode?: 'USER' | 'CAMPAIGN'
   authType?: 'FULL' | 'GUEST'
   sessionId?: UUID
   iat?: number
@@ -18,6 +19,7 @@ export interface AuthToken {
   userId: string
   username: string
   role: PlayerFacingRole
+  accessMode: 'USER' | 'CAMPAIGN'
   authType: 'FULL' | 'GUEST'
   sessionId: string
   iat: number

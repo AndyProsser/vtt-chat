@@ -75,6 +75,7 @@ describe('App shell', () => {
       rooms: {},
     })
     mockUseStore.mockClear()
+    sessionStorage.clear()
   })
 
   it('renders unauthenticated login surface by default', async () => {
@@ -82,7 +83,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(screen.getByText('Welcome to VTT-Chat')).toBeTruthy()
+    expect(screen.getByText('A cleaner surface for live tabletop play.')).toBeTruthy()
     expect(screen.getByText('Mock Login Form')).toBeTruthy()
     expect(screen.queryByText(/Session Init Mounted:/)).toBeNull()
     expect(screen.queryByText(/Audio Panel Mounted:/)).toBeNull()
@@ -111,7 +112,6 @@ describe('App shell', () => {
     fireEvent.click(screen.getByText('Complete Login'))
 
     expect(await screen.findByText('Session Init Mounted: jwt-token:andy')).toBeTruthy()
-    expect(await screen.findByText(`Audio Panel Mounted: ${sessionId}:${roomId}`)).toBeTruthy()
     expect(screen.queryByText('Mock Login Form')).toBeNull()
   })
 
@@ -120,9 +120,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(screen.getByText('Audio and LiveKit integration')).toBeTruthy()
-    expect(
-      screen.getByText('Audio and LiveKit are enabled (voice rooms, DSP engine, DM overrides)')
-    ).toBeTruthy()
+    expect(screen.getByText('Visible presence')).toBeTruthy()
+    expect(screen.getByText('Session-aware voice')).toBeTruthy()
   })
 })

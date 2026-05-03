@@ -165,7 +165,8 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
             type="button"
             className="session-button session-button-neutral"
             onClick={() => {
-              window.location.href = '/'
+              window.history.pushState({}, '', '/')
+              window.dispatchEvent(new PopStateEvent('popstate'))
             }}
           >
             Back to Campaigns

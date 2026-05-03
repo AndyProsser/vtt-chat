@@ -4,6 +4,7 @@ export interface AuthUser {
   id: UUID
   username: string
   role: Role
+  accessMode?: 'USER' | 'CAMPAIGN'
   authType?: 'FULL' | 'GUEST'
 }
 

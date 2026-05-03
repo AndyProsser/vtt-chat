@@ -16,7 +16,8 @@ export const createUserToken = (
   const payload: Omit<AuthToken, 'iat' | 'exp'> = {
     userId,
     username,
-    role: role as 'PLAYER' | 'DM',
+    role: role as AuthToken['role'],
+    accessMode: 'CAMPAIGN',
     authType: 'FULL',
     sessionId,
   }
