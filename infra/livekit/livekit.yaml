@@ -4,7 +4,6 @@ bind_addresses:
 
 # Room settings optimized for voice-only
 room:
-  auto_cleanup: true
   empty_timeout: 300 # 5 minutes
 
 # RTC — production supports 1100 simultaneous audio streams (ports 7881-8980).
@@ -19,22 +18,9 @@ rtc:
   use_external_ip: true
   tcp_port: 7881
 
-  audio_codec: opus
-  video_enabled: false
-
-  ice_servers:
-    - urls:
-        - 'stun:stun.l.google.com:19302'
-        - 'stun:stun1.l.google.com:19302'
-
 # Logging
 logging:
   level: info
   sample: false
 
 development: false
-
-# Session/Connection management
-session:
-  max_participant_metadata_size: 1000
-  max_participant_name_length: 256

@@ -29,4 +29,4 @@ COPY --from=builder /workspace/backend/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/backend/src/index.js"]
