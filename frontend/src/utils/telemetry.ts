@@ -126,6 +126,8 @@ export class TelemetryClient {
       ts: Date.now(),
     }
 
+    logger.debug('telemetry.client', 'Queued telemetry event', entry)
+
     if (this.queue.length >= this.maxQueueSize) {
       this.queue.shift()
       logger.warn('telemetry.client', 'Telemetry queue at capacity; dropping oldest event')

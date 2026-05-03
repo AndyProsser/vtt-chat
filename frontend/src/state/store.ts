@@ -5,6 +5,7 @@
  */
 
 import { create } from 'zustand'
+import { logger } from '@/utils/logger'
 import type { SessionSlice } from './sessionSlice'
 import type { ChatSlice } from './chatSlice'
 import type { NotesSlice } from './notesSlice'
@@ -45,3 +46,26 @@ export const useStore = create<Store>()((...args) => ({
   ...createMetadataSlice(...args),
   ...createCommandCenterSlice(...args),
 }))
+
+if (typeof window !== 'undefined') {
+  let prevState = useStore.getState()
+
+  useStore.subscribe((nextState) => {
+    const keys = new Set([...Object.keys(prevState), ...Object.keys(nextState)])
+    const changedKeys: string[] = []
+
+    for (const key of keys) {
+      if (!Object.is((prevState as any)[key], (nextState as any)[key])) {
+        changedKeys.push(key)
+      }
+    }
+
+    if (changedKeys.length > 0) {
+      logger.debug('store', 'State updated', {
+        changedKeys,
+      })
+    }
+
+    prevState = nextState
+  })
+}

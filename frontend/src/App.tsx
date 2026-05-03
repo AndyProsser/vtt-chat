@@ -17,6 +17,21 @@ const AudioPanel = lazy(async () => {
 })
 
 export default function App() {
+  const normalizeWsUrl = (rawWsUrl: string): string => {
+    try {
+      const parsed = new URL(rawWsUrl)
+      if (parsed.pathname === '/' || parsed.pathname === '') {
+        parsed.pathname = '/ws/connect'
+      }
+      return parsed.toString()
+    } catch {
+      const trimmed = rawWsUrl.replace(/\/$/, '')
+      return trimmed.endsWith('/ws') || trimmed.endsWith('/ws/connect')
+        ? trimmed
+        : `${trimmed}/ws/connect`
+    }
+  }
+
   const [routeView] = useState<RouteView>(() => resolveRoute(window.location.pathname))
   const browserOrigin = window.location.origin
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
@@ -28,8 +43,10 @@ export default function App() {
   const apiUrl = isStaleHttpDevProxy ? browserOrigin : configuredApiUrl || browserOrigin
   const wsUrl =
     isStaleHttpDevProxy || !configuredWsUrl
-      ? `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
-      : configuredWsUrl
+      ? normalizeWsUrl(
+          `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
+        )
+      : normalizeWsUrl(configuredWsUrl)
   const adminUrl = configuredAdminUrl || `${browserOrigin}/admin`
 
   const {
@@ -125,11 +142,11 @@ export default function App() {
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
             <div>
               <p className="mb-1 text-xs font-semibold tracking-wide text-ui-secondary uppercase">
-                Campaign Control Surface
+                VTT-Chat
               </p>
               <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
               <p className="mt-1 text-sm text-ui-secondary">
-                Audio rooms, live session state, and DM tooling in one surface
+                Real-time tabletop chat, rooms, notes, and DM controls
               </p>
             </div>
 
@@ -200,7 +217,7 @@ export default function App() {
 
         <footer className="mt-8 border-t border-ui-border bg-ui-surface/80 px-4 py-4 text-center text-sm text-ui-secondary shadow-ui-sm">
           <p className="m-0">
-            Audio and LiveKit are enabled with room voice, DSP engine processing, and DM overrides.
+            Built for live session coordination with synchronized state, room presence, and audio.
           </p>
         </footer>
       </div>

@@ -87,12 +87,14 @@ export class WebSocketClient {
     }
 
     this.setState('connecting')
+    logger.debug('ws.client', 'Opening WebSocket connection', { url: this.url })
 
     return new Promise((resolve, reject) => {
       try {
         this.socket = new WebSocket(this.url)
 
         this.socket.onopen = () => {
+          logger.debug('ws.client', 'Socket opened; sending auth payload')
           this.socket?.send(
             JSON.stringify({
               type: 'WS:AUTH',
@@ -106,6 +108,7 @@ export class WebSocketClient {
         }
 
         this.socket.onmessage = (event) => {
+          logger.debug('ws.client', 'Raw message received', { data: event.data })
           this.handleMessage(event.data)
         }
 
@@ -116,6 +119,9 @@ export class WebSocketClient {
         }
 
         this.socket.onclose = () => {
+          logger.debug('ws.client', 'Socket closed; scheduling reconnect', {
+            reconnectAttempts: this.reconnectAttempts,
+          })
           this.setState('disconnected')
           this.scheduleReconnect()
         }
@@ -154,6 +160,10 @@ export class WebSocketClient {
 
     if (this.state === 'connected' && this.socket) {
       try {
+        logger.debug('ws.client', `Sending event ${event.type}`, {
+          eventId: event.id,
+          sessionId: event.sessionId,
+        })
         this.socket.send(JSON.stringify(event))
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -165,6 +175,10 @@ export class WebSocketClient {
     } else {
       // Queue if not connected
       this.eventQueue.push(event)
+      logger.debug('ws.client', `Queued event ${event.type}`, {
+        eventId: event.id,
+        queuedCount: this.eventQueue.length,
+      })
     }
   }
 
@@ -237,10 +251,15 @@ export class WebSocketClient {
           },
         }
         this.callbacks.onEvent?.(normalized)
+        logger.debug('ws.client', 'Server confirmed WS connection', {
+          userId: msg.userId,
+          connectionId: msg.connectionId,
+        })
         return
       }
 
       if ((incoming as any).type === 'WS:ACK') {
+        logger.debug('ws.client', 'Received server ACK', incoming)
         return
       }
 

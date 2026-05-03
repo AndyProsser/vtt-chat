@@ -120,6 +120,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
+  const dmOverrides = useStore((state) => state.dmOverrides)
+  const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
@@ -847,8 +849,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   roomMembersByRoomId={typedRoomMembers}
                   selectedRoomId={selectedRoomId}
                   onSelectRoom={setSelectedRoomIdOverride}
-                  dmOverrides={store.dmOverrides}
-                  currentConditionName={store.currentCondition?.name}
+                  dmOverrides={dmOverrides}
+                  currentConditionName={currentConditionName}
                 />
               )}
               renderCenterPane={(view) => (

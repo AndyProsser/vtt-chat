@@ -80,6 +80,12 @@ export class EventDispatcher {
       handlersToInvoke.push(...this.handlers.get('*')!)
     }
 
+    logger.debug('ws.dispatcher', `Dispatching event ${event.type}`, {
+      eventId: event.id,
+      sessionId: event.sessionId,
+      handlerCount: handlersToInvoke.length,
+    })
+
     // Invoke handlers
     for (const handler of handlersToInvoke) {
       try {

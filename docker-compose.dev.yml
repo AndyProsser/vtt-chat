@@ -40,6 +40,7 @@ services:
       VITE_API_URL: http://localhost:8080
       VITE_WS_URL: ws://localhost:8080
       VITE_LIVEKIT_URL: ws://localhost:7880
+      VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-DEBUG}
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
