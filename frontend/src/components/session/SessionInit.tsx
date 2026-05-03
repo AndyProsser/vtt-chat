@@ -777,7 +777,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   )}
                   {!currentSession || currentSession.id !== session.id ? (
                     <button
-                      onClick={() => store.setCurrentSession(session.id)}
+                      onClick={() => setCurrentSession(session.id)}
                       className="session-button session-button-neutral"
                     >
                       Select
