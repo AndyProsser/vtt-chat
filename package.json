@@ -13,7 +13,8 @@
     "test:coverage": "npm --prefix backend run test:coverage && npm --prefix frontend run test:coverage && npm --prefix admin run test:coverage",
     "format": "prettier --write .",
     "check": "npm run lint",
-    "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update"
+    "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update",
+    "qa:voice-of-god": "node scripts/qa/verify-voice-of-god.cjs"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.59.1",
