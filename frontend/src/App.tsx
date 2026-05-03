@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
+import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
+import type { UUID } from '@shared'
 
 export default function App() {
   const normalizeWsUrl = (rawWsUrl: string): string => {
@@ -101,6 +103,25 @@ export default function App() {
         )
       case 'browse':
         return <BrowseRouteView apiUrl={apiUrl} authToken={auth.token} />
+      case 'campaign-settings':
+        if (!auth.token || !auth.user) {
+          return (
+            <AppMainRouteView
+              apiUrl={apiUrl}
+              wsUrl={wsUrl}
+              auth={auth}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          )
+        }
+
+        return (
+          <CampaignSettingsRouteView
+            apiUrl={apiUrl}
+            token={auth.token}
+            campaignId={routeView.campaignId as UUID}
+          />
+        )
       case 'app':
       default:
         return (
@@ -134,7 +155,7 @@ export default function App() {
         {authMessage && (
           <div
             className="mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm"
-            style={{ width: '100%', maxWidth: '880px' }}
+            style={{ width: '100%', maxWidth: '900px' }}
           >
             {authMessage}
           </div>
@@ -151,7 +172,7 @@ export default function App() {
 
         <main
           className="mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
-          style={{ width: '100%', maxWidth: '880px', paddingBottom: '10px' }}
+          style={{ width: '100%', maxWidth: '900px', paddingBottom: '10px' }}
         >
           <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
             {renderRouteView()}

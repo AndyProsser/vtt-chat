@@ -106,7 +106,7 @@ export function SessionToolbar({
         <div className="session-toolbar__zone session-toolbar__zone--left">
           <div className="session-toolbar__brand" aria-label="Title and campaign">
             <span className="session-toolbar__brand-mark" aria-hidden="true">
-              <Icon name="panel" />
+              <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
             </span>
             <strong className="session-toolbar__brand-title">VTT Chat</strong>
           </div>

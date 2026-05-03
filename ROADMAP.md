@@ -10,6 +10,73 @@ Related roadmap:
 
 ---
 
+## 0) Campaign/User Flow Implementation Track (Current Build Focus)
+
+This is a lightweight implementation tracker for the next product-flow stage.
+It is intentionally simple (single-developer friendly) and not a formal backlog process.
+
+### Goal
+
+Deliver the end-to-end campaign flow so users move cleanly from home screen to greenroom/session lifecycle with correct DM/player/spectator permissions and behavior.
+
+### Confirmed Product Rules
+
+- Campaign canonical state is `ACTIVE|INACTIVE`; `GREENROOM|PAUSED` are derived from session/runtime state.
+- Session Start always auto-creates a new session chapter with clean session chat.
+- Session chapter names are auto-generated (e.g. Session N + date) and DM can rename later (including after end).
+- Greenroom chat defaults to ephemeral and is configurable per campaign.
+- DM presence on campaign cards is `Online|Offline`.
+- Home dashboard metrics are privacy-limited/rounded (signal of activity, not exact counts).
+- Players can join any campaign they are a member of; membership is permanent until DM/Admin removal.
+- Player join via code/invite link grants immediate campaign membership.
+- Spectator invites can be created by DM and Admin.
+- Spectators can only access active campaigns.
+- Spectators wait if campaign is active but no DM/player is online yet.
+- During Pause, spectators see paused screen only (no voice/chat access).
+- During End/Stop, spectators lose voice/chat and are sent to waiting/end screen.
+- On Start, only currently connected players are force-moved to Main room.
+- Late-join policy for missed session start: `Open|Screened|Blocked`, with configurable grace period (default 30 minutes).
+- Screened mode includes private DM chat gate; Blocked mode still respects grace period.
+- Players only see campaign-linked note copies; templates/unlinked notes are DM-side only.
+- Outside campaign membership context, authenticated identity is simply `User`; DM/Player/Spectator are campaign-scoped roles.
+- Campaign owner DM handoff (resign and assign another player as DM) is planned.
+
+### Build Tracking (Now)
+
+Status legend: `Planned`, `In Progress`, `Done`
+
+1. Home/Campaign list and derived-state model - Done
+2. Privacy-rounded home dashboard metrics - Planned
+3. Player/spectator invite + code/link entry flow alignment - In Progress
+4. Greenroom default-ephemeral chat with campaign override - In Progress
+5. Session lifecycle enforcement (Start/Pause/Resume/Stop) - In Progress
+6. Spectator runtime gating (active/waiting/paused/ended) - In Progress
+7. Connected-only force move + late-join policy (`Open|Screened|Blocked` + grace period) - Planned
+8. Session chapter auto-naming + post-session rename - Planned
+9. History and notes visibility enforcement (DM full, player scoped) - In Progress
+10. Home/campaign panel UX pass (compact bounded shell + panel flow cleanup) - In Progress
+11. Dedicated campaign settings route/page + DM metadata editing + invite reissue UX - In Progress
+12. Campaign-scoped role model cleanup (user-level identity outside campaigns) - Planned
+13. Campaign DM handoff flow (resign and assign player as new DM) - In Progress
+
+### Milestone Sequence (Simple)
+
+- F1: Home flow foundation
+  - 1, 2, 3
+- F2: In-campaign lifecycle behavior
+  - 4, 5, 6, 7, 8
+- F3: Visibility and UX follow-through
+  - 9, 10
+
+### Done Criteria for This Track
+
+- Users can enter campaigns from home with correct role-based behavior.
+- DM can run full session lifecycle with spectators and players handled per rules.
+- Chat/session chapter behavior matches expected tabletop chapter model.
+- Visibility/privacy constraints are enforced for dashboard, spectators, history, and notes.
+
+---
+
 ## 1) Scope and Goal
 
 Goal: move from feature-complete core scope to production-confidence execution.

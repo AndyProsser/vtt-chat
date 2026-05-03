@@ -3,6 +3,31 @@ import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
 
+type CampaignDisplayState = 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+
+function roundPresenceCountForPrivacy(count: number): number {
+  if (count <= 0) return 0
+  if (count <= 2) return count
+  if (count <= 5) return 5
+  if (count <= 20) return Math.ceil(count / 5) * 5
+  return Math.ceil(count / 10) * 10
+}
+
+function toPresenceCountLabel(count: number, rounded: number): string {
+  if (count <= 0) return '0'
+  if (count <= 2) return String(count)
+  return `~${rounded}`
+}
+
+function deriveCampaignDisplayState(
+  latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+): CampaignDisplayState {
+  if (!latestSessionState) return 'INACTIVE'
+  if (latestSessionState === 'ACTIVE') return 'ACTIVE'
+  if (latestSessionState === 'PAUSED') return 'PAUSED'
+  return 'GREENROOM'
+}
+
 function generateInviteCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
 }
@@ -86,22 +111,117 @@ export async function listCampaignsForUser(userId: string): Promise<
     inviteCode: string
     currentDmId: string
     memberRole: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
+    latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+    displayState: CampaignDisplayState
+    dmOnline: boolean
+    connectedPlayers: number
+    connectedPlayersRounded: number
+    connectedPlayersLabel: string
+    connectedSpectators: number
+    connectedSpectatorsRounded: number
+    connectedSpectatorsLabel: string
+    dmUsername: string
+    dmDisplayName: string
+    dmAvatarUrl: string | null
     createdAt: Date
     updatedAt: Date
   }>
 > {
   const memberships = await prisma.campaignMembership.findMany({
     where: { userId },
-    include: { campaign: true },
+    include: {
+      campaign: {
+        include: {
+          currentDm: {
+            select: {
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
+          },
+          members: {
+            select: {
+              userId: true,
+              role: true,
+            },
+          },
+          sessions: {
+            select: {
+              state: true,
+              presence: {
+                select: {
+                  userId: true,
+                  state: true,
+                },
+              },
+            },
+            orderBy: [{ createdAt: 'desc' }],
+            take: 1,
+          },
+        },
+      },
+    },
     orderBy: { joinedAt: 'desc' },
   })
 
   return memberships.map((m: any) => ({
+    ...(() => {
+      const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as
+        | 'IDLE'
+        | 'ACTIVE'
+        | 'PAUSED'
+        | 'ENDED'
+        | null
+
+      const latestSessionPresence = (m.campaign.sessions?.[0]?.presence || []) as Array<{
+        userId: string
+        state: 'ONLINE' | 'IDLE' | 'OFFLINE'
+      }>
+      const onlineUserIds = new Set(
+        latestSessionPresence
+          .filter((entry) => entry.state === 'ONLINE')
+          .map((entry) => entry.userId)
+      )
+      const roleByUserId = new Map<string, 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'>(
+        (m.campaign.members || []).map((member: { userId: string; role: string }) => [
+          member.userId,
+          member.role as 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM',
+        ])
+      )
+
+      const connectedPlayers = Array.from(onlineUserIds).filter(
+        (id) => roleByUserId.get(id) === 'PLAYER'
+      ).length
+      const connectedSpectators = Array.from(onlineUserIds).filter(
+        (id) => roleByUserId.get(id) === 'SPECTATOR'
+      ).length
+
+      const connectedPlayersRounded = roundPresenceCountForPrivacy(connectedPlayers)
+      const connectedSpectatorsRounded = roundPresenceCountForPrivacy(connectedSpectators)
+
+      return {
+        latestSessionState,
+        displayState: deriveCampaignDisplayState(latestSessionState),
+        dmOnline: onlineUserIds.has(m.campaign.currentDmId),
+        connectedPlayers,
+        connectedPlayersRounded,
+        connectedPlayersLabel: toPresenceCountLabel(connectedPlayers, connectedPlayersRounded),
+        connectedSpectators,
+        connectedSpectatorsRounded,
+        connectedSpectatorsLabel: toPresenceCountLabel(
+          connectedSpectators,
+          connectedSpectatorsRounded
+        ),
+      }
+    })(),
     id: m.campaign.id,
     name: m.campaign.name,
     description: m.campaign.description,
     inviteCode: m.campaign.inviteCode,
     currentDmId: m.campaign.currentDmId,
+    dmUsername: m.campaign.currentDm?.username || 'dm',
+    dmDisplayName: m.campaign.currentDm?.displayName || m.campaign.currentDm?.username || 'DM',
+    dmAvatarUrl: m.campaign.currentDm?.avatarUrl || null,
     memberRole: m.role,
     createdAt: m.campaign.createdAt,
     updatedAt: m.campaign.updatedAt,

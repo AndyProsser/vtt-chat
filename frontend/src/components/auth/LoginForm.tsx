@@ -27,17 +27,19 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   const roleCopy: Record<LoginRole, { label: string; summary: string; meta: string }> = {
     [Role.DM]: {
       label: 'DM',
-      summary: 'Launch the full control surface with room management and orchestration tools.',
+      summary:
+        'Enter with DM campaign permissions for room management and orchestration workflows.',
       meta: 'Campaign control',
     },
     [Role.PLAYER]: {
       label: 'Player',
-      summary: 'Use the streamlined in-session view for chat, notes, and active room presence.',
+      summary:
+        'Enter with Player campaign permissions for chat, notes, and active room participation.',
       meta: 'Focused play',
     },
     [Role.SPECTATOR]: {
       label: 'Spectator',
-      summary: 'Verify the read-only audience experience with restricted interaction affordances.',
+      summary: 'Enter with Spectator campaign permissions for the read-only audience experience.',
       meta: 'Read-only mode',
     },
   }
@@ -92,8 +94,8 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       </div>
 
       <p className="auth-form-card__copy">
-        Authenticate into the frontend shell and verify the live persona-specific experience. This
-        mirrors the admin app&apos;s card-first layout, but tuned toward play-session workflow.
+        Authenticate into the frontend shell and verify campaign-scoped role behavior. Account
+        identity is user-level; DM, Player, and Spectator apply within campaign membership.
       </p>
 
       {error && <div className="auth-alert">{error}</div>}
@@ -115,7 +117,7 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       </div>
 
       <div className="auth-field">
-        <label htmlFor="role-tabs">Persona</label>
+        <label htmlFor="role-tabs">Campaign Role Context</label>
         <Tabs
           value={role}
           onValueChange={(nextRole) => {

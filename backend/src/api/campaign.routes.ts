@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
+import { getPrismaClient } from '@/infra/db'
 import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
@@ -24,6 +25,11 @@ import {
 } from '@/services/campaign-external-links.service'
 
 const router = Router()
+const prisma = getPrismaClient()
+
+function generateInviteCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase()
+}
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -110,6 +116,13 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { name, description } = req.body || {}
 
+  if (user.authType && user.authType !== 'FULL') {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only full-account users can create campaigns',
+    })
+  }
+
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res
       .status(400)
@@ -123,6 +136,298 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   })
 
   return res.status(201).json({ campaign })
+})
+
+router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const membership = await prisma.campaignMembership.findUnique({
+    where: {
+      campaignId_userId: {
+        campaignId: campaignId as UUID,
+        userId: user.userId as UUID,
+      },
+    },
+    include: {
+      campaign: true,
+    },
+  })
+
+  if (!membership) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (membership.campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
+  }
+
+  return res.status(200).json({
+    campaign: {
+      id: membership.campaign.id,
+      name: membership.campaign.name,
+      description: membership.campaign.description,
+      inviteCode: membership.campaign.inviteCode,
+      inviteActive: membership.campaign.inviteActive,
+      spectatorInviteCode: membership.campaign.spectatorInviteCode,
+      spectatorInviteActive: membership.campaign.spectatorInviteActive,
+    },
+  })
+})
+
+router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const { name, description } = req.body || {}
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
+  }
+
+  const updated = await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: {
+      name: name.trim(),
+      description:
+        typeof description === 'string' && description.trim().length > 0
+          ? description.trim()
+          : null,
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      inviteCode: true,
+      inviteActive: true,
+      spectatorInviteCode: true,
+      spectatorInviteActive: true,
+    },
+  })
+
+  return res.status(200).json({ campaign: updated })
+})
+
+router.post('/:campaignId/invites/reissue', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const inviteType = String(req.body?.type || '').toUpperCase()
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (!['PLAYER', 'SPECTATOR'].includes(inviteType)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'type must be PLAYER or SPECTATOR',
+      field: 'type',
+    })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can reissue invites' })
+  }
+
+  if (inviteType === 'PLAYER') {
+    const updated = await prisma.campaign.update({
+      where: { id: campaignId as UUID },
+      data: {
+        inviteCode: generateInviteCode(),
+        inviteActive: true,
+      },
+      select: {
+        id: true,
+        inviteCode: true,
+        inviteActive: true,
+      },
+    })
+
+    return res.status(200).json({
+      invite: {
+        type: 'PLAYER',
+        code: updated.inviteCode,
+        active: updated.inviteActive,
+      },
+    })
+  }
+
+  const updated = await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: {
+      spectatorInviteCode: generateInviteCode(),
+      spectatorInviteActive: true,
+    },
+    select: {
+      id: true,
+      spectatorInviteCode: true,
+      spectatorInviteActive: true,
+    },
+  })
+
+  return res.status(200).json({
+    invite: {
+      type: 'SPECTATOR',
+      code: updated.spectatorInviteCode,
+      active: updated.spectatorInviteActive,
+    },
+  })
+})
+
+router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const targetUserId = String(req.body?.targetUserId || '').trim()
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (!isValidUUID(targetUserId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid targetUserId',
+      field: 'targetUserId',
+    })
+  }
+
+  if ((user.userId as UUID) === (targetUserId as UUID)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'targetUserId must be a different user',
+      field: 'targetUserId',
+    })
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId as UUID },
+    include: {
+      members: {
+        select: {
+          userId: true,
+          role: true,
+        },
+      },
+    },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the current campaign DM can transfer ownership',
+    })
+  }
+
+  const targetMembership = campaign.members.find((member) => member.userId === targetUserId)
+  if (!targetMembership || targetMembership.role !== 'PLAYER') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'targetUserId must belong to an existing player in this campaign',
+      field: 'targetUserId',
+    })
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({
+      where: { id: campaignId as UUID },
+      data: {
+        currentDmId: targetUserId as UUID,
+      },
+    })
+
+    await tx.campaignMembership.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaignId as UUID,
+          userId: user.userId as UUID,
+        },
+      },
+      data: {
+        role: 'PLAYER',
+      },
+    })
+
+    await tx.campaignMembership.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaignId as UUID,
+          userId: targetUserId as UUID,
+        },
+      },
+      data: {
+        role: 'DM',
+      },
+    })
+
+    await tx.user.updateMany({
+      where: {
+        id: targetUserId as UUID,
+      },
+      data: {
+        role: 'DM',
+      },
+    })
+
+    await tx.user.updateMany({
+      where: {
+        id: targetUserId as UUID,
+        adminRole: null,
+      },
+      data: {
+        adminRole: 'CAMPAIGN_DM',
+      },
+    })
+  })
+
+  return res.status(200).json({
+    campaign: {
+      id: campaignId,
+      previousDmId: user.userId as UUID,
+      currentDmId: targetUserId as UUID,
+      transferredAt: new Date().toISOString(),
+    },
+  })
 })
 
 router.get('/:campaignId', requireAuth, async (req: Request, res: Response) => {

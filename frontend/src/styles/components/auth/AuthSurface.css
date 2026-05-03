@@ -68,6 +68,13 @@
   color: var(--color-text-secondary);
 }
 
+.auth-chip__logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  object-fit: contain;
+}
+
 .auth-chip__dot {
   width: 8px;
   height: 8px;

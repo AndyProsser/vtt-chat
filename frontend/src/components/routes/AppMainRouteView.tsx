@@ -24,6 +24,7 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
         <section className="auth-hero">
           <div className="auth-hero__inner">
             <div className="auth-chip">
+              <img src="/branding/app-logo.png" alt="" className="auth-chip__logo" />
               <span className="auth-chip__dot" />
               Live tabletop shell
             </div>
@@ -144,9 +145,10 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
                 </li>
                 <li>
                   <div>
-                    <strong>Role</strong>
+                    <strong>Campaign Role</strong>
                     <small>
-                      Choose DM, Player, or Spectator depending on the surface you want to verify.
+                      Account identity is user-level. DM, Player, and Spectator are campaign-scoped
+                      membership roles.
                     </small>
                   </div>
                 </li>
