@@ -10,7 +10,7 @@ export interface SystemToastsProps {
 
 export function SystemToasts({ message, variant = 'info', onDismiss }: SystemToastsProps) {
   if (!message) {
-    return <p className="m-0 text-xs text-ui-secondary">No active system notices.</p>
+    return null
   }
 
   return <Toast variant={variant} message={message} onDismiss={onDismiss} />

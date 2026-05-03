@@ -7,7 +7,6 @@ import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
-import { cn } from './utils/cn'
 
 export default function App() {
   const normalizeWsUrl = (rawWsUrl: string): string => {
@@ -61,30 +60,19 @@ export default function App() {
     auth,
     authProfile,
     authMessage,
-    adminLaunchLoading,
     upgradeLoading,
     upgradePromptDismissed,
     setUpgradePromptDismissed,
     handleLoginSuccess,
     handleGuestSpectatorAuthenticated,
     handleGuestExtensionAuthenticated,
-    handleLogout,
     handleUpgradeAccount,
-    handleOpenAdmin,
   } = useAuthSession({
     apiUrl,
     adminUrl,
   })
 
   const currentSessionId = useStore((state) => state.currentSessionId)
-
-  const showAdminButton = Boolean(
-    auth.user && (auth.user.role === 'DM' || authProfile?.hasAdminAccess)
-  )
-  const adminButtonDisabled =
-    adminLaunchLoading ||
-    Boolean(authProfile?.requiresUpgradeForAdmin) ||
-    !authProfile?.hasAdminAccess
 
   const isGuestAccount = Boolean(
     auth.token && auth.user && (authProfile?.authType === 'GUEST' || auth.user.authType === 'GUEST')
@@ -127,7 +115,10 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden font-sans text-ui-primary">
+    <div
+      className="relative h-screen overflow-hidden font-sans text-ui-primary"
+      style={{ height: '100dvh' }}
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl"
@@ -139,45 +130,12 @@ export default function App() {
         />
       </div>
 
-      <div className="relative">
-        <header className="border-b border-ui-border bg-ui-surface px-4 py-5 shadow-ui-sm">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-            <div className="text-sm font-semibold text-ui-primary">VTT-Chat</div>
-
-            {auth.user && (
-              <div className="flex gap-2">
-                {showAdminButton && (
-                  <button
-                    onClick={handleOpenAdmin}
-                    disabled={adminButtonDisabled}
-                    title={
-                      authProfile?.requiresUpgradeForAdmin
-                        ? 'Upgrade to full account to access admin'
-                        : undefined
-                    }
-                    className={cn(
-                      'rounded-ui-sm px-4 py-2 text-sm text-white',
-                      adminButtonDisabled
-                        ? 'cursor-not-allowed bg-slate-400'
-                        : 'cursor-pointer bg-teal-700 hover:bg-teal-800'
-                    )}
-                  >
-                    {adminLaunchLoading ? 'Opening Admin...' : 'Open Admin'}
-                  </button>
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="cursor-pointer rounded-ui-sm bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
-
+      <div className="relative flex h-full flex-col items-center">
         {authMessage && (
-          <div className="mx-auto mt-4 w-full max-w-6xl rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
+          <div
+            className="mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm"
+            style={{ width: '100%', maxWidth: '880px' }}
+          >
             {authMessage}
           </div>
         )}
@@ -191,15 +149,14 @@ export default function App() {
           />
         )}
 
-        <main className="mx-auto w-full max-w-6xl px-4 py-8">
-          <section className="overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
+        <main
+          className="mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
+          style={{ width: '100%', maxWidth: '880px', paddingBottom: '10px' }}
+        >
+          <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
             {renderRouteView()}
           </section>
         </main>
-
-        <footer className="mt-8 border-t border-ui-border bg-ui-surface/80 px-4 py-4 text-center text-sm text-ui-secondary shadow-ui-sm">
-          <p className="m-0">Session workspace</p>
-        </footer>
       </div>
     </div>
   )

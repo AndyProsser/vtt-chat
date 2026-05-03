@@ -155,6 +155,14 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
         nextMembers[roomId] = upsertMember(existing, {
           userId: entry.userId,
           username: entry.username,
+          playerName: entry.playerName,
+          avatarUrl: entry.avatarUrl,
+          characterName: entry.characterName,
+          characterClass: entry.characterClass,
+          characterSubclass: entry.characterSubclass,
+          characterRace: entry.characterRace,
+          level: entry.level,
+          characterStats: entry.characterStats,
           presenceState: entry.state,
           joinedAt: entry.lastSeenAt,
         })
@@ -199,6 +207,14 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
         nextMembers[roomId] = upsertMember(existing, {
           userId: entry.userId,
           username: entry.username,
+          playerName: entry.playerName,
+          avatarUrl: entry.avatarUrl,
+          characterName: entry.characterName,
+          characterClass: entry.characterClass,
+          characterSubclass: entry.characterSubclass,
+          characterRace: entry.characterRace,
+          level: entry.level,
+          characterStats: entry.characterStats,
           presenceState: entry.state,
           joinedAt: entry.lastSeenAt,
         })
@@ -300,32 +316,44 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
       joinedAt?: number
     }
 
-    const nextMember: RoomUser = {
-      userId: payload.userId,
-      username: payload.username,
-      presenceState: PresenceState.ONLINE,
-      joinedAt: payload.joinedAt || event.timestamp,
-    }
+    set((state) => {
+      const existingPresence = state.sessionPresence[event.sessionId]?.[payload.userId]
+      const nextMember: RoomUser = {
+        userId: payload.userId,
+        username: payload.username,
+        playerName: existingPresence?.playerName,
+        avatarUrl: existingPresence?.avatarUrl,
+        characterName: existingPresence?.characterName,
+        characterClass: existingPresence?.characterClass,
+        characterSubclass: existingPresence?.characterSubclass,
+        characterRace: existingPresence?.characterRace,
+        level: existingPresence?.level,
+        characterStats: existingPresence?.characterStats,
+        presenceState: PresenceState.ONLINE,
+        joinedAt: payload.joinedAt || event.timestamp,
+      }
 
-    set((state) => ({
-      roomMembers: {
-        ...state.roomMembers,
-        [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], nextMember),
-      },
-      sessionPresence: {
-        ...state.sessionPresence,
-        [event.sessionId]: {
-          ...(state.sessionPresence[event.sessionId] || {}),
-          [payload.userId]: {
-            userId: payload.userId,
-            username: payload.username,
-            state: PresenceState.ONLINE,
-            primaryRoomId: payload.roomId,
-            lastSeenAt: payload.joinedAt || event.timestamp,
+      return {
+        roomMembers: {
+          ...state.roomMembers,
+          [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], nextMember),
+        },
+        sessionPresence: {
+          ...state.sessionPresence,
+          [event.sessionId]: {
+            ...(state.sessionPresence[event.sessionId] || {}),
+            [payload.userId]: {
+              ...existingPresence,
+              userId: payload.userId,
+              username: payload.username,
+              state: PresenceState.ONLINE,
+              primaryRoomId: payload.roomId,
+              lastSeenAt: payload.joinedAt || event.timestamp,
+            },
           },
         },
-      },
-    }))
+      }
+    })
   },
 
   handleUserLeft: (event) => {
@@ -401,6 +429,7 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
           [event.sessionId]: {
             ...bySession,
             [payload.userId]: {
+              ...existing,
               userId: payload.userId,
               username: payload.username || existing?.username || '',
               state: nextPresence,
@@ -460,12 +489,24 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
 
       nextMembers[payload.targetRoomId] = [
         ...(nextMembers[payload.targetRoomId] || []),
-        ...payload.users.map((user) => ({
-          userId: user.userId,
-          username: user.username,
-          presenceState: payload.targetState,
-          joinedAt: event.timestamp,
-        })),
+        ...payload.users.map((user) => {
+          const existingPresence = state.sessionPresence[event.sessionId]?.[user.userId]
+
+          return {
+            userId: user.userId,
+            username: user.username,
+            playerName: existingPresence?.playerName,
+            avatarUrl: existingPresence?.avatarUrl,
+            characterName: existingPresence?.characterName,
+            characterClass: existingPresence?.characterClass,
+            characterSubclass: existingPresence?.characterSubclass,
+            characterRace: existingPresence?.characterRace,
+            level: existingPresence?.level,
+            characterStats: existingPresence?.characterStats,
+            presenceState: payload.targetState,
+            joinedAt: event.timestamp,
+          }
+        }),
       ]
 
       const nextPresenceBySession = {
@@ -473,7 +514,9 @@ export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
       } as Record<UUID, SessionPresence>
 
       for (const user of payload.users) {
+        const existingPresence = nextPresenceBySession[user.userId]
         nextPresenceBySession[user.userId] = {
+          ...existingPresence,
           userId: user.userId,
           username: user.username,
           state: payload.targetState,

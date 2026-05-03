@@ -8,9 +8,14 @@
 @import './theme.css';
 
 .command-center-frame {
+  position: relative;
   display: grid;
-  gap: 1rem;
-  padding: 0.75rem;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.6rem;
+  margin: 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.5rem;
   border-radius: var(--radius-lg);
   background: linear-gradient(
     180deg,
@@ -27,6 +32,24 @@
   box-shadow: var(--shadow-sm);
 }
 
+.command-center-top-toolbar {
+  width: 100%;
+}
+
+.command-center-top-toasts {
+  position: absolute;
+  top: 3.08rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92%, 620px);
+  z-index: 40;
+  pointer-events: none;
+}
+
+.command-center-top-toasts .vtt-toast {
+  pointer-events: auto;
+}
+
 .command-center-meta-grid {
   display: grid;
   gap: var(--space-3);
@@ -36,14 +59,21 @@
 .command-center-rails {
   display: grid;
   gap: 1rem;
-  align-items: start;
-  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
 }
 
 .command-center-center-pane {
   position: relative;
   min-width: 0;
-  padding-right: 3.25rem;
+  min-height: 0;
+  height: auto;
+  width: 100%;
+  margin-inline: 0;
+  padding-right: 3.35rem;
 }
 
 .command-center-right-rail-dock {
@@ -61,7 +91,30 @@
   max-height: min(80vh, 980px);
   overflow: auto;
   z-index: 25;
-  animation: slide-in-from-right var(--duration-normal) var(--ease-out);
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    transform 180ms var(--ease-out),
+    opacity 180ms var(--ease-out);
+  animation: slide-in-from-right 180ms var(--ease-out);
+}
+
+.command-center-right-rail-overlay::after {
+  content: '';
+  position: absolute;
+  top: var(--panel-pointer-top, 1.35rem);
+  right: -0.62rem;
+  transform: translateY(-50%);
+  border-top: 0.48rem solid transparent;
+  border-bottom: 0.48rem solid transparent;
+  border-left: 0.62rem solid var(--color-surface);
+  filter: drop-shadow(1px 0 0 color-mix(in srgb, var(--color-border) 80%, transparent));
+}
+
+.command-center-right-rail-overlay--closing {
+  opacity: 0;
+  transform: translateX(18px);
+  pointer-events: none;
 }
 
 .command-center-right-rail-layout {
@@ -182,6 +235,10 @@
     margin-top: 0.75rem;
   }
 
+  .command-center-right-rail-overlay::after {
+    display: none;
+  }
+
   .command-center-center-pane {
     padding-right: 0;
   }
@@ -198,7 +255,21 @@
 }
 
 @media (max-width: 760px) {
+  .command-center-top-toasts {
+    top: 5.5rem;
+    width: min(95%, 560px);
+  }
+
   .command-center-meta-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .command-center-frame {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    gap: 0.45rem;
   }
 }

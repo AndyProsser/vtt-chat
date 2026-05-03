@@ -14,7 +14,6 @@ import type { ConnectionState } from '../../ws/client'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
-import { CampaignInfo } from './CampaignInfo'
 import { SystemToasts } from './SystemToasts'
 import { DMAudioControls } from './DMAudioControls'
 import { HistoryPanel } from './HistoryPanel'
@@ -66,6 +65,14 @@ interface ApiPresence {
   sessionId: UUID
   userId: UUID
   username: string
+  playerName?: string
+  avatarUrl?: string | null
+  characterName?: string | null
+  characterClass?: string | null
+  characterSubclass?: string | null
+  characterRace?: string | null
+  level?: number | null
+  characterStats?: Record<string, unknown> | null
   primaryRoomId?: UUID
   privateRoomId?: UUID
   state: PresenceState
@@ -386,6 +393,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         const nextPresence = (presencePayload.presence || []).map((entry) => ({
           userId: entry.userId,
           username: entry.username,
+          playerName: entry.playerName,
+          avatarUrl: entry.avatarUrl,
+          characterName: entry.characterName,
+          characterClass: entry.characterClass,
+          characterSubclass: entry.characterSubclass,
+          characterRace: entry.characterRace,
+          level: entry.level,
+          characterStats: entry.characterStats,
           state: entry.state,
           primaryRoomId: entry.primaryRoomId,
           privateRoomId: entry.privateRoomId,
@@ -607,6 +622,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     user.role === 'DM' &&
     (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.PAUSED)
   const canStopFromActive = user.role === 'DM' && isSessionActive
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
 
   return (
     <>
@@ -815,7 +831,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               renderToolbar={(actions) => (
                 <SessionToolbar
                   actions={actions}
-                  username={user.username}
+                  campaignName={selectedCampaign?.name || 'No campaign selected'}
                   role={user.role}
                   wsState={wsState}
                   sessionState={currentSession.state}
@@ -826,18 +842,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   onExitToSelector={handleExitToCampaignSelector}
                 />
               )}
-              renderCampaignInfo={() => {
-                const selectedCampaign = campaigns.find(
-                  (campaign) => campaign.id === selectedCampaignId
-                )
-                return (
-                  <CampaignInfo
-                    campaignName={selectedCampaign?.name || 'Not selected'}
-                    sessionName={currentSession.name}
-                    sessionState={currentSession.state}
-                  />
-                )
-              }}
               renderSystemToasts={() => (
                 <SystemToasts
                   message={
@@ -856,6 +860,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               renderLeftRail={() => (
                 <>
                   <SessionLeftRailPanel
+                    apiUrl={apiUrl}
+                    token={token}
                     role={user.role}
                     username={user.username}
                     sessionName={currentSession.name}

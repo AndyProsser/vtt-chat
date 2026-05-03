@@ -80,6 +80,14 @@ export interface NoteEntity {
 export interface PresenceEntity {
   userId: UUID
   username: string
+  playerName?: string
+  avatarUrl?: string | null
+  characterName?: string | null
+  characterClass?: string | null
+  characterSubclass?: string | null
+  characterRace?: string | null
+  level?: number | null
+  characterStats?: Record<string, unknown> | null
   state: PresenceState
   primaryRoomId?: UUID
   privateRoomId?: UUID

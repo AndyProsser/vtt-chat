@@ -15,7 +15,7 @@ export interface CommandCenterSlice {
 }
 
 const DEFAULT_CENTER_PANE_VIEW: ToolbarCenterPaneView = 'chat'
-const DEFAULT_RIGHT_RAIL_OPEN = true
+const DEFAULT_RIGHT_RAIL_OPEN = false
 
 export const createCommandCenterSlice: StateCreator<CommandCenterSlice> = (set) => ({
   toolbarCenterPaneView: DEFAULT_CENTER_PANE_VIEW,

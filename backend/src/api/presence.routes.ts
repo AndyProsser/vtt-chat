@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode, PresenceState, isValidPresenceState, isValidUUID } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
+import { getSessionParticipantProfiles } from '@/repositories/session.repository'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
 import {
@@ -65,7 +66,14 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     }
 
     const presence = await getSessionPresence(sessionId as UUID)
-    return res.status(200).json({ presence })
+    const profiles = await getSessionParticipantProfiles(sessionId as UUID)
+
+    return res.status(200).json({
+      presence: presence.map((entry) => ({
+        ...entry,
+        ...(profiles[entry.userId] || {}),
+      })),
+    })
   } catch {
     return internalErrorResponse(res)
   }

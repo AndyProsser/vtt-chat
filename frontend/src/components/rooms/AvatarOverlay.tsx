@@ -3,6 +3,7 @@ import '../../styles/components/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
   username: string
+  avatarUrl?: string | null
   roleLabel?: 'DM' | 'PLAYER'
   presenceState: PresenceState
   isSpeaking?: boolean
@@ -25,6 +26,7 @@ function initialFor(name: string): string {
 
 export function AvatarOverlay({
   username,
+  avatarUrl,
   roleLabel,
   presenceState,
   isSpeaking = false,
@@ -34,7 +36,11 @@ export function AvatarOverlay({
   return (
     <div className="avatar-overlay" data-testid="avatar-overlay">
       <div className="avatar-glyph" aria-hidden="true">
-        {initialFor(username)}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="avatar-glyph__image" />
+        ) : (
+          initialFor(username)
+        )}
       </div>
       <div className="avatar-meta">
         <div className="avatar-meta-headline">

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Role } from '@shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -48,7 +48,6 @@ describe('getRightRailTabsForRole', () => {
       'search',
       'journal',
       'history',
-      'settings',
     ])
   })
 
@@ -83,7 +82,6 @@ describe('CommandCenterFrame', () => {
             <div>Toolbar Content</div>
           </div>
         )}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderSystemToasts={() => <div>System Toasts Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={(view) => <div>{view === 'chat' ? 'Chat Content' : 'Notes Content'}</div>}
@@ -92,7 +90,6 @@ describe('CommandCenterFrame', () => {
     )
 
     expect(screen.getByText('Toolbar Content')).toBeTruthy()
-    expect(screen.getByText('Campaign Info Content')).toBeTruthy()
     expect(screen.getByText('System Toasts Content')).toBeTruthy()
     expect(screen.getByText('Left Rail Content')).toBeTruthy()
     expect(screen.getByText('Chat Content')).toBeTruthy()
@@ -104,12 +101,11 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByText('Chat Content')).toBeTruthy()
   })
 
-  it('opens and closes right rail tools panel', () => {
+  it('opens and closes right rail tools panel', async () => {
     render(
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -117,15 +113,15 @@ describe('CommandCenterFrame', () => {
     )
 
     expect(screen.getByTestId('toolbar')).toBeTruthy()
-    expect(screen.getByTestId('campaign-info')).toBeTruthy()
     expect(screen.getByTestId('left-rail')).toBeTruthy()
+    expect(screen.queryByTestId('right-rail')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
     expect(screen.getByTestId('right-rail')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hide Tools' }))
     expect(screen.getByTestId('left-rail')).toBeTruthy()
-    expect(screen.queryByTestId('right-rail')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
-    expect(screen.getByTestId('right-rail')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.queryByTestId('right-rail')).toBeNull()
+    })
   })
 
   it('renders persona-specific right-rail tabs', () => {
@@ -133,7 +129,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.SPECTATOR}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -147,7 +142,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.DM}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -157,13 +151,12 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
 
     rerender(
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -181,7 +174,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderSystemToasts={() => <div>System Toasts Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
@@ -195,7 +187,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -214,7 +205,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={(view) => <div>View: {view}</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -240,7 +230,6 @@ describe('CommandCenterFrame', () => {
       <CommandCenterFrame
         role={Role.PLAYER}
         renderToolbar={renderToolbar}
-        renderCampaignInfo={() => <div>Campaign Info Content</div>}
         renderLeftRail={() => <div>Left Rail Content</div>}
         renderCenterPane={() => <div>Center</div>}
         renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
@@ -265,5 +254,21 @@ describe('CommandCenterFrame', () => {
     })
     fireEvent(window, new Event('resize'))
     expect(layout.getAttribute('data-layout')).toBe('desktop')
+  })
+
+  it('keeps right rail closed by default after reset', () => {
+    useStore.getState().resetToolbarActionsState()
+
+    render(
+      <CommandCenterFrame
+        role={Role.PLAYER}
+        renderToolbar={renderToolbar}
+        renderLeftRail={() => <div>Left Rail Content</div>}
+        renderCenterPane={() => <div>Center</div>}
+        renderRightRailTab={(tab) => <div>Tab: {tab}</div>}
+      />
+    )
+
+    expect(screen.queryByTestId('right-rail')).toBeNull()
   })
 })

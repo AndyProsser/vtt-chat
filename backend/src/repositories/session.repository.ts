@@ -1,6 +1,20 @@
+import { Prisma } from '@prisma/client'
 import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
+
+export interface SessionParticipantProfile {
+  userId: string
+  username: string
+  playerName: string
+  avatarUrl: string | null
+  characterName: string | null
+  characterClass: string | null
+  characterSubclass: string | null
+  characterRace: string | null
+  level: number | null
+  characterStats: Record<string, unknown> | null
+}
 
 export async function createSessionRecord(params: {
   id: string
@@ -201,4 +215,96 @@ export async function listSessionMembers(sessionId: string): Promise<
     role: row.role,
     joinedAt: row.joinedAt,
   }))
+}
+
+function toRecord(value: Prisma.JsonValue | null): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  return value as Record<string, unknown>
+}
+
+export async function getSessionParticipantProfiles(
+  sessionId: string
+): Promise<Record<string, SessionParticipantProfile>> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: {
+      campaignId: true,
+      members: {
+        select: {
+          userId: true,
+          username: true,
+        },
+      },
+    },
+  })
+
+  if (!session || session.members.length === 0) {
+    return {}
+  }
+
+  const userIds = session.members.map((member) => member.userId)
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+    },
+  })
+  const usersById = new Map(users.map((user) => [user.id, user]))
+
+  const characters = session.campaignId
+    ? await prisma.character.findMany({
+        where: {
+          campaignId: session.campaignId,
+          userId: { in: userIds },
+        },
+        orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
+        select: {
+          userId: true,
+          name: true,
+          race: true,
+          class: true,
+          subclass: true,
+          avatarUrl: true,
+          metadata: true,
+        },
+      })
+    : []
+
+  const characterByUserId = new Map<string, (typeof characters)[number]>()
+  for (const character of characters) {
+    if (!characterByUserId.has(character.userId)) {
+      characterByUserId.set(character.userId, character)
+    }
+  }
+
+  return session.members.reduce(
+    (acc, member) => {
+      const user = usersById.get(member.userId)
+      const character = characterByUserId.get(member.userId)
+      const metadata = toRecord(character?.metadata ?? null)
+      const levelValue = metadata?.level
+
+      acc[member.userId] = {
+        userId: member.userId,
+        username: member.username,
+        playerName: user?.displayName || user?.username || member.username,
+        avatarUrl: character?.avatarUrl || user?.avatarUrl || null,
+        characterName: character?.name || null,
+        characterClass: character?.class || null,
+        characterSubclass: character?.subclass || null,
+        characterRace: character?.race || null,
+        level: typeof levelValue === 'number' ? levelValue : null,
+        characterStats: metadata,
+      }
+
+      return acc
+    },
+    {} as Record<string, SessionParticipantProfile>
+  )
 }

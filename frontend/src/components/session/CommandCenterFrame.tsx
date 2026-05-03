@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import {
@@ -29,19 +29,13 @@ export interface ToolbarActionModel {
   setCenterPaneView: (view: CenterPaneView) => void
   rightRailOpen: boolean
   activeRightRailTab: RightRailTab
+  availableRightRailTabs: RightRailTab[]
   toggleRightRail: () => void
+  openRightRailTab: (tab: RightRailTab) => void
   placeholderActions: ToolbarPlaceholderAction[]
 }
 
-const DM_TABS: RightRailTab[] = [
-  'rooms',
-  'audio',
-  'notes',
-  'search',
-  'journal',
-  'history',
-  'settings',
-]
+const DM_TABS: RightRailTab[] = ['rooms', 'audio', 'notes', 'search', 'journal', 'history']
 const PLAYER_TABS: RightRailTab[] = ['rooms', 'audio', 'notes', 'search', 'journal', 'history']
 const SPECTATOR_TABS: RightRailTab[] = ['rooms']
 
@@ -102,7 +96,6 @@ function isRightRailTab(value: string, tabs: RightRailTab[]): value is RightRail
 interface CommandCenterFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
-  renderCampaignInfo: () => ReactNode
   renderSystemToasts?: () => ReactNode
   renderLeftRail: () => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
@@ -122,13 +115,13 @@ function formatIndicatorCount(count: number): string {
 export function CommandCenterFrame({
   role,
   renderToolbar,
-  renderCampaignInfo,
   renderSystemToasts,
   renderLeftRail,
   renderCenterPane,
   renderRightRailTab,
   rightRailIndicators = {},
 }: CommandCenterFrameProps) {
+  const systemToastsNode = renderSystemToasts ? renderSystemToasts() : null
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
   const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
@@ -138,12 +131,19 @@ export function CommandCenterFrame({
   const [isCompactLayout, setIsCompactLayout] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
   )
+  const [isRightRailVisible, setIsRightRailVisible] = useState(toolbarRightRailOpen)
+  const [isRightRailClosing, setIsRightRailClosing] = useState(false)
+  const lastTabToggleRef = useRef<{ at: number; tab: RightRailTab | null }>({
+    at: 0,
+    tab: null,
+  })
 
   const tabs = useMemo(() => getRightRailTabsForRole(role), [role])
   const [selectedRightRailTab, setSelectedRightRailTab] = useState<RightRailTab>(tabs[0] || 'rooms')
   const activeRightRailTab = tabs.includes(selectedRightRailTab)
     ? selectedRightRailTab
     : tabs[0] || 'rooms'
+  const activeTabIndex = Math.max(0, tabs.indexOf(activeRightRailTab))
 
   const placeholderActions: ToolbarPlaceholderAction[] = useMemo(
     () => [
@@ -167,6 +167,7 @@ export function CommandCenterFrame({
     },
     rightRailOpen: toolbarRightRailOpen,
     activeRightRailTab,
+    availableRightRailTabs: tabs,
     toggleRightRail: () => {
       telemetryClient.track('UI_PANEL_TOGGLE', {
         surface: 'command-center-right-rail',
@@ -174,6 +175,20 @@ export function CommandCenterFrame({
         role,
       })
       toggleToolbarRightRail()
+    },
+    openRightRailTab: (tab) => {
+      if (!tabs.includes(tab)) {
+        return
+      }
+
+      telemetryClient.track('UI_TAB_SWITCH', {
+        surface: 'command-center-right-rail',
+        from: activeRightRailTab,
+        to: tab,
+        role,
+      })
+      setSelectedRightRailTab(tab)
+      setToolbarRightRailOpen(true)
     },
     placeholderActions,
   }
@@ -189,20 +204,53 @@ export function CommandCenterFrame({
     }
   }, [])
 
+  useEffect(() => {
+    if (toolbarRightRailOpen) {
+      setIsRightRailVisible(true)
+      setIsRightRailClosing(false)
+      return
+    }
+
+    if (!isRightRailVisible) {
+      return
+    }
+
+    setIsRightRailClosing(true)
+    const closeTimer = window.setTimeout(() => {
+      setIsRightRailVisible(false)
+      setIsRightRailClosing(false)
+    }, 190)
+
+    return () => {
+      window.clearTimeout(closeTimer)
+    }
+  }, [isRightRailVisible, toolbarRightRailOpen])
+
+  const handleRightRailTabClick = (tab: RightRailTab) => {
+    const now = Date.now()
+    if (lastTabToggleRef.current.tab === tab && now - lastTabToggleRef.current.at < 140) {
+      return
+    }
+    lastTabToggleRef.current = { at: now, tab }
+
+    if (toolbarRightRailOpen && activeRightRailTab === tab) {
+      setToolbarRightRailOpen(false)
+      return
+    }
+
+    setSelectedRightRailTab(tab)
+    setToolbarRightRailOpen(true)
+  }
+
   return (
     <section aria-label="Command Center" className="command-center-frame">
-      <div className="command-center-meta-grid">
-        <section data-testid="toolbar" className="command-center-surface">
-          {renderToolbar(toolbarModel)}
-        </section>
-        <section data-testid="campaign-info" className="command-center-surface">
-          {renderCampaignInfo()}
-        </section>
-      </div>
+      <section data-testid="toolbar" className="command-center-top-toolbar">
+        {renderToolbar(toolbarModel)}
+      </section>
 
-      {renderSystemToasts && (
-        <section data-testid="system-toasts" className="command-center-surface">
-          {renderSystemToasts()}
+      {systemToastsNode && (
+        <section data-testid="system-toasts" className="command-center-top-toasts">
+          {systemToastsNode}
         </section>
       )}
 
@@ -222,28 +270,11 @@ export function CommandCenterFrame({
 
           <aside className="command-center-right-rail-dock">
             <TooltipProvider delayDuration={140}>
-              <Tabs
-                value={activeRightRailTab}
-                onValueChange={(nextTab) => {
-                  if (!isRightRailTab(nextTab, tabs)) {
-                    return
-                  }
-
-                  telemetryClient.track('UI_TAB_SWITCH', {
-                    surface: 'command-center-right-rail',
-                    from: activeRightRailTab,
-                    to: nextTab,
-                    role,
-                  })
-                  setSelectedRightRailTab(nextTab)
-                  setToolbarRightRailOpen(true)
-                }}
-              >
+              <Tabs value={activeRightRailTab}>
                 <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
                   {tabs.map((tab) => {
                     const label = formatTabLabel(tab)
                     const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
-                    const isActive = toolbarRightRailOpen && activeRightRailTab === tab
 
                     return (
                       <Tooltip key={tab}>
@@ -253,12 +284,7 @@ export function CommandCenterFrame({
                             aria-label={`Tool ${label}`}
                             className="command-center-right-rail-trigger"
                             onClick={() => {
-                              if (isActive) {
-                                setToolbarRightRailOpen(false)
-                              } else {
-                                setSelectedRightRailTab(tab)
-                                setToolbarRightRailOpen(true)
-                              }
+                              handleRightRailTabClick(tab)
                             }}
                           >
                             <Icon name={iconForTab(tab)} />
@@ -283,10 +309,15 @@ export function CommandCenterFrame({
             </TooltipProvider>
           </aside>
 
-          {toolbarRightRailOpen && (
+          {isRightRailVisible && (
             <aside
               data-testid="right-rail"
-              className="command-center-surface command-center-right-rail-overlay"
+              className={`command-center-surface command-center-right-rail-overlay ${
+                isRightRailClosing ? 'command-center-right-rail-overlay--closing' : ''
+              }`}
+              style={{
+                ['--panel-pointer-top' as string]: `${1.35 + activeTabIndex * 2.4}rem`,
+              }}
             >
               <div className="command-center-right-rail-layout">
                 <div />

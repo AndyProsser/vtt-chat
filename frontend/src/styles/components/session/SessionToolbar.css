@@ -1,0 +1,257 @@
+.session-toolbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto minmax(260px, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem 0.65rem;
+  background: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--color-surface) 92%, transparent),
+    color-mix(in srgb, var(--color-surface-subtle) 84%, transparent)
+  );
+  box-shadow: var(--shadow-sm);
+}
+
+.session-toolbar__zone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.session-toolbar__zone--left {
+  justify-content: flex-start;
+}
+
+.session-toolbar__zone--center {
+  justify-content: center;
+}
+
+.session-toolbar__zone--right {
+  justify-content: flex-end;
+}
+
+.session-toolbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.session-toolbar__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand) 16%, var(--color-surface));
+}
+
+.session-toolbar__brand-mark .ui-icon {
+  width: 0.88rem;
+  height: 0.88rem;
+  font-size: 0.88rem;
+}
+
+.session-toolbar__brand-title {
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.session-toolbar__campaign-pill,
+.session-toolbar__status-pill,
+.session-toolbar__timer-pill,
+.session-toolbar__connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-height: 1.9rem;
+  padding: 0.32rem 0.48rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  font-size: 0.71rem;
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface));
+}
+
+.ui-icon {
+  font-variation-settings: 'FILL' 0;
+}
+
+.session-toolbar__campaign-pill {
+  max-width: min(40vw, 280px);
+}
+
+.session-toolbar__campaign-pill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-toolbar__action,
+.session-toolbar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 0.71rem;
+  font-weight: 600;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.52rem;
+}
+
+.session-toolbar__action .ui-icon,
+.session-toolbar__icon-btn .ui-icon,
+.session-toolbar__campaign-pill .ui-icon,
+.session-toolbar__status-pill .ui-icon,
+.session-toolbar__timer-pill .ui-icon,
+.session-toolbar__connection .ui-icon {
+  width: 0.86rem;
+  height: 0.86rem;
+  font-size: 0.86rem;
+  flex-shrink: 0;
+}
+
+.session-toolbar__action--start {
+  background: color-mix(in srgb, #16a34a 78%, var(--color-surface));
+  border-color: color-mix(in srgb, #14532d 55%, var(--color-border));
+  color: #f0fdf4;
+}
+
+.session-toolbar__action--stop {
+  background: color-mix(in srgb, #dc2626 82%, var(--color-surface));
+  border-color: color-mix(in srgb, #7f1d1d 55%, var(--color-border));
+  color: #fef2f2;
+}
+
+.session-toolbar__icon-btn:hover,
+.session-toolbar__action:hover {
+  filter: brightness(1.03);
+}
+
+.session-toolbar__icon-btn--exit {
+  color: #fff;
+  background: color-mix(in srgb, #334155 76%, var(--color-surface));
+}
+
+.session-toolbar__icon-btn:not(.session-toolbar__icon-btn--exit) {
+  min-width: 1.95rem;
+  padding-left: 0.42rem;
+  padding-right: 0.42rem;
+}
+
+.session-toolbar__timer-pill strong {
+  color: var(--color-text-primary);
+  letter-spacing: 0.03em;
+  font-size: 0.74rem;
+}
+
+.session-toolbar__timer-state {
+  opacity: 0.9;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+}
+
+.session-toolbar__connection--connected {
+  border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
+  color: #22c55e;
+  background: color-mix(in srgb, #dcfce7 75%, var(--color-surface));
+}
+
+.session-toolbar__connection--connecting,
+.session-toolbar__connection--reconnecting {
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--color-border));
+  color: #f59e0b;
+  background: color-mix(in srgb, #fef3c7 75%, var(--color-surface));
+}
+
+.session-toolbar__connection--disconnected {
+  border-color: color-mix(in srgb, #ef4444 45%, var(--color-border));
+  color: #ef4444;
+  background: color-mix(in srgb, #fee2e2 75%, var(--color-surface));
+}
+
+.session-toolbar__connection {
+  justify-content: center;
+  min-width: 1.95rem;
+  padding-left: 0.42rem;
+  padding-right: 0.42rem;
+}
+
+.session-toolbar__connection .ui-icon {
+  font-variation-settings: 'FILL' 1;
+}
+
+@media (max-width: 1080px) {
+  .session-toolbar {
+    grid-template-columns: 1fr;
+    gap: 0.46rem;
+    padding: 0.5rem 0.56rem;
+  }
+
+  .session-toolbar__zone {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 0.34rem;
+  }
+
+  .session-toolbar__campaign-pill {
+    max-width: 100%;
+  }
+
+  .session-toolbar__zone--center {
+    border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
+    padding: 0.34rem 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .session-toolbar {
+    border-radius: var(--radius-md);
+    padding: 0.42rem 0.5rem;
+  }
+
+  .session-toolbar__brand-title {
+    font-size: 0.75rem;
+  }
+
+  .session-toolbar__action,
+  .session-toolbar__icon-btn,
+  .session-toolbar__campaign-pill,
+  .session-toolbar__status-pill,
+  .session-toolbar__timer-pill,
+  .session-toolbar__connection {
+    min-height: 1.78rem;
+    padding: 0.27rem 0.44rem;
+    font-size: 0.67rem;
+  }
+
+  .session-toolbar__action .ui-icon,
+  .session-toolbar__icon-btn .ui-icon,
+  .session-toolbar__campaign-pill .ui-icon,
+  .session-toolbar__status-pill .ui-icon,
+  .session-toolbar__timer-pill .ui-icon,
+  .session-toolbar__connection .ui-icon {
+    width: 0.8rem;
+    height: 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .session-toolbar__timer-state,
+  .session-toolbar__exit-label {
+    display: none;
+  }
+}

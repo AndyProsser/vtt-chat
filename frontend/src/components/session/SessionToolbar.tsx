@@ -1,12 +1,15 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { ToolbarActionModel } from './CommandCenterFrame'
 import type { Role, SessionState } from '@shared'
 import type { ConnectionState } from '../../ws/client'
-import { Tabs, TabsList, TabsTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
+import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
+import '../../styles/components/session/SessionToolbar.css'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
-  username: string
+  campaignName: string
   role: Role
   wsState: ConnectionState
   sessionState: SessionState
@@ -19,7 +22,7 @@ interface SessionToolbarProps {
 
 export function SessionToolbar({
   actions,
-  username,
+  campaignName,
   role,
   wsState,
   sessionState,
@@ -29,83 +32,188 @@ export function SessionToolbar({
   onStopSession,
   onExitToSelector,
 }: SessionToolbarProps) {
+  const storageKey = 'vtt-theme-mode'
+
+  const detectThemeMode = (): FrontendThemeMode => {
+    if (typeof document === 'undefined') {
+      return 'light'
+    }
+
+    return document.documentElement.classList.contains(FRONTEND_THEME_CLASSES.dark)
+      ? 'dark'
+      : 'light'
+  }
+
+  const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  useEffect(() => {
+    if (sessionState !== 'ACTIVE') {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((value) => value + 1)
+    }, 1000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [sessionState])
+
+  const timerLabel = useMemo(() => {
+    const hours = Math.floor(elapsedSeconds / 3600)
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60)
+    const seconds = elapsedSeconds % 60
+
+    const hh = String(hours).padStart(2, '0')
+    const mm = String(minutes).padStart(2, '0')
+    const ss = String(seconds).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  }, [elapsedSeconds])
+
+  const handleToggleTheme = () => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const nextTheme: FrontendThemeMode = themeMode === 'dark' ? 'light' : 'dark'
+    document.documentElement.classList.remove(
+      FRONTEND_THEME_CLASSES.light,
+      FRONTEND_THEME_CLASSES.dark
+    )
+    document.documentElement.classList.add(FRONTEND_THEME_CLASSES[nextTheme])
+    window.localStorage.setItem(storageKey, nextTheme)
+    setThemeMode(nextTheme)
+  }
+
+  const handleOpenSettings = () => {
+    const targetTab = actions.availableRightRailTabs.includes('notes') ? 'notes' : 'rooms'
+
+    if (actions.rightRailOpen && actions.activeRightRailTab === targetTab) {
+      actions.toggleRightRail()
+      return
+    }
+
+    actions.openRightRailTab(targetTab)
+  }
+
+  const wsStateLabel = wsState.charAt(0).toUpperCase() + wsState.slice(1)
+
   return (
-    <div className="space-y-2" data-testid="session-toolbar">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-ui-secondary">
-        <span className="inline-flex items-center gap-1 rounded-ui-sm border border-ui-border px-2 py-1">
-          <strong className="text-ui-primary">{username}</strong> ({role})
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-ui-sm border border-ui-border px-2 py-1">
-          WS: <strong className="text-ui-primary">{wsState}</strong>
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-ui-sm border border-ui-border px-2 py-1">
-          Session: <strong className="text-ui-primary">{sessionState}</strong>
-        </span>
-      </div>
+    <TooltipProvider delayDuration={140}>
+      <div className="session-toolbar" data-testid="session-toolbar">
+        <div className="session-toolbar__zone session-toolbar__zone--left">
+          <div className="session-toolbar__brand" aria-label="Title and campaign">
+            <span className="session-toolbar__brand-mark" aria-hidden="true">
+              <Icon name="panel" />
+            </span>
+            <strong className="session-toolbar__brand-title">VTT Chat</strong>
+          </div>
+          <span className="session-toolbar__campaign-pill">
+            <Icon name="rooms" />
+            <span>{campaignName}</span>
+          </span>
+        </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Tabs
-          value={actions.centerPaneView}
-          onValueChange={(value) => {
-            if (value === 'chat' || value === 'notes') {
-              actions.setCenterPaneView(value)
-            }
-          }}
-        >
-          <TabsList className="h-auto gap-1 rounded-ui-md bg-ui-surface-subtle p-1">
-            <TabsTrigger
-              value="chat"
-              aria-label="Center Chat"
-              className="rounded-ui-sm px-3 py-1 text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
+        <div className="session-toolbar__zone session-toolbar__zone--center">
+          {canStartSession ? (
+            <button
+              type="button"
+              onClick={onStartSession}
+              className="session-toolbar__action session-toolbar__action--start"
             >
-              <span className="inline-flex items-center gap-1">
-                <Icon name="chat" /> Chat
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="notes"
-              aria-label="Center Notes"
-              className="rounded-ui-sm px-3 py-1 text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
+              <Icon name="play" />
+              <span>Start</span>
+            </button>
+          ) : null}
+
+          {canStopSession ? (
+            <button
+              type="button"
+              onClick={onStopSession}
+              className="session-toolbar__action session-toolbar__action--stop"
             >
-              <span className="inline-flex items-center gap-1">
-                <Icon name="notes" /> Notes
+              <Icon name="stop" />
+              <span>Stop</span>
+            </button>
+          ) : null}
+
+          {!canStartSession && !canStopSession ? (
+            <span className="session-toolbar__status-pill">
+              <Icon name="users" />
+              <span>{role}</span>
+            </span>
+          ) : null}
+
+          <span className="session-toolbar__timer-pill" aria-label="Session timer">
+            <Icon name="timer" />
+            <strong>{timerLabel}</strong>
+            <span className="session-toolbar__timer-state">{sessionState}</span>
+          </span>
+        </div>
+
+        <div className="session-toolbar__zone session-toolbar__zone--right">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                className="session-toolbar__icon-btn"
+                aria-label="Toggle theme"
+                title="Toggle theme"
+              >
+                <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle theme</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleOpenSettings}
+                className="session-toolbar__icon-btn"
+                aria-label="Open settings"
+                title="Open settings"
+              >
+                <Icon name="settings" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Open notes workspace</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={`session-toolbar__connection session-toolbar__connection--${wsState}`}
+                aria-label={`Connection ${wsStateLabel}`}
+                role="status"
+              >
+                <Icon name="status" />
               </span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+            </TooltipTrigger>
+            <TooltipContent>{wsStateLabel}</TooltipContent>
+          </Tooltip>
 
-        {canStartSession ? (
-          <button
-            type="button"
-            onClick={onStartSession}
-            className="rounded-ui-sm bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-          >
-            Start Session
-          </button>
-        ) : null}
-
-        {canStopSession ? (
-          <button
-            type="button"
-            onClick={onStopSession}
-            className="rounded-ui-sm bg-violet-600 px-3 py-1 text-xs text-white hover:bg-violet-700"
-          >
-            Stop Session
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={onExitToSelector}
-          className="rounded-ui-sm border border-ui-border bg-ui-surface px-3 py-1 text-xs text-ui-primary hover:bg-ui-surface-subtle"
-        >
-          Exit To Campaign Selector
-        </button>
-
-        <span className="inline-flex items-center gap-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary">
-          <Icon name="settings" /> Tools: {actions.activeRightRailTab}
-        </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onExitToSelector}
+                className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
+                aria-label="Exit to campaign selector"
+                title="Exit to campaign selector"
+              >
+                <Icon name="logout" />
+                <span className="session-toolbar__exit-label">Exit</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Exit to campaign selector</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }

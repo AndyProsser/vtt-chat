@@ -4,6 +4,7 @@
  * Messages arrive pre-filtered by the server (visibility-safe).
  */
 
+import type { RefObject, UIEventHandler } from 'react'
 import type { Message } from '@/types/chat'
 import { MessageType } from '@shared'
 
@@ -11,6 +12,8 @@ interface MessageListProps {
   messages: Message[]
   currentUserId: string
   groupingWindowMs?: number
+  listRef?: RefObject<HTMLDivElement | null>
+  onListScroll?: UIEventHandler<HTMLDivElement>
 }
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -55,13 +58,15 @@ export function MessageList({
   messages,
   currentUserId,
   groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
+  listRef,
+  onListScroll,
 }: MessageListProps) {
   if (messages.length === 0) {
     return <div className="chat-message-list__empty">No messages yet. Say something!</div>
   }
 
   return (
-    <div className="chat-message-list">
+    <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
       {messages.map((msg, index) => {
         const previous = index > 0 ? messages[index - 1] : undefined
         const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
