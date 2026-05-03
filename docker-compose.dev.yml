@@ -3,7 +3,9 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: builder
     container_name: vttchat-backend-dev
+    working_dir: /workspace/backend
     command: npm run dev
     restart: unless-stopped
     env_file:
@@ -14,9 +16,10 @@ services:
       LIVEKIT_URL: http://livekit:7880
       NODE_ENV: development
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/prisma:/app/prisma
-      - backend_node_modules:/app/node_modules
+      - ./backend/src:/workspace/backend/src
+      - ./backend/prisma:/workspace/backend/prisma
+      - ./backend/tsconfig.json:/workspace/backend/tsconfig.json
+      - backend_node_modules:/workspace/backend/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -31,7 +34,9 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      target: builder
     container_name: vttchat-frontend-dev
+    working_dir: /workspace/frontend
     command: npm run dev -- --host
     restart: unless-stopped
     environment:
@@ -42,9 +47,9 @@ services:
       VITE_LIVEKIT_URL: ws://localhost:7880
       VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-DEBUG}
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      - frontend_node_modules:/app/node_modules
+      - ./frontend/src:/workspace/frontend/src
+      - ./frontend/public:/workspace/frontend/public
+      - frontend_node_modules:/workspace/frontend/node_modules
     depends_on:
       - backend
     networks:
@@ -52,16 +57,18 @@ services:
 
   admin:
     build:
-      context: ./admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: admin/Dockerfile
+      target: builder
     container_name: vttchat-admin-dev
+    working_dir: /workspace/admin
     command: npm run dev -- --host
     restart: unless-stopped
     environment:
       VITE_BACKEND_URL: http://backend:3000
     volumes:
-      - ./admin/src:/app/src
-      - admin_node_modules:/app/node_modules
+      - ./admin/src:/workspace/admin/src
+      - admin_node_modules:/workspace/admin/node_modules
     depends_on:
       - backend
     networks:

@@ -12,6 +12,10 @@
   align-items: start;
 }
 
+.session-init-shell-session {
+  max-width: 1400px;
+}
+
 .session-status-card {
   margin-bottom: 2rem;
   padding: 1rem;
@@ -210,6 +214,10 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface));
 }
 
+.session-greenroom-card {
+  margin-bottom: 1rem;
+}
+
 .session-command-center-title {
   margin-top: 0;
 }
@@ -377,7 +385,7 @@
 
 .session-live-comms {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
 }
@@ -389,6 +397,28 @@
 
 .session-live-comms__chat {
   min-width: 0;
+}
+
+.session-left-rail-audio {
+  position: sticky;
+  top: 0.75rem;
+}
+
+.session-greenroom-placeholder {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface-subtle) 76%, transparent);
+  padding: 1rem;
+}
+
+.session-greenroom-placeholder h4 {
+  margin: 0 0 0.4rem;
+}
+
+.session-greenroom-placeholder p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
 }
 
 .session-left-rail {
@@ -490,6 +520,10 @@
   }
 
   .session-live-comms__voice {
+    position: static;
+  }
+
+  .session-left-rail-audio {
     position: static;
   }
 

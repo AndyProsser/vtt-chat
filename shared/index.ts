@@ -12,9 +12,9 @@
  * - validators/: Input validation and event validation functions (pure, side-effect-free)
  */
 
-export * from './types'
-export * from './events'
-export * from './permissions'
-export * from './errors'
-export * from './validators'
-export * from './utils'
+export * from './types/index'
+export * from './events/index'
+export * from './permissions/index'
+export * from './errors/index'
+export * from './validators/index'
+export * from './utils/index'

@@ -28,6 +28,7 @@ export interface ToolbarActionModel {
   centerPaneView: CenterPaneView
   setCenterPaneView: (view: CenterPaneView) => void
   rightRailOpen: boolean
+  activeRightRailTab: RightRailTab
   toggleRightRail: () => void
   placeholderActions: ToolbarPlaceholderAction[]
 }
@@ -131,6 +132,7 @@ export function CommandCenterFrame({
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
   const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
+  const setToolbarRightRailOpen = useStore((state) => state.setToolbarRightRailOpen)
   const toggleToolbarRightRail = useStore((state) => state.toggleToolbarRightRail)
 
   const [isCompactLayout, setIsCompactLayout] = useState(
@@ -164,6 +166,7 @@ export function CommandCenterFrame({
       setToolbarCenterPaneView(view)
     },
     rightRailOpen: toolbarRightRailOpen,
+    activeRightRailTab,
     toggleRightRail: () => {
       telemetryClient.track('UI_PANEL_TOGGLE', {
         surface: 'command-center-right-rail',
@@ -214,72 +217,92 @@ export function CommandCenterFrame({
           {renderLeftRail()}
         </aside>
 
-        <div data-testid="center-pane">{renderCenterPane(toolbarCenterPaneView)}</div>
+        <div data-testid="center-pane" className="command-center-center-pane">
+          {renderCenterPane(toolbarCenterPaneView)}
 
-        {toolbarRightRailOpen && (
-          <aside data-testid="right-rail" className="command-center-surface">
-            <Tabs
-              value={activeRightRailTab}
-              onValueChange={(nextTab) => {
-                if (!isRightRailTab(nextTab, tabs)) {
-                  return
-                }
+          <aside className="command-center-right-rail-dock">
+            <TooltipProvider delayDuration={140}>
+              <Tabs
+                value={activeRightRailTab}
+                onValueChange={(nextTab) => {
+                  if (!isRightRailTab(nextTab, tabs)) {
+                    return
+                  }
 
-                telemetryClient.track('UI_TAB_SWITCH', {
-                  surface: 'command-center-right-rail',
-                  from: activeRightRailTab,
-                  to: nextTab,
-                  role,
-                })
-                setSelectedRightRailTab(nextTab)
-              }}
+                  telemetryClient.track('UI_TAB_SWITCH', {
+                    surface: 'command-center-right-rail',
+                    from: activeRightRailTab,
+                    to: nextTab,
+                    role,
+                  })
+                  setSelectedRightRailTab(nextTab)
+                  setToolbarRightRailOpen(true)
+                }}
+              >
+                <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
+                  {tabs.map((tab) => {
+                    const label = formatTabLabel(tab)
+                    const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
+                    const isActive = toolbarRightRailOpen && activeRightRailTab === tab
+
+                    return (
+                      <Tooltip key={tab}>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger
+                            value={tab}
+                            aria-label={`Tool ${label}`}
+                            className="command-center-right-rail-trigger"
+                            onClick={() => {
+                              if (isActive) {
+                                setToolbarRightRailOpen(false)
+                              } else {
+                                setSelectedRightRailTab(tab)
+                                setToolbarRightRailOpen(true)
+                              }
+                            }}
+                          >
+                            <Icon name={iconForTab(tab)} />
+                            {indicatorCount > 0 ? (
+                              <span
+                                className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
+                                aria-hidden="true"
+                              >
+                                {formatIndicatorCount(indicatorCount)}
+                              </span>
+                            ) : null}
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="command-center-right-rail-tooltip">
+                          {label}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </TabsList>
+              </Tabs>
+            </TooltipProvider>
+          </aside>
+
+          {toolbarRightRailOpen && (
+            <aside
+              data-testid="right-rail"
+              className="command-center-surface command-center-right-rail-overlay"
             >
               <div className="command-center-right-rail-layout">
-                <TooltipProvider delayDuration={140}>
-                  <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
-                    {tabs.map((tab) => {
-                      const label = formatTabLabel(tab)
-                      const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
-
-                      return (
-                        <Tooltip key={tab}>
-                          <TooltipTrigger asChild>
-                            <TabsTrigger
-                              value={tab}
-                              aria-label={`Tool ${label}`}
-                              className="command-center-right-rail-trigger"
-                            >
-                              <Icon name={iconForTab(tab)} />
-                              {indicatorCount > 0 ? (
-                                <span
-                                  className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
-                                  aria-hidden="true"
-                                >
-                                  {formatIndicatorCount(indicatorCount)}
-                                </span>
-                              ) : null}
-                            </TabsTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="command-center-right-rail-tooltip">
-                            {label}
-                          </TooltipContent>
-                        </Tooltip>
-                      )
-                    })}
-                  </TabsList>
-                </TooltipProvider>
-
-                <TabsContent
-                  value={activeRightRailTab}
-                  data-testid="right-rail-content"
-                  className="command-center-right-rail-content"
-                >
-                  {renderRightRailTab(activeRightRailTab)}
-                </TabsContent>
+                <div />
+                <Tabs value={activeRightRailTab}>
+                  <TabsContent
+                    value={activeRightRailTab}
+                    data-testid="right-rail-content"
+                    className="command-center-right-rail-content"
+                  >
+                    {renderRightRailTab(activeRightRailTab)}
+                  </TabsContent>
+                </Tabs>
               </div>
-            </Tabs>
-          </aside>
-        )}
+            </aside>
+          )}
+        </div>
       </div>
     </section>
   )

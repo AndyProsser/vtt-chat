@@ -536,17 +536,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     await handleTransitionSession(sessionId, SessionState.ACTIVE)
   }
 
-  const handlePauseSession = async (sessionId: UUID) => {
+  const handleStopSession = async (sessionId: UUID) => {
     await handleTransitionSession(sessionId, SessionState.PAUSED)
-  }
-
-  const handleResumeSession = async (sessionId: UUID) => {
-    await handleTransitionSession(sessionId, SessionState.ACTIVE)
-  }
-
-  const handleEndSession = async (sessionId: UUID) => {
-    await handleTransitionSession(sessionId, SessionState.ENDED)
-    telemetryClient.onSessionEnd()
   }
 
   const handleDeleteSession = async (sessionId: UUID) => {
@@ -598,183 +589,193 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
-  const showChat = currentSession !== null && currentSession.state === SessionState.ACTIVE
+  const handleExitToCampaignSelector = () => {
+    const confirmed = window.confirm(
+      'Leave this session and return to the campaign selector? Unsaved local UI state may be lost.'
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setCurrentSession(null)
+    setSelectedRoomIdOverride('')
+  }
+
+  const hasSessionSelected = currentSession !== null
+  const isSessionActive = currentSession?.state === SessionState.ACTIVE
+  const canStartFromGreenroom =
+    user.role === 'DM' &&
+    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.PAUSED)
+  const canStopFromActive = user.role === 'DM' && isSessionActive
 
   return (
     <>
       {/* Reconnect / hydration banner — sits above the main surface */}
       <ReconnectBanner wsState={wsState} isHydrating={isHydrating} />
 
-      <div className={`session-init-shell ${showChat ? 'session-init-shell-wide' : ''}`}>
-        {/* User Info & WS Status */}
-        <div className="session-status-card">
-          <p className="session-status-copy">
-            <strong>User:</strong> {user.username} ({user.role})
-          </p>
-          <p className="session-status-copy">
-            <strong>WebSocket:</strong>{' '}
-            <span className={`session-ws-state session-ws-state-${wsState}`}>{wsState}</span>
-          </p>
-          {wsError && (
+      <div
+        className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : ''}`}
+      >
+        {wsError && (
+          <div className="session-status-card">
             <p className="session-ws-error">
               <strong>WS Error:</strong> {wsError.message}
             </p>
-          )}
-        </div>
-
-        <div className="session-card">
-          <h3 className="session-card-title">Campaign Context</h3>
-
-          <div className="session-field">
-            <label htmlFor="campaignSelect" className="session-label">
-              Active Campaign
-            </label>
-            <select
-              id="campaignSelect"
-              value={selectedCampaignId}
-              onChange={(e) => setSelectedCampaignId(e.target.value as UUID)}
-              disabled={isLoadingCampaigns || campaigns.length === 0}
-              className="session-select"
-            >
-              {campaigns.length === 0 ? (
-                <option value="">No campaigns yet</option>
-              ) : (
-                campaigns.map((campaign) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </option>
-                ))
-              )}
-            </select>
           </div>
+        )}
 
-          <div className="session-split-grid">
-            <form onSubmit={handleCreateCampaign}>
-              <p className="session-inline-form-title">Create Campaign</p>
-              <input
-                type="text"
-                value={newCampaignName}
-                onChange={(e) => setNewCampaignName(e.target.value)}
-                placeholder="Campaign name"
-                className="session-input"
-                disabled={isCreatingCampaign}
-                required
-              />
-              <input
-                type="text"
-                value={newCampaignDescription}
-                onChange={(e) => setNewCampaignDescription(e.target.value)}
-                placeholder="Description (optional)"
-                className="session-input"
-                disabled={isCreatingCampaign}
-              />
-              <button
-                type="submit"
-                disabled={isCreatingCampaign || !newCampaignName.trim()}
-                className="session-button session-button-brand"
-              >
-                {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
-              </button>
-            </form>
+        {!hasSessionSelected && user.role === 'DM' && (
+          <div className="session-card">
+            <h3 className="session-card-title">Campaign Context</h3>
 
-            <form onSubmit={handleJoinCampaign}>
-              <p className="session-inline-form-title">Join Campaign</p>
-              <input
-                type="text"
-                value={joinCampaignId}
-                onChange={(e) => setJoinCampaignId(e.target.value)}
-                placeholder="Campaign ID"
-                className="session-input"
-                disabled={isJoiningCampaign}
-                required
-              />
-              <input
-                type="text"
-                value={joinInviteCode}
-                onChange={(e) => setJoinInviteCode(e.target.value)}
-                placeholder="Invite code"
-                className="session-input"
-                disabled={isJoiningCampaign}
-                required
-              />
-              <button
-                type="submit"
-                disabled={isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()}
-                className="session-button session-button-indigo"
+            <div className="session-field">
+              <label htmlFor="campaignSelect" className="session-label">
+                Active Campaign
+              </label>
+              <select
+                id="campaignSelect"
+                value={selectedCampaignId}
+                onChange={(e) => setSelectedCampaignId(e.target.value as UUID)}
+                disabled={isLoadingCampaigns || campaigns.length === 0}
+                className="session-select"
               >
-                {isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
-              </button>
-            </form>
+                {campaigns.length === 0 ? (
+                  <option value="">No campaigns yet</option>
+                ) : (
+                  campaigns.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div className="session-split-grid">
+              <form onSubmit={handleCreateCampaign}>
+                <p className="session-inline-form-title">Create Campaign</p>
+                <input
+                  type="text"
+                  value={newCampaignName}
+                  onChange={(e) => setNewCampaignName(e.target.value)}
+                  placeholder="Campaign name"
+                  className="session-input"
+                  disabled={isCreatingCampaign}
+                  required
+                />
+                <input
+                  type="text"
+                  value={newCampaignDescription}
+                  onChange={(e) => setNewCampaignDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  className="session-input"
+                  disabled={isCreatingCampaign}
+                />
+                <button
+                  type="submit"
+                  disabled={isCreatingCampaign || !newCampaignName.trim()}
+                  className="session-button session-button-brand"
+                >
+                  {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
+                </button>
+              </form>
+
+              <form onSubmit={handleJoinCampaign}>
+                <p className="session-inline-form-title">Join Campaign</p>
+                <input
+                  type="text"
+                  value={joinCampaignId}
+                  onChange={(e) => setJoinCampaignId(e.target.value)}
+                  placeholder="Campaign ID"
+                  className="session-input"
+                  disabled={isJoiningCampaign}
+                  required
+                />
+                <input
+                  type="text"
+                  value={joinInviteCode}
+                  onChange={(e) => setJoinInviteCode(e.target.value)}
+                  placeholder="Invite code"
+                  className="session-input"
+                  disabled={isJoiningCampaign}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isJoiningCampaign || !joinCampaignId.trim() || !joinInviteCode.trim()}
+                  className="session-button session-button-indigo"
+                >
+                  {isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Create Session Form */}
-        <form onSubmit={handleCreateSession} className="session-card">
-          <h3 className="session-card-title">Create New Session</h3>
-          <p className="session-card-subtitle">
-            Sessions are created inside the selected campaign.
-          </p>
+        {!hasSessionSelected && user.role === 'DM' && (
+          <form onSubmit={handleCreateSession} className="session-card">
+            <h3 className="session-card-title">Create New Session</h3>
+            <p className="session-card-subtitle">
+              Sessions are created inside the selected campaign.
+            </p>
 
-          {error && (
-            <div className="session-error-banner">
-              <Toast variant="error" message={error} onDismiss={() => setError(null)} />
+            {error && (
+              <div className="session-error-banner">
+                <Toast variant="error" message={error} onDismiss={() => setError(null)} />
+              </div>
+            )}
+
+            <div className="session-field">
+              <label htmlFor="sessionName" className="session-label">
+                Session Name *
+              </label>
+              <input
+                id="sessionName"
+                type="text"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+                placeholder="e.g., Dragon's Lair Campaign"
+                className="session-input"
+                disabled={isCreating}
+                required
+              />
             </div>
-          )}
 
-          <div className="session-field">
-            <label htmlFor="sessionName" className="session-label">
-              Session Name *
-            </label>
-            <input
-              id="sessionName"
-              type="text"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-              placeholder="e.g., Dragon's Lair Campaign"
-              className="session-input"
-              disabled={isCreating}
-              required
-            />
-          </div>
+            <div className="session-field">
+              <label htmlFor="sessionDescription" className="session-label">
+                Description (optional)
+              </label>
+              <textarea
+                id="sessionDescription"
+                value={sessionDescription}
+                onChange={(e) => setSessionDescription(e.target.value)}
+                placeholder="Add session details..."
+                className="session-textarea"
+                disabled={isCreating}
+              />
+            </div>
 
-          <div className="session-field">
-            <label htmlFor="sessionDescription" className="session-label">
-              Description (optional)
-            </label>
-            <textarea
-              id="sessionDescription"
-              value={sessionDescription}
-              onChange={(e) => setSessionDescription(e.target.value)}
-              placeholder="Add session details..."
-              className="session-textarea"
-              disabled={isCreating}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isCreating || !sessionName.trim() || !isConnected || !selectedCampaignId}
-            className="session-button session-button-success"
-          >
-            {isCreating ? 'Creating...' : 'Create Session'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={isCreating || !sessionName.trim() || !isConnected || !selectedCampaignId}
+              className="session-button session-button-success"
+            >
+              {isCreating ? 'Creating...' : 'Create Session'}
+            </button>
+          </form>
+        )}
 
         {/* Session List */}
-        {isLoadingSessions ? (
+        {!hasSessionSelected && isLoadingSessions ? (
           <div className="session-status-message">Loading sessions...</div>
-        ) : sessionList.length > 0 ? (
+        ) : !hasSessionSelected && sessionList.length > 0 ? (
           <div className="session-card">
             <h3 className="session-card-title">Sessions ({sessionList.length})</h3>
 
             {sessionList.map((session) => (
-              <div
-                key={session.id}
-                className={`session-list-item ${currentSession?.id === session.id ? 'current' : ''}`}
-              >
-                <p className="session-list-title">
-                  {session.name} {currentSession?.id === session.id && '(current)'}
-                </p>
+              <div key={session.id} className="session-list-item">
+                <p className="session-list-title">{session.name}</p>
                 <p className="session-list-meta">
                   Status: <strong>{session.state}</strong>
                 </p>
@@ -782,38 +783,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   <p className="session-list-description">{session.description}</p>
                 )}
                 <div className="session-action-row">
-                  {session.state === SessionState.IDLE && user.role === 'DM' && (
-                    <button
-                      onClick={() => handleStartSession(session.id)}
-                      className="session-button session-button-primary"
-                    >
-                      Start Session
-                    </button>
-                  )}
-                  {session.state === SessionState.ACTIVE && user.role === 'DM' && (
-                    <button
-                      onClick={() => handlePauseSession(session.id)}
-                      className="session-button session-button-warn"
-                    >
-                      Pause Session
-                    </button>
-                  )}
-                  {session.state === SessionState.PAUSED && user.role === 'DM' && (
-                    <button
-                      onClick={() => handleResumeSession(session.id)}
-                      className="session-button session-button-primary"
-                    >
-                      Resume Session
-                    </button>
-                  )}
-                  {session.state !== SessionState.ENDED && user.role === 'DM' && (
-                    <button
-                      onClick={() => handleEndSession(session.id)}
-                      className="session-button session-button-violet"
-                    >
-                      End Session
-                    </button>
-                  )}
                   {user.role === 'DM' && (
                     <button
                       onClick={() => handleDeleteSession(session.id)}
@@ -822,35 +791,41 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       Delete
                     </button>
                   )}
-                  {!currentSession || currentSession.id !== session.id ? (
-                    <button
-                      onClick={() => setCurrentSession(session.id)}
-                      className="session-button session-button-neutral"
-                    >
-                      Select
-                    </button>
-                  ) : null}
+                  <button
+                    onClick={() => setCurrentSession(session.id)}
+                    className="session-button session-button-neutral"
+                  >
+                    Select
+                  </button>
                   {user.role !== 'DM' && <span className="session-dm-copy">DM-only controls</span>}
                 </div>
               </div>
             ))}
           </div>
-        ) : (
+        ) : !hasSessionSelected ? (
           <div className="session-status-message">No sessions available yet.</div>
-        )}
+        ) : null}
 
-        {/* Chat panel — only shown when a session is ACTIVE */}
-        {showChat && currentSession && (
+        {/* Command center shown whenever a session is selected */}
+        {hasSessionSelected && currentSession && (
           <div className="session-command-center">
-            <h3 className="session-command-center-title">Command Center</h3>
-            <p className="session-command-center-subtitle">
-              Voice rooms on the left, live conversation in the center, and tools on the right.
-            </p>
-
             <CommandCenterFrame
               role={user.role}
               rightRailIndicators={rightRailIndicators}
-              renderToolbar={(actions) => <SessionToolbar actions={actions} />}
+              renderToolbar={(actions) => (
+                <SessionToolbar
+                  actions={actions}
+                  username={user.username}
+                  role={user.role}
+                  wsState={wsState}
+                  sessionState={currentSession.state}
+                  canStartSession={canStartFromGreenroom}
+                  canStopSession={canStopFromActive}
+                  onStartSession={() => handleStartSession(currentSession.id)}
+                  onStopSession={() => handleStopSession(currentSession.id)}
+                  onExitToSelector={handleExitToCampaignSelector}
+                />
+              )}
               renderCampaignInfo={() => {
                 const selectedCampaign = campaigns.find(
                   (campaign) => campaign.id === selectedCampaignId
@@ -879,46 +854,57 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 />
               )}
               renderLeftRail={() => (
-                <SessionLeftRailPanel
-                  role={user.role}
-                  username={user.username}
-                  sessionName={currentSession.name}
-                  sessionState={currentSession.state}
-                  sessionCount={sessionList.length}
-                  roomCount={currentRooms.length}
-                  presenceCount={currentPresence.length}
-                  dmUserId={currentSession.dmId}
-                  currentUserId={user.id}
-                  rooms={currentRooms.map((room) => ({
-                    id: room.id,
-                    name: room.name,
-                    type: room.type,
-                  }))}
-                  roomMembersByRoomId={typedRoomMembers}
-                  selectedRoomId={selectedRoomId}
-                  onSelectRoom={setSelectedRoomIdOverride}
-                  dmOverrides={dmOverrides}
-                  currentConditionName={currentConditionName}
-                />
+                <>
+                  <SessionLeftRailPanel
+                    role={user.role}
+                    username={user.username}
+                    sessionName={currentSession.name}
+                    sessionState={currentSession.state}
+                    sessionCount={sessionList.length}
+                    roomCount={currentRooms.length}
+                    presenceCount={currentPresence.length}
+                    dmUserId={currentSession.dmId}
+                    currentUserId={user.id}
+                    rooms={currentRooms.map((room) => ({
+                      id: room.id,
+                      name: room.name,
+                      type: room.type,
+                    }))}
+                    roomMembersByRoomId={typedRoomMembers}
+                    selectedRoomId={selectedRoomId}
+                    onSelectRoom={setSelectedRoomIdOverride}
+                    dmOverrides={dmOverrides}
+                    currentConditionName={currentConditionName}
+                  />
+                  {selectedRoomId ? (
+                    <aside className="session-left-rail-audio" aria-label="Voice panel">
+                      <AudioPanel sessionId={currentSession.id} roomId={selectedRoomId} />
+                    </aside>
+                  ) : null}
+                </>
               )}
               renderCenterPane={(view) => (
                 <div className="session-command-center-pane">
                   {view === 'chat' ? (
                     <div className="session-live-comms">
-                      {selectedRoomId ? (
-                        <aside className="session-live-comms__voice" aria-label="Voice panel">
-                          <AudioPanel sessionId={currentSession.id} roomId={selectedRoomId} />
-                        </aside>
-                      ) : null}
-
                       <section className="session-live-comms__chat" aria-label="Chat panel">
-                        <ChatWindow
-                          apiUrl={apiUrl}
-                          token={token}
-                          sessionId={currentSession.id}
-                          user={user}
-                          messageGroupingWindowMs={messageGroupingWindowMs}
-                        />
+                        {isSessionActive ? (
+                          <ChatWindow
+                            apiUrl={apiUrl}
+                            token={token}
+                            sessionId={currentSession.id}
+                            user={user}
+                            messageGroupingWindowMs={messageGroupingWindowMs}
+                          />
+                        ) : (
+                          <div className="session-greenroom-placeholder">
+                            <h4>Greenroom Chat Standby</h4>
+                            <p>
+                              Start the session to open live chat and stream right-side tools over
+                              this workspace.
+                            </p>
+                          </div>
+                        )}
                       </section>
                     </div>
                   ) : (

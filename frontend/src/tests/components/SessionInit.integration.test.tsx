@@ -317,28 +317,23 @@ describe('SessionInit integration', () => {
 
     await screen.findByText('Session Alpha')
     fireEvent.click(screen.getByRole('button', { name: 'Select' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
 
     const notesTab = screen.getByRole('tab', { name: 'Tool Notes' })
-    fireEvent.mouseDown(notesTab, { button: 0 })
     fireEvent.click(notesTab)
     expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
     expect(screen.getByText('Archive route')).toBeTruthy()
 
     const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
-    fireEvent.mouseDown(searchTab, { button: 0 })
     fireEvent.click(searchTab)
     expect(await screen.findByTestId('search-panel')).toBeTruthy()
     expect(screen.getByPlaceholderText('Search notes, chat, rooms, or players')).toBeTruthy()
 
     const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
-    fireEvent.mouseDown(journalTab, { button: 0 })
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
     expect(screen.getByText('Archive route')).toBeTruthy()
 
     const historyTab = screen.getByRole('tab', { name: 'Tool History' })
-    fireEvent.mouseDown(historyTab, { button: 0 })
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
@@ -516,10 +511,8 @@ describe('SessionInit integration', () => {
 
     await screen.findByText('Session Alpha')
     fireEvent.click(screen.getByRole('button', { name: 'Select' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
 
     const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
-    fireEvent.mouseDown(journalTab, { button: 0 })
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
@@ -532,11 +525,9 @@ describe('SessionInit integration', () => {
     expect(screen.getByText('Archive route')).toBeTruthy()
 
     const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
-    fireEvent.mouseDown(searchTab, { button: 0 })
     fireEvent.click(searchTab)
     expect(await screen.findByTestId('search-panel')).toBeTruthy()
 
-    fireEvent.mouseDown(journalTab, { button: 0 })
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
@@ -546,7 +537,6 @@ describe('SessionInit integration', () => {
     })
 
     const historyTab = screen.getByRole('tab', { name: 'Tool History' })
-    fireEvent.mouseDown(historyTab, { button: 0 })
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 
@@ -559,11 +549,9 @@ describe('SessionInit integration', () => {
     expect(screen.getByText('Tara joined main room')).toBeTruthy()
 
     const notesTab = screen.getByRole('tab', { name: 'Tool Notes' })
-    fireEvent.mouseDown(notesTab, { button: 0 })
     fireEvent.click(notesTab)
     expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
 
-    fireEvent.mouseDown(historyTab, { button: 0 })
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 

@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { RoomType } from '@shared'
-import type { UUID } from '@shared'
 import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
@@ -35,13 +33,28 @@ export default function App() {
   const isStaleHttpDevProxy =
     browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
 
+  const isLoopbackHost = (host: string) =>
+    host === 'localhost' || host === '127.0.0.1' || host === '::1'
+
+  const shouldPreferBrowserWsOrigin = (() => {
+    if (isStaleHttpDevProxy || !configuredWsUrl) {
+      return true
+    }
+
+    try {
+      const configured = new URL(configuredWsUrl)
+      const browser = new URL(browserOrigin)
+      return isLoopbackHost(configured.hostname) && !isLoopbackHost(browser.hostname)
+    } catch {
+      return true
+    }
+  })()
+
   const apiUrl = isStaleHttpDevProxy ? browserOrigin : configuredApiUrl || browserOrigin
-  const wsUrl =
-    isStaleHttpDevProxy || !configuredWsUrl
-      ? normalizeWsUrl(
-          `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
-        )
-      : normalizeWsUrl(configuredWsUrl)
+  const wsUrlBase = shouldPreferBrowserWsOrigin
+    ? `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
+    : configuredWsUrl
+  const wsUrl = normalizeWsUrl(wsUrlBase)
   const adminUrl = configuredAdminUrl || `${browserOrigin}/admin`
 
   const {
@@ -64,12 +77,6 @@ export default function App() {
   })
 
   const currentSessionId = useStore((state) => state.currentSessionId)
-  const rooms = useStore((state) => state.rooms)
-
-  const activeRoomId = currentSessionId
-    ? Object.values(rooms[currentSessionId] ?? {}).find((room) => room.type === RoomType.MAIN)
-        ?.id || (Object.keys(rooms[currentSessionId] ?? {})[0] as UUID | undefined)
-    : undefined
 
   const showAdminButton = Boolean(
     auth.user && (auth.user.role === 'DM' || authProfile?.hasAdminAccess)
@@ -135,15 +142,7 @@ export default function App() {
       <div className="relative">
         <header className="border-b border-ui-border bg-ui-surface px-4 py-5 shadow-ui-sm">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-            <div>
-              <p className="mb-1 text-xs font-semibold tracking-wide text-ui-secondary uppercase">
-                VTT-Chat
-              </p>
-              <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
-              <p className="mt-1 text-sm text-ui-secondary">
-                Real-time tabletop chat, rooms, notes, and DM controls
-              </p>
-            </div>
+            <div className="text-sm font-semibold text-ui-primary">VTT-Chat</div>
 
             {auth.user && (
               <div className="flex gap-2">
@@ -199,9 +198,7 @@ export default function App() {
         </main>
 
         <footer className="mt-8 border-t border-ui-border bg-ui-surface/80 px-4 py-4 text-center text-sm text-ui-secondary shadow-ui-sm">
-          <p className="m-0">
-            Built for live session coordination with synchronized state, room presence, and audio.
-          </p>
+          <p className="m-0">Session workspace</p>
         </footer>
       </div>
     </div>

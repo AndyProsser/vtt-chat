@@ -84,6 +84,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     resolve: {
+      extensions: ['.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
       alias: {
         '@': path.resolve(__dirname, './src'),
         '@shared': path.resolve(__dirname, '../shared'),

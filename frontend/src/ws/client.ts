@@ -43,6 +43,7 @@ export class WebSocketClient {
   private state: ConnectionState = 'disconnected'
   private token: string
   private url: string
+  private manualDisconnect = false
 
   // Reconnection state
   private reconnectAttempts = 0
@@ -86,16 +87,24 @@ export class WebSocketClient {
       return
     }
 
+    this.manualDisconnect = false
+    this.clearReconnectTimeout()
+
     this.setState('connecting')
     logger.debug('ws.client', 'Opening WebSocket connection', { url: this.url })
 
     return new Promise((resolve, reject) => {
       try {
-        this.socket = new WebSocket(this.url)
+        let settled = false
+        const socket = new WebSocket(this.url)
+        this.socket = socket
 
-        this.socket.onopen = () => {
+        socket.onopen = () => {
+          if (socket !== this.socket || this.manualDisconnect) {
+            return
+          }
           logger.debug('ws.client', 'Socket opened; sending auth payload')
-          this.socket?.send(
+          socket.send(
             JSON.stringify({
               type: 'WS:AUTH',
               token: this.token,
@@ -104,26 +113,64 @@ export class WebSocketClient {
           this.reconnectAttempts = 0
           this.setState('connected')
           this.flushEventQueue()
+          settled = true
           resolve()
         }
 
-        this.socket.onmessage = (event) => {
+        socket.onmessage = (event) => {
+          if (socket !== this.socket) {
+            return
+          }
           logger.debug('ws.client', 'Raw message received', { data: event.data })
           this.handleMessage(event.data)
         }
 
-        this.socket.onerror = (error) => {
-          const err = new Error(`WebSocket error: ${error}`)
+        socket.onerror = (error) => {
+          if (socket !== this.socket || this.manualDisconnect) {
+            return
+          }
+
+          const err = new Error('WebSocket transport error')
           this.callbacks.onError?.(err)
-          reject(err)
+
+          if (!settled) {
+            settled = true
+            reject(err)
+          }
         }
 
-        this.socket.onclose = () => {
+        socket.onclose = (event) => {
+          if (socket !== this.socket) {
+            return
+          }
+
+          const closeCode = event?.code ?? 1005
+          const closeReason = event?.reason ?? ''
+
+          this.socket = null
+          this.setState('disconnected')
+
+          if (this.manualDisconnect) {
+            logger.debug('ws.client', 'Socket closed after manual disconnect')
+            if (!settled) {
+              settled = true
+              resolve()
+            }
+            return
+          }
+
           logger.debug('ws.client', 'Socket closed; scheduling reconnect', {
             reconnectAttempts: this.reconnectAttempts,
+            code: closeCode,
+            reason: closeReason,
           })
-          this.setState('disconnected')
+
           this.scheduleReconnect()
+
+          if (!settled) {
+            settled = true
+            reject(new Error(`WebSocket closed before ready (code ${closeCode})`))
+          }
         }
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -137,6 +184,7 @@ export class WebSocketClient {
    * Disconnect from server.
    */
   disconnect(): void {
+    this.manualDisconnect = true
     this.clearReconnectTimeout()
 
     if (this.socket) {
