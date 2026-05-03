@@ -10,7 +10,10 @@ import { MessageType } from '@shared'
 interface MessageListProps {
   messages: Message[]
   currentUserId: string
+  groupingWindowMs?: number
 }
+
+const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 
 const TYPE_LABELS: Record<string, string> = {
   [MessageType.IC]: 'IC',
@@ -30,44 +33,52 @@ function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function MessageList({ messages, currentUserId }: MessageListProps) {
+export function MessageList({
+  messages,
+  currentUserId,
+  groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
+}: MessageListProps) {
   if (messages.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">
-        No messages yet. Say something!
-      </div>
-    )
+    return <div className="chat-message-list__empty">No messages yet. Say something!</div>
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
-      {messages.map((msg) => {
+    <div className="chat-message-list">
+      {messages.map((msg, index) => {
+        const previous = index > 0 ? messages[index - 1] : undefined
         const colors = TYPE_COLORS[msg.type] ?? TYPE_COLORS[MessageType.OOC]
         const isSelf = msg.authorId === currentUserId
+        const isGroupedWithPrevious = Boolean(
+          groupingWindowMs > 0 &&
+          previous &&
+          previous.authorId === msg.authorId &&
+          msg.createdAt - previous.createdAt <= groupingWindowMs
+        )
 
         return (
-          <div key={msg.id} className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
+          <article
+            key={msg.id}
+            className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
+          >
             {/* Author + type badge */}
-            <div className="mb-0.5 flex items-center gap-1.5 text-xs text-ui-secondary">
-              {!isSelf && <span className="font-semibold">{msg.authorUsername}</span>}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
-              >
-                {TYPE_LABELS[msg.type] ?? msg.type}
-              </span>
-              {msg.editedAt && <span className="italic">edited</span>}
-              <span>{formatTime(msg.createdAt)}</span>
-            </div>
+            {!isGroupedWithPrevious ? (
+              <div className="chat-message__meta">
+                {!isSelf && <span className="font-semibold">{msg.authorUsername}</span>}
+                <span
+                  className={`chat-message__type rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
+                >
+                  {TYPE_LABELS[msg.type] ?? msg.type}
+                </span>
+                {msg.editedAt && <span className="italic">edited</span>}
+                <span>{formatTime(msg.createdAt)}</span>
+              </div>
+            ) : null}
 
             {/* Message bubble */}
-            <div
-              className={`max-w-[80%] wrap-break-word rounded-ui-md px-3 py-2 text-sm leading-[1.4] ${
-                isSelf ? 'bg-ui-brand text-white' : 'bg-ui-surface-subtle text-ui-primary'
-              }`}
-            >
+            <div className={`chat-message__bubble ${isSelf ? 'chat-message__bubble--self' : ''}`}>
               {msg.content}
             </div>
-          </div>
+          </article>
         )
       })}
     </div>

@@ -11,15 +11,25 @@ import { useStore } from '../../hooks/useStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import type { Message } from '@/types/chat'
+import '../../styles/components/chat/ChatWindow.css'
 
 interface ChatWindowProps {
   apiUrl: string
   token: string
   sessionId: UUID
   user: { id: UUID; username: string; role: Role | string }
+  messageGroupingWindowMs?: number
 }
 
-export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) {
+const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
+
+export function ChatWindow({
+  apiUrl,
+  token,
+  sessionId,
+  user,
+  messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
+}: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -111,18 +121,16 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
   }
 
   return (
-    <div className="flex h-full min-h-100 flex-col overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface">
-      {/* Header */}
-      <div className="shrink-0 border-b border-ui-border bg-ui-surface-subtle px-4 py-3 text-sm font-semibold text-ui-primary">
-        Chat
-      </div>
+    <section className="chat-window">
+      <header className="chat-window__header">
+        <div>
+          <h3 className="chat-window__title"># general</h3>
+          <p className="chat-window__subtitle">Live session chat</p>
+        </div>
+      </header>
 
       {/* Error banner */}
-      {error && (
-        <div className="shrink-0 border-b border-red-300 bg-ui-error-surface px-4 py-2 text-xs text-ui-error-text">
-          {error}
-        </div>
-      )}
+      {error && <div className="chat-window__error">{error}</div>}
 
       {/* Message list */}
       {isLoading ? (
@@ -130,7 +138,11 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
           Loading messages…
         </div>
       ) : (
-        <MessageList messages={messageList} currentUserId={user.id} />
+        <MessageList
+          messages={messageList}
+          currentUserId={user.id}
+          groupingWindowMs={messageGroupingWindowMs}
+        />
       )}
 
       {/* Scroll anchor */}
@@ -138,6 +150,6 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
 
       {/* Input */}
       <MessageInput onSend={handleSend} role={user.role} disabled={isLoading} />
-    </div>
+    </section>
   )
 }

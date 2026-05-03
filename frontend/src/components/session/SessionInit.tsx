@@ -22,7 +22,9 @@ import { JournalPanel } from './JournalPanel'
 import { SearchPanel } from './SearchPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
+import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
+import { AudioPanel } from '../audio/AudioPanel'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { Toast } from '../ui/Toast'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
@@ -69,6 +71,10 @@ interface ApiPresence {
   lastSeenAt: number
 }
 
+const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
+const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
+
 function formatTransitionNotice(params: {
   nextState: SessionState
   movedUsers: number
@@ -99,6 +105,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [error, setError] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
   const [isHydrating, setIsHydrating] = useState(false)
+  const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_CHAT_GROUPING_WINDOW_MS
+    }
+
+    const raw = window.localStorage.getItem(CHAT_GROUPING_STORAGE_KEY)
+    const parsed = Number(raw)
+    return ALLOWED_CHAT_GROUPING_WINDOWS.has(parsed) ? parsed : DEFAULT_CHAT_GROUPING_WINDOW_MS
+  })
   const prevWsStateRef = useRef<ConnectionState>('disconnected')
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
 
@@ -170,6 +185,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     setDismissedTransitionEventId(activeTransitionNotice.eventId)
   }, [activeTransitionNotice])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.localStorage.setItem(CHAT_GROUPING_STORAGE_KEY, String(messageGroupingWindowMs))
+  }, [messageGroupingWindowMs])
 
   useEffect(() => {
     if (!activeTransitionNotice) {
@@ -856,12 +879,23 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               renderCenterPane={(view) => (
                 <div className="session-command-center-pane">
                   {view === 'chat' ? (
-                    <ChatWindow
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      user={user}
-                    />
+                    <div className="session-live-comms">
+                      {selectedRoomId ? (
+                        <aside className="session-live-comms__voice" aria-label="Voice panel">
+                          <AudioPanel sessionId={currentSession.id} roomId={selectedRoomId} />
+                        </aside>
+                      ) : null}
+
+                      <section className="session-live-comms__chat" aria-label="Chat panel">
+                        <ChatWindow
+                          apiUrl={apiUrl}
+                          token={token}
+                          sessionId={currentSession.id}
+                          user={user}
+                          messageGroupingWindowMs={messageGroupingWindowMs}
+                        />
+                      </section>
+                    </div>
                   ) : (
                     <NotesPanel
                       apiUrl={apiUrl}
@@ -894,8 +928,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   search: 'Cross-session search tools are planned for a future release.',
                   journal: 'Journal surfaces are planned for a future release.',
                   history: 'History timeline tools are planned for a future release.',
-                  settings:
-                    'Session-level command center settings are planned for a future release.',
+                  settings: '',
                 }
 
                 if (tab === 'audio') {
@@ -961,13 +994,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   )
                 }
 
+                if (tab === 'settings') {
+                  return (
+                    <SessionUserSettingsPanel
+                      messageGroupingWindowMs={messageGroupingWindowMs}
+                      onMessageGroupingWindowChange={setMessageGroupingWindowMs}
+                    />
+                  )
+                }
+
                 return (
                   <p className="session-placeholder-copy">
                     {
                       placeholderByTab[
                         tab as Exclude<
                           RightRailTab,
-                          'rooms' | 'audio' | 'search' | 'journal' | 'history'
+                          'rooms' | 'audio' | 'search' | 'journal' | 'history' | 'settings'
                         >
                       ]
                     }

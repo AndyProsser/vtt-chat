@@ -41,9 +41,7 @@ function summarizeBody(body: BodyInit | null | undefined): string | undefined {
   return Object.prototype.toString.call(body)
 }
 
-function sanitizeHeaders(
-  input: Headers | string[][] | Record<string, string> | undefined
-): Record<string, string> | undefined {
+function sanitizeHeaders(input: HeadersInit | undefined): Record<string, string> | undefined {
   if (!input) return undefined
 
   const headers = new Headers(input)

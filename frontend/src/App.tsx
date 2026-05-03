@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
@@ -10,11 +10,6 @@ import { useAuthSession } from './hooks/useAuthSession'
 import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { cn } from './utils/cn'
-
-const AudioPanel = lazy(async () => {
-  const module = await import('./components/audio/AudioPanel')
-  return { default: module.AudioPanel }
-})
 
 export default function App() {
   const normalizeWsUrl = (rawWsUrl: string): string => {
@@ -202,18 +197,6 @@ export default function App() {
             {renderRouteView()}
           </section>
         </main>
-
-        {routeView.kind === 'app' && auth.token && currentSessionId && activeRoomId && (
-          <Suspense
-            fallback={
-              <div className="border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-secondary">
-                Loading audio controls...
-              </div>
-            }
-          >
-            <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
-          </Suspense>
-        )}
 
         <footer className="mt-8 border-t border-ui-border bg-ui-surface/80 px-4 py-4 text-center text-sm text-ui-secondary shadow-ui-sm">
           <p className="m-0">

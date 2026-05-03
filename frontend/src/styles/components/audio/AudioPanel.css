@@ -1,5 +1,27 @@
 /* AudioPanel — audio transport status and control surface */
 
+.audio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+}
+
+.audio-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.audio-panel__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
 .audio-panel__status-dot[data-state='connected'] {
   background-color: var(--color-success);
 }
@@ -10,4 +32,194 @@
 
 .audio-panel__status-dot[data-state='disconnected'] {
   background-color: var(--color-text-muted);
+}
+
+.audio-panel__status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.audio-panel__error {
+  color: var(--color-danger-text, #fecaca);
+  font-size: 0.8rem;
+}
+
+.audio-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audio-panel__participant {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 75%, transparent);
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.audio-panel__participant.is-speaking {
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 24%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, transparent);
+}
+
+.audio-panel__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 35%, #111827 65%);
+}
+
+.audio-panel__name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.audio-panel__participant.is-speaking .audio-panel__name {
+  color: #ffffff;
+}
+
+.audio-panel__badges {
+  display: inline-flex;
+  margin-left: auto;
+  gap: 0.4rem;
+}
+
+.audio-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.audio-panel__badge.speaking {
+  background: color-mix(in srgb, var(--color-success, #22c55e) 24%, transparent);
+  color: color-mix(in srgb, var(--color-success, #22c55e) 85%, #fff 15%);
+}
+
+.audio-panel__badge.muted {
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 22%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 84%, #fff 16%);
+}
+
+.audio-panel__badge.deafened {
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 20%, transparent);
+  color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 88%, #fff 12%);
+}
+
+.audio-panel__controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.7rem;
+  border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  padding-top: 0.6rem;
+}
+
+.audio-panel__self {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.audio-panel__self-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.audio-panel__self-meta strong {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+
+.audio-panel__self-meta span {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.audio-panel__buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.audio-panel__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 84%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.audio-panel__control:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.audio-panel__control:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audio-panel__control.is-active {
+  color: #fff;
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
+  border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 65%, transparent);
+}
+
+.audio-panel__control.is-danger {
+  color: #fff;
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 55%, #1e293b 45%);
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 65%, transparent);
+}
+
+.audio-panel__control.is-success {
+  color: #fff;
+  background: color-mix(in srgb, var(--color-success, #22c55e) 52%, #1e293b 48%);
+  border-color: color-mix(in srgb, var(--color-success, #22c55e) 65%, transparent);
+}
+
+.audio-panel__volume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.audio-panel__volume input {
+  width: 5rem;
+  accent-color: #3b82f6;
 }

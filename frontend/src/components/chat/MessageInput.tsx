@@ -63,17 +63,17 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-ui-border bg-ui-surface p-3">
+    <div className="chat-input">
       {/* Type selector */}
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-xs text-ui-secondary">Type:</span>
+      <div className="chat-input__types">
+        <span className="chat-input__types-label">Type:</span>
         {allowedTypes.map((t) => (
           <button
             key={t}
             onClick={() => setSelectedType(t)}
-            className={`rounded-full border px-2.5 py-1 text-xs ${
+            className={`chat-input__type-pill ${
               type === t
-                ? 'border-ui-brand bg-ui-brand text-white font-semibold'
+                ? 'chat-input__type-pill--active border-ui-brand bg-ui-brand text-white font-semibold'
                 : 'border-ui-border-soft bg-ui-surface text-ui-primary'
             }`}
           >
@@ -83,14 +83,14 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
       </div>
 
       {/* Input row */}
-      <div className="flex items-end gap-2">
+      <div className="chat-input__composer">
         {type === MessageType.WHISPER && (
           <input
             value={recipientId}
             onChange={(e) => setRecipientId(e.target.value)}
             disabled={disabled || isSending}
             placeholder="Recipient user ID"
-            className="w-55 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary disabled:bg-ui-surface-subtle"
+            className="chat-input__recipient"
           />
         )}
         <textarea
@@ -106,7 +106,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
           }
           rows={2}
           maxLength={4000}
-          className="flex-1 resize-none rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary disabled:bg-ui-surface-subtle"
+          className="chat-input__textarea"
         />
         <button
           onClick={() => void handleSend()}
@@ -116,7 +116,7 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
             isSending ||
             (type === MessageType.WHISPER && !recipientId.trim())
           }
-          className="whitespace-nowrap rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="chat-input__send"
         >
           {isSending ? '…' : 'Send'}
         </button>
