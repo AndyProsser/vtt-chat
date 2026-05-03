@@ -13,6 +13,8 @@ export interface TokenGenerationParams {
   roomId: string
   userId: string
   sessionId: string
+  canPublish?: boolean
+  canSubscribe?: boolean
 }
 
 export class LiveKitTokenService {
@@ -62,9 +64,9 @@ export class LiveKitTokenService {
       const grants: VideoGrant = {
         room: roomId,
         roomJoin: true,
-        canPublish: true,
+        canPublish: params.canPublish ?? true,
         canPublishData: true,
-        canSubscribe: true,
+        canSubscribe: params.canSubscribe ?? true,
       }
 
       const token = new AccessToken(this.apiKey, this.apiSecret)

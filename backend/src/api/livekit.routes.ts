@@ -59,7 +59,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
  */
 router.post('/token', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { sessionId, roomId } = req.body
+  const { sessionId, roomId, channel } = req.body
 
   // Validate input
   if (!isValidUUID(sessionId)) {
@@ -70,7 +70,9 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
-  if (!isValidUUID(roomId)) {
+  const requestedChannel = channel === 'voice_of_god' ? 'voice_of_god' : 'room'
+
+  if (requestedChannel === 'room' && !isValidUUID(roomId)) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'Invalid roomId',
@@ -97,23 +99,33 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    const isSessionDm = user.role === 'DM' && session.dmId === user.userId
+    const resolvedRoomId =
+      requestedChannel === 'voice_of_god' ? `voice-of-god:${sessionId}` : (roomId as string)
+
+    const canPublish = requestedChannel === 'voice_of_god' ? isSessionDm : true
+    const canSubscribe = requestedChannel === 'voice_of_god' ? !isSessionDm : true
+
     // Generate LiveKit token
     const token = await tokenService.generateToken({
-      roomId,
+      roomId: resolvedRoomId,
       userId: user.userId,
       sessionId,
+      canPublish,
+      canSubscribe,
     })
     const url = config.livekit.url
 
     logger.info(
       'livekit',
-      `Token issued for user ${user.userId} to room ${roomId} in session ${sessionId}`
+      `Token issued for user ${user.userId} to room ${resolvedRoomId} in session ${sessionId}`
     )
 
     res.status(200).json({
       token,
       url,
-      roomName: roomId,
+      roomName: resolvedRoomId,
+      channel: requestedChannel,
       userId: user.userId,
       userName: user.username,
     })

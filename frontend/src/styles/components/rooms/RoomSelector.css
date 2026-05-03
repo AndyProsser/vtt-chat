@@ -40,6 +40,39 @@
   gap: 0.45rem;
 }
 
+.room-selector-dm {
+  border: 1px solid color-mix(in srgb, var(--color-brand) 46%, var(--color-border-soft));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand) 16%, transparent);
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.room-selector-dm__voice-controls {
+  display: flex;
+  align-items: center;
+}
+
+.room-selector-dm__vog {
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.52rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.room-selector-dm__vog.active {
+  border-color: color-mix(in srgb, var(--color-brand) 62%, white 6%);
+  background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+}
+
 .room-selector-item {
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
   border-radius: var(--radius-sm);
@@ -71,6 +104,27 @@
   display: grid;
   gap: 0.15rem;
   cursor: pointer;
+}
+
+.room-selector-item__voice-toggle {
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.16rem 0.46rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.room-selector-item__voice-toggle.active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 56%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 24%, transparent);
 }
 
 .room-selector-item-name {
@@ -120,6 +174,8 @@
 
 .room-selector-profile-tooltip {
   max-width: 18rem;
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .room-selector-profile {

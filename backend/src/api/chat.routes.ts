@@ -8,6 +8,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
 import { sendMessage, editMessage, deleteMessage, getMessages } from '@/services/chat.service'
+import { getRoom, getSessionPresence } from '@/services/room.service'
 import type { StoredMessage } from '@/types/chat.types'
 import { isValidUUID, isValidMessageContent, isValidMessageType } from '@shared'
 import { ErrorCode } from '@shared'
@@ -44,6 +45,11 @@ function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
+function isGreenRoomName(name: string): boolean {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
 /**
  * Build a CHAT:MESSAGE_SENT event envelope for WS broadcast.
  */
@@ -59,10 +65,11 @@ function buildMessageSentEvent(
     userId,
     userRole: userRole as any,
     sessionId: message.sessionId,
-    roomId: null,
+    roomId: message.roomId || null,
     timestamp: message.createdAt,
     payload: {
       messageId: message.id,
+      roomId: message.roomId,
       authorId: message.authorId,
       authorUsername: message.authorUsername,
       content: message.content,
@@ -85,7 +92,7 @@ function buildMessageEditedEvent(
     userId,
     userRole: userRole as any,
     sessionId: message.sessionId,
-    roomId: null,
+    roomId: message.roomId || null,
     timestamp: message.editedAt ?? Date.now(),
     payload: {
       messageId: message.id,
@@ -106,7 +113,7 @@ function buildMessageDeletedEvent(
     userId: requesterId,
     userRole: userRole as any,
     sessionId: message.sessionId,
-    roomId: null,
+    roomId: message.roomId || null,
     timestamp: message.deletedAt ?? Date.now(),
     payload: {
       messageId: message.id,
@@ -116,19 +123,23 @@ function buildMessageDeletedEvent(
 
 /**
  * POST /api/chat/message
- * Send a new message to a session.
- * - IC: DM and PLAYER only
- * - OOC: all roles
- * - WHISPER: DM and PLAYER only; requires recipientId
- * - Session must be ACTIVE
+ * Send a new message to a room-scoped chat stream.
  */
 router.post('/message', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
-    const { sessionId, content, type, recipientId } = req.body
+    const { sessionId, roomId, content, type, recipientId } = req.body
 
     if (!isValidUUID(sessionId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+    }
+
+    if (!isValidUUID(roomId)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Invalid roomId',
+        field: 'roomId',
+      })
     }
 
     if (!isValidMessageContent(content)) {
@@ -147,7 +158,6 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    // Permission check by message type
     const role: string = user.role
     if (type === MessageType.IC && role === 'SPECTATOR') {
       return res
@@ -165,19 +175,37 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may send system messages' })
     }
 
-    // Validate session exists and is ACTIVE
     const session = await getSession(sessionId as UUID)
     if (!session) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
-    if (session.state !== SessionState.ACTIVE) {
+
+    const room = await getRoom(roomId as UUID)
+    if (!room || room.sessionId !== (sessionId as UUID)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (user.role !== 'DM') {
+      const presence = await getSessionPresence(sessionId as UUID)
+      const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
+      if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'You may only chat in your current room',
+        })
+      }
+    }
+
+    const allowGreenroomChatOutsideActive =
+      room.type === 'GROUP' && isGreenRoomName(room.name) && session.state !== SessionState.ACTIVE
+
+    if (session.state !== SessionState.ACTIVE && !allowGreenroomChatOutsideActive) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,
-        message: 'Session is not active',
+        message: 'Chat is only available in greenroom before or after active play',
       })
     }
 
-    // Validate WHISPER recipient
     if (type === MessageType.WHISPER) {
       if (!recipientId || !isValidUUID(recipientId)) {
         return res.status(400).json({
@@ -190,6 +218,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
     const stored = await sendMessage({
       sessionId: sessionId as UUID,
+      roomId: roomId as UUID,
       authorId: user.userId as UUID,
       authorUsername: user.username,
       dmId: session.dmId,
@@ -198,7 +227,6 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       recipientId: recipientId as UUID | undefined,
     })
 
-    // Broadcast WS:EVENT to visible clients
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event = buildMessageSentEvent(stored, user.userId as UUID, user.role)
@@ -213,15 +241,20 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
 /**
  * GET /api/chat/messages/:sessionId
- * Retrieve message history for a session (visibility-filtered).
+ * Retrieve message history for a room in a session.
  */
 router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user
     const { sessionId } = req.params
+    const roomId = req.query.roomId
 
     if (!isValidUUID(sessionId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+    }
+
+    if (!isValidUUID(roomId)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
     }
 
     const session = await getSession(sessionId as UUID)
@@ -229,7 +262,23 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
-    const messages = await getMessages(sessionId as UUID, user.userId as UUID, user.role)
+    const room = await getRoom(roomId as UUID)
+    if (!room || room.sessionId !== (sessionId as UUID)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (user.role !== 'DM') {
+      const presence = await getSessionPresence(sessionId as UUID)
+      const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
+      if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'You may only view chat in your current room',
+        })
+      }
+    }
+
+    const messages = await getMessages(sessionId as UUID, user.userId as UUID, user.role, roomId)
     return res.status(200).json({ messages })
   } catch {
     return internalErrorResponse(res)
@@ -265,7 +314,6 @@ router.put('/message/:id', requireAuth, async (req: Request, res: Response) => {
         .json({ code: ErrorCode.FORBIDDEN, message: 'Cannot edit this message' })
     }
 
-    // Broadcast edit event to session (same visibility as original)
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event = buildMessageEditedEvent(updated, user.userId as UUID, user.role)
@@ -298,7 +346,6 @@ router.delete('/message/:id', requireAuth, async (req: Request, res: Response) =
         .json({ code: ErrorCode.FORBIDDEN, message: 'Cannot delete this message' })
     }
 
-    // Broadcast deletion event to all in session (everyone knows a message was deleted)
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event = buildMessageDeletedEvent(deleted, user.userId as UUID, user.role)

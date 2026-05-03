@@ -11,7 +11,7 @@ export async function createChatMessageRecord(params: {
   content: string
   type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
   isDmOnly: boolean
-  visibleTo?: string[]
+  visibleTo?: unknown
   createdAt: Date
 }): Promise<void> {
   await prisma.chatMessage.create({

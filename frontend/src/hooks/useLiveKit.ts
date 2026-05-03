@@ -39,6 +39,8 @@ export interface UseLiveKitOptions {
   onTrackSubscribed?: (trackSid: string, mediaStream: MediaStream) => void
   /** Called when a remote audio track is unsubscribed */
   onTrackUnsubscribed?: (trackSid: string) => void
+  /** Token channel requested from backend. */
+  tokenChannel?: 'room' | 'voice_of_god'
 }
 
 export function useLiveKit(
@@ -46,7 +48,7 @@ export function useLiveKit(
   roomId: string,
   options: UseLiveKitOptions = {}
 ): UseLiveKitReturn {
-  const { onTrackSubscribed, onTrackUnsubscribed } = options
+  const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +123,7 @@ export function useLiveKit(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
-        body: JSON.stringify({ sessionId, roomId }),
+        body: JSON.stringify({ sessionId, roomId, channel: tokenChannel }),
       })
 
       if (!response.ok) {
@@ -137,7 +139,7 @@ export function useLiveKit(
       )
       throw err
     }
-  }, [sessionId, roomId])
+  }, [roomId, sessionId, tokenChannel])
 
   /**
    * Connect to LiveKit room

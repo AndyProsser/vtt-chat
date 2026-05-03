@@ -17,6 +17,7 @@ interface ChatWindowProps {
   apiUrl: string
   token: string
   sessionId: UUID
+  roomId: UUID
   user: { id: UUID; username: string; role: Role | string }
   messageGroupingWindowMs?: number
 }
@@ -27,6 +28,7 @@ export function ChatWindow({
   apiUrl,
   token,
   sessionId,
+  roomId,
   user,
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
 }: ChatWindowProps) {
@@ -104,7 +106,7 @@ export function ChatWindow({
       setError(null)
 
       try {
-        const res = await fetch(`${apiUrl}/api/chat/messages/${sessionId}`, {
+        const res = await fetch(`${apiUrl}/api/chat/messages/${sessionId}?roomId=${roomId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -116,6 +118,7 @@ export function ChatWindow({
         const data = await res.json()
         const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
           id: m.id as UUID,
+          roomId: (m.roomId as UUID | undefined) || roomId,
           authorId: m.authorId as UUID,
           authorUsername: m.authorUsername as string,
           content: m.content as string,
@@ -141,7 +144,7 @@ export function ChatWindow({
     return () => {
       cancelled = true
     }
-  }, [addMessage, apiUrl, sessionId, token])
+  }, [addMessage, apiUrl, roomId, sessionId, token])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -167,16 +170,18 @@ export function ChatWindow({
     setIsUserPinnedToBottom(isNearBottom)
   }, [])
 
+  const visibleMessages = messageList.filter((message) => message.roomId === roomId)
+
   // Auto-scroll to newest message only while user stays pinned at bottom.
   useEffect(() => {
-    if (!messageList.length) {
+    if (!visibleMessages.length) {
       return
     }
 
     if (isUserPinnedToBottom) {
       scrollToLatest('smooth')
     }
-  }, [isUserPinnedToBottom, messageList.length, scrollToLatest])
+  }, [isUserPinnedToBottom, scrollToLatest, visibleMessages.length])
 
   const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
     setError(null)
@@ -187,7 +192,7 @@ export function ChatWindow({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ sessionId, content, type, recipientId }),
+        body: JSON.stringify({ sessionId, roomId, content, type, recipientId }),
       })
 
       if (!res.ok) {
@@ -209,6 +214,7 @@ export function ChatWindow({
 
         const optimisticMessage: Message = {
           id: ((rawMessage as any).id ?? (rawMessage as any).messageId) as UUID,
+          roomId,
           authorId: ((rawMessage as any).authorId ?? user.id) as UUID,
           authorUsername: ((rawMessage as any).authorUsername ?? user.username) as string,
           content: ((rawMessage as any).content ?? content) as string,
@@ -247,7 +253,7 @@ export function ChatWindow({
         </div>
       ) : (
         <MessageList
-          messages={messageList}
+          messages={visibleMessages}
           currentUserId={user.id}
           groupingWindowMs={messageGroupingWindowMs}
           listRef={messageListRef}
@@ -255,7 +261,7 @@ export function ChatWindow({
         />
       )}
 
-      {!isLoading && messageList.length > 0 && !isUserPinnedToBottom ? (
+      {!isLoading && visibleMessages.length > 0 && !isUserPinnedToBottom ? (
         <button
           type="button"
           className="chat-window__jump-to-latest"

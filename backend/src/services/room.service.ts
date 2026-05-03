@@ -344,6 +344,13 @@ async function ensureSessionDefaultRooms(params: {
   return { mainRoom, greenRoom }
 }
 
+export async function ensureSessionDefaultRoomsForSession(
+  sessionId: UUID,
+  dmId: UUID
+): Promise<void> {
+  await ensureSessionDefaultRooms({ sessionId, dmId })
+}
+
 export async function applySessionStateRoomTransition(params: {
   sessionId: UUID
   dmId: UUID

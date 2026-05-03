@@ -60,14 +60,28 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream) => {
-      audioEngine.addTrack(trackSid, mediaStream)
+      audioEngine.addTrack(`room:${trackSid}`, mediaStream)
     },
     [audioEngine]
   )
 
   const handleTrackUnsubscribed = useCallback(
     (trackSid: string) => {
-      audioEngine.removeTrack(trackSid)
+      audioEngine.removeTrack(`room:${trackSid}`)
+    },
+    [audioEngine]
+  )
+
+  const handleVoiceOfGodTrackSubscribed = useCallback(
+    (trackSid: string, mediaStream: MediaStream) => {
+      audioEngine.addTrack(`vog:${trackSid}`, mediaStream)
+    },
+    [audioEngine]
+  )
+
+  const handleVoiceOfGodTrackUnsubscribed = useCallback(
+    (trackSid: string) => {
+      audioEngine.removeTrack(`vog:${trackSid}`)
     },
     [audioEngine]
   )
@@ -75,25 +89,68 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
   const livekit = useLiveKit(sessionId, roomId, {
     onTrackSubscribed: handleTrackSubscribed,
     onTrackUnsubscribed: handleTrackUnsubscribed,
+    tokenChannel: 'room',
   })
 
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
+  const voiceOfGodEnabled = useStore((state) => state.voiceOfGodEnabled)
+  const voiceOfGodRoomIdFromState = useStore((state) => state.voiceOfGodRoomId)
   const setDevice = useStore((state) => state.setDevice)
   const togglePTT = useStore((state) => state.togglePTT)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const currentUser = useStore((state) => state.currentUser)
 
+  const voiceOfGodRoomId = voiceOfGodRoomIdFromState || `voice-of-god:${sessionId}`
+
+  const voiceOfGodLivekit = useLiveKit(sessionId, voiceOfGodEnabled ? voiceOfGodRoomId : '', {
+    onTrackSubscribed: handleVoiceOfGodTrackSubscribed,
+    onTrackUnsubscribed: handleVoiceOfGodTrackUnsubscribed,
+    tokenChannel: 'voice_of_god',
+  })
+
   const handleGoLive = async () => {
     initializeAudio(true)
     await livekit.publishAudio()
+    if (voiceOfGodEnabled && currentUser?.role === 'DM') {
+      try {
+        await voiceOfGodLivekit.publishAudio()
+      } catch {
+        // Voice of God publish can trail behind room publish while secondary channel connects.
+      }
+    }
     setDevice({ microphoneOn: true })
   }
 
   const handleMute = async () => {
     await livekit.unpublishAudio()
+    await voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
     setDevice({ microphoneOn: false })
   }
+
+  useEffect(() => {
+    if (currentUser?.role !== 'DM') {
+      return
+    }
+
+    if (!device.microphoneOn) {
+      void voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
+      return
+    }
+
+    if (voiceOfGodEnabled && voiceOfGodLivekit.isConnected) {
+      void voiceOfGodLivekit.publishAudio().catch(() => undefined)
+    } else {
+      void voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
+    }
+  }, [
+    currentUser?.role,
+    device.microphoneOn,
+    voiceOfGodEnabled,
+    voiceOfGodLivekit.isConnected,
+    voiceOfGodLivekit.publishAudio,
+    voiceOfGodLivekit.unpublishAudio,
+  ])
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = Number(e.target.value)

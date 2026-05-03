@@ -7,6 +7,7 @@ import {
   applyDMOverrideState,
   getSessionAudioState,
   removeDMOverrideState,
+  setVoiceOfGodState,
   setRoomEnvironmentState,
 } from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
@@ -384,7 +385,66 @@ router.get('/state/:sessionId', requireAuth, async (req: Request, res: Response)
     environment: latestEnvironment,
     environments: state.environments,
     dmOverrides: state.dmOverrides,
+    voiceOfGod: state.voiceOfGod,
   })
+})
+
+router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) => {
+  const user = getAuthUser(req)
+  const { sessionId, enabled } = req.body
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid sessionId',
+      field: 'sessionId',
+    })
+  }
+
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'enabled must be a boolean',
+      field: 'enabled',
+    })
+  }
+
+  const authz = await validateDmControl(sessionId as UUID, user)
+  if (!authz.ok) {
+    return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  const changedAt = Date.now()
+  const state = await setVoiceOfGodState({
+    sessionId: sessionId as UUID,
+    dmId: user.userId as UUID,
+    enabled,
+    changedAt,
+  })
+
+  const event = createEvent({
+    type: 'AUDIO:VOICE_OF_GOD_CHANGED',
+    user,
+    sessionId: sessionId as UUID,
+    roomId: null,
+    payload: {
+      dmId: state.dmId,
+      enabled: state.enabled,
+      broadcastRoomId: state.broadcastRoomId,
+      changedAt: state.changedAt,
+    },
+  })
+
+  eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  logger.info('audio', 'Voice of God state changed', {
+    sessionId,
+    enabled,
+    actorUserId: user.userId,
+    broadcastRoomId: state.broadcastRoomId,
+  })
+
+  return res.status(200).json({ ok: true, voiceOfGod: state, eventId: event.id })
 })
 
 export default router

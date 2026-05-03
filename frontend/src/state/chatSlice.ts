@@ -113,6 +113,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   handleMessageSent: (event) => {
     const payload = event.payload as {
       messageId: UUID
+      roomId?: UUID
       authorId: UUID
       authorUsername: string
       content: string
@@ -122,6 +123,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
 
     const message: Message = {
       id: payload.messageId,
+      roomId: payload.roomId || (event.roomId as UUID),
       authorId: payload.authorId,
       authorUsername: payload.authorUsername,
       content: payload.content,

@@ -17,21 +17,56 @@ import {
   updateMessageRecord,
 } from '@/repositories/chat.repository'
 
+interface ChatVisibilityPayload {
+  visibleTo?: UUID[]
+  roomId?: UUID
+}
+
 function parseUUIDArray(value: unknown): UUID[] | undefined {
   if (!Array.isArray(value)) return undefined
   return value.filter((item): item is UUID => typeof item === 'string')
+}
+
+function parseVisibility(value: unknown): ChatVisibilityPayload {
+  if (!value) {
+    return {}
+  }
+
+  if (Array.isArray(value)) {
+    return {
+      visibleTo: parseUUIDArray(value),
+    }
+  }
+
+  if (typeof value === 'object') {
+    const maybeObject = value as Record<string, unknown>
+    return {
+      visibleTo: parseUUIDArray(maybeObject.visibleTo),
+      roomId: typeof maybeObject.roomId === 'string' ? (maybeObject.roomId as UUID) : undefined,
+    }
+  }
+
+  return {}
 }
 
 function computeVisibility(
   type: MessageType,
   authorId: UUID,
   dmId: UUID,
+  roomId?: UUID,
   recipientId?: UUID
-): UUID[] | undefined {
-  if (type !== MessageType.WHISPER) return undefined
+): ChatVisibilityPayload {
+  const visibility: ChatVisibilityPayload = roomId ? { roomId } : {}
+
+  if (type !== MessageType.WHISPER) {
+    return visibility
+  }
+
   const visibleTo = new Set<UUID>([authorId, dmId])
   if (recipientId) visibleTo.add(recipientId)
-  return Array.from(visibleTo)
+  visibility.visibleTo = Array.from(visibleTo)
+
+  return visibility
 }
 
 function mapStoredMessage(row: {
@@ -48,15 +83,18 @@ function mapStoredMessage(row: {
   deletedAt: Date | null
   deletedBy: string | null
 }): StoredMessage {
+  const visibility = parseVisibility(row.visibleTo)
+
   return {
     id: row.id as UUID,
     sessionId: row.sessionId as UUID,
+    roomId: visibility.roomId,
     authorId: row.authorId as UUID,
     authorUsername: row.authorUsername,
     content: row.content,
     type: row.type as MessageType,
     isDmOnly: row.isDmOnly,
-    visibleTo: parseUUIDArray(row.visibleTo),
+    visibleTo: visibility.visibleTo,
     createdAt: row.createdAt.getTime(),
     editedAt: row.editedAt?.getTime(),
     deletedAt: row.deletedAt?.getTime(),
@@ -67,9 +105,11 @@ function mapStoredMessage(row: {
 export function canSeeMessage(
   message: StoredMessage,
   requesterId: UUID,
-  requesterRole: string
+  requesterRole: string,
+  requestedRoomId?: UUID
 ): boolean {
   if (message.deletedAt !== undefined) return false
+  if (requestedRoomId && message.roomId && message.roomId !== requestedRoomId) return false
   if (requesterRole === 'DM') return true
   if (!message.visibleTo) return true
   return message.visibleTo.includes(requesterId)
@@ -77,6 +117,7 @@ export function canSeeMessage(
 
 export async function sendMessage(params: {
   sessionId: UUID
+  roomId?: UUID
   authorId: UUID
   authorUsername: string
   dmId: UUID
@@ -84,20 +125,21 @@ export async function sendMessage(params: {
   type: MessageType
   recipientId?: UUID
 }): Promise<StoredMessage> {
-  const { sessionId, authorId, authorUsername, dmId, content, type, recipientId } = params
+  const { sessionId, roomId, authorId, authorUsername, dmId, content, type, recipientId } = params
 
   const id = crypto.randomUUID() as UUID
-  const visibleTo = computeVisibility(type, authorId, dmId, recipientId)
+  const visibility = computeVisibility(type, authorId, dmId, roomId, recipientId)
 
   const message: StoredMessage = {
     id,
     sessionId,
+    roomId,
     authorId,
     authorUsername,
     content,
     type,
     isDmOnly: type === MessageType.WHISPER,
-    visibleTo,
+    visibleTo: visibility.visibleTo,
     createdAt: Date.now(),
   }
 
@@ -109,7 +151,7 @@ export async function sendMessage(params: {
     content,
     type,
     isDmOnly: message.isDmOnly,
-    visibleTo,
+    visibleTo: visibility,
     createdAt: new Date(message.createdAt),
   })
 
@@ -119,11 +161,12 @@ export async function sendMessage(params: {
 export async function getMessages(
   sessionId: UUID,
   requesterId: UUID,
-  requesterRole: string
+  requesterRole: string,
+  roomId?: UUID
 ): Promise<StoredMessage[]> {
   const rows = await listSessionMessages(sessionId)
   const messages = rows.map(mapStoredMessage)
-  return messages.filter((m) => canSeeMessage(m, requesterId, requesterRole))
+  return messages.filter((m) => canSeeMessage(m, requesterId, requesterRole, roomId))
 }
 
 export async function editMessage(

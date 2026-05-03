@@ -39,7 +39,11 @@ interface RoomSelectorRoomWithParticipants extends RoomSelectorRoom {
 interface RoomSelectorProps {
   apiUrl: string
   token: string
+  sessionId: UUID
+  dmUserId: UUID
   canManageRooms: boolean
+  voiceOfGodEnabled: boolean
+  onToggleVoiceOfGod: (enabled: boolean) => Promise<void>
   rooms: RoomSelectorRoomWithParticipants[]
   selectedRoomId?: UUID | ''
   onSelectRoom: (roomId: UUID) => void
@@ -48,7 +52,11 @@ interface RoomSelectorProps {
 export function RoomSelector({
   apiUrl,
   token,
+  sessionId,
+  dmUserId,
   canManageRooms,
+  voiceOfGodEnabled,
+  onToggleVoiceOfGod,
   rooms,
   selectedRoomId,
   onSelectRoom,
@@ -72,6 +80,16 @@ export function RoomSelector({
     [rooms]
   )
 
+  const dmParticipant = useMemo(
+    () => baseParticipants.find((participant) => participant.userId === dmUserId),
+    [baseParticipants, dmUserId]
+  )
+
+  const nonDmParticipants = useMemo(
+    () => baseParticipants.filter((participant) => participant.userId !== dmUserId),
+    [baseParticipants, dmUserId]
+  )
+
   const displayedParticipantsByRoom = useMemo(() => {
     const next: Record<string, RoomParticipantStatus[]> = {}
 
@@ -79,7 +97,7 @@ export function RoomSelector({
       next[room.id] = []
     }
 
-    for (const participant of baseParticipants) {
+    for (const participant of nonDmParticipants) {
       const targetRoomId = pendingRoomMoves[participant.userId] || participant.roomId
       if (!next[targetRoomId]) {
         next[targetRoomId] = []
@@ -88,7 +106,7 @@ export function RoomSelector({
     }
 
     return next
-  }, [baseParticipants, pendingRoomMoves, rooms])
+  }, [nonDmParticipants, pendingRoomMoves, rooms])
 
   const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
     setMoveError(null)
@@ -101,7 +119,7 @@ export function RoomSelector({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ sessionId, targetUserId: userId }),
       })
 
       if (!response.ok) {
@@ -155,6 +173,41 @@ export function RoomSelector({
         </header>
 
         <div className="room-selector-list" role="list" aria-label="Session rooms">
+          {dmParticipant ? (
+            <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
+              <div className="room-selector-dm__profile">
+                <AvatarOverlay
+                  username={dmParticipant.characterName || dmParticipant.username}
+                  avatarUrl={dmParticipant.avatarUrl}
+                  roleLabel="DM"
+                  presenceState={dmParticipant.presenceState}
+                  isMuted={dmParticipant.isMuted}
+                  isSpeaking={dmParticipant.isSpeaking}
+                />
+              </div>
+              {canManageRooms ? (
+                <div className="room-selector-dm__voice-controls">
+                  <button
+                    type="button"
+                    className={`room-selector-dm__vog ${voiceOfGodEnabled ? 'active' : ''}`}
+                    onClick={() => {
+                      void onToggleVoiceOfGod(!voiceOfGodEnabled).catch((error) => {
+                        setMoveError(
+                          error instanceof Error ? error.message : 'Failed to toggle Voice of God'
+                        )
+                      })
+                    }}
+                    aria-pressed={voiceOfGodEnabled}
+                    title="Project DM voice to all active rooms."
+                  >
+                    <Icon name="signal" />
+                    Voice of God
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           {rooms.length === 0 ? (
             <p className="room-selector-empty">No rooms available.</p>
           ) : (
@@ -204,6 +257,24 @@ export function RoomSelector({
                       {formatRoomTypeLabel(room.type)} · {participants.length}
                     </span>
                   </button>
+
+                  {canManageRooms ? (
+                    <button
+                      type="button"
+                      className={`room-selector-item__voice-toggle ${
+                        selectedRoomId === room.id && !voiceOfGodEnabled ? 'active' : ''
+                      }`}
+                      onClick={() => {
+                        if (voiceOfGodEnabled) {
+                          void onToggleVoiceOfGod(false)
+                        }
+                        onSelectRoom(room.id)
+                      }}
+                      aria-pressed={selectedRoomId === room.id && !voiceOfGodEnabled}
+                    >
+                      <Icon name="voice" /> DM Voice Here
+                    </button>
+                  ) : null}
 
                   <div className="room-selector-members-list">
                     {participants.length === 0 ? (

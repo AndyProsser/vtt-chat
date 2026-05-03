@@ -3,6 +3,7 @@ import type {
   AudioDMOverrideState,
   AudioEnvironmentState,
   AudioSessionState,
+  AudioVoiceOfGodState,
 } from '@/types/audio.types'
 import {
   listAudioDMOverridesBySession,
@@ -11,6 +12,12 @@ import {
   upsertAudioDMOverrideRecord,
   upsertAudioRoomStateRecord,
 } from '@/repositories/audio.repository'
+
+const VOICE_OF_GOD_OVERRIDE = 'VOICE_OF_GOD'
+
+function getVoiceOfGodRoomId(sessionId: UUID): string {
+  return `voice-of-god:${sessionId}`
+}
 
 function toRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -96,6 +103,14 @@ export async function getSessionAudioState(sessionId: UUID): Promise<AudioSessio
     listAudioDMOverridesBySession(sessionId),
   ])
 
+  const voiceOfGodRow = dmOverrides.find((row) => row.overrideType === VOICE_OF_GOD_OVERRIDE)
+  const voiceOfGod: AudioVoiceOfGodState = {
+    enabled: Boolean(voiceOfGodRow),
+    dmId: voiceOfGodRow ? (voiceOfGodRow.targetUserId as UUID) : undefined,
+    broadcastRoomId: getVoiceOfGodRoomId(sessionId),
+    changedAt: voiceOfGodRow?.appliedAt?.getTime(),
+  }
+
   return {
     sessionId,
     environments: environments.map((row) => ({
@@ -106,12 +121,48 @@ export async function getSessionAudioState(sessionId: UUID): Promise<AudioSessio
       setBy: row.setBy as UUID,
       setAt: row.setAt.getTime(),
     })),
-    dmOverrides: dmOverrides.map((row) => ({
-      targetUserId: row.targetUserId as UUID,
-      overrideType: row.overrideType,
-      parameters: toRecord(row.parameters),
-      appliedBy: row.appliedBy as UUID,
-      appliedAt: row.appliedAt.getTime(),
-    })),
+    dmOverrides: dmOverrides
+      .filter((row) => row.overrideType !== VOICE_OF_GOD_OVERRIDE)
+      .map((row) => ({
+        targetUserId: row.targetUserId as UUID,
+        overrideType: row.overrideType,
+        parameters: toRecord(row.parameters),
+        appliedBy: row.appliedBy as UUID,
+        appliedAt: row.appliedAt.getTime(),
+      })),
+    voiceOfGod,
+  }
+}
+
+export async function setVoiceOfGodState(params: {
+  sessionId: UUID
+  dmId: UUID
+  enabled: boolean
+  changedAt?: number
+}): Promise<AudioVoiceOfGodState> {
+  const changedAt = params.changedAt ?? Date.now()
+
+  if (params.enabled) {
+    await upsertAudioDMOverrideRecord({
+      sessionId: params.sessionId,
+      targetUserId: params.dmId,
+      overrideType: VOICE_OF_GOD_OVERRIDE,
+      parameters: { enabled: true, broadcastRoomId: getVoiceOfGodRoomId(params.sessionId) },
+      appliedBy: params.dmId,
+      appliedAt: new Date(changedAt),
+    })
+  } else {
+    await removeAudioDMOverrideRecord({
+      sessionId: params.sessionId,
+      targetUserId: params.dmId,
+      overrideType: VOICE_OF_GOD_OVERRIDE,
+    })
+  }
+
+  return {
+    enabled: params.enabled,
+    dmId: params.dmId,
+    broadcastRoomId: getVoiceOfGodRoomId(params.sessionId),
+    changedAt,
   }
 }

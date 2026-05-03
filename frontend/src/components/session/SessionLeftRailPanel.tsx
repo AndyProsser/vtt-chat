@@ -8,6 +8,7 @@ import { RoomSelector } from '../rooms/RoomSelector'
 interface SessionLeftRailPanelProps {
   apiUrl: string
   token: string
+  sessionId: UUID
   role: Role
   username: string
   sessionName: string
@@ -21,6 +22,8 @@ interface SessionLeftRailPanelProps {
   roomMembersByRoomId: Record<UUID, RoomUser[]>
   selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
+  voiceOfGodEnabled: boolean
+  onToggleVoiceOfGod: (enabled: boolean) => Promise<void>
   dmOverrides: Map<UUID, AudioDMOverride>
   currentConditionName?: string
 }
@@ -28,6 +31,7 @@ interface SessionLeftRailPanelProps {
 export function SessionLeftRailPanel({
   apiUrl,
   token,
+  sessionId,
   role,
   username,
   sessionName,
@@ -41,6 +45,8 @@ export function SessionLeftRailPanel({
   roomMembersByRoomId,
   selectedRoomId,
   onSelectRoom,
+  voiceOfGodEnabled,
+  onToggleVoiceOfGod,
   dmOverrides,
   currentConditionName,
 }: SessionLeftRailPanelProps) {
@@ -73,7 +79,11 @@ export function SessionLeftRailPanel({
       <RoomSelector
         apiUrl={apiUrl}
         token={token}
+        sessionId={sessionId}
+        dmUserId={dmUserId}
         canManageRooms={role === 'DM'}
+        voiceOfGodEnabled={voiceOfGodEnabled}
+        onToggleVoiceOfGod={onToggleVoiceOfGod}
         rooms={visibleRooms.map((room) => ({
           id: room.id,
           name: room.name,

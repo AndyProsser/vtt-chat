@@ -14,11 +14,14 @@ const TooltipContent = React.forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      'z-50 rounded-md bg-slate-950 px-3 py-1.5 text-xs text-white shadow-lg',
+      'z-50 rounded-md border border-slate-700/70 bg-slate-950 px-3 py-1.5 text-xs text-white shadow-lg',
       className
     )}
     {...props}
-  />
+  >
+    {props.children}
+    <TooltipPrimitive.Arrow className="fill-slate-950" width={10} height={6} />
+  </TooltipPrimitive.Content>
 ))
 
 TooltipContent.displayName = TooltipPrimitive.Content.displayName

@@ -79,6 +79,13 @@ interface ApiPresence {
   lastSeenAt: number
 }
 
+interface ApiVoiceOfGod {
+  enabled: boolean
+  dmId?: UUID
+  broadcastRoomId?: string
+  changedAt?: number
+}
+
 const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
 const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
@@ -150,6 +157,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const notes = useStore((state) => state.notes)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
+  const voiceOfGodEnabled = useStore((state) => state.voiceOfGodEnabled)
+  const setVoiceOfGodState = useStore((state) => state.setVoiceOfGodState)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
@@ -188,7 +197,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return selectedRoomIdOverride
     }
 
-    return currentRooms[0].id
+    const mainRoom = currentRooms.find((room) => room.type === RoomType.MAIN)
+    return (mainRoom || currentRooms[0]).id
   }, [currentRooms, selectedRoomIdOverride])
 
   const activeTransitionNotice =
@@ -211,6 +221,47 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     setDismissedTransitionEventId(activeTransitionNotice.eventId)
   }, [activeTransitionNotice])
+
+  const handleToggleVoiceOfGod = useCallback(
+    async (enabled: boolean) => {
+      if (!currentSession || user.role !== 'DM') {
+        return
+      }
+
+      const response = await fetch(`${apiUrl}/api/audio/voice-of-god`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionId: currentSession.id,
+          enabled,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { message?: string }
+        throw new Error(payload.message || 'Failed to update Voice of God state')
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        voiceOfGod?: ApiVoiceOfGod
+      }
+
+      if (payload.voiceOfGod) {
+        setVoiceOfGodState({
+          enabled: Boolean(payload.voiceOfGod.enabled),
+          broadcastRoomId: payload.voiceOfGod.broadcastRoomId,
+          dmId: payload.voiceOfGod.dmId,
+          changedAt: payload.voiceOfGod.changedAt,
+        })
+      } else {
+        setVoiceOfGodState({ enabled })
+      }
+    },
+    [apiUrl, currentSession, setVoiceOfGodState, token, user.role]
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -361,7 +412,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     const loadPresenceAndRooms = async () => {
       setIsHydrating(true)
       try {
-        const [roomsResponse, presenceResponse] = await Promise.all([
+        const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
           fetch(`${apiUrl}/api/rooms/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -372,14 +423,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               Authorization: `Bearer ${token}`,
             },
           }),
+          fetch(`${apiUrl}/api/audio/state/${currentSession.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
         ])
 
-        if (!roomsResponse.ok || !presenceResponse.ok) {
+        if (!roomsResponse.ok || !presenceResponse.ok || !audioStateResponse.ok) {
           return
         }
 
         const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
         const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
+        const audioStatePayload = (await audioStateResponse.json()) as {
+          voiceOfGod?: ApiVoiceOfGod
+        }
 
         const nextRooms = (roomsPayload.rooms || []).map((room) => ({
           id: room.id,
@@ -409,6 +468,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
+
+        if (audioStatePayload.voiceOfGod) {
+          setVoiceOfGodState({
+            enabled: Boolean(audioStatePayload.voiceOfGod.enabled),
+            broadcastRoomId: audioStatePayload.voiceOfGod.broadcastRoomId,
+            dmId: audioStatePayload.voiceOfGod.dmId,
+            changedAt: audioStatePayload.voiceOfGod.changedAt,
+          })
+        }
       } catch {
         // Event-driven WebSocket updates continue to flow even if hydration fails.
       } finally {
@@ -417,7 +485,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadPresenceAndRooms()
-  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology])
+  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology, setVoiceOfGodState])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -862,6 +930,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   <SessionLeftRailPanel
                     apiUrl={apiUrl}
                     token={token}
+                    sessionId={currentSession.id}
                     role={user.role}
                     username={user.username}
                     sessionName={currentSession.name}
@@ -879,6 +948,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     roomMembersByRoomId={typedRoomMembers}
                     selectedRoomId={selectedRoomId}
                     onSelectRoom={setSelectedRoomIdOverride}
+                    voiceOfGodEnabled={voiceOfGodEnabled}
+                    onToggleVoiceOfGod={handleToggleVoiceOfGod}
                     dmOverrides={dmOverrides}
                     currentConditionName={currentConditionName}
                   />
@@ -894,11 +965,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {view === 'chat' ? (
                     <div className="session-live-comms">
                       <section className="session-live-comms__chat" aria-label="Chat panel">
-                        {isSessionActive ? (
+                        {selectedRoomId ? (
                           <ChatWindow
                             apiUrl={apiUrl}
                             token={token}
                             sessionId={currentSession.id}
+                            roomId={selectedRoomId}
                             user={user}
                             messageGroupingWindowMs={messageGroupingWindowMs}
                           />

@@ -5,6 +5,7 @@ import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
 import {
   createRoom,
+  ensureSessionDefaultRoomsForSession,
   getRoom,
   getRoomMemberIds,
   getSessionPresence,
@@ -72,6 +73,11 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     const allowed = await canAccessSessionRooms(sessionId as UUID, user)
     if (!allowed) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
+    const session = await getSession(sessionId as UUID)
+    if (session) {
+      await ensureSessionDefaultRoomsForSession(sessionId as UUID, session.dmId)
     }
 
     const rooms = await getRooms(sessionId as UUID)
