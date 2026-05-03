@@ -32,6 +32,7 @@ services:
         VITE_API_URL: ${VITE_API_URL:-https://localhost:8443}
         VITE_WS_URL: ${VITE_WS_URL:-wss://localhost:8443}
         VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL:-wss://localhost:7880}
+        VITE_DEBUG_BUILD: ${VITE_DEBUG_BUILD:-true}
     container_name: vttchat-frontend
     restart: unless-stopped
     networks:

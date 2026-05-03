@@ -114,17 +114,25 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   })
 
   // Store
-  const store = useStore()
-  const { sessions, currentSessionId } = store
-  const clearSessions = store.clearSessions
-  const replaceSessions = store.replaceSessions
-  const replaceSessionTopology = store.replaceSessionTopology
+  const sessions = useStore((state) => state.sessions)
+  const currentSessionId = useStore((state) => state.currentSessionId)
+  const rooms = useStore((state) => state.rooms)
+  const sessionPresence = useStore((state) => state.sessionPresence)
+  const roomMembers = useStore((state) => state.roomMembers)
+  const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
+  const clearSessions = useStore((state) => state.clearSessions)
+  const replaceSessions = useStore((state) => state.replaceSessions)
+  const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
+  const createSession = useStore((state) => state.createSession)
+  const setCurrentSession = useStore((state) => state.setCurrentSession)
+  const removeSession = useStore((state) => state.removeSession)
+  const updateSession = useStore((state) => state.updateSession)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] : null
-  const typedRoomsBySession = store.rooms as Record<UUID, Record<UUID, RoomRecord>>
-  const typedPresenceBySession = store.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
-  const typedRoomMembers = store.roomMembers as Record<UUID, RoomMember[]>
+  const typedRoomsBySession = rooms as Record<UUID, Record<UUID, RoomRecord>>
+  const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
+  const typedRoomMembers = roomMembers as Record<UUID, RoomMember[]>
   const currentRooms = useMemo<RoomRecord[]>(
     () => (currentSession ? Object.values(typedRoomsBySession[currentSession.id] || {}) : []),
     [currentSession, typedRoomsBySession]
@@ -134,7 +142,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [currentSession, typedPresenceBySession]
   )
   const currentTransitionNotice = currentSession
-    ? store.sessionTransitionNotice[currentSession.id]
+    ? sessionTransitionNotice[currentSession.id]
     : undefined
   const selectedRoomId = useMemo<UUID | ''>(() => {
     if (!currentRooms.length) {
@@ -460,9 +468,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       const session = await response.json()
-      store.createSession(session.session)
+      createSession(session.session)
       // Set as current session
-      store.setCurrentSession(session.session.id)
+      setCurrentSession(session.session.id)
       onSessionCreated?.(session.session.id)
 
       setSessionName('')
@@ -508,7 +516,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         throw new Error(errorData.message || 'Failed to delete session')
       }
 
-      store.removeSession(sessionId)
+      removeSession(sessionId)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -534,7 +542,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       const updatedSession = await response.json()
-      store.updateSession(sessionId, updatedSession)
+      updateSession(sessionId, updatedSession)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)

@@ -42,10 +42,8 @@ export default function App() {
     adminUrl,
   })
 
-  const { currentSessionId, rooms } = useStore((s) => ({
-    currentSessionId: s.currentSessionId,
-    rooms: s.rooms,
-  }))
+  const currentSessionId = useStore((state) => state.currentSessionId)
+  const rooms = useStore((state) => state.rooms)
 
   const activeRoomId = currentSessionId
     ? Object.values(rooms[currentSessionId] ?? {}).find((room) => room.type === RoomType.MAIN)

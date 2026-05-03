@@ -38,9 +38,6 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const clientRef = useRef<WebSocketClient | null>(null)
   const dispatcherRef = useRef<EventDispatcher | null>(null)
 
-  // Get store actions
-  const store = useStore()
-
   // Initialize WebSocket client and dispatcher
   useEffect(() => {
     if (!enabled || !token) {
@@ -65,85 +62,85 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     // Register handlers for each event type
     // Session events
     dispatcher.register('SESSION:CREATED', (event) => {
-      store.handleSessionCreated(event)
+      useStore.getState().handleSessionCreated(event)
     })
     dispatcher.register('SESSION:STATE_CHANGED', (event) => {
-      store.handleSessionStateChanged(event)
+      useStore.getState().handleSessionStateChanged(event)
     })
     dispatcher.register('SESSION:ENDED', (event) => {
-      store.handleSessionEnded(event)
+      useStore.getState().handleSessionEnded(event)
     })
 
     // Chat events
     dispatcher.register('CHAT:MESSAGE_SENT', (event) => {
-      store.handleMessageSent(event)
+      useStore.getState().handleMessageSent(event)
     })
     dispatcher.register('CHAT:MESSAGE_EDITED', (event) => {
-      store.handleMessageEdited(event)
+      useStore.getState().handleMessageEdited(event)
     })
     dispatcher.register('CHAT:MESSAGE_DELETED', (event) => {
-      store.handleMessageDeleted(event)
+      useStore.getState().handleMessageDeleted(event)
     })
     dispatcher.register('CHAT:TYPING_STARTED', (event) => {
-      store.handleTypingStarted(event)
+      useStore.getState().handleTypingStarted(event)
     })
     dispatcher.register('CHAT:TYPING_STOPPED', (event) => {
-      store.handleTypingStopped(event)
+      useStore.getState().handleTypingStopped(event)
     })
 
     // Notes events
     dispatcher.register('NOTES:CREATED', (event) => {
-      store.handleNoteCreated(event)
+      useStore.getState().handleNoteCreated(event)
     })
     dispatcher.register('NOTES:UPDATED', (event) => {
-      store.handleNoteUpdated(event)
+      useStore.getState().handleNoteUpdated(event)
     })
     dispatcher.register('NOTES:DELETED', (event) => {
-      store.handleNoteDeleted(event)
+      useStore.getState().handleNoteDeleted(event)
     })
 
     // Room events
     dispatcher.register('ROOM:CREATED', (event) => {
-      store.handleRoomCreated(event)
+      useStore.getState().handleRoomCreated(event)
     })
     dispatcher.register('ROOM:USER_JOINED', (event) => {
-      store.handleUserJoined(event)
+      useStore.getState().handleUserJoined(event)
     })
     dispatcher.register('ROOM:USER_LEFT', (event) => {
-      store.handleUserLeft(event)
+      useStore.getState().handleUserLeft(event)
     })
     dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
-      store.handleSessionRoomTransitionApplied(event)
+      useStore.getState().handleSessionRoomTransitionApplied(event)
     })
 
     // Presence events
     dispatcher.register('PRESENCE:STATE_CHANGED', (event) => {
-      store.handlePresenceStateChanged(event)
+      useStore.getState().handlePresenceStateChanged(event)
     })
 
     // Audio events
     dispatcher.register('AUDIO:EFFECT_APPLIED', (event) => {
-      store.handleEffectApplied(event)
+      useStore.getState().handleEffectApplied(event)
     })
     dispatcher.register('AUDIO:EFFECT_REMOVED', (event) => {
-      store.handleEffectRemoved(event)
+      useStore.getState().handleEffectRemoved(event)
     })
     dispatcher.register('AUDIO:PRESET_LOADED', (event) => {
-      store.handlePresetLoaded(event)
+      useStore.getState().handlePresetLoaded(event)
     })
     dispatcher.register('AUDIO:ENVIRONMENT_SET', (event) => {
-      store.handleEnvironmentSet(event)
+      useStore.getState().handleEnvironmentSet(event)
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {
-      store.handleDMOverrideApplied(event)
+      useStore.getState().handleDMOverrideApplied(event)
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_REMOVED', (event) => {
-      store.handleDMOverrideRemoved(event)
+      useStore.getState().handleDMOverrideRemoved(event)
     })
 
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
-      store.handleConnectionEstablished(event)
+      useStore.getState().handleConnectionEstablished(event)
     })
 
     clientRef.current = client
@@ -163,7 +160,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [enabled, token, url, store])
+  }, [enabled, token, url])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {

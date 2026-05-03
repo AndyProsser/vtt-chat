@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { adminApiBase, requestJson } from '../utils/api'
 
 interface InviteValidation {
@@ -19,6 +19,7 @@ export default function InviteOnboarding({
   onComplete,
   onError,
 }: InviteOnboardingProps) {
+  const onErrorRef = useRef(onError)
   const [validation, setValidation] = useState<InviteValidation | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -26,6 +27,10 @@ export default function InviteOnboarding({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
 
   useEffect(() => {
     const validate = async () => {
@@ -41,16 +46,16 @@ export default function InviteOnboarding({
         if (result.email) {
           setEmail(result.email)
         }
-        onError('')
+        onErrorRef.current('')
       } catch (err) {
-        onError(err instanceof Error ? err.message : 'Failed to validate invite')
+        onErrorRef.current(err instanceof Error ? err.message : 'Failed to validate invite')
       } finally {
         setLoading(false)
       }
     }
 
     void validate()
-  }, [inviteToken, onError])
+  }, [inviteToken])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()

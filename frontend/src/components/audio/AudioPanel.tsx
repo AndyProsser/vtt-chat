@@ -43,13 +43,11 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
     onTrackUnsubscribed: handleTrackUnsubscribed,
   })
 
-  const { device, pttActive, setDevice, togglePTT, initializeAudio } = useStore((s) => ({
-    device: s.device,
-    pttActive: s.pttActive,
-    setDevice: s.setDevice,
-    togglePTT: s.togglePTT,
-    initializeAudio: s.initializeAudio,
-  }))
+  const device = useStore((state) => state.device)
+  const pttActive = useStore((state) => state.pttActive)
+  const setDevice = useStore((state) => state.setDevice)
+  const togglePTT = useStore((state) => state.togglePTT)
+  const initializeAudio = useStore((state) => state.initializeAudio)
 
   const handleGoLive = async () => {
     initializeAudio(true)

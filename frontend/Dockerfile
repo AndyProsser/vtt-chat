@@ -15,13 +15,16 @@ RUN npm ci
 ARG VITE_API_URL
 ARG VITE_WS_URL
 ARG VITE_LIVEKIT_URL
+ARG VITE_DEBUG_BUILD=false
 ENV VITE_API_URL=$VITE_API_URL \
   VITE_WS_URL=$VITE_WS_URL \
-  VITE_LIVEKIT_URL=$VITE_LIVEKIT_URL
+  VITE_LIVEKIT_URL=$VITE_LIVEKIT_URL \
+  VITE_DEBUG_BUILD=$VITE_DEBUG_BUILD
 
 COPY frontend/tsconfig.json ./
 COPY frontend/index.html ./
 COPY frontend/vite.config.ts ./
+COPY frontend/public ./public
 COPY frontend/src ./src
 RUN npm run build
 

@@ -24,11 +24,13 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const store = useStore()
+  const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
+    | Record<UUID, Message>
+    | undefined
+  const addMessage = useStore((state) => state.addMessage)
 
   // Derive ordered message list for this session
   // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
-  const sessionMessages = (store.messages as any)[sessionId] as Record<UUID, Message> | undefined
   const messageList: Message[] = Object.values(sessionMessages ?? {}).sort(
     (a, b) => a.createdAt - b.createdAt
   )
@@ -65,7 +67,7 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
 
         if (!cancelled) {
           for (const msg of msgs) {
-            store.addMessage(sessionId, msg)
+            addMessage(sessionId, msg)
           }
         }
       } catch (err: any) {
@@ -79,7 +81,7 @@ export function ChatWindow({ apiUrl, token, sessionId, user }: ChatWindowProps) 
     return () => {
       cancelled = true
     }
-  }, [apiUrl, sessionId, store, token])
+  }, [addMessage, apiUrl, sessionId, token])
 
   // Auto-scroll to newest message
   useEffect(() => {

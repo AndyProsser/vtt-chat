@@ -19,8 +19,13 @@ interface SessionUserSummary {
 }
 
 export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) {
-  const store = useStore()
-  const notesBySession = (store.notes as any)[sessionId] as Record<UUID, Note> | undefined
+  const notesBySession = useStore((state) => (state.notes as any)[sessionId]) as
+    | Record<UUID, Note>
+    | undefined
+  const addNote = useStore((state) => state.addNote)
+  const clearNotes = useStore((state) => state.clearNotes)
+  const updateNote = useStore((state) => state.updateNote)
+  const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
     () =>
       Object.values(notesBySession || {}).sort((a, b) => {
@@ -63,9 +68,9 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
         const data = await res.json()
         if (!cancelled) {
-          store.clearNotes(sessionId)
+          clearNotes(sessionId)
           for (const note of data.notes || []) {
-            store.addNote(sessionId, {
+            addNote(sessionId, {
               id: note.id,
               ownerId: note.authorId,
               ownerUsername: note.authorUsername,
@@ -93,7 +98,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, store])
+  }, [addNote, apiUrl, clearNotes, sessionId, token])
 
   useEffect(() => {
     let cancelled = false
@@ -160,7 +165,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
       const data = await res.json()
       const note = data.note
-      store.addNote(sessionId, {
+      addNote(sessionId, {
         id: note.id,
         ownerId: note.authorId,
         ownerUsername: note.authorUsername,
@@ -207,7 +212,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
     const data = await res.json()
     const note = data.note
-    store.updateNote(sessionId, note.id, {
+    updateNote(sessionId, note.id, {
       title: note.title,
       content: note.content,
       visibility: note.visibility,
@@ -266,7 +271,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
 
-    store.deleteNote(sessionId, noteId as UUID)
+    deleteNote(sessionId, noteId as UUID)
   }
 
   return (

@@ -389,4 +389,49 @@ describe('InviteOnboarding page', () => {
       email: 'invite@example.com',
     })
   })
+
+  it('does not revalidate invite on parent rerender with a new onError callback', async () => {
+    requestJsonMock.mockResolvedValue({
+      valid: true,
+      invitedRole: 'ADMIN',
+      email: 'invited@example.com',
+      expiresAt: '2026-05-01T00:00:00.000Z',
+    })
+
+    const onComplete = vi.fn()
+
+    await act(async () => {
+      root.render(
+        React.createElement(InviteOnboarding, {
+          inviteToken: 'stable-token',
+          onComplete,
+          onError: vi.fn(),
+        })
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      root.render(
+        React.createElement(InviteOnboarding, {
+          inviteToken: 'stable-token',
+          onComplete,
+          onError: vi.fn(),
+        })
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(requestJsonMock).toHaveBeenCalledTimes(1)
+    expect(requestJsonMock).toHaveBeenCalledWith(
+      '/invites/validate?token=stable-token',
+      expect.objectContaining({ method: 'GET' })
+    )
+  })
 })

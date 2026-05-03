@@ -78,38 +78,42 @@ function getVendorChunk(id: string): string | undefined {
   return undefined
 }
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, '../shared'),
-    },
-  },
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/ws': {
-        target: (process.env.VITE_BACKEND_URL || 'http://localhost:3000').replace('http', 'ws'),
-        ws: true,
-        rewriteWsOrigin: true,
+export default defineConfig(({ mode }) => {
+  const debugBuild = process.env.VITE_DEBUG_BUILD === 'true' || mode !== 'production'
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@shared': path.resolve(__dirname, '../shared'),
       },
     },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    minify: 'terser',
-    rollupOptions: {
-      output: {
-        manualChunks: getVendorChunk,
+    server: {
+      host: '0.0.0.0',
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/ws': {
+          target: (process.env.VITE_BACKEND_URL || 'http://localhost:3000').replace('http', 'ws'),
+          ws: true,
+          rewriteWsOrigin: true,
+        },
       },
     },
-  },
+    build: {
+      outDir: 'dist',
+      sourcemap: debugBuild,
+      minify: debugBuild ? false : 'terser',
+      rollupOptions: {
+        output: {
+          manualChunks: getVendorChunk,
+        },
+      },
+    },
+  }
 })

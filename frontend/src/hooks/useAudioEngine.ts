@@ -69,23 +69,13 @@ export function useAudioEngine(): UseAudioEngineReturn {
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string>()
 
-  const {
-    device,
-    pttActive,
-    privateRoomCleanMode,
-    dmOverrides,
-    currentDistance,
-    currentEnvironment,
-    currentCondition,
-  } = useStore((state) => ({
-    device: state.device,
-    pttActive: state.pttActive,
-    privateRoomCleanMode: state.privateRoomCleanMode,
-    dmOverrides: state.dmOverrides,
-    currentDistance: state.currentDistance,
-    currentEnvironment: state.currentEnvironment,
-    currentCondition: state.currentCondition,
-  }))
+  const device = useStore((state) => state.device)
+  const pttActive = useStore((state) => state.pttActive)
+  const privateRoomCleanMode = useStore((state) => state.privateRoomCleanMode)
+  const dmOverrides = useStore((state) => state.dmOverrides)
+  const currentDistance = useStore((state) => state.currentDistance)
+  const currentEnvironment = useStore((state) => state.currentEnvironment)
+  const currentCondition = useStore((state) => state.currentCondition)
 
   // =========================================================================
   // Initialization: Build WebAudio Graph
