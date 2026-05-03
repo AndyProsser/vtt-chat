@@ -18,10 +18,19 @@ const AudioPanel = lazy(async () => {
 
 export default function App() {
   const [routeView] = useState<RouteView>(() => resolveRoute(window.location.pathname))
+  const browserOrigin = window.location.origin
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+  const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
+  const configuredAdminUrl = import.meta.env.VITE_ADMIN_URL?.trim()
+  const isStaleHttpDevProxy =
+    browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
-  const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+  const apiUrl = isStaleHttpDevProxy ? browserOrigin : configuredApiUrl || browserOrigin
+  const wsUrl =
+    isStaleHttpDevProxy || !configuredWsUrl
+      ? `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
+      : configuredWsUrl
+  const adminUrl = configuredAdminUrl || `${browserOrigin}/admin`
 
   const {
     auth,

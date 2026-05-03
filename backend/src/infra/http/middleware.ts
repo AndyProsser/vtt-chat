@@ -229,7 +229,7 @@ export const securityHeadersMiddleware = (
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const allowedOrigins = (
     process.env.CORS_ALLOWED_ORIGINS ||
-    'http://localhost:5173,http://localhost:5174,http://localhost:8443'
+    'http://localhost:5173,http://localhost:5174,https://localhost:8443'
   )
     .split(',')
     .map((origin) => origin.trim())
