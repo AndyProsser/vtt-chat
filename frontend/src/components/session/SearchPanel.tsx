@@ -15,6 +15,8 @@ interface SearchPanelProps {
   rooms: Array<{ id: UUID; name: string; type: RoomType }>
   participants: SessionPresence[]
   onSelectRoom?: (roomId: UUID) => void
+  onOpenNotesWorkspace?: () => void
+  onOpenChatWorkspace?: () => void
 }
 
 type SearchResultKind = 'room' | 'participant' | 'message' | 'note'
@@ -106,10 +108,13 @@ export function SearchPanel({
   rooms,
   participants,
   onSelectRoom,
+  onOpenNotesWorkspace,
+  onOpenChatWorkspace,
 }: SearchPanelProps) {
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null)
 
   const sessionMessages = useStore((state) => state.messages[sessionId] ?? EMPTY_MESSAGES)
   const sessionNotes = useStore((state) => state.notes[sessionId] ?? EMPTY_NOTES)
@@ -231,6 +236,26 @@ export function SearchPanel({
       .slice(0, 24)
   }, [messages, normalizedQuery, notes, participants, rooms])
 
+  useEffect(() => {
+    if (!results.length) {
+      setSelectedResultId(null)
+      return
+    }
+
+    setSelectedResultId((previousId) => {
+      if (previousId && results.some((result) => result.id === previousId)) {
+        return previousId
+      }
+
+      return results[0].id
+    })
+  }, [results])
+
+  const selectedResult = useMemo(
+    () => results.find((result) => result.id === selectedResultId) ?? null,
+    [results, selectedResultId]
+  )
+
   return (
     <section className="knowledge-panel" data-testid="search-panel">
       <header className="knowledge-panel-header">
@@ -269,30 +294,91 @@ export function SearchPanel({
           <p>No results</p>
         </div>
       ) : (
-        <div className="knowledge-panel-results" role="list" aria-label="Search results">
-          {results.map((result) => (
-            <article key={result.id} className="knowledge-panel-card" role="listitem">
-              <div className="knowledge-panel-card-header">
-                <div>
-                  <p className="knowledge-panel-card-title">{result.title}</p>
-                  <p className="knowledge-panel-card-subtitle">{result.subtitle}</p>
+        <div className="knowledge-panel-drilldown" aria-label="Search results and preview">
+          <div className="knowledge-panel-results" role="list" aria-label="Search results">
+            {results.map((result) => (
+              <article
+                key={result.id}
+                className={`knowledge-panel-card ${selectedResultId === result.id ? 'selected' : ''}`}
+                role="listitem"
+              >
+                <div className="knowledge-panel-card-header">
+                  <div>
+                    <p className="knowledge-panel-card-title">{result.title}</p>
+                    <p className="knowledge-panel-card-subtitle">{result.subtitle}</p>
+                  </div>
+                  <span className="knowledge-panel-chip">{resultKindLabel(result.kind)}</span>
                 </div>
-                <span className="knowledge-panel-chip">{resultKindLabel(result.kind)}</span>
-              </div>
-              {result.excerpt ? (
-                <p className="knowledge-panel-card-body">{result.excerpt}</p>
-              ) : null}
-              {result.roomId && onSelectRoom ? (
+                {result.excerpt ? (
+                  <p className="knowledge-panel-card-body">{result.excerpt}</p>
+                ) : null}
                 <button
                   type="button"
                   className="knowledge-panel-action"
-                  onClick={() => onSelectRoom(result.roomId as UUID)}
+                  onClick={() => setSelectedResultId(result.id)}
                 >
-                  Focus room
+                  Inspect result
                 </button>
-              ) : null}
-            </article>
-          ))}
+              </article>
+            ))}
+          </div>
+
+          <aside className="knowledge-panel-preview" data-testid="search-drilldown-panel">
+            {selectedResult ? (
+              <>
+                <div className="knowledge-panel-card-header">
+                  <div>
+                    <p className="knowledge-panel-card-title">{selectedResult.title}</p>
+                    <p className="knowledge-panel-card-subtitle">{selectedResult.subtitle}</p>
+                  </div>
+                  <span className="knowledge-panel-chip">
+                    {resultKindLabel(selectedResult.kind)}
+                  </span>
+                </div>
+
+                <p className="knowledge-panel-preview-label">Context preview</p>
+                <p className="knowledge-panel-card-body">
+                  {selectedResult.excerpt || 'No additional preview content.'}
+                </p>
+
+                <div className="knowledge-panel-action-row" aria-label="Search result actions">
+                  {selectedResult.roomId && onSelectRoom ? (
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => onSelectRoom(selectedResult.roomId as UUID)}
+                    >
+                      Jump to room
+                    </button>
+                  ) : null}
+
+                  {selectedResult.kind === 'note' && onOpenNotesWorkspace ? (
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={onOpenNotesWorkspace}
+                    >
+                      Open Notes workspace
+                    </button>
+                  ) : null}
+
+                  {selectedResult.kind === 'message' && onOpenChatWorkspace ? (
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={onOpenChatWorkspace}
+                    >
+                      Open Chat workspace
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <div className="knowledge-panel-empty">
+                <p>Select a result to inspect details.</p>
+              </div>
+            )}
+          </aside>
         </div>
       )}
     </section>

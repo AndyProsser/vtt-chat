@@ -19,6 +19,7 @@ import { SystemToasts } from './SystemToasts'
 import { DMAudioControls } from './DMAudioControls'
 import { HistoryPanel } from './HistoryPanel'
 import { JournalPanel } from './JournalPanel'
+import { NotesRailPanel } from './NotesRailPanel'
 import { SearchPanel } from './SearchPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
@@ -110,7 +111,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return DEFAULT_CHAT_GROUPING_WINDOW_MS
     }
 
-    const raw = window.localStorage.getItem(CHAT_GROUPING_STORAGE_KEY)
+    const localStorageApi = window.localStorage as Partial<Storage> | undefined
+    if (!localStorageApi || typeof localStorageApi.getItem !== 'function') {
+      return DEFAULT_CHAT_GROUPING_WINDOW_MS
+    }
+
+    const raw = localStorageApi.getItem(CHAT_GROUPING_STORAGE_KEY)
     const parsed = Number(raw)
     return ALLOWED_CHAT_GROUPING_WINDOWS.has(parsed) ? parsed : DEFAULT_CHAT_GROUPING_WINDOW_MS
   })
@@ -143,6 +149,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const createSession = useStore((state) => state.createSession)
   const setCurrentSession = useStore((state) => state.setCurrentSession)
+  const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const removeSession = useStore((state) => state.removeSession)
   const updateSession = useStore((state) => state.updateSession)
   const typedSessions = sessions as Record<UUID, SessionRecord>
@@ -203,7 +210,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    window.localStorage.setItem(CHAT_GROUPING_STORAGE_KEY, String(messageGroupingWindowMs))
+    const localStorageApi = window.localStorage as Partial<Storage> | undefined
+    if (!localStorageApi || typeof localStorageApi.setItem !== 'function') {
+      return
+    }
+
+    localStorageApi.setItem(CHAT_GROUPING_STORAGE_KEY, String(messageGroupingWindowMs))
   }, [messageGroupingWindowMs])
 
   useEffect(() => {
@@ -934,16 +946,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   )
                 }
 
-                const placeholderByTab: Record<Exclude<RightRailTab, 'rooms'>, string> = {
-                  audio: '',
-                  notes:
-                    'Shared notes shortcuts and filters will be expanded in a dedicated right-rail notes tool.',
-                  search: 'Cross-session search tools are planned for a future release.',
-                  journal: 'Journal surfaces are planned for a future release.',
-                  history: 'History timeline tools are planned for a future release.',
-                  settings: '',
-                }
-
                 if (tab === 'audio') {
                   return (
                     <DMAudioControls
@@ -981,6 +983,20 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       }))}
                       participants={currentPresence}
                       onSelectRoom={setSelectedRoomIdOverride}
+                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
+                      onOpenChatWorkspace={() => setToolbarCenterPaneView('chat')}
+                    />
+                  )
+                }
+
+                if (tab === 'notes') {
+                  return (
+                    <NotesRailPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={user.role}
+                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
                     />
                   )
                 }
@@ -1018,14 +1034,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
                 return (
                   <p className="session-placeholder-copy">
-                    {
-                      placeholderByTab[
-                        tab as Exclude<
-                          RightRailTab,
-                          'rooms' | 'audio' | 'search' | 'journal' | 'history' | 'settings'
-                        >
-                      ]
-                    }
+                    Tool panel is not available for this tab.
                   </p>
                 )
               }}
