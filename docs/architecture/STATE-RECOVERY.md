@@ -2,7 +2,7 @@
 
 Status:
 
-- This document describes both the recovery planned architecture and the currently shipped Stage 6-7 baseline.
+- This document describes both planned recovery architecture and the currently shipped Stage 6-7 runtime baseline.
 - The shipped runtime currently provides targeted reconnect recovery for room and presence topology plus continued event-driven updates.
 - Full cross-domain hydration for chat, notes, audio, permissions, and extension context remains planned architecture rather than verified shipped behavior.
 
@@ -27,7 +27,7 @@ Current implementation note:
 
 - These principles remain the design target for the platform.
 - The shipped baseline currently satisfies them most concretely for transport reconnect, room topology recovery, and presence restoration.
-- Full deterministic cross-domain rehydration is not yet implemented.
+- Full deterministic cross-domain rehydration is not currently implemented.
 
 ### **1.1 Recovery must be automatic**
 
@@ -46,7 +46,6 @@ Given the same server state, all clients reconstruct the same local state.
 Planned architecture:
 
 - All subsystems should eventually restore:
-
 - Chat
 - Notes
 - Audio state
@@ -58,7 +57,7 @@ Current shipped baseline:
 
 - Presence and room topology are explicitly refreshed and recovered.
 - WebSocket reconnect resumes event-driven updates.
-- Audio reconnect behavior is baseline-only and does not yet restore durable persisted room/environment/override state.
+- Audio reconnect can restore durable persisted room environment and DM override state via `GET /api/audio/state/:sessionId`.
 - Full chat/notes/audio/permissions/extension hydration is still planned work.
 
 ### **1.5 Recovery must be safe**
@@ -111,7 +110,7 @@ sequenceDiagram
     Store->>Client: UI updates
 ```
 
-Current shipped Stage 6-7 baseline is narrower:
+Current shipped Stage 6-7 runtime baseline is narrower:
 
 1. **Reconnect detected**
    Transport layer reconnects with backoff.
@@ -306,8 +305,8 @@ Planned architecture:
 Current shipped baseline:
 
 - LiveKit token issuance, connection hooks, and realtime audio control events are implemented.
-- Durable persisted recovery of room-scoped environment state and DM overrides is not yet implemented.
-- Audio reconnect/recovery remains baseline-only and is not yet a full snapshot-based restore flow.
+- Durable persisted recovery of room-scoped environment state and DM overrides is implemented.
+- Audio reconnect/recovery currently restores room environment and DM override state; broader full snapshot-based cross-domain restore remains planned.
 
 ---
 
@@ -342,7 +341,7 @@ Current shipped baseline:
 
 ### 7.6 Extension Recovery
 
-Planned planned behavior; not part of the shipped Stage 0-7 runtime baseline.
+Planned behavior; not part of the shipped Stage 0-7 runtime baseline.
 
 ---
 

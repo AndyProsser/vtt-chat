@@ -1,5 +1,6 @@
 const tsParser = require('@typescript-eslint/parser')
 const tsPlugin = require('@typescript-eslint/eslint-plugin')
+const reactPlugin = require('eslint-plugin-react')
 const reactHooksPlugin = require('eslint-plugin-react-hooks')
 const prettierPlugin = require('eslint-plugin-prettier')
 
@@ -39,12 +40,20 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      react: reactPlugin,
       'react-hooks': reactHooksPlugin,
       prettier: prettierPlugin,
     },
+    settings: {
+      react: {
+        version: 'detect',
+      },
+    },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
       'prettier/prettier': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
     },

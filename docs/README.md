@@ -14,7 +14,8 @@ Use these sources first when updating docs or stage status:
 - `shared/events/*` and `shared/events/base.ts` for websocket/domain event contracts
 - `backend/src/api/index.ts` for mounted REST route families
 - `backend/src/ws/index.ts` and `frontend/src/ws/client.ts` for current websocket transport behavior
-- `ROADMAP.md` for stage labels and shipped-baseline wording
+- `docs/DEVELOPMENT-ROADMAP.md` for stage labels and shipped-baseline wording
+- `ROADMAP.md` for current testing and operatisation execution tracking
 
 Architecture and API docs may include planned architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
 
@@ -24,7 +25,8 @@ The active framework-standardization effort is documented here first:
 
 - `docs/changes/AI-CONTEXT-DESIGN-CHANGES.md` for design-system and architecture rules
 - `docs/changes/DESIGN-SYSTEM-CHANGES.md` for migration work packages, deliverables, and acceptance criteria
-- `ROADMAP.md` for delivery sequencing and status tracking
+- `docs/DEVELOPMENT-ROADMAP.md` for feature delivery sequencing and status tracking
+- `ROADMAP.md` for current testing and operatisation milestones
 
 When UI implementation docs diverge from these migration docs, update the implementation docs or mark them as planned rather than treating planned guidance as shipped behavior.
 

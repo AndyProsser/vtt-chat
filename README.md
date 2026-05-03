@@ -11,7 +11,7 @@ Build and release status badges will be enabled once CI workflows are activated.
 -->
 
 **Version:** 0.6.0 — active development, not yet production-ready\
-**Status:** Stages 0–15 complete · all planned platform stages delivered — see [ROADMAP.md](ROADMAP.md)\
+**Status:** Core platform stages delivered (0-15). Current execution is testing and operatisation — see [ROADMAP.md](ROADMAP.md) and [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)\
 **Release notes:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
@@ -175,16 +175,17 @@ The full documentation suite lives in [`docs/`](docs/README.md) and covers archi
 
 Key entry points:
 
-| Document                                                                               | Purpose                                  |
-| -------------------------------------------------------------------------------------- | ---------------------------------------- |
-| [docs/README.md](docs/README.md)                                                       | Full documentation index                 |
-| [ROADMAP.md](ROADMAP.md)                                                               | Delivery stages and current build status |
-| [CHANGELOG.md](CHANGELOG.md)                                                           | Release history                          |
-| [docs/architecture/ARCHITECTURE-DIAGRAM.md](docs/architecture/ARCHITECTURE-DIAGRAM.md) | System structure overview                |
-| [docs/architecture/PERMISSIONS-MATRIX.md](docs/architecture/PERMISSIONS-MATRIX.md)     | Role capability reference                |
-| [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md)                         | REST and WebSocket API                   |
-| [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md)                           | Extension auth and invite flow           |
-| [DEVELOPING.md](DEVELOPING.md)                                                         | Developer environment setup              |
+| Document                                                                               | Purpose                               |
+| -------------------------------------------------------------------------------------- | ------------------------------------- |
+| [docs/README.md](docs/README.md)                                                       | Full documentation index              |
+| [ROADMAP.md](ROADMAP.md)                                                               | Testing and operatisation roadmap     |
+| [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)                             | Development roadmap and stage history |
+| [CHANGELOG.md](CHANGELOG.md)                                                           | Release history                       |
+| [docs/architecture/ARCHITECTURE-DIAGRAM.md](docs/architecture/ARCHITECTURE-DIAGRAM.md) | System structure overview             |
+| [docs/architecture/PERMISSIONS-MATRIX.md](docs/architecture/PERMISSIONS-MATRIX.md)     | Role capability reference             |
+| [docs/architecture/API-SPEC.md](docs/architecture/API-SPEC.md)                         | REST and WebSocket API                |
+| [docs/extension/GUEST-AUTH.md](docs/extension/GUEST-AUTH.md)                           | Extension auth and invite flow        |
+| [DEVELOPING.md](DEVELOPING.md)                                                         | Developer environment setup           |
 
 ---
 
@@ -193,7 +194,7 @@ Key entry points:
 Contributions are welcome. Before opening a pull request:
 
 1. Read [DEVELOPING.md](DEVELOPING.md) for environment setup.
-2. Check [ROADMAP.md](ROADMAP.md) for current focus areas and planned stages.
+2. Check [ROADMAP.md](ROADMAP.md) for current testing/operatisation focus and [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md) for feature-stage history.
 3. Follow the existing code style (ESLint + Prettier, enforced by CI).
 4. Add or update tests for any changed behaviour.
 5. Keep PRs focused — one concern per PR.

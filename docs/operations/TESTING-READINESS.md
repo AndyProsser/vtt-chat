@@ -1,6 +1,6 @@
 # Testing Readiness Framework
 
-> **Last Updated:** 2026-05-02
+> **Last Updated:** 2026-05-03
 > **Current Status:** Stage 15 testing-readiness hardening complete for core platform scope
 
 This document defines the testing readiness criteria, coverage targets, and known limitations for moving VTT-Chat through alpha, beta, and general availability phases.
@@ -13,11 +13,14 @@ VTT-Chat is functionally feature-complete through Stage 13 core scope, and Stage
 
 Stage 15 completion outcomes:
 
-- Backend: 42 test files, 233 tests passing.
-- Frontend: 20 test files, 133 tests passing.
+- Backend: 47 test files, 308 tests passing.
+- Frontend: 31 test files, 254 tests passing.
+- Admin: 17 test files, 139 tests passing.
 - Added endpoint-hardening suites (`campaign-browse`, expanded guest/integration authz/error paths).
 - Added multi-step guest/spectator journey integration coverage.
 - Added frontend guest upgrade token-swap/auth transition and campaignPacket handoff assertions.
+- Current backend coverage verification: statements `60.99`, branches `51.69`, functions `60.17`, lines `61.35`.
+- Current admin coverage verification: statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`.
 
 ---
 
@@ -310,7 +313,7 @@ This section is retained as a historical pre-closure register. Items listed here
 | ----------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
 | **Roll20 & Foundry integration**                            | Only D&D Beyond extensions work initially                    | Roadmap item for Stage 13.5; community requests tracked in GitHub Issues            |
 | **Multi-account linking (same user, multiple VTTs)**        | User must create separate guest account per VTT              | Email-based identity matching documented; upgrade to full account for consolidation |
-| **Spectator → Player transition via password registration** | No email verification flow                                   | Planned for 0.6.0; use guest invite link path for now                               |
+| **Spectator → Player transition via password registration** | No email verification flow                                   | Supported through guest upgrade flow; retain guest invite fallback for edge cases   |
 | **Silent guest token renewal**                              | Guest tokens expire after 24h; must re-authenticate          | Acceptable for session-scoped usage; extension can auto-refresh before expiry       |
 | **Advanced external data sync**                             | Campaign-level sync policy only; no character-level policies | Scope creep; sync policy covers MVP use cases                                       |
 

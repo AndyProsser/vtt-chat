@@ -27,7 +27,7 @@ It covers:
 
 All endpoints are **JSON‑based**, **stateless**, and **authenticated** via JWT or API keys.
 
-Current shipped runtime baseline through Stage 12 includes mounted route families for:
+Current shipped runtime baseline through Stage 12 includes these mounted route families:
 
 - `/api/auth`
 - `/api/session`
@@ -53,14 +53,14 @@ Shipped baseline through Stage 7:
 
 - Auth, campaign, user, session, chat, notes, rooms, presence, LiveKit token issuance, and baseline audio control routes.
 - Route-level authorization for session membership and DM-only controls where implemented.
-- Stable baseline audio control API surface, including an audio state endpoint that is not yet backed by durable persisted recovery.
+- Stable audio control API surface with durable persisted recovery for room environment and DM overrides via `GET /api/audio/state/:sessionId`.
 
 Still planned or partially implemented beyond Stage 12:
 
 - Full refresh-token lifecycle reflected in docs.
 - Complete campaign-scoped REST normalization for every conceptual endpoint in this file.
 - Search, richer journal/history domains, metadata timeline domains, and extension bridge domains.
-- Durable audio-state recovery and richer admin/ops workflows.
+- Richer audio control workflows (preset/distance/PTT/clear-all campaign-scoped endpoints) and richer admin/ops workflows.
 
 ---
 
@@ -92,7 +92,7 @@ Authenticate a user.
 
 ### /api/auth/refresh`
 
-Planned / not part of the verified Stage 0-7 shipped baseline.
+Planned; not part of the verified Stage 0-7 shipped baseline.
 
 ---
 
@@ -102,7 +102,7 @@ Baseline logout behavior is intentionally minimal; refresh-token invalidation re
 
 ---
 
-### Cross-App Auth Handoff (Planned Stage 8 Follow-up)
+### Cross-App Auth Handoff (Shipped)
 
 These endpoints define linked authentication between the user frontend and admin console so users do not need to log in twice when they already have a valid session.
 
@@ -810,7 +810,7 @@ Shipped runtime baseline routes:
 Current baseline notes:
 
 - Audio control events are authoritative in realtime.
-- `GET /api/audio/state/:sessionId` exists as a stable API surface for later expansion, but does not yet provide durable persisted room/environment/override recovery.
+- `GET /api/audio/state/:sessionId` returns durable persisted room environment and DM override state for reconnect/recovery flows.
 - Broader preset, distance, PTT, and clear-all workflows described below remain planned architecture until mounted and verified.
 
 ### /api/audio-presets`
@@ -821,7 +821,7 @@ Conceptual legacy endpoint. Current shipped baseline uses `GET /api/audio/preset
 
 ### /api/campaigns/:campaignId/audio/apply`
 
-Planned planned architecture endpoint; not part of the verified shipped Stage 7 baseline.
+Planned architecture endpoint; not part of the verified shipped Stage 7 baseline.
 
 **Body**
 
@@ -837,13 +837,13 @@ Planned planned architecture endpoint; not part of the verified shipped Stage 7 
 
 ### /api/campaigns/:campaignId/audio/clear`
 
-Planned planned architecture endpoint.
+Planned architecture endpoint.
 
 ---
 
 ### /api/campaigns/:campaignId/audio/clear-all`
 
-Planned planned architecture endpoint.
+Planned architecture endpoint.
 
 ---
 
@@ -855,19 +855,19 @@ Planned architecture path. Current shipped baseline uses `POST /api/audio/enviro
 
 ### /api/campaigns/:campaignId/audio/distance`
 
-Planned planned architecture endpoint.
+Planned architecture endpoint.
 
 ---
 
 ### /api/campaigns/:campaignId/audio/ptt/start`
 
-Planned planned architecture endpoint.
+Planned architecture endpoint.
 
 ---
 
 ### /api/campaigns/:campaignId/audio/ptt/end`
 
-Planned planned architecture endpoint.
+Planned architecture endpoint.
 
 ---
 
@@ -887,7 +887,7 @@ These domains should be expanded into full API documentation only when the route
 
 ## Admin Telemetry Baseline
 
-Partially shipped admin baseline endpoints currently include:
+Current partially shipped admin baseline endpoints include:
 
 - `GET /api/admin/telemetry/dashboard`
 - `GET /api/admin/telemetry/status`
