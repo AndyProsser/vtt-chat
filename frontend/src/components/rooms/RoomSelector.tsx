@@ -2,6 +2,7 @@ import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import { AvatarOverlay } from './AvatarOverlay'
+import { Icon } from '../ui/Icon'
 import '../../styles/components/rooms/RoomSelector.css'
 
 export interface RoomSelectorRoom {
@@ -34,10 +35,19 @@ export function RoomSelector({
   onSelectRoom,
   participants,
 }: RoomSelectorProps) {
+  const formatRoomTypeLabel = (type: RoomType): string => {
+    if (type === RoomType.MAIN) return 'Main'
+    if (type === RoomType.BREAKOUT) return 'Breakout'
+    if (type === RoomType.PRIVATE) return 'Private'
+    return type
+  }
+
   return (
     <section className="room-selector" aria-label="Room Selector">
       <header className="room-selector-header">
-        <h4>Rooms</h4>
+        <h4>
+          <Icon name="rooms" /> Voice Channels
+        </h4>
         <span>{rooms.length}</span>
       </header>
 
@@ -56,9 +66,12 @@ export function RoomSelector({
                 aria-pressed={selected}
                 onClick={() => onSelectRoom(room.id)}
               >
-                <span className="room-selector-item-name">{room.name}</span>
+                <span className="room-selector-item-name">
+                  <Icon name="voice" />
+                  {room.name}
+                </span>
                 <span className="room-selector-item-meta">
-                  {room.type} · {room.memberCount}
+                  {formatRoomTypeLabel(room.type)} · {room.memberCount}
                 </span>
               </button>
             )
@@ -67,7 +80,9 @@ export function RoomSelector({
       </div>
 
       <div className="room-selector-members" aria-live="polite">
-        <h5>Status</h5>
+        <h5>
+          <Icon name="users" /> Connected Members
+        </h5>
         {participants.length === 0 ? (
           <p className="room-selector-empty">No members in selected room.</p>
         ) : (

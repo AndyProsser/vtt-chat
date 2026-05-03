@@ -10,6 +10,13 @@
 .command-center-frame {
   display: grid;
   gap: 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-subtle) 65%, transparent),
+    color-mix(in srgb, var(--color-surface) 94%, transparent)
+  );
 }
 
 .command-center-surface {
@@ -17,6 +24,7 @@
   border-radius: var(--radius-lg);
   background-color: var(--color-surface);
   padding: var(--space-3);
+  box-shadow: var(--shadow-sm);
 }
 
 .command-center-meta-grid {
@@ -33,11 +41,11 @@
 }
 
 .command-center-rails.open {
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr) minmax(280px, 340px);
 }
 
 .command-center-rails.closed {
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
 }
 
 [data-testid='right-rail'] {

@@ -797,7 +797,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           <div className="session-command-center">
             <h3 className="session-command-center-title">Command Center</h3>
             <p className="session-command-center-subtitle">
-              Role-aware panel shell with center chat/notes switching and right-rail tools.
+              Voice rooms on the left, live conversation in the center, and tools on the right.
             </p>
 
             <CommandCenterFrame

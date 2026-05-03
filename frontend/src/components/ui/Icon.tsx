@@ -1,6 +1,18 @@
 import type { SVGProps, ReactElement } from 'react'
 
-type IconName = 'search' | 'journal' | 'history' | 'settings' | 'close'
+type IconName =
+  | 'search'
+  | 'journal'
+  | 'history'
+  | 'settings'
+  | 'close'
+  | 'voice'
+  | 'rooms'
+  | 'users'
+  | 'mic'
+  | 'panel'
+  | 'chat'
+  | 'notes'
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName
@@ -45,6 +57,59 @@ export function Icon({ name, className = '', ...props }: IconProps) {
     close: (
       <>
         <path d="m6 6 12 12M18 6 6 18" />
+      </>
+    ),
+    voice: (
+      <>
+        <path d="M4 10v4" />
+        <path d="M7 8v8" />
+        <path d="M10 6v12" />
+        <path d="M13 8v8" />
+        <path d="M16 10v4" />
+        <path d="M19 12h1" />
+      </>
+    ),
+    rooms: (
+      <>
+        <path d="M3 7h18" />
+        <path d="M3 12h18" />
+        <path d="M3 17h18" />
+        <circle cx="6" cy="7" r="1" fill="currentColor" stroke="none" />
+        <circle cx="6" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="6" cy="17" r="1" fill="currentColor" stroke="none" />
+      </>
+    ),
+    users: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        <circle cx="17" cy="9" r="2" />
+        <path d="M15 19c0-1.7.7-3.2 2-4.2" />
+      </>
+    ),
+    mic: (
+      <>
+        <rect x="9" y="4" width="6" height="11" rx="3" />
+        <path d="M6 11a6 6 0 1 0 12 0" />
+        <path d="M12 18v3" />
+        <path d="M9 21h6" />
+      </>
+    ),
+    panel: (
+      <>
+        <rect x="3" y="4" width="7" height="16" rx="2" />
+        <rect x="12" y="4" width="9" height="16" rx="2" />
+      </>
+    ),
+    chat: (
+      <>
+        <path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+      </>
+    ),
+    notes: (
+      <>
+        <rect x="6" y="3" width="12" height="18" rx="2" />
+        <path d="M9 8h6M9 12h6M9 16h4" />
       </>
     ),
   }

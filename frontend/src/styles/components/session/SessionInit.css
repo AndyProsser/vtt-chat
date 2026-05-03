@@ -204,10 +204,10 @@
 
 .session-command-center {
   margin-top: 1rem;
-  padding: 1rem;
+  padding: 0.75rem;
   border: 1px solid var(--color-border-soft);
-  border-radius: 8px;
-  background-color: #f8fafc;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface));
 }
 
 .session-command-center-title {
@@ -218,6 +218,108 @@
   margin-top: 0.25rem;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
+}
+
+.voice-rail-summary {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-surface) 86%, #2f3f66 14%),
+    color-mix(in srgb, var(--color-surface-subtle) 70%, #1c2438 30%)
+  );
+  display: grid;
+  gap: 0.55rem;
+}
+
+.voice-rail-summary__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.voice-rail-summary__title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.voice-rail-summary__icon {
+  color: var(--color-brand);
+}
+
+.voice-rail-summary__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.voice-rail-summary__state {
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  color: var(--color-text-secondary);
+}
+
+.voice-rail-summary__state.active {
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #16a34a;
+}
+
+.voice-rail-summary__state.paused {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #d97706;
+}
+
+.voice-rail-summary__identity,
+.voice-rail-summary__session {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.voice-rail-summary__session {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.voice-rail-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.voice-rail-summary__stat {
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
+  border-radius: 8px;
+  padding: 0.32rem 0.42rem;
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  display: grid;
+  gap: 0.14rem;
+}
+
+.voice-rail-summary__stat svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.voice-rail-summary__stat p {
+  margin: 0;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.voice-rail-summary__stat strong {
+  font-size: 0.84rem;
+  color: var(--color-text-primary);
 }
 
 .session-command-center-pane {

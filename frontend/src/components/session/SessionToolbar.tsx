@@ -1,5 +1,6 @@
 import type { ToolbarActionModel } from './CommandCenterFrame'
 import { Tabs, TabsList, TabsTrigger } from '../../core-ui'
+import { Icon } from '../ui/Icon'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
@@ -8,8 +9,10 @@ interface SessionToolbarProps {
 export function SessionToolbar({ actions }: SessionToolbarProps) {
   return (
     <div className="space-y-2" data-testid="session-toolbar">
-      <h4 className="m-0 text-base font-semibold text-ui-primary">Toolbar</h4>
-      <p className="m-0 text-xs text-ui-secondary">Session action model</p>
+      <h4 className="m-0 flex items-center gap-2 text-base font-semibold text-ui-primary">
+        <Icon name="panel" /> Session Controls
+      </h4>
+      <p className="m-0 text-xs text-ui-secondary">Switch the center panel and toggle utilities.</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <Tabs
@@ -26,14 +29,18 @@ export function SessionToolbar({ actions }: SessionToolbarProps) {
               aria-label="Center Chat"
               className="rounded-ui-sm px-3 py-1 text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
             >
-              Chat
+              <span className="inline-flex items-center gap-1">
+                <Icon name="chat" /> Chat
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="notes"
               aria-label="Center Notes"
               className="rounded-ui-sm px-3 py-1 text-xs text-ui-secondary data-[state=active]:bg-ui-surface data-[state=active]:text-ui-primary"
             >
-              Notes
+              <span className="inline-flex items-center gap-1">
+                <Icon name="notes" /> Notes
+              </span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -43,7 +50,9 @@ export function SessionToolbar({ actions }: SessionToolbarProps) {
           onClick={actions.toggleRightRail}
           className="rounded-ui-sm border border-ui-border bg-ui-surface px-3 py-1 text-xs text-ui-primary hover:bg-ui-surface-subtle"
         >
-          {actions.rightRailOpen ? 'Hide Tools' : 'Show Tools'}
+          <span className="inline-flex items-center gap-1">
+            <Icon name="settings" /> {actions.rightRailOpen ? 'Hide Tools' : 'Show Tools'}
+          </span>
         </button>
       </div>
 

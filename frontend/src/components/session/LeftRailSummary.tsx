@@ -1,5 +1,6 @@
 import type { Role } from '@shared'
 import { SessionState } from '@shared'
+import { Icon } from '../ui/Icon'
 
 interface LeftRailSummaryProps {
   role: Role
@@ -21,27 +22,54 @@ export function LeftRailSummary({
   presenceCount,
 }: LeftRailSummaryProps) {
   return (
-    <div className="space-y-1">
-      <h4 className="mb-2 mt-0 text-base font-semibold text-ui-primary">Left Rail</h4>
-      <p className="m-0 text-xs text-ui-secondary">
-        User: <strong>{username}</strong>
-      </p>
-      <p className="m-0 text-xs text-ui-secondary">
-        Persona: <strong>{role}</strong>
-      </p>
-      <p className="m-0 text-xs text-ui-secondary">
-        Session: <strong>{sessionName}</strong>
-      </p>
-      <p className="m-0 text-xs text-ui-secondary">
-        State: <strong>{sessionState}</strong>
+    <section className="voice-rail-summary" aria-label="Voice rail summary">
+      <header className="voice-rail-summary__header">
+        <div className="voice-rail-summary__title-row">
+          <Icon name="voice" className="voice-rail-summary__icon" />
+          <h4 className="voice-rail-summary__title">Voice Panel</h4>
+        </div>
+        <span
+          className={`voice-rail-summary__state ${
+            sessionState === SessionState.ACTIVE
+              ? 'active'
+              : sessionState === SessionState.PAUSED
+                ? 'paused'
+                : ''
+          }`}
+        >
+          {sessionState}
+        </span>
+      </header>
+
+      <p className="voice-rail-summary__identity">
+        Connected as <strong>{username}</strong> ({role})
       </p>
 
-      <div className="mt-3 border-t border-ui-border pt-3">
-        <p className="m-0 text-xs font-semibold text-ui-primary">Quick counts</p>
-        <p className="mt-1 text-xs text-ui-secondary">Sessions in campaign: {sessionCount}</p>
-        <p className="mt-1 text-xs text-ui-secondary">Rooms tracked: {roomCount}</p>
-        <p className="mt-1 text-xs text-ui-secondary">Presence tracked: {presenceCount}</p>
+      <p className="voice-rail-summary__session">{sessionName}</p>
+
+      <div className="voice-rail-summary__stats">
+        <article className="voice-rail-summary__stat">
+          <Icon name="rooms" />
+          <div>
+            <p>Rooms</p>
+            <strong>{roomCount}</strong>
+          </div>
+        </article>
+        <article className="voice-rail-summary__stat">
+          <Icon name="users" />
+          <div>
+            <p>Presence</p>
+            <strong>{presenceCount}</strong>
+          </div>
+        </article>
+        <article className="voice-rail-summary__stat">
+          <Icon name="panel" />
+          <div>
+            <p>Sessions</p>
+            <strong>{sessionCount}</strong>
+          </div>
+        </article>
       </div>
-    </div>
+    </section>
   )
 }
