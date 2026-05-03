@@ -10,13 +10,22 @@ interface JournalPanelProps {
   token: string
   sessionId: UUID
   role: Role
+  userId?: UUID
 }
 
 type JournalViewMode = 'all' | 'favorites' | 'pinned'
 
+interface JournalFilterPreset {
+  name: string
+  viewMode: JournalViewMode
+  tag: string
+  isDefault?: boolean
+}
+
 const EMPTY_NOTES: Record<UUID, Note> = {}
 const JOURNAL_PINNED_STORAGE_KEY = 'vtt-chat:journal:pinned'
 const JOURNAL_FAVORITE_STORAGE_KEY = 'vtt-chat:journal:favorites'
+const JOURNAL_PRESETS_STORAGE_KEY = 'vtt-chat:journal:filter-presets'
 
 const NOTE_VISIBILITY_LABEL: Record<NoteVisibility, string> = {
   [NoteVisibility.DM_ONLY]: 'DM only',
@@ -76,15 +85,135 @@ function persistStoredIds(storageKey: string, ids: Set<string>): void {
   }
 }
 
-export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelProps) {
+function readJournalPresets(storageKey: string): JournalFilterPreset[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const localStorageApi = window.localStorage as Partial<Storage> | undefined
+    if (!localStorageApi || typeof localStorageApi.getItem !== 'function') {
+      return []
+    }
+
+    const rawValue = localStorageApi.getItem(storageKey)
+    if (!rawValue) {
+      return []
+    }
+
+    const parsed = JSON.parse(rawValue)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    const validated = parsed
+      .filter((candidate): candidate is JournalFilterPreset => {
+        if (!candidate || typeof candidate !== 'object') {
+          return false
+        }
+
+        const preset = candidate as Partial<JournalFilterPreset>
+        return (
+          typeof preset.name === 'string' &&
+          typeof preset.viewMode === 'string' &&
+          ['all', 'favorites', 'pinned'].includes(preset.viewMode) &&
+          typeof preset.tag === 'string'
+        )
+      })
+      .slice(0, 8)
+
+    let foundDefault = false
+    return validated.map((preset) => {
+      const shouldBeDefault = Boolean(preset.isDefault) && !foundDefault
+      if (shouldBeDefault) {
+        foundDefault = true
+      }
+
+      return {
+        ...preset,
+        isDefault: shouldBeDefault,
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
+function persistJournalPresets(storageKey: string, presets: JournalFilterPreset[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const localStorageApi = window.localStorage as Partial<Storage> | undefined
+    if (!localStorageApi || typeof localStorageApi.setItem !== 'function') {
+      return
+    }
+
+    localStorageApi.setItem(storageKey, JSON.stringify(presets))
+  } catch {
+    // Best-effort persistence only.
+  }
+}
+
+function createInitialJournalState(params: { sessionId: UUID; presetStorageKey: string }): {
+  selectedTag: string
+  viewMode: JournalViewMode
+  pinnedEntryIds: Set<string>
+  favoriteEntryIds: Set<string>
+  savedPresets: JournalFilterPreset[]
+} {
+  const scopedPinnedKey = `${JOURNAL_PINNED_STORAGE_KEY}:${params.sessionId}`
+  const scopedFavoriteKey = `${JOURNAL_FAVORITE_STORAGE_KEY}:${params.sessionId}`
+  const savedPresets = readJournalPresets(params.presetStorageKey)
+  const defaultPreset = savedPresets.find((preset) => preset.isDefault)
+
+  return {
+    selectedTag: defaultPreset?.tag ?? 'all',
+    viewMode: defaultPreset?.viewMode ?? 'all',
+    pinnedEntryIds: readStoredIds(scopedPinnedKey),
+    favoriteEntryIds: readStoredIds(scopedFavoriteKey),
+    savedPresets,
+  }
+}
+
+export function JournalPanel({ apiUrl, token, sessionId, role, userId }: JournalPanelProps) {
+  const userScope = String(userId ?? 'anonymous')
+  const presetStorageKey = `${JOURNAL_PRESETS_STORAGE_KEY}:${userScope}:${sessionId}`
+  const [initialState] = useState(() =>
+    createInitialJournalState({
+      sessionId,
+      presetStorageKey,
+    })
+  )
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [publishingNoteId, setPublishingNoteId] = useState<string | null>(null)
-  const [selectedTag, setSelectedTag] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<JournalViewMode>('all')
-  const [pinnedEntryIds, setPinnedEntryIds] = useState<Set<string>>(new Set())
-  const [favoriteEntryIds, setFavoriteEntryIds] = useState<Set<string>>(new Set())
+  const [selectedTag, setSelectedTag] = useState<string>(initialState.selectedTag)
+  const [viewMode, setViewMode] = useState<JournalViewMode>(initialState.viewMode)
+  const [pinnedEntryIds, setPinnedEntryIds] = useState<Set<string>>(initialState.pinnedEntryIds)
+  const [favoriteEntryIds, setFavoriteEntryIds] = useState<Set<string>>(
+    initialState.favoriteEntryIds
+  )
+  const [presetName, setPresetName] = useState('')
+  const [savedPresets, setSavedPresets] = useState<JournalFilterPreset[]>(initialState.savedPresets)
+  const [renamingPresetName, setRenamingPresetName] = useState<string | null>(null)
+  const [renamePresetInput, setRenamePresetInput] = useState('')
+  const [importPayload, setImportPayload] = useState('')
+  const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
+
+  const exportPayload = JSON.stringify(
+    {
+      panel: 'journal',
+      version: 1,
+      scope: userScope,
+      presets: savedPresets,
+    },
+    null,
+    2
+  )
 
   const sessionNotes = useStore((state) => state.notes[sessionId] ?? EMPTY_NOTES)
   const addNote = useStore((state) => state.addNote)
@@ -144,14 +273,6 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
 
   useEffect(() => {
     const scopedPinnedKey = `${JOURNAL_PINNED_STORAGE_KEY}:${sessionId}`
-    const scopedFavoriteKey = `${JOURNAL_FAVORITE_STORAGE_KEY}:${sessionId}`
-
-    setPinnedEntryIds(readStoredIds(scopedPinnedKey))
-    setFavoriteEntryIds(readStoredIds(scopedFavoriteKey))
-  }, [sessionId])
-
-  useEffect(() => {
-    const scopedPinnedKey = `${JOURNAL_PINNED_STORAGE_KEY}:${sessionId}`
     persistStoredIds(scopedPinnedKey, pinnedEntryIds)
   }, [pinnedEntryIds, sessionId])
 
@@ -159,6 +280,10 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
     const scopedFavoriteKey = `${JOURNAL_FAVORITE_STORAGE_KEY}:${sessionId}`
     persistStoredIds(scopedFavoriteKey, favoriteEntryIds)
   }, [favoriteEntryIds, sessionId])
+
+  useEffect(() => {
+    persistJournalPresets(presetStorageKey, savedPresets)
+  }, [presetStorageKey, savedPresets])
 
   useEffect(() => {
     let cancelled = false
@@ -279,6 +404,193 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
     }
   }
 
+  const handleSavePreset = () => {
+    const normalizedName = presetName.trim()
+    if (!normalizedName) {
+      return
+    }
+
+    const nextPreset: JournalFilterPreset = {
+      name: normalizedName,
+      viewMode,
+      tag: selectedTag,
+    }
+
+    setSavedPresets((prev) => {
+      const existing = prev.find(
+        (preset) => preset.name.toLowerCase() === normalizedName.toLowerCase()
+      )
+      const withoutCurrentName = prev.filter(
+        (preset) => preset.name.toLowerCase() !== normalizedName.toLowerCase()
+      )
+      return [
+        { ...nextPreset, isDefault: existing?.isDefault ?? false },
+        ...withoutCurrentName,
+      ].slice(0, 8)
+    })
+    setPresetName('')
+    setPresetFeedback(null)
+  }
+
+  const handleApplyPreset = (preset: JournalFilterPreset) => {
+    setViewMode(preset.viewMode)
+    setSelectedTag(preset.tag)
+    setPresetFeedback(null)
+  }
+
+  const handleDeletePreset = (name: string) => {
+    setSavedPresets((prev) => prev.filter((preset) => preset.name !== name))
+    if (renamingPresetName === name) {
+      setRenamingPresetName(null)
+      setRenamePresetInput('')
+    }
+  }
+
+  const handleSetDefaultPreset = (name: string) => {
+    setSavedPresets((prev) =>
+      prev.map((preset) => ({
+        ...preset,
+        isDefault: preset.name === name,
+      }))
+    )
+    setPresetFeedback(null)
+  }
+
+  const handleClearDefaultPreset = () => {
+    setSavedPresets((prev) => prev.map((preset) => ({ ...preset, isDefault: false })))
+    setPresetFeedback(null)
+  }
+
+  const handleStartRenamePreset = (name: string) => {
+    setRenamingPresetName(name)
+    setRenamePresetInput(name)
+    setPresetFeedback(null)
+  }
+
+  const handleRenamePreset = () => {
+    if (!renamingPresetName) {
+      return
+    }
+
+    const nextName = renamePresetInput.trim()
+    if (!nextName) {
+      setPresetFeedback('Preset name cannot be empty.')
+      return
+    }
+
+    setSavedPresets((prev) => {
+      const duplicate = prev.some(
+        (preset) =>
+          preset.name !== renamingPresetName && preset.name.toLowerCase() === nextName.toLowerCase()
+      )
+
+      if (duplicate) {
+        return prev
+      }
+
+      return prev.map((preset) =>
+        preset.name === renamingPresetName
+          ? {
+              ...preset,
+              name: nextName,
+            }
+          : preset
+      )
+    })
+
+    const hasDuplicate = savedPresets.some(
+      (preset) =>
+        preset.name !== renamingPresetName && preset.name.toLowerCase() === nextName.toLowerCase()
+    )
+
+    if (hasDuplicate) {
+      setPresetFeedback('A preset with that name already exists.')
+      return
+    }
+
+    setRenamingPresetName(null)
+    setRenamePresetInput('')
+    setPresetFeedback(null)
+  }
+
+  const handleExportPresets = async () => {
+    setPresetFeedback(null)
+
+    if (!savedPresets.length) {
+      setPresetFeedback('No presets available to export.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(exportPayload)
+      setPresetFeedback('Presets copied to clipboard.')
+    } catch {
+      setPresetFeedback('Clipboard unavailable. Copy the JSON manually from the export field.')
+    }
+  }
+
+  const handleImportPresets = () => {
+    setPresetFeedback(null)
+
+    try {
+      const parsed = JSON.parse(importPayload) as {
+        panel?: string
+        version?: number
+        scope?: string
+        presets?: unknown
+      }
+
+      if (!parsed || parsed.panel !== 'journal' || parsed.scope !== userScope) {
+        setPresetFeedback('Import payload does not match this user journal scope.')
+        return
+      }
+
+      if (!Array.isArray(parsed.presets)) {
+        setPresetFeedback('Import payload is missing presets.')
+        return
+      }
+
+      const normalizedPresets = parsed.presets
+        .filter((candidate): candidate is JournalFilterPreset => {
+          if (!candidate || typeof candidate !== 'object') {
+            return false
+          }
+
+          const preset = candidate as Partial<JournalFilterPreset>
+          return (
+            typeof preset.name === 'string' &&
+            typeof preset.viewMode === 'string' &&
+            ['all', 'favorites', 'pinned'].includes(preset.viewMode) &&
+            typeof preset.tag === 'string'
+          )
+        })
+        .slice(0, 8)
+
+      let foundDefault = false
+      const sanitized = normalizedPresets.map((preset) => {
+        const shouldBeDefault = Boolean(preset.isDefault) && !foundDefault
+        if (shouldBeDefault) {
+          foundDefault = true
+        }
+        return {
+          ...preset,
+          isDefault: shouldBeDefault,
+        }
+      })
+
+      setSavedPresets(sanitized)
+
+      const defaultPreset = sanitized.find((preset) => preset.isDefault)
+      if (defaultPreset) {
+        handleApplyPreset(defaultPreset)
+      }
+
+      setPresetFeedback(`Imported ${sanitized.length} preset${sanitized.length === 1 ? '' : 's'}.`)
+    } catch {
+      setPresetFeedback('Import payload is not valid JSON.')
+    }
+  }
+
   return (
     <section className="knowledge-panel" data-testid="journal-panel">
       <header className="knowledge-panel-header">
@@ -324,6 +636,144 @@ export function JournalPanel({ apiUrl, token, sessionId, role }: JournalPanelPro
             ))}
           </select>
         </label>
+      </div>
+
+      <div className="knowledge-panel-presets" aria-label="Journal presets">
+        <div className="knowledge-panel-presets-save-row">
+          <input
+            type="text"
+            aria-label="Journal preset name"
+            value={presetName}
+            placeholder="Save current filters as preset"
+            onChange={(event) => setPresetName(event.target.value)}
+          />
+          <button
+            type="button"
+            className="knowledge-panel-action"
+            onClick={handleSavePreset}
+            disabled={!presetName.trim()}
+          >
+            Save preset
+          </button>
+        </div>
+
+        <div className="knowledge-panel-presets-import-export-row">
+          <button type="button" className="knowledge-panel-action" onClick={handleExportPresets}>
+            Copy export
+          </button>
+          <button
+            type="button"
+            className="knowledge-panel-action"
+            onClick={handleImportPresets}
+            disabled={!importPayload.trim()}
+          >
+            Import presets
+          </button>
+          <button
+            type="button"
+            className="knowledge-panel-action"
+            onClick={handleClearDefaultPreset}
+            disabled={!savedPresets.some((preset) => preset.isDefault)}
+          >
+            Clear default
+          </button>
+        </div>
+
+        <label className="knowledge-panel-filter-field">
+          <span>Preset export (same user)</span>
+          <textarea
+            aria-label="Journal preset export"
+            readOnly
+            className="knowledge-panel-presets-json"
+            value={exportPayload}
+          />
+        </label>
+
+        <label className="knowledge-panel-filter-field">
+          <span>Preset import (same user)</span>
+          <textarea
+            aria-label="Journal preset import"
+            className="knowledge-panel-presets-json"
+            value={importPayload}
+            placeholder="Paste a journal preset export JSON payload"
+            onChange={(event) => setImportPayload(event.target.value)}
+          />
+        </label>
+
+        {presetFeedback ? <p className="knowledge-panel-meta">{presetFeedback}</p> : null}
+
+        {savedPresets.length > 0 ? (
+          <div
+            className="knowledge-panel-presets-list"
+            role="list"
+            aria-label="Saved journal presets"
+          >
+            {savedPresets.map((preset) => (
+              <div key={preset.name} className="knowledge-panel-preset-card" role="listitem">
+                {renamingPresetName === preset.name ? (
+                  <>
+                    <input
+                      type="text"
+                      aria-label={`Rename ${preset.name}`}
+                      className="knowledge-panel-preset-inline-input"
+                      value={renamePresetInput}
+                      onChange={(event) => setRenamePresetInput(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={handleRenamePreset}
+                    >
+                      Save name
+                    </button>
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => {
+                        setRenamingPresetName(null)
+                        setRenamePresetInput('')
+                        setPresetFeedback(null)
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => handleApplyPreset(preset)}
+                    >
+                      Apply {preset.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => handleSetDefaultPreset(preset.name)}
+                    >
+                      {preset.isDefault ? 'Default preset' : 'Set default'}
+                    </button>
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => handleStartRenamePreset(preset.name)}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      className="knowledge-panel-action"
+                      onClick={() => handleDeletePreset(preset.name)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {publishError ? <p className="knowledge-panel-error">{publishError}</p> : null}

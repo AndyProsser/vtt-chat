@@ -11,6 +11,7 @@ import { useStore } from '../../state/store'
 const asUuid = (value: string) => value as UUID
 
 const SESSION_ID = asUuid('22222222-2222-4222-8222-222222222222')
+const SESSION_TWO_ID = asUuid('23232323-2323-4232-8232-232323232323')
 const ROOM_ID = asUuid('66666666-6666-4666-8666-666666666666')
 const PLAYER_ID = asUuid('44444444-4444-4444-8444-444444444444')
 
@@ -145,7 +146,10 @@ describe('knowledge panels', () => {
     const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
       const url = String(input)
 
-      if (url.endsWith(`/api/notes/${SESSION_ID}`)) {
+      if (
+        url.endsWith(`/api/notes/${SESSION_ID}`) ||
+        url.endsWith(`/api/notes/${SESSION_TWO_ID}`)
+      ) {
         return {
           ok: true,
           json: async () => ({
@@ -197,17 +201,29 @@ describe('knowledge panels', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
+    const storage = new Map<string, string>()
     vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage.set(key, value)
+      }),
     })
 
-    render(
+    const clipboardWriteText = vi.fn(async () => undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteText,
+      },
+    })
+
+    const firstRender = render(
       <JournalPanel
         apiUrl="http://localhost:3000"
         token="token"
         sessionId={SESSION_ID}
         role={Role.DM}
+        userId={PLAYER_ID}
       />
     )
 
@@ -237,44 +253,132 @@ describe('knowledge panels', () => {
     fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'map' } })
     expect(screen.getByText('Tunnel map')).toBeTruthy()
     expect(screen.queryByText('Recovered sigil')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('Journal preset name'), {
+      target: { value: 'Map only' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'all' } })
+    expect(screen.getByText('Recovered sigil')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Map only' }))
+    expect(screen.getByText('Tunnel map')).toBeTruthy()
+    expect(screen.queryByText('Recovered sigil')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set default' }))
+    expect(screen.getByRole('button', { name: 'Default preset' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
+    fireEvent.change(screen.getByLabelText('Rename Map only'), {
+      target: { value: 'Map focus' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(screen.getByRole('button', { name: 'Apply Map focus' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy export' }))
+    expect(clipboardWriteText).toHaveBeenCalled()
+
+    const exportPayload = (screen.getByLabelText('Journal preset export') as HTMLTextAreaElement)
+      .value
+
+    firstRender.unmount()
+
+    const secondRender = render(
+      <JournalPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Tunnel map')).toBeTruthy()
+      expect(screen.queryByText('Recovered sigil')).toBeNull()
+    })
+
+    secondRender.unmount()
+
+    render(
+      <JournalPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_TWO_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    expect(await screen.findByText('Recovered sigil')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Journal preset import'), {
+      target: { value: exportPayload },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Import presets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Map focus' }))
+    expect(screen.getByText('Tunnel map')).toBeTruthy()
+    expect(screen.queryByText('Recovered sigil')).toBeNull()
   })
 
   it('renders and filters persisted session history entries', async () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage.set(key, value)
+      }),
+    })
+
+    const clipboardWriteText = vi.fn(async () => undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteText,
+      },
+    })
+
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          logs: [
-            {
-              id: 'log-1',
-              sessionId: SESSION_ID,
-              userId: PLAYER_ID,
-              username: 'Morgan',
-              eventType: 'STATE_CHANGED',
-              detail: 'Session state changed from IDLE to ACTIVE',
-              createdAt: '2026-04-23T10:00:00.000Z',
-            },
-            {
-              id: 'log-2',
-              sessionId: SESSION_ID,
-              userId: PLAYER_ID,
-              username: 'Tara',
-              eventType: 'USER_JOINED',
-              detail: 'Tara joined main room',
-              createdAt: '2026-04-23T11:00:00.000Z',
-            },
-          ],
-        }),
-      }))
+      vi.fn(async (input: string | URL) => {
+        const url = String(input)
+        const requestedSessionId = url.includes(SESSION_TWO_ID) ? SESSION_TWO_ID : SESSION_ID
+
+        return {
+          ok: true,
+          json: async () => ({
+            logs: [
+              {
+                id: 'log-1',
+                sessionId: requestedSessionId,
+                userId: PLAYER_ID,
+                username: 'Morgan',
+                eventType: 'STATE_CHANGED',
+                detail: 'Session state changed from IDLE to ACTIVE',
+                createdAt: '2026-04-23T10:00:00.000Z',
+              },
+              {
+                id: 'log-2',
+                sessionId: requestedSessionId,
+                userId: PLAYER_ID,
+                username: 'Tara',
+                eventType: 'USER_JOINED',
+                detail: 'Tara joined main room',
+                createdAt: '2026-04-23T11:00:00.000Z',
+              },
+            ],
+          }),
+        }
+      })
     )
 
-    render(
+    const firstRender = render(
       <HistoryPanel
         apiUrl="http://localhost:3000"
         token="token"
         sessionId={SESSION_ID}
         role={Role.DM}
+        userId={PLAYER_ID}
       />
     )
 
@@ -286,6 +390,72 @@ describe('knowledge panels', () => {
 
     fireEvent.change(screen.getByLabelText('Event type'), { target: { value: 'all' } })
     fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'Morgan' } })
+    expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
+    expect(screen.queryByText('Tara joined main room')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('History preset name'), {
+      target: { value: 'Morgan only' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'all' } })
+    expect(screen.getByText('Tara joined main room')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Morgan only' }))
+    expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
+    expect(screen.queryByText('Tara joined main room')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set default' }))
+    expect(screen.getByRole('button', { name: 'Default preset' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
+    fireEvent.change(screen.getByLabelText('Rename Morgan only'), {
+      target: { value: 'Morgan lens' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(screen.getByRole('button', { name: 'Apply Morgan lens' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy export' }))
+    expect(clipboardWriteText).toHaveBeenCalled()
+
+    const exportPayload = (screen.getByLabelText('History preset export') as HTMLTextAreaElement)
+      .value
+
+    firstRender.unmount()
+
+    const secondRender = render(
+      <HistoryPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
+      expect(screen.queryByText('Tara joined main room')).toBeNull()
+    })
+
+    secondRender.unmount()
+
+    render(
+      <HistoryPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_TWO_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    expect(await screen.findByText('Tara joined main room')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('History preset import'), {
+      target: { value: exportPayload },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Import presets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Morgan lens' }))
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
     expect(screen.queryByText('Tara joined main room')).toBeNull()
   })

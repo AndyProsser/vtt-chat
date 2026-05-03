@@ -343,4 +343,233 @@ describe('SessionInit integration', () => {
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
   })
+
+  it('auto-applies default journal and history presets after switching rail tabs', async () => {
+    const localStorageState = new Map<string, string>()
+    const userScope = String(PLAYER_ID)
+    localStorageState.set(
+      `vtt-chat:journal:filter-presets:${userScope}:${SESSION_ID}`,
+      JSON.stringify([
+        {
+          name: 'Map default',
+          viewMode: 'all',
+          tag: 'map',
+          isDefault: true,
+        },
+      ])
+    )
+    localStorageState.set(
+      `vtt-chat:history:filter-presets:${userScope}:${SESSION_ID}`,
+      JSON.stringify([
+        {
+          name: 'Morgan default',
+          eventType: 'all',
+          actor: 'Morgan',
+          window: 'all',
+          isDefault: true,
+        },
+      ])
+    )
+
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => localStorageState.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        localStorageState.set(key, value)
+      }),
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+                description: 'Active field session',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/notes/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                id: asUuid('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                title: 'Archive route',
+                content: 'Cellar route confirmed.',
+                visibility: 'PLAYERS_VISIBLE',
+                tags: ['route'],
+                allowedUsers: [],
+                createdAt: 5,
+                updatedAt: 8,
+              },
+              {
+                id: asUuid('bbbbbbbb-cccc-4ddd-8eee-ffffffffffff'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                title: 'Tunnel map',
+                content: 'Tunnel map annotations.',
+                visibility: 'PLAYERS_VISIBLE',
+                tags: ['map'],
+                allowedUsers: [],
+                createdAt: 9,
+                updatedAt: 10,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/chat/messages/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            messages: [
+              {
+                id: asUuid('99999999-9999-4999-8999-999999999999'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                content: 'Archive map ready.',
+                type: 'OOC',
+                isDmOnly: false,
+                createdAt: 10,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            logs: [
+              {
+                id: 'log-1',
+                sessionId: SESSION_ID,
+                userId: DM_ID,
+                username: 'Morgan',
+                eventType: 'STATE_CHANGED',
+                detail: 'Session state changed from IDLE to ACTIVE',
+                createdAt: '2026-04-23T10:00:00.000Z',
+              },
+              {
+                id: 'log-2',
+                sessionId: SESSION_ID,
+                userId: PLAYER_ID,
+                username: 'Tara',
+                eventType: 'USER_JOINED',
+                detail: 'Tara joined main room',
+                createdAt: '2026-04-23T11:00:00.000Z',
+              },
+            ],
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: PLAYER_ID,
+          username: 'Tara',
+          role: Role.PLAYER,
+        }}
+      />
+    )
+
+    await screen.findByText('Session Alpha')
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show Tools' }))
+
+    const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
+    fireEvent.mouseDown(journalTab, { button: 0 })
+    fireEvent.click(journalTab)
+    expect(await screen.findByTestId('journal-panel')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Tunnel map')).toBeTruthy()
+      expect(screen.queryByText('Archive route')).toBeNull()
+    })
+
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'all' } })
+    expect(screen.getByText('Archive route')).toBeTruthy()
+
+    const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
+    fireEvent.mouseDown(searchTab, { button: 0 })
+    fireEvent.click(searchTab)
+    expect(await screen.findByTestId('search-panel')).toBeTruthy()
+
+    fireEvent.mouseDown(journalTab, { button: 0 })
+    fireEvent.click(journalTab)
+    expect(await screen.findByTestId('journal-panel')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Tunnel map')).toBeTruthy()
+      expect(screen.queryByText('Archive route')).toBeNull()
+    })
+
+    const historyTab = screen.getByRole('tab', { name: 'Tool History' })
+    fireEvent.mouseDown(historyTab, { button: 0 })
+    fireEvent.click(historyTab)
+    expect(await screen.findByTestId('history-panel')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
+      expect(screen.queryByText('Tara joined main room')).toBeNull()
+    })
+
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'all' } })
+    expect(screen.getByText('Tara joined main room')).toBeTruthy()
+
+    const notesTab = screen.getByRole('tab', { name: 'Tool Notes' })
+    fireEvent.mouseDown(notesTab, { button: 0 })
+    fireEvent.click(notesTab)
+    expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
+
+    fireEvent.mouseDown(historyTab, { button: 0 })
+    fireEvent.click(historyTab)
+    expect(await screen.findByTestId('history-panel')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
+      expect(screen.queryByText('Tara joined main room')).toBeNull()
+    })
+  })
 })

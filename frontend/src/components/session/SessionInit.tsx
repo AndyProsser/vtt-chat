@@ -1004,10 +1004,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 if (tab === 'journal') {
                   return (
                     <JournalPanel
+                      key={`journal:${currentSession.id}:${user.id}`}
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
                       role={user.role}
+                      userId={user.id}
                     />
                   )
                 }
@@ -1015,10 +1017,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 if (tab === 'history') {
                   return (
                     <HistoryPanel
+                      key={`history:${currentSession.id}:${user.id}`}
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={currentSession.id}
                       role={user.role}
+                      userId={user.id}
                     />
                   )
                 }
