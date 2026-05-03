@@ -7,17 +7,40 @@
 import { useState } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
+import { Tabs, TabsList, TabsTrigger } from '@/core-ui'
 
 interface LoginFormProps {
   apiUrl: string
   onLoginSuccess: (token: string, user: { id: UUID; username: string; role: Role }) => void
 }
 
+const LOGIN_ROLES = [Role.DM, Role.PLAYER, Role.SPECTATOR] as const
+
+type LoginRole = (typeof LOGIN_ROLES)[number]
+
 export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   const [username, setUsername] = useState('')
-  const [role, setRole] = useState<Role>(Role.PLAYER)
+  const [role, setRole] = useState<LoginRole>(Role.PLAYER)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const roleCopy: Record<LoginRole, { label: string; summary: string; meta: string }> = {
+    [Role.DM]: {
+      label: 'DM',
+      summary: 'Launch the full control surface with room management and orchestration tools.',
+      meta: 'Campaign control',
+    },
+    [Role.PLAYER]: {
+      label: 'Player',
+      summary: 'Use the streamlined in-session view for chat, notes, and active room presence.',
+      meta: 'Focused play',
+    },
+    [Role.SPECTATOR]: {
+      label: 'Spectator',
+      summary: 'Verify the read-only audience experience with restricted interaction affordances.',
+      meta: 'Read-only mode',
+    },
+  }
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
@@ -59,62 +82,81 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto my-8 w-full max-w-md rounded-ui-lg border border-ui-border bg-ui-surface p-8 shadow-ui-sm"
-    >
-      <h2 className="mt-0 text-2xl font-semibold text-ui-primary">Login</h2>
-
-      {error && (
-        <div className="mb-4 rounded-ui-sm bg-ui-error-surface px-3 py-3 text-sm text-ui-error-text">
-          {error}
+    <form onSubmit={handleSubmit} className="auth-form-card">
+      <div className="auth-form-card__header">
+        <div>
+          <p className="auth-card__eyebrow">Enter Session</p>
+          <h2 className="auth-card__title">Sign in to the table</h2>
         </div>
-      )}
+        <div className="auth-form-card__badge">Local smoke auth</div>
+      </div>
 
-      <div className="mb-4">
-        <label htmlFor="username" className="mb-2 block text-sm font-medium text-ui-primary">
-          Username
-        </label>
+      <p className="auth-form-card__copy">
+        Authenticate into the frontend shell and verify the live persona-specific experience. This
+        mirrors the admin app&apos;s card-first layout, but tuned toward play-session workflow.
+      </p>
+
+      {error && <div className="auth-alert">{error}</div>}
+
+      <div className="auth-field">
+        <label htmlFor="username">Username</label>
         <input
           id="username"
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter username (3-32 chars)"
-          className="block w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary outline-none focus:border-ui-border-focus"
+          placeholder="thorin_stonehelm"
           disabled={isLoading}
           required
         />
+        <p className="auth-field__hint">
+          Use letters, numbers, or underscores. The backend issues a JWT immediately on submit.
+        </p>
       </div>
 
-      <div className="mb-6">
-        <label htmlFor="role" className="mb-2 block text-sm font-medium text-ui-primary">
-          Role
-        </label>
-        <select
-          id="role"
+      <div className="auth-field">
+        <label htmlFor="role-tabs">Persona</label>
+        <Tabs
           value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
-          className="block w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary outline-none focus:border-ui-border-focus"
-          disabled={isLoading}
+          onValueChange={(nextRole) => {
+            if (LOGIN_ROLES.includes(nextRole as LoginRole)) {
+              setRole(nextRole as LoginRole)
+            }
+          }}
+          className="auth-role-switcher"
         >
-          <option value="DM">Dungeon Master (DM)</option>
-          <option value="PLAYER">Player</option>
-          <option value="SPECTATOR">Spectator</option>
-        </select>
+          <TabsList id="role-tabs" aria-label="Choose persona">
+            <TabsTrigger value={Role.DM} disabled={isLoading}>
+              <span className="auth-role-switcher__label">DM</span>
+              <span className="auth-role-switcher__meta">Control</span>
+            </TabsTrigger>
+            <TabsTrigger value={Role.PLAYER} disabled={isLoading}>
+              <span className="auth-role-switcher__label">Player</span>
+              <span className="auth-role-switcher__meta">Play</span>
+            </TabsTrigger>
+            <TabsTrigger value={Role.SPECTATOR} disabled={isLoading}>
+              <span className="auth-role-switcher__label">Spectator</span>
+              <span className="auth-role-switcher__meta">Observe</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="auth-role-card">
+          <p className="auth-role-card__title">
+            {roleCopy[role].label} surface · {roleCopy[role].meta}
+          </p>
+          <p className="auth-role-card__copy">{roleCopy[role].summary}</p>
+        </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isLoading || !username.trim()}
-        className="w-full rounded-ui-sm bg-ui-brand px-4 py-3 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
+      <button type="submit" disabled={isLoading || !username.trim()} className="auth-submit">
         {isLoading ? 'Logging in...' : 'Login'}
       </button>
 
-      <p className="mt-4 text-center text-xs text-ui-secondary">
-        No password required. Username is verified by length and format only.
-      </p>
+      <div className="auth-form-meta">
+        <span>Fast local access for smoke testing</span>
+        <span className="auth-pill">JWT issued on submit</span>
+      </div>
     </form>
   )
 }

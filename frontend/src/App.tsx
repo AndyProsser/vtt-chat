@@ -99,78 +99,102 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-ui-surface-subtle font-sans text-ui-primary">
-      <header className="border-b border-ui-border bg-ui-surface px-4 py-4">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-          <div>
-            <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
-            <p className="mt-1 text-sm text-ui-secondary">Audio and LiveKit integration</p>
-          </div>
-
-          {auth.user && (
-            <div className="flex gap-2">
-              {showAdminButton && (
-                <button
-                  onClick={handleOpenAdmin}
-                  disabled={adminButtonDisabled}
-                  title={
-                    authProfile?.requiresUpgradeForAdmin
-                      ? 'Upgrade to full account to access admin'
-                      : undefined
-                  }
-                  className={cn(
-                    'rounded-ui-sm px-4 py-2 text-sm text-white',
-                    adminButtonDisabled
-                      ? 'cursor-not-allowed bg-slate-400'
-                      : 'cursor-pointer bg-teal-700 hover:bg-teal-800'
-                  )}
-                >
-                  {adminLaunchLoading ? 'Opening Admin...' : 'Open Admin'}
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="cursor-pointer rounded-ui-sm bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {authMessage && (
-        <div className="mx-auto mt-4 w-full max-w-6xl rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {authMessage}
-        </div>
-      )}
-
-      {showUpgradePrompt && authProfile?.email && (
-        <GuestUpgradePrompt
-          email={authProfile.email}
-          loading={upgradeLoading}
-          onUpgrade={handleUpgradeAccount}
-          onDismiss={() => setUpgradePromptDismissed(true)}
+    <div className="relative min-h-screen overflow-hidden font-sans text-ui-primary">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl"
+          style={{ background: 'color-mix(in srgb, var(--color-brand) 18%, transparent)' }}
         />
-      )}
+        <div
+          className="absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl"
+          style={{ background: 'color-mix(in srgb, var(--color-info) 22%, transparent)' }}
+        />
+      </div>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">{renderRouteView()}</main>
-
-      {routeView.kind === 'app' && auth.token && currentSessionId && activeRoomId && (
-        <Suspense
-          fallback={
-            <div className="border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-secondary">
-              Loading audio controls...
+      <div className="relative">
+        <header className="border-b border-ui-border bg-ui-surface px-4 py-5 shadow-ui-sm">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+            <div>
+              <p className="mb-1 text-xs font-semibold tracking-wide text-ui-secondary uppercase">
+                Campaign Control Surface
+              </p>
+              <h1 className="m-0 text-2xl font-bold">VTT-Chat</h1>
+              <p className="mt-1 text-sm text-ui-secondary">
+                Audio rooms, live session state, and DM tooling in one surface
+              </p>
             </div>
-          }
-        >
-          <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
-        </Suspense>
-      )}
 
-      <footer className="mt-8 border-t border-ui-border bg-ui-surface px-4 py-4 text-center text-sm text-ui-secondary">
-        <p className="m-0">Audio and LiveKit are enabled (voice rooms, DSP engine, DM overrides)</p>
-      </footer>
+            {auth.user && (
+              <div className="flex gap-2">
+                {showAdminButton && (
+                  <button
+                    onClick={handleOpenAdmin}
+                    disabled={adminButtonDisabled}
+                    title={
+                      authProfile?.requiresUpgradeForAdmin
+                        ? 'Upgrade to full account to access admin'
+                        : undefined
+                    }
+                    className={cn(
+                      'rounded-ui-sm px-4 py-2 text-sm text-white',
+                      adminButtonDisabled
+                        ? 'cursor-not-allowed bg-slate-400'
+                        : 'cursor-pointer bg-teal-700 hover:bg-teal-800'
+                    )}
+                  >
+                    {adminLaunchLoading ? 'Opening Admin...' : 'Open Admin'}
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="cursor-pointer rounded-ui-sm bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {authMessage && (
+          <div className="mx-auto mt-4 w-full max-w-6xl rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
+            {authMessage}
+          </div>
+        )}
+
+        {showUpgradePrompt && authProfile?.email && (
+          <GuestUpgradePrompt
+            email={authProfile.email}
+            loading={upgradeLoading}
+            onUpgrade={handleUpgradeAccount}
+            onDismiss={() => setUpgradePromptDismissed(true)}
+          />
+        )}
+
+        <main className="mx-auto w-full max-w-6xl px-4 py-8">
+          <section className="overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
+            {renderRouteView()}
+          </section>
+        </main>
+
+        {routeView.kind === 'app' && auth.token && currentSessionId && activeRoomId && (
+          <Suspense
+            fallback={
+              <div className="border-t border-ui-border bg-ui-surface-subtle px-4 py-2 text-sm text-ui-secondary">
+                Loading audio controls...
+              </div>
+            }
+          >
+            <AudioPanel sessionId={currentSessionId} roomId={activeRoomId} />
+          </Suspense>
+        )}
+
+        <footer className="mt-8 border-t border-ui-border bg-ui-surface/80 px-4 py-4 text-center text-sm text-ui-secondary shadow-ui-sm">
+          <p className="m-0">
+            Audio and LiveKit are enabled with room voice, DSP engine processing, and DM overrides.
+          </p>
+        </footer>
+      </div>
     </div>
   )
 }
