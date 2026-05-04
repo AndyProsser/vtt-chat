@@ -18,8 +18,12 @@ https://:8443 {
   }
 
   # LiveKit HTTP signalling (WebRTC peers connect directly on port 7880/UDP)
-  handle /livekit/* {
-    reverse_proxy livekit:7880
+  handle_path /livekit/* {
+    reverse_proxy livekit:7880 {
+      transport http {
+        versions 1.1
+      }
+    }
   }
 
   # Admin SPA — strip /admin prefix; http-server serves dist/ from its root

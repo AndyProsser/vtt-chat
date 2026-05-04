@@ -11,6 +11,7 @@ room:
 # To scale beyond 1100 concurrent streams, expand port_range_end and the
 # matching `ports:` mapping in docker-compose.yml accordingly.
 rtc:
+  node_ip: 0.0.0.0
   port_range_start: 7881
   port_range_end: 8980 # 1100 ports → 1100 concurrent streams
   # use_external_ip causes LiveKit to auto-detect its public IP via STUN.

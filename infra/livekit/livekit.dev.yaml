@@ -9,6 +9,7 @@ room:
 # RTC — dev supports up to 100 simultaneous audio streams (100 ports)
 # One UDP port is consumed per media track per participant.
 rtc:
+  node_ip: 127.0.0.1
   port_range_start: 7881
   port_range_end: 7980 # 100 ports → 100 concurrent streams
   # Do NOT use external IP in dev — clients connect via localhost so ICE

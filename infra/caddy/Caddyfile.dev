@@ -12,8 +12,12 @@
   }
 
   # LiveKit HTTP signalling
-  handle /livekit/* {
-    reverse_proxy livekit:7880
+  handle_path /livekit/* {
+    reverse_proxy livekit:7880 {
+      transport http {
+        versions 1.1
+      }
+    }
   }
 
   # Admin SPA — Vite dev server has base=/admin/ so keep the full path prefix
