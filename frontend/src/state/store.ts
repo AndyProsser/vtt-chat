@@ -13,6 +13,7 @@ import type { AudioSlice } from './audioSlice'
 import type { RoomSlice } from './roomSlice'
 import type { MetadataSlice } from './metadataSlice'
 import type { CommandCenterSlice } from './commandCenterSlice'
+import type { LiveKitSlice } from './livekitSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
@@ -21,6 +22,7 @@ import { createAudioSlice } from './audioSlice'
 import { createRoomSlice } from './roomSlice'
 import { createMetadataSlice } from './metadataSlice'
 import { createCommandCenterSlice } from './commandCenterSlice'
+import { createLiveKitSlice } from './livekitSlice'
 
 /**
  * Combined store type.
@@ -31,7 +33,8 @@ export type Store = SessionSlice &
   AudioSlice &
   RoomSlice &
   MetadataSlice &
-  CommandCenterSlice
+  CommandCenterSlice &
+  LiveKitSlice
 
 /**
  * Root Zustand store.
@@ -45,6 +48,7 @@ export const useStore = create<Store>()((...args) => ({
   ...createRoomSlice(...args),
   ...createMetadataSlice(...args),
   ...createCommandCenterSlice(...args),
+  ...createLiveKitSlice(...args),
 }))
 
 if (typeof window !== 'undefined') {

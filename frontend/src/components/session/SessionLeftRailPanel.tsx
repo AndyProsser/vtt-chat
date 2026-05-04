@@ -26,6 +26,7 @@ interface SessionLeftRailPanelProps {
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
   dmOverrides: Map<UUID, AudioDMOverride>
   currentConditionName?: string
+  roomVoiceStatus?: 'connected' | 'connecting' | 'disconnected'
 }
 
 export function SessionLeftRailPanel({
@@ -49,6 +50,7 @@ export function SessionLeftRailPanel({
   onToggleBroadcastMode,
   dmOverrides,
   currentConditionName,
+  roomVoiceStatus,
 }: SessionLeftRailPanelProps) {
   const isGreenroom = sessionState === 'IDLE'
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Channel Only' : undefined
@@ -91,6 +93,7 @@ export function SessionLeftRailPanel({
         headerModeCopy={greenroomHeaderCopy}
         canManageRooms={role === 'DM'}
         broadcastModeEnabled={broadcastModeEnabled}
+        voiceConnectionStatus={roomVoiceStatus}
         onToggleBroadcastMode={onToggleBroadcastMode}
         rooms={visibleRooms.map((room) => ({
           id: room.id,

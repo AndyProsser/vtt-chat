@@ -14,22 +14,29 @@ interface MessageListProps {
   groupingWindowMs?: number
   listRef?: RefObject<HTMLDivElement | null>
   onListScroll?: UIEventHandler<HTMLDivElement>
+  participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
 }
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
-
-const TYPE_LABELS: Record<string, string> = {
-  [MessageType.IC]: 'IC',
-  [MessageType.OOC]: 'OOC',
-  [MessageType.WHISPER]: 'Whisper',
-  [MessageType.SYSTEM]: 'System',
-}
 
 const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'system'> = {
   [MessageType.IC]: 'ic',
   [MessageType.OOC]: 'ooc',
   [MessageType.WHISPER]: 'whisper',
   [MessageType.SYSTEM]: 'system',
+}
+
+const TYPE_ICONS: Record<string, string> = {
+  [MessageType.IC]: 'theater_comedy',
+  [MessageType.OOC]: 'forum',
+  [MessageType.WHISPER]: 'record_voice_over',
+  [MessageType.SYSTEM]: 'memory',
+}
+
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
+
+function getAuthorInitial(username: string): string {
+  return username.trim().charAt(0).toUpperCase() || '?'
 }
 
 function formatRelativeTime(ts: number): string {
@@ -60,6 +67,7 @@ export function MessageList({
   groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
   listRef,
   onListScroll,
+  participantDirectory,
 }: MessageListProps) {
   if (messages.length === 0) {
     return <div className="chat-message-list__empty">No messages yet. Say something!</div>
@@ -70,7 +78,13 @@ export function MessageList({
       {messages.map((msg, index) => {
         const previous = index > 0 ? messages[index - 1] : undefined
         const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
-        const isSelf = msg.authorId === currentUserId
+        const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
+        const isSelf = !isSystem && msg.authorId === currentUserId
+        const authorProfile = participantDirectory?.[msg.authorId]
+        const authorName = isSystem
+          ? 'SYSTEM'
+          : authorProfile?.displayName || msg.authorUsername || 'Unknown'
+        const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
         const isGroupedWithPrevious = Boolean(
           groupingWindowMs > 0 &&
           previous &&
@@ -83,24 +97,54 @@ export function MessageList({
             key={msg.id}
             className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
           >
-            {/* Author */}
-            {!isGroupedWithPrevious ? (
-              <div className="chat-message__meta">
-                <span className="chat-message__author">{msg.authorUsername}</span>
+            <div className="chat-message__row">
+              {!isSelf && !isGroupedWithPrevious ? (
+                <span
+                  className={`chat-message__avatar ${isSystem ? 'chat-message__avatar--system' : ''}`}
+                  aria-hidden="true"
+                >
+                  {authorAvatarUrl ? (
+                    <img src={authorAvatarUrl} alt="" />
+                  ) : (
+                    getAuthorInitial(authorName)
+                  )}
+                </span>
+              ) : (
+                <span
+                  className="chat-message__avatar chat-message__avatar--spacer"
+                  aria-hidden="true"
+                />
+              )}
+
+              <div className="chat-message__content">
+                {!isGroupedWithPrevious ? (
+                  <div className="chat-message__meta">
+                    <span className="chat-message__author">{authorName}</span>
+                  </div>
+                ) : null}
+
+                <div
+                  className={`chat-message__bubble ${isSelf ? 'chat-message__bubble--self' : ''}`}
+                >
+                  <span
+                    className={`chat-message__type chat-message__type--${variant}`}
+                    aria-label={msg.type}
+                  >
+                    <span
+                      className={`material-symbols-outlined chat-message__type-icon chat-message__type-icon--${variant}`}
+                      aria-hidden="true"
+                    >
+                      {TYPE_ICONS[msg.type] ?? 'chat'}
+                    </span>
+                  </span>{' '}
+                  {msg.content}
+                </div>
+
+                <div className="chat-message__timestamp">
+                  {msg.editedAt ? 'edited · ' : ''}
+                  {formatRelativeTime(msg.createdAt)}
+                </div>
               </div>
-            ) : null}
-
-            {/* Message bubble */}
-            <div className={`chat-message__bubble ${isSelf ? 'chat-message__bubble--self' : ''}`}>
-              <span className={`chat-message__type chat-message__type--${variant}`}>
-                {TYPE_LABELS[msg.type] ?? msg.type}
-              </span>{' '}
-              {msg.content}
-            </div>
-
-            <div className="chat-message__timestamp">
-              {msg.editedAt ? 'edited · ' : ''}
-              {formatRelativeTime(msg.createdAt)}
             </div>
           </article>
         )

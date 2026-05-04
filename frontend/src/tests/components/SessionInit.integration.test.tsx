@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
+import { ConnectionState } from 'livekit-client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionInit } from '../../components/session/SessionInit'
+import { buildLiveKitConnectionKey } from '../../hooks/useLiveKit'
 import { useStore } from '../../state/store'
 
 const asUuid = (value: string) => value as UUID
@@ -150,6 +152,87 @@ describe('SessionInit integration', () => {
                 id: SESSION_ID,
                 name: 'Session Alpha',
                 dmId: DM_ID,
+                state: SessionState.IDLE,
+                createdAt: 1,
+                description: 'Greenroom staging session',
+              },
+            ],
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        })
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
+      expect(screen.getAllByText('Morgan').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Muted').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Select room Archive Cellar/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('June')).toBeTruthy()
+    })
+  })
+
+  it('keeps left-rail voice badge and audio panel status in sync from shared LiveKit snapshot', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
                 state: SessionState.ACTIVE,
                 createdAt: 1,
                 description: 'Active field session',
@@ -178,28 +261,48 @@ describe('SessionInit integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
-        expect.objectContaining({
-          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
-        })
-      )
-    })
-
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
-      expect(screen.getByText('Morgan')).toBeTruthy()
-      expect(screen.getByText('Silenced')).toBeTruthy()
-      expect(screen.getAllByText('Muted').length).toBeGreaterThan(0)
+      expect(screen.getByText('Voice disconnected')).toBeTruthy()
+      expect(screen.getByText('Disconnected')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Select room Archive Cellar/i }))
+    const connectionKey = buildLiveKitConnectionKey(SESSION_ID, ROOM_ONE_ID, 'room')
+
+    act(() => {
+      useStore.getState().upsertLiveKitConnection(connectionKey, {
+        sessionId: SESSION_ID,
+        roomId: ROOM_ONE_ID,
+        channel: 'room',
+        connectionState: ConnectionState.Connecting,
+        isConnected: false,
+        isConnecting: true,
+        error: null,
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.getByText('June')).toBeTruthy()
+      expect(screen.getByText('Voice connecting')).toBeTruthy()
+      expect(screen.getByText(/Connecting/)).toBeTruthy()
+    })
+
+    act(() => {
+      useStore.getState().upsertLiveKitConnection(connectionKey, {
+        sessionId: SESSION_ID,
+        roomId: ROOM_ONE_ID,
+        channel: 'room',
+        connectionState: ConnectionState.Connected,
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Voice connected')).toBeTruthy()
+      expect(screen.getByText('Connected')).toBeTruthy()
     })
   })
 

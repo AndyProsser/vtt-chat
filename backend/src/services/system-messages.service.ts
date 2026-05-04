@@ -9,6 +9,7 @@ import type { SessionBoundaryType } from '@/types/session-boundary.types'
 function buildSystemChatEvent(message: {
   id: UUID
   sessionId: UUID
+  roomId?: UUID
   authorId: UUID
   authorUsername: string
   content: string
@@ -23,10 +24,11 @@ function buildSystemChatEvent(message: {
     userId: message.authorId,
     userRole: 'DM' as Role,
     sessionId: message.sessionId,
-    roomId: null,
+    roomId: message.roomId || null,
     timestamp: message.createdAt,
     payload: {
       messageId: message.id,
+      roomId: message.roomId,
       authorId: message.authorId,
       authorUsername: message.authorUsername,
       content: message.content,
@@ -38,6 +40,7 @@ function buildSystemChatEvent(message: {
 
 export async function emitSessionBoundarySystemMessage(params: {
   sessionId: UUID
+  roomId?: UUID
   sessionName: string
   boundaryType: SessionBoundaryType
   dmId: UUID
@@ -46,6 +49,7 @@ export async function emitSessionBoundarySystemMessage(params: {
 }): Promise<void> {
   const stored = await sendMessage({
     sessionId: params.sessionId,
+    roomId: params.roomId,
     authorId: params.dmId,
     authorUsername: params.dmUsername,
     dmId: params.dmId,

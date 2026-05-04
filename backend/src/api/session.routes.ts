@@ -17,10 +17,16 @@ import {
 } from '@/services/session.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { isValidSessionName, isValidUUID } from '@shared'
-import { ErrorCode, Role } from '@shared'
+import { ErrorCode, PresenceState, Role, RoomType } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
-import { applySessionStateRoomTransition } from '@/services/room.service'
+import {
+  applySessionStateRoomTransition,
+  ensureSessionDefaultRoomsForSession,
+  getRooms,
+  getSessionPresence,
+  joinRoom,
+} from '@/services/room.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
   logSessionJoin,
@@ -76,6 +82,74 @@ function internalErrorResponse(res: Response) {
     code: ErrorCode.INTERNAL_ERROR,
     message: 'Internal server error',
   })
+}
+
+function normalizeRoomName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+async function ensureJoinedMemberPresence(params: {
+  session: Awaited<ReturnType<typeof getSession>>
+  userId: UUID
+  username: string
+}): Promise<{ changed: boolean; roomId?: UUID; state?: PresenceState }> {
+  if (!params.session) {
+    return { changed: false }
+  }
+
+  await ensureSessionDefaultRoomsForSession(params.session.id, params.session.dmId)
+
+  const rooms = await getRooms(params.session.id)
+  const mainRoom =
+    rooms.find((room) => room.type === RoomType.MAIN) ||
+    rooms.find((room) => normalizeRoomName(room.name) === 'main room')
+  const greenRoom =
+    rooms.find((room) => normalizeRoomName(room.name) === 'green room') ||
+    rooms.find((room) => normalizeRoomName(room.name) === 'green-room')
+
+  const shouldUseMain = params.session.state === 'ACTIVE' || params.session.state === 'PAUSED'
+  const targetRoom = shouldUseMain ? mainRoom || greenRoom : greenRoom || mainRoom
+
+  if (!targetRoom) {
+    return { changed: false }
+  }
+
+  const targetState =
+    params.session.state === 'ENDED'
+      ? PresenceState.OFFLINE
+      : shouldUseMain
+        ? PresenceState.ONLINE
+        : PresenceState.IDLE
+
+  const currentPresence = (await getSessionPresence(params.session.id)).find(
+    (presence) => presence.userId === params.userId
+  )
+
+  if (currentPresence?.primaryRoomId === targetRoom.id && currentPresence.state === targetState) {
+    return {
+      changed: false,
+      roomId: targetRoom.id,
+      state: targetState,
+    }
+  }
+
+  const nextPresence = await joinRoom({
+    sessionId: params.session.id,
+    roomId: targetRoom.id,
+    userId: params.userId,
+    username: params.username,
+    state: targetState,
+  })
+
+  if (!nextPresence) {
+    return { changed: false }
+  }
+
+  return {
+    changed: true,
+    roomId: targetRoom.id,
+    state: targetState,
+  }
 }
 
 /**
@@ -368,6 +442,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     if (boundaryType) {
       await emitSessionBoundarySystemMessage({
         sessionId: session.id,
+        roomId: transition.mainRoomId,
         sessionName: session.name,
         boundaryType,
         dmId: user.userId as UUID,
@@ -427,6 +502,51 @@ router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
     const currentUsers = await getSessionUsers(id as UUID)
     const alreadyMember = currentUsers.some((u) => u.id === user.userId)
     if (alreadyMember) {
+      const ensured = await ensureJoinedMemberPresence({
+        session,
+        userId: user.userId as UUID,
+        username: user.username,
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
+        const timestamp = Date.now()
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            joinedAt: timestamp,
+          },
+        })
+
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            newState: ensured.state,
+            changedAt: timestamp,
+          },
+        })
+      }
+
       return res.status(200).json({
         session,
         users: currentUsers.map((u) => ({
@@ -473,8 +593,52 @@ router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
     // Log the join event
     await logSessionJoin(id as UUID, user.userId as UUID, user.username)
 
+    const ensured = await ensureJoinedMemberPresence({
+      session,
+      userId: user.userId as UUID,
+      username: user.username,
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      if (ensured.changed && ensured.roomId && ensured.state) {
+        const timestamp = Date.now()
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            joinedAt: timestamp,
+          },
+        })
+
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            newState: ensured.state,
+            changedAt: timestamp,
+          },
+        })
+      }
+
       // Broadcast a system message that user joined
       wsManager.broadcastEventToSession(id as UUID, {
         id: crypto.randomUUID() as UUID,

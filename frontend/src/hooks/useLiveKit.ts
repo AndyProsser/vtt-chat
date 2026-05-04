@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AudioPresets,
+  ConnectionState,
   Room,
   RoomEvent,
   LocalAudioTrack,
@@ -22,6 +23,7 @@ interface TrackSubscription {
 }
 
 export interface UseLiveKitReturn {
+  connectionState: ConnectionState
   isConnected: boolean
   isConnecting: boolean
   error: string | null
@@ -43,12 +45,24 @@ export interface UseLiveKitOptions {
   tokenChannel?: 'room' | 'broadcast' | 'voice_of_god'
 }
 
+export function buildLiveKitConnectionKey(
+  sessionId: string,
+  roomId: string,
+  channel: 'room' | 'broadcast' | 'voice_of_god'
+): string {
+  return `${channel}:${sessionId}:${roomId}`
+}
+
 export function useLiveKit(
   sessionId: string,
   roomId: string,
   options: UseLiveKitOptions = {}
 ): UseLiveKitReturn {
   const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
+  const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, tokenChannel)
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    ConnectionState.Disconnected
+  )
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +84,32 @@ export function useLiveKit(
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
   const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
+  const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
+  const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+
+  const publishConnectionSnapshot = useCallback(
+    (params: {
+      connectionState: ConnectionState
+      isConnected: boolean
+      isConnecting: boolean
+      error?: string | null
+    }) => {
+      if (!sessionId || !roomId) {
+        return
+      }
+
+      upsertLiveKitConnection(connectionKey, {
+        sessionId,
+        roomId,
+        channel: tokenChannel,
+        connectionState: params.connectionState,
+        isConnected: params.isConnected,
+        isConnecting: params.isConnecting,
+        error: params.error,
+      })
+    },
+    [connectionKey, roomId, sessionId, tokenChannel, upsertLiveKitConnection]
+  )
 
   const setRoomState = useCallback((nextRoom: Room | null) => {
     roomRef.current = nextRoom
@@ -124,9 +164,6 @@ export function useLiveKit(
   useEffect(() => {
     onTrackUnsubscribedRef.current = onTrackUnsubscribed
   }, [onTrackUnsubscribed])
-
-  const user = useStore((state) => state.currentUser)
-  const userId = user?.id ?? null
 
   const isExpectedDisconnectError = useCallback((value: unknown): boolean => {
     const message = (value instanceof Error ? value.message : String(value)).toLowerCase()
@@ -190,9 +227,16 @@ export function useLiveKit(
     isConnectingRef.current = true
 
     if (isMountedRef.current) {
+      setConnectionState(ConnectionState.Connecting)
       setIsConnecting(true)
       setError(null)
     }
+    publishConnectionSnapshot({
+      connectionState: ConnectionState.Connecting,
+      isConnected: false,
+      isConnecting: true,
+      error: null,
+    })
 
     let nextRoom: Room | null = null
 
@@ -220,6 +264,38 @@ export function useLiveKit(
         isConnectingRef.current = false
       })
 
+      const syncConnectionFlags = () => {
+        const activeRoom = roomRef.current
+        if (!activeRoom || activeRoom !== nextRoom || connectionAttemptRef.current !== attemptId) {
+          return
+        }
+
+        const roomState = activeRoom.state
+        const nextIsConnected = roomState === ConnectionState.Connected
+        const nextIsConnecting =
+          roomState === ConnectionState.Connecting ||
+          roomState === ConnectionState.Reconnecting ||
+          roomState === ConnectionState.SignalReconnecting
+
+        isConnectingRef.current = nextIsConnecting
+        if (isMountedRef.current) {
+          setConnectionState(roomState)
+          setIsConnected(nextIsConnected)
+          setIsConnecting(nextIsConnecting)
+        }
+        publishConnectionSnapshot({
+          connectionState: roomState,
+          isConnected: nextIsConnected,
+          isConnecting: nextIsConnecting,
+          error: null,
+        })
+      }
+
+      nextRoom.on(RoomEvent.ConnectionStateChanged, syncConnectionFlags)
+      nextRoom.on(RoomEvent.Reconnecting, syncConnectionFlags)
+      nextRoom.on(RoomEvent.SignalReconnecting, syncConnectionFlags)
+      nextRoom.on(RoomEvent.Reconnected, syncConnectionFlags)
+
       nextRoom.on(RoomEvent.Disconnected, () => {
         if (roomRef.current !== nextRoom) {
           return
@@ -228,9 +304,16 @@ export function useLiveKit(
         logger.info('useLiveKit', `Disconnected from room ${roomId}`)
         isConnectingRef.current = false
         if (isMountedRef.current) {
+          setConnectionState(ConnectionState.Disconnected)
           setIsConnected(false)
           setIsConnecting(false)
         }
+        publishConnectionSnapshot({
+          connectionState: ConnectionState.Disconnected,
+          isConnected: false,
+          isConnecting: false,
+          error: null,
+        })
       })
 
       nextRoom.on(RoomEvent.ParticipantConnected, (participant) => {
@@ -312,6 +395,8 @@ export function useLiveKit(
         autoSubscribe: true,
       })
 
+      syncConnectionFlags()
+
       if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
         await nextRoom.disconnect()
         return
@@ -320,9 +405,16 @@ export function useLiveKit(
       setRoomState(nextRoom)
       // Keep UI state in sync even if the Connected event callback is delayed or missed.
       if (isMountedRef.current) {
+        setConnectionState(ConnectionState.Connected)
         setIsConnected(true)
         setIsConnecting(false)
       }
+      publishConnectionSnapshot({
+        connectionState: ConnectionState.Connected,
+        isConnected: true,
+        isConnecting: false,
+        error: null,
+      })
       isConnectingRef.current = false
       connectionKeyRef.current = targetConnectionKey
     } catch (err) {
@@ -354,16 +446,38 @@ export function useLiveKit(
       if (isMountedRef.current && connectionAttemptRef.current === attemptId) {
         if (expectedDisconnect) {
           setError(null)
+          setConnectionState(ConnectionState.Disconnected)
           setIsConnecting(false)
           setIsConnected(false)
+          publishConnectionSnapshot({
+            connectionState: ConnectionState.Disconnected,
+            isConnected: false,
+            isConnecting: false,
+            error: null,
+          })
           return
         }
         setError(errorMsg)
+        setConnectionState(ConnectionState.Disconnected)
         setIsConnecting(false)
         setIsConnected(false)
       }
+      publishConnectionSnapshot({
+        connectionState: ConnectionState.Disconnected,
+        isConnected: false,
+        isConnecting: false,
+        error: expectedDisconnect ? null : errorMsg,
+      })
     }
-  }, [fetchToken, roomId, setRoomState, isExpectedDisconnectError])
+  }, [
+    fetchToken,
+    isExpectedDisconnectError,
+    publishConnectionSnapshot,
+    roomId,
+    sessionId,
+    setRoomState,
+    tokenChannel,
+  ])
 
   /**
    * Publish the local microphone to the active room.
@@ -440,19 +554,32 @@ export function useLiveKit(
 
     if (isMountedRef.current) {
       setRemoteParticipants(new Map())
+      setConnectionState(ConnectionState.Disconnected)
       setIsConnected(false)
       setIsConnecting(false)
       logger.info('useLiveKit', 'Disconnected from room')
     }
+    publishConnectionSnapshot({
+      connectionState: ConnectionState.Disconnected,
+      isConnected: false,
+      isConnecting: false,
+      error: null,
+    })
 
     connectionKeyRef.current = null
-  }, [clearRemoteAudioElements, setLocalAudioTrackState, setLocalVideoTrackState, setRoomState])
+  }, [
+    clearRemoteAudioElements,
+    publishConnectionSnapshot,
+    setLocalAudioTrackState,
+    setLocalVideoTrackState,
+    setRoomState,
+  ])
 
   /**
    * Start a connection when session, room, and user context are all present.
    */
   useEffect(() => {
-    if (!sessionId || !roomId || !userId) {
+    if (!sessionId || !roomId) {
       void disconnect()
       return
     }
@@ -466,12 +593,8 @@ export function useLiveKit(
         return
       }
 
-      // If room target changed, disconnect stale room first before connecting.
-      if (
-        roomRef.current &&
-        connectionKeyRef.current &&
-        connectionKeyRef.current !== targetConnectionKey
-      ) {
+      // If room target changed, disconnect stale or in-flight room before connecting.
+      if (roomRef.current && connectionKeyRef.current !== targetConnectionKey) {
         await disconnect()
       }
 
@@ -485,9 +608,20 @@ export function useLiveKit(
     return () => {
       cancelled = true
     }
-  }, [sessionId, roomId, userId, tokenChannel, connect, disconnect])
+  }, [sessionId, roomId, tokenChannel, connect, disconnect])
+
+  useEffect(() => {
+    if (!sessionId || !roomId) {
+      return
+    }
+
+    return () => {
+      clearLiveKitConnection(connectionKey)
+    }
+  }, [clearLiveKitConnection, connectionKey, roomId, sessionId])
 
   return {
+    connectionState,
     isConnected,
     isConnecting,
     error,

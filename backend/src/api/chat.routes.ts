@@ -211,6 +211,14 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     const allowGreenroomChatOutsideActive =
       room.type === 'GROUP' && isGreenRoomName(room.name) && session.state !== SessionState.ACTIVE
 
+    if (isGreenRoomName(room.name) && type !== MessageType.OOC) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Greenroom chat only supports OOC messages',
+        field: 'type',
+      })
+    }
+
     if (session.state !== SessionState.ACTIVE && !allowGreenroomChatOutsideActive) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,

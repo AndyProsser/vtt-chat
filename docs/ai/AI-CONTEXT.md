@@ -166,6 +166,13 @@ The system is composed of:
 - Transport (WebSocket / Extension Bridge)
 - Server services
 
+Canonical frontend state rules:
+
+- Zustand is the canonical source for cross-component and cross-route runtime state.
+- Shared transport state (WebSocket and LiveKit connection lifecycle) must be normalized into store snapshots.
+- Components rendering the same status must consume shared selectors from the same store source.
+- Keep local component state limited to transient UI-only concerns.
+
 ### **EVENT-BUS.md**
 
 AI must respect:
@@ -262,6 +269,14 @@ AI must generate output consistent with subsystem rules.
 - Motion‑informed
 - Modular panels
 - Dockable overlay
+
+Frontend implementation guidance:
+
+- Prefer project core-ui wrappers and Radix primitives for composable, accessible interaction patterns.
+- Use Material Symbols Outlined consistently for chat, room, and system status icon semantics.
+- Keep status states explicit (connected, connecting, disconnected) and visually consistent across left rail, center pane, and right rail.
+- Keep copy contextual and room/session-aware instead of generic labels.
+- Preserve responsive layout integrity for left rail, center pane, and right rail at tablet and mobile breakpoints.
 
 ### **EXTENSION-UX.md**
 

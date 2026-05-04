@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 Related roadmap:
 
@@ -76,36 +76,6 @@ Latest delivered in this slice:
 - Session entry now performs explicit chapter join, and non-DM exit/logoff performs best-effort chapter leave to avoid stale in-session role carryover.
 - Chat room selection now follows the user's current presence room (Greenroom/Main) before falling back to Main, fixing expected chat surface behavior during state transitions.
 
-### F2 Implementation Checklist (Mapped)
-
-Use this checklist to implement and verify login -> home -> launch/watch flow only.
-
-| F2 Item                                                                           | Frontend routes/components (current)                                                                                                                                                                                                                                                             | Backend endpoints (current)                                                                                                                                                                                                                                                                                    | Implementation acceptance check                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 3. Invite/code entry flow alignment                                               | `frontend/src/App.tsx` route resolution for `/join/:code` and `/watch/:code`; `frontend/src/components/routes/JoinRouteView.tsx`; `frontend/src/components/auth/InviteJoinPage.tsx`; `frontend/src/components/routes/WatchRouteView.tsx`; `frontend/src/components/auth/SpectatorInvitePage.tsx` | `GET /api/campaigns/invite/:code/validate`; `POST /api/auth/extension/preflight`; `POST /api/auth/extension/guest-login`; `GET /api/campaigns/watch/:code/validate`; `POST /api/auth/spectator/guest-join`; `GET /api/campaigns/:campaignId/spectator/waitlist-status`; `POST /api/campaigns/:campaignId/join` | Player invite route supports extension preflight and extension guest-login path; spectator watch route supports guest spectator join plus waitlist polling; invalid/expired code states are handled in UI.               |
-| 4. Login/register entry UX completion (invite context handoff)                    | `frontend/src/components/routes/AppMainRouteView.tsx`; `frontend/src/components/auth/LoginForm.tsx`; `frontend/src/hooks/useAuthSession.ts` (session bootstrap, handoff exchange, auth profile)                                                                                                  | `POST /api/auth/login`; `GET /api/auth/me`; `POST /api/auth/handoff/exchange`                                                                                                                                                                                                                                  | Unauthenticated users can sign in and return to intended flow; session restores correctly; invite routes can complete auth and transition to home/pre-launch surfaces.                                                   |
-| 5. Home/campaign panel UX pass                                                    | `frontend/src/components/session/SessionInit.tsx` (campaign listing, join modal, create modal, create-to-launch handoff, enter campaign handling); `frontend/src/components/routes/BrowseRouteView.tsx`; `frontend/src/components/auth/BrowseCampaignsPage.tsx`                                  | `GET /api/campaigns`; `POST /api/campaigns`; `GET /api/campaigns/browse`; `GET /api/campaigns/:campaignId/sessions`                                                                                                                                                                                            | Home and browse surfaces clearly distinguish DM/player/spectator access, Create Campaign explains the DM launch path, and pre-launch launch/watch affordances are visible without requiring in-campaign state rendering. |
-| 6. Launch/Watch CTA gating on campaign cards                                      | `frontend/src/components/session/SessionInit.tsx` (enter campaign, launch handoff, and chapter-start gating); `frontend/src/components/auth/BrowseCampaignsPage.tsx` join/watch state                                                                                                            | `GET /api/campaigns`; `GET /api/campaigns/browse`; `POST /api/campaigns/:campaignId/sessions/start`; `GET /api/campaigns/:campaignId/sessions`; `GET /api/campaigns/watch/:code/validate`                                                                                                                      | CTA labels/states map to role and policy: DM/player launch only when allowed, spectator watch only when allowed, disabled states explain why, and launch uses the targeted campaign session list.                        |
-| 7. Campaign settings page + invite reissue UX                                     | `frontend/src/components/routes/CampaignSettingsRouteView.tsx`; `frontend/src/components/session/CampaignSettingsPage.tsx`; route entry from `SessionInit`                                                                                                                                       | `GET /api/campaigns/:campaignId/settings`; `PATCH /api/campaigns/:campaignId/settings`; `POST /api/campaigns/:campaignId/invites/reissue`                                                                                                                                                                      | DM can edit campaign metadata and rotate player/spectator invite codes; success/error feedback and refreshed codes are shown immediately.                                                                                |
-| 8. Campaign-scoped role model cleanup                                             | `frontend/src/components/auth/LoginForm.tsx` (user-first auth wording); `frontend/src/hooks/useAuthSession.ts` (authType handling); `frontend/src/components/session/SessionInit.tsx` (campaign membership driven entry)                                                                         | `POST /api/auth/login`; `GET /api/campaigns`; `POST /api/campaigns/:campaignId/join`; `POST /api/auth/extension/guest-login`; `POST /api/auth/spectator/guest-join`                                                                                                                                            | UI copy and behavior consistently treat DM/Player/Spectator as campaign roles, not login roles; entry decisions derive from membership/invite outcomes.                                                                  |
-| 9. DM/Player guest campaign-scoping + upgrade UX                                  | `frontend/src/components/auth/InviteJoinPage.tsx`; `frontend/src/hooks/useAuthSession.ts`; `frontend/src/components/auth/GuestUpgradePrompt.tsx`; `frontend/src/App.tsx` upgrade prompt wiring                                                                                                   | `POST /api/auth/extension/guest-login`; `GET /api/auth/me`; `POST /api/auth/upgrade`                                                                                                                                                                                                                           | DM/Player guest auth is only reachable from extension invite flow; guest account sees upgrade affordance; upgrade preserves campaign linkage and removes guest-only restrictions.                                        |
-| 10. Spectator guest temporary-session UX + wait/paused/ended pre-launch messaging | `frontend/src/components/auth/SpectatorInvitePage.tsx` (guest spectator join and waitlist); route `/watch/:code` in `frontend/src/App.tsx`                                                                                                                                                       | `GET /api/campaigns/watch/:code/validate`; `POST /api/auth/spectator/guest-join`; `GET /api/campaigns/:campaignId/spectator/waitlist-status`                                                                                                                                                                   | Guest spectator path is available from direct watch links; waitlist status auto-refreshes; temporary spectator-session messaging is clear before campaign entry.                                                         |
-
-Implementation policy notes for F2:
-
-- DM/Player guest access must be reachable only through extension invite POST flow (`POST /api/auth/extension/guest-login`) and remains campaign-scoped.
-- Direct watch links can create temporary guest spectators through `POST /api/auth/spectator/guest-join`.
-- Any in-campaign runtime transitions or room-level behavior remain deferred to F3.
-
-Deferred to post-launch stage (inside-campaign runtime focus):
-
-- Greenroom default-ephemeral chat with campaign override.
-- Session lifecycle enforcement (Start/Pause/Resume/Stop) runtime behavior.
-- Spectator runtime gating during active/paused/ended sessions.
-- Connected-only force move + late-join runtime enforcement.
-- Session chapter auto-naming + post-session rename.
-- In-campaign history and notes visibility runtime behavior.
-
 ### Milestone Sequence (Simple)
 
 - F1: Home flow foundation
@@ -170,6 +140,7 @@ Known readiness gap classes:
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
 | W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts |
+| W6  | Refactor and Simplification | Planned     | Zustand consistency, component/file simplification, naming cleanup, API cleanup  |
 
 ---
 
@@ -193,6 +164,7 @@ Definition of done:
 2. Define release-gate thresholds for backend/frontend/admin test pass and critical-path suites.
 3. Add explicit non-functional checks for authz boundaries and high-risk error paths.
 4. Track and burn down flaky tests to agreed threshold.
+5. Expand frontend/backend automated coverage for refactor-sensitive paths (store selectors, integration hooks, API naming migration behavior).
 
 Definition of done:
 
@@ -216,6 +188,7 @@ Definition of done:
 2. Run accessibility and responsive smoke passes on high-use flows.
 3. Ensure token/theming consistency remains stable during hardening changes.
 4. Keep framework boundaries enforced (frontend core UI vs admin MUI).
+5. Refactor audio panel, campaign settings panel, and right-side panel UX so interactions are coherent and reliably functional.
 
 Definition of done:
 
@@ -242,6 +215,20 @@ Definition of done:
 - User docs are complete, navigable, and validated against shipped runtime behavior.
 - Release checklist includes user-doc accuracy verification.
 
+### W6: Refactor and Simplification
+
+1. Standardize frontend shared runtime state on Zustand slices and selectors to eliminate duplicated local state patterns.
+2. Refactor oversized frontend components where sensible to reduce file size and complexity.
+3. Align frontend file names and folder structure with actual component/domain responsibilities.
+4. Refactor backend API route and service function naming for consistency and maintainability.
+5. Add migration-safe compatibility checks and test coverage for naming and structural refactors.
+
+Definition of done:
+
+- Cross-component runtime state uses canonical store selectors for shared concerns.
+- Targeted frontend/backend modules are renamed and reorganized without behavior regressions.
+- Refactor-related tests pass and coverage trend improves on changed modules.
+
 ---
 
 ## 5) Milestone Plan
@@ -256,7 +243,7 @@ Definition of done:
 
 ### M3: UX and Documentation Readiness
 
-- Target: complete W4 regression closure and W5 user-doc publishing
+- Target: complete W4 regression closure, W5 user-doc publishing, and W6 panel/refactor baseline
 
 ### M4: Release Readiness Review
 

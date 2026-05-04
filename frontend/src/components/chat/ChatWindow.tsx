@@ -4,7 +4,7 @@
  * New messages arrive via WS events (CHAT:MESSAGE_SENT) dispatched to chatSlice.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID, Role } from '@shared'
 import { MessageType } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -18,8 +18,10 @@ interface ChatWindowProps {
   token: string
   sessionId: UUID
   roomId: UUID
+  roomName?: string
   user: { id: UUID; username: string; role: Role | string }
   messageGroupingWindowMs?: number
+  forceMessageType?: MessageType
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -29,18 +31,43 @@ export function ChatWindow({
   token,
   sessionId,
   roomId,
+  roomName,
   user,
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
+  forceMessageType,
 }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
   const messageListRef = useRef<HTMLDivElement>(null)
+  const isGreenroomMode = forceMessageType === MessageType.OOC
+  const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
+  const resolvedRoomName = roomName?.trim() || (isGreenroomMode ? 'Green Room' : 'Main Room')
+  const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
 
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
     | undefined
+  const sessionPresence = useStore((state) => (state.sessionPresence as any)[sessionId]) as
+    | Record<UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }>
+    | undefined
   const addMessage = useStore((state) => state.addMessage)
+
+  const participantDirectory = useMemo(() => {
+    const entries = Object.entries(sessionPresence ?? {}) as Array<
+      [UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }]
+    >
+    return entries.reduce(
+      (acc, [participantUserId, participant]) => {
+        acc[participantUserId] = {
+          displayName: participant.characterName || participant.username,
+          avatarUrl: participant.avatarUrl,
+        }
+        return acc
+      },
+      {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
+    )
+  }, [sessionPresence])
 
   // Derive ordered message list for this session
   // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
@@ -189,8 +216,8 @@ export function ChatWindow({
     <section className="chat-window">
       <header className="chat-window__header">
         <div>
-          <h3 className="chat-window__title"># general</h3>
-          <p className="chat-window__subtitle">Live session chat</p>
+          <h3 className="chat-window__title">{headerTitle}</h3>
+          <p className="chat-window__subtitle">{headerSubtitle}</p>
         </div>
       </header>
 
@@ -209,6 +236,7 @@ export function ChatWindow({
           groupingWindowMs={messageGroupingWindowMs}
           listRef={messageListRef}
           onListScroll={handleListScroll}
+          participantDirectory={participantDirectory}
         />
       )}
 
@@ -228,7 +256,12 @@ export function ChatWindow({
       ) : null}
 
       {/* Input */}
-      <MessageInput onSend={handleSend} role={user.role} disabled={isLoading} />
+      <MessageInput
+        onSend={handleSend}
+        role={user.role}
+        disabled={isLoading}
+        forceMessageType={forceMessageType}
+      />
     </section>
   )
 }

@@ -11,11 +11,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RoomEvent } from 'livekit-client'
+import { ConnectionState, RoomEvent } from 'livekit-client'
 import { Role } from '@shared'
-import { useLiveKit } from '../../hooks/useLiveKit'
+import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
+import { logger } from '../../utils/logger'
 import { Icon } from '../ui/Icon'
 import '../../styles/components/audio/AudioPanel.css'
 
@@ -58,6 +59,17 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const [smoothedSpeakerSids, setSmoothedSpeakerSids] = useState<Set<string>>(() => new Set())
   const speakerAttackTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const speakerReleaseTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const tracePrevRef = useRef<{
+    roomId: string
+    roomState: string
+    sharedConnectionState: string
+    connectionState: string
+    isConnected: boolean
+    isConnecting: boolean
+    statusState: string
+    deviceEnabled: boolean
+    microphoneOn: boolean
+  } | null>(null)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream) => {
@@ -100,6 +112,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const currentUser = useStore((state) => state.currentUser)
+  const sharedLiveKitState = useStore(
+    (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
+  )
   const effectiveRole = role ?? currentUser?.role ?? Role.PLAYER
 
   const broadcastRoomId = broadcastRoomIdFromState || `dm-broadcast:${sessionId}`
@@ -172,22 +187,71 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   }
 
   const livekitRoomState = String(livekit.room?.state ?? '').toLowerCase()
-  const roomReportsConnected = livekitRoomState === 'connected'
-  const roomReportsConnecting =
-    livekitRoomState === 'connecting' || livekitRoomState === 'reconnecting'
+  const sharedConnectionState = sharedLiveKitState?.connectionState
+  const canonicalConnectionState = sharedConnectionState ?? livekit.connectionState
+  const canonicalIsConnected =
+    (sharedLiveKitState?.isConnected ?? canonicalConnectionState === ConnectionState.Connected) ||
+    livekitRoomState === 'connected'
+  const canonicalIsConnecting =
+    (sharedLiveKitState?.isConnecting ?? canonicalConnectionState === ConnectionState.Connecting) ||
+    canonicalConnectionState === ConnectionState.Reconnecting ||
+    canonicalConnectionState === ConnectionState.SignalReconnecting ||
+    livekitRoomState === 'connecting' ||
+    livekitRoomState === 'reconnecting'
 
-  const statusState =
-    livekit.isConnected || roomReportsConnected
-      ? 'connected'
-      : livekit.isConnecting || roomReportsConnecting
-        ? 'connecting'
-        : 'disconnected'
-  const isVoiceConnected = livekit.isConnected || roomReportsConnected
+  const statusState = canonicalIsConnected
+    ? 'connected'
+    : canonicalIsConnecting
+      ? 'connecting'
+      : 'disconnected'
+  const isVoiceConnected = canonicalIsConnected
   const statusLabel = isVoiceConnected
     ? 'Connected'
-    : livekit.isConnecting || roomReportsConnecting
+    : canonicalIsConnecting
       ? 'Connecting…'
       : 'Disconnected'
+
+  useEffect(() => {
+    const nextSnapshot = {
+      roomId,
+      roomState: livekitRoomState || 'none',
+      sharedConnectionState: sharedConnectionState || 'none',
+      connectionState: livekit.connectionState,
+      isConnected: livekit.isConnected,
+      isConnecting: livekit.isConnecting,
+      statusState,
+      deviceEnabled: device.enabled,
+      microphoneOn: device.microphoneOn,
+    }
+
+    const prevSnapshot = tracePrevRef.current
+    const changed =
+      !prevSnapshot ||
+      prevSnapshot.roomId !== nextSnapshot.roomId ||
+      prevSnapshot.roomState !== nextSnapshot.roomState ||
+      prevSnapshot.sharedConnectionState !== nextSnapshot.sharedConnectionState ||
+      prevSnapshot.connectionState !== nextSnapshot.connectionState ||
+      prevSnapshot.isConnected !== nextSnapshot.isConnected ||
+      prevSnapshot.isConnecting !== nextSnapshot.isConnecting ||
+      prevSnapshot.statusState !== nextSnapshot.statusState ||
+      prevSnapshot.deviceEnabled !== nextSnapshot.deviceEnabled ||
+      prevSnapshot.microphoneOn !== nextSnapshot.microphoneOn
+
+    if (changed) {
+      logger.debug('AudioPanel.trace', 'LiveKit/device transition', nextSnapshot)
+      tracePrevRef.current = nextSnapshot
+    }
+  }, [
+    roomId,
+    livekitRoomState,
+    sharedConnectionState,
+    livekit.connectionState,
+    livekit.isConnected,
+    livekit.isConnecting,
+    statusState,
+    device.enabled,
+    device.microphoneOn,
+  ])
 
   useEffect(() => {
     const room = livekit.room

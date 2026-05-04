@@ -5,12 +5,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SessionState, Role } from '@shared'
+import { SessionState, Role, MessageType } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
+import { ConnectionState as LiveKitConnectionState } from 'livekit-client'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import type { ConnectionState } from '../../ws/client'
+import { buildLiveKitConnectionKey } from '../../hooks/useLiveKit'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
@@ -182,6 +184,33 @@ function getPrivacyCounterLabel(label: string | undefined, rounded: number | und
   return `~${rounded}`
 }
 
+function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
+  if (room.type !== RoomType.GROUP) {
+    return false
+  }
+
+  const normalized = room.name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
+function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState): RoomRecord[] {
+  if (!rooms.length) {
+    return rooms
+  }
+
+  if (state === SessionState.IDLE || state === SessionState.ENDED) {
+    const greenRooms = rooms.filter((room) => isGreenRoom(room))
+    return greenRooms.length ? greenRooms : rooms
+  }
+
+  if (state === SessionState.ACTIVE || state === SessionState.PAUSED) {
+    const mainRooms = rooms.filter((room) => room.type === RoomType.MAIN)
+    return mainRooms.length ? mainRooms : rooms
+  }
+
+  return rooms
+}
+
 function getCampaignEntryAction(campaign: CampaignSummary): {
   label: 'Launch' | 'Watch'
   icon: 'rocket_launch' | 'visibility'
@@ -341,6 +370,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const rooms = useStore((state) => state.rooms)
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
+  const livekitConnections = useStore((state) => state.livekitConnections)
   const notes = useStore((state) => state.notes)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
@@ -367,6 +397,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     () => (currentSession ? Object.values(typedPresenceBySession[currentSession.id] || {}) : []),
     [currentSession, typedPresenceBySession]
   )
+  const visibleRooms = useMemo<RoomRecord[]>(
+    () =>
+      currentSession ? getVisibleRoomsForSessionState(currentRooms, currentSession.state) : [],
+    [currentRooms, currentSession]
+  )
   const currentTransitionNotice = currentSession
     ? sessionTransitionNotice[currentSession.id]
     : undefined
@@ -374,25 +409,61 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     ? Object.keys(notes[currentSession.id] ?? {}).length
     : 0
   const selectedRoomId = useMemo<UUID | ''>(() => {
-    if (!currentRooms.length) {
+    if (!visibleRooms.length) {
       return ''
     }
 
-    if (selectedRoomIdOverride && currentRooms.some((room) => room.id === selectedRoomIdOverride)) {
+    if (selectedRoomIdOverride && visibleRooms.some((room) => room.id === selectedRoomIdOverride)) {
       return selectedRoomIdOverride
     }
 
     const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
     if (
       ownPresence?.primaryRoomId &&
-      currentRooms.some((room) => room.id === ownPresence.primaryRoomId)
+      visibleRooms.some((room) => room.id === ownPresence.primaryRoomId)
     ) {
       return ownPresence.primaryRoomId
     }
 
-    const mainRoom = currentRooms.find((room) => room.type === RoomType.MAIN)
-    return (mainRoom || currentRooms[0]).id
-  }, [currentPresence, currentRooms, selectedRoomIdOverride, user.id])
+    const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
+    return (mainRoom || visibleRooms[0]).id
+  }, [currentPresence, visibleRooms, selectedRoomIdOverride, user.id])
+  const selectedRoom = useMemo(
+    () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
+    [selectedRoomId, visibleRooms]
+  )
+  const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+  const selectedRoomVoiceSnapshot = useMemo(() => {
+    if (!currentSession || !selectedRoomId) {
+      return null
+    }
+
+    const connectionKey = buildLiveKitConnectionKey(currentSession.id, selectedRoomId, 'room')
+    return livekitConnections[connectionKey] ?? null
+  }, [currentSession, livekitConnections, selectedRoomId])
+  const selectedRoomVoiceStatus = useMemo<'connected' | 'connecting' | 'disconnected'>(() => {
+    if (!selectedRoomVoiceSnapshot) {
+      return 'disconnected'
+    }
+
+    if (
+      selectedRoomVoiceSnapshot.isConnected ||
+      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Connected
+    ) {
+      return 'connected'
+    }
+
+    if (
+      selectedRoomVoiceSnapshot.isConnecting ||
+      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Connecting ||
+      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Reconnecting ||
+      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.SignalReconnecting
+    ) {
+      return 'connecting'
+    }
+
+    return 'disconnected'
+  }, [selectedRoomVoiceSnapshot])
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -1267,7 +1338,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const startCampaignSession = useCallback(
-    async (campaignId: UUID, existingSessions: SessionRecord[]) => {
+    async (
+      campaignId: UUID,
+      existingSessions: SessionRecord[],
+      options?: { autoActivate?: boolean }
+    ): Promise<UUID | null> => {
       try {
         const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions/start`, {
           method: 'POST',
@@ -1290,12 +1365,45 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         replaceSessions([payload.session, ...existingSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
+
+        if (options?.autoActivate) {
+          const transitionResponse = await fetch(
+            `${apiUrl}/api/session/${payload.session.id}/state`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ state: SessionState.ACTIVE }),
+            }
+          )
+
+          if (!transitionResponse.ok) {
+            const errorData = await transitionResponse.json().catch(() => ({}))
+            throw new Error(errorData.message || 'Failed to activate new session')
+          }
+
+          const activeSession = await transitionResponse.json()
+          updateSession(payload.session.id, activeSession)
+        }
+
+        return payload.session.id
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
+        return null
       }
     },
-    [apiUrl, ensureSessionMembership, onSessionCreated, replaceSessions, setCurrentSession, token]
+    [
+      apiUrl,
+      ensureSessionMembership,
+      onSessionCreated,
+      replaceSessions,
+      setCurrentSession,
+      token,
+      updateSession,
+    ]
   )
 
   const handleStartSession = async (sessionId: UUID) => {
@@ -1305,7 +1413,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      await startCampaignSession(selectedCampaignId, sessionList)
+      await startCampaignSession(selectedCampaignId, sessionList, { autoActivate: true })
       return
     }
 
@@ -1792,11 +1900,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       sessionName={currentSession.name}
                       sessionState={currentSession.state}
                       sessionCount={sessionList.length}
-                      roomCount={currentRooms.length}
+                      roomCount={visibleRooms.length}
                       presenceCount={currentPresence.length}
                       dmUserId={currentSession.dmId}
                       currentUserId={user.id}
-                      rooms={currentRooms.map((room) => ({
+                      rooms={visibleRooms.map((room) => ({
                         id: room.id,
                         name: room.name,
                         type: room.type,
@@ -1808,6 +1916,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       onToggleBroadcastMode={handleToggleBroadcastMode}
                       dmOverrides={dmOverrides}
                       currentConditionName={currentConditionName}
+                      roomVoiceStatus={selectedRoomVoiceStatus}
                     />
                   </section>
                   {selectedRoomId ? (
@@ -1835,8 +1944,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                             token={token}
                             sessionId={currentSession.id}
                             roomId={selectedRoomId}
+                            roomName={selectedRoom?.name}
                             user={effectiveSessionUser}
                             messageGroupingWindowMs={messageGroupingWindowMs}
+                            forceMessageType={isGreenroomChatMode ? MessageType.OOC : undefined}
                           />
                         ) : (
                           <div className="session-greenroom-placeholder">
@@ -1863,7 +1974,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 if (tab === 'rooms') {
                   return (
                     <SessionRoomsStatusPanel
-                      rooms={currentRooms.map((room) => ({
+                      rooms={visibleRooms.map((room) => ({
                         id: room.id,
                         name: room.name,
                         type: room.type,
@@ -1882,7 +1993,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       role={effectiveSessionRole}
                       sessionId={currentSession.id}
                       dmUserId={currentSession.dmId}
-                      rooms={currentRooms.map((room) => ({
+                      rooms={visibleRooms.map((room) => ({
                         id: room.id,
                         name: room.name,
                         type: room.type,
@@ -1904,7 +2015,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       token={token}
                       sessionId={currentSession.id}
                       role={effectiveSessionRole}
-                      rooms={currentRooms.map((room) => ({
+                      rooms={visibleRooms.map((room) => ({
                         id: room.id,
                         name: room.name,
                         type: room.type,

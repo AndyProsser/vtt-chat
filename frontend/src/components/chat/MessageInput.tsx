@@ -4,7 +4,7 @@
  * Spectators are restricted to OOC only.
  */
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
@@ -12,6 +12,7 @@ interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
   disabled?: boolean
   role: Role | string
+  forceMessageType?: MessageType
 }
 
 const ROLE_ALLOWED_TYPES: Record<string, MessageType[]> = {
@@ -27,14 +28,26 @@ const TYPE_LABELS: Record<MessageType, string> = {
   [MessageType.SYSTEM]: 'System',
 }
 
-export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
-  const allowedTypes = ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC]
+export function MessageInput({ onSend, disabled, role, forceMessageType }: MessageInputProps) {
+  const roleAllowedTypes = ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC]
+  const allowedTypes = forceMessageType ? [forceMessageType] : roleAllowedTypes
   const [selectedType, setSelectedType] = useState<MessageType>(allowedTypes[0])
   const [content, setContent] = useState('')
   const [recipientId, setRecipientId] = useState('')
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
+
+  useEffect(() => {
+    if (forceMessageType) {
+      setSelectedType(forceMessageType)
+      return
+    }
+
+    if (!roleAllowedTypes.includes(selectedType)) {
+      setSelectedType(roleAllowedTypes[0])
+    }
+  }, [forceMessageType, roleAllowedTypes, selectedType])
 
   const handleSend = async () => {
     const trimmed = content.trim()
@@ -64,23 +77,24 @@ export function MessageInput({ onSend, disabled, role }: MessageInputProps) {
 
   return (
     <div className="chat-input">
-      {/* Type selector */}
-      <div className="chat-input__types">
-        <span className="chat-input__types-label">Type:</span>
-        {allowedTypes.map((t) => (
-          <button
-            key={t}
-            onClick={() => setSelectedType(t)}
-            className={`chat-input__type-pill ${
-              type === t
-                ? 'chat-input__type-pill--active border-ui-brand bg-ui-brand text-white font-semibold'
-                : 'border-ui-border-soft bg-ui-surface text-ui-primary'
-            }`}
-          >
-            {TYPE_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      {!forceMessageType ? (
+        <div className="chat-input__types">
+          <span className="chat-input__types-label">Type:</span>
+          {allowedTypes.map((t) => (
+            <button
+              key={t}
+              onClick={() => setSelectedType(t)}
+              className={`chat-input__type-pill ${
+                type === t
+                  ? 'chat-input__type-pill--active border-ui-brand bg-ui-brand text-white font-semibold'
+                  : 'border-ui-border-soft bg-ui-surface text-ui-primary'
+              }`}
+            >
+              {TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Input row */}
       <div className="chat-input__composer">

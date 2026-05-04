@@ -18,6 +18,9 @@ import {
   updateMessageRecord,
 } from '@/repositories/chat.repository'
 
+const SYSTEM_CHAT_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
+const SYSTEM_CHAT_AUTHOR_USERNAME = 'SYSTEM'
+
 interface ChatVisibilityPayload {
   visibleTo?: UUID[]
   roomId?: UUID
@@ -127,16 +130,19 @@ export async function sendMessage(params: {
   recipientId?: UUID
 }): Promise<StoredMessage> {
   const { sessionId, roomId, authorId, authorUsername, dmId, content, type, recipientId } = params
+  const resolvedAuthorId = type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_ID : authorId
+  const resolvedAuthorUsername =
+    type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_USERNAME : authorUsername
 
   const id = crypto.randomUUID() as UUID
-  const visibility = computeVisibility(type, authorId, dmId, roomId, recipientId)
+  const visibility = computeVisibility(type, resolvedAuthorId, dmId, roomId, recipientId)
 
   const message: StoredMessage = {
     id,
     sessionId,
     roomId,
-    authorId,
-    authorUsername,
+    authorId: resolvedAuthorId,
+    authorUsername: resolvedAuthorUsername,
     content,
     type,
     isDmOnly: type === MessageType.WHISPER,
@@ -147,8 +153,8 @@ export async function sendMessage(params: {
   await createChatMessageRecord({
     id,
     sessionId,
-    authorId,
-    authorUsername,
+    authorId: resolvedAuthorId,
+    authorUsername: resolvedAuthorUsername,
     content,
     type,
     isDmOnly: message.isDmOnly,

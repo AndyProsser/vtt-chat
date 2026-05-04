@@ -164,6 +164,29 @@ You must enforce:
 - Never call LiveKit or WebAudio from reducers
 - Never mutate store state directly
 
+### **When managing frontend state (required)**
+
+- Use Zustand as the canonical state layer for any cross-component or cross-route runtime state.
+- Avoid duplicating shared runtime state in local component hooks when a store slice already exists.
+- Keep local `useState` limited to strictly view-local transient UI concerns (input drafts, open/close toggles, ephemeral hover/focus state).
+- For transport/integration status (WebSocket, LiveKit, reconnect), publish normalized snapshots into Zustand and consume selectors from that shared source.
+- Derive display status from shared selectors so badges, panels, and controls render from one canonical state source.
+
+### **When building UI primitives and icons**
+
+- Prefer project core-ui wrappers and Radix primitives for overlays, menus, dialogs, tabs, and tooltips.
+- Keep interaction semantics accessible by default: keyboard support, focus management, and ARIA labels.
+- Use Material Symbols Outlined as the default icon language for chat and session status semantics.
+- Keep icon semantics consistent across surfaces (same concept uses the same icon glyph).
+
+### **Frontend UI/UX principles (required)**
+
+- Keep state visibility explicit: connected, connecting, and disconnected must be visually distinct.
+- Prioritize role-aware affordances: DM, player, and spectator controls should be clearly scoped.
+- Prefer progressive disclosure over clutter, but never hide critical status.
+- Keep copy concise and contextual (room-aware and session-aware labels over generic text).
+- Maintain responsive behavior and avoid layout collapse in left rail, center pane, and right rail.
+
 ### **When generating extension logic**
 
 - Only DOM scraping, MutationObserver, backend APIs
