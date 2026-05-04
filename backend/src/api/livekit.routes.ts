@@ -14,6 +14,40 @@ import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
 const router = Router()
 const tokenService = new LiveKitTokenService(config)
 
+function toWsUrl(input: string): string {
+  try {
+    const parsed = new URL(input)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'wss:') {
+      parsed.protocol = 'wss:'
+    } else {
+      parsed.protocol = 'ws:'
+    }
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    return input.replace(/\/$/, '')
+  }
+}
+
+function buildPublicLiveKitUrl(req: Request): string {
+  if (config.livekit.publicUrl) {
+    return toWsUrl(config.livekit.publicUrl)
+  }
+
+  const forwardedHost = req.headers['x-forwarded-host']
+  const host =
+    (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) || req.get('host') || ''
+  const forwardedProto = req.headers['x-forwarded-proto']
+  const proto =
+    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) || req.protocol || 'http'
+
+  if (!host) {
+    return toWsUrl(config.livekit.url)
+  }
+
+  const wsProto = proto === 'https' || proto === 'wss' ? 'wss' : 'ws'
+  return `${wsProto}://${host}/livekit`
+}
+
 /**
  * Middleware: Verify auth token exists
  */
@@ -108,7 +142,7 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
       canPublish,
       canSubscribe,
     })
-    const url = config.livekit.url
+    const url = buildPublicLiveKitUrl(req)
 
     logger.info(
       'livekit',
@@ -143,11 +177,13 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
 router.get('/health', async (req: Request, res: Response) => {
   try {
     const url = config.livekit.url
+    const publicUrl = buildPublicLiveKitUrl(req)
     // Basic connectivity check - in production, call actual LiveKit API health endpoint
     if (url) {
       return res.status(200).json({
         status: 'healthy',
         url,
+        publicUrl,
       })
     }
 

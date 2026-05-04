@@ -117,17 +117,30 @@ export function useLiveKit(
    */
   const fetchToken = useCallback(async (): Promise<{ token: string; url: string } | null> => {
     try {
+      const authToken =
+        (typeof window !== 'undefined' ? window.sessionStorage.getItem('authToken') : null) ||
+        (typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null)
+
+      if (!authToken) {
+        throw new Error('Missing auth token for LiveKit token request')
+      }
+
       const response = await fetch('/api/livekit/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ sessionId, roomId, channel: tokenChannel }),
       })
 
       if (!response.ok) {
-        throw new Error(`Token request failed: ${response.statusText}`)
+        const payload = await response.json().catch(() => ({}))
+        const message =
+          typeof payload?.message === 'string' && payload.message.trim().length > 0
+            ? payload.message
+            : response.statusText || `HTTP ${response.status}`
+        throw new Error(`Token request failed (${response.status}): ${message}`)
       }
 
       const data = await response.json()

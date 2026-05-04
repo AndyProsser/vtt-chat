@@ -18,5 +18,6 @@ export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 
 // LiveKit
 export const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880'
+export const LIVEKIT_PUBLIC_URL = process.env.LIVEKIT_PUBLIC_URL || ''
 export const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey'
 export const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret'

@@ -50,6 +50,9 @@ export function SessionLeftRailPanel({
   dmOverrides,
   currentConditionName,
 }: SessionLeftRailPanelProps) {
+  const isGreenroom = sessionState === 'IDLE'
+  const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Channel Only' : undefined
+
   const visibleRooms = [...rooms]
     .sort((left, right) => {
       if (left.type === RoomType.MAIN && right.type !== RoomType.MAIN) return -1
@@ -59,6 +62,10 @@ export function SessionLeftRailPanel({
     .filter((room) => {
       if (role === 'DM') {
         return true
+      }
+
+      if (isGreenroom) {
+        return room.id === selectedRoomId
       }
 
       const memberCount = (roomMembersByRoomId[room.id] || []).length
@@ -81,6 +88,7 @@ export function SessionLeftRailPanel({
         token={token}
         sessionId={sessionId}
         dmUserId={dmUserId}
+        headerModeCopy={greenroomHeaderCopy}
         canManageRooms={role === 'DM'}
         voiceOfGodEnabled={voiceOfGodEnabled}
         onToggleVoiceOfGod={onToggleVoiceOfGod}

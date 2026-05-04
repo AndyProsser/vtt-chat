@@ -326,6 +326,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const prevWsStateRef = useRef<ConnectionState>('disconnected')
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
   const lobbyAutoEnterTriggeredRef = useRef(false)
+  const lastHydratedSessionIdRef = useRef<UUID | null>(null)
 
   // WebSocket connection
   const { state: wsState, error: wsError } = useWebSocket({
@@ -688,12 +689,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     const prev = prevWsStateRef.current
     prevWsStateRef.current = wsState
 
-    // Only hydrate on reconnect (transition from a non-connected state → connected)
-    // or on first connection when a session is already active in the store.
-    const isReconnect = wsState === 'connected' && prev !== 'connected'
-    if (!currentSession || !isReconnect) {
+    if (!currentSession) {
+      lastHydratedSessionIdRef.current = null
       return
     }
+
+    const sessionChanged = lastHydratedSessionIdRef.current !== currentSession.id
+    const isReconnect = wsState === 'connected' && prev !== 'connected'
+
+    if (!sessionChanged && !isReconnect) {
+      return
+    }
+
+    lastHydratedSessionIdRef.current = currentSession.id
 
     const loadPresenceAndRooms = async () => {
       try {

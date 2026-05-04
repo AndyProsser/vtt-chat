@@ -10,6 +10,7 @@ import {
   DATABASE_URL,
   REDIS_URL,
   LIVEKIT_URL,
+  LIVEKIT_PUBLIC_URL,
   LIVEKIT_API_KEY,
   LIVEKIT_API_SECRET,
 } from './constants'
@@ -38,6 +39,7 @@ export interface AppConfig {
   }
   livekit: {
     url: string
+    publicUrl?: string
     apiKey: string
     apiSecret: string
   }
@@ -67,6 +69,7 @@ export const config: AppConfig = {
   },
   livekit: {
     url: process.env.LIVEKIT_URL || LIVEKIT_URL,
+    publicUrl: process.env.LIVEKIT_PUBLIC_URL || LIVEKIT_PUBLIC_URL || undefined,
     apiKey: process.env.LIVEKIT_API_KEY || LIVEKIT_API_KEY,
     apiSecret: process.env.LIVEKIT_API_SECRET || LIVEKIT_API_SECRET,
   },

@@ -41,6 +41,7 @@ interface RoomSelectorProps {
   token: string
   sessionId: UUID
   dmUserId: UUID
+  headerModeCopy?: string
   canManageRooms: boolean
   voiceOfGodEnabled: boolean
   onToggleVoiceOfGod: (enabled: boolean) => Promise<void>
@@ -54,6 +55,7 @@ export function RoomSelector({
   token,
   sessionId,
   dmUserId,
+  headerModeCopy,
   canManageRooms,
   voiceOfGodEnabled,
   onToggleVoiceOfGod,
@@ -169,7 +171,7 @@ export function RoomSelector({
           <h4>
             <Icon name="rooms" /> Voice Channels
           </h4>
-          <span>{rooms.length}</span>
+          <span>{headerModeCopy || rooms.length}</span>
         </header>
 
         <div className="room-selector-list" role="list" aria-label="Session rooms">
