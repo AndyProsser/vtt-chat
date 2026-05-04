@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { GuestUpgradePrompt } from './components/auth/GuestUpgradePrompt'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsRouteView'
@@ -64,25 +63,15 @@ export default function App() {
     auth,
     authProfile,
     authMessage,
-    upgradeLoading,
-    upgradePromptDismissed,
-    setUpgradePromptDismissed,
     handleLoginSuccess,
     handleSpectatorAuthenticated,
     handleGuestExtensionAuthenticated,
-    handleUpgradeAccount,
   } = useAuthSession({
     apiUrl,
     adminUrl,
   })
 
   const currentSessionId = useStore((state) => state.currentSessionId)
-
-  const isGuestAccount = Boolean(
-    auth.token && auth.user && (authProfile?.authType === 'GUEST' || auth.user.authType === 'GUEST')
-  )
-  const showUpgradePrompt =
-    routeView.kind === 'app' && isGuestAccount && !upgradePromptDismissed && !currentSessionId
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -192,15 +181,6 @@ export default function App() {
           >
             {authMessage}
           </div>
-        )}
-
-        {showUpgradePrompt && authProfile?.email && (
-          <GuestUpgradePrompt
-            email={authProfile.email}
-            loading={upgradeLoading}
-            onUpgrade={handleUpgradeAccount}
-            onDismiss={() => setUpgradePromptDismissed(true)}
-          />
         )}
 
         <main

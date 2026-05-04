@@ -14,7 +14,15 @@ export type InviteValidationResult =
       campaign: {
         id: string
         name: string
+        description: string | null
+        posterUrl: string | null
         dmDisplayName: string
+        dmOnline: boolean
+        connectedPlayersRounded: number
+        connectedPlayersLabel: string
+        connectedSpectatorsRounded: number
+        connectedSpectatorsLabel: string
+        displayState: 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
       }
       platformStatus: PlatformStatus
     }

@@ -167,20 +167,17 @@
 .session-toolbar__connection--connected {
   border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
   color: #22c55e;
-  background: color-mix(in srgb, #dcfce7 75%, var(--color-surface));
 }
 
 .session-toolbar__connection--connecting,
 .session-toolbar__connection--reconnecting {
   border-color: color-mix(in srgb, #f59e0b 45%, var(--color-border));
   color: #f59e0b;
-  background: color-mix(in srgb, #fef3c7 75%, var(--color-surface));
 }
 
 .session-toolbar__connection--disconnected {
   border-color: color-mix(in srgb, #ef4444 45%, var(--color-border));
   color: #ef4444;
-  background: color-mix(in srgb, #fee2e2 75%, var(--color-surface));
 }
 
 .session-toolbar__connection {
@@ -188,6 +185,7 @@
   min-width: 1.95rem;
   padding-left: 0.42rem;
   padding-right: 0.42rem;
+  background: transparent;
 }
 
 .session-toolbar__connection .ui-icon {

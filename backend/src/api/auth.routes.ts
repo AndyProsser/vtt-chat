@@ -7,22 +7,31 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
-import { createToken, verifyToken, extractTokenFromHeader } from '@/services/auth.service'
+import {
+  createToken,
+  verifyPassword,
+  verifyToken,
+  extractTokenFromHeader,
+} from '@/services/auth.service'
 import { createRateLimit } from '@/infra/http/rate-limit'
 import type { UUID } from '@shared'
 import { ErrorCode, isValidUsername } from '@shared'
-import { upsertUserAccount } from '@/repositories/campaign.repository'
+import { joinCampaignForUser } from '@/repositories/campaign.repository'
+import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
 import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth-user-context.service'
 import {
   joinGuestSpectatorViaInvite,
   getExtensionPreflight,
+  precheckPlayerInviteEmail,
+  joinGuestPlayerViaInvite,
   loginGuestViaExtension,
   upgradeGuestAccount,
 } from '@/services/guest-auth.service'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 const loginRateLimit = createRateLimit({
   windowMs: 5 * 60 * 1000,
@@ -231,6 +240,206 @@ router.post('/spectator/guest-join', async (req: Request, res: Response) => {
   }
 })
 
+router.post('/player/guest-join', async (req: Request, res: Response) => {
+  const inviteCode = String(req.body?.inviteCode || '').trim()
+  const email = String(req.body?.email || '').trim()
+  const displayName = String(req.body?.displayName || '').trim()
+
+  if (!inviteCode || !email || !displayName) {
+    return res.status(400).json({
+      code: 'INVALID_PLAYER_JOIN_REQUEST',
+      message: 'inviteCode, email, and displayName are required',
+    })
+  }
+
+  const characterInput = req.body?.character
+  const character =
+    characterInput && typeof characterInput === 'object'
+      ? {
+          name: String((characterInput as { name?: unknown }).name || '').trim(),
+          race: String((characterInput as { race?: unknown }).race || '').trim() || undefined,
+          class: String((characterInput as { class?: unknown }).class || '').trim() || undefined,
+          level:
+            typeof (characterInput as { level?: unknown }).level === 'number'
+              ? ((characterInput as { level: number }).level as number)
+              : null,
+          avatarUrl:
+            String((characterInput as { avatarUrl?: unknown }).avatarUrl || '').trim() || undefined,
+        }
+      : undefined
+
+  try {
+    const result = await joinGuestPlayerViaInvite({
+      inviteCode,
+      email,
+      displayName,
+      character: character?.name ? character : undefined,
+    })
+
+    return res.status(200).json(result)
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'INVITE_EXPIRED') {
+        return res.status(404).json({
+          code: 'INVITE_EXPIRED',
+          message: 'Invite code is invalid',
+        })
+      }
+      if (error.message === 'FULL_ACCOUNT_EXISTS') {
+        return res.status(409).json({
+          code: 'FULL_ACCOUNT_EXISTS',
+          message: 'A full account already exists for this email. Use standard sign in.',
+        })
+      }
+    }
+
+    return res.status(500).json({
+      code: 'PLAYER_JOIN_FAILED',
+      message: 'Failed to join as player',
+    })
+  }
+})
+
+router.post('/player/full-join', async (req: Request, res: Response) => {
+  const inviteCode = String(req.body?.inviteCode || '')
+    .trim()
+    .toUpperCase()
+  const email = String(req.body?.email || '')
+    .trim()
+    .toLowerCase()
+  const password = String(req.body?.password || '')
+
+  if (!inviteCode || !email || !password) {
+    return res.status(400).json({
+      code: 'INVALID_PLAYER_FULL_JOIN_REQUEST',
+      message: 'inviteCode, email, and password are required',
+    })
+  }
+
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      inviteCode,
+      inviteActive: true,
+    },
+    select: {
+      id: true,
+      inviteCode: true,
+    },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({
+      code: 'INVITE_EXPIRED',
+      message: 'Invite code is invalid',
+    })
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      authType: true,
+      password: true,
+      isActive: true,
+    },
+  })
+
+  if (!user || user.authType !== 'FULL') {
+    return res.status(403).json({
+      code: 'FULL_ACCOUNT_REQUIRED',
+      message: 'A full account is required to sign in and join with this email',
+    })
+  }
+
+  if (!user.isActive) {
+    return res.status(403).json({
+      code: 'ACCOUNT_DEACTIVATED',
+      message: 'Account is inactive',
+    })
+  }
+
+  if (!user.password) {
+    return res.status(403).json({
+      code: 'PASSWORD_NOT_SET',
+      message: 'Account does not have a password set',
+    })
+  }
+
+  const passwordValid = await verifyPassword(password, user.password)
+  if (!passwordValid) {
+    return res.status(401).json({
+      code: 'INVALID_CREDENTIALS',
+      message: 'Incorrect email or password',
+    })
+  }
+
+  const joined = await joinCampaignForUser({
+    campaignId: campaign.id,
+    userId: user.id,
+    inviteCode: campaign.inviteCode,
+    role: user.role === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER',
+  })
+
+  if (!joined) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Invalid invite code',
+    })
+  }
+
+  const resolvedRole =
+    user.role === 'DM' || user.role === 'PLAYER' || user.role === 'SPECTATOR' ? user.role : 'PLAYER'
+
+  return res.status(200).json({
+    token: createToken({
+      userId: user.id as UUID,
+      username: user.username,
+      role: resolvedRole,
+      authType: 'FULL',
+    }),
+    user: {
+      id: user.id,
+      username: user.username,
+      role: resolvedRole,
+      authType: 'FULL',
+    },
+    campaignId: campaign.id,
+  })
+})
+
+router.post('/player/precheck', async (req: Request, res: Response) => {
+  const inviteCode = String(req.body?.inviteCode || '').trim()
+  const email = String(req.body?.email || '').trim()
+
+  if (!inviteCode || !email) {
+    return res.status(400).json({
+      code: 'INVALID_PLAYER_PRECHECK_REQUEST',
+      message: 'inviteCode and email are required',
+    })
+  }
+
+  try {
+    const result = await precheckPlayerInviteEmail({ inviteCode, email })
+    return res.status(200).json(result)
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVITE_EXPIRED') {
+      return res.status(404).json({
+        code: 'INVITE_EXPIRED',
+        message: 'Invite code is invalid',
+      })
+    }
+
+    return res.status(500).json({
+      code: 'PLAYER_PRECHECK_FAILED',
+      message: 'Failed to precheck player invite',
+    })
+  }
+})
+
 /**
  * Middleware: Extract and verify token from Authorization header
  */
@@ -287,7 +496,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 /**
  * POST /api/auth/login
  * Login with username and explicit access mode.
- * No password validation; local smoke-test login defaults to user-level access.
+ * Restricted to existing FULL accounts only.
  * Returns JWT token.
  */
 router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
@@ -313,22 +522,44 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     })
   }
 
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      username,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      role: true,
+      authType: true,
+    },
+  })
+
+  if (!existingUser) {
+    return res.status(403).json({
+      code: 'LOGIN_DISABLED',
+      message: 'Direct registration/sign-in is disabled. Use your campaign invite URL to access.',
+    })
+  }
+
+  if (existingUser.authType !== 'FULL') {
+    return res.status(403).json({
+      code: 'GUEST_INVITE_REQUIRED',
+      message: 'Guest accounts must use campaign invite flows and cannot sign in from this page.',
+    })
+  }
+
   const compatibilityRole =
     typeof role === 'string' && ['DM', 'PLAYER', 'SPECTATOR'].includes(role)
       ? (role as 'DM' | 'PLAYER' | 'SPECTATOR')
-      : 'PLAYER'
+      : (existingUser.role as 'DM' | 'PLAYER' | 'SPECTATOR')
 
-  const persistedUser = await upsertUserAccount({
-    username,
-    role: compatibilityRole,
-    displayName: typeof displayName === 'string' ? displayName : undefined,
-    avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
-  })
-
-  const userId = persistedUser.id as UUID
+  const userId = existingUser.id as UUID
   const token = createToken({
     userId,
-    username: persistedUser.username,
+    username: existingUser.username,
     role: compatibilityRole,
     accessMode: normalizedAccessMode as 'USER' | 'CAMPAIGN',
     authType: 'FULL',
@@ -339,10 +570,10 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     accessMode: normalizedAccessMode,
     user: {
       id: userId,
-      username: persistedUser.username,
-      displayName: persistedUser.displayName,
-      avatarUrl: persistedUser.avatarUrl,
-      role: persistedUser.role,
+      username: existingUser.username,
+      displayName: existingUser.displayName,
+      avatarUrl: existingUser.avatarUrl,
+      role: existingUser.role,
       accessMode: normalizedAccessMode,
       authType: 'FULL',
     },

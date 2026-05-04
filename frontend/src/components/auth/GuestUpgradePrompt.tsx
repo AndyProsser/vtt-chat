@@ -72,7 +72,6 @@ export function GuestUpgradePrompt({
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Create a secure password"
             className="block w-full rounded-ui-sm border border-amber-300 bg-white px-3 py-2 text-sm"
             disabled={loading}
             required

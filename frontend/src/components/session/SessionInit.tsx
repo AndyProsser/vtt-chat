@@ -104,6 +104,7 @@ const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
 const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
 const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
+const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaign-id'
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
 const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
@@ -269,6 +270,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false)
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
+  const [showExitSessionModal, setShowExitSessionModal] = useState(false)
+  const [exitUpgradePassword, setExitUpgradePassword] = useState('')
+  const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
+  const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
   const [settingsCampaignId, setSettingsCampaignId] = useState<UUID | ''>('')
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
@@ -311,6 +316,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   })
   const prevWsStateRef = useRef<ConnectionState>('disconnected')
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
+  const lobbyAutoEnterTriggeredRef = useRef(false)
 
   // WebSocket connection
   const { state: wsState, error: wsError } = useWebSocket({
@@ -848,89 +854,131 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
-  const handleEnterCampaign = async (campaignId?: UUID) => {
-    setError(null)
-    setLobbyNotice(null)
+  const handleEnterCampaign = useCallback(
+    async (campaignId?: UUID) => {
+      setError(null)
+      setLobbyNotice(null)
 
-    const targetCampaignId = campaignId || selectedCampaignId
+      const targetCampaignId = campaignId || selectedCampaignId
 
-    if (!targetCampaignId) {
-      setError('Select a campaign before entering')
-      return
-    }
-
-    if (targetCampaignId !== selectedCampaignId) {
-      setSelectedCampaignId(targetCampaignId)
-    }
-
-    const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
-
-    if (targetCampaign?.memberRole === 'SPECTATOR') {
-      const state = getCampaignDisplayState(targetCampaign)
-      if (state !== 'ACTIVE') {
-        setError('Spectators can only watch active campaigns.')
+      if (!targetCampaignId) {
+        setError('Select a campaign before entering')
         return
       }
 
-      const hasTableOnline =
-        Boolean(targetCampaign.dmOnline) || (targetCampaign.connectedPlayers || 0) > 0
-      if (!hasTableOnline) {
-        setError('Campaign is active but no DM/player is online yet. Please wait.')
+      if (targetCampaignId !== selectedCampaignId) {
+        setSelectedCampaignId(targetCampaignId)
+      }
+
+      const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
+
+      if (targetCampaign?.memberRole === 'SPECTATOR') {
+        const state = getCampaignDisplayState(targetCampaign)
+        if (state !== 'ACTIVE') {
+          setError('Spectators can only watch active campaigns.')
+          return
+        }
+
+        const hasTableOnline =
+          Boolean(targetCampaign.dmOnline) || (targetCampaign.connectedPlayers || 0) > 0
+        if (!hasTableOnline) {
+          setError('Campaign is active but no DM/player is online yet. Please wait.')
+          return
+        }
+      }
+
+      let targetSessions: SessionRecord[] = []
+
+      try {
+        targetSessions = await fetchCampaignSessions(targetCampaignId)
+        replaceSessions(targetSessions)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load campaign sessions'
+        setError(message)
         return
       }
-    }
 
-    let targetSessions: SessionRecord[] = []
+      const preferredSession = getPreferredSession(targetSessions)
 
-    try {
-      targetSessions = await fetchCampaignSessions(targetCampaignId)
-      replaceSessions(targetSessions)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load campaign sessions'
-      setError(message)
-      return
-    }
-
-    const preferredSession = getPreferredSession(targetSessions)
-
-    if (preferredSession) {
-      setCurrentSession(preferredSession.id)
-      return
-    }
-
-    const canStartAsDm = targetCampaign?.currentDmId === user.id
-
-    if (!canStartAsDm) {
-      setError('No campaign chapter is available yet. Wait for the DM to start the session.')
-      return
-    }
-
-    try {
-      const response = await fetch(`${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: buildDefaultChapterName(targetSessions),
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to start campaign chapter')
+      if (preferredSession) {
+        setCurrentSession(preferredSession.id)
+        return
       }
 
-      const payload = (await response.json()) as { session: SessionRecord }
-      replaceSessions([payload.session, ...targetSessions])
-      setCurrentSession(payload.session.id)
-      onSessionCreated?.(payload.session.id)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'An error occurred'
-      setError(message)
+      const canStartAsDm = targetCampaign?.currentDmId === user.id
+
+      if (!canStartAsDm) {
+        setError('No campaign chapter is available yet. Wait for the DM to start the session.')
+        return
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: buildDefaultChapterName(targetSessions),
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to start campaign chapter')
+        }
+
+        const payload = (await response.json()) as { session: SessionRecord }
+        replaceSessions([payload.session, ...targetSessions])
+        setCurrentSession(payload.session.id)
+        onSessionCreated?.(payload.session.id)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
+    },
+    [
+      selectedCampaignId,
+      campaigns,
+      fetchCampaignSessions,
+      replaceSessions,
+      user.id,
+      apiUrl,
+      token,
+      setCurrentSession,
+      onSessionCreated,
+    ]
+  )
+
+  useEffect(() => {
+    if (isLoadingCampaigns || currentSessionId || lobbyAutoEnterTriggeredRef.current) {
+      return
     }
-  }
+
+    const pendingAutoEnterCampaignId = sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
+
+    if (!pendingAutoEnterCampaignId) {
+      return
+    }
+
+    const pendingCampaign = campaigns.find((campaign) => campaign.id === pendingAutoEnterCampaignId)
+
+    sessionStorage.removeItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
+
+    if (!pendingCampaign) {
+      return
+    }
+
+    lobbyAutoEnterTriggeredRef.current = true
+    const timeoutId = window.setTimeout(() => {
+      void handleEnterCampaign(pendingCampaign.id)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [campaigns, currentSessionId, handleEnterCampaign, isLoadingCampaigns])
 
   const handleSaveCampaignSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1188,16 +1236,69 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
+  const returnToCampaignSelector = () => {
+    setCurrentSession(null)
+    setSelectedRoomIdOverride('')
+  }
+
+  const logoutToAuthScreen = () => {
+    sessionStorage.removeItem('authToken')
+    sessionStorage.removeItem('user')
+    window.location.assign('/')
+  }
+
   const handleExitToCampaignSelector = () => {
-    const confirmed = window.confirm(
-      'Leave this session and return to the campaign selector? Unsaved local UI state may be lost.'
-    )
-    if (!confirmed) {
+    setExitUpgradeError(null)
+    setExitUpgradePassword('')
+    setShowExitSessionModal(true)
+  }
+
+  const handleConfirmExitAsFullAccount = () => {
+    setShowExitSessionModal(false)
+    returnToCampaignSelector()
+  }
+
+  const handleSkipGuestUpgrade = () => {
+    setShowExitSessionModal(false)
+    logoutToAuthScreen()
+  }
+
+  const handleUpgradeAndExit = async () => {
+    if (!exitUpgradePassword.trim()) {
+      setExitUpgradeError('Password is required to upgrade before exit.')
       return
     }
 
-    setCurrentSession(null)
-    setSelectedRoomIdOverride('')
+    setExitUpgradeError(null)
+    setExitUpgradeLoading(true)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/upgrade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: exitUpgradePassword }),
+      })
+
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upgrade account')
+      }
+
+      setShowExitSessionModal(false)
+      logoutToAuthScreen()
+    } catch (upgradeError) {
+      const message =
+        upgradeError instanceof Error ? upgradeError.message : 'Failed to upgrade account'
+      setExitUpgradeError(message)
+    } finally {
+      setExitUpgradeLoading(false)
+    }
   }
 
   const hasSessionSelected = currentSession !== null
@@ -2242,6 +2343,91 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showExitSessionModal && (
+        <div className="session-modal-backdrop" role="presentation">
+          <div className="session-modal" role="dialog" aria-modal="true" aria-label="Exit session">
+            <h4 className="session-inline-form-title">Leave Session</h4>
+            {user.authType === 'GUEST' ? (
+              <>
+                <p className="session-card-subtitle">
+                  You are on a guest account. Add a password now to upgrade before exit, or skip to
+                  sign out. Skipping requires using your invite URL again to return.
+                </p>
+
+                <label className="session-label" htmlFor="exit-upgrade-password">
+                  Password to upgrade account
+                </label>
+                <input
+                  id="exit-upgrade-password"
+                  type="password"
+                  className="session-input"
+                  value={exitUpgradePassword}
+                  onChange={(event) => setExitUpgradePassword(event.target.value)}
+                  autoComplete="new-password"
+                  disabled={exitUpgradeLoading}
+                />
+
+                {exitUpgradeError ? (
+                  <p className="session-card-subtitle">{exitUpgradeError}</p>
+                ) : null}
+
+                <div className="session-action-row">
+                  <button
+                    type="button"
+                    className="session-button session-button-neutral"
+                    onClick={() => setShowExitSessionModal(false)}
+                    disabled={exitUpgradeLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="session-button session-button-warn"
+                    onClick={handleSkipGuestUpgrade}
+                    disabled={exitUpgradeLoading}
+                  >
+                    Skip
+                  </button>
+                  <button
+                    type="button"
+                    className="session-button session-button-success"
+                    onClick={() => {
+                      void handleUpgradeAndExit()
+                    }}
+                    disabled={exitUpgradeLoading || !exitUpgradePassword.trim()}
+                  >
+                    {exitUpgradeLoading ? 'Upgrading...' : 'Upgrade and Exit'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="session-card-subtitle">
+                  Leave this session and return to the campaign selector? Unsaved local UI state may
+                  be lost.
+                </p>
+                <div className="session-action-row">
+                  <button
+                    type="button"
+                    className="session-button session-button-neutral"
+                    onClick={() => setShowExitSessionModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="session-button session-button-primary"
+                    onClick={handleConfirmExitAsFullAccount}
+                  >
+                    OK
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -65,15 +65,14 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
     <form onSubmit={handleSubmit} className="auth-form-card">
       <div className="auth-form-card__header">
         <div>
-          <p className="auth-card__eyebrow">Smoke Test</p>
-          <h2 className="auth-card__title">Sign in as a local user</h2>
+          <p className="auth-card__eyebrow">Account Access</p>
+          <h2 className="auth-card__title">Sign in</h2>
         </div>
         <div className="auth-form-card__badge">User access</div>
       </div>
 
       <p className="auth-form-card__copy">
-        Local sign-in opens the frontend shell. Campaign permissions are applied later by campaign
-        membership.
+        Guest accounts cannot sign in here. Use your invite URL to join or rejoin a campaign.
       </p>
 
       {error && <div className="auth-alert">{error}</div>}
@@ -85,7 +84,6 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="thorin_stonehelm"
           disabled={isLoading}
           required
         />
@@ -102,8 +100,8 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       </button>
 
       <div className="auth-form-meta">
-        <span>Fast local smoke auth</span>
-        <span className="auth-pill">JWT issued on submit</span>
+        <span>Invite-first authentication</span>
+        <span className="auth-pill">Guest login disabled here</span>
       </div>
     </form>
   )

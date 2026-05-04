@@ -1,12 +1,21 @@
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PolicyNotice } from './PolicyNotice'
+import '@/styles/components/auth/InviteJoinPage.css'
 
 type InviteCampaign = {
   id: string
   name: string
+  description: string | null
+  posterUrl: string | null
   dmDisplayName: string
+  dmOnline: boolean
+  connectedPlayersRounded: number
+  connectedPlayersLabel: string
+  connectedSpectatorsRounded: number
+  connectedSpectatorsLabel: string
+  displayState: 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
 }
 
 type InviteValidationResult =
@@ -27,11 +36,6 @@ type InviteValidationResult =
       reason: string
     }
 
-type PreflightResult = {
-  accountStatus: 'none' | 'guest' | 'full'
-  suggestedFlow: 'guest' | 'auto-login' | 'authenticate' | 'already-authenticated'
-}
-
 interface InviteJoinPageProps {
   apiUrl: string
   inviteCode: string
@@ -39,21 +43,59 @@ interface InviteJoinPageProps {
   onAuthenticated?: (token: string, user: { id: UUID; username: string; role: Role }) => void
 }
 
-type ExtensionGuestLoginResponse = {
-  token: string
-  user: {
-    id: string
-    role: 'DM' | 'PLAYER'
-    authType: 'GUEST'
-    displayName?: string
-    username?: string
+type PolicyCode = 'INVITE_EXPIRED' | 'FULL_ACCOUNT_REQUIRED' | 'FULL_ACCOUNT_EXISTS' | null
+
+type PlayerPrecheckResult = {
+  campaignId: string
+  accountStatus: 'none' | 'guest' | 'full'
+  guestProfile?: {
+    displayName: string
+  }
+  existingCharacter?: {
+    name: string
+    race: string | null
+    class: string | null
+    level: number | null
+    avatarUrl: string | null
   }
 }
 
-type PolicyCode = 'INVITE_EXPIRED' | 'FULL_ACCOUNT_REQUIRED' | 'FULL_ACCOUNT_EXISTS' | null
-
 const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
+const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaign-id'
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
+const MAX_AVATAR_WIDTH_PX = 512
+
+function isValidEmailFormat(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function getStateLabel(state: InviteCampaign['displayState']): string {
+  if (state === 'ACTIVE') return 'Active'
+  if (state === 'PAUSED') return 'Paused'
+  if (state === 'GREENROOM') return 'Greenroom'
+  return 'Inactive'
+}
+
+function getEmailStatusIcon(
+  status: 'idle' | 'invalid' | 'checking' | 'none' | 'guest' | 'full' | 'error'
+) {
+  if (status === 'checking') return 'hourglass_top'
+  if (status === 'guest') return 'badge'
+  if (status === 'full') return 'verified_user'
+  if (status === 'invalid' || status === 'error') return 'error'
+  return 'help'
+}
+
+function getEmailStatusLabel(
+  status: 'idle' | 'invalid' | 'checking' | 'none' | 'guest' | 'full' | 'error'
+) {
+  if (status === 'checking') return 'Checking email status'
+  if (status === 'guest') return 'GUEST account detected'
+  if (status === 'full') return 'FULL account detected'
+  if (status === 'invalid') return 'Email format is invalid'
+  if (status === 'error') return 'Email check failed'
+  return 'NONE detected yet'
+}
 
 export function InviteJoinPage({
   apiUrl,
@@ -65,30 +107,39 @@ export function InviteJoinPage({
   const [validation, setValidation] = useState<InviteValidationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<PolicyCode>(null)
-  const [joinMessage, setJoinMessage] = useState<string | null>(null)
   const [joining, setJoining] = useState(false)
 
+  const [playerName, setPlayerName] = useState('')
   const [email, setEmail] = useState('')
-  const [externalSystem, setExternalSystem] = useState('dndbeyond')
-  const [preflightLoading, setPreflightLoading] = useState(false)
-  const [preflight, setPreflight] = useState<PreflightResult | null>(null)
-  const [guestLoginLoading, setGuestLoginLoading] = useState(false)
-  const [externalUserId, setExternalUserId] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [externalCampaignId, setExternalCampaignId] = useState('')
-  const [dmExternalUserId, setDmExternalUserId] = useState('')
+  const [emailChecked, setEmailChecked] = useState(false)
+  const [emailCheckStatus, setEmailCheckStatus] = useState<
+    'idle' | 'invalid' | 'checking' | 'none' | 'guest' | 'full' | 'error'
+  >('idle')
+  const [precheckLoading, setPrecheckLoading] = useState(false)
+  const [precheckResult, setPrecheckResult] = useState<PlayerPrecheckResult | null>(null)
+  const [fullAccountPassword, setFullAccountPassword] = useState('')
+  const precheckRequestIdRef = useRef(0)
+
+  const [showCharacterDetails, setShowCharacterDetails] = useState(true)
+  const [characterName, setCharacterName] = useState('')
+  const [characterRace, setCharacterRace] = useState('')
+  const [characterClass, setCharacterClass] = useState('')
+  const [characterLevel, setCharacterLevel] = useState(1)
+  const [characterAvatarUrl, setCharacterAvatarUrl] = useState('')
+  const [characterNameTouched, setCharacterNameTouched] = useState(false)
 
   const validateInvite = async () => {
     setLoading(true)
     setError(null)
     setErrorCode(null)
+
     try {
       const response = await fetch(
         `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
       )
-      const data = await response.json()
+      const data = (await response.json()) as InviteValidationResult
       setValidation(data)
-      if (!response.ok && data?.reason === 'INVITE_EXPIRED') {
+      if (!response.ok && 'reason' in data && data.reason === 'INVITE_EXPIRED') {
         setErrorCode('INVITE_EXPIRED')
       }
     } catch {
@@ -99,27 +150,7 @@ export function InviteJoinPage({
   }
 
   useEffect(() => {
-    const runValidation = async () => {
-      setLoading(true)
-      setError(null)
-      setErrorCode(null)
-      try {
-        const response = await fetch(
-          `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
-        )
-        const data = await response.json()
-        setValidation(data)
-        if (!response.ok && data?.reason === 'INVITE_EXPIRED') {
-          setErrorCode('INVITE_EXPIRED')
-        }
-      } catch {
-        setError('Failed to validate invite code')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void runValidation()
+    void validateInvite()
   }, [apiUrl, inviteCode])
 
   const campaign = useMemo(() => {
@@ -129,157 +160,384 @@ export function InviteJoinPage({
     return validation.campaign
   }, [validation])
 
-  const continueToLobby = (campaignId: string, message: string) => {
+  useEffect(() => {
+    if (characterNameTouched) {
+      return
+    }
+
+    const trimmedPlayerName = playerName.trim()
+    setCharacterName(trimmedPlayerName)
+  }, [characterNameTouched, playerName])
+
+  const isFullUserEmail = precheckResult?.accountStatus === 'full'
+  const canEditJoinFields = emailChecked && !isFullUserEmail
+
+  const runEmailPrecheck = async (params: { requestId: number; emailValue: string }) => {
+    if (!campaign || !params.emailValue.trim()) {
+      setError('Email is required.')
+      return
+    }
+
+    setPrecheckLoading(true)
+    setEmailCheckStatus('checking')
+    setError(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/player/precheck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inviteCode,
+          email: params.emailValue.trim(),
+        }),
+      })
+
+      const data = (await response.json().catch(() => ({}))) as PlayerPrecheckResult & {
+        code?: string
+        message?: string
+      }
+
+      if (!response.ok) {
+        if (precheckRequestIdRef.current !== params.requestId) {
+          return
+        }
+
+        if (data.code === 'INVITE_EXPIRED') {
+          setErrorCode('INVITE_EXPIRED')
+        }
+        throw new Error(data.message || 'Unable to check email for invite')
+      }
+
+      if (precheckRequestIdRef.current !== params.requestId) {
+        return
+      }
+
+      setPrecheckResult(data)
+      setEmailChecked(true)
+      setEmailCheckStatus(data.accountStatus)
+
+      if (data.accountStatus === 'guest') {
+        if (data.guestProfile?.displayName?.trim()) {
+          setPlayerName(data.guestProfile.displayName.trim())
+        }
+
+        if (data.existingCharacter && !characterNameTouched) {
+          setCharacterName(data.existingCharacter.name || '')
+          setCharacterRace(data.existingCharacter.race || '')
+          setCharacterClass(data.existingCharacter.class || '')
+          setCharacterLevel(data.existingCharacter.level || 1)
+          setCharacterAvatarUrl(data.existingCharacter.avatarUrl || '')
+        }
+
+        if (!data.guestProfile?.displayName?.trim() && !playerName.trim()) {
+          setPlayerName(params.emailValue.split('@')[0] || 'Guest')
+        }
+      } else if (data.accountStatus === 'none') {
+        if (!playerName.trim()) {
+          setPlayerName(params.emailValue.split('@')[0] || 'Guest')
+        }
+      }
+    } catch (precheckError) {
+      if (precheckRequestIdRef.current !== params.requestId) {
+        return
+      }
+
+      const message = precheckError instanceof Error ? precheckError.message : 'Email check failed'
+      setError(message)
+      setEmailChecked(false)
+      setPrecheckResult(null)
+      setEmailCheckStatus('error')
+    } finally {
+      if (precheckRequestIdRef.current === params.requestId) {
+        setPrecheckLoading(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    const trimmedEmail = email.trim()
+
+    setEmailChecked(false)
+    setPrecheckResult(null)
+    setFullAccountPassword('')
+
+    if (!trimmedEmail) {
+      setEmailCheckStatus('idle')
+      setPrecheckLoading(false)
+      return
+    }
+
+    if (!isValidEmailFormat(trimmedEmail)) {
+      setEmailCheckStatus('invalid')
+      setPrecheckLoading(false)
+      return
+    }
+
+    const requestId = precheckRequestIdRef.current + 1
+    precheckRequestIdRef.current = requestId
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        setPrecheckLoading(true)
+        setEmailCheckStatus('checking')
+        await runEmailPrecheck({ requestId, emailValue: trimmedEmail })
+      })()
+    }, 500)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [email])
+
+  const continueToCampaignSession = (campaignId: string) => {
     sessionStorage.setItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY, campaignId)
-    sessionStorage.setItem(LOBBY_NOTICE_STORAGE_KEY, message)
+    sessionStorage.setItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY, campaignId)
+    sessionStorage.removeItem(LOBBY_NOTICE_STORAGE_KEY)
     window.history.pushState({}, '', '/')
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
-  const runPreflight = async () => {
-    setPreflightLoading(true)
-    setError(null)
-    setErrorCode(null)
-    setPreflight(null)
-    try {
-      const response = await fetch(`${apiUrl}/api/auth/extension/preflight`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({
-          email,
-          externalSystem,
-          inviteCode,
-        }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        if (data?.code === 'INVITE_EXPIRED') {
-          setErrorCode('INVITE_EXPIRED')
-        }
-        throw new Error(data.message || 'Preflight failed')
-      }
-
-      setPreflight(data)
-    } catch (preflightError) {
-      const message = preflightError instanceof Error ? preflightError.message : 'Preflight failed'
-      setError(message)
-    } finally {
-      setPreflightLoading(false)
+  const handleAvatarSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
     }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Avatar must be an image file.')
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+
+    img.onload = () => {
+      try {
+        const naturalWidth = Math.max(1, img.naturalWidth)
+        const naturalHeight = Math.max(1, img.naturalHeight)
+        const scale = naturalWidth > MAX_AVATAR_WIDTH_PX ? MAX_AVATAR_WIDTH_PX / naturalWidth : 1
+        const targetWidth = Math.max(1, Math.round(naturalWidth * scale))
+        const targetHeight = Math.max(1, Math.round(naturalHeight * scale))
+
+        const canvas = document.createElement('canvas')
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          setError('Unable to process avatar image.')
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+
+        let quality = 0.84
+        let dataUrl = canvas.toDataURL('image/jpeg', quality)
+        while (dataUrl.length > 300_000 && quality > 0.55) {
+          quality -= 0.1
+          dataUrl = canvas.toDataURL('image/jpeg', quality)
+        }
+
+        setCharacterAvatarUrl(dataUrl)
+      } finally {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      setError('Unable to read avatar image.')
+    }
+
+    img.src = objectUrl
   }
 
-  const joinCampaign = async () => {
+  const joinAuthenticatedUser = async () => {
     if (!campaign || !authToken) {
       return
     }
 
-    setJoining(true)
-    setError(null)
-    setErrorCode(null)
-    setJoinMessage(null)
+    const joinResponse = await fetch(`${apiUrl}/api/campaigns/${campaign.id}/join`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inviteCode,
+      }),
+    })
 
-    try {
-      const response = await fetch(`${apiUrl}/api/campaigns/${campaign.id}/join`, {
+    const joinData = await joinResponse.json().catch(() => ({}))
+    if (!joinResponse.ok) {
+      throw new Error(joinData.message || 'Failed to join campaign')
+    }
+
+    const trimmedCharacterName = characterName.trim()
+    if (showCharacterDetails && trimmedCharacterName) {
+      await fetch(`${apiUrl}/api/campaigns/${campaign.id}/characters`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          inviteCode,
+          name: trimmedCharacterName,
+          race: characterRace.trim() || undefined,
+          class: characterClass.trim() || undefined,
+          avatarUrl: characterAvatarUrl || undefined,
+          metadata: { level: characterLevel },
+          isActive: true,
         }),
       })
+    }
 
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to join campaign')
+    continueToCampaignSession(campaign.id)
+  }
+
+  const joinAsGuest = async () => {
+    if (!campaign) {
+      return
+    }
+
+    const payload = {
+      inviteCode,
+      email: email.trim(),
+      displayName: playerName.trim(),
+      externalSystem: 'none',
+      character:
+        showCharacterDetails && characterName.trim()
+          ? {
+              name: characterName.trim(),
+              race: characterRace.trim() || undefined,
+              class: characterClass.trim() || undefined,
+              level: characterLevel,
+              avatarUrl: characterAvatarUrl || undefined,
+            }
+          : undefined,
+    }
+
+    const response = await fetch(`${apiUrl}/api/auth/player/guest-join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = (await response.json().catch(() => ({}))) as {
+      token?: string
+      user?: { id: string; username: string; role: 'PLAYER' }
+      message?: string
+      code?: string
+    }
+
+    if (!response.ok) {
+      if (data.code === 'FULL_ACCOUNT_EXISTS') {
+        setErrorCode('FULL_ACCOUNT_EXISTS')
       }
+      if (data.code === 'INVITE_EXPIRED') {
+        setErrorCode('INVITE_EXPIRED')
+      }
+      throw new Error(data.message || 'Unable to create player account for this invite')
+    }
 
-      continueToLobby(campaign.id, 'Campaign ready in your lobby. Continue when you are ready.')
+    if (data.token && data.user) {
+      onAuthenticated?.(data.token, {
+        id: data.user.id as UUID,
+        username: data.user.username,
+        role: data.user.role as Role,
+      })
+    }
+
+    continueToCampaignSession(campaign.id)
+  }
+
+  const joinAsFullAccount = async () => {
+    if (!campaign) {
+      return
+    }
+
+    const response = await fetch(`${apiUrl}/api/auth/player/full-join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inviteCode,
+        email: email.trim(),
+        password: fullAccountPassword,
+      }),
+    })
+
+    const data = (await response.json().catch(() => ({}))) as {
+      token?: string
+      user?: { id: string; username: string; role: 'DM' | 'PLAYER' | 'SPECTATOR' }
+      campaignId?: string
+      message?: string
+      code?: string
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to sign in and join campaign')
+    }
+
+    if (data.token && data.user) {
+      onAuthenticated?.(data.token, {
+        id: data.user.id as UUID,
+        username: data.user.username,
+        role: data.user.role as Role,
+      })
+    }
+
+    continueToCampaignSession(data.campaignId || campaign.id)
+  }
+
+  const submitJoin = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    if (!campaign) {
+      return
+    }
+
+    if (!emailChecked) {
+      setError('Check email before continuing.')
+      return
+    }
+
+    if (!email.trim()) {
+      setError('Email is required.')
+      return
+    }
+
+    if (isFullUserEmail && !fullAccountPassword.trim()) {
+      setError('Password is required for full account sign in.')
+      return
+    }
+
+    if (!isFullUserEmail && !playerName.trim()) {
+      setError('Player name is required.')
+      return
+    }
+
+    setJoining(true)
+    setError(null)
+    setErrorCode(null)
+
+    try {
+      if (authToken) {
+        await joinAuthenticatedUser()
+      } else if (isFullUserEmail) {
+        await joinAsFullAccount()
+      } else {
+        await joinAsGuest()
+      }
     } catch (joinError) {
       const message = joinError instanceof Error ? joinError.message : 'Failed to join campaign'
       setError(message)
     } finally {
       setJoining(false)
-    }
-  }
-
-  const shouldShowGuestLogin =
-    preflight?.suggestedFlow === 'guest' || preflight?.suggestedFlow === 'auto-login'
-
-  const handleSignInAndReturn = () => {
-    sessionStorage.setItem('postLoginRedirectPath', `/join/${encodeURIComponent(inviteCode)}`)
-    window.location.assign('/')
-  }
-
-  const handleExtensionGuestLogin = async () => {
-    setGuestLoginLoading(true)
-    setError(null)
-    setErrorCode(null)
-
-    try {
-      const campaignPacket =
-        externalCampaignId.trim() || dmExternalUserId.trim()
-          ? {
-              externalCampaignId: externalCampaignId.trim() || undefined,
-              dmExternalUserId: dmExternalUserId.trim() || undefined,
-            }
-          : undefined
-
-      const response = await fetch(`${apiUrl}/api/auth/extension/guest-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inviteCode,
-          externalSystem,
-          externalUserId,
-          email,
-          displayName: displayName.trim() || undefined,
-          campaignPacket,
-        }),
-      })
-
-      const data = (await response.json()) as ExtensionGuestLoginResponse & { message?: string }
-      if (!response.ok) {
-        if ((data as { code?: string }).code === 'FULL_ACCOUNT_EXISTS') {
-          setErrorCode('FULL_ACCOUNT_EXISTS')
-        }
-        if ((data as { code?: string }).code === 'INVITE_EXPIRED') {
-          setErrorCode('INVITE_EXPIRED')
-        }
-        throw new Error(data.message || 'Guest login failed')
-      }
-
-      const resolvedName =
-        (typeof data.user.username === 'string' && data.user.username.trim()) ||
-        (typeof data.user.displayName === 'string' && data.user.displayName.trim()) ||
-        email.split('@')[0] ||
-        'guest'
-
-      onAuthenticated?.(data.token, {
-        id: data.user.id as UUID,
-        username: resolvedName,
-        role: data.user.role as Role,
-      })
-
-      if (campaign) {
-        continueToLobby(campaign.id, 'Campaign ready in your lobby. Continue when you are ready.')
-        return
-      }
-
-      setJoinMessage('Extension guest login complete. You are now signed in.')
-    } catch (guestLoginError) {
-      const message =
-        guestLoginError instanceof Error ? guestLoginError.message : 'Guest login failed'
-      setError(message)
-    } finally {
-      setGuestLoginLoading(false)
     }
   }
 
@@ -301,20 +559,15 @@ export function InviteJoinPage({
             void validateInvite()
           }}
         >
-          <p className="m-0">Ask the DM for a new player invite code, then try again.</p>
+          <p>Ask the DM for a new player invite code, then try again.</p>
         </PolicyNotice>
       )
     }
 
     if (effectiveCode === 'FULL_ACCOUNT_EXISTS' || effectiveCode === 'FULL_ACCOUNT_REQUIRED') {
       return (
-        <PolicyNotice
-          title="Full account required"
-          tone="warning"
-          actionLabel="Sign In and Return"
-          onAction={handleSignInAndReturn}
-        >
-          <p className="m-0">Sign in with your full account, then return to this invite.</p>
+        <PolicyNotice title="Full account required" tone="warning">
+          <p>This email already has a full account. Enter your password below to continue.</p>
         </PolicyNotice>
       )
     }
@@ -328,173 +581,228 @@ export function InviteJoinPage({
   )
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-ui-lg border border-ui-border bg-ui-surface p-6">
-      <h2 className="mt-0 text-2xl font-semibold">Player Invite</h2>
-      <p className="text-sm text-ui-secondary">Invite code: {inviteCode}</p>
+    <main className="invite-join-page">
+      <section className="invite-join-shell" aria-label="Player invite join">
+        <aside
+          className={`invite-join-campaign ${campaign?.posterUrl ? 'has-poster' : ''}`}
+          style={
+            campaign?.posterUrl
+              ? {
+                  backgroundImage: `linear-gradient(120deg, rgba(8, 16, 28, 0.84), rgba(8, 16, 28, 0.66)), url(${campaign.posterUrl})`,
+                }
+              : undefined
+          }
+        >
+          <div className="invite-join-campaign__chip">Player Invite</div>
+          <h1 className="invite-join-campaign__title">{campaign?.name || 'Campaign Invite'}</h1>
+          <p className="invite-join-campaign__subtitle">Invite code {inviteCode}</p>
 
-      {loading && <p>Validating invite...</p>}
+          {campaign ? (
+            <>
+              <div className="invite-join-campaign__stats" aria-label="Campaign activity stats">
+                <span className="invite-join-campaign__stat">
+                  Players {campaign.connectedPlayersLabel}
+                </span>
+                <span className="invite-join-campaign__stat">
+                  Spectators {campaign.connectedSpectatorsLabel}
+                </span>
+                <span className="invite-join-campaign__stat">
+                  {getStateLabel(campaign.displayState)}
+                </span>
+              </div>
+              <div className="invite-join-campaign__meta">
+                <span>DM</span>
+                <strong>{campaign.dmDisplayName}</strong>
+                <span
+                  className={`invite-join-campaign__presence ${campaign.dmOnline ? 'online' : 'offline'}`}
+                >
+                  {campaign.dmOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              {campaign.description ? (
+                <p className="invite-join-campaign__description">{campaign.description}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="invite-join-campaign__description">Validating campaign invite.</p>
+          )}
+        </aside>
 
-      {renderPolicyNotice()}
+        <section className="invite-join-form-wrap invite-join-form-wrap--short-desktop">
+          <header className="invite-join-form-wrap__header">
+            <h2>Join campaign</h2>
+          </header>
 
-      {campaign && (
-        <section className="space-y-3">
-          <div className="rounded-ui-sm border border-ui-border p-3">
-            <p className="m-0 text-sm">
-              <strong>Campaign:</strong> {campaign.name}
-            </p>
-            <p className="m-0 mt-1 text-sm">
-              <strong>DM:</strong> {campaign.dmDisplayName}
-            </p>
-          </div>
+          {loading && <p className="invite-join-status">Validating invite…</p>}
 
-          <div className="rounded-ui-sm border border-ui-border p-3">
-            <h3 className="mt-0 text-base font-semibold">Continue from Extension</h3>
-            <p className="text-sm text-ui-secondary">
-              Use this when joining from the extension. Non-extension users can use standard join.
-            </p>
-            <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
-              <label className="block text-sm">
-                <span className="mb-1 block">Email</span>
+          {renderPolicyNotice()}
+
+          {campaign && (
+            <form className="invite-join-form" onSubmit={submitJoin}>
+              <label htmlFor="join-player-email">Email</label>
+              <div className="invite-join-email-field">
                 <input
+                  id="join-player-email"
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                  placeholder="you@example.com"
+                  onChange={(event) => {
+                    setEmail(event.target.value)
+                  }}
+                  autoComplete="email"
                 />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block">External System</span>
-                <input
-                  type="text"
-                  value={externalSystem}
-                  onChange={(event) => setExternalSystem(event.target.value)}
-                  className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                />
-              </label>
+                <span
+                  className={`invite-join-email-status status-${
+                    emailCheckStatus === 'guest' || emailCheckStatus === 'full'
+                      ? emailCheckStatus
+                      : emailCheckStatus === 'checking'
+                        ? 'checking'
+                        : emailCheckStatus === 'invalid' || emailCheckStatus === 'error'
+                          ? 'error'
+                          : 'none'
+                  }`}
+                  aria-label={getEmailStatusLabel(emailCheckStatus)}
+                  title={getEmailStatusLabel(emailCheckStatus)}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {getEmailStatusIcon(emailCheckStatus)}
+                  </span>
+                </span>
+              </div>
+
+              {precheckLoading && <p className="invite-join-status">Checking email…</p>}
+              {emailCheckStatus === 'invalid' && (
+                <p className="invite-join-status">Enter a valid email to continue.</p>
+              )}
+
+              {isFullUserEmail && (
+                <PolicyNotice title="Full account found" tone="info">
+                  <p>This email belongs to a full account. Enter your password to continue.</p>
+                </PolicyNotice>
+              )}
+
+              {canEditJoinFields && (
+                <>
+                  <label htmlFor="join-player-name">Player name</label>
+                  <input
+                    id="join-player-name"
+                    type="text"
+                    value={playerName}
+                    onChange={(event) => setPlayerName(event.target.value)}
+                    autoComplete="name"
+                  />
+
+                  <button
+                    type="button"
+                    className="invite-join-disclosure"
+                    onClick={() => setShowCharacterDetails((prev) => !prev)}
+                    aria-expanded={showCharacterDetails}
+                  >
+                    {showCharacterDetails
+                      ? 'Hide optional character details'
+                      : 'Show optional character details'}
+                  </button>
+
+                  {showCharacterDetails && (
+                    <div className="invite-join-character-grid">
+                      <p className="invite-join-character-grid__title">Optional</p>
+
+                      <label htmlFor="join-character-name">Character name</label>
+                      <input
+                        id="join-character-name"
+                        type="text"
+                        value={characterName}
+                        onChange={(event) => {
+                          setCharacterName(event.target.value)
+                          setCharacterNameTouched(true)
+                        }}
+                      />
+
+                      <label htmlFor="join-character-race">Race</label>
+                      <input
+                        id="join-character-race"
+                        type="text"
+                        value={characterRace}
+                        onChange={(event) => setCharacterRace(event.target.value)}
+                      />
+
+                      <label htmlFor="join-character-class">Class</label>
+                      <input
+                        id="join-character-class"
+                        type="text"
+                        value={characterClass}
+                        onChange={(event) => setCharacterClass(event.target.value)}
+                      />
+
+                      <label htmlFor="join-character-level">Level</label>
+                      <input
+                        id="join-character-level"
+                        type="range"
+                        min={1}
+                        max={20}
+                        step={1}
+                        value={characterLevel}
+                        onChange={(event) => setCharacterLevel(Number(event.target.value) || 1)}
+                      />
+                      <output className="invite-join-level-output" htmlFor="join-character-level">
+                        Level {characterLevel}
+                      </output>
+
+                      <label htmlFor="join-character-avatar">Avatar upload</label>
+                      <input
+                        id="join-character-avatar"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarSelected}
+                      />
+
+                      {characterAvatarUrl ? (
+                        <img
+                          src={characterAvatarUrl}
+                          alt="Character avatar preview"
+                          className="invite-join-avatar-preview"
+                        />
+                      ) : null}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {isFullUserEmail && (
+                <>
+                  <label htmlFor="join-full-password">Password</label>
+                  <input
+                    id="join-full-password"
+                    type="password"
+                    value={fullAccountPassword}
+                    onChange={(event) => setFullAccountPassword(event.target.value)}
+                    autoComplete="current-password"
+                  />
+                </>
+              )}
+
               <button
-                type="button"
-                onClick={runPreflight}
-                disabled={preflightLoading || !email.trim() || !externalSystem.trim()}
-                className="rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-400"
+                type="submit"
+                className="invite-join-submit"
+                disabled={
+                  joining ||
+                  precheckLoading ||
+                  !emailChecked ||
+                  !email.trim() ||
+                  (isFullUserEmail ? !fullAccountPassword.trim() : !playerName.trim())
+                }
               >
-                {preflightLoading ? 'Checking...' : 'Run preflight'}
+                {joining ? 'Joining…' : 'Join Campaign'}
               </button>
-            </div>
-            {preflight && (
-              <p className="mt-2 text-sm">
-                accountStatus: <strong>{preflight.accountStatus}</strong>, suggestedFlow:{' '}
-                <strong>{preflight.suggestedFlow}</strong>
-              </p>
-            )}
+            </form>
+          )}
 
-            {shouldShowGuestLogin && (
-              <div className="mt-3 rounded-ui-sm border border-ui-border p-3">
-                <h4 className="m-0 text-sm font-semibold">Continue with Guest Access</h4>
-                <p className="mt-1 text-sm text-ui-secondary">
-                  Continue with extension-backed guest auth to receive a platform session token.
-                </p>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <label className="block text-sm">
-                    <span className="mb-1 block">External User ID</span>
-                    <input
-                      type="text"
-                      value={externalUserId}
-                      onChange={(event) => setExternalUserId(event.target.value)}
-                      className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                      placeholder="ddb-user-123"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="mb-1 block">Display Name (optional)</span>
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(event) => setDisplayName(event.target.value)}
-                      className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                      placeholder="Character or player name"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="mb-1 block">External Campaign ID (optional)</span>
-                    <input
-                      type="text"
-                      value={externalCampaignId}
-                      onChange={(event) => setExternalCampaignId(event.target.value)}
-                      className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                      placeholder="ddb-campaign-123"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="mb-1 block">DM External User ID (optional)</span>
-                    <input
-                      type="text"
-                      value={dmExternalUserId}
-                      onChange={(event) => setDmExternalUserId(event.target.value)}
-                      className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                      placeholder="ddb-dm-123"
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleExtensionGuestLogin}
-                  disabled={
-                    guestLoginLoading ||
-                    !email.trim() ||
-                    !externalSystem.trim() ||
-                    !externalUserId.trim()
-                  }
-                  className="mt-3 rounded-ui-sm bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  {guestLoginLoading ? 'Continuing...' : 'Continue with Extension Guest Access'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-ui-sm border border-ui-border p-3">
-            <h3 className="mt-0 text-base font-semibold">Continue in the App</h3>
-            <p className="text-sm text-ui-secondary">
-              Already authenticated in the app? Continue directly into this campaign.
-            </p>
-            <button
-              type="button"
-              onClick={joinCampaign}
-              disabled={!authToken || joining}
-              className="rounded-ui-sm bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              {joining ? 'Continuing...' : 'Continue to Campaign'}
-            </button>
-            {!authToken && (
-              <div className="mt-2 space-y-2">
-                <p className="text-sm text-ui-secondary">
-                  Log in from the app home page first if you are not using extension guest auth.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSignInAndReturn}
-                  className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm font-medium text-ui-primary hover:bg-ui-surface-muted"
-                >
-                  Sign In and Return to Invite
-                </button>
-              </div>
-            )}
-          </div>
+          {error && !hasPolicyNotice && (
+            <PolicyNotice title="Something went wrong" tone="danger">
+              <p>{error}</p>
+            </PolicyNotice>
+          )}
         </section>
-      )}
-
-      {joinMessage && (
-        <PolicyNotice title="Ready to continue" tone="success">
-          <p className="m-0">{joinMessage}</p>
-        </PolicyNotice>
-      )}
-
-      {error && !hasPolicyNotice && (
-        <PolicyNotice title="Something went wrong" tone="danger">
-          <p className="m-0">{error}</p>
-        </PolicyNotice>
-      )}
-    </div>
+      </section>
+    </main>
   )
 }
