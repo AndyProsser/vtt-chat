@@ -15,7 +15,7 @@ _How the browser extension enables low-friction, invite-link-based onboarding by
 
 ## Overview
 
-VTT-Chat supports two distinct guest access paths. Both allow users to participate without a full registered account, but they differ in how identity is established and what they can do.
+VTT-Chat supports two distinct invite access paths. Only one path creates guest accounts.
 
 ### Player Guest Path (extension-required)
 
@@ -35,13 +35,15 @@ Guest DMs may see an `Open Admin` entry point in the main frontend for discovera
 
 **Guest players are campaign-scoped.** A guest player account cannot browse or join other campaigns independently. Each additional campaign requires a separate extension-based authentication.
 
-### Spectator Guest Path (no extension required)
+### Spectator Watch Path (no extension required)
 
-The DM generates a separate **spectator invite link**. Spectators open this link in a browser — no extension required. The invite page shows campaign details, active character roster with connection status, and current session status. The user enters their name and email to create a lightweight guest spectator account. No password is required; the invite itself validates their session.
+The DM generates a separate **spectator invite link**. Spectators open this link in a browser — no extension required. The invite page shows campaign details, active character roster with connection status, and current session status. Spectators can either authenticate with a full account or create a temporary guest spectator account for watch-session access.
 
 Full-account users can also find and join campaigns that advertise themselves as open to spectators via the campaign browse page — no invite link required for that path.
 
-The DM has ultimate authority over spectator access: whether spectators are permitted at all, what account types are allowed, how many can be present simultaneously, and whether a waitlist is maintained.
+The DM has ultimate authority over spectator access: whether spectators are permitted, what account types are allowed, how many can be present simultaneously, and whether a waitlist is maintained.
+
+Campaign visibility is independent from session state. Campaign cards are shown based on campaign privacy and access rules; session lifecycle only affects launch/watch actions and history availability.
 
 ### Current validation status (2026-05)
 
@@ -77,6 +79,14 @@ vtt-chat treats the combination of `(externalSystem, externalUserId, email)` as 
 | DM status from external campaign owner field      | Role escalation beyond what the external system indicates |
 | Avatar URL and display name from external profile | Arbitrary metadata injected by the extension              |
 
+### 1.3 Canonical Relationship Model
+
+- Campaign participation is modeled as `User -> CampaignMembership(role) -> Character`.
+- A campaign membership has one active role (`DM`, `PLAYER`, or `SPECTATOR`) at a time.
+- Player memberships have one active character per campaign. Character replacement is allowed.
+- Chat/history records retain send-time character snapshot fields so old messages keep the original character identity.
+- Spectator memberships do not own characters.
+
 ---
 
 ## 2. Invite Links and Spectator Access
@@ -109,7 +119,7 @@ Spectator invite links open a browser page — no extension installation require
 - Only full-account DMs can generate spectator invite links.
 - One active spectator invite code per campaign (separate from the player invite code).
 - The spectator invite page shows: campaign name, DM display name, active character roster with connection status, and current session status (in session / between sessions).
-- The user enters their name and email to create a guest spectator account. No password is set; the invite validates their session.
+- The user may authenticate with a full account or create a temporary guest spectator account.
 - Spectators **cannot access the green room**. Spectator sessions are only active during a live session. Spectators who connect between sessions see the status page only.
 
 ```text
@@ -158,11 +168,11 @@ If capacity is reached, the response indicates the waitlist position. The user c
 
 The DM sets spectator policy per campaign from Campaign Settings:
 
-| Setting  | Label                  | Who can spectate                                                                |
-| -------- | ---------------------- | ------------------------------------------------------------------------------- |
-| `NONE`   | No spectators          | Spectators are disabled. Campaign still appears in browse (marked as private).  |
-| `GUESTS` | Guests & full accounts | Anyone with a spectator invite or a full account (if campaign is discoverable). |
-| `USERS`  | Full accounts only     | Only users with full vtt-chat accounts can spectate.                            |
+| Setting  | Label                  | Who can spectate                                                               |
+| -------- | ---------------------- | ------------------------------------------------------------------------------ |
+| `NONE`   | No spectators          | Spectators are disabled. Campaign still appears in browse (marked as private). |
+| `GUESTS` | Guests & full accounts | Anyone with a spectator invite can spectate (subject to capacity/waitlist).    |
+| `USERS`  | Full accounts only     | Only users with full vtt-chat accounts can spectate.                           |
 
 Additional controls:
 
@@ -170,12 +180,13 @@ Additional controls:
 - **Waitlist**: enabled/disabled per campaign. When enabled and at capacity, new spectators join a waitlist and are auto-promoted when a slot opens.
 - **Reconnect grace period**: a disconnected spectator retains their slot for a configurable grace period (sysadmin-controlled default) before being removed and triggering a waitlist promotion.
 - **Discoverable**: boolean. When true and `spectatorPolicy != NONE`, the campaign appears in the public campaign browse list for full-account users.
+- **Session grandfathering rule**: if spectators are disabled mid-session, already-connected spectators keep access until that session ends. New sessions block spectator entry until spectators are re-enabled.
 
 ---
 
 ### 2.4 Campaign Browse (Full Account Users)
 
-Full-account users can browse active campaigns that have spectators enabled and `discoverable = true`. This does not require an invite link.
+Full-account users can browse campaigns that are visible by campaign privacy/access rules. This does not require an invite link.
 
 Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear in browse results as **private** (name shown, no join option).
 
@@ -186,7 +197,7 @@ GET /api/campaigns/browse
 Response includes:
 
 - Campaign name, DM display name
-- Session status (active / between sessions)
+- Session status (active / between sessions) for launch/watch context only
 - Spectator slot count and availability
 - Whether the campaign is private (join button disabled)
 
@@ -274,7 +285,7 @@ Response:
 POST /api/auth/extension/preflight
 ```
 
-Body:
+Legacy body shape (deprecated compatibility):
 
 ```json
 {
@@ -412,7 +423,7 @@ When the DM connects (if not the first user):
 
 ---
 
-### 4.6 Guest Spectator (Via Spectator Invite Link)
+### 4.6 Spectator Watch Join (Via Spectator Invite Link)
 
 No extension required.
 
@@ -424,12 +435,12 @@ User opens https://<platform>/watch/<spectatorInviteCode>
   → if spectatorPolicy = NONE: show "Spectators not enabled" message
   → if at capacity and waitlist disabled: show "Session full" message
   → if at capacity and waitlist enabled: offer waitlist opt-in
-  → user enters displayName + email
-  → POST /api/auth/spectator/guest-join
-  → backend creates guest User record (authType = GUEST, role = SPECTATOR)
-  → if slot available: JWT issued immediately, user enters session view
+  → if unauthenticated: user may continue as guest spectator or log in/register
+  → if guest path selected: POST /api/auth/spectator/guest-join
+  → backend creates guest spectator user + spectator campaign membership
+  → if slot available: token issued, user enters session view
   → if on waitlist: polling/push notification; promoted automatically when slot opens
-  → on promotion: JWT issued, user enters session view
+  → on promotion: token issued, user enters session view
 ```
 
 Spectator guest endpoint:
@@ -437,6 +448,8 @@ Spectator guest endpoint:
 ```text
 POST /api/auth/spectator/guest-join
 ```
+
+This endpoint is the canonical guest spectator onboarding path for direct watch links.
 
 Body:
 
@@ -448,7 +461,7 @@ Body:
 }
 ```
 
-Response (slot available):
+Legacy response (slot available):
 
 ```json
 {
@@ -459,7 +472,7 @@ Response (slot available):
 }
 ```
 
-Response (waitlisted):
+Legacy response (waitlisted):
 
 ```json
 {
@@ -500,7 +513,7 @@ Full-account user navigates to /browse
   → if spectatorPolicy = NONE: campaign shown as private, no join option
 ```
 
-Full account spectators are subject to the same max-slot and waitlist rules as guest spectators.
+Full-account spectators are subject to the same max-slot and waitlist rules as guest spectators.
 
 ---
 
@@ -510,8 +523,9 @@ Regardless of account type:
 
 - Spectators **cannot access the green room**.
 - Spectators cannot send chat messages, whispers, or notes.
-- Spectators cannot interact with audio controls.
+- Spectators can adjust local audio mix only (client-local), and cannot change room/global audio state.
 - Spectators can see the character roster, presence indicators, and in-session chat (read-only).
+- Private chats are always hidden from spectators.
 - If the session ends, the spectator view shows a "Session ended" state and the spectator's slot is released.
 - A disconnected spectator retains their slot for the reconnect grace period (sysadmin-controlled, default recommended: 60 seconds). After expiry the slot is released and the next waitlist entry is promoted.
 
@@ -524,6 +538,8 @@ POST /api/auth/extension/guest-login
 ```
 
 Used by both players and DMs. Role is determined server-side from the `campaignPacket.dmExternalUserId` field.
+
+Policy lock note (2026-05-04): DM/Player guest access is granted only through this extension POST invite flow. Resulting guest access is campaign-scoped and can later be upgraded to a full account. Outside extension launch, DM/Player guest access is not granted.
 
 Body:
 
@@ -765,33 +781,28 @@ Response: new JWT + updated user record.
 
 ### 7.3 Spectator → Player / DM Account Transition
 
-Spectators are not extension users. However, a user who started as a guest spectator can transition to a player or DM account by either path below. Both paths require **email verification** to confirm the spectator controls the claimed address.
+Spectators are not extension users. A spectator (guest or full account) who later uses a valid player invite in the extension can transition to player access when the account identity can be safely linked.
 
-**Path A — Register a full account:**
-
-```text
-Spectator clicks "Create Account"
-  → registration form with email pre-filled (read-only from spectator session)
-  → user sets password
-  → verification email sent to that address
-  → user confirms email link
-  → backend upgrades account to FULL and merges spectator session history
-  → user may now join campaigns via player invite or standard auth
-```
-
-**Path B — Join via player invite link:**
+**Path A — Full-account spectator uses player invite:**
 
 ```text
 Spectator opens a player invite link in the extension
-  → extension sends POST /api/auth/extension/guest-login with invite code + email
-  → backend finds matching spectator account by email
-  → sends verification email to confirm ownership
-  → user confirms link
-  → backend merges spectator account with the new player membership
-  → JWT issued with Player (or DM) role for the campaign
+  → extension runs preflight and guest-login flow as normal
+  → backend finds existing authenticated user context
+  → campaign membership role changes from SPECTATOR to PLAYER (or DM if external ownership matches)
+  → transition is immediate and launch proceeds
 ```
 
-In both paths the user's vtt-chat UUID is preserved and all existing session history (spectator chat, presence records) is retained.
+**Path B — Guest spectator upgrades through extension player invite:**
+
+```text
+Guest spectator opens player invite in extension
+  → backend links by safe email/system match rules
+  → campaign membership role is set to PLAYER (or DM if external ownership matches)
+  → launch proceeds without extra registration prompts
+```
+
+In both paths the user's vtt-chat UUID is preserved and campaign/session history is retained.
 
 ### 7.4 Data Continuity
 
@@ -817,7 +828,7 @@ The platform trusts the scraped email address only within the context of a valid
 
 - The invite code is invalid → request rejected.
 - The external system is not authorized → request rejected.
-- The email does not match an existing account → guest account created (not merged with any existing full account without explicit user confirmation).
+- The email does not match an existing account on extension POST guest-login → guest account created (not merged with any existing full account without explicit user confirmation).
 
 ### 8.3 No Credential Exposure
 
@@ -894,8 +905,17 @@ From Campaign Settings → Spectators:
 | Waitlist         | Enabled / Disabled                                            |
 | Discoverable     | Yes / No (whether campaign appears in the browse list)        |
 
-Changing `spectatorPolicy` to `NONE` immediately disconnects all active spectators.
+Changing `spectatorPolicy` to `NONE` blocks new spectator joins immediately. Spectators already connected in the current session remain until that session ends.
 Reducing `spectatorMax` below the current active count drops the most recently joined spectators first.
+
+### 9.4.1 Screened Late-Join Handling (Players)
+
+When campaign late-join mode is `SCREENED`:
+
+- Player late-join requests create a pending request with an expiry window.
+- Expired requests require a new join attempt.
+- DM can respond directly from the pending queue with either a message or a private voice-chat screening invite.
+- Grace-period rules apply to reconnect continuity for previously joined players and do not auto-approve brand-new late arrivals.
 
 ### 9.5 Invite Link Lifecycle
 

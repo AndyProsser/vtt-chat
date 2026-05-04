@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 This is the canonical development roadmap for feature-stage delivery and progress tracking.
 
@@ -821,6 +821,17 @@ Completed scope:
 - External-system authorization guardrails (Stage 10.4 dependency) are enforced across guest auth entry points.
 - Core schema/runtime support for guest accounts (`authType`), external identities, campaign spectator/sync controls, and waitlist state is in place.
 
+Policy lock addendum (2026-05-04, docs/contract alignment):
+
+- Extension player-invite POST flow remains the only guest-account creation path; preflight and guest-login endpoint contracts remain stable.
+- Direct watch-link GET flow is registration-first (no new spectator guest creation).
+- Campaign relationship model is locked as `User -> CampaignMembership(role) -> Character(player-only)` with one active character per player per campaign.
+- Character replacement is supported while message history preserves send-time character snapshot identity.
+- Spectator-to-player transition is immediate when a spectator uses a valid player invite and auth context matches.
+- If spectators are disabled during an active session, existing spectators are grandfathered until that session ends; new sessions block spectator entry until re-enabled.
+- Campaign card visibility is governed by campaign privacy/access rules and is not altered by session lifecycle state.
+- Screened late-join requests require DM approval before launch and expire if unanswered.
+
 #### **Stage 13.2: External Identity and Campaign Linking**
 
 Status: **Complete**
@@ -1086,6 +1097,8 @@ The following references support the corrected stage labels and current model te
 ---
 
 ## 5) Progress Log (Condensed)
+
+- 2026-05: User-flow policy lock and docs alignment completed for login-to-launch behavior. Locked relationship model as `User -> CampaignMembership(role) -> Character(player-only)` with send-time character snapshots, set direct watch-link flow to registration-first, confirmed extension preflight/guest-login contract stability, set spectator disable behavior to current-session grandfathering, and documented screened late-join expiry plus DM message/private-voice screening response options.
 
 - 2026-05: Admin type architecture fully centralized. All domain types moved from five feature-local `types.ts` files to `admin/src/types/` (nine modules: `auth`, `nav`, `integrations`, `common`, `campaigns`, `logs`, `monitoring`, `settings`, `users` + `index` barrel). Feature-local shim files deleted. `@/` path alias configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`; all 33 consumer imports updated to `@/types/*`. Admin build and type-check remain green (16/16 files, 137 tests).
 

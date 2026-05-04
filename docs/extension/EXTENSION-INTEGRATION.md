@@ -355,10 +355,11 @@ The extension supports a guest authentication model where the external VTT (e.g.
 
 **Key behaviours:**
 
-- New users get a guest account created automatically — no registration required.
+- Extension player-invite POST flow is the only path that creates guest accounts.
 - Returning guests are matched by `(email + externalSystem)` and their data is updated per the campaign's sync policy.
 - Users with an existing full vtt-chat account must log in with their password.
 - Guest users can upgrade to a full account from within the platform UI.
+- Direct browser watch-link (GET) spectator flow is registration-first and does not create new guest spectators.
 
 See [GUEST-AUTH.md](GUEST-AUTH.md) for the complete specification covering:
 

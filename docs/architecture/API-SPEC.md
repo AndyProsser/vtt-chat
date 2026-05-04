@@ -287,7 +287,9 @@ Used by the extension pre-flight to determine which auth branch to present the u
 
 ### /api/auth/extension/guest-login`
 
-Creates or resumes a guest session based on extension-scraped identity data and a valid player invite code. Used by **both players and DMs** — no separate DM endpoint exists. The server determines the caller's table role (DM or Player) by comparing `externalUserId` against `campaignPacket.dmExternalUserId`.
+Canonical extension endpoint for guest DM/Player launch via invite POST. Used by **both players and DMs**; no separate DM endpoint exists. The server determines the caller's table role (DM or Player) by comparing `externalUserId` against `campaignPacket.dmExternalUserId`.
+
+Policy lock note (2026-05-04): DM/Player guest access is granted only through extension invite POST flow (`POST /api/auth/extension/guest-login`), and resulting guest access is campaign-scoped. Guest users can later upgrade to full accounts. Outside extension launch, DM/Player guest access is not granted.
 
 No authentication required. Validates invite code and authorized external system before creating any records.
 
@@ -435,7 +437,9 @@ See [../extension/THIRD-PARTY-INTEGRATIONS.md § 11](../extension/THIRD-PARTY-IN
 
 #### /api/campaigns/watch/:code/validate`
 
-Public endpoint. Validates a spectator invite code and returns campaign info, character roster, and slot availability. No authentication required.
+Public endpoint. Validates a spectator invite code and returns campaign info, character roster, and slot availability. No authentication required for validation.
+
+Join policy: this watch flow can proceed with a full account or can create a temporary guest spectator via `POST /api/auth/spectator/guest-join`, depending on policy and slot availability.
 
 **Response (valid, session active)**
 
@@ -481,9 +485,11 @@ Public endpoint. Validates a spectator invite code and returns campaign info, ch
 
 #### /api/auth/spectator/guest-join`
 
-Creates a guest spectator account and issues a token (if a slot is available) or a waitlist position (if at capacity with waitlist enabled).
+Canonical spectator guest onboarding endpoint for direct watch links. Creates a temporary guest spectator session and issues a token (or waitlist position) when policy allows.
 
 No authentication required. Validates spectator invite code, `spectatorPolicy`, and slot availability.
+
+Guest spectator identities created here are temporary and scoped to watch-session participation.
 
 **Body**
 
@@ -542,7 +548,7 @@ Requires `waitlistToken` as a query parameter (no user auth required; the token 
 
 #### /api/campaigns/browse`
 
-Lists discoverable active campaigns with spectator slots for full-account users. Guest player accounts are not permitted to access this endpoint.
+Lists campaigns visible by campaign privacy/access rules for full-account users. Guest player accounts are not permitted to access this endpoint.
 
 Requires valid full-account JWT.
 
@@ -575,9 +581,13 @@ Requires valid full-account JWT.
 
 Campaigns with `spectatorPolicy = NONE` or `discoverable = false` appear with `private: true` and no slot info.
 
+Campaign visibility is campaign-scoped and is not removed by session lifecycle state. Session status is returned for launch/watch context and history routing only.
+
 ---
 
 ## Users & Characters
+
+Policy lock note (2026-05-04): campaign participation relationship is `User -> CampaignMembership(role) -> Character` (player-only character ownership), with one active character per player per campaign. Character replacement is supported; message/history records should preserve send-time character snapshot identity.
 
 ### /api/users/me`
 

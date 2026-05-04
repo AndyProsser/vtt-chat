@@ -97,6 +97,13 @@ Note // id, sessionId, title, content, authorId, visibility, timestamps
 Metadata // id, sessionId, roomId, type, title, tags, timestamps
 ```
 
+Campaign-model compatibility addendum (2026-05-04 lock):
+
+- Canonical relationship chain for campaign participation is `User -> CampaignMembership(role) -> Character`.
+- A player has one active character per campaign; character replacement is allowed.
+- Message/history records preserve send-time character snapshot fields (for example name/avatar) so prior logs remain historically accurate after character replacement.
+- Spectators do not own characters and cannot create campaign-state mutations.
+
 ---
 
 ## 2. Event Contracts
