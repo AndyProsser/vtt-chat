@@ -23,6 +23,24 @@ This document is the implementation contract for Stage 0 and currently matches `
 Some subsystem and UI docs include richer product terminology that is planned or conceptual.
 Where names differ, treat this file as canonical for current runtime behavior.
 
+### Audio Broadcast Terminology (Canonical + Legacy Aliases)
+
+Canonical runtime naming for DM session-wide narration is **broadcast**.
+
+- REST endpoint (canonical): `POST /api/audio/broadcast`
+- REST endpoint (legacy alias): `POST /api/audio/voice-of-god`
+- Response field (canonical): `broadcast`
+- Response field (legacy alias): `voiceOfGod`
+- WebSocket event (canonical): `AUDIO:BROADCAST_STATE_CHANGED`
+- WebSocket event (legacy alias): `AUDIO:VOICE_OF_GOD_CHANGED`
+- LiveKit token channel (canonical): `broadcast`
+- LiveKit token channel (legacy alias): `voice_of_god`
+
+Compatibility policy:
+
+- New integrations should use canonical broadcast names.
+- Legacy aliases remain accepted during migration to avoid breaking existing clients.
+
 ---
 
 ## Location

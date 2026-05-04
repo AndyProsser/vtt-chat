@@ -43,8 +43,8 @@ interface RoomSelectorProps {
   dmUserId: UUID
   headerModeCopy?: string
   canManageRooms: boolean
-  voiceOfGodEnabled: boolean
-  onToggleVoiceOfGod: (enabled: boolean) => Promise<void>
+  broadcastModeEnabled: boolean
+  onToggleBroadcastMode: (enabled: boolean) => Promise<void>
   rooms: RoomSelectorRoomWithParticipants[]
   selectedRoomId?: UUID | ''
   onSelectRoom: (roomId: UUID) => void
@@ -57,8 +57,8 @@ export function RoomSelector({
   dmUserId,
   headerModeCopy,
   canManageRooms,
-  voiceOfGodEnabled,
-  onToggleVoiceOfGod,
+  broadcastModeEnabled,
+  onToggleBroadcastMode,
   rooms,
   selectedRoomId,
   onSelectRoom,
@@ -191,19 +191,19 @@ export function RoomSelector({
                 <div className="room-selector-dm__voice-controls">
                   <button
                     type="button"
-                    className={`room-selector-dm__vog ${voiceOfGodEnabled ? 'active' : ''}`}
+                    className={`room-selector-dm__vog ${broadcastModeEnabled ? 'active' : ''}`}
                     onClick={() => {
-                      void onToggleVoiceOfGod(!voiceOfGodEnabled).catch((error) => {
+                      void onToggleBroadcastMode(!broadcastModeEnabled).catch((error) => {
                         setMoveError(
-                          error instanceof Error ? error.message : 'Failed to toggle Voice of God'
+                          error instanceof Error ? error.message : 'Failed to toggle DM Broadcast'
                         )
                       })
                     }}
-                    aria-pressed={voiceOfGodEnabled}
+                    aria-pressed={broadcastModeEnabled}
                     title="Project DM voice to all active rooms."
                   >
                     <Icon name="signal" />
-                    Voice of God
+                    Broadcast Voice
                   </button>
                 </div>
               ) : null}
@@ -264,15 +264,15 @@ export function RoomSelector({
                     <button
                       type="button"
                       className={`room-selector-item__voice-toggle ${
-                        selectedRoomId === room.id && !voiceOfGodEnabled ? 'active' : ''
+                        selectedRoomId === room.id && !broadcastModeEnabled ? 'active' : ''
                       }`}
                       onClick={() => {
-                        if (voiceOfGodEnabled) {
-                          void onToggleVoiceOfGod(false)
+                        if (broadcastModeEnabled) {
+                          void onToggleBroadcastMode(false)
                         }
                         onSelectRoom(room.id)
                       }}
-                      aria-pressed={selectedRoomId === room.id && !voiceOfGodEnabled}
+                      aria-pressed={selectedRoomId === room.id && !broadcastModeEnabled}
                     >
                       <Icon name="voice" /> DM Voice Here
                     </button>

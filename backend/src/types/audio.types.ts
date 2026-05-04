@@ -38,12 +38,15 @@ export interface AudioDMOverrideState {
  * Session-wide DM broadcast mode. When enabled, DM audio is published to a dedicated
  * session broadcast room that all participants subscribe to.
  */
-export interface AudioVoiceOfGodState {
+export interface AudioBroadcastState {
   enabled: boolean
   dmId?: UUID
   broadcastRoomId: string
   changedAt?: number
 }
+
+/** @deprecated Use AudioBroadcastState */
+export type AudioVoiceOfGodState = AudioBroadcastState
 
 /**
  * Full audio state for a session — returned by GET /api/audio/state/:sessionId.
@@ -52,5 +55,7 @@ export interface AudioSessionState {
   sessionId: UUID
   environments: AudioEnvironmentState[]
   dmOverrides: AudioDMOverrideState[]
-  voiceOfGod: AudioVoiceOfGodState
+  broadcast: AudioBroadcastState
+  /** @deprecated Use `broadcast` */
+  voiceOfGod: AudioBroadcastState
 }

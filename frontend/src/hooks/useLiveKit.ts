@@ -40,7 +40,7 @@ export interface UseLiveKitOptions {
   /** Called when a remote audio track is unsubscribed */
   onTrackUnsubscribed?: (trackSid: string) => void
   /** Token channel requested from backend. */
-  tokenChannel?: 'room' | 'voice_of_god'
+  tokenChannel?: 'room' | 'broadcast' | 'voice_of_god'
 }
 
 export function useLiveKit(
@@ -65,6 +65,7 @@ export function useLiveKit(
   const isMountedRef = useRef(true)
   const isConnectingRef = useRef(false)
   const connectionAttemptRef = useRef(0)
+  const connectionKeyRef = useRef<string | null>(null)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
@@ -98,6 +99,20 @@ export function useLiveKit(
 
   useEffect(() => {
     return () => {
+      // Unmount cleanup: tear down media/room without relying on state setters.
+      const activeAudioTrack = localAudioRef.current
+      if (activeAudioTrack) {
+        activeAudioTrack.stop()
+      }
+
+      const activeRoom = roomRef.current
+      roomRef.current = null
+      connectionKeyRef.current = null
+
+      if (activeRoom) {
+        void activeRoom.disconnect()
+      }
+
       isMountedRef.current = false
     }
   }, [])
@@ -111,6 +126,12 @@ export function useLiveKit(
   }, [onTrackUnsubscribed])
 
   const user = useStore((state) => state.currentUser)
+  const userId = user?.id ?? null
+
+  const isExpectedDisconnectError = useCallback((value: unknown): boolean => {
+    const message = (value instanceof Error ? value.message : String(value)).toLowerCase()
+    return message.includes('client initiated disconnect')
+  }, [])
 
   /**
    * Fetch a room-scoped LiveKit token from the backend.
@@ -162,6 +183,8 @@ export function useLiveKit(
       return
     }
 
+    const targetConnectionKey = `${sessionId}:${roomId}:${tokenChannel}`
+
     const attemptId = connectionAttemptRef.current + 1
     connectionAttemptRef.current = attemptId
     isConnectingRef.current = true
@@ -181,6 +204,7 @@ export function useLiveKit(
 
       nextRoom = new Room()
       roomRef.current = nextRoom
+      setRoomState(nextRoom)
 
       // Event handlers
       nextRoom.on(RoomEvent.Connected, () => {
@@ -294,12 +318,21 @@ export function useLiveKit(
       }
 
       setRoomState(nextRoom)
+      // Keep UI state in sync even if the Connected event callback is delayed or missed.
+      if (isMountedRef.current) {
+        setIsConnected(true)
+        setIsConnecting(false)
+      }
+      isConnectingRef.current = false
+      connectionKeyRef.current = targetConnectionKey
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
+      const expectedDisconnect = isExpectedDisconnectError(err)
 
       if (nextRoom && roomRef.current === nextRoom) {
         roomRef.current = null
       }
+      setRoomState(null)
 
       if (nextRoom) {
         try {
@@ -309,15 +342,28 @@ export function useLiveKit(
         }
       }
 
-      logger.error('useLiveKit', `Connection failed: ${errorMsg}`)
+      if (expectedDisconnect) {
+        logger.info('useLiveKit', `Connection cancelled: ${errorMsg}`)
+      } else {
+        logger.error('useLiveKit', `Connection failed: ${errorMsg}`)
+      }
       isConnectingRef.current = false
+      if (connectionKeyRef.current === targetConnectionKey) {
+        connectionKeyRef.current = null
+      }
       if (isMountedRef.current && connectionAttemptRef.current === attemptId) {
+        if (expectedDisconnect) {
+          setError(null)
+          setIsConnecting(false)
+          setIsConnected(false)
+          return
+        }
         setError(errorMsg)
         setIsConnecting(false)
         setIsConnected(false)
       }
     }
-  }, [fetchToken, roomId, setRoomState])
+  }, [fetchToken, roomId, setRoomState, isExpectedDisconnectError])
 
   /**
    * Publish the local microphone to the active room.
@@ -398,21 +444,37 @@ export function useLiveKit(
       setIsConnecting(false)
       logger.info('useLiveKit', 'Disconnected from room')
     }
+
+    connectionKeyRef.current = null
   }, [clearRemoteAudioElements, setLocalAudioTrackState, setLocalVideoTrackState, setRoomState])
 
   /**
    * Start a connection when session, room, and user context are all present.
    */
   useEffect(() => {
-    if (!sessionId || !roomId || !user) {
+    if (!sessionId || !roomId || !userId) {
       void disconnect()
       return
     }
 
     let cancelled = false
+    const targetConnectionKey = `${sessionId}:${roomId}:${tokenChannel}`
 
     const startConnection = async () => {
       await Promise.resolve()
+      if (cancelled) {
+        return
+      }
+
+      // If room target changed, disconnect stale room first before connecting.
+      if (
+        roomRef.current &&
+        connectionKeyRef.current &&
+        connectionKeyRef.current !== targetConnectionKey
+      ) {
+        await disconnect()
+      }
+
       if (!cancelled) {
         await connect()
       }
@@ -422,9 +484,8 @@ export function useLiveKit(
 
     return () => {
       cancelled = true
-      void disconnect()
     }
-  }, [sessionId, roomId, user, connect, disconnect])
+  }, [sessionId, roomId, userId, tokenChannel, connect, disconnect])
 
   return {
     isConnected,

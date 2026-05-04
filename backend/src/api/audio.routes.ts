@@ -6,7 +6,7 @@ import {
   applyDMOverrideState,
   getSessionAudioState,
   removeDMOverrideState,
-  setVoiceOfGodState,
+  setBroadcastState,
   setRoomEnvironmentState,
 } from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
@@ -381,11 +381,13 @@ router.get('/state/:sessionId', requireAuth, async (req: Request, res: Response)
     environment: latestEnvironment,
     environments: state.environments,
     dmOverrides: state.dmOverrides,
+    broadcast: state.broadcast,
+    // Backward-compatible field retained for older callers.
     voiceOfGod: state.voiceOfGod,
   })
 })
 
-router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) => {
+async function handleSetBroadcastState(req: Request, res: Response) {
   const user = getAuthUser(req)
   const { sessionId, enabled } = req.body
 
@@ -411,7 +413,7 @@ router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) =>
   }
 
   const changedAt = Date.now()
-  const state = await setVoiceOfGodState({
+  const state = await setBroadcastState({
     sessionId: sessionId as UUID,
     dmId: user.userId as UUID,
     enabled,
@@ -419,6 +421,20 @@ router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) =>
   })
 
   const event = createEvent({
+    type: 'AUDIO:BROADCAST_STATE_CHANGED',
+    user,
+    userRole: authz.role,
+    sessionId: sessionId as UUID,
+    roomId: null,
+    payload: {
+      dmId: state.dmId,
+      enabled: state.enabled,
+      broadcastRoomId: state.broadcastRoomId,
+      changedAt: state.changedAt,
+    },
+  })
+
+  const legacyEvent = createEvent({
     type: 'AUDIO:VOICE_OF_GOD_CHANGED',
     user,
     userRole: authz.role,
@@ -433,15 +449,31 @@ router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) =>
   })
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+  // Compatibility shim for older clients listening to legacy event name.
+  eventBroadcaster.broadcastToSession(sessionId as UUID, legacyEvent)
 
-  logger.info('audio', 'Voice of God state changed', {
+  logger.info('audio', 'Broadcast voice state changed', {
     sessionId,
     enabled,
     actorUserId: user.userId,
     broadcastRoomId: state.broadcastRoomId,
   })
 
-  return res.status(200).json({ ok: true, voiceOfGod: state, eventId: event.id })
+  return res.status(200).json({
+    ok: true,
+    broadcast: state,
+    // Backward compatibility for older clients.
+    voiceOfGod: state,
+    eventId: event.id,
+  })
+}
+
+router.post('/broadcast', requireAuth, async (req: Request, res: Response) => {
+  return handleSetBroadcastState(req, res)
+})
+
+router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) => {
+  return handleSetBroadcastState(req, res)
 })
 
 export default router

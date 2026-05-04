@@ -261,53 +261,15 @@ export function CommandCenterFrame({
           isCompactLayout ? 'compact' : 'desktop'
         }`}
       >
-        <aside data-testid="left-rail" className="command-center-surface">
+        <aside
+          data-testid="left-rail"
+          className="command-center-surface command-center-left-rail-shell"
+        >
           {renderLeftRail()}
         </aside>
 
         <div data-testid="center-pane" className="command-center-center-pane">
           {renderCenterPane(toolbarCenterPaneView)}
-
-          <aside className="command-center-right-rail-dock">
-            <TooltipProvider delayDuration={140}>
-              <Tabs value={activeRightRailTab}>
-                <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
-                  {tabs.map((tab) => {
-                    const label = formatTabLabel(tab)
-                    const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
-
-                    return (
-                      <Tooltip key={tab}>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger
-                            value={tab}
-                            aria-label={`Tool ${label}`}
-                            className="command-center-right-rail-trigger"
-                            onClick={() => {
-                              handleRightRailTabClick(tab)
-                            }}
-                          >
-                            <Icon name={iconForTab(tab)} />
-                            {indicatorCount > 0 ? (
-                              <span
-                                className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
-                                aria-hidden="true"
-                              >
-                                {formatIndicatorCount(indicatorCount)}
-                              </span>
-                            ) : null}
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="command-center-right-rail-tooltip">
-                          {label}
-                        </TooltipContent>
-                      </Tooltip>
-                    )
-                  })}
-                </TabsList>
-              </Tabs>
-            </TooltipProvider>
-          </aside>
 
           {isRightRailVisible && (
             <aside
@@ -320,7 +282,6 @@ export function CommandCenterFrame({
               }}
             >
               <div className="command-center-right-rail-layout">
-                <div />
                 <Tabs value={activeRightRailTab}>
                   <TabsContent
                     value={activeRightRailTab}
@@ -334,6 +295,47 @@ export function CommandCenterFrame({
             </aside>
           )}
         </div>
+
+        <aside className="command-center-surface command-center-right-rail-dock" aria-label="Tools">
+          <TooltipProvider delayDuration={140}>
+            <Tabs value={activeRightRailTab}>
+              <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
+                {tabs.map((tab) => {
+                  const label = formatTabLabel(tab)
+                  const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
+
+                  return (
+                    <Tooltip key={tab}>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger
+                          value={tab}
+                          aria-label={`Tool ${label}`}
+                          className="command-center-right-rail-trigger"
+                          onClick={() => {
+                            handleRightRailTabClick(tab)
+                          }}
+                        >
+                          <Icon name={iconForTab(tab)} />
+                          {indicatorCount > 0 ? (
+                            <span
+                              className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
+                              aria-hidden="true"
+                            >
+                              {formatIndicatorCount(indicatorCount)}
+                            </span>
+                          ) : null}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="command-center-right-rail-tooltip">
+                        {label}
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+              </TabsList>
+            </Tabs>
+          </TooltipProvider>
+        </aside>
       </div>
     </section>
   )

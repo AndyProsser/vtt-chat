@@ -42,10 +42,10 @@ export interface AudioSlice {
   pttActive: boolean // Push-to-talk: temporarily clean voice
   privateRoomCleanMode: boolean // All effects disabled in private rooms
   dmOverrides: Map<UUID, AudioDMOverride> // Per-user DM mutes/gains
-  voiceOfGodEnabled: boolean
-  voiceOfGodRoomId?: string
-  voiceOfGodDmId?: UUID
-  voiceOfGodChangedAt?: number
+  broadcastModeEnabled: boolean
+  broadcastRoomId?: string
+  broadcastDmId?: UUID
+  broadcastChangedAt?: number
 
   // ========== Active Effects ==========
   activeEffects: Record<UUID, boolean> // effectId -> isActive
@@ -94,7 +94,7 @@ export interface AudioSlice {
 
   /** DM override: mute/unmute user */
   setDMOverride: (userId: UUID, override: AudioDMOverride | null) => void
-  setVoiceOfGodState: (params: {
+  setBroadcastState: (params: {
     enabled: boolean
     broadcastRoomId?: string
     dmId?: UUID
@@ -119,7 +119,7 @@ export interface AudioSlice {
   handleEnvironmentSet: (event: EventEnvelope) => void
   handleDMOverrideApplied: (event: EventEnvelope) => void
   handleDMOverrideRemoved: (event: EventEnvelope) => void
-  handleVoiceOfGodChanged: (event: EventEnvelope) => void
+  handleBroadcastStateChanged: (event: EventEnvelope) => void
 }
 
 // ============================================================================
@@ -149,10 +149,10 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
   pttActive: false,
   privateRoomCleanMode: false,
   dmOverrides: new Map(),
-  voiceOfGodEnabled: false,
-  voiceOfGodRoomId: undefined,
-  voiceOfGodDmId: undefined,
-  voiceOfGodChangedAt: undefined,
+  broadcastModeEnabled: false,
+  broadcastRoomId: undefined,
+  broadcastDmId: undefined,
+  broadcastChangedAt: undefined,
   activeEffects: {},
   localTrackId: undefined,
   remoteTrackIds: [],
@@ -255,12 +255,12 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
       return { dmOverrides: newOverrides }
     }),
 
-  setVoiceOfGodState: (params) =>
+  setBroadcastState: (params) =>
     set(() => ({
-      voiceOfGodEnabled: params.enabled,
-      voiceOfGodRoomId: params.broadcastRoomId,
-      voiceOfGodDmId: params.dmId,
-      voiceOfGodChangedAt: params.changedAt,
+      broadcastModeEnabled: params.enabled,
+      broadcastRoomId: params.broadcastRoomId,
+      broadcastDmId: params.dmId,
+      broadcastChangedAt: params.changedAt,
     })),
 
   // ========== Active Effects ==========
@@ -300,10 +300,10 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
       pttActive: false,
       privateRoomCleanMode: false,
       dmOverrides: new Map(),
-      voiceOfGodEnabled: false,
-      voiceOfGodRoomId: undefined,
-      voiceOfGodDmId: undefined,
-      voiceOfGodChangedAt: undefined,
+      broadcastModeEnabled: false,
+      broadcastRoomId: undefined,
+      broadcastDmId: undefined,
+      broadcastChangedAt: undefined,
       activeEffects: {},
       localTrackId: undefined,
       remoteTrackIds: [],
@@ -431,7 +431,7 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
     })
   },
 
-  handleVoiceOfGodChanged: (event) => {
+  handleBroadcastStateChanged: (event) => {
     const payload = event.payload as {
       dmId?: UUID
       enabled: boolean
@@ -440,10 +440,10 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
     }
 
     set(() => ({
-      voiceOfGodEnabled: Boolean(payload.enabled),
-      voiceOfGodRoomId: payload.broadcastRoomId,
-      voiceOfGodDmId: payload.dmId,
-      voiceOfGodChangedAt: payload.changedAt ?? event.timestamp,
+      broadcastModeEnabled: Boolean(payload.enabled),
+      broadcastRoomId: payload.broadcastRoomId,
+      broadcastDmId: payload.dmId,
+      broadcastChangedAt: payload.changedAt ?? event.timestamp,
     }))
   },
 })

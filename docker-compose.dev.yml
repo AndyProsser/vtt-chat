@@ -108,6 +108,9 @@ services:
     environment:
       # LIVEKIT_KEYS format: "<key>: <secret>" (YAML map)
       LIVEKIT_KEYS: '${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
+      # Optional: pin ICE candidate IP for LAN/dev setups.
+      # Leave unset to let LiveKit auto-detect.
+      LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
     ports:
       - '7880:7880'
       - '7881-7980:7881-7980/udp'

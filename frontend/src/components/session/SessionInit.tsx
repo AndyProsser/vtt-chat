@@ -92,7 +92,7 @@ interface ApiPresence {
   lastSeenAt: number
 }
 
-interface ApiVoiceOfGod {
+interface ApiBroadcastState {
   enabled: boolean
   dmId?: UUID
   broadcastRoomId?: string
@@ -344,8 +344,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const notes = useStore((state) => state.notes)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
-  const voiceOfGodEnabled = useStore((state) => state.voiceOfGodEnabled)
-  const setVoiceOfGodState = useStore((state) => state.setVoiceOfGodState)
+  const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
+  const setBroadcastState = useStore((state) => state.setBroadcastState)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
@@ -507,13 +507,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [apiUrl, token]
   )
 
-  const handleToggleVoiceOfGod = useCallback(
+  const handleToggleBroadcastMode = useCallback(
     async (enabled: boolean) => {
       if (!currentSession || currentSession.dmId !== user.id) {
         return
       }
 
-      const response = await fetch(`${apiUrl}/api/audio/voice-of-god`, {
+      const response = await fetch(`${apiUrl}/api/audio/broadcast`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -527,25 +527,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { message?: string }
-        throw new Error(payload.message || 'Failed to update Voice of God state')
+        throw new Error(payload.message || 'Failed to update broadcast voice state')
       }
 
       const payload = (await response.json().catch(() => ({}))) as {
-        voiceOfGod?: ApiVoiceOfGod
+        broadcast?: ApiBroadcastState
+        voiceOfGod?: ApiBroadcastState
       }
 
-      if (payload.voiceOfGod) {
-        setVoiceOfGodState({
-          enabled: Boolean(payload.voiceOfGod.enabled),
-          broadcastRoomId: payload.voiceOfGod.broadcastRoomId,
-          dmId: payload.voiceOfGod.dmId,
-          changedAt: payload.voiceOfGod.changedAt,
+      const broadcastState = payload.broadcast || payload.voiceOfGod
+
+      if (broadcastState) {
+        setBroadcastState({
+          enabled: Boolean(broadcastState.enabled),
+          broadcastRoomId: broadcastState.broadcastRoomId,
+          dmId: broadcastState.dmId,
+          changedAt: broadcastState.changedAt,
         })
       } else {
-        setVoiceOfGodState({ enabled })
+        setBroadcastState({ enabled })
       }
     },
-    [apiUrl, currentSession, setVoiceOfGodState, token, user.id]
+    [apiUrl, currentSession, setBroadcastState, token, user.id]
   )
 
   useEffect(() => {
@@ -730,7 +733,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
         const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
         const audioStatePayload = (await audioStateResponse.json()) as {
-          voiceOfGod?: ApiVoiceOfGod
+          broadcast?: ApiBroadcastState
+          voiceOfGod?: ApiBroadcastState
         }
 
         const nextRooms = (roomsPayload.rooms || []).map((room) => ({
@@ -762,12 +766,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
 
-        if (audioStatePayload.voiceOfGod) {
-          setVoiceOfGodState({
-            enabled: Boolean(audioStatePayload.voiceOfGod.enabled),
-            broadcastRoomId: audioStatePayload.voiceOfGod.broadcastRoomId,
-            dmId: audioStatePayload.voiceOfGod.dmId,
-            changedAt: audioStatePayload.voiceOfGod.changedAt,
+        const broadcastState = audioStatePayload.broadcast || audioStatePayload.voiceOfGod
+
+        if (broadcastState) {
+          setBroadcastState({
+            enabled: Boolean(broadcastState.enabled),
+            broadcastRoomId: broadcastState.broadcastRoomId,
+            dmId: broadcastState.dmId,
+            changedAt: broadcastState.changedAt,
           })
         }
       } catch {
@@ -776,7 +782,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadPresenceAndRooms()
-  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology, setVoiceOfGodState])
+  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology, setBroadcastState])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1775,39 +1781,48 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 />
               )}
               renderLeftRail={() => (
-                <>
-                  <SessionLeftRailPanel
-                    apiUrl={apiUrl}
-                    token={token}
-                    sessionId={currentSession.id}
-                    role={effectiveSessionRole}
-                    username={user.username}
-                    sessionName={currentSession.name}
-                    sessionState={currentSession.state}
-                    sessionCount={sessionList.length}
-                    roomCount={currentRooms.length}
-                    presenceCount={currentPresence.length}
-                    dmUserId={currentSession.dmId}
-                    currentUserId={user.id}
-                    rooms={currentRooms.map((room) => ({
-                      id: room.id,
-                      name: room.name,
-                      type: room.type,
-                    }))}
-                    roomMembersByRoomId={typedRoomMembers}
-                    selectedRoomId={selectedRoomId}
-                    onSelectRoom={setSelectedRoomIdOverride}
-                    voiceOfGodEnabled={voiceOfGodEnabled}
-                    onToggleVoiceOfGod={handleToggleVoiceOfGod}
-                    dmOverrides={dmOverrides}
-                    currentConditionName={currentConditionName}
-                  />
+                <div className="session-left-rail-stack">
+                  <section className="session-left-rail-card session-left-rail-card--primary">
+                    <SessionLeftRailPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={effectiveSessionRole}
+                      username={user.username}
+                      sessionName={currentSession.name}
+                      sessionState={currentSession.state}
+                      sessionCount={sessionList.length}
+                      roomCount={currentRooms.length}
+                      presenceCount={currentPresence.length}
+                      dmUserId={currentSession.dmId}
+                      currentUserId={user.id}
+                      rooms={currentRooms.map((room) => ({
+                        id: room.id,
+                        name: room.name,
+                        type: room.type,
+                      }))}
+                      roomMembersByRoomId={typedRoomMembers}
+                      selectedRoomId={selectedRoomId}
+                      onSelectRoom={setSelectedRoomIdOverride}
+                      broadcastModeEnabled={broadcastModeEnabled}
+                      onToggleBroadcastMode={handleToggleBroadcastMode}
+                      dmOverrides={dmOverrides}
+                      currentConditionName={currentConditionName}
+                    />
+                  </section>
                   {selectedRoomId ? (
-                    <aside className="session-left-rail-audio" aria-label="Voice panel">
-                      <AudioPanel sessionId={currentSession.id} roomId={selectedRoomId} />
+                    <aside
+                      className="session-left-rail-card session-left-rail-card--audio"
+                      aria-label="Voice panel"
+                    >
+                      <AudioPanel
+                        sessionId={currentSession.id}
+                        roomId={selectedRoomId}
+                        role={effectiveSessionRole}
+                      />
                     </aside>
                   ) : null}
-                </>
+                </div>
               )}
               renderCenterPane={(view) => (
                 <div className="session-command-center-pane">

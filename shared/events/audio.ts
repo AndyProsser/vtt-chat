@@ -23,6 +23,7 @@ export type AudioEventType =
   | 'AUDIO:ENVIRONMENT_SET'
   | 'AUDIO:DM_OVERRIDE_APPLIED'
   | 'AUDIO:DM_OVERRIDE_REMOVED'
+  | 'AUDIO:BROADCAST_STATE_CHANGED'
   | 'AUDIO:VOICE_OF_GOD_CHANGED'
 
 /**
@@ -189,17 +190,22 @@ export interface AudioDMOverrideRemoved {
 export type AudioDMOverrideRemovedEvent = EventEnvelope<AudioDMOverrideRemoved>
 
 /**
- * AUDIO:VOICE_OF_GOD_CHANGED
- * DM toggles global broadcast mode for session-wide narration.
+ * AUDIO:BROADCAST_STATE_CHANGED
+ * DM toggles session-wide broadcast voice mode.
  */
-export interface AudioVoiceOfGodChanged {
+export interface AudioBroadcastStateChanged {
   dmId: UUID
   enabled: boolean
   broadcastRoomId: string
   changedAt: number
 }
 
-export type AudioVoiceOfGodChangedEvent = EventEnvelope<AudioVoiceOfGodChanged>
+export type AudioBroadcastStateChangedEvent = EventEnvelope<AudioBroadcastStateChanged>
+
+/** @deprecated Use AudioBroadcastStateChanged */
+export type AudioVoiceOfGodChanged = AudioBroadcastStateChanged
+/** @deprecated Use AudioBroadcastStateChangedEvent */
+export type AudioVoiceOfGodChangedEvent = AudioBroadcastStateChangedEvent
 
 /**
  * Union types.
@@ -218,4 +224,4 @@ export type AudioEvent =
   | AudioEnvironmentSetEvent
   | AudioDMOverrideAppliedEvent
   | AudioDMOverrideRemovedEvent
-  | AudioVoiceOfGodChangedEvent
+  | AudioBroadcastStateChangedEvent

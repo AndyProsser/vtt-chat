@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RoomEvent } from 'livekit-client'
+import { Role } from '@shared'
 import { useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
@@ -21,6 +22,7 @@ import '../../styles/components/audio/AudioPanel.css'
 interface AudioPanelProps {
   sessionId: string
   roomId: string
+  role?: Role
 }
 
 const SPEAKING_ATTACK_MS = 80
@@ -50,9 +52,8 @@ function parseParticipantAudioMetadata(metadata: string | undefined): {
   }
 }
 
-export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
+export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
-  const [deafened, setDeafened] = useState(false)
   const [activeSpeakerSids, setActiveSpeakerSids] = useState<Set<string>>(() => new Set())
   const [smoothedSpeakerSids, setSmoothedSpeakerSids] = useState<Set<string>>(() => new Set())
   const speakerAttackTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -72,14 +73,14 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
     [audioEngine]
   )
 
-  const handleVoiceOfGodTrackSubscribed = useCallback(
+  const handleBroadcastTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream) => {
       audioEngine.addTrack(`vog:${trackSid}`, mediaStream)
     },
     [audioEngine]
   )
 
-  const handleVoiceOfGodTrackUnsubscribed = useCallback(
+  const handleBroadcastTrackUnsubscribed = useCallback(
     (trackSid: string) => {
       audioEngine.removeTrack(`vog:${trackSid}`)
     },
@@ -94,29 +95,35 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
 
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  const voiceOfGodEnabled = useStore((state) => state.voiceOfGodEnabled)
-  const voiceOfGodRoomIdFromState = useStore((state) => state.voiceOfGodRoomId)
+  const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
+  const broadcastRoomIdFromState = useStore((state) => state.broadcastRoomId)
   const setDevice = useStore((state) => state.setDevice)
-  const togglePTT = useStore((state) => state.togglePTT)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const currentUser = useStore((state) => state.currentUser)
+  const effectiveRole = role ?? currentUser?.role ?? Role.PLAYER
 
-  const voiceOfGodRoomId = voiceOfGodRoomIdFromState || `voice-of-god:${sessionId}`
+  const broadcastRoomId = broadcastRoomIdFromState || `dm-broadcast:${sessionId}`
 
-  const voiceOfGodLivekit = useLiveKit(sessionId, voiceOfGodEnabled ? voiceOfGodRoomId : '', {
-    onTrackSubscribed: handleVoiceOfGodTrackSubscribed,
-    onTrackUnsubscribed: handleVoiceOfGodTrackUnsubscribed,
-    tokenChannel: 'voice_of_god',
+  const broadcastLivekit = useLiveKit(sessionId, broadcastModeEnabled ? broadcastRoomId : '', {
+    onTrackSubscribed: handleBroadcastTrackSubscribed,
+    onTrackUnsubscribed: handleBroadcastTrackUnsubscribed,
+    tokenChannel: 'broadcast',
   })
+
+  const {
+    isConnected: isBroadcastConnected,
+    publishAudio: publishBroadcastAudio,
+    unpublishAudio: unpublishBroadcastAudio,
+  } = broadcastLivekit
 
   const handleGoLive = async () => {
     initializeAudio(true)
     await livekit.publishAudio()
-    if (voiceOfGodEnabled && currentUser?.role === 'DM') {
+    if (broadcastModeEnabled && effectiveRole === Role.DM) {
       try {
-        await voiceOfGodLivekit.publishAudio()
+        await publishBroadcastAudio()
       } catch {
-        // Voice of God publish can trail behind room publish while secondary channel connects.
+        // Broadcast channel publish can trail behind room publish while secondary channel connects.
       }
     }
     setDevice({ microphoneOn: true })
@@ -124,50 +131,61 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
 
   const handleMute = async () => {
     await livekit.unpublishAudio()
-    await voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
+    await unpublishBroadcastAudio().catch(() => undefined)
     setDevice({ microphoneOn: false })
   }
 
   useEffect(() => {
-    if (currentUser?.role !== 'DM') {
+    if (effectiveRole !== Role.DM) {
       return
     }
 
     if (!device.microphoneOn) {
-      void voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
+      void unpublishBroadcastAudio().catch(() => undefined)
       return
     }
 
-    if (voiceOfGodEnabled && voiceOfGodLivekit.isConnected) {
-      void voiceOfGodLivekit.publishAudio().catch(() => undefined)
+    if (broadcastModeEnabled && isBroadcastConnected) {
+      void publishBroadcastAudio().catch(() => undefined)
     } else {
-      void voiceOfGodLivekit.unpublishAudio().catch(() => undefined)
+      void unpublishBroadcastAudio().catch(() => undefined)
     }
   }, [
-    currentUser?.role,
+    effectiveRole,
     device.microphoneOn,
-    voiceOfGodEnabled,
-    voiceOfGodLivekit.isConnected,
-    voiceOfGodLivekit.publishAudio,
-    voiceOfGodLivekit.unpublishAudio,
+    broadcastModeEnabled,
+    isBroadcastConnected,
+    publishBroadcastAudio,
+    unpublishBroadcastAudio,
   ])
+
+  useEffect(() => {
+    if (device.microphoneOn && !device.enabled) {
+      initializeAudio(true)
+    }
+  }, [device.enabled, device.microphoneOn, initializeAudio])
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = Number(e.target.value)
     setDevice({ volumeLevel: vol })
-    if (!deafened) {
-      audioEngine.setLocalGain(vol / 100)
-    }
+    audioEngine.setLocalGain(vol / 100)
   }
 
-  const statusState = livekit.isConnected
-    ? 'connected'
-    : livekit.isConnecting
-      ? 'connecting'
-      : 'disconnected'
-  const statusLabel = livekit.isConnected
+  const livekitRoomState = String(livekit.room?.state ?? '').toLowerCase()
+  const roomReportsConnected = livekitRoomState === 'connected'
+  const roomReportsConnecting =
+    livekitRoomState === 'connecting' || livekitRoomState === 'reconnecting'
+
+  const statusState =
+    livekit.isConnected || roomReportsConnected
+      ? 'connected'
+      : livekit.isConnecting || roomReportsConnecting
+        ? 'connecting'
+        : 'disconnected'
+  const isVoiceConnected = livekit.isConnected || roomReportsConnected
+  const statusLabel = isVoiceConnected
     ? 'Connected'
-    : livekit.isConnecting
+    : livekit.isConnecting || roomReportsConnecting
       ? 'Connecting…'
       : 'Disconnected'
 
@@ -306,13 +324,8 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
   }, [activeSpeakerSids, livekit.remoteParticipants])
 
   useEffect(() => {
-    if (!livekit.isConnected || !deafened) {
-      audioEngine.setLocalGain(device.volumeLevel / 100)
-      return
-    }
-
-    audioEngine.setLocalGain(0)
-  }, [audioEngine, deafened, device.volumeLevel, livekit.isConnected])
+    audioEngine.setLocalGain(device.volumeLevel / 100)
+  }, [audioEngine, device.volumeLevel])
 
   const participants = useMemo(() => {
     const remote = Array.from(livekit.remoteParticipants.values()).map((participant) => {
@@ -337,20 +350,11 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
       isSelf: true,
       isSpeaking: pttActive,
       isMuted: !device.microphoneOn,
-      isDeafened: deafened,
+      isDeafened: false,
     }
 
     return [selfParticipant, ...remote]
-  }, [
-    currentUser,
-    deafened,
-    device.microphoneOn,
-    livekit.remoteParticipants,
-    pttActive,
-    smoothedSpeakerSids,
-  ])
-
-  const selfLabel = currentUser?.username || 'You'
+  }, [currentUser, device.microphoneOn, livekit.remoteParticipants, pttActive, smoothedSpeakerSids])
 
   const getInitials = (name: string): string => {
     const clean = name.trim()
@@ -399,51 +403,27 @@ export function AudioPanel({ sessionId, roomId }: AudioPanelProps) {
       </ul>
 
       <footer className="audio-panel__controls">
-        <div className="audio-panel__self">
-          <span className="audio-panel__avatar" aria-hidden="true">
-            {getInitials(selfLabel)}
-          </span>
-          <div className="audio-panel__self-meta">
-            <strong>{selfLabel}</strong>
-            <span>
-              {deafened ? 'Output deafened' : device.microphoneOn ? 'Mic active' : 'Mic muted'}
-            </span>
-          </div>
-        </div>
-
         <div className="audio-panel__buttons">
-          {livekit.isConnected && device.microphoneOn ? (
-            <button onClick={handleMute} className="audio-panel__control is-danger" title="Mute">
+          {device.microphoneOn ? (
+            <button
+              onClick={handleMute}
+              className="audio-panel__control is-danger"
+              title="Mute microphone"
+              aria-label="Mute microphone"
+            >
               <Icon name="mic" />
             </button>
           ) : (
             <button
               onClick={handleGoLive}
               className="audio-panel__control is-success"
-              title="Go live"
+              title={isVoiceConnected ? 'Unmute microphone' : 'Connect voice first'}
+              aria-label={isVoiceConnected ? 'Unmute microphone' : 'Connect voice first'}
+              disabled={!isVoiceConnected}
             >
               <Icon name="mic" />
             </button>
           )}
-
-          <button
-            onClick={() => setDeafened((prev) => !prev)}
-            className={`audio-panel__control ${deafened ? 'is-active' : ''}`}
-            title="Deafen"
-          >
-            <Icon name="voice" />
-          </button>
-
-          <button
-            onMouseDown={() => togglePTT(true)}
-            onMouseUp={() => togglePTT(false)}
-            onMouseLeave={() => togglePTT(false)}
-            className={`audio-panel__control ${pttActive ? 'is-active' : ''}`}
-            disabled={!livekit.isConnected || !device.microphoneOn}
-            title="Push to talk"
-          >
-            PTT
-          </button>
 
           <button className="audio-panel__control" title="Audio settings">
             <Icon name="settings" />

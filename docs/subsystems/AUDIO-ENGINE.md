@@ -36,6 +36,12 @@ The engine is built on:
 - **Zustand** for state
 - **WebSocket events** for control
 
+Broadcast naming note:
+
+- Canonical API/event naming uses **broadcast** terminology.
+- Legacy aliases (`voice-of-god`, `voiceOfGod`, `voice_of_god`, `AUDIO:VOICE_OF_GOD_CHANGED`) are compatibility shims.
+- Docs and new code should prefer `broadcast` names.
+
 ---
 
 ## Architecture Overview

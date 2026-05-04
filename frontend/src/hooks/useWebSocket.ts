@@ -140,8 +140,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('AUDIO:DM_OVERRIDE_REMOVED', (event) => {
       useStore.getState().handleDMOverrideRemoved(event)
     })
+    dispatcher.register('AUDIO:BROADCAST_STATE_CHANGED', (event) => {
+      useStore.getState().handleBroadcastStateChanged(event)
+    })
     dispatcher.register('AUDIO:VOICE_OF_GOD_CHANGED', (event) => {
-      useStore.getState().handleVoiceOfGodChanged(event)
+      useStore.getState().handleBroadcastStateChanged(event)
     })
 
     // Metadata events (WS internal)

@@ -17,6 +17,11 @@ Use these sources first when updating docs or stage status:
 - `docs/DEVELOPMENT-ROADMAP.md` for stage labels and shipped-baseline wording
 - `ROADMAP.md` for current testing and operatisation execution tracking
 
+Terminology note:
+
+- Audio DM session-wide narration is documented canonically as **broadcast**.
+- Legacy aliases are listed in [CONTRACTS.md](CONTRACTS.md) under Audio Broadcast Terminology.
+
 Architecture and API docs may include planned architecture material for later stages. If they conflict with mounted runtime behavior, update the docs or mark the content as planned rather than changing roadmap stage status to match conceptual material.
 
 ## Active UI Modernization Docs

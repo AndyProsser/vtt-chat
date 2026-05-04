@@ -104,7 +104,8 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
-  const requestedChannel = channel === 'voice_of_god' ? 'voice_of_god' : 'room'
+  const requestedChannel =
+    channel === 'broadcast' || channel === 'voice_of_god' ? 'broadcast' : 'room'
 
   if (requestedChannel === 'room' && !isValidUUID(roomId)) {
     return res.status(400).json({
@@ -129,10 +130,10 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
 
     const isSessionDm = authz.role === 'DM'
     const resolvedRoomId =
-      requestedChannel === 'voice_of_god' ? `voice-of-god:${sessionId}` : (roomId as string)
+      requestedChannel === 'broadcast' ? `dm-broadcast:${sessionId}` : (roomId as string)
 
-    const canPublish = requestedChannel === 'voice_of_god' ? isSessionDm : true
-    const canSubscribe = requestedChannel === 'voice_of_god' ? !isSessionDm : true
+    const canPublish = requestedChannel === 'broadcast' ? isSessionDm : true
+    const canSubscribe = requestedChannel === 'broadcast' ? !isSessionDm : true
 
     // Generate LiveKit token
     const token = await tokenService.generateToken({

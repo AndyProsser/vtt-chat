@@ -31,6 +31,12 @@ The integration is built around **three cooperating modules**:
 2. **LiveKitTrackRouter** — routes audio tracks into the WebAudio graph
 3. **LiveKitPublisher** — publishes microphone audio to the correct room(s)
 
+Broadcast terminology note:
+
+- Canonical term: **Broadcast Voice** / `broadcast`
+- Legacy aliases still seen in code paths during migration: `voice_of_god`, `voiceOfGod`, `voice-of-god`, `AUDIO:VOICE_OF_GOD_CHANGED`
+- New integrations should use `broadcast` naming.
+
 These modules interact with the Zustand stores and WebSocket event reducer.
 
 ---
