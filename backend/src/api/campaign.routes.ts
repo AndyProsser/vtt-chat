@@ -24,6 +24,7 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
+import { deriveCampaignJoinRole } from '@/services/session-authz.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -843,7 +844,7 @@ router.post('/:campaignId/join', requireAuth, async (req: Request, res: Response
     campaignId: campaignId as UUID,
     userId: user.userId as UUID,
     inviteCode: inviteCode.trim().toUpperCase(),
-    role: user.role === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER',
+    role: deriveCampaignJoinRole(user.role),
   })
 
   if (!joined) {

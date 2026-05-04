@@ -31,6 +31,7 @@ import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
 } from '@/services/session-access.service'
+import { resolveRoleForSessionJoin } from '@/services/session-authz.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -426,17 +427,39 @@ router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
     const currentUsers = await getSessionUsers(id as UUID)
     const alreadyMember = currentUsers.some((u) => u.id === user.userId)
     if (alreadyMember) {
-      return res.status(409).json({
-        code: ErrorCode.INVALID_INPUT,
-        message: 'User is already a member of this session',
+      return res.status(200).json({
+        session,
+        users: currentUsers.map((u) => ({
+          id: u.id,
+          username: u.username,
+          role: u.role,
+        })),
       })
     }
 
-    // Add user to session
+    const joinRole = await resolveRoleForSessionJoin({
+      sessionId: id as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!joinRole.ok) {
+      if (joinRole.code === 'SESSION_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: joinRole.message,
+        })
+      }
+
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: joinRole.message,
+      })
+    }
+
     const success = await addUserToSession(id as UUID, {
       id: user.userId as UUID,
       username: user.username,
-      role: user.role,
+      role: joinRole.role,
       createdAt: Date.now(),
     })
 

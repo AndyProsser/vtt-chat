@@ -58,11 +58,11 @@ Status legend: `Planned`, `In Progress`, `Done`
 2. Privacy-rounded home dashboard metrics - Done
 3. Invite/code entry flow alignment (player extension POST invite, spectator watch link guest/full paths) - Done
 4. Login/register entry UX completion (including invite context handoff) - Done
-5. Home/campaign panel UX pass (compact bounded shell + panel flow cleanup) - In Progress
-6. Launch/Watch CTA gating on campaign cards (DM/player/spectator permissions + policy states) - In Progress
-7. Dedicated campaign settings route/page + DM metadata editing + invite reissue UX - In Progress
-8. Campaign-scoped role model cleanup (user-level identity outside campaigns) - In Progress
-9. DM/Player guest campaign-scoping + upgrade UX copy/affordances - Planned
+5. Home/campaign panel UX pass (compact bounded shell + panel flow cleanup) - Done
+6. Launch/Watch CTA gating on campaign cards (DM/player/spectator permissions + policy states) - Done
+7. Dedicated campaign settings route/page + DM metadata editing + invite reissue UX - Done
+8. Campaign-scoped role model cleanup (user-level identity outside campaigns) - Done
+9. DM/Player guest campaign-scoping + upgrade UX copy/affordances - Done
 10. Spectator guest temporary-session UX + wait/paused/ended pre-launch messaging - Planned
 11. Campaign DM handoff flow (resign and assign player as new DM) - Planned
 
@@ -72,6 +72,9 @@ Latest delivered in this slice:
 - Player invite success paths now hand off back into the app lobby with the joined campaign preselected.
 - Campaign launch now loads sessions for the clicked campaign before entering, avoiding stale-session selection when launching from a different card.
 - Create Campaign now explains the DM launch path, uses labeled name/description fields, and blocks guest users with explicit upgrade messaging.
+- Campaign-scoped role resolution is now synchronized end-to-end for DM/PLAYER/SPECTATOR during session entry and chat authorization.
+- Session entry now performs explicit chapter join, and non-DM exit/logoff performs best-effort chapter leave to avoid stale in-session role carryover.
+- Chat room selection now follows the user's current presence room (Greenroom/Main) before falling back to Main, fixing expected chat surface behavior during state transitions.
 
 ### F2 Implementation Checklist (Mapped)
 

@@ -381,9 +381,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return selectedRoomIdOverride
     }
 
+    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    if (
+      ownPresence?.primaryRoomId &&
+      currentRooms.some((room) => room.id === ownPresence.primaryRoomId)
+    ) {
+      return ownPresence.primaryRoomId
+    }
+
     const mainRoom = currentRooms.find((room) => room.type === RoomType.MAIN)
     return (mainRoom || currentRooms[0]).id
-  }, [currentRooms, selectedRoomIdOverride])
+  }, [currentPresence, currentRooms, selectedRoomIdOverride, user.id])
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -474,6 +482,26 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       const data = await response.json()
       return (data.sessions || []) as SessionRecord[]
+    },
+    [apiUrl, token]
+  )
+
+  const ensureSessionMembership = useCallback(
+    async (sessionId: UUID) => {
+      try {
+        const response = await fetch(`${apiUrl}/api/session/${sessionId}/join`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok && response.status !== 409) {
+          return
+        }
+      } catch {
+        return
+      }
     },
     [apiUrl, token]
   )
@@ -910,6 +938,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const preferredSession = getPreferredSession(targetSessions)
 
       if (preferredSession) {
+        await ensureSessionMembership(preferredSession.id)
         setCurrentSession(preferredSession.id)
         return
       }
@@ -940,6 +969,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
+        await ensureSessionMembership(payload.session.id)
         replaceSessions([payload.session, ...targetSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
@@ -951,6 +981,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [
       selectedCampaignId,
       campaigns,
+      ensureSessionMembership,
       fetchCampaignSessions,
       replaceSessions,
       user.id,
@@ -1207,6 +1238,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const handleLogoff = () => {
+    if (currentSession && currentSession.dmId !== user.id) {
+      void fetch(`${apiUrl}/api/session/${currentSession.id}/leave`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+
     sessionStorage.removeItem('authToken')
     sessionStorage.removeItem('user')
     window.location.assign('/')
@@ -1232,6 +1272,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
+        await ensureSessionMembership(payload.session.id)
         replaceSessions([payload.session, ...existingSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
@@ -1240,7 +1281,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setError(message)
       }
     },
-    [apiUrl, onSessionCreated, replaceSessions, setCurrentSession, token]
+    [apiUrl, ensureSessionMembership, onSessionCreated, replaceSessions, setCurrentSession, token]
   )
 
   const handleStartSession = async (sessionId: UUID) => {
@@ -1307,7 +1348,20 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
-  const returnToCampaignSelector = () => {
+  const returnToCampaignSelector = async () => {
+    if (currentSession && currentSession.dmId !== user.id) {
+      try {
+        await fetch(`${apiUrl}/api/session/${currentSession.id}/leave`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      } catch {
+        // Best effort: UI still returns to lobby even if leave call fails.
+      }
+    }
+
     setCurrentSession(null)
     setSelectedRoomIdOverride('')
   }
@@ -1324,9 +1378,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setShowExitSessionModal(true)
   }
 
-  const handleConfirmExitAsFullAccount = () => {
+  const handleConfirmExitAsFullAccount = async () => {
     setShowExitSessionModal(false)
-    returnToCampaignSelector()
+    await returnToCampaignSelector()
   }
 
   const handleSkipGuestUpgrade = () => {

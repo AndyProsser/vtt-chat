@@ -29,6 +29,7 @@ import {
   loginGuestViaExtension,
   upgradeGuestAccount,
 } from '@/services/guest-auth.service'
+import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session-authz.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -381,7 +382,7 @@ router.post('/player/full-join', async (req: Request, res: Response) => {
     campaignId: campaign.id,
     userId: user.id,
     inviteCode: campaign.inviteCode,
-    role: user.role === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER',
+    role: deriveCampaignJoinRole(user.role),
   })
 
   if (!joined) {
@@ -391,8 +392,7 @@ router.post('/player/full-join', async (req: Request, res: Response) => {
     })
   }
 
-  const resolvedRole =
-    user.role === 'DM' || user.role === 'PLAYER' || user.role === 'SPECTATOR' ? user.role : 'PLAYER'
+  const resolvedRole = normalizePlayerFacingRole(user.role)
 
   return res.status(200).json({
     token: createToken({

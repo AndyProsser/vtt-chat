@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto'
 import { Router, type NextFunction, type Request, type Response } from 'express'
-import { ErrorCode, type EventEnvelope, type UUID, isValidUUID } from '@shared'
+import { ErrorCode, Role, type EventEnvelope, type UUID, isValidUUID } from '@shared'
 import { extractTokenFromHeader, verifyToken, type TokenPayload } from '@/services/auth.service'
-import { getSession, isUserInSession } from '@/services/session.service'
 import {
   applyDMOverrideState,
   getSessionAudioState,
@@ -12,6 +11,7 @@ import {
 } from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
+import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
 
 const router = Router()
 
@@ -60,6 +60,7 @@ function getAuthUser(req: Request): TokenPayload {
 function createEvent(params: {
   type: EventEnvelope['type']
   user: TokenPayload
+  userRole: Role
   sessionId: UUID
   roomId: UUID | null
   payload: Record<string, unknown>
@@ -69,7 +70,7 @@ function createEvent(params: {
     type: params.type,
     version: 1,
     userId: params.user.userId as UUID,
-    userRole: params.user.role as any,
+    userRole: params.userRole as any,
     sessionId: params.sessionId,
     roomId: params.roomId,
     timestamp: Date.now(),
@@ -83,6 +84,7 @@ async function validateSessionAccess(
 ): Promise<
   | {
       ok: true
+      role: Role
     }
   | {
       ok: false
@@ -91,27 +93,22 @@ async function validateSessionAccess(
       message: string
     }
 > {
-  const session = await getSession(sessionId)
-  if (!session) {
+  const authz = await resolveEffectiveSessionRole({
+    sessionId,
+    userId: user.userId as UUID,
+    requireMembershipForDm: true,
+  })
+
+  if (!authz.ok) {
     return {
       ok: false,
-      status: 404,
-      code: ErrorCode.NOT_FOUND,
-      message: 'Session not found',
+      status: authz.code === 'SESSION_NOT_FOUND' ? 404 : 403,
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
     }
   }
 
-  const inSession = await isUserInSession(sessionId, user.userId as UUID)
-  if (!inSession) {
-    return {
-      ok: false,
-      status: 403,
-      code: ErrorCode.FORBIDDEN,
-      message: 'User is not in this session',
-    }
-  }
-
-  return { ok: true }
+  return { ok: true, role: authz.role }
 }
 
 async function validateDmControl(
@@ -120,6 +117,7 @@ async function validateDmControl(
 ): Promise<
   | {
       ok: true
+      role: Role
     }
   | {
       ok: false
@@ -128,17 +126,22 @@ async function validateDmControl(
       message: string
     }
 > {
-  const session = await getSession(sessionId)
-  if (!session) {
+  const authz = await resolveEffectiveSessionRole({
+    sessionId,
+    userId: user.userId as UUID,
+    requireMembershipForDm: true,
+  })
+
+  if (!authz.ok) {
     return {
       ok: false,
-      status: 404,
-      code: ErrorCode.NOT_FOUND,
-      message: 'Session not found',
+      status: authz.code === 'SESSION_NOT_FOUND' ? 404 : 403,
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
     }
   }
 
-  if (session.dmId !== (user.userId as UUID)) {
+  if (authz.role !== Role.DM) {
     return {
       ok: false,
       status: 403,
@@ -147,17 +150,7 @@ async function validateDmControl(
     }
   }
 
-  const inSession = await isUserInSession(sessionId, user.userId as UUID)
-  if (!inSession) {
-    return {
-      ok: false,
-      status: 403,
-      code: ErrorCode.FORBIDDEN,
-      message: 'User is not in this session',
-    }
-  }
-
-  return { ok: true }
+  return { ok: true, role: authz.role }
 }
 
 router.get('/presets', requireAuth, (_req: Request, res: Response) => {
@@ -213,6 +206,7 @@ router.post('/environment', requireAuth, async (req: Request, res: Response) => 
   const event = createEvent({
     type: 'AUDIO:ENVIRONMENT_SET',
     user,
+    userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: roomId as UUID,
     payload: {
@@ -282,6 +276,7 @@ router.post('/dm-override/apply', requireAuth, async (req: Request, res: Respons
   const event = createEvent({
     type: 'AUDIO:DM_OVERRIDE_APPLIED',
     user,
+    userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {
@@ -338,6 +333,7 @@ router.post('/dm-override/remove', requireAuth, async (req: Request, res: Respon
   const event = createEvent({
     type: 'AUDIO:DM_OVERRIDE_REMOVED',
     user,
+    userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {
@@ -425,6 +421,7 @@ router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) =>
   const event = createEvent({
     type: 'AUDIO:VOICE_OF_GOD_CHANGED',
     user,
+    userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {

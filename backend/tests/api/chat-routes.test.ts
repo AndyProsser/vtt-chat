@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
   verifyToken: vi.fn(),
   getSession: vi.fn(),
+  getSessionUsers: vi.fn(),
   getRoom: vi.fn(),
   getSessionPresence: vi.fn(),
   sendMessage: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/services/auth.service', () => ({
 
 vi.mock('@/services/session.service', () => ({
   getSession: mocks.getSession,
+  getSessionUsers: mocks.getSessionUsers,
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -71,6 +73,11 @@ describe('chat routes', () => {
       dmId: DM_ID,
       state: SessionState.ACTIVE,
     })
+
+    mocks.getSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER', createdAt: Date.now() },
+      { id: DM_ID, username: 'morgan', role: 'DM', createdAt: Date.now() },
+    ])
 
     mocks.getRoom.mockResolvedValue({
       id: ROOM_ID,
@@ -136,6 +143,10 @@ describe('chat routes', () => {
       username: 'watcher',
       role: 'SPECTATOR',
     })
+    mocks.getSessionUsers.mockResolvedValueOnce([
+      { id: USER_ID, username: 'watcher', role: 'SPECTATOR', createdAt: Date.now() },
+      { id: DM_ID, username: 'morgan', role: 'DM', createdAt: Date.now() },
+    ])
 
     const response = await request(app)
       .post('/api/chat/message')

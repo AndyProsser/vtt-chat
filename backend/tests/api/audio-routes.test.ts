@@ -5,8 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
-  mockGetSession: vi.fn(),
-  mockIsUserInSession: vi.fn(),
+  mockResolveEffectiveSessionRole: vi.fn(),
   mockSetRoomEnvironmentState: vi.fn(),
   mockApplyDMOverrideState: vi.fn(),
   mockRemoveDMOverrideState: vi.fn(),
@@ -20,9 +19,8 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.mockVerifyToken,
 }))
 
-vi.mock('@/services/session.service', () => ({
-  getSession: mocks.mockGetSession,
-  isUserInSession: mocks.mockIsUserInSession,
+vi.mock('@/services/session-authz.service', () => ({
+  resolveEffectiveSessionRole: mocks.mockResolveEffectiveSessionRole,
 }))
 
 vi.mock('@/services/audio-state.service', () => ({
@@ -72,15 +70,17 @@ describe('audio routes', () => {
       role: 'DM',
     })
 
-    mocks.mockGetSession.mockResolvedValue({
-      id: SESSION_ID,
-      name: 'Session 1',
-      dmId: DM_ID,
-      state: 'ACTIVE',
-      createdAt: Date.now(),
+    mocks.mockResolveEffectiveSessionRole.mockResolvedValue({
+      ok: true,
+      role: 'DM',
+      session: {
+        id: SESSION_ID,
+        name: 'Session 1',
+        dmId: DM_ID,
+        state: 'ACTIVE',
+        createdAt: Date.now(),
+      },
     })
-
-    mocks.mockIsUserInSession.mockResolvedValue(true)
     mocks.mockSetRoomEnvironmentState.mockResolvedValue({
       roomId: ROOM_ID,
       environmentName: 'tavern',
@@ -146,6 +146,17 @@ describe('audio routes', () => {
       userId: PLAYER_ID,
       username: 'alice',
       role: 'PLAYER',
+    })
+    mocks.mockResolveEffectiveSessionRole.mockResolvedValue({
+      ok: true,
+      role: 'PLAYER',
+      session: {
+        id: SESSION_ID,
+        name: 'Session 1',
+        dmId: DM_ID,
+        state: 'ACTIVE',
+        createdAt: Date.now(),
+      },
     })
 
     const response = await request(app)

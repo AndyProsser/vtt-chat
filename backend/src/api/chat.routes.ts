@@ -16,6 +16,7 @@ import type { UUID } from '@shared'
 import { MessageType, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
+import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
 
 const router = Router()
 
@@ -163,7 +164,17 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
-    const requesterRole = session.dmId === (user.userId as UUID) ? 'DM' : String(user.role)
+    const authz = await resolveEffectiveSessionRole({
+      sessionId: sessionId as UUID,
+      userId: user.userId as UUID,
+    })
+    if (!authz.ok) {
+      return res.status(403).json({
+        code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.NOT_FOUND : ErrorCode.FORBIDDEN,
+        message: authz.message,
+      })
+    }
+    const requesterRole = authz.role
 
     if (type === MessageType.IC && requesterRole === 'SPECTATOR') {
       return res
@@ -263,7 +274,17 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
-    const requesterRole = session.dmId === (user.userId as UUID) ? 'DM' : String(user.role)
+    const authz = await resolveEffectiveSessionRole({
+      sessionId: sessionId as UUID,
+      userId: user.userId as UUID,
+    })
+    if (!authz.ok) {
+      return res.status(403).json({
+        code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.NOT_FOUND : ErrorCode.FORBIDDEN,
+        message: authz.message,
+      })
+    }
+    const requesterRole = authz.role
 
     const room = await getRoom(roomId as UUID)
     if (!room || room.sessionId !== (sessionId as UUID)) {

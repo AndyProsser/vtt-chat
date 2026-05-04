@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
   mockGetSession: vi.fn(),
+  mockGetSessionUsers: vi.fn(),
   mockCreateNote: vi.fn(),
   mockDeleteNote: vi.fn(),
   mockGetNoteById: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@/services/auth.service', () => ({
 
 vi.mock('@/services/session.service', () => ({
   getSession: mocks.mockGetSession,
+  getSessionUsers: mocks.mockGetSessionUsers,
 }))
 
 vi.mock('@/services/notes.service', () => ({
@@ -82,6 +84,10 @@ describe('notes routes websocket propagation', () => {
       state: 'ACTIVE',
       createdAt: Date.now(),
     })
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER', createdAt: Date.now() },
+      { id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() },
+    ])
   })
 
   it('broadcasts NOTES:CREATED with visibility filtering for CUSTOM notes', async () => {

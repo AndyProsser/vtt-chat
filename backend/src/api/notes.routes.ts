@@ -23,6 +23,7 @@ import { MessageType } from '@shared'
 import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
 import { logger } from '@/utils/logger'
+import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
 
 const router = Router()
 
@@ -75,10 +76,6 @@ function noteVisibleTo(note: {
   return Array.from(visible)
 }
 
-function resolveSessionRole(sessionDmId: UUID, user: { userId: UUID; role: string }): string {
-  return sessionDmId === (user.userId as UUID) ? 'DM' : String(user.role)
-}
-
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { sessionId } = req.params
@@ -92,8 +89,18 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const requesterRole = resolveSessionRole(session.dmId, user)
-  const notes = await getVisibleNotes(session.id, user.userId as UUID, requesterRole)
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: session.id,
+    userId: user.userId as UUID,
+  })
+  if (!authz.ok) {
+    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
+    })
+  }
+
+  const notes = await getVisibleNotes(session.id, user.userId as UUID, authz.role)
   return res.status(200).json({ notes })
 })
 
@@ -121,7 +128,17 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const requesterRole = resolveSessionRole(session.dmId, user)
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: session.id,
+    userId: user.userId as UUID,
+  })
+  if (!authz.ok) {
+    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
+    })
+  }
+  const requesterRole = authz.role
 
   if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
@@ -209,7 +226,18 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const requesterRole = resolveSessionRole(noteSession.dmId, user)
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: noteSession.id,
+    userId: user.userId as UUID,
+  })
+  if (!authz.ok) {
+    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
+    })
+  }
+
+  const requesterRole = authz.role
 
   if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
@@ -254,7 +282,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const eventRole = resolveSessionRole(session.dmId, user)
+  const eventRole = authz.role
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {
@@ -310,7 +338,18 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const requesterRole = resolveSessionRole(session.dmId, user)
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: session.id,
+    userId: user.userId as UUID,
+  })
+  if (!authz.ok) {
+    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
+    })
+  }
+
+  const requesterRole = authz.role
   const visibleNotes = await getVisibleNotes(note.sessionId, user.userId as UUID, requesterRole)
   if (!visibleNotes.find((n) => n.id === note.id)) {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
@@ -328,7 +367,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     campaignId: (session as any).campaignId ?? null,
     actorUserId: user.userId,
     actorUsername: user.username,
-    actorRole: user.role,
+    actorRole: requesterRole,
     noteOwnerId: published.authorId,
     noteVisibility: published.visibility,
     publishedAt: published.publishedAt,
@@ -352,7 +391,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       type: 'NOTES:UPDATED',
       version: 1,
       userId: user.userId as UUID,
-      userRole: user.role,
+      userRole: requesterRole as any,
       sessionId: published.sessionId,
       roomId: null,
       timestamp: published.updatedAt,
@@ -382,7 +421,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       type: 'CHAT:MESSAGE_SENT',
       version: 1,
       userId: user.userId as UUID,
-      userRole: user.role,
+      userRole: requesterRole as any,
       sessionId: message.sessionId,
       roomId: null,
       timestamp: message.createdAt,
@@ -418,7 +457,23 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
   }
 
-  const note = await deleteNote(noteId as UUID, user.userId as UUID, user.role)
+  const existingNote = await getNoteById(noteId as UUID)
+  if (!existingNote) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: existingNote.sessionId,
+    userId: user.userId as UUID,
+  })
+  if (!authz.ok) {
+    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
+      message: authz.message,
+    })
+  }
+
+  const note = await deleteNote(noteId as UUID, user.userId as UUID, authz.role)
   if (!note) {
     return res.status(403).json({
       code: ErrorCode.FORBIDDEN,
@@ -433,7 +488,7 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
       type: 'NOTES:DELETED',
       version: 1,
       userId: user.userId as UUID,
-      userRole: user.role,
+      userRole: authz.role as any,
       sessionId: note.sessionId,
       roomId: null,
       timestamp: Date.now(),

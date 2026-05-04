@@ -5,11 +5,11 @@
 
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession, isUserInSession } from '@/services/session.service'
 import { LiveKitTokenService } from '@/infra/livekit/token.service'
 import { config } from '@/infra/config'
 import { ErrorCode, isValidUUID } from '@shared'
 import { logger } from '@/utils'
+import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
 
 const router = Router()
 const tokenService = new LiveKitTokenService(config)
@@ -81,25 +81,19 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
-    // Verify user is in the session
-    const session = await getSession(sessionId)
-    if (!session) {
-      return res.status(404).json({
-        code: ErrorCode.NOT_FOUND,
-        message: 'Session not found',
+    const authz = await resolveEffectiveSessionRole({
+      sessionId,
+      userId: user.userId,
+      requireMembershipForDm: true,
+    })
+    if (!authz.ok) {
+      return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
+        code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.NOT_FOUND : ErrorCode.FORBIDDEN,
+        message: authz.message,
       })
     }
 
-    // Check if user is authorized to access this session
-    const userInSession = await isUserInSession(sessionId, user.userId)
-    if (!userInSession && user.role !== 'ADMIN') {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'User is not in this session',
-      })
-    }
-
-    const isSessionDm = session.dmId === user.userId
+    const isSessionDm = authz.role === 'DM'
     const resolvedRoomId =
       requestedChannel === 'voice_of_god' ? `voice-of-god:${sessionId}` : (roomId as string)
 

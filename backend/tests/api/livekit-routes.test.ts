@@ -5,8 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
   verifyToken: vi.fn(),
-  getSession: vi.fn(),
-  isUserInSession: vi.fn(),
+  resolveEffectiveSessionRole: vi.fn(),
   generateToken: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn(),
@@ -17,9 +16,8 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.verifyToken,
 }))
 
-vi.mock('@/services/session.service', () => ({
-  getSession: mocks.getSession,
-  isUserInSession: mocks.isUserInSession,
+vi.mock('@/services/session-authz.service', () => ({
+  resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
 }))
 
 vi.mock('@/infra/livekit/token.service', () => ({
@@ -61,8 +59,11 @@ describe('livekit routes', () => {
       username: 'player',
       role: 'PLAYER',
     })
-    mocks.getSession.mockResolvedValue({ id: SESSION_ID })
-    mocks.isUserInSession.mockResolvedValue(true)
+    mocks.resolveEffectiveSessionRole.mockResolvedValue({
+      ok: true,
+      role: 'PLAYER',
+      session: { id: SESSION_ID, dmId: 'dm-id' },
+    })
     mocks.generateToken.mockResolvedValue('livekit-token')
   })
 
@@ -102,7 +103,11 @@ describe('livekit routes', () => {
 
   it('returns 403 when user is not in session and is not admin', async () => {
     const app = buildApp()
-    mocks.isUserInSession.mockResolvedValue(false)
+    mocks.resolveEffectiveSessionRole.mockResolvedValue({
+      ok: false,
+      code: 'FORBIDDEN',
+      message: 'You are not a member of this session',
+    })
 
     const response = await request(app)
       .post('/api/livekit/token')
