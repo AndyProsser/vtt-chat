@@ -99,7 +99,7 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    const isSessionDm = user.role === 'DM' && session.dmId === user.userId
+    const isSessionDm = session.dmId === user.userId
     const resolvedRoomId =
       requestedChannel === 'voice_of_god' ? `voice-of-god:${sessionId}` : (roomId as string)
 

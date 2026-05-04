@@ -80,6 +80,12 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface));
 }
 
+.session-toolbar__timer-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .ui-icon {
   font-variation-settings: 'FILL' 0;
 }
@@ -133,6 +139,12 @@
   background: color-mix(in srgb, #dc2626 82%, var(--color-surface));
   border-color: color-mix(in srgb, #7f1d1d 55%, var(--color-border));
   color: #fef2f2;
+}
+
+.session-toolbar__icon-btn--pause {
+  background: color-mix(in srgb, #d97706 16%, var(--color-surface));
+  border-color: color-mix(in srgb, #d97706 42%, var(--color-border));
+  color: #b45309;
 }
 
 .session-toolbar__icon-btn:hover,
@@ -213,6 +225,10 @@
     border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
     border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
     padding: 0.34rem 0;
+  }
+
+  .session-toolbar__timer-group {
+    flex-wrap: wrap;
   }
 }
 

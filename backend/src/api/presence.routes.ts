@@ -43,7 +43,7 @@ async function canAccessSessionPresence(sessionId: UUID, user: any): Promise<boo
   const session = await getSession(sessionId)
   if (!session) return false
 
-  if (user.role === 'DM' || session.dmId === (user.userId as UUID)) {
+  if (session.dmId === (user.userId as UUID)) {
     return true
   }
 

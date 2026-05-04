@@ -615,9 +615,9 @@ router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/session/:id
- * Delete a session (DM-only)
+ * Delete a session (session-owner operation)
  */
-router.delete('/:id', requireAuth, requireDM, async (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
 

@@ -14,8 +14,10 @@ interface SessionToolbarProps {
   wsState: ConnectionState
   sessionState: SessionState
   canStartSession: boolean
+  canPauseSession: boolean
   canStopSession: boolean
   onStartSession: () => void
+  onPauseSession: () => void
   onStopSession: () => void
   onExitToSelector: () => void
 }
@@ -27,8 +29,10 @@ export function SessionToolbar({
   wsState,
   sessionState,
   canStartSession,
+  canPauseSession,
   canStopSession,
   onStartSession,
+  onPauseSession,
   onStopSession,
   onExitToSelector,
 }: SessionToolbarProps) {
@@ -99,6 +103,8 @@ export function SessionToolbar({
   }
 
   const wsStateLabel = wsState.charAt(0).toUpperCase() + wsState.slice(1)
+  const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
+  const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
 
   return (
     <TooltipProvider delayDuration={140}>
@@ -135,7 +141,7 @@ export function SessionToolbar({
               className="session-toolbar__action session-toolbar__action--stop"
             >
               <Icon name="stop" />
-              <span>Stop</span>
+              <span>End</span>
             </button>
           ) : null}
 
@@ -146,11 +152,25 @@ export function SessionToolbar({
             </span>
           ) : null}
 
-          <span className="session-toolbar__timer-pill" aria-label="Session timer">
-            <Icon name="timer" />
-            <strong>{timerLabel}</strong>
-            <span className="session-toolbar__timer-state">{sessionState}</span>
-          </span>
+          <div className="session-toolbar__timer-group">
+            <span className="session-toolbar__timer-pill" aria-label="Session timer">
+              <Icon name="timer" />
+              <strong>{timerLabel}</strong>
+              <span className="session-toolbar__timer-state">{sessionState}</span>
+            </span>
+
+            {canPauseSession ? (
+              <button
+                type="button"
+                onClick={onPauseSession}
+                className="session-toolbar__icon-btn session-toolbar__icon-btn--pause"
+                aria-label={pauseLabel}
+                title={pauseLabel}
+              >
+                <Icon name={pauseIcon} />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="session-toolbar__zone session-toolbar__zone--right">

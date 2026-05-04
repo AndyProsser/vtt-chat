@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { ErrorCode, PresenceState, Role, RoomType, isValidRoomName, isValidUUID } from '@shared'
+import { ErrorCode, PresenceState, RoomType, isValidRoomName, isValidUUID } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
@@ -53,7 +53,7 @@ async function canAccessSessionRooms(sessionId: UUID, user: any): Promise<boolea
   const session = await getSession(sessionId)
   if (!session) return false
 
-  if (user.role === Role.DM || session.dmId === (user.userId as UUID)) {
+  if (session.dmId === (user.userId as UUID)) {
     return true
   }
 
@@ -109,7 +109,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
-    if (user.role !== Role.DM && session.dmId !== (user.userId as UUID)) {
+    if (session.dmId !== (user.userId as UUID)) {
       return res
         .status(403)
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can create rooms' })
@@ -302,7 +302,7 @@ router.post('/:roomId/move-user', requireAuth, async (req: Request, res: Respons
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
-    if (user.role !== Role.DM || session.dmId !== (user.userId as UUID)) {
+    if (session.dmId !== (user.userId as UUID)) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can move users' })
     }
 

@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
   verifyToken: vi.fn(),
   getSession: vi.fn(),
+  getRoom: vi.fn(),
+  getSessionPresence: vi.fn(),
   sendMessage: vi.fn(),
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
@@ -30,12 +32,18 @@ vi.mock('@/services/chat.service', () => ({
   getMessages: mocks.getMessages,
 }))
 
+vi.mock('@/services/room.service', () => ({
+  getRoom: mocks.getRoom,
+  getSessionPresence: mocks.getSessionPresence,
+}))
+
 import chatRoutes from '@/api/chat.routes'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const MESSAGE_ID = '22222222-2222-4222-8222-222222222222'
 const USER_ID = '33333333-3333-4333-8333-333333333333'
 const DM_ID = '44444444-4444-4444-8444-444444444444'
+const ROOM_ID = '55555555-5555-4555-8555-555555555555'
 
 function buildApp() {
   const app = express()
@@ -63,6 +71,24 @@ describe('chat routes', () => {
       dmId: DM_ID,
       state: SessionState.ACTIVE,
     })
+
+    mocks.getRoom.mockResolvedValue({
+      id: ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main Room',
+      type: 'MAIN',
+    })
+
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        primaryRoomId: ROOM_ID,
+        privateRoomId: undefined,
+        lastSeenAt: Date.now(),
+      },
+    ])
 
     mocks.sendMessage.mockResolvedValue({
       id: MESSAGE_ID,
@@ -116,6 +142,7 @@ describe('chat routes', () => {
       .set('Authorization', 'Bearer token')
       .send({
         sessionId: SESSION_ID,
+        roomId: ROOM_ID,
         content: 'in character',
         type: MessageType.IC,
       })
@@ -132,6 +159,7 @@ describe('chat routes', () => {
       .set('Authorization', 'Bearer token')
       .send({
         sessionId: SESSION_ID,
+        roomId: ROOM_ID,
         content: 'psst',
         type: MessageType.WHISPER,
       })
@@ -153,6 +181,7 @@ describe('chat routes', () => {
       .set('Authorization', 'Bearer token')
       .send({
         sessionId: SESSION_ID,
+        roomId: ROOM_ID,
         content: 'hello',
         type: MessageType.OOC,
       })
@@ -169,6 +198,7 @@ describe('chat routes', () => {
       .set('Authorization', 'Bearer token')
       .send({
         sessionId: SESSION_ID,
+        roomId: ROOM_ID,
         content: 'hello world',
         type: MessageType.OOC,
       })
@@ -188,11 +218,72 @@ describe('chat routes', () => {
 
     const response = await request(app)
       .get(`/api/chat/messages/${SESSION_ID}`)
+      .query({ roomId: ROOM_ID })
       .set('Authorization', 'Bearer token')
 
     expect(response.status).toBe(200)
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
-    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER')
+    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
+  })
+
+  it('allows the session owner to send chat even when auth role is not DM', async () => {
+    const app = buildApp()
+
+    mocks.verifyToken.mockReturnValue({
+      userId: DM_ID,
+      username: 'morgan',
+      role: 'PLAYER',
+    })
+
+    mocks.sendMessage.mockResolvedValueOnce({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
+      authorId: DM_ID,
+      authorUsername: 'morgan',
+      content: 'hello from dm',
+      type: MessageType.OOC,
+      isDmOnly: false,
+      visibleTo: undefined,
+      createdAt: 1700000000000,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'hello from dm',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.getSessionPresence).not.toHaveBeenCalled()
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
+
+    const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
+    expect(eventArg.userRole).toBe('DM')
+  })
+
+  it('allows the session owner to fetch room chat even when auth role is not DM', async () => {
+    const app = buildApp()
+
+    mocks.verifyToken.mockReturnValue({
+      userId: DM_ID,
+      username: 'morgan',
+      role: 'PLAYER',
+    })
+    mocks.getMessages.mockResolvedValueOnce([{ id: MESSAGE_ID }])
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .query({ roomId: ROOM_ID })
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.getSessionPresence).not.toHaveBeenCalled()
+    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, DM_ID, 'DM', ROOM_ID)
   })
 
   it('edits a message and broadcasts update', async () => {

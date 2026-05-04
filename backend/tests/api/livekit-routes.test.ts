@@ -124,11 +124,15 @@ describe('livekit routes', () => {
     expect(response.status).toBe(200)
     expect(response.body.token).toBe('livekit-token')
     expect(response.body.roomName).toBe(ROOM_ID)
-    expect(mocks.generateToken).toHaveBeenCalledWith({
-      roomId: ROOM_ID,
-      userId: USER_ID,
-      sessionId: SESSION_ID,
-    })
+    expect(mocks.generateToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: ROOM_ID,
+        userId: USER_ID,
+        sessionId: SESSION_ID,
+        canPublish: true,
+        canSubscribe: true,
+      })
+    )
   })
 
   it('returns health status for configured livekit url', async () => {

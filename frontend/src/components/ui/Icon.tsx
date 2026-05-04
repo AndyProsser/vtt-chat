@@ -14,6 +14,7 @@ type IconName =
   | 'chat'
   | 'notes'
   | 'play'
+  | 'pause'
   | 'stop'
   | 'timer'
   | 'moon'
@@ -40,6 +41,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   chat: 'chat',
   notes: 'notes',
   play: 'play_arrow',
+  pause: 'pause',
   stop: 'stop',
   timer: 'timer',
   moon: 'dark_mode',

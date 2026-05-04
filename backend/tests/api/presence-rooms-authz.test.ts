@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   mockGetRooms: vi.fn(),
   mockGetRoom: vi.fn(),
   mockJoinRoom: vi.fn(),
+  mockGetSessionParticipantProfiles: vi.fn(),
 }))
 const mockBroadcastEventToSession = vi.fn()
 const mockWSManager = { broadcastEventToSession: mockBroadcastEventToSession }
@@ -26,6 +27,7 @@ vi.mock('@/services/session.service', () => ({
 }))
 
 vi.mock('@/services/room.service', () => ({
+  ensureSessionDefaultRoomsForSession: vi.fn(),
   ensurePresenceRecoveredFromSnapshots: vi.fn(),
   getSessionPresence: mocks.mockGetSessionPresence,
   getRoom: mocks.mockGetRoom,
@@ -36,6 +38,10 @@ vi.mock('@/services/room.service', () => ({
   getRoomMemberIds: vi.fn(),
   getRooms: mocks.mockGetRooms,
   leaveRoom: vi.fn(),
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  getSessionParticipantProfiles: mocks.mockGetSessionParticipantProfiles,
 }))
 
 import presenceRoutes from '@/api/presence.routes'
@@ -93,6 +99,7 @@ describe('presence/rooms authz', () => {
       state: 'ONLINE',
       lastSeenAt: Date.now(),
     })
+    mocks.mockGetSessionParticipantProfiles.mockResolvedValue({})
     mockBroadcastEventToSession.mockClear()
   })
 

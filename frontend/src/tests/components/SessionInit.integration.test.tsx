@@ -822,4 +822,180 @@ describe('SessionInit integration', () => {
     const toolbar = await screen.findByTestId('session-toolbar')
     expect(within(toolbar).getByText('PLAYER')).toBeTruthy()
   })
+
+  it('pauses an active session from the toolbar pause button', async () => {
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+                memberRole: 'DM',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
+        return {
+          ok: true,
+          json: async () => ({
+            id: SESSION_ID,
+            name: 'Session Alpha',
+            dmId: DM_ID,
+            state: SessionState.PAUSED,
+            createdAt: 1,
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    await screen.findByTestId('session-toolbar')
+    fireEvent.click(screen.getByRole('button', { name: 'Pause for break' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/session/${SESSION_ID}/state`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ state: SessionState.PAUSED }),
+        })
+      )
+    })
+  })
+
+  it('starts a new session when the latest campaign session has already ended', async () => {
+    const NEXT_SESSION_ID = asUuid('88888888-8888-4888-8888-888888888881')
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+                memberRole: 'DM',
+                latestSessionState: 'ENDED',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`) && !init?.method) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ENDED,
+                createdAt: 1,
+                endedAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions/start`) && init?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            session: {
+              id: NEXT_SESSION_ID,
+              name: 'Session 2 - 2026-05-04',
+              dmId: DM_ID,
+              state: SessionState.IDLE,
+              createdAt: 3,
+            },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions/start`,
+        expect.objectContaining({
+          method: 'POST',
+        })
+      )
+    })
+
+    await screen.findByTestId('session-toolbar')
+    expect(screen.getByRole('button', { name: 'Start' })).toBeTruthy()
+  })
 })

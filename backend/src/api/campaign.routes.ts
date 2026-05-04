@@ -942,7 +942,7 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
     return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
   }
 
-  if (campaign.currentDmId !== (user.userId as UUID) && user.role !== 'DM') {
+  if (campaign.currentDmId !== (user.userId as UUID)) {
     return res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can start sessions' })

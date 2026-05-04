@@ -75,6 +75,10 @@ function noteVisibleTo(note: {
   return Array.from(visible)
 }
 
+function resolveSessionRole(sessionDmId: UUID, user: { userId: UUID; role: string }): string {
+  return sessionDmId === (user.userId as UUID) ? 'DM' : String(user.role)
+}
+
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { sessionId } = req.params
@@ -88,7 +92,8 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  const notes = await getVisibleNotes(session.id, user.userId as UUID, user.role)
+  const requesterRole = resolveSessionRole(session.dmId, user)
+  const notes = await getVisibleNotes(session.id, user.userId as UUID, requesterRole)
   return res.status(200).json({ notes })
 })
 
@@ -116,7 +121,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
-  if (visibility === NoteVisibility.DM_ONLY && user.role !== 'DM') {
+  const requesterRole = resolveSessionRole(session.dmId, user)
+
+  if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may create DM-only notes' })
@@ -140,7 +147,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       type: 'NOTES:CREATED',
       version: 1,
       userId: user.userId as UUID,
-      userRole: user.role,
+      userRole: requesterRole as any,
       sessionId: session.id,
       roomId: null,
       timestamp: note.createdAt,
@@ -192,7 +199,19 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid note visibility' })
   }
 
-  if (visibility === NoteVisibility.DM_ONLY && user.role !== 'DM') {
+  const existingNote = await getNoteById(noteId as UUID)
+  if (!existingNote) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  const noteSession = await getSession(existingNote.sessionId)
+  if (!noteSession) {
+    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  }
+
+  const requesterRole = resolveSessionRole(noteSession.dmId, user)
+
+  if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may set DM-only visibility' })
@@ -200,7 +219,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
 
   let note
   try {
-    note = await updateNote(noteId as UUID, user.userId as UUID, user.role, {
+    note = await updateNote(noteId as UUID, user.userId as UUID, requesterRole, {
       title,
       content,
       visibility,
@@ -235,6 +254,8 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
 
+  const eventRole = resolveSessionRole(session.dmId, user)
+
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {
     const event: EventEnvelope = {
@@ -242,7 +263,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
       type: 'NOTES:UPDATED',
       version: 1,
       userId: user.userId as UUID,
-      userRole: user.role,
+      userRole: eventRole as any,
       sessionId: note.sessionId,
       roomId: null,
       timestamp: note.updatedAt,
@@ -284,14 +305,15 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
-  const visibleNotes = await getVisibleNotes(note.sessionId, user.userId as UUID, user.role)
-  if (!visibleNotes.find((n) => n.id === note.id)) {
-    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
-  }
-
   const session = await getSession(note.sessionId)
   if (!session) {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  }
+
+  const requesterRole = resolveSessionRole(session.dmId, user)
+  const visibleNotes = await getVisibleNotes(note.sessionId, user.userId as UUID, requesterRole)
+  if (!visibleNotes.find((n) => n.id === note.id)) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
   const published = await markNotePublished(note.id)

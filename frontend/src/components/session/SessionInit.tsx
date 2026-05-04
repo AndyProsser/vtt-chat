@@ -167,7 +167,7 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   const idle = sessions.find((session) => session.state === SessionState.IDLE)
   if (idle) return idle
 
-  return sessions[0]
+  return null
 }
 
 function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
@@ -1212,12 +1212,73 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     window.location.assign('/')
   }
 
+  const startCampaignSession = useCallback(
+    async (campaignId: UUID, existingSessions: SessionRecord[]) => {
+      try {
+        const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: buildDefaultChapterName(existingSessions),
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to start campaign chapter')
+        }
+
+        const payload = (await response.json()) as { session: SessionRecord }
+        replaceSessions([payload.session, ...existingSessions])
+        setCurrentSession(payload.session.id)
+        onSessionCreated?.(payload.session.id)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
+    },
+    [apiUrl, onSessionCreated, replaceSessions, setCurrentSession, token]
+  )
+
   const handleStartSession = async (sessionId: UUID) => {
+    if (currentSession?.id === sessionId && currentSession.state === SessionState.ENDED) {
+      if (!selectedCampaignId) {
+        setError('Select a campaign before starting a new session.')
+        return
+      }
+
+      await startCampaignSession(selectedCampaignId, sessionList)
+      return
+    }
+
     await handleTransitionSession(sessionId, SessionState.ACTIVE)
   }
 
+  const handlePauseSession = async (sessionId: UUID) => {
+    const nextState =
+      currentSession?.id === sessionId && currentSession.state === SessionState.PAUSED
+        ? SessionState.ACTIVE
+        : SessionState.PAUSED
+
+    await handleTransitionSession(sessionId, nextState)
+  }
+
   const handleStopSession = async (sessionId: UUID) => {
-    await handleTransitionSession(sessionId, SessionState.PAUSED)
+    const shouldEnd =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm(
+            'End this session now? This closes the current chapter for everyone and moves players back to greenroom/offline state.'
+          )
+
+    if (!shouldEnd) {
+      return
+    }
+
+    await handleTransitionSession(sessionId, SessionState.ENDED)
   }
 
   const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
@@ -1321,8 +1382,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     effectiveSessionRole === user.role ? user : { ...user, role: effectiveSessionRole }
   const canStartFromGreenroom =
     currentSession?.dmId === user.id &&
-    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.PAUSED)
-  const canStopFromActive = currentSession?.dmId === user.id && isSessionActive
+    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.ENDED)
+  const canPauseFromActive =
+    currentSession?.dmId === user.id &&
+    (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
+  const canStopFromActive =
+    currentSession?.dmId === user.id &&
+    (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
 
   useEffect(() => {
     if (!error) return
@@ -1638,8 +1704,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   wsState={wsState}
                   sessionState={currentSession.state}
                   canStartSession={canStartFromGreenroom}
+                  canPauseSession={canPauseFromActive}
                   canStopSession={canStopFromActive}
                   onStartSession={() => handleStartSession(currentSession.id)}
+                  onPauseSession={() => handlePauseSession(currentSession.id)}
                   onStopSession={() => handleStopSession(currentSession.id)}
                   onExitToSelector={handleExitToCampaignSelector}
                 />

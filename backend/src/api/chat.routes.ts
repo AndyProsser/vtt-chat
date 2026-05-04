@@ -158,26 +158,27 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    const role: string = user.role
-    if (type === MessageType.IC && role === 'SPECTATOR') {
+    const session = await getSession(sessionId as UUID)
+    if (!session) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
+    }
+
+    const requesterRole = session.dmId === (user.userId as UUID) ? 'DM' : String(user.role)
+
+    if (type === MessageType.IC && requesterRole === 'SPECTATOR') {
       return res
         .status(403)
         .json({ code: ErrorCode.FORBIDDEN, message: 'Spectators may not send IC messages' })
     }
-    if (type === MessageType.WHISPER && role === 'SPECTATOR') {
+    if (type === MessageType.WHISPER && requesterRole === 'SPECTATOR') {
       return res
         .status(403)
         .json({ code: ErrorCode.FORBIDDEN, message: 'Spectators may not send whispers' })
     }
-    if (type === MessageType.SYSTEM && role !== 'DM') {
+    if (type === MessageType.SYSTEM && requesterRole !== 'DM') {
       return res
         .status(403)
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may send system messages' })
-    }
-
-    const session = await getSession(sessionId as UUID)
-    if (!session) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
     const room = await getRoom(roomId as UUID)
@@ -185,7 +186,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
-    if (user.role !== 'DM') {
+    if (requesterRole !== 'DM') {
       const presence = await getSessionPresence(sessionId as UUID)
       const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
       if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
@@ -229,7 +230,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
-      const event = buildMessageSentEvent(stored, user.userId as UUID, user.role)
+      const event = buildMessageSentEvent(stored, user.userId as UUID, requesterRole)
       wsManager.broadcastEventToSession(sessionId as UUID, event, stored.visibleTo)
     }
 
@@ -262,12 +263,14 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
+    const requesterRole = session.dmId === (user.userId as UUID) ? 'DM' : String(user.role)
+
     const room = await getRoom(roomId as UUID)
     if (!room || room.sessionId !== (sessionId as UUID)) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
-    if (user.role !== 'DM') {
+    if (requesterRole !== 'DM') {
       const presence = await getSessionPresence(sessionId as UUID)
       const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
       if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
@@ -278,7 +281,12 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       }
     }
 
-    const messages = await getMessages(sessionId as UUID, user.userId as UUID, user.role, roomId)
+    const messages = await getMessages(
+      sessionId as UUID,
+      user.userId as UUID,
+      requesterRole,
+      roomId as UUID
+    )
     return res.status(200).json({ messages })
   } catch {
     return internalErrorResponse(res)

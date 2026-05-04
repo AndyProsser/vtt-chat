@@ -138,12 +138,12 @@ async function validateDmControl(
     }
   }
 
-  if (user.role !== 'DM' || session.dmId !== (user.userId as UUID)) {
+  if (session.dmId !== (user.userId as UUID)) {
     return {
       ok: false,
       status: 403,
       code: ErrorCode.FORBIDDEN,
-      message: 'DM role required for audio control actions',
+      message: 'Session DM required for audio control actions',
     }
   }
 
