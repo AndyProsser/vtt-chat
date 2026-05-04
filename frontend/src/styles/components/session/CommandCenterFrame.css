@@ -57,10 +57,18 @@
 }
 
 .command-center-rails {
+  --command-center-rails-bottom-gap: 8px;
+  --command-center-rails-desktop-offset: 9rem;
   display: grid;
   gap: 1rem;
   align-items: stretch;
   min-height: 0;
+  min-height: max(
+    489px,
+    calc(
+      100dvh - var(--command-center-rails-desktop-offset) - var(--command-center-rails-bottom-gap)
+    )
+  );
   height: auto;
   overflow: hidden;
   grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
@@ -225,6 +233,7 @@
 @media (max-width: 1100px) {
   .command-center-rails {
     grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
 
   .command-center-right-rail-overlay {

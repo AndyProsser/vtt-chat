@@ -247,9 +247,9 @@ router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
 /**
  * PUT /api/session/:id/state
  * Change session state (start, pause, resume, end)
- * DM-only operation.
+ * Session-owner operation.
  */
-router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Response) => {
+router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
   const { state } = req.body

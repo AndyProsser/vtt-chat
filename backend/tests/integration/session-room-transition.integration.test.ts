@@ -251,4 +251,32 @@ describe('session state room orchestration', () => {
       })
     )
   })
+
+  it('allows the session owner to transition state even if auth role is not DM', async () => {
+    const app = buildApp()
+
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: DM_ID,
+      username: 'dm-user',
+      role: 'PLAYER',
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'ACTIVE' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockUpdateSessionState).toHaveBeenCalledWith(SESSION_ID, 'ACTIVE', DM_ID)
+
+    const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+    expect(wsCalls).toHaveLength(1)
+    expect(wsCalls[0][1]).toEqual(
+      expect.objectContaining({
+        userId: DM_ID,
+        userRole: 'PLAYER',
+        type: 'ROOM:SESSION_TRANSITION_APPLIED',
+      })
+    )
+  })
 })

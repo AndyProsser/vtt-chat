@@ -99,6 +99,8 @@ interface ApiVoiceOfGod {
   changedAt?: number
 }
 
+type CampaignMembershipRole = CampaignSummary['memberRole']
+
 const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
 const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
@@ -221,6 +223,12 @@ function getCampaignEntryAction(campaign: CampaignSummary): {
     icon: 'visibility',
     disabled: false,
   }
+}
+
+function resolveMembershipRole(memberRole: CampaignMembershipRole | null | undefined): Role {
+  if (memberRole === 'DM') return Role.DM
+  if (memberRole === 'SPECTATOR') return Role.SPECTATOR
+  return Role.PLAYER
 }
 
 function parsePlayerInviteCode(input: string): string {
@@ -906,7 +914,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const canStartAsDm = targetCampaign?.currentDmId === user.id
+      const canStartAsDm =
+        targetCampaign?.currentDmId === user.id && targetCampaign?.memberRole === 'DM'
 
       if (!canStartAsDm) {
         setError('No campaign chapter is available yet. Wait for the DM to start the session.')
@@ -1304,15 +1313,16 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const hasSessionSelected = currentSession !== null
   const isSessionActive = currentSession?.state === SessionState.ACTIVE
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
+  const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
-    currentSession && currentSession.dmId === user.id ? Role.DM : user.role
+    currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
   const effectiveSessionUser =
     effectiveSessionRole === user.role ? user : { ...user, role: effectiveSessionRole }
   const canStartFromGreenroom =
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.PAUSED)
   const canStopFromActive = currentSession?.dmId === user.id && isSessionActive
-  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
 
   useEffect(() => {
     if (!error) return

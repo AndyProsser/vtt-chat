@@ -35,56 +35,7 @@ export function ChatWindow({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
-  const chatWindowRef = useRef<HTMLElement>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    let frame = 0
-
-    const updateMinHeight = () => {
-      if (!chatWindowRef.current) {
-        return
-      }
-
-      const rect = chatWindowRef.current.getBoundingClientRect()
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-      const bottomPadding = 40
-      const viewportBottom = viewportHeight - bottomPadding
-      const available = Math.max(489, Math.floor(viewportBottom - rect.top))
-      chatWindowRef.current.style.setProperty('--chat-window-min-height', `${available}px`)
-    }
-
-    const scheduleUpdate = () => {
-      if (frame) {
-        window.cancelAnimationFrame(frame)
-      }
-      frame = window.requestAnimationFrame(updateMinHeight)
-    }
-
-    scheduleUpdate()
-
-    window.addEventListener('resize', scheduleUpdate)
-    window.addEventListener('orientationchange', scheduleUpdate)
-    window.visualViewport?.addEventListener('resize', scheduleUpdate)
-    window.visualViewport?.addEventListener('scroll', scheduleUpdate)
-
-    const resizeObserver = new ResizeObserver(scheduleUpdate)
-    const parentElement = chatWindowRef.current?.parentElement
-    if (parentElement) {
-      resizeObserver.observe(parentElement)
-    }
-
-    return () => {
-      if (frame) {
-        window.cancelAnimationFrame(frame)
-      }
-      window.removeEventListener('resize', scheduleUpdate)
-      window.removeEventListener('orientationchange', scheduleUpdate)
-      window.visualViewport?.removeEventListener('resize', scheduleUpdate)
-      window.visualViewport?.removeEventListener('scroll', scheduleUpdate)
-      resizeObserver.disconnect()
-    }
-  }, [error, isLoading])
 
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
@@ -235,7 +186,7 @@ export function ChatWindow({
   }
 
   return (
-    <section ref={chatWindowRef} className="chat-window">
+    <section className="chat-window">
       <header className="chat-window__header">
         <div>
           <h3 className="chat-window__title"># general</h3>
