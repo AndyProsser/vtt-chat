@@ -1,0 +1,33 @@
+# Set default behavior for all files
+* text=auto eol=lf
+*.sh text eol=lf
+
+# Explicitly declare binary files (no line ending conversion)
+*.png binary
+*.jpg binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.mpg binary
+*.mpeg binary
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.flac binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary

@@ -522,7 +522,7 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     })
   }
 
-  const existingUser = await prisma.user.findFirst({
+  let existingUser = await prisma.user.findFirst({
     where: {
       username,
       isActive: true,
@@ -538,10 +538,32 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
   })
 
   if (!existingUser) {
-    return res.status(403).json({
-      code: 'LOGIN_DISABLED',
-      message: 'Direct registration/sign-in is disabled. Use your campaign invite URL to access.',
-    })
+    if (process.env.NODE_ENV === 'development') {
+      // Allow direct registration in development mode
+      const newUser = await prisma.user.create({
+        data: {
+          username,
+          displayName: displayName || username,
+          authType: 'FULL',
+          role: role || 'PLAYER',
+          avatarUrl,
+        },
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          role: true,
+          authType: true,
+        },
+      })
+      existingUser = newUser
+    } else {
+      return res.status(403).json({
+        code: 'LOGIN_DISABLED',
+        message: 'Direct registration/sign-in is disabled. Use your campaign invite URL to access.',
+      })
+    }
   }
 
   if (existingUser.authType !== 'FULL') {

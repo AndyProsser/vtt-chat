@@ -69,5 +69,6 @@
   "editor.insertSpaces": true,
   "editor.trimAutoWhitespace": true,
   "files.trimTrailingWhitespace": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "files.eol": "\n",
 }

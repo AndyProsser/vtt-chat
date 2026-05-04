@@ -185,7 +185,7 @@ export default function App() {
         )}
 
         <main
-          className="mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
+          className="font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
           style={{ width: '100%', maxWidth: '900px', paddingBottom: '10px' }}
         >
           <ToastViewport />

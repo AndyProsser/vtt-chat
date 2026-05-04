@@ -2,6 +2,14 @@
 @import 'tailwindcss';
 
 @theme {
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, 'Segoe UI', 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+
   /* Color mappings for Tailwind utilities (e.g. bg-ui-surface, text-ui-primary). */
   --color-ui-surface: var(--color-surface);
   --color-ui-surface-subtle: var(--color-surface-subtle);
