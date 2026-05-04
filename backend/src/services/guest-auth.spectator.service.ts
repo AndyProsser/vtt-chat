@@ -40,6 +40,7 @@ async function findOrCreateGuestSpectator(params: { email: string; displayName: 
   id: string
   username: string
   displayName: string
+  authType: 'GUEST' | 'FULL'
 }> {
   const existing = await prisma.user.findFirst({
     where: { email: params.email },
@@ -56,6 +57,7 @@ async function findOrCreateGuestSpectator(params: { email: string; displayName: 
       id: existing.id,
       username: existing.username,
       displayName: existing.displayName,
+      authType: 'FULL',
     }
   }
 
@@ -72,6 +74,7 @@ async function findOrCreateGuestSpectator(params: { email: string; displayName: 
         id: true,
         username: true,
         displayName: true,
+        authType: true,
       },
     })
   }
@@ -89,6 +92,7 @@ async function findOrCreateGuestSpectator(params: { email: string; displayName: 
       id: true,
       username: true,
       displayName: true,
+      authType: true,
     },
   })
 }
@@ -283,14 +287,14 @@ export async function joinGuestSpectatorViaInvite(params: {
       userId: spectatorUser.id as UUID,
       username: spectatorUser.username,
       role: 'SPECTATOR',
-      authType: 'GUEST',
+      authType: spectatorUser.authType,
     }),
     user: {
       id: spectatorUser.id,
       username: spectatorUser.username,
       displayName: spectatorUser.displayName,
       role: 'SPECTATOR',
-      authType: 'GUEST',
+      authType: spectatorUser.authType,
     },
     campaignId: campaign.id,
   }
@@ -312,6 +316,7 @@ export async function getSpectatorWaitlistStatus(params: {
           id: true,
           username: true,
           displayName: true,
+          authType: true,
         },
       },
     },
@@ -332,14 +337,14 @@ export async function getSpectatorWaitlistStatus(params: {
         userId: entry.user.id as UUID,
         username: entry.user.username,
         role: 'SPECTATOR',
-        authType: 'GUEST',
+        authType: entry.user.authType,
       }),
       user: {
         id: entry.user.id,
         username: entry.user.username,
         displayName: entry.user.displayName,
         role: 'SPECTATOR',
-        authType: 'GUEST',
+        authType: entry.user.authType,
       },
     }
   }

@@ -39,12 +39,24 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     token: string,
     user: { id: UUID; username: string; role: Role }
   ) => {
+    handleSpectatorAuthenticated(token, user, 'GUEST')
+  }
+
+  const handleSpectatorAuthenticated = (
+    token: string,
+    user: { id: UUID; username: string; role: Role },
+    authType: 'GUEST' | 'FULL'
+  ) => {
     storeAuthSession(token, {
       ...user,
-      authType: 'GUEST',
+      authType,
     })
     setUpgradePromptDismissed(false)
-    setAuthMessage('Spectator session ready. You are signed in as a guest account.')
+    setAuthMessage(
+      authType === 'GUEST'
+        ? 'Spectator session ready. You are signed in as a guest account.'
+        : 'Spectator session ready. You are signed in with your full account.'
+    )
   }
 
   const handleGuestExtensionAuthenticated = (
@@ -255,6 +267,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     upgradePromptDismissed,
     setUpgradePromptDismissed,
     handleLoginSuccess,
+    handleSpectatorAuthenticated,
     handleGuestSpectatorAuthenticated,
     handleGuestExtensionAuthenticated,
     handleLogout,

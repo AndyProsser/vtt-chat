@@ -41,7 +41,7 @@ interface SessionInitProps {
   apiUrl: string
   wsUrl: string
   token: string
-  user: { id: UUID; username: string; role: Role }
+  user: { id: UUID; username: string; role: Role; authType?: 'FULL' | 'GUEST' }
   onSessionCreated?: (sessionId: UUID) => void
 }
 
@@ -49,12 +49,15 @@ interface CampaignSummary {
   id: UUID
   name: string
   description?: string | null
+  posterUrl?: string | null
   inviteCode: string
   currentDmId: UUID
+  memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
   dmUsername?: string
   dmDisplayName?: string
   dmAvatarUrl?: string | null
   dmOnline?: boolean
+  connectedPlayers?: number
   connectedPlayersRounded?: number
   connectedPlayersLabel?: string
   connectedSpectatorsRounded?: number
@@ -100,6 +103,29 @@ interface ApiVoiceOfGod {
 const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
 const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
+const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
+const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
+const MAX_POSTER_WIDTH_PX = 1024
+const MAX_POSTER_DATA_URL_CHARS = 350_000
+
+type CampaignSettingsPayload = {
+  id: UUID
+  name: string
+  description?: string | null
+  posterUrl?: string | null
+  discoverable: boolean
+  spectatorPolicy: 'NONE' | 'GUESTS' | 'USERS'
+  spectatorMax: number | null
+  spectatorWaitlistEnabled: boolean
+  spectatorReconnectGraceSecs: number
+  extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
+  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  lateJoinGraceMinutes: number
+  inviteCode: string
+  inviteActive: boolean
+  spectatorInviteCode?: string | null
+  spectatorInviteActive: boolean
+}
 
 function formatTransitionNotice(params: {
   nextState: SessionState
@@ -154,6 +180,49 @@ function getPrivacyCounterLabel(label: string | undefined, rounded: number | und
   return `~${rounded}`
 }
 
+function getCampaignEntryAction(campaign: CampaignSummary): {
+  label: 'Launch' | 'Watch'
+  icon: 'rocket_launch' | 'visibility'
+  disabled: boolean
+  reason?: string
+} {
+  const state = getCampaignDisplayState(campaign)
+  const isSpectator = campaign.memberRole === 'SPECTATOR'
+
+  if (!isSpectator) {
+    return {
+      label: 'Launch',
+      icon: 'rocket_launch',
+      disabled: false,
+    }
+  }
+
+  if (state !== 'ACTIVE') {
+    return {
+      label: 'Watch',
+      icon: 'visibility',
+      disabled: true,
+      reason: 'Spectators can only watch active campaigns.',
+    }
+  }
+
+  const hasTableOnline = Boolean(campaign.dmOnline) || (campaign.connectedPlayers || 0) > 0
+  if (!hasTableOnline) {
+    return {
+      label: 'Watch',
+      icon: 'visibility',
+      disabled: true,
+      reason: 'Campaign is active, but no DM or player is online yet.',
+    }
+  }
+
+  return {
+    label: 'Watch',
+    icon: 'visibility',
+    disabled: false,
+  }
+}
+
 function parsePlayerInviteCode(input: string): string {
   const raw = input.trim()
   if (!raw) {
@@ -200,8 +269,30 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false)
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
+  const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
+  const [settingsCampaignId, setSettingsCampaignId] = useState<UUID | ''>('')
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false)
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false)
+  const [isInviteReissuing, setIsInviteReissuing] = useState(false)
+  const [settingsData, setSettingsData] = useState<CampaignSettingsPayload | null>(null)
+  const [settingsName, setSettingsName] = useState('')
+  const [settingsDescription, setSettingsDescription] = useState('')
+  const [settingsVisibility, setSettingsVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PRIVATE')
+  const [settingsSpectatorsEnabled, setSettingsSpectatorsEnabled] = useState(false)
+  const [settingsSpectatorMax, setSettingsSpectatorMax] = useState(10)
+  const [settingsSpectatorWaitlistEnabled, setSettingsSpectatorWaitlistEnabled] = useState(false)
+  const [settingsSpectatorReconnectGraceSecs, setSettingsSpectatorReconnectGraceSecs] = useState(60)
+  const [settingsExtensionSyncPolicy, setSettingsExtensionSyncPolicy] = useState<
+    'ALLOW' | 'DM_ONLY' | 'NONE'
+  >('ALLOW')
+  const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<
+    'OPEN' | 'SCREENED' | 'BLOCKED'
+  >('OPEN')
+  const [settingsLateJoinGraceMinutes, setSettingsLateJoinGraceMinutes] = useState(30)
+  const [settingsPosterUrl, setSettingsPosterUrl] = useState('')
   const [selectedRoomIdOverride, setSelectedRoomIdOverride] = useState<UUID | ''>('')
   const [error, setError] = useState<string | null>(null)
+  const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
@@ -300,6 +391,78 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setDismissedTransitionEventId(activeTransitionNotice.eventId)
   }, [activeTransitionNotice])
 
+  const loadCampaignSettings = useCallback(
+    async (campaignId: UUID) => {
+      setIsSettingsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/settings`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to load campaign settings')
+        }
+
+        const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
+        setSettingsData(payload.campaign)
+        setSettingsName(payload.campaign.name)
+        setSettingsDescription(payload.campaign.description || '')
+        setSettingsVisibility(payload.campaign.discoverable ? 'PUBLIC' : 'PRIVATE')
+        setSettingsSpectatorsEnabled(payload.campaign.spectatorPolicy !== 'NONE')
+        setSettingsSpectatorMax(payload.campaign.spectatorMax ?? 10)
+        setSettingsSpectatorWaitlistEnabled(payload.campaign.spectatorWaitlistEnabled)
+        setSettingsSpectatorReconnectGraceSecs(payload.campaign.spectatorReconnectGraceSecs)
+        setSettingsExtensionSyncPolicy(
+          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
+            ? 'ALLOW'
+            : payload.campaign.extensionSyncPolicy
+        )
+        setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
+        setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
+        setSettingsPosterUrl(payload.campaign.posterUrl || '')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load campaign settings'
+        setError(message)
+      } finally {
+        setIsSettingsLoading(false)
+      }
+    },
+    [apiUrl, token]
+  )
+
+  const openCampaignSettingsModal = useCallback(
+    (campaignId: UUID) => {
+      setSettingsCampaignId(campaignId)
+      setShowCampaignSettingsModal(true)
+      void loadCampaignSettings(campaignId)
+    },
+    [loadCampaignSettings]
+  )
+
+  const fetchCampaignSessions = useCallback(
+    async (campaignId: UUID): Promise<SessionRecord[]> => {
+      const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to load campaign sessions')
+      }
+
+      const data = await response.json()
+      return (data.sessions || []) as SessionRecord[]
+    },
+    [apiUrl, token]
+  )
+
   const handleToggleVoiceOfGod = useCallback(
     async (enabled: boolean) => {
       if (!currentSession || currentSession.dmId !== user.id) {
@@ -387,14 +550,31 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         const data = await response.json()
         const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
+        const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
+        const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
         setCampaigns(nextCampaigns)
 
+        if (pendingNotice) {
+          setLobbyNotice(pendingNotice)
+          sessionStorage.removeItem(LOBBY_NOTICE_STORAGE_KEY)
+        }
+
         if (nextCampaigns.length > 0) {
-          setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
+          const pendingCampaign = pendingCampaignId
+            ? nextCampaigns.find((campaign) => campaign.id === pendingCampaignId)
+            : null
+
+          if (pendingCampaign) {
+            setSelectedCampaignId(pendingCampaign.id)
+          } else {
+            setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
+          }
         } else {
           setSelectedCampaignId('')
           clearSessions()
         }
+
+        sessionStorage.removeItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
@@ -416,19 +596,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setError(null)
 
       try {
-        const response = await fetch(`${apiUrl}/api/campaigns/${selectedCampaignId}/sessions`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to load campaign sessions')
-        }
-
-        const data = await response.json()
-        replaceSessions(data.sessions || [])
+        const nextSessions = await fetchCampaignSessions(selectedCampaignId)
+        replaceSessions(nextSessions)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
@@ -436,7 +605,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     void loadCampaignSessions()
-  }, [apiUrl, selectedCampaignId, token, clearSessions, replaceSessions])
+  }, [selectedCampaignId, clearSessions, fetchCampaignSessions, replaceSessions])
 
   useEffect(() => {
     telemetryClient.setTransport(
@@ -561,6 +730,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setLobbyNotice(null)
+
+    if (user.authType === 'GUEST') {
+      setError('Upgrade to a full account before creating a new campaign.')
+      return
+    }
+
     setIsCreatingCampaign(true)
 
     try {
@@ -586,7 +762,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const nextCampaigns = [campaign, ...campaigns]
       setCampaigns(nextCampaigns)
       setSelectedCampaignId(campaign.id)
+      setLobbyNotice(
+        'Campaign created. Review the new card, then continue to launch when you are ready.'
+      )
       setShowCreateCampaignModal(false)
+      openCampaignSettingsModal(campaign.id)
       setNewCampaignName('')
       setNewCampaignDescription('')
     } catch (err) {
@@ -600,6 +780,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const handleJoinCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setLobbyNotice(null)
     setIsJoiningCampaign(true)
 
     try {
@@ -656,6 +837,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const nextCampaigns = (campaignsData.campaigns || []) as CampaignSummary[]
       setCampaigns(nextCampaigns)
       setSelectedCampaignId(campaignId as UUID)
+      setLobbyNotice('Campaign ready in your lobby. Continue when you are ready.')
       setShowJoinCampaignModal(false)
       setJoinInviteInput('')
     } catch (err) {
@@ -668,6 +850,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const handleEnterCampaign = async (campaignId?: UUID) => {
     setError(null)
+    setLobbyNotice(null)
 
     const targetCampaignId = campaignId || selectedCampaignId
 
@@ -680,13 +863,41 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setSelectedCampaignId(targetCampaignId)
     }
 
-    const preferredSession = getPreferredSession(sessionList)
+    const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
+
+    if (targetCampaign?.memberRole === 'SPECTATOR') {
+      const state = getCampaignDisplayState(targetCampaign)
+      if (state !== 'ACTIVE') {
+        setError('Spectators can only watch active campaigns.')
+        return
+      }
+
+      const hasTableOnline =
+        Boolean(targetCampaign.dmOnline) || (targetCampaign.connectedPlayers || 0) > 0
+      if (!hasTableOnline) {
+        setError('Campaign is active but no DM/player is online yet. Please wait.')
+        return
+      }
+    }
+
+    let targetSessions: SessionRecord[] = []
+
+    try {
+      targetSessions = await fetchCampaignSessions(targetCampaignId)
+      replaceSessions(targetSessions)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load campaign sessions'
+      setError(message)
+      return
+    }
+
+    const preferredSession = getPreferredSession(targetSessions)
+
     if (preferredSession) {
       setCurrentSession(preferredSession.id)
       return
     }
 
-    const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
     const canStartAsDm = targetCampaign?.currentDmId === user.id
 
     if (!canStartAsDm) {
@@ -702,7 +913,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: buildDefaultChapterName(sessionList),
+          name: buildDefaultChapterName(targetSessions),
         }),
       })
 
@@ -712,7 +923,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       const payload = (await response.json()) as { session: SessionRecord }
-      replaceSessions([payload.session, ...sessionList])
+      replaceSessions([payload.session, ...targetSessions])
       setCurrentSession(payload.session.id)
       onSessionCreated?.(payload.session.id)
     } catch (err) {
@@ -721,9 +932,209 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
   }
 
-  const handleOpenCampaignSettingsRoute = (campaignId: UUID) => {
-    window.history.pushState({}, '', `/campaigns/${campaignId}/settings`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
+  const handleSaveCampaignSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!settingsCampaignId) {
+      return
+    }
+
+    setError(null)
+    setIsSettingsSaving(true)
+
+    const normalizedPayload = {
+      name: settingsName,
+      description: settingsDescription,
+      posterUrl: settingsPosterUrl.trim().length > 0 ? settingsPosterUrl.trim() : null,
+      discoverable: settingsVisibility === 'PUBLIC',
+      spectatorsEnabled: settingsSpectatorsEnabled,
+      spectatorMax: settingsSpectatorsEnabled ? settingsSpectatorMax : null,
+      spectatorWaitlistEnabled: settingsSpectatorsEnabled
+        ? settingsSpectatorWaitlistEnabled
+        : false,
+      spectatorReconnectGraceSecs: settingsSpectatorsEnabled
+        ? settingsSpectatorReconnectGraceSecs
+        : 60,
+      extensionSyncPolicy: settingsSpectatorsEnabled ? settingsExtensionSyncPolicy : 'ALLOW',
+      lateJoinPolicy: settingsLateJoinPolicy,
+      lateJoinGraceMinutes: settingsLateJoinPolicy === 'OPEN' ? 30 : settingsLateJoinGraceMinutes,
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/campaigns/${settingsCampaignId}/settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(normalizedPayload),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to save campaign settings')
+      }
+
+      const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
+      setSettingsData(payload.campaign)
+      setSettingsName(payload.campaign.name)
+      setSettingsDescription(payload.campaign.description || '')
+      setSettingsVisibility(payload.campaign.discoverable ? 'PUBLIC' : 'PRIVATE')
+      setSettingsSpectatorsEnabled(payload.campaign.spectatorPolicy !== 'NONE')
+      setSettingsSpectatorMax(payload.campaign.spectatorMax ?? 10)
+      setSettingsSpectatorWaitlistEnabled(payload.campaign.spectatorWaitlistEnabled)
+      setSettingsSpectatorReconnectGraceSecs(payload.campaign.spectatorReconnectGraceSecs)
+      setSettingsExtensionSyncPolicy(
+        payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
+          ? 'ALLOW'
+          : payload.campaign.extensionSyncPolicy
+      )
+      setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
+      setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
+      setSettingsPosterUrl(payload.campaign.posterUrl || '')
+
+      setCampaigns((prev) =>
+        prev.map((campaign) =>
+          campaign.id === payload.campaign.id
+            ? {
+                ...campaign,
+                name: payload.campaign.name,
+                description: payload.campaign.description,
+                posterUrl: payload.campaign.posterUrl,
+              }
+            : campaign
+        )
+      )
+
+      setLobbyNotice('Campaign settings saved.')
+      setShowCampaignSettingsModal(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save campaign settings'
+      setError(message)
+    } finally {
+      setIsSettingsSaving(false)
+    }
+  }
+
+  const handlePosterFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Poster must be an image file.')
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+
+    img.onload = () => {
+      try {
+        const naturalWidth = Math.max(1, img.naturalWidth)
+        const naturalHeight = Math.max(1, img.naturalHeight)
+        const scale = naturalWidth > MAX_POSTER_WIDTH_PX ? MAX_POSTER_WIDTH_PX / naturalWidth : 1
+        const targetWidth = Math.max(1, Math.round(naturalWidth * scale))
+        const targetHeight = Math.max(1, Math.round(naturalHeight * scale))
+
+        const canvas = document.createElement('canvas')
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          setError('Unable to process poster image.')
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+
+        // Store as JPEG and lower quality when needed to stay within localStorage limits.
+        let quality = 0.86
+        let dataUrl = canvas.toDataURL('image/jpeg', quality)
+        while (dataUrl.length > MAX_POSTER_DATA_URL_CHARS && quality > 0.56) {
+          quality -= 0.1
+          dataUrl = canvas.toDataURL('image/jpeg', quality)
+        }
+        setSettingsPosterUrl(dataUrl)
+      } finally {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      setError('Unable to read poster image.')
+    }
+
+    img.src = objectUrl
+  }
+
+  const copyInviteUrl = async (inviteType: 'PLAYER' | 'SPECTATOR') => {
+    if (!settingsData) {
+      return
+    }
+
+    const code =
+      inviteType === 'PLAYER' ? settingsData.inviteCode : settingsData.spectatorInviteCode
+    if (!code) {
+      setError('Invite code is not available yet.')
+      return
+    }
+
+    const basePath = inviteType === 'PLAYER' ? '/join/' : '/watch/'
+    const inviteUrl = `${window.location.origin}${basePath}${encodeURIComponent(code)}`
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite URL copied.`)
+    } catch {
+      setError('Failed to copy invite URL to clipboard.')
+    }
+  }
+
+  const reissueInvite = async (inviteType: 'PLAYER' | 'SPECTATOR') => {
+    if (!settingsCampaignId) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Refresh ${inviteType.toLowerCase()} invite? Existing links will stop working for new joins.`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setError(null)
+    setIsInviteReissuing(true)
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/campaigns/${settingsCampaignId}/invites/reissue`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ type: inviteType }),
+        }
+      )
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to refresh invite')
+      }
+
+      await loadCampaignSettings(settingsCampaignId)
+      setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite refreshed.`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh invite'
+      setError(message)
+    } finally {
+      setIsInviteReissuing(false)
+    }
   }
 
   const handleToggleTheme = () => {
@@ -917,6 +1328,16 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </div>
               )}
 
+              {lobbyNotice && (
+                <div className="session-error-banner">
+                  <Toast
+                    variant="success"
+                    message={lobbyNotice}
+                    onDismiss={() => setLobbyNotice(null)}
+                  />
+                </div>
+              )}
+
               {isLoadingCampaigns ? (
                 <div className="session-status-message">Loading campaigns...</div>
               ) : campaigns.length === 0 ? (
@@ -926,6 +1347,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   {campaigns.map((campaign) => {
                     const isSelected = selectedCampaignId === campaign.id
                     const state = getCampaignDisplayState(campaign)
+                    const entryAction = getCampaignEntryAction(campaign)
                     const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
                     const playersLabel = getPrivacyCounterLabel(
                       campaign.connectedPlayersLabel,
@@ -938,6 +1360,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     const isCampaignDm = campaign.currentDmId === user.id
                     const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
                     const dmInitial = dmDisplayName.charAt(0).toUpperCase()
+                    const cardPosterUrl = campaign.posterUrl || undefined
                     return (
                       <div
                         key={campaign.id}
@@ -950,7 +1373,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                             setSelectedCampaignId(campaign.id)
                           }
                         }}
-                        className={`session-campaign-card ${isSelected ? 'is-selected' : ''}`}
+                        className={`session-campaign-card ${isSelected ? 'is-selected' : ''} ${cardPosterUrl ? 'has-poster' : ''}`}
+                        style={
+                          cardPosterUrl
+                            ? {
+                                backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
+                              }
+                            : undefined
+                        }
                       >
                         <span className="session-campaign-card__header">
                           <span className="session-campaign-card__title">
@@ -1015,7 +1445,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                               onClick={(e) => {
                                 e.preventDefault()
                                 e.stopPropagation()
-                                handleOpenCampaignSettingsRoute(campaign.id)
+                                openCampaignSettingsModal(campaign.id)
                               }}
                               title="Campaign settings"
                               aria-label="Campaign settings"
@@ -1032,14 +1462,21 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
+                              if (entryAction.disabled) {
+                                if (entryAction.reason) {
+                                  setError(entryAction.reason)
+                                }
+                                return
+                              }
                               void handleEnterCampaign(campaign.id)
                             }}
-                            title="Launch campaign"
-                            aria-label="Launch campaign"
+                            title={entryAction.reason || `${entryAction.label} campaign`}
+                            aria-label={entryAction.reason || `${entryAction.label} campaign`}
+                            disabled={entryAction.disabled}
                           >
-                            <span>Launch</span>
+                            <span>{entryAction.label}</span>
                             <span className="material-symbols-outlined" aria-hidden="true">
-                              rocket_launch
+                              {entryAction.icon}
                             </span>
                           </button>
                         </span>
@@ -1283,33 +1720,59 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           >
             <h4 className="session-inline-form-title">Create Campaign</h4>
             <p className="session-card-subtitle">
-              Any full-account user can create a campaign and becomes its DM.
+              Create a campaign, return to the lobby with it selected, and continue to launch when
+              you are ready.
             </p>
+            {user.authType === 'GUEST' && (
+              <div className="session-error-banner">
+                <Toast
+                  variant="warn"
+                  message="Guest access is campaign-scoped. Upgrade to a full account to create a new campaign."
+                />
+              </div>
+            )}
             <form onSubmit={handleCreateCampaign}>
+              <label className="session-label" htmlFor="create-campaign-name">
+                Campaign name
+              </label>
               <input
+                id="create-campaign-name"
                 type="text"
                 value={newCampaignName}
                 onChange={(e) => setNewCampaignName(e.target.value)}
-                placeholder="Campaign name"
+                placeholder="The Emerald Crown"
                 className="session-input"
                 disabled={isCreatingCampaign}
                 required
               />
-              <input
-                type="text"
+              <label className="session-label" htmlFor="create-campaign-description">
+                Short description
+              </label>
+              <textarea
+                id="create-campaign-description"
                 value={newCampaignDescription}
                 onChange={(e) => setNewCampaignDescription(e.target.value)}
-                placeholder="Description (optional)"
-                className="session-input"
+                placeholder="Optional context for players before they continue into the campaign."
+                className="session-textarea"
                 disabled={isCreatingCampaign}
               />
+              <div className="session-create-campaign-note" aria-label="Create campaign next steps">
+                <p className="session-create-campaign-note__title">What happens next</p>
+                <ul className="session-create-campaign-note__list">
+                  <li>You become the campaign DM.</li>
+                  <li>The new campaign appears selected in your lobby.</li>
+                  <li>You can open settings or continue to launch from the campaign card.</li>
+                </ul>
+              </div>
               <div className="session-action-row">
                 <button
                   type="submit"
-                  disabled={isCreatingCampaign || !newCampaignName.trim()}
+                  disabled={
+                    isCreatingCampaign || !newCampaignName.trim() || user.authType === 'GUEST'
+                  }
                   className="session-button session-button-brand"
                 >
-                  {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
+                  {isCreatingCampaign ? 'Creating...' : 'Create Campaign and Continue'}
                 </button>
                 <button
                   type="button"
@@ -1355,6 +1818,404 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCampaignSettingsModal && (
+        <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal session-campaign-settings-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Campaign settings"
+          >
+            <div className="session-campaign-settings-header">
+              <div>
+                <h4 className="session-inline-form-title">Campaign Settings</h4>
+                <p className="session-card-subtitle">
+                  Manage metadata, poster, and invite links from the lobby.
+                </p>
+              </div>
+              <div className="session-campaign-settings-header__actions">
+                <button
+                  type="submit"
+                  form="campaign-settings-form"
+                  className="session-icon-action"
+                  title={isSettingsSaving ? 'Saving settings' : 'Save settings'}
+                  aria-label={isSettingsSaving ? 'Saving settings' : 'Save settings'}
+                  disabled={isSettingsSaving || !settingsData || !settingsName.trim()}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {isSettingsSaving ? 'hourglass_top' : 'save'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="session-icon-action"
+                  title="Close settings"
+                  aria-label="Close settings"
+                  onClick={() => setShowCampaignSettingsModal(false)}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    close
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {isSettingsLoading ? (
+              <div className="session-status-message">Loading campaign settings...</div>
+            ) : !settingsData ? (
+              <div className="session-status-message">Unable to load campaign settings.</div>
+            ) : (
+              <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">
+                <div className="session-campaign-settings-column">
+                  <form
+                    id="campaign-settings-form"
+                    className="session-campaign-settings-panel"
+                    onSubmit={handleSaveCampaignSettings}
+                  >
+                    <h5 className="session-inline-form-title">Campaign Profile</h5>
+
+                    <label className="session-label" htmlFor="campaign-settings-name">
+                      Name
+                    </label>
+                    <input
+                      id="campaign-settings-name"
+                      className="session-input"
+                      type="text"
+                      value={settingsName}
+                      onChange={(e) => setSettingsName(e.target.value)}
+                      disabled={isSettingsSaving}
+                      required
+                    />
+
+                    <label className="session-label" htmlFor="campaign-settings-description">
+                      Description
+                    </label>
+                    <textarea
+                      id="campaign-settings-description"
+                      className="session-textarea"
+                      value={settingsDescription}
+                      onChange={(e) => setSettingsDescription(e.target.value)}
+                      rows={4}
+                      disabled={isSettingsSaving}
+                    />
+
+                    <label className="session-label" htmlFor="campaign-settings-poster-file">
+                      Upload poster
+                    </label>
+                    <input
+                      id="campaign-settings-poster-file"
+                      className="session-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePosterFileSelected}
+                      disabled={isSettingsSaving}
+                    />
+
+                    <p className="session-card-subtitle">
+                      Poster appears muted behind the campaign card so text remains readable.
+                    </p>
+                  </form>
+
+                  <section
+                    className="session-campaign-settings-panel session-campaign-invite-panel"
+                    aria-label="Invite links"
+                  >
+                    <h5 className="session-inline-form-title">Invite Links</h5>
+                    <div className="session-invite-link-row">
+                      <div className="session-invite-link-row__label">Player</div>
+                      <div className="session-invite-link-row__input-wrap">
+                        <input
+                          className="session-invite-link-row__input"
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/join/${encodeURIComponent(settingsData.inviteCode)}`}
+                          aria-label="Player invite URL"
+                        />
+                      </div>
+                      <div className="session-invite-link-row__actions">
+                        <button
+                          type="button"
+                          className="session-icon-action"
+                          title="Copy player invite URL"
+                          aria-label="Copy player invite URL"
+                          onClick={() => void copyInviteUrl('PLAYER')}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            content_copy
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="session-icon-action"
+                          title="Refresh player invite URL"
+                          aria-label="Refresh player invite URL"
+                          disabled={isInviteReissuing}
+                          onClick={() => void reissueInvite('PLAYER')}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            refresh
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="session-invite-link-row">
+                      <div className="session-invite-link-row__label">Spectator</div>
+                      <div className="session-invite-link-row__input-wrap">
+                        <input
+                          className="session-invite-link-row__input"
+                          type="text"
+                          readOnly
+                          value={
+                            !settingsSpectatorsEnabled
+                              ? ''
+                              : settingsData.spectatorInviteCode
+                                ? `${window.location.origin}/watch/${encodeURIComponent(settingsData.spectatorInviteCode)}`
+                                : ''
+                          }
+                          aria-label="Spectator invite URL"
+                          disabled={!settingsSpectatorsEnabled}
+                        />
+                      </div>
+                      <div className="session-invite-link-row__actions">
+                        <button
+                          type="button"
+                          className="session-icon-action"
+                          title="Copy spectator invite URL"
+                          aria-label="Copy spectator invite URL"
+                          disabled={!settingsSpectatorsEnabled || !settingsData.spectatorInviteCode}
+                          onClick={() => void copyInviteUrl('SPECTATOR')}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            content_copy
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="session-icon-action"
+                          title="Refresh spectator invite URL"
+                          aria-label="Refresh spectator invite URL"
+                          disabled={!settingsSpectatorsEnabled || isInviteReissuing}
+                          onClick={() => void reissueInvite('SPECTATOR')}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            refresh
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <section
+                  className="session-campaign-settings-panel session-campaign-settings-panel--compact"
+                  aria-label="Campaign settings controls"
+                >
+                  <h5 className="session-inline-form-title">Settings</h5>
+                  <label className="session-label" htmlFor="campaign-settings-visibility">
+                    Visibility
+                  </label>
+                  <div className="session-toggle-group" role="group" aria-label="Visibility">
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsVisibility === 'PUBLIC' ? 'is-active' : ''}`}
+                      aria-pressed={settingsVisibility === 'PUBLIC'}
+                      onClick={() => setSettingsVisibility('PUBLIC')}
+                      disabled={isSettingsSaving}
+                    >
+                      Public
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsVisibility === 'PRIVATE' ? 'is-active' : ''}`}
+                      aria-pressed={settingsVisibility === 'PRIVATE'}
+                      onClick={() => setSettingsVisibility('PRIVATE')}
+                      disabled={isSettingsSaving}
+                    >
+                      Private
+                    </button>
+                  </div>
+
+                  <label className="session-label" htmlFor="campaign-settings-spectators">
+                    Spectators
+                  </label>
+                  <div className="session-toggle-group" role="group" aria-label="Spectators">
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsSpectatorsEnabled ? 'is-active' : ''}`}
+                      aria-pressed={settingsSpectatorsEnabled}
+                      onClick={() => setSettingsSpectatorsEnabled(true)}
+                      disabled={isSettingsSaving}
+                    >
+                      ON
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${!settingsSpectatorsEnabled ? 'is-active' : ''}`}
+                      aria-pressed={!settingsSpectatorsEnabled}
+                      onClick={() => setSettingsSpectatorsEnabled(false)}
+                      disabled={isSettingsSaving}
+                    >
+                      OFF
+                    </button>
+                  </div>
+
+                  <label className="session-label" htmlFor="campaign-settings-spectator-max">
+                    Max spectators: {settingsSpectatorMax}
+                  </label>
+                  <input
+                    id="campaign-settings-spectator-max"
+                    className="session-slider"
+                    type="range"
+                    min={5}
+                    max={50}
+                    step={5}
+                    value={settingsSpectatorMax}
+                    onChange={(event) => setSettingsSpectatorMax(Number(event.target.value))}
+                    disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                  />
+
+                  <label className="session-label" htmlFor="campaign-settings-waitlist">
+                    Spectator waitlist
+                  </label>
+                  <div
+                    className="session-toggle-group"
+                    role="group"
+                    aria-label="Spectator waitlist"
+                  >
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
+                      aria-pressed={settingsSpectatorWaitlistEnabled}
+                      onClick={() => setSettingsSpectatorWaitlistEnabled(true)}
+                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                    >
+                      ON
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${!settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
+                      aria-pressed={!settingsSpectatorWaitlistEnabled}
+                      onClick={() => setSettingsSpectatorWaitlistEnabled(false)}
+                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                    >
+                      OFF
+                    </button>
+                  </div>
+
+                  <label className="session-label" htmlFor="campaign-settings-reconnect-grace">
+                    Spectator reconnect grace (seconds): {settingsSpectatorReconnectGraceSecs}
+                  </label>
+                  <input
+                    id="campaign-settings-reconnect-grace"
+                    className="session-slider"
+                    type="range"
+                    min={30}
+                    max={90}
+                    step={5}
+                    value={settingsSpectatorReconnectGraceSecs}
+                    onChange={(event) =>
+                      setSettingsSpectatorReconnectGraceSecs(Number(event.target.value))
+                    }
+                    disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                  />
+
+                  <label
+                    className="session-label"
+                    htmlFor="campaign-settings-extension-sync-policy"
+                  >
+                    Extension sync policy
+                  </label>
+                  <div
+                    className="session-toggle-group"
+                    role="group"
+                    aria-label="Extension sync policy"
+                  >
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
+                      aria-pressed={settingsExtensionSyncPolicy === 'ALLOW'}
+                      onClick={() => setSettingsExtensionSyncPolicy('ALLOW')}
+                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                    >
+                      ALLOW
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
+                      aria-pressed={settingsExtensionSyncPolicy === 'DM_ONLY'}
+                      onClick={() => setSettingsExtensionSyncPolicy('DM_ONLY')}
+                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                    >
+                      DM_ONLY
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
+                      aria-pressed={settingsExtensionSyncPolicy === 'NONE'}
+                      onClick={() => setSettingsExtensionSyncPolicy('NONE')}
+                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                    >
+                      NONE
+                    </button>
+                  </div>
+
+                  <label className="session-label" htmlFor="campaign-settings-late-join-policy">
+                    Late join policy
+                  </label>
+                  <div className="session-toggle-group" role="group" aria-label="Late join policy">
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsLateJoinPolicy === 'OPEN' ? 'is-active' : ''}`}
+                      aria-pressed={settingsLateJoinPolicy === 'OPEN'}
+                      onClick={() => setSettingsLateJoinPolicy('OPEN')}
+                      disabled={isSettingsSaving}
+                    >
+                      OPEN
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsLateJoinPolicy === 'SCREENED' ? 'is-active' : ''}`}
+                      aria-pressed={settingsLateJoinPolicy === 'SCREENED'}
+                      onClick={() => setSettingsLateJoinPolicy('SCREENED')}
+                      disabled={isSettingsSaving}
+                    >
+                      SCREENED
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsLateJoinPolicy === 'BLOCKED' ? 'is-active' : ''}`}
+                      aria-pressed={settingsLateJoinPolicy === 'BLOCKED'}
+                      onClick={() => setSettingsLateJoinPolicy('BLOCKED')}
+                      disabled={isSettingsSaving}
+                    >
+                      BLOCKED
+                    </button>
+                  </div>
+
+                  <label className="session-label" htmlFor="campaign-settings-late-join-grace">
+                    Late join grace (minutes): {settingsLateJoinGraceMinutes}
+                  </label>
+                  <input
+                    id="campaign-settings-late-join-grace"
+                    className="session-slider"
+                    type="range"
+                    min={30}
+                    max={90}
+                    step={10}
+                    value={settingsLateJoinGraceMinutes}
+                    onChange={(event) =>
+                      setSettingsLateJoinGraceMinutes(Number(event.target.value))
+                    }
+                    disabled={isSettingsSaving || settingsLateJoinPolicy === 'OPEN'}
+                  />
+                </section>
+              </div>
+            )}
           </div>
         </div>
       )}

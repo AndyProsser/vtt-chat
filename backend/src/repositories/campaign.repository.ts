@@ -108,6 +108,7 @@ export async function listCampaignsForUser(userId: string): Promise<
     id: string
     name: string
     description: string | null
+    posterUrl: string | null
     inviteCode: string
     currentDmId: string
     memberRole: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
@@ -217,6 +218,7 @@ export async function listCampaignsForUser(userId: string): Promise<
     id: m.campaign.id,
     name: m.campaign.name,
     description: m.campaign.description,
+    posterUrl: m.campaign.posterUrl,
     inviteCode: m.campaign.inviteCode,
     currentDmId: m.campaign.currentDmId,
     dmUsername: m.campaign.currentDm?.username || 'dm',

@@ -3,6 +3,12 @@
    The toast-slide-in keyframe is defined in theme.css. */
 
 .vtt-toast {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 640px);
+  z-index: 1205;
   padding: var(--space-3);
   border-radius: var(--radius-md);
   border-width: 1px;
@@ -13,6 +19,8 @@
   align-items: center;
   font-size: 0.82rem;
   animation: toast-slide-in var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
 }
 
 .vtt-toast[data-variant='info'] {

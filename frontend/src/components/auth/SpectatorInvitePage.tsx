@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
+import { PolicyNotice } from './PolicyNotice'
 
 type SpectatorCampaignInfo = {
   id: string
@@ -39,7 +40,7 @@ type SpectatorJoinResult =
         id: string
         username: string
         role: 'SPECTATOR'
-        authType: 'GUEST'
+        authType: 'GUEST' | 'FULL'
       }
       campaignId: string
     }
@@ -61,23 +62,40 @@ type WaitlistStatus = {
     id: string
     username: string
     role: 'SPECTATOR'
+    authType: 'GUEST' | 'FULL'
   }
 }
+
+type PolicyCode =
+  | 'INVITE_EXPIRED'
+  | 'FULL_ACCOUNT_REQUIRED'
+  | 'SPECTATOR_CAPACITY_REACHED'
+  | 'SESSION_INACTIVE'
+  | null
 
 interface SpectatorInvitePageProps {
   apiUrl: string
   inviteCode: string
-  onAuthenticated: (token: string, user: { id: UUID; username: string; role: Role }) => void
+  authToken: string | null
+  authType: 'GUEST' | 'FULL' | null
+  onAuthenticated: (
+    token: string,
+    user: { id: UUID; username: string; role: Role },
+    authType: 'GUEST' | 'FULL'
+  ) => void
 }
 
 export function SpectatorInvitePage({
   apiUrl,
   inviteCode,
+  authToken,
+  authType,
   onAuthenticated,
 }: SpectatorInvitePageProps) {
   const [loading, setLoading] = useState(true)
   const [validation, setValidation] = useState<SpectatorInviteValidation | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<PolicyCode>(null)
 
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -86,24 +104,28 @@ export function SpectatorInvitePage({
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null)
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null)
 
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(
-          `${apiUrl}/api/campaigns/watch/${encodeURIComponent(inviteCode)}/validate`
-        )
-        const data = await response.json()
-        setValidation(data)
-      } catch {
-        setError('Failed to validate spectator invite')
-      } finally {
-        setLoading(false)
+  const validateInvite = async () => {
+    setLoading(true)
+    setError(null)
+    setErrorCode(null)
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/campaigns/watch/${encodeURIComponent(inviteCode)}/validate`
+      )
+      const data = await response.json()
+      setValidation(data)
+      if (!response.ok && data?.reason === 'INVITE_EXPIRED') {
+        setErrorCode('INVITE_EXPIRED')
       }
+    } catch {
+      setError('Failed to validate spectator invite')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    void run()
+  useEffect(() => {
+    void validateInvite()
   }, [apiUrl, inviteCode])
 
   const campaign = useMemo(() => {
@@ -127,11 +149,15 @@ export function SpectatorInvitePage({
           const data = (await response.json()) as WaitlistStatus
 
           if (data.status === 'PROMOTED' && data.token && data.user) {
-            onAuthenticated(data.token, {
-              id: data.user.id as UUID,
-              username: data.user.username,
-              role: Role.SPECTATOR,
-            })
+            onAuthenticated(
+              data.token,
+              {
+                id: data.user.id as UUID,
+                username: data.user.username,
+                role: Role.SPECTATOR,
+              },
+              data.user.authType || 'GUEST'
+            )
             setWaitlistToken(null)
             setWaitlistPosition(null)
             return
@@ -159,6 +185,7 @@ export function SpectatorInvitePage({
   const joinAsGuestSpectator = async () => {
     setJoinLoading(true)
     setError(null)
+    setErrorCode(null)
 
     try {
       const response = await fetch(`${apiUrl}/api/auth/spectator/guest-join`, {
@@ -175,15 +202,24 @@ export function SpectatorInvitePage({
 
       const data = (await response.json()) as SpectatorJoinResult & { message?: string }
       if (!response.ok) {
+        const code = (data as { code?: string }).code
+        if (code === 'FULL_ACCOUNT_REQUIRED') setErrorCode('FULL_ACCOUNT_REQUIRED')
+        if (code === 'SPECTATOR_CAPACITY_REACHED') setErrorCode('SPECTATOR_CAPACITY_REACHED')
+        if (code === 'SESSION_INACTIVE') setErrorCode('SESSION_INACTIVE')
+        if (code === 'INVITE_EXPIRED') setErrorCode('INVITE_EXPIRED')
         throw new Error(data.message || 'Failed to join as spectator')
       }
 
       if (data.joined) {
-        onAuthenticated(data.token, {
-          id: data.user.id as UUID,
-          username: data.user.username,
-          role: Role.SPECTATOR,
-        })
+        onAuthenticated(
+          data.token,
+          {
+            id: data.user.id as UUID,
+            username: data.user.username,
+            role: Role.SPECTATOR,
+          },
+          data.user.authType || 'GUEST'
+        )
         return
       }
 
@@ -197,6 +233,144 @@ export function SpectatorInvitePage({
     }
   }
 
+  const joinAsAuthenticatedSpectator = async () => {
+    if (!authToken) {
+      return
+    }
+
+    setJoinLoading(true)
+    setError(null)
+    setErrorCode(null)
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/campaigns/watch/${encodeURIComponent(inviteCode)}/join`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      )
+
+      const data = (await response.json()) as SpectatorJoinResult & { message?: string }
+      if (!response.ok) {
+        const code = (data as { code?: string }).code
+        if (code === 'FULL_ACCOUNT_REQUIRED') setErrorCode('FULL_ACCOUNT_REQUIRED')
+        if (code === 'SPECTATOR_CAPACITY_REACHED') setErrorCode('SPECTATOR_CAPACITY_REACHED')
+        if (code === 'SESSION_INACTIVE') setErrorCode('SESSION_INACTIVE')
+        if (code === 'INVITE_EXPIRED') setErrorCode('INVITE_EXPIRED')
+        throw new Error(data.message || 'Failed to join as spectator')
+      }
+
+      if (data.joined) {
+        onAuthenticated(
+          data.token,
+          {
+            id: data.user.id as UUID,
+            username: data.user.username,
+            role: Role.SPECTATOR,
+          },
+          data.user.authType || 'FULL'
+        )
+        return
+      }
+
+      setWaitlistToken(data.waitlist.waitlistToken)
+      setWaitlistPosition(data.waitlist.position)
+    } catch (joinError) {
+      const message = joinError instanceof Error ? joinError.message : 'Failed to join spectator'
+      setError(message)
+    } finally {
+      setJoinLoading(false)
+    }
+  }
+
+  const isFullAccountAuthenticated = Boolean(authToken && authType === 'FULL')
+  const requiresFullAccount = campaign?.spectatorPolicy === 'USERS'
+  const isSessionInactive = campaign?.sessionActive === false
+
+  const handleSignInAndReturn = () => {
+    sessionStorage.setItem('postLoginRedirectPath', `/watch/${encodeURIComponent(inviteCode)}`)
+    window.location.assign('/')
+  }
+
+  const renderPolicyNotice = () => {
+    const effectiveCode: PolicyCode =
+      errorCode || (!loading && validation && !validation.valid ? 'INVITE_EXPIRED' : null)
+
+    if (!effectiveCode) {
+      return null
+    }
+
+    if (effectiveCode === 'INVITE_EXPIRED') {
+      return (
+        <PolicyNotice
+          title="Invite unavailable"
+          tone="danger"
+          actionLabel="Check Invite Again"
+          onAction={() => {
+            void validateInvite()
+          }}
+        >
+          <p className="m-0">Ask the DM for a new spectator invite, then try again.</p>
+        </PolicyNotice>
+      )
+    }
+
+    if (effectiveCode === 'FULL_ACCOUNT_REQUIRED') {
+      return (
+        <PolicyNotice
+          title="Full account required"
+          tone="warning"
+          actionLabel="Sign In and Return"
+          onAction={handleSignInAndReturn}
+        >
+          <p className="m-0">Sign in with your full account, then return to this watch link.</p>
+        </PolicyNotice>
+      )
+    }
+
+    if (effectiveCode === 'SPECTATOR_CAPACITY_REACHED') {
+      return (
+        <PolicyNotice
+          title="Capacity reached"
+          tone="warning"
+          actionLabel="Refresh Status"
+          onAction={() => {
+            void validateInvite()
+          }}
+        >
+          <p className="m-0">
+            All spectator slots are full. Wait for an opening or ask the DM to enable the waitlist.
+          </p>
+        </PolicyNotice>
+      )
+    }
+
+    if (effectiveCode === 'SESSION_INACTIVE') {
+      return (
+        <PolicyNotice
+          title="Session not active"
+          tone="info"
+          actionLabel="Refresh Status"
+          onAction={() => {
+            void validateInvite()
+          }}
+        >
+          <p className="m-0">Wait for the DM to start the session, then check again.</p>
+        </PolicyNotice>
+      )
+    }
+
+    return null
+  }
+
+  const hasPolicyNotice = Boolean(
+    errorCode ||
+    (!loading && validation && !validation.valid && validation.reason === 'INVITE_EXPIRED')
+  )
+
   return (
     <div className="mx-auto w-full max-w-4xl rounded-ui-lg border border-ui-border bg-ui-surface p-6">
       <h2 className="mt-0 text-2xl font-semibold">Spectator Invite</h2>
@@ -204,11 +378,7 @@ export function SpectatorInvitePage({
 
       {loading && <p>Validating spectator invite...</p>}
 
-      {!loading && validation && !validation.valid && (
-        <div className="rounded-ui-sm border border-ui-error-text bg-ui-error-surface p-3 text-sm text-ui-error-text">
-          Spectator invite is invalid or expired.
-        </div>
-      )}
+      {renderPolicyNotice()}
 
       {campaign && (
         <section className="space-y-4">
@@ -248,55 +418,98 @@ export function SpectatorInvitePage({
           </div>
 
           {waitlistToken ? (
-            <div className="rounded-ui-sm border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
-              You are on the waitlist.
-              {typeof waitlistPosition === 'number'
-                ? ` Current position: ${waitlistPosition}.`
-                : ''}{' '}
-              This page will auto-promote you when a slot opens.
-            </div>
+            <PolicyNotice title="On the waitlist" tone="info">
+              <p className="m-0">
+                You will be promoted automatically when a slot opens.
+                {typeof waitlistPosition === 'number'
+                  ? ` Current position: ${waitlistPosition}.`
+                  : ''}
+              </p>
+            </PolicyNotice>
           ) : (
             <div className="rounded-ui-sm border border-ui-border p-3">
-              <h3 className="mt-0 text-base font-semibold">Join as Guest Spectator</h3>
-              <div className="grid gap-2 md:grid-cols-2">
-                <label className="block text-sm">
-                  <span className="mb-1 block">Display Name</span>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                    placeholder="Your display name"
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block">Email</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                    placeholder="you@example.com"
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={joinAsGuestSpectator}
-                disabled={joinLoading || !displayName.trim() || !email.trim()}
-                className="mt-3 rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {joinLoading ? 'Joining...' : 'Join Spectator Session'}
-              </button>
+              <h3 className="mt-0 text-base font-semibold">Continue to Spectator Session</h3>
+
+              {isSessionInactive ? (
+                <PolicyNotice title="Session not active" tone="info">
+                  <p className="m-0">
+                    Wait for the DM to start the session, then refresh this page.
+                  </p>
+                </PolicyNotice>
+              ) : isFullAccountAuthenticated ? (
+                <>
+                  <p className="text-sm text-ui-secondary">
+                    Continue into spectator access with your full account.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={joinAsAuthenticatedSpectator}
+                    disabled={joinLoading}
+                    className="mt-3 rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {joinLoading ? 'Continuing...' : 'Continue with Full Account'}
+                  </button>
+                </>
+              ) : requiresFullAccount ? (
+                <>
+                  <PolicyNotice
+                    title="Full account required"
+                    tone="warning"
+                    actionLabel="Sign In and Return"
+                    onAction={handleSignInAndReturn}
+                  >
+                    <p className="m-0">
+                      Sign in with your full account, then return to this watch link.
+                    </p>
+                  </PolicyNotice>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-ui-secondary">
+                    Continue instantly as a temporary guest spectator, or sign in with a full
+                    account.
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <label className="block text-sm">
+                      <span className="mb-1 block">Display Name</span>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(event) => setDisplayName(event.target.value)}
+                        className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
+                        placeholder="Your display name"
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="mb-1 block">Email</span>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
+                        placeholder="you@example.com"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={joinAsGuestSpectator}
+                    disabled={joinLoading || !displayName.trim() || !email.trim()}
+                    className="mt-3 rounded-ui-sm bg-ui-brand px-4 py-2 text-sm font-medium text-white hover:bg-ui-brand-hover disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {joinLoading ? 'Continuing...' : 'Continue as Guest Spectator'}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </section>
       )}
 
-      {error && (
-        <div className="mt-3 rounded-ui-sm border border-ui-error-text bg-ui-error-surface p-3 text-sm text-ui-error-text">
-          {error}
-        </div>
+      {error && !hasPolicyNotice && (
+        <PolicyNotice title="Something went wrong" tone="danger">
+          <p className="m-0">{error}</p>
+        </PolicyNotice>
       )}
     </div>
   )

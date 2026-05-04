@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { getPrismaClient } from '@/infra/db'
 import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
-import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
+import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { createSession } from '@/services/session.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import {
@@ -19,6 +19,7 @@ import {
   validatePlayerInviteCode,
   validateSpectatorInviteCode,
 } from '@/services/guest-auth.service'
+import { randomOpaqueToken } from '@/utils/guest-auth.helpers'
 import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
@@ -82,6 +83,228 @@ router.get('/watch/:code/validate', async (req: Request, res: Response) => {
 
   const result = await validateSpectatorInviteCode(code)
   return res.status(result.valid ? 200 : 404).json(result)
+})
+
+router.post('/watch/:code/join', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const code = String(req.params.code || '')
+    .trim()
+    .toUpperCase()
+
+  if (!code) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Spectator invite code is required',
+      field: 'code',
+    })
+  }
+
+  const requester = await prisma.user.findUnique({
+    where: { id: user.userId as UUID },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      authType: true,
+      isActive: true,
+    },
+  })
+
+  if (!requester || !requester.isActive) {
+    return res.status(404).json({
+      code: ErrorCode.NOT_FOUND,
+      message: 'User not found',
+    })
+  }
+
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      spectatorInviteCode: code,
+      spectatorInviteActive: true,
+    },
+    select: {
+      id: true,
+      spectatorPolicy: true,
+      spectatorMax: true,
+      spectatorWaitlistEnabled: true,
+      sessions: {
+        where: {
+          state: 'ACTIVE',
+        },
+        select: {
+          id: true,
+          members: {
+            where: {
+              role: 'SPECTATOR',
+            },
+            select: {
+              id: true,
+            },
+          },
+        },
+        take: 1,
+      },
+    },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({
+      code: 'INVITE_EXPIRED',
+      message: 'Spectator invite code is invalid',
+    })
+  }
+
+  if (campaign.spectatorPolicy === 'NONE') {
+    return res.status(403).json({
+      code: 'SPECTATORS_DISABLED',
+      message: 'Spectators are not enabled for this campaign',
+    })
+  }
+
+  if (campaign.spectatorPolicy === 'USERS' && requester.authType !== 'FULL') {
+    return res.status(403).json({
+      code: 'FULL_ACCOUNT_REQUIRED',
+      message: 'This campaign only allows full-account spectators',
+    })
+  }
+
+  const existingWaitlist = await prisma.spectatorWaitlist.findUnique({
+    where: {
+      campaignId_userId: {
+        campaignId: campaign.id,
+        userId: requester.id,
+      },
+    },
+    select: {
+      waitlistToken: true,
+      promoted: true,
+      joinedAt: true,
+    },
+  })
+
+  const activeSession = campaign.sessions[0] || null
+  const spectatorSlotsMax = campaign.spectatorMax ?? 5
+  const currentFilled = activeSession?.members.length || 0
+
+  if (!activeSession) {
+    return res.status(409).json({
+      code: 'SESSION_INACTIVE',
+      message: 'No active session is currently available for spectators',
+    })
+  }
+
+  if (currentFilled >= spectatorSlotsMax) {
+    if (!campaign.spectatorWaitlistEnabled) {
+      return res.status(409).json({
+        code: 'SPECTATOR_CAPACITY_REACHED',
+        message: 'Spectator capacity reached and waitlist is disabled',
+      })
+    }
+
+    const waitlistEntry =
+      existingWaitlist ||
+      (await prisma.spectatorWaitlist.create({
+        data: {
+          campaignId: campaign.id,
+          userId: requester.id,
+          waitlistToken: randomOpaqueToken(),
+        },
+        select: {
+          waitlistToken: true,
+          promoted: true,
+          joinedAt: true,
+        },
+      }))
+
+    const position = await prisma.spectatorWaitlist.count({
+      where: {
+        campaignId: campaign.id,
+        promoted: false,
+        joinedAt: {
+          lte: waitlistEntry.joinedAt,
+        },
+      },
+    })
+
+    return res.status(200).json({
+      joined: false,
+      waitlist: {
+        enabled: true,
+        waitlistToken: waitlistEntry.waitlistToken,
+        position,
+      },
+      campaignId: campaign.id,
+    })
+  }
+
+  await prisma.campaignMembership.upsert({
+    where: {
+      campaignId_userId: {
+        campaignId: campaign.id,
+        userId: requester.id,
+      },
+    },
+    create: {
+      campaignId: campaign.id,
+      userId: requester.id,
+      role: 'SPECTATOR',
+    },
+    update: {
+      role: 'SPECTATOR',
+    },
+  })
+
+  await prisma.sessionMember.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: activeSession.id,
+        userId: requester.id,
+      },
+    },
+    create: {
+      sessionId: activeSession.id,
+      userId: requester.id,
+      role: 'SPECTATOR',
+      username: requester.username,
+    },
+    update: {
+      role: 'SPECTATOR',
+      username: requester.username,
+    },
+  })
+
+  if (existingWaitlist && !existingWaitlist.promoted) {
+    await prisma.spectatorWaitlist.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaign.id,
+          userId: requester.id,
+        },
+      },
+      data: {
+        promoted: true,
+        promotedAt: new Date(),
+      },
+    })
+  }
+
+  return res.status(200).json({
+    joined: true,
+    token: createToken({
+      userId: requester.id as UUID,
+      username: requester.username,
+      role: 'SPECTATOR',
+      authType: requester.authType,
+    }),
+    user: {
+      id: requester.id,
+      username: requester.username,
+      displayName: requester.displayName,
+      role: 'SPECTATOR',
+      authType: requester.authType,
+    },
+    campaignId: campaign.id,
+  })
 })
 
 router.get('/browse', requireAuth, async (req: Request, res: Response) => {
@@ -175,6 +398,15 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       id: membership.campaign.id,
       name: membership.campaign.name,
       description: membership.campaign.description,
+      posterUrl: membership.campaign.posterUrl,
+      discoverable: membership.campaign.discoverable,
+      spectatorPolicy: membership.campaign.spectatorPolicy,
+      spectatorMax: membership.campaign.spectatorMax,
+      spectatorWaitlistEnabled: membership.campaign.spectatorWaitlistEnabled,
+      spectatorReconnectGraceSecs: membership.campaign.spectatorReconnectGraceSecs,
+      extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
+      lateJoinPolicy: membership.campaign.lateJoinPolicy,
+      lateJoinGraceMinutes: membership.campaign.lateJoinGraceMinutes,
       inviteCode: membership.campaign.inviteCode,
       inviteActive: membership.campaign.inviteActive,
       spectatorInviteCode: membership.campaign.spectatorInviteCode,
@@ -186,7 +418,19 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
 router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { campaignId } = req.params
-  const { name, description } = req.body || {}
+  const {
+    name,
+    description,
+    posterUrl,
+    discoverable,
+    spectatorsEnabled,
+    spectatorMax,
+    spectatorWaitlistEnabled,
+    spectatorReconnectGraceSecs,
+    extensionSyncPolicy,
+    lateJoinPolicy,
+    lateJoinGraceMinutes,
+  } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
     return res
@@ -199,6 +443,111 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       .status(400)
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
   }
+
+  if (typeof discoverable !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'discoverable must be a boolean',
+      field: 'discoverable',
+    })
+  }
+
+  if (typeof spectatorsEnabled !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'spectatorsEnabled must be a boolean',
+      field: 'spectatorsEnabled',
+    })
+  }
+
+  const parsedSpectatorMax = Number(spectatorMax)
+  if (
+    spectatorsEnabled &&
+    (!Number.isFinite(parsedSpectatorMax) ||
+      parsedSpectatorMax < 5 ||
+      parsedSpectatorMax > 50 ||
+      parsedSpectatorMax % 5 !== 0)
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'spectatorMax must be a number between 5 and 50 in increments of 5',
+      field: 'spectatorMax',
+    })
+  }
+
+  const normalizedSpectatorWaitlistEnabled =
+    spectatorsEnabled && typeof spectatorWaitlistEnabled === 'boolean'
+      ? spectatorWaitlistEnabled
+      : false
+
+  if (spectatorsEnabled && typeof spectatorWaitlistEnabled !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'spectatorWaitlistEnabled must be a boolean',
+      field: 'spectatorWaitlistEnabled',
+    })
+  }
+
+  const parsedReconnectGraceSecs = Number(
+    spectatorsEnabled ? spectatorReconnectGraceSecs : (spectatorReconnectGraceSecs ?? 60)
+  )
+  if (
+    !Number.isFinite(parsedReconnectGraceSecs) ||
+    parsedReconnectGraceSecs < 30 ||
+    parsedReconnectGraceSecs > 90 ||
+    parsedReconnectGraceSecs % 5 !== 0
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'spectatorReconnectGraceSecs must be a number between 30 and 90 in increments of 5',
+      field: 'spectatorReconnectGraceSecs',
+    })
+  }
+
+  const normalizedExtensionSyncPolicy =
+    extensionSyncPolicy === 'ALLOW' || !extensionSyncPolicy ? 'DM_AND_PLAYERS' : extensionSyncPolicy
+  if (!['NONE', 'DM_ONLY', 'DM_AND_PLAYERS'].includes(String(normalizedExtensionSyncPolicy))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionSyncPolicy must be NONE, DM_ONLY, or ALLOW',
+      field: 'extensionSyncPolicy',
+    })
+  }
+
+  if (!['OPEN', 'SCREENED', 'BLOCKED'].includes(String(lateJoinPolicy || ''))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'lateJoinPolicy must be OPEN, SCREENED, or BLOCKED',
+      field: 'lateJoinPolicy',
+    })
+  }
+
+  const parsedGraceMinutes = Number(
+    lateJoinPolicy === 'OPEN' ? (lateJoinGraceMinutes ?? 30) : lateJoinGraceMinutes
+  )
+  if (
+    !Number.isFinite(parsedGraceMinutes) ||
+    parsedGraceMinutes < 30 ||
+    parsedGraceMinutes > 90 ||
+    parsedGraceMinutes % 10 !== 0
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'lateJoinGraceMinutes must be a number between 30 and 90 in increments of 10',
+      field: 'lateJoinGraceMinutes',
+    })
+  }
+
+  if (posterUrl != null && (typeof posterUrl !== 'string' || posterUrl.trim().length > 2_000_000)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'posterUrl must be a string up to 2,000,000 characters or null',
+      field: 'posterUrl',
+    })
+  }
+
+  const normalizedPosterUrl =
+    typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
 
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
   if (!campaign) {
@@ -219,11 +568,30 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
         typeof description === 'string' && description.trim().length > 0
           ? description.trim()
           : null,
+      posterUrl: normalizedPosterUrl,
+      discoverable,
+      spectatorPolicy: spectatorsEnabled ? 'GUESTS' : 'NONE',
+      spectatorInviteActive: spectatorsEnabled,
+      spectatorMax: spectatorsEnabled ? Math.round(parsedSpectatorMax) : null,
+      spectatorWaitlistEnabled: normalizedSpectatorWaitlistEnabled,
+      spectatorReconnectGraceSecs: Math.round(parsedReconnectGraceSecs),
+      extensionSyncPolicy: normalizedExtensionSyncPolicy,
+      lateJoinPolicy,
+      lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
     },
     select: {
       id: true,
       name: true,
       description: true,
+      posterUrl: true,
+      discoverable: true,
+      spectatorPolicy: true,
+      spectatorMax: true,
+      spectatorWaitlistEnabled: true,
+      spectatorReconnectGraceSecs: true,
+      extensionSyncPolicy: true,
+      lateJoinPolicy: true,
+      lateJoinGraceMinutes: true,
       inviteCode: true,
       inviteActive: true,
       spectatorInviteCode: true,

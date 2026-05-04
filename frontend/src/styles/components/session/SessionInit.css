@@ -138,7 +138,7 @@
 .session-campaign-grid {
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .session-campaign-card {
@@ -151,6 +151,20 @@
   gap: 0.35rem;
   cursor: default;
   min-height: 180px;
+}
+
+.session-campaign-card.has-poster {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  color: #f8fafc;
+}
+
+.session-campaign-card.has-poster .session-campaign-card__description,
+.session-campaign-card.has-poster .session-campaign-card__dm-name,
+.session-campaign-card.has-poster .session-campaign-card__dm-status,
+.session-campaign-card.has-poster .session-campaign-card__stat {
+  color: rgba(241, 245, 249, 0.95);
 }
 
 .session-campaign-card:hover {
@@ -394,6 +408,12 @@
   gap: 0.75rem;
 }
 
+.session-campaign-settings-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .session-campaign-settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -405,6 +425,16 @@
   border-radius: var(--radius-md);
   padding: 0.8rem;
   background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
+}
+
+.session-campaign-settings-column {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.session-campaign-invite-panel {
+  margin-top: 0;
 }
 
 .session-toolbar--lobby {
@@ -525,6 +555,31 @@
   padding: 0.5rem 1rem;
 }
 
+.session-create-campaign-note {
+  margin-top: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 28%, var(--color-border-soft));
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--color-brand) 6%, var(--color-surface));
+}
+
+.session-create-campaign-note__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.session-create-campaign-note__list {
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+}
+
+.session-create-campaign-note__list li + li {
+  margin-top: 0.25rem;
+}
+
 .session-command-center {
   margin-top: 0;
   flex: 1 1 auto;
@@ -626,6 +681,123 @@
 
 .session-user-settings-modal {
   width: min(720px, 100%);
+}
+
+.session-campaign-settings-modal {
+  width: min(1080px, 100%);
+}
+
+.session-campaign-settings-grid-dialog {
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 0.7rem;
+}
+
+.session-campaign-settings-panel--compact {
+  padding: 0.65rem;
+}
+
+.session-campaign-settings-panel--compact .session-inline-form-title {
+  margin-bottom: 0.35rem;
+}
+
+.session-campaign-settings-panel--compact .session-label {
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.session-campaign-settings-panel--compact .session-toggle-group {
+  margin-bottom: 0.35rem;
+}
+
+.session-campaign-settings-panel--compact .session-slider {
+  margin-bottom: 0.35rem;
+}
+
+.session-invite-links-title {
+  margin-top: 1rem;
+}
+
+.session-invite-link-row {
+  margin-top: 0.65rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem;
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.session-invite-link-row__label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  min-width: 5rem;
+}
+
+.session-invite-link-row__input-wrap {
+  min-width: 0;
+}
+
+.session-invite-link-row__input {
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.42rem 0.5rem;
+  background: color-mix(in srgb, var(--color-surface) 93%, var(--color-surface-subtle) 7%);
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+}
+
+.session-invite-link-row__input:disabled {
+  opacity: 0.65;
+}
+
+.session-invite-link-row__actions {
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.session-slider {
+  width: 100%;
+  accent-color: var(--color-brand);
+}
+
+.session-toggle-group {
+  display: inline-flex;
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.session-toggle-button {
+  flex: 1;
+  border: none;
+  border-right: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: 0.45rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-toggle-button:last-child {
+  border-right: none;
+}
+
+.session-toggle-button.is-active {
+  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
+  color: var(--color-text-primary);
+}
+
+.session-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .voice-rail-summary {
@@ -894,6 +1066,10 @@
 
   .session-action-row .session-button {
     width: 100%;
+  }
+
+  .session-campaign-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -93,7 +93,7 @@ export type GuestSpectatorJoinResult =
         username: string
         displayName: string
         role: 'SPECTATOR'
-        authType: 'GUEST'
+        authType: 'GUEST' | 'FULL'
       }
       campaignId: string
     }
@@ -117,7 +117,7 @@ export type SpectatorWaitlistStatusResult = {
     username: string
     displayName: string
     role: 'SPECTATOR'
-    authType: 'GUEST'
+    authType: 'GUEST' | 'FULL'
   }
 }
 
@@ -144,7 +144,7 @@ export type SpectatorPromotionResult =
         username: string
         displayName: string
         role: 'SPECTATOR'
-        authType: 'GUEST'
+        authType: 'GUEST' | 'FULL'
       }
     }
   | {

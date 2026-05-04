@@ -1,6 +1,7 @@
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { useEffect, useMemo, useState } from 'react'
+import { PolicyNotice } from './PolicyNotice'
 
 type InviteCampaign = {
   id: string
@@ -49,6 +50,11 @@ type ExtensionGuestLoginResponse = {
   }
 }
 
+type PolicyCode = 'INVITE_EXPIRED' | 'FULL_ACCOUNT_REQUIRED' | 'FULL_ACCOUNT_EXISTS' | null
+
+const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
+const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
+
 export function InviteJoinPage({
   apiUrl,
   inviteCode,
@@ -58,6 +64,7 @@ export function InviteJoinPage({
   const [loading, setLoading] = useState(true)
   const [validation, setValidation] = useState<InviteValidationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<PolicyCode>(null)
   const [joinMessage, setJoinMessage] = useState<string | null>(null)
   const [joining, setJoining] = useState(false)
 
@@ -71,16 +78,40 @@ export function InviteJoinPage({
   const [externalCampaignId, setExternalCampaignId] = useState('')
   const [dmExternalUserId, setDmExternalUserId] = useState('')
 
+  const validateInvite = async () => {
+    setLoading(true)
+    setError(null)
+    setErrorCode(null)
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
+      )
+      const data = await response.json()
+      setValidation(data)
+      if (!response.ok && data?.reason === 'INVITE_EXPIRED') {
+        setErrorCode('INVITE_EXPIRED')
+      }
+    } catch {
+      setError('Failed to validate invite code')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const run = async () => {
+    const runValidation = async () => {
       setLoading(true)
       setError(null)
+      setErrorCode(null)
       try {
         const response = await fetch(
           `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
         )
         const data = await response.json()
         setValidation(data)
+        if (!response.ok && data?.reason === 'INVITE_EXPIRED') {
+          setErrorCode('INVITE_EXPIRED')
+        }
       } catch {
         setError('Failed to validate invite code')
       } finally {
@@ -88,7 +119,7 @@ export function InviteJoinPage({
       }
     }
 
-    void run()
+    void runValidation()
   }, [apiUrl, inviteCode])
 
   const campaign = useMemo(() => {
@@ -98,9 +129,17 @@ export function InviteJoinPage({
     return validation.campaign
   }, [validation])
 
+  const continueToLobby = (campaignId: string, message: string) => {
+    sessionStorage.setItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY, campaignId)
+    sessionStorage.setItem(LOBBY_NOTICE_STORAGE_KEY, message)
+    window.history.pushState({}, '', '/')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
   const runPreflight = async () => {
     setPreflightLoading(true)
     setError(null)
+    setErrorCode(null)
     setPreflight(null)
     try {
       const response = await fetch(`${apiUrl}/api/auth/extension/preflight`, {
@@ -118,6 +157,9 @@ export function InviteJoinPage({
 
       const data = await response.json()
       if (!response.ok) {
+        if (data?.code === 'INVITE_EXPIRED') {
+          setErrorCode('INVITE_EXPIRED')
+        }
         throw new Error(data.message || 'Preflight failed')
       }
 
@@ -137,6 +179,7 @@ export function InviteJoinPage({
 
     setJoining(true)
     setError(null)
+    setErrorCode(null)
     setJoinMessage(null)
 
     try {
@@ -156,7 +199,7 @@ export function InviteJoinPage({
         throw new Error(data.message || 'Failed to join campaign')
       }
 
-      setJoinMessage('Campaign joined successfully. Return to the main app to open your session.')
+      continueToLobby(campaign.id, 'Campaign ready in your lobby. Continue when you are ready.')
     } catch (joinError) {
       const message = joinError instanceof Error ? joinError.message : 'Failed to join campaign'
       setError(message)
@@ -168,9 +211,15 @@ export function InviteJoinPage({
   const shouldShowGuestLogin =
     preflight?.suggestedFlow === 'guest' || preflight?.suggestedFlow === 'auto-login'
 
+  const handleSignInAndReturn = () => {
+    sessionStorage.setItem('postLoginRedirectPath', `/join/${encodeURIComponent(inviteCode)}`)
+    window.location.assign('/')
+  }
+
   const handleExtensionGuestLogin = async () => {
     setGuestLoginLoading(true)
     setError(null)
+    setErrorCode(null)
 
     try {
       const campaignPacket =
@@ -198,6 +247,12 @@ export function InviteJoinPage({
 
       const data = (await response.json()) as ExtensionGuestLoginResponse & { message?: string }
       if (!response.ok) {
+        if ((data as { code?: string }).code === 'FULL_ACCOUNT_EXISTS') {
+          setErrorCode('FULL_ACCOUNT_EXISTS')
+        }
+        if ((data as { code?: string }).code === 'INVITE_EXPIRED') {
+          setErrorCode('INVITE_EXPIRED')
+        }
         throw new Error(data.message || 'Guest login failed')
       }
 
@@ -213,6 +268,11 @@ export function InviteJoinPage({
         role: data.user.role as Role,
       })
 
+      if (campaign) {
+        continueToLobby(campaign.id, 'Campaign ready in your lobby. Continue when you are ready.')
+        return
+      }
+
       setJoinMessage('Extension guest login complete. You are now signed in.')
     } catch (guestLoginError) {
       const message =
@@ -223,6 +283,50 @@ export function InviteJoinPage({
     }
   }
 
+  const renderPolicyNotice = () => {
+    const effectiveCode: PolicyCode =
+      errorCode || (!loading && validation && !validation.valid ? 'INVITE_EXPIRED' : null)
+
+    if (!effectiveCode) {
+      return null
+    }
+
+    if (effectiveCode === 'INVITE_EXPIRED') {
+      return (
+        <PolicyNotice
+          title="Invite unavailable"
+          tone="danger"
+          actionLabel="Check Invite Again"
+          onAction={() => {
+            void validateInvite()
+          }}
+        >
+          <p className="m-0">Ask the DM for a new player invite code, then try again.</p>
+        </PolicyNotice>
+      )
+    }
+
+    if (effectiveCode === 'FULL_ACCOUNT_EXISTS' || effectiveCode === 'FULL_ACCOUNT_REQUIRED') {
+      return (
+        <PolicyNotice
+          title="Full account required"
+          tone="warning"
+          actionLabel="Sign In and Return"
+          onAction={handleSignInAndReturn}
+        >
+          <p className="m-0">Sign in with your full account, then return to this invite.</p>
+        </PolicyNotice>
+      )
+    }
+
+    return null
+  }
+
+  const hasPolicyNotice = Boolean(
+    errorCode ||
+    (!loading && validation && !validation.valid && validation.reason === 'INVITE_EXPIRED')
+  )
+
   return (
     <div className="mx-auto w-full max-w-3xl rounded-ui-lg border border-ui-border bg-ui-surface p-6">
       <h2 className="mt-0 text-2xl font-semibold">Player Invite</h2>
@@ -230,11 +334,7 @@ export function InviteJoinPage({
 
       {loading && <p>Validating invite...</p>}
 
-      {!loading && validation && !validation.valid && (
-        <div className="rounded-ui-sm border border-ui-error-text bg-ui-error-surface p-3 text-sm text-ui-error-text">
-          This invite is invalid or expired.
-        </div>
-      )}
+      {renderPolicyNotice()}
 
       {campaign && (
         <section className="space-y-3">
@@ -248,7 +348,7 @@ export function InviteJoinPage({
           </div>
 
           <div className="rounded-ui-sm border border-ui-border p-3">
-            <h3 className="mt-0 text-base font-semibold">Extension Preflight</h3>
+            <h3 className="mt-0 text-base font-semibold">Continue from Extension</h3>
             <p className="text-sm text-ui-secondary">
               Use this when joining from the extension. Non-extension users can use standard join.
             </p>
@@ -290,7 +390,7 @@ export function InviteJoinPage({
 
             {shouldShowGuestLogin && (
               <div className="mt-3 rounded-ui-sm border border-ui-border p-3">
-                <h4 className="m-0 text-sm font-semibold">Extension Guest Login</h4>
+                <h4 className="m-0 text-sm font-semibold">Continue with Guest Access</h4>
                 <p className="mt-1 text-sm text-ui-secondary">
                   Continue with extension-backed guest auth to receive a platform session token.
                 </p>
@@ -347,16 +447,16 @@ export function InviteJoinPage({
                   }
                   className="mt-3 rounded-ui-sm bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                  {guestLoginLoading ? 'Signing in...' : 'Continue with Extension Guest Login'}
+                  {guestLoginLoading ? 'Continuing...' : 'Continue with Extension Guest Access'}
                 </button>
               </div>
             )}
           </div>
 
           <div className="rounded-ui-sm border border-ui-border p-3">
-            <h3 className="mt-0 text-base font-semibold">Standard Join</h3>
+            <h3 className="mt-0 text-base font-semibold">Continue in the App</h3>
             <p className="text-sm text-ui-secondary">
-              Already authenticated in the app? Join this campaign directly.
+              Already authenticated in the app? Continue directly into this campaign.
             </p>
             <button
               type="button"
@@ -364,27 +464,36 @@ export function InviteJoinPage({
               disabled={!authToken || joining}
               className="rounded-ui-sm bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
-              {joining ? 'Joining...' : 'Join Campaign'}
+              {joining ? 'Continuing...' : 'Continue to Campaign'}
             </button>
             {!authToken && (
-              <p className="mt-2 text-sm text-ui-secondary">
-                Log in from the app home page first if you are not using extension guest auth.
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-sm text-ui-secondary">
+                  Log in from the app home page first if you are not using extension guest auth.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSignInAndReturn}
+                  className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm font-medium text-ui-primary hover:bg-ui-surface-muted"
+                >
+                  Sign In and Return to Invite
+                </button>
+              </div>
             )}
           </div>
         </section>
       )}
 
       {joinMessage && (
-        <div className="mt-3 rounded-ui-sm border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
-          {joinMessage}
-        </div>
+        <PolicyNotice title="Ready to continue" tone="success">
+          <p className="m-0">{joinMessage}</p>
+        </PolicyNotice>
       )}
 
-      {error && (
-        <div className="mt-3 rounded-ui-sm border border-ui-error-text bg-ui-error-surface p-3 text-sm text-ui-error-text">
-          {error}
-        </div>
+      {error && !hasPolicyNotice && (
+        <PolicyNotice title="Something went wrong" tone="danger">
+          <p className="m-0">{error}</p>
+        </PolicyNotice>
       )}
     </div>
   )

@@ -68,7 +68,7 @@ export default function App() {
     upgradePromptDismissed,
     setUpgradePromptDismissed,
     handleLoginSuccess,
-    handleGuestSpectatorAuthenticated,
+    handleSpectatorAuthenticated,
     handleGuestExtensionAuthenticated,
     handleUpgradeAccount,
   } = useAuthSession({
@@ -95,6 +95,24 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!auth.token) {
+      return
+    }
+
+    const pendingPath = sessionStorage.getItem('postLoginRedirectPath')
+    if (!pendingPath) {
+      return
+    }
+
+    sessionStorage.removeItem('postLoginRedirectPath')
+
+    if (window.location.pathname !== pendingPath) {
+      window.history.pushState({}, '', pendingPath)
+      setRouteView(resolveRoute(pendingPath))
+    }
+  }, [auth.token])
+
   const renderRouteView = () => {
     switch (routeView.kind) {
       case 'join':
@@ -111,7 +129,9 @@ export default function App() {
           <WatchRouteView
             apiUrl={apiUrl}
             inviteCode={routeView.inviteCode}
-            onAuthenticated={handleGuestSpectatorAuthenticated}
+            authToken={auth.token}
+            authType={auth.user?.authType || null}
+            onAuthenticated={handleSpectatorAuthenticated}
           />
         )
       case 'browse':
