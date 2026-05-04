@@ -81,6 +81,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('CHAT:MESSAGE_DELETED', (event) => {
       useStore.getState().handleMessageDeleted(event)
     })
+    dispatcher.register('CHAT:ROOM_CONTEXT_CLEARED', (event) => {
+      useStore.getState().handleRoomContextCleared(event)
+    })
     dispatcher.register('CHAT:TYPING_STARTED', (event) => {
       useStore.getState().handleTypingStarted(event)
     })

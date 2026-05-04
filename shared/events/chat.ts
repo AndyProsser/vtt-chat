@@ -13,6 +13,7 @@ export type ChatEventType =
   | 'CHAT:MESSAGE_SENT'
   | 'CHAT:MESSAGE_EDITED'
   | 'CHAT:MESSAGE_DELETED'
+  | 'CHAT:ROOM_CONTEXT_CLEARED'
   | 'CHAT:TYPING_STARTED'
   | 'CHAT:TYPING_STOPPED'
 
@@ -65,6 +66,17 @@ export interface ChatMessageDeleted {
 export type ChatMessageDeletedEvent = EventEnvelope<ChatMessageDeleted>
 
 /**
+ * CHAT:ROOM_CONTEXT_CLEARED
+ * Live context for a specific room was reset (for example when returning to Greenroom).
+ */
+export interface ChatRoomContextCleared {
+  roomId: UUID
+  reason?: string
+}
+
+export type ChatRoomContextClearedEvent = EventEnvelope<ChatRoomContextCleared>
+
+/**
  * CHAT:TYPING_STARTED
  * User started typing. Ephemeral, does not persist.
  * Visibility: Room members only (filtered by role).
@@ -93,5 +105,6 @@ export type ChatEvent =
   | ChatMessageSentEvent
   | ChatMessageEditedEvent
   | ChatMessageDeletedEvent
+  | ChatRoomContextClearedEvent
   | ChatTypingStartedEvent
   | ChatTypingStoppedEvent

@@ -191,6 +191,33 @@
   gap: var(--space-2);
 }
 
+.knowledge-panel-results--scroll {
+  max-height: min(58vh, 42rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.knowledge-panel--compact .knowledge-panel-card {
+  gap: var(--space-1);
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.knowledge-panel--compact .knowledge-panel-card-title {
+  font-size: 0.92rem;
+}
+
+.knowledge-panel--compact .knowledge-panel-card-subtitle,
+.knowledge-panel--compact .knowledge-panel-card-body {
+  font-size: 0.82rem;
+}
+
+.knowledge-panel--compact .knowledge-panel-chip,
+.knowledge-panel--compact .knowledge-panel-badge {
+  padding: 0.12rem 0.45rem;
+  font-size: 0.69rem;
+}
+
 .knowledge-panel-drilldown {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.9fr);

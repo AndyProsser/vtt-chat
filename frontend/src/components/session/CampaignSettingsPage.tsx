@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { UUID } from '@shared'
-import { Toast } from '../ui/Toast'
+import { useToast } from '../../hooks/useToast'
 import '../../styles/components/session/SessionInit.css'
 
 type CampaignSettingsPageProps = {
@@ -20,6 +20,7 @@ type CampaignSettingsPayload = {
 }
 
 export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
+  const showToast = useToast()
   const [settings, setSettings] = useState<CampaignSettingsPayload | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -28,6 +29,32 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isReissuingInvite, setIsReissuingInvite] = useState(false)
+
+  useEffect(() => {
+    if (!error) return
+
+    showToast({
+      id: `campaign-settings:error:${error}`,
+      variant: 'error',
+      message: error,
+      onDismiss: () => {
+        setError((current) => (current === error ? null : current))
+      },
+    })
+  }, [error, showToast])
+
+  useEffect(() => {
+    if (!notice) return
+
+    showToast({
+      id: `campaign-settings:notice:${notice}`,
+      variant: 'success',
+      message: notice,
+      onDismiss: () => {
+        setNotice((current) => (current === notice ? null : current))
+      },
+    })
+  }, [notice, showToast])
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -172,18 +199,6 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
             Back to Campaigns
           </button>
         </div>
-
-        {error && (
-          <div className="session-error-banner">
-            <Toast variant="error" message={error} onDismiss={() => setError(null)} />
-          </div>
-        )}
-
-        {notice && (
-          <div className="session-error-banner">
-            <Toast variant="success" message={notice} onDismiss={() => setNotice(null)} />
-          </div>
-        )}
 
         {isLoading ? (
           <div className="session-status-message">Loading campaign settings...</div>

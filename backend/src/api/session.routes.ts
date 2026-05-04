@@ -21,6 +21,7 @@ import { ErrorCode, Role } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
 import { applySessionStateRoomTransition } from '@/services/room.service'
+import { clearRoomMessages } from '@/services/chat.service'
 import {
   logSessionJoin,
   logSessionLeave,
@@ -291,6 +292,15 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+
+    const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
+    const shouldClearGreenRoomContext =
+      movedToGreenRoom && (state === 'PAUSED' || state === 'ENDED')
+
+    if (shouldClearGreenRoomContext) {
+      await clearRoomMessages(session.id, transition.greenRoomId)
+    }
+
     if (wsManager) {
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
@@ -324,6 +334,23 @@ router.put('/:id/state', requireAuth, requireDM, async (req: Request, res: Respo
           })),
         },
       })
+
+      if (shouldClearGreenRoomContext) {
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'CHAT:ROOM_CONTEXT_CLEARED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: transition.greenRoomId,
+          timestamp: Date.now(),
+          payload: {
+            roomId: transition.greenRoomId,
+            reason: 'SESSION_RETURNED_TO_GREENROOM',
+          },
+        })
+      }
     }
 
     const boundaryType =

@@ -9,6 +9,7 @@ import type { UUID } from '@shared'
 import type { StoredMessage } from '@/types/chat.types'
 import {
   createChatMessageRecord,
+  deleteMessageRecord,
   deleteSessionMessages,
   findMessageById,
   getChatCounts,
@@ -226,6 +227,21 @@ export async function deleteMessage(
 
 export function clearSessionMessages(sessionId: UUID): void {
   void deleteSessionMessages(sessionId)
+}
+
+export async function clearRoomMessages(sessionId: UUID, roomId: UUID): Promise<number> {
+  const rows = await listSessionMessages(sessionId)
+
+  const targetMessageIds = rows
+    .map((row) => ({ id: row.id as UUID, visibility: parseVisibility(row.visibleTo) }))
+    .filter((row) => row.visibility.roomId === roomId)
+    .map((row) => row.id)
+
+  for (const messageId of targetMessageIds) {
+    await deleteMessageRecord(messageId)
+  }
+
+  return targetMessageIds.length
 }
 
 export async function getChatTelemetrySnapshot(): Promise<{

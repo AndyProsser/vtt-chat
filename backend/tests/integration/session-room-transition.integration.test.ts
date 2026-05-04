@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockUpdateSessionState: vi.fn(),
   mockRemoveUserFromSession: vi.fn(),
   mockApplySessionStateRoomTransition: vi.fn(),
+  mockClearRoomMessages: vi.fn(),
   mockEmitSessionBoundarySystemMessage: vi.fn(),
   mockLogSessionStateChange: vi.fn(),
   mockLogSessionLeave: vi.fn(),
@@ -33,6 +34,10 @@ vi.mock('@/services/session.service', () => ({
 
 vi.mock('@/services/room.service', () => ({
   applySessionStateRoomTransition: mocks.mockApplySessionStateRoomTransition,
+}))
+
+vi.mock('@/services/chat.service', () => ({
+  clearRoomMessages: mocks.mockClearRoomMessages,
 }))
 
 vi.mock('@/services/system-messages.service', () => ({
@@ -110,6 +115,8 @@ describe('session state room orchestration', () => {
       removed: true,
       promotedSpectator: { promoted: false },
     })
+
+    mocks.mockClearRoomMessages.mockResolvedValue(0)
   })
 
   it('applies bulk room transitions after session state update', async () => {
@@ -194,6 +201,54 @@ describe('session state room orchestration', () => {
     expect(wsCalls[0][1].payload.content).toBe('alice left the session')
     expect(wsCalls[1][1].payload.content).toBe(
       'spectator-queue-1 was promoted from the spectator waitlist'
+    )
+  })
+
+  it('clears greenroom chat context and emits context-cleared event on pause transition', async () => {
+    const app = buildApp()
+    const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
+
+    mocks.mockUpdateSessionState.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'PAUSED',
+      createdAt: Date.now(),
+      startedAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
+      mainRoomId: '44444444-4444-4444-8444-444444444444',
+      mainRoomName: 'Main Room',
+      greenRoomId: GREEN_ROOM_ID,
+      greenRoomName: 'Green Room',
+      targetRoomId: GREEN_ROOM_ID,
+      targetRoomName: 'Green Room',
+      movedUsers: 2,
+      targetState: 'IDLE',
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'PAUSED' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockClearRoomMessages).toHaveBeenCalledWith(SESSION_ID, GREEN_ROOM_ID)
+
+    const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+    expect(wsCalls).toHaveLength(2)
+    expect(wsCalls[0][1].type).toBe('ROOM:SESSION_TRANSITION_APPLIED')
+    expect(wsCalls[1][1].type).toBe('CHAT:ROOM_CONTEXT_CLEARED')
+    expect(wsCalls[1][1]).toEqual(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        roomId: GREEN_ROOM_ID,
+        payload: expect.objectContaining({
+          roomId: GREEN_ROOM_ID,
+          reason: 'SESSION_RETURNED_TO_GREENROOM',
+        }),
+      })
     )
   })
 })

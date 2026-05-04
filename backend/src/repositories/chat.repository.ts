@@ -130,6 +130,12 @@ export async function softDeleteMessageRecord(params: {
   })
 }
 
+export async function deleteMessageRecord(messageId: string): Promise<void> {
+  await prisma.chatMessage.delete({
+    where: { id: messageId },
+  })
+}
+
 export async function deleteSessionMessages(sessionId: string): Promise<void> {
   await prisma.chatMessage.deleteMany({
     where: { sessionId },

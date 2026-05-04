@@ -14,7 +14,6 @@ import type { ConnectionState } from '../../ws/client'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
-import { SystemToasts } from './SystemToasts'
 import { DMAudioControls } from './DMAudioControls'
 import { HistoryPanel } from './HistoryPanel'
 import { JournalPanel } from './JournalPanel'
@@ -25,8 +24,8 @@ import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
 import { AudioPanel } from '../audio/AudioPanel'
-import { Toast } from '../ui/Toast'
 import { Icon } from '../ui/Icon'
+import { useToast } from '../../hooks/useToast'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
@@ -249,6 +248,8 @@ function parsePlayerInviteCode(input: string): string {
 }
 
 export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: SessionInitProps) {
+  const showToast = useToast()
+
   const detectThemeMode = (): FrontendThemeMode => {
     if (typeof document === 'undefined') {
       return 'light'
@@ -1313,6 +1314,48 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const canStopFromActive = currentSession?.dmId === user.id && isSessionActive
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
 
+  useEffect(() => {
+    if (!error) return
+
+    showToast({
+      id: `session-init:error:${error}`,
+      variant: 'error',
+      message: error,
+      onDismiss: () => {
+        setError((current) => (current === error ? null : current))
+      },
+    })
+  }, [error, showToast])
+
+  useEffect(() => {
+    if (!lobbyNotice) return
+
+    showToast({
+      id: `session-init:notice:${lobbyNotice}`,
+      variant: 'success',
+      message: lobbyNotice,
+      onDismiss: () => {
+        setLobbyNotice((current) => (current === lobbyNotice ? null : current))
+      },
+    })
+  }, [lobbyNotice, showToast])
+
+  useEffect(() => {
+    if (!activeTransitionNotice) return
+
+    showToast({
+      id: `session-init:transition:${activeTransitionNotice.eventId}`,
+      variant: 'info',
+      message: formatTransitionNotice({
+        nextState: activeTransitionNotice.nextState,
+        movedUsers: activeTransitionNotice.movedUsers,
+        targetRoomName: activeTransitionNotice.targetRoomName,
+        targetState: activeTransitionNotice.targetState,
+      }),
+      onDismiss: hideTransitionToast,
+    })
+  }, [activeTransitionNotice, hideTransitionToast, showToast])
+
   return (
     <>
       <div
@@ -1323,12 +1366,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             <p className="session-ws-error">
               <strong>WS Error:</strong> {wsError.message}
             </p>
-          </div>
-        )}
-
-        {error && (
-          <div className="session-error-banner">
-            <Toast variant="error" message={error} onDismiss={() => setError(null)} />
           </div>
         )}
 
@@ -1425,16 +1462,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   <h3 className="session-card-title">Campaigns</h3>
                 </div>
               </div>
-
-              {lobbyNotice && (
-                <div className="session-error-banner">
-                  <Toast
-                    variant="success"
-                    message={lobbyNotice}
-                    onDismiss={() => setLobbyNotice(null)}
-                  />
-                </div>
-              )}
 
               {isLoadingCampaigns ? (
                 <div className="session-status-message">Loading campaigns...</div>
@@ -1605,21 +1632,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   onStartSession={() => handleStartSession(currentSession.id)}
                   onStopSession={() => handleStopSession(currentSession.id)}
                   onExitToSelector={handleExitToCampaignSelector}
-                />
-              )}
-              renderSystemToasts={() => (
-                <SystemToasts
-                  message={
-                    activeTransitionNotice
-                      ? formatTransitionNotice({
-                          nextState: activeTransitionNotice.nextState,
-                          movedUsers: activeTransitionNotice.movedUsers,
-                          targetRoomName: activeTransitionNotice.targetRoomName,
-                          targetState: activeTransitionNotice.targetState,
-                        })
-                      : undefined
-                  }
-                  onDismiss={activeTransitionNotice ? hideTransitionToast : undefined}
                 />
               )}
               renderLeftRail={() => (
@@ -1822,12 +1834,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               you are ready.
             </p>
             {user.authType === 'GUEST' && (
-              <div className="session-error-banner">
-                <Toast
-                  variant="warn"
-                  message="Guest access is campaign-scoped. Upgrade to a full account to create a new campaign."
-                />
-              </div>
+              <p className="session-card-subtitle session-card-subtitle--warn">
+                Guest access is campaign-scoped. Upgrade to a full account to create a new campaign.
+              </p>
             )}
             <form onSubmit={handleCreateCampaign}>
               <label className="session-label" htmlFor="create-campaign-name">

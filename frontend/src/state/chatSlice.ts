@@ -23,11 +23,13 @@ export interface ChatSlice {
   deleteMessage: (sessionId: UUID, messageId: UUID) => void
   setTypingIndicators: (sessionId: UUID, indicators: TypingIndicator[]) => void
   clearMessages: (sessionId?: UUID) => void
+  clearRoomMessages: (sessionId: UUID, roomId: UUID) => void
 
   // Event handlers
   handleMessageSent: (event: EventEnvelope) => void
   handleMessageEdited: (event: EventEnvelope) => void
   handleMessageDeleted: (event: EventEnvelope) => void
+  handleRoomContextCleared: (event: EventEnvelope) => void
   handleTypingStarted: (event: EventEnvelope) => void
   handleTypingStopped: (event: EventEnvelope) => void
 }
@@ -109,6 +111,23 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       }
     }),
 
+  clearRoomMessages: (sessionId, roomId) =>
+    set((state) => {
+      const sessionMessages = state.messages[sessionId]
+      if (!sessionMessages) return state
+
+      const nextSessionMessages = Object.fromEntries(
+        Object.entries(sessionMessages).filter(([, message]) => message.roomId !== roomId)
+      ) as Record<UUID, Message>
+
+      return {
+        messages: {
+          ...state.messages,
+          [sessionId]: nextSessionMessages,
+        },
+      }
+    }),
+
   // Event handlers
   handleMessageSent: (event) => {
     const payload = event.payload as {
@@ -177,6 +196,28 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
         messages: {
           ...state.messages,
           [event.sessionId]: sessionMessages,
+        },
+      }
+    })
+  },
+
+  handleRoomContextCleared: (event) => {
+    const payload = event.payload as { roomId?: UUID }
+    const roomId = payload.roomId || (event.roomId as UUID | null)
+    if (!roomId) return
+
+    set((state) => {
+      const sessionMessages = state.messages[event.sessionId]
+      if (!sessionMessages) return state
+
+      const nextSessionMessages = Object.fromEntries(
+        Object.entries(sessionMessages).filter(([, message]) => message.roomId !== roomId)
+      ) as Record<UUID, Message>
+
+      return {
+        messages: {
+          ...state.messages,
+          [event.sessionId]: nextSessionMessages,
         },
       }
     })

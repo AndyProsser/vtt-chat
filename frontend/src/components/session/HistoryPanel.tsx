@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { UIEvent } from 'react'
 import type { Role, UUID } from '@shared'
 import '../../styles/components/session/KnowledgePanels.css'
 
@@ -31,6 +32,8 @@ interface HistoryFilterPreset {
 }
 
 const HISTORY_PRESETS_STORAGE_KEY = 'vtt-chat:history:filter-presets'
+const HISTORY_PAGE_SIZE = 100
+const HISTORY_SCROLL_THRESHOLD_PX = 200
 
 function formatEventLabel(eventType: string): string {
   return eventType
@@ -173,7 +176,11 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
 
   const [events, setEvents] = useState<SessionLogEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadedCount, setLoadedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [keyword, setKeyword] = useState('')
   const [selectedEventType, setSelectedEventType] = useState<string>(initialState.selectedEventType)
   const [selectedActor, setSelectedActor] = useState<string>(initialState.selectedActor)
   const [selectedWindow, setSelectedWindow] = useState<HistoryWindow>(initialState.selectedWindow)
@@ -199,44 +206,52 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
     persistHistoryPresets(presetStorageKey, savedPresets)
   }, [presetStorageKey, savedPresets])
 
-  useEffect(() => {
-    let cancelled = false
-
-    const loadHistory = async () => {
-      setIsLoading(true)
-      setError(null)
+  const fetchHistoryPage = useCallback(
+    async (offset: number, append: boolean) => {
+      if (append) {
+        setIsLoadingMore(true)
+      } else {
+        setIsLoading(true)
+        setError(null)
+      }
 
       try {
-        const response = await fetch(`${apiUrl}/api/session/${sessionId}/logs?limit=100`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await fetch(
+          `${apiUrl}/api/session/${sessionId}/logs?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }
 
         const data = await response.json()
+        const nextLogs: SessionLogEntry[] = data.logs || []
 
-        if (!cancelled) {
-          setEvents(data.logs || [])
-        }
+        setEvents((prev) => (append ? [...prev, ...nextLogs] : nextLogs))
+        setLoadedCount(offset + nextLogs.length)
+        setHasMore(nextLogs.length === HISTORY_PAGE_SIZE)
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load history')
-        }
+        setError(err instanceof Error ? err.message : 'Failed to load history')
       } finally {
-        if (!cancelled) {
+        if (append) {
+          setIsLoadingMore(false)
+        } else {
           setIsLoading(false)
         }
       }
-    }
+    },
+    [apiUrl, sessionId, token]
+  )
 
-    void loadHistory()
-
-    return () => {
-      cancelled = true
-    }
-  }, [apiUrl, sessionId, token])
+  useEffect(() => {
+    setEvents([])
+    setLoadedCount(0)
+    setHasMore(true)
+    void fetchHistoryPage(0, false)
+  }, [fetchHistoryPage])
 
   const eventTypeOptions = Array.from(new Set(events.map((event) => event.eventType))).sort(
     (left, right) => left.localeCompare(right)
@@ -264,26 +279,54 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
       ? null
       : mostRecentEventTimestamp - windowDurationMs
 
-  const filteredEvents = events.filter((event) => {
-    if (selectedEventType !== 'all' && event.eventType !== selectedEventType) {
-      return false
-    }
+  const normalizedKeyword = keyword.trim().toLowerCase()
 
-    if (selectedActor !== 'all' && event.username !== selectedActor) {
-      return false
-    }
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        if (selectedEventType !== 'all' && event.eventType !== selectedEventType) {
+          return false
+        }
 
-    if (threshold !== null) {
-      const createdAt = Date.parse(event.createdAt)
-      if (Number.isFinite(createdAt) && createdAt < threshold) {
-        return false
-      }
-    }
+        if (selectedActor !== 'all' && event.username !== selectedActor) {
+          return false
+        }
 
-    return true
-  })
+        if (threshold !== null) {
+          const createdAt = Date.parse(event.createdAt)
+          if (Number.isFinite(createdAt) && createdAt < threshold) {
+            return false
+          }
+        }
+
+        if (normalizedKeyword) {
+          const searchable =
+            `${event.eventType} ${event.username} ${event.detail || ''}`.toLowerCase()
+          if (!searchable.includes(normalizedKeyword)) {
+            return false
+          }
+        }
+
+        return true
+      }),
+    [events, normalizedKeyword, selectedActor, selectedEventType, threshold]
+  )
 
   const groupedEvents = groupByDay(filteredEvents)
+
+  const handleResultsScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!hasMore || isLoading || isLoadingMore) {
+      return
+    }
+
+    const element = event.currentTarget
+    const remaining = element.scrollHeight - element.scrollTop - element.clientHeight
+    if (remaining > HISTORY_SCROLL_THRESHOLD_PX) {
+      return
+    }
+
+    void fetchHistoryPage(loadedCount, true)
+  }
 
   const handleSavePreset = () => {
     const normalizedName = presetName.trim()
@@ -476,7 +519,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   }
 
   return (
-    <section className="knowledge-panel" data-testid="history-panel">
+    <section className="knowledge-panel knowledge-panel--compact" data-testid="history-panel">
       <header className="knowledge-panel-header">
         <div>
           <p className="knowledge-panel-eyebrow">Knowledge</p>
@@ -490,6 +533,19 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
       <p className="knowledge-panel-copy">
         Session lifecycle events and participation history from the persisted session log.
       </p>
+
+      <div className="knowledge-panel-search">
+        <label className="knowledge-panel-search-label" htmlFor="history-keyword-search">
+          Search
+        </label>
+        <input
+          id="history-keyword-search"
+          type="search"
+          value={keyword}
+          placeholder="Find by event, actor, or detail"
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+      </div>
 
       <div className="knowledge-panel-toolbar" aria-label="History filters">
         <label className="knowledge-panel-filter-field">
@@ -680,7 +736,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
 
       {!isLoading ? (
         <p className="knowledge-panel-meta">
-          Showing {filteredEvents.length} events after filters.
+          Showing {filteredEvents.length} filtered events from {loadedCount} loaded.
         </p>
       ) : null}
 
@@ -692,7 +748,11 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
           <p>No history events match the active filters.</p>
         </div>
       ) : (
-        <div className="knowledge-panel-results" aria-label="History events">
+        <div
+          className="knowledge-panel-results knowledge-panel-results--scroll"
+          aria-label="History events"
+          onScroll={handleResultsScroll}
+        >
           {groupedEvents.map((group) => (
             <section key={group.dayLabel} className="knowledge-panel-group" role="group">
               <h4 className="knowledge-panel-group-title">{group.dayLabel}</h4>
@@ -718,6 +778,11 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
               </div>
             </section>
           ))}
+
+          {isLoadingMore ? <p className="knowledge-panel-meta">Loading more events…</p> : null}
+          {!isLoadingMore && !hasMore ? (
+            <p className="knowledge-panel-meta">Reached the end of session history.</p>
+          ) : null}
         </div>
       )}
     </section>

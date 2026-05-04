@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { UIEvent } from 'react'
 import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -26,6 +27,8 @@ const EMPTY_NOTES: Record<UUID, Note> = {}
 const JOURNAL_PINNED_STORAGE_KEY = 'vtt-chat:journal:pinned'
 const JOURNAL_FAVORITE_STORAGE_KEY = 'vtt-chat:journal:favorites'
 const JOURNAL_PRESETS_STORAGE_KEY = 'vtt-chat:journal:filter-presets'
+const JOURNAL_PAGE_SIZE = 30
+const JOURNAL_SCROLL_THRESHOLD_PX = 200
 
 const NOTE_VISIBILITY_LABEL: Record<NoteVisibility, string> = {
   [NoteVisibility.DM_ONLY]: 'DM only',
@@ -193,6 +196,8 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
   const [publishingNoteId, setPublishingNoteId] = useState<string | null>(null)
   const [selectedTag, setSelectedTag] = useState<string>(initialState.selectedTag)
   const [viewMode, setViewMode] = useState<JournalViewMode>(initialState.viewMode)
+  const [keyword, setKeyword] = useState('')
+  const [visibleEntryCount, setVisibleEntryCount] = useState<number>(JOURNAL_PAGE_SIZE)
   const [pinnedEntryIds, setPinnedEntryIds] = useState<Set<string>>(initialState.pinnedEntryIds)
   const [favoriteEntryIds, setFavoriteEntryIds] = useState<Set<string>>(
     initialState.favoriteEntryIds
@@ -254,6 +259,8 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
   }, [entries])
 
   const filteredEntries = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase()
+
     return entries.filter((entry) => {
       if (selectedTag !== 'all' && !entry.tags.includes(selectedTag)) {
         return false
@@ -267,9 +274,30 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
         return false
       }
 
+      if (normalizedKeyword) {
+        const searchable =
+          `${entry.title} ${entry.content} ${entry.ownerUsername} ${entry.tags.join(' ')}`
+            .toLowerCase()
+            .trim()
+        if (!searchable.includes(normalizedKeyword)) {
+          return false
+        }
+      }
+
       return true
     })
-  }, [entries, favoriteEntryIds, pinnedEntryIds, selectedTag, viewMode])
+  }, [entries, favoriteEntryIds, keyword, pinnedEntryIds, selectedTag, viewMode])
+
+  const visibleEntries = useMemo(
+    () => filteredEntries.slice(0, visibleEntryCount),
+    [filteredEntries, visibleEntryCount]
+  )
+
+  const hasMoreVisibleEntries = visibleEntryCount < filteredEntries.length
+
+  useEffect(() => {
+    setVisibleEntryCount(JOURNAL_PAGE_SIZE)
+  }, [keyword, selectedTag, viewMode, favoriteEntryIds, pinnedEntryIds, sessionId])
 
   useEffect(() => {
     const scopedPinnedKey = `${JOURNAL_PINNED_STORAGE_KEY}:${sessionId}`
@@ -591,8 +619,22 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
     }
   }
 
+  const handleResultsScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!hasMoreVisibleEntries) {
+      return
+    }
+
+    const element = event.currentTarget
+    const remaining = element.scrollHeight - element.scrollTop - element.clientHeight
+    if (remaining > JOURNAL_SCROLL_THRESHOLD_PX) {
+      return
+    }
+
+    setVisibleEntryCount((count) => count + JOURNAL_PAGE_SIZE)
+  }
+
   return (
-    <section className="knowledge-panel" data-testid="journal-panel">
+    <section className="knowledge-panel knowledge-panel--compact" data-testid="journal-panel">
       <header className="knowledge-panel-header">
         <div>
           <p className="knowledge-panel-eyebrow">Knowledge</p>
@@ -606,6 +648,19 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
       <p className="knowledge-panel-copy">
         This first journal slice is compiled from visible session notes and published callouts.
       </p>
+
+      <div className="knowledge-panel-search">
+        <label className="knowledge-panel-search-label" htmlFor="journal-keyword-search">
+          Search
+        </label>
+        <input
+          id="journal-keyword-search"
+          type="search"
+          value={keyword}
+          placeholder="Find by title, content, owner, or tag"
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+      </div>
 
       <div className="knowledge-panel-toolbar" aria-label="Journal filters">
         <label className="knowledge-panel-filter-field">
@@ -777,6 +832,11 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
       </div>
 
       {publishError ? <p className="knowledge-panel-error">{publishError}</p> : null}
+      {!isLoading ? (
+        <p className="knowledge-panel-meta">
+          Showing {visibleEntries.length} of {filteredEntries.length} filtered entries.
+        </p>
+      ) : null}
 
       {isLoading ? <p className="knowledge-panel-meta">Loading entries…</p> : null}
       {error ? <p className="knowledge-panel-error">{error}</p> : null}
@@ -786,8 +846,13 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
           <p>No journal entries match the active filters.</p>
         </div>
       ) : (
-        <div className="knowledge-panel-results" role="list" aria-label="Journal entries">
-          {filteredEntries.map((entry) => (
+        <div
+          className="knowledge-panel-results knowledge-panel-results--scroll"
+          role="list"
+          aria-label="Journal entries"
+          onScroll={handleResultsScroll}
+        >
+          {visibleEntries.map((entry) => (
             <article key={entry.id} className="knowledge-panel-card" role="listitem">
               <div className="knowledge-panel-card-header">
                 <div>
@@ -854,6 +919,10 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
               ) : null}
             </article>
           ))}
+
+          {hasMoreVisibleEntries ? (
+            <p className="knowledge-panel-meta">Scroll to load more entries…</p>
+          ) : null}
         </div>
       )}
     </section>

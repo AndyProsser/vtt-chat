@@ -7,6 +7,7 @@ import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
+import { ToastViewport } from './components/ui/ToastViewport'
 import type { UUID } from '@shared'
 
 export default function App() {
@@ -187,6 +188,7 @@ export default function App() {
           className="mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
           style={{ width: '100%', maxWidth: '900px', paddingBottom: '10px' }}
         >
+          <ToastViewport />
           <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
             {renderRouteView()}
           </section>

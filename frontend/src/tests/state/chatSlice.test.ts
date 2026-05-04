@@ -9,6 +9,8 @@ const SESSION_B = '22222222-2222-4222-8222-222222222222' as UUID
 const MSG_ID_1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
 const MSG_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID
 const USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' as UUID
+const ROOM_ID_A = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' as UUID
+const ROOM_ID_B = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' as UUID
 const NOW = 1700000000000
 
 function makeEvent(
@@ -31,6 +33,7 @@ function makeEvent(
 
 const SAMPLE_MESSAGE: Message = {
   id: MSG_ID_1,
+  roomId: ROOM_ID_A,
   authorId: USER_ID,
   authorUsername: 'alice',
   content: 'Hello world',
@@ -122,6 +125,22 @@ describe('chatSlice', () => {
     })
   })
 
+  describe('clearRoomMessages', () => {
+    it('clears only messages from one room in the targeted session', () => {
+      useStore.getState().addMessage(SESSION_A, SAMPLE_MESSAGE)
+      useStore.getState().addMessage(SESSION_A, {
+        ...SAMPLE_MESSAGE,
+        id: MSG_ID_2,
+        roomId: ROOM_ID_B,
+      })
+
+      useStore.getState().clearRoomMessages(SESSION_A, ROOM_ID_A)
+
+      expect(useStore.getState().messages[SESSION_A]?.[MSG_ID_1]).toBeUndefined()
+      expect(useStore.getState().messages[SESSION_A]?.[MSG_ID_2]).toBeDefined()
+    })
+  })
+
   // ── Event handlers ─────────────────────────────────────────────────────────
 
   describe('handleMessageSent', () => {
@@ -156,6 +175,8 @@ describe('chatSlice', () => {
     })
 
     it('is a no-op when message does not exist', () => {
+      useStore.getState().clearMessages(SESSION_A)
+
       const event = makeEvent('CHAT:MESSAGE_EDITED', SESSION_A, {
         messageId: MSG_ID_2,
         content: 'Ghost edit',
@@ -211,6 +232,25 @@ describe('chatSlice', () => {
       const stopEvent = makeEvent('CHAT:TYPING_STOPPED', SESSION_A, { userId: USER_ID })
       useStore.getState().handleTypingStopped(stopEvent)
       expect(useStore.getState().typingIndicators[SESSION_A]).toHaveLength(0)
+    })
+  })
+
+  describe('handleRoomContextCleared', () => {
+    it('removes only messages scoped to the cleared room', () => {
+      useStore.getState().addMessage(SESSION_A, SAMPLE_MESSAGE)
+      useStore.getState().addMessage(SESSION_A, {
+        ...SAMPLE_MESSAGE,
+        id: MSG_ID_2,
+        roomId: ROOM_ID_B,
+      })
+
+      const event = makeEvent('CHAT:ROOM_CONTEXT_CLEARED', SESSION_A, {
+        roomId: ROOM_ID_A,
+      })
+      useStore.getState().handleRoomContextCleared(event)
+
+      expect(useStore.getState().messages[SESSION_A]?.[MSG_ID_1]).toBeUndefined()
+      expect(useStore.getState().messages[SESSION_A]?.[MSG_ID_2]).toBeDefined()
     })
   })
 })
