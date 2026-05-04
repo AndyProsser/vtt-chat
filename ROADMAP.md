@@ -50,49 +50,6 @@ Current boundary for this stage:
 - Outside campaign membership context, authenticated identity is simply `User`; DM/Player/Spectator are campaign-scoped roles.
 - Campaign owner DM handoff (resign and assign another player as DM) is planned.
 
-### Build Tracking (Now)
-
-Status legend: `Planned`, `In Progress`, `Done`
-
-1. Home/Campaign list and derived-state model - Done
-2. Privacy-rounded home dashboard metrics - Done
-3. Invite/code entry flow alignment (player extension POST invite, spectator watch link guest/full paths) - Done
-4. Login/register entry UX completion (including invite context handoff) - Done
-5. Home/campaign panel UX pass (compact bounded shell + panel flow cleanup) - Done
-6. Launch/Watch CTA gating on campaign cards (DM/player/spectator permissions + policy states) - Done
-7. Dedicated campaign settings route/page + DM metadata editing + invite reissue UX - Done
-8. Campaign-scoped role model cleanup (user-level identity outside campaigns) - Done
-9. DM/Player guest campaign-scoping + upgrade UX copy/affordances - Done
-10. Spectator guest temporary-session UX + wait/paused/ended pre-launch messaging - Planned
-11. Campaign DM handoff flow (resign and assign player as new DM) - Planned
-
-Latest delivered in this slice:
-
-- Invite and watch routes now use a unified notice/copy system for policy, success, waitlist, and fallback error states.
-- Player invite success paths now hand off back into the app lobby with the joined campaign preselected.
-- Campaign launch now loads sessions for the clicked campaign before entering, avoiding stale-session selection when launching from a different card.
-- Create Campaign now explains the DM launch path, uses labeled name/description fields, and blocks guest users with explicit upgrade messaging.
-- Campaign-scoped role resolution is now synchronized end-to-end for DM/PLAYER/SPECTATOR during session entry and chat authorization.
-- Session entry now performs explicit chapter join, and non-DM exit/logoff performs best-effort chapter leave to avoid stale in-session role carryover.
-- Chat room selection now follows the user's current presence room (Greenroom/Main) before falling back to Main, fixing expected chat surface behavior during state transitions.
-
-### Milestone Sequence (Simple)
-
-- F1: Home flow foundation
-  - 1, 2, 3
-- F2: Login -> Home -> Launch/Watch completion
-  - 3, 4, 5, 6, 7, 8, 9, 10
-- F3: In-campaign lifecycle behavior (deferred)
-  - Deferred runtime items listed above
-
-### Done Criteria for This Track
-
-- Users can enter campaigns from home with correct role-based behavior.
-- Login/register -> home -> launch/watch UI/UX path is complete for DM/player/spectator entry cases.
-- DM/Player extension guest launch path is campaign-scoped, clearly communicated, and upgrade-capable.
-- Spectator watch path supports temporary guest spectator onboarding and full-account entry.
-- Visibility/privacy constraints are enforced for dashboard and pre-launch campaign access surfaces.
-
 ---
 
 ## 1) Scope and Goal
@@ -135,7 +92,7 @@ Known readiness gap classes:
 
 | ID  | Workstream                  | Status      | Scope                                                                            |
 | --- | --------------------------- | ----------- | -------------------------------------------------------------------------------- |
-| W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, audio-state durability validation         |
+| W1  | Hardening and Reliability   | Done        | Multi-client reconnect, recovery soak, audio-state durability validation         |
 | W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                |
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
@@ -144,14 +101,23 @@ Known readiness gap classes:
 
 ---
 
+### Latest Delivered (W1/W2)
+
+- Added backend multi-client reconnect soak suite for concurrent reconnect fanout, session isolation, and FIFO recovery behavior (`backend/tests/integration/multi-client-reconnect.integration.test.ts`).
+- Added backend audio-state persistence/recovery soak suite for environment + DM override + broadcast lifecycle recovery (`backend/tests/integration/audio-state-recovery.integration.test.ts`).
+- Added expanded API coverage for presence and rooms route auth/validation/edge paths (`backend/tests/api/presence-routes.test.ts`, `backend/tests/api/rooms-routes.test.ts`).
+- Added explicit non-functional authz boundary suite for audio DM-only control surfaces (`backend/tests/api/audio-authz-boundaries.test.ts`).
+- Added workspace QA artifact for per-package coverage and threshold deltas (`scripts/qa/coverage-report.cjs`) and root scripts `qa:coverage-report` / `qa:coverage-report:json`.
+- Raised backend coverage thresholds to match current baseline signal and enforce gate floor in CI/local runs.
+
 ## 4) Detailed Backlog
 
 ### W1: Hardening and Reliability
 
-1. Add multi-client reconnect soak scenario for rooms/presence topology recovery.
-2. Add audio-state persistence and recovery soak assertions around `GET /api/audio/state/:sessionId`.
-3. Verify reconnect fanout behavior under concurrent transitions.
-4. Capture pass/fail thresholds and flaky-test handling policy.
+1. Add multi-client reconnect soak scenario for rooms/presence topology recovery. - Done
+2. Add audio-state persistence and recovery soak assertions around `GET /api/audio/state/:sessionId`. - Done
+3. Verify reconnect fanout behavior under concurrent transitions. - Done
+4. Capture pass/fail thresholds and flaky-test handling policy. - In Progress
 
 Definition of done:
 
@@ -160,11 +126,11 @@ Definition of done:
 
 ### W2: Testing Program and Gates
 
-1. Add a workspace test report artifact with per-package test and coverage deltas.
-2. Define release-gate thresholds for backend/frontend/admin test pass and critical-path suites.
-3. Add explicit non-functional checks for authz boundaries and high-risk error paths.
-4. Track and burn down flaky tests to agreed threshold.
-5. Expand frontend/backend automated coverage for refactor-sensitive paths (store selectors, integration hooks, API naming migration behavior).
+1. Add a workspace test report artifact with per-package test and coverage deltas. - Done
+2. Define release-gate thresholds for backend/frontend/admin test pass and critical-path suites. - In Progress
+3. Add explicit non-functional checks for authz boundaries and high-risk error paths. - Done
+4. Track and burn down flaky tests to agreed threshold. - Planned
+5. Expand frontend/backend automated coverage for refactor-sensitive paths (store selectors, integration hooks, API naming migration behavior). - In Progress
 
 Definition of done:
 

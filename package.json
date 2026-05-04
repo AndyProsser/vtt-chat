@@ -14,7 +14,9 @@
     "format": "prettier --write .",
     "check": "npm run lint",
     "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update",
-    "qa:voice-of-god": "node scripts/qa/verify-voice-of-god.cjs"
+    "qa:voice-of-god": "node scripts/qa/verify-voice-of-god.cjs",
+    "qa:coverage-report": "node scripts/qa/coverage-report.cjs",
+    "qa:coverage-report:json": "node scripts/qa/coverage-report.cjs --json"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.59.1",
