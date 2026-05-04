@@ -1326,6 +1326,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           </div>
         )}
 
+        {error && (
+          <div className="session-error-banner">
+            <Toast variant="error" message={error} onDismiss={() => setError(null)} />
+          </div>
+        )}
+
         {!hasSessionSelected && (
           <>
             <div
@@ -1417,17 +1423,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               <div className="session-card-header">
                 <div>
                   <h3 className="session-card-title">Campaigns</h3>
-                  <p className="session-card-subtitle">
-                    Choose a campaign to enter. Session chapter details are handled automatically.
-                  </p>
                 </div>
               </div>
-
-              {error && (
-                <div className="session-error-banner">
-                  <Toast variant="error" message={error} onDismiss={() => setError(null)} />
-                </div>
-              )}
 
               {lobbyNotice && (
                 <div className="session-error-banner">
