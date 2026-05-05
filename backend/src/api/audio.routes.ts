@@ -153,13 +153,13 @@ async function validateDmControl(
   return { ok: true, role: authz.role }
 }
 
-router.get('/presets', requireAuth, (_req: Request, res: Response) => {
+function handleGetAudioPresets(_req: Request, res: Response) {
   return res.status(200).json({
     presets: AUDIO_PRESETS,
   })
-})
+}
 
-router.post('/environment', requireAuth, async (req: Request, res: Response) => {
+async function handleSetEnvironment(req: Request, res: Response) {
   const user = getAuthUser(req)
   const { sessionId, roomId, environmentName, parameters } = req.body
 
@@ -228,9 +228,9 @@ router.post('/environment', requireAuth, async (req: Request, res: Response) => 
   })
 
   return res.status(200).json({ ok: true, eventId: event.id })
-})
+}
 
-router.post('/dm-override/apply', requireAuth, async (req: Request, res: Response) => {
+async function handleApplyDmOverride(req: Request, res: Response) {
   const user = getAuthUser(req)
   const { sessionId, targetUserId, overrideType, parameters } = req.body
 
@@ -297,9 +297,9 @@ router.post('/dm-override/apply', requireAuth, async (req: Request, res: Respons
   })
 
   return res.status(200).json({ ok: true, eventId: event.id })
-})
+}
 
-router.post('/dm-override/remove', requireAuth, async (req: Request, res: Response) => {
+async function handleRemoveDmOverride(req: Request, res: Response) {
   const user = getAuthUser(req)
   const { sessionId, targetUserId, overrideType } = req.body
 
@@ -353,9 +353,9 @@ router.post('/dm-override/remove', requireAuth, async (req: Request, res: Respon
   })
 
   return res.status(200).json({ ok: true, eventId: event.id })
-})
+}
 
-router.get('/state/:sessionId', requireAuth, async (req: Request, res: Response) => {
+async function handleGetAudioState(req: Request, res: Response) {
   const user = getAuthUser(req)
   const { sessionId } = req.params
 
@@ -377,15 +377,28 @@ router.get('/state/:sessionId', requireAuth, async (req: Request, res: Response)
 
   return res.status(200).json({
     sessionId: state.sessionId,
-    // Backward-compatible field retained for older callers.
     environment: latestEnvironment,
     environments: state.environments,
     dmOverrides: state.dmOverrides,
     broadcast: state.broadcast,
-    // Backward-compatible field retained for older callers.
     voiceOfGod: state.voiceOfGod,
   })
-})
+}
+
+router.get('/presets', requireAuth, handleGetAudioPresets)
+router.get('/catalog/presets', requireAuth, handleGetAudioPresets)
+
+router.post('/environment', requireAuth, handleSetEnvironment)
+router.post('/environments/apply', requireAuth, handleSetEnvironment)
+
+router.post('/dm-override/apply', requireAuth, handleApplyDmOverride)
+router.post('/overrides/dm/apply', requireAuth, handleApplyDmOverride)
+
+router.post('/dm-override/remove', requireAuth, handleRemoveDmOverride)
+router.post('/overrides/dm/remove', requireAuth, handleRemoveDmOverride)
+
+router.get('/state/:sessionId', requireAuth, handleGetAudioState)
+router.get('/sessions/:sessionId/state', requireAuth, handleGetAudioState)
 
 async function handleSetBroadcastState(req: Request, res: Response) {
   const user = getAuthUser(req)
@@ -469,6 +482,10 @@ async function handleSetBroadcastState(req: Request, res: Response) {
 }
 
 router.post('/broadcast', requireAuth, async (req: Request, res: Response) => {
+  return handleSetBroadcastState(req, res)
+})
+
+router.post('/broadcast/state', requireAuth, async (req: Request, res: Response) => {
   return handleSetBroadcastState(req, res)
 })
 

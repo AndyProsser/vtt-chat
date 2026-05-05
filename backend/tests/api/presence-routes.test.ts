@@ -62,6 +62,7 @@ function buildApp() {
   const app = express()
   app.use(express.json())
   app.use('/api/presence', presenceRoutes)
+  app.use('/api/v1/presence', presenceRoutes)
   return app
 }
 
@@ -160,6 +161,27 @@ describe('presence routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.presence[0].avatarUrl).toBe('https://example.com/alice.png')
       expect(res.body.presence[0].displayName).toBe('Alice')
+    })
+
+    it('serves the same presence data through the v1 mount', async () => {
+      mocks.mockGetSessionPresence.mockResolvedValue([
+        {
+          userId: USER_ID,
+          username: 'alice',
+          state: 'ONLINE',
+          primaryRoomId: ROOM_ID,
+          lastSeenAt: 1700000000000,
+        },
+      ])
+
+      const app = buildApp()
+      const res = await request(app)
+        .get(`/api/v1/presence/${SESSION_ID}`)
+        .set('Authorization', 'Bearer token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.presence).toHaveLength(1)
+      expect(res.body.presence[0].userId).toBe(USER_ID)
     })
 
     it('allows DM to read presence even though they are not in session users list', async () => {
@@ -393,6 +415,17 @@ describe('presence routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.recoveredFromSnapshots).toBe(false)
       expect(res.body.presence).toHaveLength(0)
+    })
+
+    it('supports recovery through the v1 mount', async () => {
+      const app = buildApp()
+      const res = await request(app)
+        .post(`/api/v1/presence/${SESSION_ID}/recover`)
+        .set('Authorization', 'Bearer token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.recoveredFromSnapshots).toBe(true)
+      expect(res.body.snapshotCount).toBe(3)
     })
   })
 })

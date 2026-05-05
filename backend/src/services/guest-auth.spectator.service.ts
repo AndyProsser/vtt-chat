@@ -1,11 +1,7 @@
 import { getPrismaClient } from '@/infra/db'
 import { createToken } from '@/services/auth.service'
-import {
-  randomOpaqueToken,
-  sanitizeEmail,
-  sanitizeInviteCode,
-  slugify,
-} from '@/utils/guest-auth.helpers'
+import { findOrCreateGuestAccount } from '@/services/guest-account.service'
+import { randomOpaqueToken, sanitizeEmail, sanitizeInviteCode } from '@/utils/guest-auth.helpers'
 import type {
   BrowseCampaignResult,
   GuestSpectatorJoinResult,
@@ -16,85 +12,25 @@ import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()
 
-async function generateUniqueUsername(displayName: string, email: string): Promise<string> {
-  const emailBase = email.split('@')[0] || 'guest'
-  const base = slugify(displayName || emailBase || 'guest').slice(0, 24) || 'guest'
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const suffix = Math.random().toString(36).slice(2, 6)
-    const candidate = attempt === 0 ? `${base}-${suffix}` : `${base}-${attempt}${suffix}`
-    const existing = await prisma.user.findUnique({
-      where: { username: candidate },
-      select: { id: true },
-    })
-
-    if (!existing) {
-      return candidate
-    }
-  }
-
-  return `${base}-${Date.now().toString(36)}`
-}
-
 async function findOrCreateGuestSpectator(params: { email: string; displayName: string }): Promise<{
   id: string
   username: string
   displayName: string
   authType: 'GUEST' | 'FULL'
 }> {
-  const existing = await prisma.user.findFirst({
-    where: { email: params.email },
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      authType: true,
-    },
+  const account = await findOrCreateGuestAccount({
+    email: params.email,
+    displayName: params.displayName,
+    role: 'SPECTATOR',
+    fullAccountPolicy: 'allow-existing',
   })
 
-  if (existing && existing.authType === 'FULL') {
-    return {
-      id: existing.id,
-      username: existing.username,
-      displayName: existing.displayName,
-      authType: 'FULL',
-    }
+  return {
+    id: account.id,
+    username: account.username,
+    displayName: account.displayName,
+    authType: account.authType,
   }
-
-  if (existing) {
-    return prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        displayName: params.displayName,
-        role: 'SPECTATOR',
-        authType: 'GUEST',
-        isActive: true,
-      },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        authType: true,
-      },
-    })
-  }
-
-  return prisma.user.create({
-    data: {
-      email: params.email,
-      username: await generateUniqueUsername(params.displayName, params.email),
-      displayName: params.displayName,
-      role: 'SPECTATOR',
-      authType: 'GUEST',
-      isActive: true,
-    },
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      authType: true,
-    },
-  })
 }
 
 export async function joinGuestSpectatorViaInvite(params: {

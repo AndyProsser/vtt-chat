@@ -152,6 +152,360 @@ async function ensureJoinedMemberPresence(params: {
   }
 }
 
+async function listSessionMembersHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const result = await listSessionUsersForRequester({
+      sessionId: id as UUID,
+      requester: {
+        userId: user.userId,
+        role: user.role,
+      },
+    })
+
+    if (!result.ok) {
+      if (result.code === 'SESSION_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: result.message,
+        })
+      }
+
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: result.message,
+      })
+    }
+
+    return res.status(200).json({
+      users: result.users,
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
+async function joinSessionHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    const currentUsers = await getSessionUsers(id as UUID)
+    const alreadyMember = currentUsers.some((u) => u.id === user.userId)
+    if (alreadyMember) {
+      const ensured = await ensureJoinedMemberPresence({
+        session,
+        userId: user.userId as UUID,
+        username: user.username,
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
+        const timestamp = Date.now()
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            joinedAt: timestamp,
+          },
+        })
+
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            newState: ensured.state,
+            changedAt: timestamp,
+          },
+        })
+      }
+
+      return res.status(200).json({
+        session,
+        users: currentUsers.map((u) => ({
+          id: u.id,
+          username: u.username,
+          role: u.role,
+        })),
+      })
+    }
+
+    const joinRole = await resolveRoleForSessionJoin({
+      sessionId: id as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!joinRole.ok) {
+      if (joinRole.code === 'SESSION_NOT_FOUND') {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: joinRole.message,
+        })
+      }
+
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: joinRole.message,
+      })
+    }
+
+    const success = await addUserToSession(id as UUID, {
+      id: user.userId as UUID,
+      username: user.username,
+      role: joinRole.role,
+      createdAt: Date.now(),
+    })
+
+    if (!success) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    await logSessionJoin(id as UUID, user.userId as UUID, user.username)
+
+    const ensured = await ensureJoinedMemberPresence({
+      session,
+      userId: user.userId as UUID,
+      username: user.username,
+    })
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      if (ensured.changed && ensured.roomId && ensured.state) {
+        const timestamp = Date.now()
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            joinedAt: timestamp,
+          },
+        })
+
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: ensured.roomId,
+          timestamp,
+          payload: {
+            roomId: ensured.roomId,
+            userId: user.userId as UUID,
+            username: user.username,
+            newState: ensured.state,
+            changedAt: timestamp,
+          },
+        })
+      }
+
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CHAT:MESSAGE_CREATED',
+        version: 1,
+        userId: session.dmId,
+        userRole: Role.DM,
+        sessionId: id as UUID,
+        roomId: null as any,
+        timestamp: Date.now(),
+        payload: {
+          messageId: crypto.randomUUID() as UUID,
+          authorId: session.dmId,
+          authorUsername: 'System',
+          sessionId: id as UUID,
+          roomId: null as any,
+          content: `${user.username} joined the session`,
+          type: 'SYSTEM',
+          isEdited: false,
+          createdAt: Date.now(),
+          whisperTo: null,
+        },
+      })
+    }
+
+    const updatedUsers = await getSessionUsers(id as UUID)
+    return res.status(200).json({
+      session,
+      users: updatedUsers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+      })),
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
+async function leaveSessionHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    if (session.dmId === (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'DM cannot leave their own session',
+      })
+    }
+
+    const currentUsers = await getSessionUsers(id as UUID)
+    const isMember = currentUsers.some((u) => u.id === user.userId)
+    if (!isMember) {
+      return res.status(404).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'User is not a member of this session',
+      })
+    }
+
+    const removal = await removeUserFromSession(id as UUID, user.userId as UUID)
+
+    if (!removal.removed) {
+      return res.status(500).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Failed to remove user from session',
+      })
+    }
+
+    await logSessionLeave(id as UUID, user.userId as UUID, user.username)
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CHAT:MESSAGE_CREATED',
+        version: 1,
+        userId: session.dmId,
+        userRole: Role.DM,
+        sessionId: id as UUID,
+        roomId: null as any,
+        timestamp: Date.now(),
+        payload: {
+          messageId: crypto.randomUUID() as UUID,
+          authorId: session.dmId,
+          authorUsername: 'System',
+          sessionId: id as UUID,
+          roomId: null as any,
+          content: `${user.username} left the session`,
+          type: 'SYSTEM',
+          isEdited: false,
+          createdAt: Date.now(),
+          whisperTo: null,
+        },
+      })
+
+      if (removal.promotedSpectator.promoted) {
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'CHAT:MESSAGE_CREATED',
+          version: 1,
+          userId: session.dmId,
+          userRole: Role.DM,
+          sessionId: id as UUID,
+          roomId: null as any,
+          timestamp: Date.now(),
+          payload: {
+            messageId: crypto.randomUUID() as UUID,
+            authorId: session.dmId,
+            authorUsername: 'System',
+            sessionId: id as UUID,
+            roomId: null as any,
+            content: `${removal.promotedSpectator.user.username} was promoted from the spectator waitlist`,
+            type: 'SYSTEM',
+            isEdited: false,
+            createdAt: Date.now(),
+            whisperTo: null,
+          },
+        })
+      }
+    }
+
+    const updatedUsers = await getSessionUsers(id as UUID)
+    return res.status(200).json({
+      session,
+      users: updatedUsers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+      })),
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
 /**
  * POST /api/session
  * Create a new session (DM-only)
@@ -227,48 +581,8 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
  * GET /api/session/:id/users
  * List users currently associated with a session.
  */
-router.get('/:id/users', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const { id } = req.params
-
-  if (!isValidUUID(id)) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_SESSION,
-      message: 'Invalid session ID',
-      field: 'id',
-    })
-  }
-
-  try {
-    const result = await listSessionUsersForRequester({
-      sessionId: id as UUID,
-      requester: {
-        userId: user.userId,
-        role: user.role,
-      },
-    })
-
-    if (!result.ok) {
-      if (result.code === 'SESSION_NOT_FOUND') {
-        return res.status(404).json({
-          code: ErrorCode.SESSION_NOT_FOUND,
-          message: result.message,
-        })
-      }
-
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: result.message,
-      })
-    }
-
-    return res.status(200).json({
-      users: result.users,
-    })
-  } catch {
-    return internalErrorResponse(res)
-  }
-})
+router.get('/:id/users', requireAuth, listSessionMembersHandler)
+router.get('/:id/members', requireAuth, listSessionMembersHandler)
 
 /**
  * GET /api/session/:id/logs
@@ -477,328 +791,15 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
  * Add a user to a session
  * Players can join at any time, including after session has started.
  */
-router.post('/:id/join', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const { id } = req.params
-
-  if (!isValidUUID(id)) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_SESSION,
-      message: 'Invalid session ID',
-      field: 'id',
-    })
-  }
-
-  try {
-    const session = await getSession(id as UUID)
-    if (!session) {
-      return res.status(404).json({
-        code: ErrorCode.SESSION_NOT_FOUND,
-        message: 'Session not found',
-      })
-    }
-
-    // Check if user is already in session
-    const currentUsers = await getSessionUsers(id as UUID)
-    const alreadyMember = currentUsers.some((u) => u.id === user.userId)
-    if (alreadyMember) {
-      const ensured = await ensureJoinedMemberPresence({
-        session,
-        userId: user.userId as UUID,
-        username: user.username,
-      })
-
-      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-      if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
-        const timestamp = Date.now()
-        wsManager.broadcastEventToSession(id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'ROOM:USER_JOINED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: user.role,
-          sessionId: id as UUID,
-          roomId: ensured.roomId,
-          timestamp,
-          payload: {
-            roomId: ensured.roomId,
-            userId: user.userId as UUID,
-            username: user.username,
-            joinedAt: timestamp,
-          },
-        })
-
-        wsManager.broadcastEventToSession(id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'PRESENCE:STATE_CHANGED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: user.role,
-          sessionId: id as UUID,
-          roomId: ensured.roomId,
-          timestamp,
-          payload: {
-            roomId: ensured.roomId,
-            userId: user.userId as UUID,
-            username: user.username,
-            newState: ensured.state,
-            changedAt: timestamp,
-          },
-        })
-      }
-
-      return res.status(200).json({
-        session,
-        users: currentUsers.map((u) => ({
-          id: u.id,
-          username: u.username,
-          role: u.role,
-        })),
-      })
-    }
-
-    const joinRole = await resolveRoleForSessionJoin({
-      sessionId: id as UUID,
-      userId: user.userId as UUID,
-    })
-
-    if (!joinRole.ok) {
-      if (joinRole.code === 'SESSION_NOT_FOUND') {
-        return res.status(404).json({
-          code: ErrorCode.SESSION_NOT_FOUND,
-          message: joinRole.message,
-        })
-      }
-
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: joinRole.message,
-      })
-    }
-
-    const success = await addUserToSession(id as UUID, {
-      id: user.userId as UUID,
-      username: user.username,
-      role: joinRole.role,
-      createdAt: Date.now(),
-    })
-
-    if (!success) {
-      return res.status(404).json({
-        code: ErrorCode.SESSION_NOT_FOUND,
-        message: 'Session not found',
-      })
-    }
-
-    // Log the join event
-    await logSessionJoin(id as UUID, user.userId as UUID, user.username)
-
-    const ensured = await ensureJoinedMemberPresence({
-      session,
-      userId: user.userId as UUID,
-      username: user.username,
-    })
-
-    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager) {
-      if (ensured.changed && ensured.roomId && ensured.state) {
-        const timestamp = Date.now()
-        wsManager.broadcastEventToSession(id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'ROOM:USER_JOINED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: user.role,
-          sessionId: id as UUID,
-          roomId: ensured.roomId,
-          timestamp,
-          payload: {
-            roomId: ensured.roomId,
-            userId: user.userId as UUID,
-            username: user.username,
-            joinedAt: timestamp,
-          },
-        })
-
-        wsManager.broadcastEventToSession(id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'PRESENCE:STATE_CHANGED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: user.role,
-          sessionId: id as UUID,
-          roomId: ensured.roomId,
-          timestamp,
-          payload: {
-            roomId: ensured.roomId,
-            userId: user.userId as UUID,
-            username: user.username,
-            newState: ensured.state,
-            changedAt: timestamp,
-          },
-        })
-      }
-
-      // Broadcast a system message that user joined
-      wsManager.broadcastEventToSession(id as UUID, {
-        id: crypto.randomUUID() as UUID,
-        type: 'CHAT:MESSAGE_CREATED',
-        version: 1,
-        userId: session.dmId,
-        userRole: Role.DM,
-        sessionId: id as UUID,
-        roomId: null as any,
-        timestamp: Date.now(),
-        payload: {
-          messageId: crypto.randomUUID() as UUID,
-          authorId: session.dmId,
-          authorUsername: 'System',
-          sessionId: id as UUID,
-          roomId: null as any,
-          content: `${user.username} joined the session`,
-          type: 'SYSTEM',
-          isEdited: false,
-          createdAt: Date.now(),
-          whisperTo: null,
-        },
-      })
-    }
-
-    const updatedUsers = await getSessionUsers(id as UUID)
-    res.status(200).json({
-      session,
-      users: updatedUsers.map((u) => ({
-        id: u.id,
-        username: u.username,
-        role: u.role,
-      })),
-    })
-  } catch {
-    return internalErrorResponse(res)
-  }
-})
+router.post('/:id/join', requireAuth, joinSessionHandler)
+router.post('/:id/members/join', requireAuth, joinSessionHandler)
 
 /**
  * POST /api/session/:id/leave
  * Remove a user from a session
  */
-router.post('/:id/leave', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const { id } = req.params
-
-  if (!isValidUUID(id)) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_SESSION,
-      message: 'Invalid session ID',
-      field: 'id',
-    })
-  }
-
-  try {
-    const session = await getSession(id as UUID)
-    if (!session) {
-      return res.status(404).json({
-        code: ErrorCode.SESSION_NOT_FOUND,
-        message: 'Session not found',
-      })
-    }
-
-    // Check if DM is trying to leave (not allowed)
-    if (session.dmId === (user.userId as UUID)) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'DM cannot leave their own session',
-      })
-    }
-
-    // Check if user is in session
-    const currentUsers = await getSessionUsers(id as UUID)
-    const isMember = currentUsers.some((u) => u.id === user.userId)
-    if (!isMember) {
-      return res.status(404).json({
-        code: ErrorCode.INVALID_INPUT,
-        message: 'User is not a member of this session',
-      })
-    }
-
-    // Remove user from session
-    const removal = await removeUserFromSession(id as UUID, user.userId as UUID)
-
-    if (!removal.removed) {
-      return res.status(500).json({
-        code: ErrorCode.INTERNAL_ERROR,
-        message: 'Failed to remove user from session',
-      })
-    }
-
-    // Log the leave event
-    await logSessionLeave(id as UUID, user.userId as UUID, user.username)
-
-    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager) {
-      // Broadcast a system message that user left
-      wsManager.broadcastEventToSession(id as UUID, {
-        id: crypto.randomUUID() as UUID,
-        type: 'CHAT:MESSAGE_CREATED',
-        version: 1,
-        userId: session.dmId,
-        userRole: Role.DM,
-        sessionId: id as UUID,
-        roomId: null as any,
-        timestamp: Date.now(),
-        payload: {
-          messageId: crypto.randomUUID() as UUID,
-          authorId: session.dmId,
-          authorUsername: 'System',
-          sessionId: id as UUID,
-          roomId: null as any,
-          content: `${user.username} left the session`,
-          type: 'SYSTEM',
-          isEdited: false,
-          createdAt: Date.now(),
-          whisperTo: null,
-        },
-      })
-
-      if (removal.promotedSpectator.promoted) {
-        wsManager.broadcastEventToSession(id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'CHAT:MESSAGE_CREATED',
-          version: 1,
-          userId: session.dmId,
-          userRole: Role.DM,
-          sessionId: id as UUID,
-          roomId: null as any,
-          timestamp: Date.now(),
-          payload: {
-            messageId: crypto.randomUUID() as UUID,
-            authorId: session.dmId,
-            authorUsername: 'System',
-            sessionId: id as UUID,
-            roomId: null as any,
-            content: `${removal.promotedSpectator.user.username} was promoted from the spectator waitlist`,
-            type: 'SYSTEM',
-            isEdited: false,
-            createdAt: Date.now(),
-            whisperTo: null,
-          },
-        })
-      }
-    }
-
-    const updatedUsers = await getSessionUsers(id as UUID)
-    res.status(200).json({
-      session,
-      users: updatedUsers.map((u) => ({
-        id: u.id,
-        username: u.username,
-        role: u.role,
-      })),
-    })
-  } catch {
-    return internalErrorResponse(res)
-  }
-})
+router.post('/:id/leave', requireAuth, leaveSessionHandler)
+router.post('/:id/members/leave', requireAuth, leaveSessionHandler)
 
 /**
  * DELETE /api/session/:id

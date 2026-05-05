@@ -1,5 +1,6 @@
 import { Request, Response, Router } from 'express'
 import authRoutes from './auth.routes'
+import authV1Routes from './auth-v1.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
 import adminRoutes from './admin.routes'
@@ -31,6 +32,21 @@ router.get('/health', (_req: Request, res: Response) => {
 
 /**
  * Implemented routes
+ */
+
+/**
+ * v1 API routes (normalized naming conventions)
+ * Reference: docs/operations/W6-REFACTOR-PLAN.md
+ */
+router.use('/v1/auth', authV1Routes)
+router.use('/v1/session', sessionRoutes)
+router.use('/v1/presence', presenceRoutes)
+router.use('/v1/rooms', roomsRoutes)
+router.use('/v1/audio', audioRoutes)
+
+/**
+ * Legacy routes (maintained for backward compatibility)
+ * These routes redirect to v1 equivalents in new client code
  */
 router.use('/auth', authRoutes)
 router.use('/platform', platformRoutes)

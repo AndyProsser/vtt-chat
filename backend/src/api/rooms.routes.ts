@@ -61,9 +61,9 @@ async function canAccessSessionRooms(sessionId: UUID, user: any): Promise<boolea
   return members.some((member) => member.id === (user.userId as UUID))
 }
 
-router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
+async function listSessionRoomsHandler(req: Request, res: Response) {
   const user = (req as any).user
-  const { sessionId } = req.params
+  const sessionId = req.params.sessionId
 
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -85,11 +85,12 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
 
-router.post('/', requireAuth, async (req: Request, res: Response) => {
+async function createRoomHandler(req: Request, res: Response) {
   const user = (req as any).user
-  const { sessionId, name, type } = req.body || {}
+  const sessionId = req.params.sessionId || req.body?.sessionId
+  const { name, type } = req.body || {}
 
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -150,9 +151,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
 
-router.post('/:roomId/join', requireAuth, async (req: Request, res: Response) => {
+async function joinRoomHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { roomId } = req.params
 
@@ -209,9 +210,9 @@ router.post('/:roomId/join', requireAuth, async (req: Request, res: Response) =>
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
 
-router.post('/:roomId/leave', requireAuth, async (req: Request, res: Response) => {
+async function leaveRoomHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { roomId } = req.params
 
@@ -264,9 +265,9 @@ router.post('/:roomId/leave', requireAuth, async (req: Request, res: Response) =
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
 
-router.post('/:roomId/move-user', requireAuth, async (req: Request, res: Response) => {
+async function moveRoomMemberHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { roomId } = req.params
   const { sessionId, targetUserId } = req.body || {}
@@ -388,9 +389,9 @@ router.post('/:roomId/move-user', requireAuth, async (req: Request, res: Respons
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
 
-router.get('/:roomId/members', requireAuth, async (req: Request, res: Response) => {
+async function listRoomMembersHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { roomId } = req.params
 
@@ -414,6 +415,23 @@ router.get('/:roomId/members', requireAuth, async (req: Request, res: Response) 
   } catch {
     return internalErrorResponse(res)
   }
-})
+}
+
+router.get('/:sessionId', requireAuth, listSessionRoomsHandler)
+router.get('/session/:sessionId', requireAuth, listSessionRoomsHandler)
+
+router.post('/', requireAuth, createRoomHandler)
+router.post('/session/:sessionId', requireAuth, createRoomHandler)
+
+router.post('/:roomId/join', requireAuth, joinRoomHandler)
+router.post('/:roomId/members/join', requireAuth, joinRoomHandler)
+
+router.post('/:roomId/leave', requireAuth, leaveRoomHandler)
+router.post('/:roomId/members/leave', requireAuth, leaveRoomHandler)
+
+router.post('/:roomId/move-user', requireAuth, moveRoomMemberHandler)
+router.post('/:roomId/members/move', requireAuth, moveRoomMemberHandler)
+
+router.get('/:roomId/members', requireAuth, listRoomMembersHandler)
 
 export default router

@@ -48,6 +48,8 @@ const mocks = vi.hoisted(() => ({
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
   getPrismaClient: vi.fn(),
+  listSessionLogsForRequester: vi.fn(),
+  listSessionUsersForRequester: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -105,8 +107,8 @@ vi.mock('@/services/session-logs.service', () => ({
 }))
 
 vi.mock('@/services/session-access.service', () => ({
-  listSessionLogsForRequester: vi.fn(),
-  listSessionUsersForRequester: vi.fn(),
+  listSessionLogsForRequester: mocks.listSessionLogsForRequester,
+  listSessionUsersForRequester: mocks.listSessionUsersForRequester,
 }))
 
 import chatRoutes from '@/api/chat.routes'
@@ -120,6 +122,7 @@ function buildApp() {
   }
   app.use('/api/chat', chatRoutes)
   app.use('/api/session', sessionRoutes)
+  app.use('/api/v1/session', sessionRoutes)
   return app
 }
 
@@ -234,6 +237,14 @@ describe('session membership lifecycle authz', () => {
     mocks.getMessages.mockResolvedValue([])
     mocks.editMessage.mockResolvedValue(null)
     mocks.deleteMessage.mockResolvedValue(null)
+    mocks.listSessionUsersForRequester.mockResolvedValue({
+      ok: true,
+      users: state.members.map((member) => ({
+        id: member.id,
+        username: member.username,
+        role: member.role,
+      })),
+    })
   })
 
   it('rejects role access after leave until user rejoins session', async () => {
@@ -293,5 +304,36 @@ describe('session membership lifecycle authz', () => {
       })
 
     expect(afterRejoin.status).toBe(201)
+  })
+
+  it('returns members through the v1 /members alias', async () => {
+    const app = buildApp()
+
+    const res = await request(app)
+      .get(`/api/v1/session/${SESSION_ID}/members`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.users).toHaveLength(2)
+    expect(res.body.users[1].id).toBe(PLAYER_ID)
+  })
+
+  it('supports join and leave through the v1 /members aliases', async () => {
+    state.members = [{ id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() }]
+    const app = buildApp()
+
+    const joinRes = await request(app)
+      .post(`/api/v1/session/${SESSION_ID}/members/join`)
+      .set('Authorization', 'Bearer token')
+
+    expect(joinRes.status).toBe(200)
+    expect(joinRes.body.users.some((user: { id: string }) => user.id === PLAYER_ID)).toBe(true)
+
+    const leaveRes = await request(app)
+      .post(`/api/v1/session/${SESSION_ID}/members/leave`)
+      .set('Authorization', 'Bearer token')
+
+    expect(leaveRes.status).toBe(200)
+    expect(leaveRes.body.users.some((user: { id: string }) => user.id === PLAYER_ID)).toBe(false)
   })
 })
