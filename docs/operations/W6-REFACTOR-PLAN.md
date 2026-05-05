@@ -20,9 +20,13 @@ W6 focuses on normalizing naming conventions, consolidating code organization, a
   - Legacy cutoff flag coverage added to assert legacy livekit/integrations 404 behavior when disabled.
   - Stage-labeled backend telemetry test filename removed in favor of behavior-based naming.
 - In progress:
-  - Audio service subdirectory split (`audio-state.service.ts` to `audio/state.service.ts` + related extraction).
-  - Presence ownership extraction from `roomSlice` into `presenceSlice` is underway (state split landed; event/action migration pending).
+  - Session recovery-hardening validation remains pending in later phases.
   - Dedicated `uiSlice` extracted; `commandCenterSlice` now serves as a compatibility shim.
+  - Presence ownership extraction completed: `roomSlice` now delegates `sessionPresence` mutations to `presenceSlice` actions.
+- Completed since last update:
+  - Backend audio consolidation completed with dedicated modules under `backend/src/services/audio/` (`presets.service.ts`, `effects.service.ts`) plus compatibility exports.
+  - Frontend audio concern split completed into device/presets/overrides modules while preserving existing store API.
+  - AudioPanel refactor completed into a 5-part suite with focused subcomponents and targeted component tests.
 - Reference map:
   - See `docs/operations/API-V1-DEPRECATION-MAP.md` for explicit old-to-v1 mappings.
 
@@ -232,23 +236,23 @@ frontend/src/components/audio/
 - [x] Merge auth-user-context into auth.service (compat shim retained)
 - [x] Split guest-auth flow into role-oriented services behind a single facade
 - [x] Consolidate session-access/boundaries into session.service
-- [ ] Consolidate audio services into audio/ subdirectory
+- [x] Consolidate audio services into audio/ subdirectory
 - [x] Run tests; validate exports
 
 ### Phase 3: Frontend Zustand Restructuring (2-3 days)
 
-- [ ] Create presenceSlice (extract from roomSlice)
-- [ ] Split audioSlice concerns (device/presets/overrides)
+- [x] Create presenceSlice (extract from roomSlice)
+- [x] Split audioSlice concerns (device/presets/overrides)
 - [x] Extract uiSlice (toolbar state)
 - [x] Update store.ts to new composition
 - [x] Run tests; validate selectors (targeted state/UI suites)
 
 ### Phase 4: Frontend Component Refactoring (1-2 days)
 
-- [ ] Split AudioPanel into 5-component suite
-- [ ] Identify other oversized components (DMAudioControls, SessionInit)
-- [ ] Extract sub-components with clear interfaces
-- [ ] Add component-level tests if coverage gaps
+- [x] Split AudioPanel into 5-component suite
+- [x] Identify other oversized components (DMAudioControls, SessionInit)
+- [x] Extract sub-components with clear interfaces
+- [x] Add component-level tests if coverage gaps
 
 ### Phase 5: Data Consistency & Recovery (1-2 days)
 

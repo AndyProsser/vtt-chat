@@ -17,7 +17,10 @@ import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
 import { logger } from '../../utils/logger'
-import { Icon } from '../ui/Icon'
+import { AudioDevicePanel } from './AudioDevicePanel'
+import { AudioPresetsPanel } from './AudioPresetsPanel'
+import { AudioEffectsPanel } from './AudioEffectsPanel'
+import { AudioDMOverridesPanel } from './AudioDMOverridesPanel'
 import '../../styles/components/audio/AudioPanel.css'
 
 interface AudioPanelProps {
@@ -107,8 +110,16 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
+  const privateRoomCleanMode = useStore((state) => state.privateRoomCleanMode)
+  const activeEffects = useStore((state) => state.activeEffects)
+  const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const broadcastRoomIdFromState = useStore((state) => state.broadcastRoomId)
+  const currentEnvironment = useStore((state) => state.currentEnvironment)
+  const currentDistance = useStore((state) => state.currentDistance)
+  const currentCondition = useStore((state) => state.currentCondition)
+  const currentVoicePreset = useStore((state) => state.currentVoicePreset)
+  const currentICPreset = useStore((state) => state.currentICPreset)
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const currentUser = useStore((state) => state.currentUser)
@@ -430,6 +441,11 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
   }
 
+  const activeEffectsCount = useMemo(
+    () => Object.values(activeEffects).filter(Boolean).length,
+    [activeEffects]
+  )
+
   return (
     <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">
       <header className="audio-panel__header">
@@ -466,45 +482,29 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         ))}
       </ul>
 
-      <footer className="audio-panel__controls">
-        <div className="audio-panel__buttons">
-          {device.microphoneOn ? (
-            <button
-              onClick={handleMute}
-              className="audio-panel__control is-danger"
-              title="Mute microphone"
-              aria-label="Mute microphone"
-            >
-              <Icon name="mic" />
-            </button>
-          ) : (
-            <button
-              onClick={handleGoLive}
-              className="audio-panel__control is-success"
-              title={isVoiceConnected ? 'Unmute microphone' : 'Connect voice first'}
-              aria-label={isVoiceConnected ? 'Unmute microphone' : 'Connect voice first'}
-              disabled={!isVoiceConnected}
-            >
-              <Icon name="mic" />
-            </button>
-          )}
+      <AudioPresetsPanel
+        currentEnvironment={currentEnvironment}
+        currentDistance={currentDistance}
+        currentCondition={currentCondition}
+        currentVoicePreset={currentVoicePreset}
+        currentICPreset={currentICPreset}
+      />
 
-          <button className="audio-panel__control" title="Audio settings">
-            <Icon name="settings" />
-          </button>
-        </div>
+      <AudioEffectsPanel
+        pttActive={pttActive}
+        privateRoomCleanMode={privateRoomCleanMode}
+        activeEffectsCount={activeEffectsCount}
+      />
 
-        <label className="audio-panel__volume">
-          <span>Vol</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={device.volumeLevel}
-            onChange={handleVolumeChange}
-          />
-        </label>
-      </footer>
+      <AudioDMOverridesPanel isDm={effectiveRole === Role.DM} dmOverrides={dmOverrides} />
+
+      <AudioDevicePanel
+        device={device}
+        isVoiceConnected={isVoiceConnected}
+        onGoLive={handleGoLive}
+        onMute={handleMute}
+        onVolumeChange={handleVolumeChange}
+      />
     </section>
   )
 }

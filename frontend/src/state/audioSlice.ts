@@ -16,6 +16,21 @@ import type {
   ICPreset,
   AudioDMOverride,
 } from '@/types/audio'
+import {
+  createAudioDeviceSlice,
+  initialAudioDeviceState,
+  type AudioDeviceSlice,
+} from './audioDeviceSlice'
+import {
+  createAudioPresetsSlice,
+  initialAudioPresetsState,
+  type AudioPresetsSlice,
+} from './audioPresetsSlice'
+import {
+  createAudioOverridesSlice,
+  initialAudioOverridesState,
+  type AudioOverridesSlice,
+} from './audioOverridesSlice'
 
 export type {
   AudioDeviceState,
@@ -27,26 +42,7 @@ export type {
   AudioDMOverride,
 } from '@/types/audio'
 
-export interface AudioSlice {
-  // ========== Device State ==========
-  device: AudioDeviceState
-
-  // ========== Presets ==========
-  currentEnvironment?: EnvironmentPreset
-  currentDistance?: DistancePreset
-  currentCondition?: ConditionPreset
-  currentVoicePreset?: VoicePreset // DM only
-  currentICPreset?: ICPreset // Player IC only (DM hears it)
-
-  // ========== Effect Overrides ==========
-  pttActive: boolean // Push-to-talk: temporarily clean voice
-  privateRoomCleanMode: boolean // All effects disabled in private rooms
-  dmOverrides: Map<UUID, AudioDMOverride> // Per-user DM mutes/gains
-  broadcastModeEnabled: boolean
-  broadcastRoomId?: string
-  broadcastDmId?: UUID
-  broadcastChangedAt?: number
-
+export interface AudioSlice extends AudioDeviceSlice, AudioPresetsSlice, AudioOverridesSlice {
   // ========== Active Effects ==========
   activeEffects: Record<UUID, boolean> // effectId -> isActive
 
@@ -59,47 +55,6 @@ export interface AudioSlice {
   error?: string
 
   // ========== Actions ==========
-
-  /** Initialize audio device */
-  initializeAudio: (enabled: boolean) => void
-
-  /** Update device settings */
-  setDevice: (state: Partial<AudioDeviceState>) => void
-
-  /** Set environment preset (room-level) */
-  setEnvironment: (preset: EnvironmentPreset) => void
-  clearEnvironment: () => void
-
-  /** Set distance preset (per-participant) */
-  setDistance: (preset: DistancePreset) => void
-  clearDistance: () => void
-
-  /** Set condition preset (overrides distance) */
-  setCondition: (preset: ConditionPreset) => void
-  clearCondition: () => void
-
-  /** Set voice preset (DM only) */
-  setVoicePreset: (preset: VoicePreset) => void
-  clearVoicePreset: () => void
-
-  /** Set IC preset (player → DM only) */
-  setICPreset: (preset: ICPreset) => void
-  clearICPreset: () => void
-
-  /** Push-to-talk: toggle clean voice */
-  togglePTT: (active: boolean) => void
-
-  /** Private room clean mode: disable all effects */
-  setPrivateRoomCleanMode: (enabled: boolean) => void
-
-  /** DM override: mute/unmute user */
-  setDMOverride: (userId: UUID, override: AudioDMOverride | null) => void
-  setBroadcastState: (params: {
-    enabled: boolean
-    broadcastRoomId?: string
-    dmId?: UUID
-    changedAt?: number
-  }) => void
 
   /** Track active effects */
   setEffectActive: (effectId: UUID, active: boolean) => void
@@ -116,152 +71,29 @@ export interface AudioSlice {
   handleEffectApplied: (event: EventEnvelope) => void
   handleEffectRemoved: (event: EventEnvelope) => void
   handlePresetLoaded: (event: EventEnvelope) => void
-  handleEnvironmentSet: (event: EventEnvelope) => void
-  handleDMOverrideApplied: (event: EventEnvelope) => void
-  handleDMOverrideRemoved: (event: EventEnvelope) => void
-  handleBroadcastStateChanged: (event: EventEnvelope) => void
-}
-
-// ============================================================================
-// Initial State
-// ============================================================================
-
-const initialDeviceState: AudioDeviceState = {
-  enabled: false,
-  microphoneOn: false,
-  micGain: 80,
-  volumeLevel: 75,
-  isSpeaking: false,
 }
 
 // ============================================================================
 // Slice Creator
 // ============================================================================
 
-export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
+const createAudioDeviceSliceForAudio: StateCreator<AudioSlice, [], [], AudioDeviceSlice> =
+  createAudioDeviceSlice
+const createAudioPresetsSliceForAudio: StateCreator<AudioSlice, [], [], AudioPresetsSlice> =
+  createAudioPresetsSlice
+const createAudioOverridesSliceForAudio: StateCreator<AudioSlice, [], [], AudioOverridesSlice> =
+  createAudioOverridesSlice
+
+export const createAudioSlice: StateCreator<AudioSlice> = (set, get, api) => ({
   // ========== Initial State ==========
-  device: initialDeviceState,
-  currentEnvironment: undefined,
-  currentDistance: undefined,
-  currentCondition: undefined,
-  currentVoicePreset: undefined,
-  currentICPreset: undefined,
-  pttActive: false,
-  privateRoomCleanMode: false,
-  dmOverrides: new Map(),
-  broadcastModeEnabled: false,
-  broadcastRoomId: undefined,
-  broadcastDmId: undefined,
-  broadcastChangedAt: undefined,
+  ...createAudioDeviceSliceForAudio(set, get, api),
+  ...createAudioPresetsSliceForAudio(set, get, api),
+  ...createAudioOverridesSliceForAudio(set, get, api),
   activeEffects: {},
   localTrackId: undefined,
   remoteTrackIds: [],
   isLoading: false,
   error: undefined,
-
-  // ========== Device Actions ==========
-  initializeAudio: (enabled) =>
-    set((state) => ({
-      device: {
-        ...state.device,
-        enabled,
-      },
-    })),
-
-  setDevice: (updates) =>
-    set((state) => ({
-      device: {
-        ...state.device,
-        ...updates,
-      },
-    })),
-
-  // ========== Environment (Room-Level) ==========
-  setEnvironment: (preset) =>
-    set(() => ({
-      currentEnvironment: preset,
-    })),
-
-  clearEnvironment: () =>
-    set(() => ({
-      currentEnvironment: undefined,
-    })),
-
-  // ========== Distance (Per-Participant) ==========
-  setDistance: (preset) =>
-    set(() => ({
-      currentDistance: preset,
-    })),
-
-  clearDistance: () =>
-    set(() => ({
-      currentDistance: undefined,
-    })),
-
-  // ========== Condition (Per-Participant, overrides distance) ==========
-  setCondition: (preset) =>
-    set(() => ({
-      currentCondition: preset,
-    })),
-
-  clearCondition: () =>
-    set(() => ({
-      currentCondition: undefined,
-    })),
-
-  // ========== Voice Preset (DM only) ==========
-  setVoicePreset: (preset) =>
-    set(() => ({
-      currentVoicePreset: preset,
-    })),
-
-  clearVoicePreset: () =>
-    set(() => ({
-      currentVoicePreset: undefined,
-    })),
-
-  // ========== IC Preset (Player → DM only) ==========
-  setICPreset: (preset) =>
-    set(() => ({
-      currentICPreset: preset,
-    })),
-
-  clearICPreset: () =>
-    set(() => ({
-      currentICPreset: undefined,
-    })),
-
-  // ========== PTT Override ==========
-  togglePTT: (active) =>
-    set(() => ({
-      pttActive: active,
-    })),
-
-  // ========== Private Room Clean Mode ==========
-  setPrivateRoomCleanMode: (enabled) =>
-    set(() => ({
-      privateRoomCleanMode: enabled,
-    })),
-
-  // ========== DM Overrides (Per-User) ==========
-  setDMOverride: (userId, override) =>
-    set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      if (override) {
-        newOverrides.set(userId, override)
-      } else {
-        newOverrides.delete(userId)
-      }
-      return { dmOverrides: newOverrides }
-    }),
-
-  setBroadcastState: (params) =>
-    set(() => ({
-      broadcastModeEnabled: params.enabled,
-      broadcastRoomId: params.broadcastRoomId,
-      broadcastDmId: params.dmId,
-      broadcastChangedAt: params.changedAt,
-    })),
 
   // ========== Active Effects ==========
   setEffectActive: (effectId, active) =>
@@ -291,19 +123,9 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
   // ========== Reset ==========
   reset: () =>
     set(() => ({
-      device: initialDeviceState,
-      currentEnvironment: undefined,
-      currentDistance: undefined,
-      currentCondition: undefined,
-      currentVoicePreset: undefined,
-      currentICPreset: undefined,
-      pttActive: false,
-      privateRoomCleanMode: false,
-      dmOverrides: new Map(),
-      broadcastModeEnabled: false,
-      broadcastRoomId: undefined,
-      broadcastDmId: undefined,
-      broadcastChangedAt: undefined,
+      device: initialAudioDeviceState,
+      ...initialAudioPresetsState,
+      ...initialAudioOverridesState,
       activeEffects: {},
       localTrackId: undefined,
       remoteTrackIds: [],
@@ -364,86 +186,6 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set) => ({
         ...state.activeEffects,
         [payload.presetId]: true,
       },
-    }))
-  },
-
-  handleEnvironmentSet: (event) => {
-    const payload = event.payload as {
-      environmentId: UUID
-      environmentName: string
-      roomId: UUID
-      setBy: UUID
-      setAt: number
-      parameters?: Record<string, any>
-    }
-
-    // Extract environment preset from parameters
-    if (payload.parameters) {
-      const environmentPreset: EnvironmentPreset = {
-        id: payload.environmentId,
-        name: payload.environmentName,
-        reverbSend: payload.parameters.reverbSend || 0.3,
-        lowpassFreq: payload.parameters.lowpassFreq || 8000,
-        roomGain: payload.parameters.roomGain || 0,
-      }
-
-      set(() => ({
-        currentEnvironment: environmentPreset,
-      }))
-    }
-  },
-
-  handleDMOverrideApplied: (event) => {
-    const payload = event.payload as {
-      targetUserId: UUID
-      dmId: UUID
-      overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
-      parameters?: Record<string, any>
-      appliedAt: number
-    }
-
-    const override: AudioDMOverride = {
-      userId: payload.targetUserId,
-      overrideType: payload.overrideType,
-      parameters: payload.parameters,
-      appliedAt: payload.appliedAt,
-    }
-
-    set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      newOverrides.set(payload.targetUserId, override)
-      return { dmOverrides: newOverrides }
-    })
-  },
-
-  handleDMOverrideRemoved: (event) => {
-    const payload = event.payload as {
-      targetUserId: UUID
-      dmId: UUID
-      overrideType: string
-      removedAt: number
-    }
-
-    set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      newOverrides.delete(payload.targetUserId)
-      return { dmOverrides: newOverrides }
-    })
-  },
-
-  handleBroadcastStateChanged: (event) => {
-    const payload = event.payload as {
-      dmId?: UUID
-      enabled: boolean
-      broadcastRoomId?: string
-      changedAt?: number
-    }
-
-    set(() => ({
-      broadcastModeEnabled: Boolean(payload.enabled),
-      broadcastRoomId: payload.broadcastRoomId,
-      broadcastDmId: payload.dmId,
-      broadcastChangedAt: payload.changedAt ?? event.timestamp,
     }))
   },
 })

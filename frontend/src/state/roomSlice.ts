@@ -1,6 +1,6 @@
 /**
  * Room Slice (Zustand)
- * Manages room state and presence synchronization.
+ * Manages room state and room member synchronization.
  */
 
 import type { StateCreator } from 'zustand'
@@ -41,8 +41,26 @@ function upsertMember(list: RoomUser[], member: RoomUser): RoomUser[] {
   return [...list.filter((m) => m.userId !== member.userId), member]
 }
 
+function presenceToRoomMember(entry: SessionPresence): RoomUser {
+  return {
+    userId: entry.userId,
+    username: entry.username,
+    playerName: entry.playerName,
+    avatarUrl: entry.avatarUrl,
+    characterName: entry.characterName,
+    characterClass: entry.characterClass,
+    characterSubclass: entry.characterSubclass,
+    characterRace: entry.characterRace,
+    level: entry.level,
+    characterStats: entry.characterStats,
+    presenceState: entry.state,
+    joinedAt: entry.lastSeenAt,
+  }
+}
+
 export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
-  set
+  set,
+  get
 ) => ({
   rooms: {},
   roomMembers: {},
@@ -131,16 +149,16 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }
     }),
 
-  replaceSessionPresence: (sessionId, presence) =>
-    set((state) => {
-      const nextPresenceByUser = presence.reduce(
-        (acc, entry) => {
-          acc[entry.userId] = entry
-          return acc
-        },
-        {} as Record<UUID, SessionPresence>
-      )
+  replaceSessionPresence: (sessionId, presence) => {
+    const nextPresenceByUser = presence.reduce(
+      (acc, entry) => {
+        acc[entry.userId] = entry
+        return acc
+      },
+      {} as Record<UUID, SessionPresence>
+    )
 
+    set((state) => {
       const sessionRooms = state.rooms[sessionId] || {}
       const roomIds = Object.keys(sessionRooms) as UUID[]
       const nextMembers = { ...state.roomMembers }
@@ -153,32 +171,26 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         if (!entry.primaryRoomId) continue
         const roomId = entry.primaryRoomId
         const existing = nextMembers[roomId] || []
-        nextMembers[roomId] = upsertMember(existing, {
-          userId: entry.userId,
-          username: entry.username,
-          playerName: entry.playerName,
-          avatarUrl: entry.avatarUrl,
-          characterName: entry.characterName,
-          characterClass: entry.characterClass,
-          characterSubclass: entry.characterSubclass,
-          characterRace: entry.characterRace,
-          level: entry.level,
-          characterStats: entry.characterStats,
-          presenceState: entry.state,
-          joinedAt: entry.lastSeenAt,
-        })
+        nextMembers[roomId] = upsertMember(existing, presenceToRoomMember(entry))
       }
 
       return {
         roomMembers: nextMembers,
-        sessionPresence: {
-          ...state.sessionPresence,
-          [sessionId]: nextPresenceByUser,
-        },
       }
-    }),
+    })
 
-  replaceSessionTopology: (sessionId, rooms, presence) =>
+    get().replaceSessionPresenceMap(sessionId, nextPresenceByUser)
+  },
+
+  replaceSessionTopology: (sessionId, rooms, presence) => {
+    const nextPresenceByUser = presence.reduce(
+      (acc, entry) => {
+        acc[entry.userId] = entry
+        return acc
+      },
+      {} as Record<UUID, SessionPresence>
+    )
+
     set((state) => {
       const nextBySession = rooms.reduce(
         (acc, room) => {
@@ -186,14 +198,6 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           return acc
         },
         {} as Record<UUID, Room>
-      )
-
-      const nextPresenceByUser = presence.reduce(
-        (acc, entry) => {
-          acc[entry.userId] = entry
-          return acc
-        },
-        {} as Record<UUID, SessionPresence>
       )
 
       const nextMembers = { ...state.roomMembers }
@@ -205,20 +209,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         if (!entry.primaryRoomId) continue
         const roomId = entry.primaryRoomId
         const existing = nextMembers[roomId] || []
-        nextMembers[roomId] = upsertMember(existing, {
-          userId: entry.userId,
-          username: entry.username,
-          playerName: entry.playerName,
-          avatarUrl: entry.avatarUrl,
-          characterName: entry.characterName,
-          characterClass: entry.characterClass,
-          characterSubclass: entry.characterSubclass,
-          characterRace: entry.characterRace,
-          level: entry.level,
-          characterStats: entry.characterStats,
-          presenceState: entry.state,
-          joinedAt: entry.lastSeenAt,
-        })
+        nextMembers[roomId] = upsertMember(existing, presenceToRoomMember(entry))
       }
 
       return {
@@ -227,12 +218,11 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           [sessionId]: nextBySession,
         },
         roomMembers: nextMembers,
-        sessionPresence: {
-          ...state.sessionPresence,
-          [sessionId]: nextPresenceByUser,
-        },
       }
-    }),
+    })
+
+    get().replaceSessionPresenceMap(sessionId, nextPresenceByUser)
+  },
 
   clearSessionTransitionNotice: (sessionId) =>
     set((state) => {
@@ -241,17 +231,19 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       return { sessionTransitionNotice: nextNotices }
     }),
 
-  clearRooms: (sessionId) =>
-    set((state) => {
-      if (!sessionId) {
-        return {
-          rooms: {},
-          roomMembers: {},
-          sessionPresence: {},
-          sessionTransitionNotice: {},
-        }
-      }
+  clearRooms: (sessionId) => {
+    if (!sessionId) {
+      set(() => ({
+        rooms: {},
+        roomMembers: {},
+        sessionTransitionNotice: {},
+      }))
 
+      get().clearSessionPresence()
+      return
+    }
+
+    set((state) => {
       const nextRooms = { ...state.rooms }
       const sessionRoomIds = Object.keys(nextRooms[sessionId] || {}) as UUID[]
       delete nextRooms[sessionId]
@@ -261,19 +253,18 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         delete nextMembers[roomId]
       }
 
-      const nextPresence = { ...state.sessionPresence }
-      delete nextPresence[sessionId]
-
       const nextNotices = { ...state.sessionTransitionNotice }
       delete nextNotices[sessionId]
 
       return {
         rooms: nextRooms,
         roomMembers: nextMembers,
-        sessionPresence: nextPresence,
         sessionTransitionNotice: nextNotices,
       }
-    }),
+    })
+
+    get().clearSessionPresence(sessionId)
+  },
 
   handleRoomCreated: (event) => {
     const payload = event.payload as {
@@ -317,43 +308,36 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       joinedAt?: number
     }
 
-    set((state) => {
-      const existingPresence = state.sessionPresence[event.sessionId]?.[payload.userId]
-      const nextMember: RoomUser = {
-        userId: payload.userId,
-        username: payload.username,
-        playerName: existingPresence?.playerName,
-        avatarUrl: existingPresence?.avatarUrl,
-        characterName: existingPresence?.characterName,
-        characterClass: existingPresence?.characterClass,
-        characterSubclass: existingPresence?.characterSubclass,
-        characterRace: existingPresence?.characterRace,
-        level: existingPresence?.level,
-        characterStats: existingPresence?.characterStats,
-        presenceState: PresenceState.ONLINE,
-        joinedAt: payload.joinedAt || event.timestamp,
-      }
+    const joinedAt = payload.joinedAt || event.timestamp
+    const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
+    const nextMember: RoomUser = {
+      userId: payload.userId,
+      username: payload.username,
+      playerName: existingPresence?.playerName,
+      avatarUrl: existingPresence?.avatarUrl,
+      characterName: existingPresence?.characterName,
+      characterClass: existingPresence?.characterClass,
+      characterSubclass: existingPresence?.characterSubclass,
+      characterRace: existingPresence?.characterRace,
+      level: existingPresence?.level,
+      characterStats: existingPresence?.characterStats,
+      presenceState: PresenceState.ONLINE,
+      joinedAt,
+    }
 
-      return {
-        roomMembers: {
-          ...state.roomMembers,
-          [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], nextMember),
-        },
-        sessionPresence: {
-          ...state.sessionPresence,
-          [event.sessionId]: {
-            ...(state.sessionPresence[event.sessionId] || {}),
-            [payload.userId]: {
-              ...existingPresence,
-              userId: payload.userId,
-              username: payload.username,
-              state: PresenceState.ONLINE,
-              primaryRoomId: payload.roomId,
-              lastSeenAt: payload.joinedAt || event.timestamp,
-            },
-          },
-        },
-      }
+    set((state) => ({
+      roomMembers: {
+        ...state.roomMembers,
+        [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], nextMember),
+      },
+    }))
+
+    get().upsertSessionPresenceOnJoin({
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      username: payload.username,
+      roomId: payload.roomId,
+      joinedAt,
     })
   },
 
@@ -364,37 +348,21 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       leftAt?: number
     }
 
-    set((state) => {
-      const sessionPresence = state.sessionPresence[event.sessionId] || {}
-      const existing = sessionPresence[payload.userId]
+    const leftAt = payload.leftAt || event.timestamp
 
-      return {
-        roomMembers: {
-          ...state.roomMembers,
-          [payload.roomId]: (state.roomMembers[payload.roomId] || []).filter(
-            (m) => m.userId !== payload.userId
-          ),
-        },
-        sessionPresence: {
-          ...state.sessionPresence,
-          [event.sessionId]: {
-            ...sessionPresence,
-            [payload.userId]: existing
-              ? {
-                  ...existing,
-                  state: PresenceState.IDLE,
-                  primaryRoomId: undefined,
-                  lastSeenAt: payload.leftAt || event.timestamp,
-                }
-              : {
-                  userId: payload.userId,
-                  username: '',
-                  state: PresenceState.IDLE,
-                  lastSeenAt: payload.leftAt || event.timestamp,
-                },
-          },
-        },
-      }
+    set((state) => ({
+      roomMembers: {
+        ...state.roomMembers,
+        [payload.roomId]: (state.roomMembers[payload.roomId] || []).filter(
+          (m) => m.userId !== payload.userId
+        ),
+      },
+    }))
+
+    get().markSessionPresenceOnLeft({
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      leftAt,
     })
   },
 
@@ -410,12 +378,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
     const nextPresence = payload.newState || payload.presence || PresenceState.IDLE
     const changedAt = payload.changedAt || event.timestamp
+    const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
+    const roomId = payload.roomId || existingPresence?.primaryRoomId
 
     set((state) => {
-      const bySession = state.sessionPresence[event.sessionId] || {}
-      const existing = bySession[payload.userId]
-      const roomId = payload.roomId || existing?.primaryRoomId
-
       const nextRoomMembers = { ...state.roomMembers }
       if (roomId) {
         nextRoomMembers[roomId] = (state.roomMembers[roomId] || []).map((member) =>
@@ -425,22 +391,16 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
       return {
         roomMembers: nextRoomMembers,
-        sessionPresence: {
-          ...state.sessionPresence,
-          [event.sessionId]: {
-            ...bySession,
-            [payload.userId]: {
-              ...existing,
-              userId: payload.userId,
-              username: payload.username || existing?.username || '',
-              state: nextPresence,
-              primaryRoomId: roomId,
-              privateRoomId: existing?.privateRoomId,
-              lastSeenAt: changedAt,
-            },
-          },
-        },
       }
+    })
+
+    get().applySessionPresenceStateChange({
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      username: payload.username,
+      roomId: roomId || undefined,
+      state: nextPresence,
+      changedAt,
     })
   },
 
@@ -456,6 +416,8 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       greenRoom: { id: UUID; name: string; roomType: RoomType }
       users: Array<{ userId: UUID; username: string }>
     }
+
+    const presenceBySession = get().sessionPresence[event.sessionId] || {}
 
     set((state) => {
       const existingRooms = state.rooms[event.sessionId] || {}
@@ -491,7 +453,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       nextMembers[payload.targetRoomId] = [
         ...(nextMembers[payload.targetRoomId] || []),
         ...payload.users.map((user) => {
-          const existingPresence = state.sessionPresence[event.sessionId]?.[user.userId]
+          const existingPresence = presenceBySession[user.userId]
 
           return {
             userId: user.userId,
@@ -510,32 +472,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         }),
       ]
 
-      const nextPresenceBySession = {
-        ...(state.sessionPresence[event.sessionId] || {}),
-      } as Record<UUID, SessionPresence>
-
-      for (const user of payload.users) {
-        const existingPresence = nextPresenceBySession[user.userId]
-        nextPresenceBySession[user.userId] = {
-          ...existingPresence,
-          userId: user.userId,
-          username: user.username,
-          state: payload.targetState,
-          primaryRoomId: payload.targetRoomId,
-          lastSeenAt: event.timestamp,
-        }
-      }
-
       return {
         rooms: {
           ...state.rooms,
           [event.sessionId]: upsertedRooms,
         },
         roomMembers: nextMembers,
-        sessionPresence: {
-          ...state.sessionPresence,
-          [event.sessionId]: nextPresenceBySession,
-        },
         sessionTransitionNotice: {
           ...state.sessionTransitionNotice,
           [event.sessionId]: {
@@ -551,6 +493,14 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           },
         },
       }
+    })
+
+    get().applySessionRoomTransitionPresence({
+      sessionId: event.sessionId,
+      users: payload.users,
+      targetRoomId: payload.targetRoomId,
+      targetState: payload.targetState,
+      changedAt: event.timestamp,
     })
   },
 })

@@ -55,6 +55,47 @@
   list-style: none;
 }
 
+.audio-panel__section {
+  border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  padding-top: 0.55rem;
+}
+
+.audio-panel__section-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.audio-panel__section-empty {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.audio-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audio-panel__chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 999px;
+  padding: 0.14rem 0.48rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 75%, transparent);
+}
+
 .audio-panel__participant {
   display: flex;
   align-items: center;

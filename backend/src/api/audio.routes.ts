@@ -8,7 +8,7 @@ import {
   removeDMOverrideState,
   setBroadcastState,
   setRoomEnvironmentState,
-} from '@/services/audio/state.service'
+} from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session-authz.service'

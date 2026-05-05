@@ -1,0 +1,35 @@
+import type { UUID } from '@shared'
+import type { AudioDMOverride } from '@/types/audio'
+
+interface AudioDMOverridesPanelProps {
+  isDm: boolean
+  dmOverrides: Map<UUID, AudioDMOverride>
+}
+
+export function AudioDMOverridesPanel({ isDm, dmOverrides }: AudioDMOverridesPanelProps) {
+  if (!isDm) {
+    return null
+  }
+
+  const overrides = Array.from(dmOverrides.values())
+
+  return (
+    <section className="audio-panel__section" aria-label="DM audio overrides">
+      <h4 className="audio-panel__section-title">DM Overrides</h4>
+      {overrides.length === 0 ? (
+        <p className="audio-panel__section-empty">No active overrides</p>
+      ) : (
+        <ul className="audio-panel__chips">
+          {overrides.slice(0, 4).map((override) => (
+            <li key={override.userId} className="audio-panel__chip">
+              {override.overrideType}
+            </li>
+          ))}
+          {overrides.length > 4 ? (
+            <li className="audio-panel__chip">+{overrides.length - 4} more</li>
+          ) : null}
+        </ul>
+      )}
+    </section>
+  )
+}
