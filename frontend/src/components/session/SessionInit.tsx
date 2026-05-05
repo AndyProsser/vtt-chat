@@ -376,6 +376,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const setBroadcastState = useStore((state) => state.setBroadcastState)
+  const setEnvironment = useStore((state) => state.setEnvironment)
+  const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
@@ -804,6 +806,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
         const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
         const audioStatePayload = (await audioStateResponse.json()) as {
+          environment?: {
+            id: UUID
+            name: string
+            reverbSend?: number
+            lowpassFreq?: number
+            roomGain?: number
+          } | null
+          dmOverrides?: Array<{
+            userId: UUID
+            overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
+            parameters?: Record<string, unknown>
+            appliedAt: number
+          }>
           broadcast?: ApiBroadcastState
           voiceOfGod?: ApiBroadcastState
         }
@@ -837,6 +852,24 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
 
+        // Rehydrate audio environment preset from server state.
+        const recoveredEnv = audioStatePayload.environment
+        if (recoveredEnv) {
+          setEnvironment({
+            id: recoveredEnv.id,
+            name: recoveredEnv.name,
+            reverbSend: recoveredEnv.reverbSend ?? 0.3,
+            lowpassFreq: recoveredEnv.lowpassFreq ?? 8000,
+            roomGain: recoveredEnv.roomGain ?? 0,
+          })
+        }
+
+        // Rehydrate DM overrides from server state (replaces any stale local copy).
+        const recoveredOverrides = audioStatePayload.dmOverrides
+        if (recoveredOverrides && recoveredOverrides.length > 0) {
+          replaceDMOverrides(recoveredOverrides)
+        }
+
         const broadcastState = audioStatePayload.broadcast || audioStatePayload.voiceOfGod
 
         if (broadcastState) {
@@ -847,13 +880,31 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             changedAt: broadcastState.changedAt,
           })
         }
+
+        // Fire-and-forget: trigger server-side presence snapshot recovery.
+        // Result is informational only; WS events remain authoritative.
+        fetch(`${apiUrl}/api/v1/presence/${currentSession.id}/recover`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {
+          // Non-critical: snapshot recovery failure doesn't block UI.
+        })
       } catch {
         // Event-driven WebSocket updates continue to flow even if hydration fails.
       }
     }
 
     void loadPresenceAndRooms()
-  }, [apiUrl, currentSession, token, wsState, replaceSessionTopology, setBroadcastState])
+  }, [
+    apiUrl,
+    currentSession,
+    token,
+    wsState,
+    replaceSessionTopology,
+    setBroadcastState,
+    setEnvironment,
+    replaceDMOverrides,
+  ])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1554,8 +1605,23 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
     currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
+  // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
+  // distinguish the campaign-scoped role from the global account role.
   const effectiveSessionUser =
-    effectiveSessionRole === user.role ? user : { ...user, role: effectiveSessionRole }
+    effectiveSessionRole === user.role
+      ? {
+          ...user,
+          campaignMembershipRole: selectedCampaign?.memberRole as
+            | 'DM'
+            | 'PLAYER'
+            | 'SPECTATOR'
+            | undefined,
+        }
+      : {
+          ...user,
+          role: effectiveSessionRole,
+          campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
+        }
   const canStartFromGreenroom =
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.ENDED)

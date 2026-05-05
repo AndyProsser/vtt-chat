@@ -15,6 +15,8 @@ export interface AudioOverridesSlice {
   togglePTT: (active: boolean) => void
   setPrivateRoomCleanMode: (enabled: boolean) => void
   setDMOverride: (userId: UUID, override: AudioDMOverride | null) => void
+  /** Bulk-replace all DM overrides from an API recovery response. */
+  replaceDMOverrides: (overrides: AudioDMOverride[]) => void
   setBroadcastState: (params: {
     enabled: boolean
     broadcastRoomId?: string
@@ -64,6 +66,15 @@ export const createAudioOverridesSlice: StateCreator<
         newOverrides.delete(userId)
       }
       return { dmOverrides: newOverrides }
+    }),
+
+  replaceDMOverrides: (overrides) =>
+    set(() => {
+      const next = new Map<UUID, AudioDMOverride>()
+      for (const override of overrides) {
+        next.set(override.userId, override)
+      }
+      return { dmOverrides: next }
     }),
 
   setBroadcastState: (params) =>

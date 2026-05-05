@@ -256,9 +256,9 @@ frontend/src/components/audio/
 
 ### Phase 5: Data Consistency & Recovery (1-2 days)
 
-- [ ] Add `campaignMembershipRole` to frontend user type
-- [ ] Update SessionInit recovery flow
-- [ ] Add integration tests for recovery sequence
+- [x] Add `campaignMembershipRole` to frontend user type
+- [x] Update SessionInit recovery flow
+- [x] Add integration tests for recovery sequence
 - [ ] Document recovery flow in architecture docs
 
 ### Phase 6: Validation & Cleanup (1 day)

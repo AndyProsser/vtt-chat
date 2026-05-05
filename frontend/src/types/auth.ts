@@ -3,7 +3,14 @@ import type { Role, UUID } from '@shared'
 export interface AuthUser {
   id: UUID
   username: string
+  /** JWT global role. Always reflects the token payload. */
   role: Role
+  /**
+   * Campaign-scoped membership role. Present when the user is participating in
+   * a campaign session.  Use this – not `role` – for campaign-specific
+   * authorization checks (e.g. DM-only controls).
+   */
+  campaignMembershipRole?: 'DM' | 'PLAYER' | 'SPECTATOR'
   accessMode?: 'USER' | 'CAMPAIGN'
   authType?: 'FULL' | 'GUEST'
 }

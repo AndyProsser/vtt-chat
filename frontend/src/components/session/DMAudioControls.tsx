@@ -1,6 +1,10 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/purity */
 import { useEffect, useMemo, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
+import { DMEnvironmentSection } from '../audio/DMEnvironmentSection'
+import { DMPlayerOverridesSection } from '../audio/DMPlayerOverridesSection'
+import { DMRoomMovementSection } from '../audio/DMRoomMovementSection'
+import { DMVoicePresetSection } from '../audio/DMVoicePresetSection'
 import { useStore } from '../../hooks/useStore'
 import { telemetryClient } from '../../utils/telemetry'
 
@@ -497,365 +501,90 @@ export function DMAudioControls({
         </p>
       </div>
 
-      <section className="rounded-ui-md border border-ui-border p-2.5">
-        <p className="mb-2 mt-0 font-semibold text-ui-primary">Room Environment</p>
-        <div className="grid gap-2">
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Room</span>
-            <select
-              aria-label="Audio Room"
-              value={selectedRoomId}
-              onChange={(event) => setSelectedRoomId(event.target.value as UUID)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name} ({room.type})
-                </option>
-              ))}
-            </select>
-          </label>
+      <DMEnvironmentSection
+        rooms={rooms}
+        selectedRoomId={selectedRoomId}
+        onRoomChange={setSelectedRoomId}
+        environmentPresets={environmentPresets}
+        selectedEnvironmentName={selectedEnvironmentName}
+        onEnvironmentChange={setSelectedEnvironmentName}
+        onApply={applyEnvironment}
+        isSubmitting={isSubmitting}
+      />
 
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Environment</span>
-            <select
-              aria-label="Environment Preset"
-              value={selectedEnvironmentName}
-              onChange={(event) => setSelectedEnvironmentName(event.target.value)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {environmentPresets.map((preset) => (
-                <option key={preset.id} value={preset.name}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
+      <DMVoicePresetSection
+        voicePresets={voicePresets}
+        selectedVoicePresetName={selectedVoicePresetName}
+        onVoiceChange={setSelectedVoicePresetName}
+        onApply={() =>
+          applyOverride(
+            'FILTER',
+            { presetCategory: 'VOICE', presetName: selectedVoicePresetName },
+            dmUserId
+          )
+        }
+        onClear={() => removeOverride('VOICE')}
+        isSubmitting={isSubmitting}
+      />
 
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={applyEnvironment}
-            className="w-fit rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            Apply Environment
-          </button>
-        </div>
-      </section>
+      <DMPlayerOverridesSection
+        controllableParticipants={controllableParticipants}
+        selectedTargetUserId={selectedTargetUserId}
+        onTargetChange={setSelectedTargetUserId}
+        gainPercent={gainPercent}
+        onGainChange={setGainPercent}
+        distancePresets={distancePresets}
+        selectedDistancePresetName={selectedDistancePresetName}
+        onDistanceChange={setSelectedDistancePresetName}
+        conditionPresets={conditionPresets}
+        selectedConditionPresetName={selectedConditionPresetName}
+        onConditionChange={setSelectedConditionPresetName}
+        filterPresets={FILTER_PRESETS}
+        selectedFilterPresetId={selectedFilterPresetId}
+        onFilterPresetChange={setSelectedFilterPresetId}
+        activeOverrideType={activeOverride?.overrideType}
+        hasPendingOverride={Boolean(selectedTargetUserId && pendingOverrides[selectedTargetUserId])}
+        isSubmitting={isSubmitting}
+        onMute={() => applyOverride('MUTE')}
+        onUnmute={() => removeOverride('MUTE')}
+        onApplyGain={() => applyOverride('GAIN', { gain: gainPercent / 100 })}
+        onClearGain={() => removeOverride('GAIN')}
+        onApplyDistance={() =>
+          applyOverride('FILTER', {
+            presetCategory: 'DISTANCE',
+            presetName: selectedDistancePresetName,
+          })
+        }
+        onClearDistance={() => removeOverride('DISTANCE')}
+        onApplyCondition={() =>
+          applyOverride('FILTER', {
+            presetCategory: 'CONDITION',
+            presetName: selectedConditionPresetName,
+          })
+        }
+        onClearCondition={() => removeOverride('CONDITION')}
+        onApplyFilter={() =>
+          applyOverride('FILTER', {
+            presetCategory: 'FILTER',
+            presetName: selectedFilterPreset?.name,
+            ...(selectedFilterPreset?.params || {}),
+          })
+        }
+        onClearFilter={() => removeOverride('FILTER')}
+      />
 
-      <section className="rounded-ui-md border border-ui-border p-2.5">
-        <p className="mb-2 mt-0 font-semibold text-ui-primary">DM Voice Preset</p>
-        <div className="grid gap-2">
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Voice</span>
-            <select
-              aria-label="DM Voice Preset"
-              value={selectedVoicePresetName}
-              onChange={(event) => setSelectedVoicePresetName(event.target.value)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {voicePresets.map((preset) => (
-                <option key={preset.id} value={preset.name}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() =>
-                applyOverride(
-                  'FILTER',
-                  {
-                    presetCategory: 'VOICE',
-                    presetName: selectedVoicePresetName,
-                  },
-                  dmUserId
-                )
-              }
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Apply DM Voice
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('VOICE')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Clear DM Voice
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-ui-md border border-ui-border p-2.5">
-        <p className="mb-2 mt-0 font-semibold text-ui-primary">Player Overrides</p>
-        <div className="grid gap-2">
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Target Player</span>
-            <select
-              aria-label="Override Target"
-              value={selectedTargetUserId}
-              onChange={(event) => setSelectedTargetUserId(event.target.value as UUID)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {controllableParticipants.map((participant) => (
-                <option key={participant.userId} value={participant.userId}>
-                  {participant.username} ({participant.state})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => applyOverride('MUTE')}
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Mute
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('MUTE')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Unmute
-            </button>
-          </div>
-
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Gain ({gainPercent}%)</span>
-            <input
-              aria-label="Override Gain"
-              type="range"
-              min={25}
-              max={200}
-              step={5}
-              value={gainPercent}
-              onChange={(event) => setGainPercent(Number(event.target.value))}
-              className="accent-sky-600"
-            />
-          </label>
-
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => applyOverride('GAIN', { gain: gainPercent / 100 })}
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Apply Gain
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('GAIN')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Clear Gain
-            </button>
-          </div>
-
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Distance preset</span>
-            <select
-              aria-label="Distance Preset"
-              value={selectedDistancePresetName}
-              onChange={(event) => setSelectedDistancePresetName(event.target.value)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {distancePresets.map((preset) => (
-                <option key={preset.id} value={preset.name}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() =>
-                applyOverride('FILTER', {
-                  presetCategory: 'DISTANCE',
-                  presetName: selectedDistancePresetName,
-                })
-              }
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Apply Distance
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('DISTANCE')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Clear Distance
-            </button>
-          </div>
-
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Condition preset</span>
-            <select
-              aria-label="Condition Preset"
-              value={selectedConditionPresetName}
-              onChange={(event) => setSelectedConditionPresetName(event.target.value)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {conditionPresets.map((preset) => (
-                <option key={preset.id} value={preset.name}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() =>
-                applyOverride('FILTER', {
-                  presetCategory: 'CONDITION',
-                  presetName: selectedConditionPresetName,
-                })
-              }
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Apply Condition
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('CONDITION')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Clear Condition
-            </button>
-          </div>
-
-          <label className="grid gap-1">
-            <span className="text-xs text-ui-secondary">Filter preset</span>
-            <select
-              aria-label="Filter Preset"
-              value={selectedFilterPresetId}
-              onChange={(event) => setSelectedFilterPresetId(event.target.value)}
-              className="rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-2 text-sm text-ui-primary"
-            >
-              {FILTER_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="inline-flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isSubmitting || !selectedFilterPreset}
-              onClick={() =>
-                applyOverride('FILTER', {
-                  presetCategory: 'FILTER',
-                  presetName: selectedFilterPreset?.name,
-                  ...(selectedFilterPreset?.params || {}),
-                })
-              }
-              className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              Apply Filter
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => removeOverride('FILTER')}
-              className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Clear Filter
-            </button>
-          </div>
-
-          <p className="m-0 text-xs text-ui-secondary">
-            Active override:{' '}
-            <strong>{activeOverride ? activeOverride.overrideType : 'None'}</strong>
-          </p>
-          {selectedTargetUserId && pendingOverrides[selectedTargetUserId] ? (
-            <p className="m-0 text-xs text-amber-700">
-              Pending sync: waiting for websocket reconciliation.
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="rounded-ui-md border border-ui-border p-2.5">
-        <p className="mb-2 mt-0 font-semibold text-ui-primary">Room Movement (Drag and Drop)</p>
-        <p className="mb-2 text-xs text-ui-secondary">
-          Drag players between room columns. The UI applies optimistic state and waits for realtime
-          confirmation before finalizing.
-        </p>
-
-        <div className="grid gap-2">
-          {rooms.map((room) => (
-            <section
-              key={room.id}
-              aria-label={`Drop Room ${room.name}`}
-              onDragOver={(event) => {
-                event.preventDefault()
-              }}
-              onDrop={(event) => {
-                event.preventDefault()
-                const droppedUserId = (event.dataTransfer.getData('text/plain') ||
-                  draggedUserId ||
-                  '') as UUID | ''
-                if (droppedUserId) {
-                  void moveParticipantToRoom(droppedUserId, room.id)
-                }
-                setDraggedUserId(null)
-              }}
-              className="rounded-ui-sm border border-dashed border-slate-400 bg-ui-surface-subtle p-2"
-            >
-              <p className="mb-1.5 mt-0 font-semibold text-ui-primary">
-                {room.name} ({room.type})
-              </p>
-
-              <div className="grid gap-1">
-                {(playersByRoom[room.id] || []).map((participant) => {
-                  const pendingMove = pendingRoomMoves[participant.userId]
-                  return (
-                    <button
-                      key={participant.userId}
-                      type="button"
-                      draggable
-                      aria-label={`Drag ${participant.username}`}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('text/plain', participant.userId)
-                        setDraggedUserId(participant.userId)
-                      }}
-                      onDragEnd={() => setDraggedUserId(null)}
-                      className="cursor-grab rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-1.5 text-left text-sm text-ui-primary"
-                    >
-                      {participant.username} ({participant.state})
-                      {pendingMove ? ' - moving...' : ''}
-                    </button>
-                  )
-                })}
-
-                {(playersByRoom[room.id] || []).length === 0 ? (
-                  <p className="m-0 text-xs text-ui-muted">No players</p>
-                ) : null}
-              </div>
-            </section>
-          ))}
-        </div>
-      </section>
+      <DMRoomMovementSection
+        rooms={rooms}
+        playersByRoom={playersByRoom}
+        pendingRoomMoves={pendingRoomMoves}
+        draggedUserId={draggedUserId}
+        onDragStart={setDraggedUserId}
+        onDragEnd={() => setDraggedUserId(null)}
+        onDrop={(userId, roomId) => {
+          void moveParticipantToRoom(userId, roomId)
+          setDraggedUserId(null)
+        }}
+      />
 
       {error ? (
         <p className="m-0 text-sm text-ui-error-text" role="alert">

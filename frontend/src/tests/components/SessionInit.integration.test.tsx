@@ -18,12 +18,15 @@ const PLAYER_TWO_ID = asUuid('55555555-5555-4555-8555-555555555555')
 const ROOM_ONE_ID = asUuid('66666666-6666-4666-8666-666666666666')
 const ROOM_TWO_ID = asUuid('77777777-7777-4777-8777-777777777777')
 
+let wsConnectionState: 'connected' | 'reconnecting' = 'connected'
+const wsSendMock = vi.fn()
+
 vi.mock('../../hooks/useWebSocket', () => ({
   useWebSocket: () => ({
-    state: 'connected',
-    isConnected: true,
+    state: wsConnectionState,
+    isConnected: wsConnectionState === 'connected',
     error: null,
-    send: vi.fn(),
+    send: wsSendMock,
   }),
 }))
 
@@ -58,6 +61,8 @@ describe('SessionInit integration', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    wsConnectionState = 'connected'
+    wsSendMock.mockReset()
 
     const store = useStore.getState()
     store.clearSessions()
@@ -1100,5 +1105,324 @@ describe('SessionInit integration', () => {
 
     await screen.findByTestId('session-toolbar')
     expect(screen.getByRole('button', { name: 'Start' })).toBeTruthy()
+  })
+
+  it('rehydrates rooms, presence, environment, and DM overrides on session enter', async () => {
+    const OVERRIDE_USER_ID = PLAYER_ID
+    const ENV_PRESET_ID = asUuid('cccccccc-cccc-4ccc-8ccc-cccccccccccc')
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                memberRole: 'DM',
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+        return { ok: true, json: async () => ({ ok: true }) }
+      }
+
+      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            rooms: [
+              {
+                id: ROOM_ONE_ID,
+                sessionId: SESSION_ID,
+                name: 'Strategy Room',
+                type: RoomType.MAIN,
+                createdBy: DM_ID,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url.endsWith(`/api/v1/presence/${SESSION_ID}`) &&
+        (!init || !init.method || init.method === 'GET')
+      ) {
+        return {
+          ok: true,
+          json: async () => ({
+            presence: [
+              {
+                userId: DM_ID,
+                username: 'Morgan',
+                state: PresenceState.ONLINE,
+                primaryRoomId: ROOM_ONE_ID,
+                lastSeenAt: Date.now(),
+              },
+              {
+                userId: PLAYER_ID,
+                username: 'Tara',
+                state: PresenceState.ONLINE,
+                primaryRoomId: ROOM_ONE_ID,
+                lastSeenAt: Date.now(),
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+        return {
+          ok: true,
+          json: async () => ({ recoveredFromSnapshots: false, snapshotCount: 2, presence: [] }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessionId: SESSION_ID,
+            environment: {
+              id: ENV_PRESET_ID,
+              name: 'Tavern',
+              reverbSend: 0.4,
+              lowpassFreq: 7000,
+              roomGain: -2,
+            },
+            dmOverrides: [
+              {
+                userId: OVERRIDE_USER_ID,
+                overrideType: 'MUTE',
+                appliedAt: Date.now(),
+              },
+            ],
+            broadcast: { enabled: false },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/rooms/session/${SESSION_ID}`,
+        expect.anything()
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/presence/${SESSION_ID}`,
+        expect.anything()
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/audio/sessions/${SESSION_ID}/state`,
+        expect.anything()
+      )
+    })
+
+    // Verify store was rehydrated with environment and DM overrides.
+    await waitFor(() => {
+      const storeState = useStore.getState()
+      expect(storeState.currentEnvironment?.name).toBe('Tavern')
+      expect(storeState.dmOverrides.get(OVERRIDE_USER_ID)?.overrideType).toBe('MUTE')
+    })
+
+    // Verify presence recover was triggered (fire-and-forget).
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/presence/${SESSION_ID}/recover`,
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+  })
+
+  it('rehydrates audio state again on WebSocket reconnect', async () => {
+    const ENV_PRESET_ID = asUuid('dddddddd-dddd-4ddd-8ddd-dddddddddddd')
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Vaultkeeper',
+                currentDmId: DM_ID,
+                memberRole: 'DM',
+                inviteCode: 'VAULT-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Beta',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+        return { ok: true, json: async () => ({ ok: true }) }
+      }
+
+      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            rooms: [
+              {
+                id: ROOM_ONE_ID,
+                sessionId: SESSION_ID,
+                name: 'Vault Room',
+                type: RoomType.MAIN,
+                createdBy: DM_ID,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url.endsWith(`/api/v1/presence/${SESSION_ID}`) &&
+        (!init || !init.method || init.method === 'GET')
+      ) {
+        return { ok: true, json: async () => ({ presence: [] }) }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+        return { ok: true, json: async () => ({ recoveredFromSnapshots: false }) }
+      }
+
+      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessionId: SESSION_ID,
+            environment: {
+              id: ENV_PRESET_ID,
+              name: 'Cave',
+              reverbSend: 0.6,
+              lowpassFreq: 5000,
+              roomGain: -4,
+            },
+            dmOverrides: [],
+            broadcast: { enabled: false },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { rerender } = render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{ id: DM_ID, username: 'Morgan', role: Role.DM }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    // Initial session-enter hydration
+    await waitFor(() => {
+      expect(useStore.getState().currentEnvironment?.name).toBe('Cave')
+    })
+
+    const callCountAfterFirstLoad = fetchMock.mock.calls.length
+
+    // Simulate WebSocket reconnect by changing wsState
+    wsConnectionState = 'reconnecting'
+    rerender(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{ id: DM_ID, username: 'Morgan', role: Role.DM }}
+      />
+    )
+
+    wsConnectionState = 'connected'
+    rerender(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{ id: DM_ID, username: 'Morgan', role: Role.DM }}
+      />
+    )
+
+    await waitFor(() => {
+      // Recovery calls should have been re-issued after reconnect
+      const audioStateCalls = fetchMock.mock.calls.filter(([url]) =>
+        String(url).endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)
+      )
+      expect(audioStateCalls.length).toBeGreaterThan(1)
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(callCountAfterFirstLoad)
+    })
   })
 })
