@@ -83,7 +83,11 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(screen.getByText('A cleaner surface for live tabletop play.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'A DM-grade, session-aware voice and chat platform built specifically for tabletop RPGs — because Discord was never designed for this.'
+      )
+    ).toBeTruthy()
     expect(screen.getByText('Mock Login Form')).toBeTruthy()
     expect(screen.queryByText(/Session Init Mounted:/)).toBeNull()
     expect(screen.queryByText(/Audio Panel Mounted:/)).toBeNull()
@@ -115,12 +119,12 @@ describe('App shell', () => {
     expect(screen.queryByText('Mock Login Form')).toBeNull()
   })
 
-  it('renders audio/livekit metadata in app chrome', async () => {
+  it('renders current auth hero capability cards', async () => {
     const { default: App } = await import('../../App')
 
     render(<App />)
 
-    expect(screen.getByText('Visible presence')).toBeTruthy()
-    expect(screen.getByText('Session-aware voice')).toBeTruthy()
+    expect(screen.getByText('DM-Controlled Session Gating')).toBeTruthy()
+    expect(screen.getByText('One Surface for the Table')).toBeTruthy()
   })
 })

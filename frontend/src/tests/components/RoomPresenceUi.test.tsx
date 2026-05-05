@@ -35,31 +35,49 @@ describe('RoomSelector', () => {
 
     render(
       <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
         rooms={[
-          { id: asUuid('room-1'), name: 'Tavern', type: RoomType.MAIN, memberCount: 2 },
-          { id: asUuid('room-2'), name: 'Whisper Booth', type: RoomType.PRIVATE, memberCount: 1 },
+          {
+            id: asUuid('room-1'),
+            name: 'Tavern',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+                isMuted: false,
+                isSpeaking: false,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.SPEAKING,
+                isMuted: true,
+                isSpeaking: true,
+                condition: 'Underwater',
+              },
+            ],
+          },
+          {
+            id: asUuid('room-2'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 1,
+            participants: [],
+          },
         ]}
         selectedRoomId={asUuid('room-1')}
         onSelectRoom={onSelectRoom}
-        participants={[
-          {
-            userId: asUuid('user-1'),
-            username: 'Morgan',
-            roleLabel: 'DM',
-            presenceState: PresenceState.ONLINE,
-            isMuted: false,
-            isSpeaking: false,
-          },
-          {
-            userId: asUuid('user-2'),
-            username: 'Tara',
-            roleLabel: 'PLAYER',
-            presenceState: PresenceState.SPEAKING,
-            isMuted: true,
-            isSpeaking: true,
-            condition: 'Underwater',
-          },
-        ]}
       />
     )
 
@@ -75,10 +93,21 @@ describe('RoomSelector', () => {
 
   it('renders empty states when there are no rooms or participants', () => {
     render(
-      <RoomSelector rooms={[]} selectedRoomId={''} onSelectRoom={() => {}} participants={[]} />
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={false}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[]}
+        selectedRoomId={''}
+        onSelectRoom={() => {}}
+      />
     )
 
     expect(screen.getByText('No rooms available.')).toBeTruthy()
-    expect(screen.getByText('No members in selected room.')).toBeTruthy()
+    expect(screen.queryByText('No members in this room.')).toBeNull()
   })
 })

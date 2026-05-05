@@ -9,215 +9,247 @@ describe('guest auth route surfaces', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    sessionStorage.clear()
   })
 
-  it('handles /join preflight then extension guest-login handoff', async () => {
-    const onAuthenticated = vi.fn()
+  it('runs email precheck then joins as a guest player', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const onAuthenticated = vi.fn()
 
-    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
-      const url = String(input)
-      const method = init?.method || 'GET'
+      const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method || 'GET'
 
-      if (url.includes('/api/campaigns/invite/ABC123/validate') && method === 'GET') {
-        return {
-          ok: true,
-          json: async () => ({
-            valid: true,
-            type: 'player',
-            campaign: {
-              id: 'campaign-1',
-              name: 'Lost Mines',
-              dmDisplayName: 'Mira',
-            },
-            platformStatus: {
-              online: true,
-              version: '0.5.3',
-              activeUsers: 10,
-              activeCampaigns: 2,
-              activeSessions: 1,
-            },
-          }),
+        if (url.includes('/api/campaigns/invite/ABC123/validate') && method === 'GET') {
+          return {
+            ok: true,
+            json: async () => ({
+              valid: true,
+              type: 'player',
+              campaign: {
+                id: 'campaign-1',
+                name: 'Lost Mines',
+                description: null,
+                posterUrl: null,
+                dmDisplayName: 'Mira',
+                dmOnline: false,
+                connectedPlayersRounded: 0,
+                connectedPlayersLabel: '0',
+                connectedSpectatorsRounded: 0,
+                connectedSpectatorsLabel: '0',
+                displayState: 'INACTIVE',
+              },
+              platformStatus: {
+                online: true,
+                version: '0.5.3',
+                activeUsers: 10,
+                activeCampaigns: 2,
+                activeSessions: 1,
+              },
+            }),
+          }
         }
-      }
 
-      if (url.includes('/api/auth/extension/preflight') && method === 'POST') {
-        return {
-          ok: true,
-          json: async () => ({
-            accountStatus: 'none',
-            suggestedFlow: 'guest',
-          }),
+        if (url.includes('/api/auth/player/precheck') && method === 'POST') {
+          return {
+            ok: true,
+            json: async () => ({
+              campaignId: 'campaign-1',
+              accountStatus: 'none',
+            }),
+          }
         }
-      }
 
-      if (url.includes('/api/auth/extension/guest-login') && method === 'POST') {
-        return {
-          ok: true,
-          json: async () => ({
-            token: 'guest-token',
-            user: {
-              id: 'user-1',
-              role: 'PLAYER',
-              authType: 'GUEST',
-              displayName: 'Aria Player',
-            },
-          }),
+        if (url.includes('/api/auth/player/guest-join') && method === 'POST') {
+          return {
+            ok: true,
+            json: async () => ({
+              token: 'guest-token',
+              user: {
+                id: 'user-1',
+                username: 'Aria Player',
+                role: 'PLAYER',
+              },
+            }),
+          }
         }
-      }
 
-      throw new Error(`Unexpected fetch call: ${method} ${url}`)
-    })
-
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <InviteJoinPage
-        apiUrl="http://localhost:3000"
-        inviteCode="ABC123"
-        authToken={null}
-        onAuthenticated={onAuthenticated}
-      />
-    )
-
-    await screen.findByText('Player Invite')
-
-    fireEvent.change(screen.getByLabelText('Email'), {
-      target: { value: 'aria@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('External System'), {
-      target: { value: 'dndbeyond' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run preflight' }))
-
-    await screen.findByText(/suggestedFlow:/)
-    fireEvent.change(screen.getByLabelText('External User ID'), {
-      target: { value: 'ddb-user-1' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Extension Guest Login' }))
-
-    await waitFor(() => {
-      expect(onAuthenticated).toHaveBeenCalledWith('guest-token', {
-        id: 'user-1',
-        username: 'Aria Player',
-        role: 'PLAYER',
+        throw new Error(`Unexpected fetch call: ${method} ${url}`)
       })
-    })
-  })
 
-  it('sends campaignPacket fields during extension guest-login', async () => {
-    const onAuthenticated = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
 
-    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
-      const url = String(input)
-      const method = init?.method || 'GET'
-
-      if (url.includes('/api/campaigns/invite/BOOT123/validate') && method === 'GET') {
-        return {
-          ok: true,
-          json: async () => ({
-            valid: true,
-            type: 'player',
-            campaign: {
-              id: 'campaign-boot',
-              name: 'Boot Campaign',
-              dmDisplayName: 'Mira',
-            },
-            platformStatus: {
-              online: true,
-              version: '0.5.3',
-              activeUsers: 10,
-              activeCampaigns: 2,
-              activeSessions: 1,
-            },
-          }),
-        }
-      }
-
-      if (url.includes('/api/auth/extension/preflight') && method === 'POST') {
-        return {
-          ok: true,
-          json: async () => ({
-            accountStatus: 'none',
-            suggestedFlow: 'guest',
-          }),
-        }
-      }
-
-      if (url.includes('/api/auth/extension/guest-login') && method === 'POST') {
-        return {
-          ok: true,
-          json: async () => ({
-            token: 'guest-token',
-            user: {
-              id: 'user-boot',
-              role: 'PLAYER',
-              authType: 'GUEST',
-              displayName: 'Boot User',
-            },
-          }),
-        }
-      }
-
-      throw new Error(`Unexpected fetch call: ${method} ${url}`)
-    })
-
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <InviteJoinPage
-        apiUrl="http://localhost:3000"
-        inviteCode="BOOT123"
-        authToken={null}
-        onAuthenticated={onAuthenticated}
-      />
-    )
-
-    await screen.findByText('Player Invite')
-
-    fireEvent.change(screen.getByLabelText('Email'), {
-      target: { value: 'boot@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('External System'), {
-      target: { value: 'dndbeyond' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run preflight' }))
-    await screen.findByText(/suggestedFlow:/)
-
-    fireEvent.change(screen.getByLabelText('External User ID'), {
-      target: { value: 'ddb-user-boot' },
-    })
-    fireEvent.change(screen.getByLabelText('External Campaign ID (optional)'), {
-      target: { value: 'ddb-campaign-boot' },
-    })
-    fireEvent.change(screen.getByLabelText('DM External User ID (optional)'), {
-      target: { value: 'ddb-dm-boot' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Extension Guest Login' }))
-
-    await waitFor(() => {
-      expect(onAuthenticated).toHaveBeenCalledWith('guest-token', {
-        id: 'user-boot',
-        username: 'Boot User',
-        role: 'PLAYER',
-      })
-    })
-
-    const guestLoginCall = fetchMock.mock.calls.find(([input, init]) => {
-      return (
-        String(input).includes('/api/auth/extension/guest-login') &&
-        (init?.method || 'GET') === 'POST'
+      render(
+        <InviteJoinPage
+          apiUrl="http://localhost:3000"
+          inviteCode="ABC123"
+          authToken={null}
+          onAuthenticated={onAuthenticated}
+        />
       )
-    })
-    expect(guestLoginCall).toBeTruthy()
-    const payload = JSON.parse(String(guestLoginCall?.[1]?.body || '{}'))
-    expect(payload.campaignPacket).toEqual({
-      externalCampaignId: 'ddb-campaign-boot',
-      dmExternalUserId: 'ddb-dm-boot',
-    })
+
+      await screen.findByText('Player Invite')
+
+      fireEvent.change(screen.getByLabelText('Email'), {
+        target: { value: 'aria@example.com' },
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+
+      await screen.findByLabelText('Player name')
+
+      fireEvent.change(screen.getByLabelText('Player name'), {
+        target: { value: 'Aria Player' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Join Campaign' }))
+
+      await waitFor(() => {
+        expect(onAuthenticated).toHaveBeenCalledWith('guest-token', {
+          id: 'user-1',
+          username: 'Aria Player',
+          role: 'PLAYER',
+        })
+      })
+
+      const guestJoinCall = fetchMock.mock.calls.find(([input, init]) => {
+        return (
+          String(input).includes('/api/auth/player/guest-join') &&
+          (init?.method || 'GET') === 'POST'
+        )
+      })
+      expect(guestJoinCall).toBeTruthy()
+      expect(JSON.parse(String(guestJoinCall?.[1]?.body || '{}'))).toMatchObject({
+        inviteCode: 'ABC123',
+        email: 'aria@example.com',
+        displayName: 'Aria Player',
+        externalSystem: 'none',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('routes full-account emails through password join flow', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const onAuthenticated = vi.fn()
+
+      const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method || 'GET'
+
+        if (url.includes('/api/campaigns/invite/BOOT123/validate') && method === 'GET') {
+          return {
+            ok: true,
+            json: async () => ({
+              valid: true,
+              type: 'player',
+              campaign: {
+                id: 'campaign-boot',
+                name: 'Boot Campaign',
+                description: null,
+                posterUrl: null,
+                dmDisplayName: 'Mira',
+                dmOnline: false,
+                connectedPlayersRounded: 0,
+                connectedPlayersLabel: '0',
+                connectedSpectatorsRounded: 0,
+                connectedSpectatorsLabel: '0',
+                displayState: 'INACTIVE',
+              },
+              platformStatus: {
+                online: true,
+                version: '0.5.3',
+                activeUsers: 10,
+                activeCampaigns: 2,
+                activeSessions: 1,
+              },
+            }),
+          }
+        }
+
+        if (url.includes('/api/auth/player/precheck') && method === 'POST') {
+          return {
+            ok: true,
+            json: async () => ({
+              campaignId: 'campaign-boot',
+              accountStatus: 'full',
+            }),
+          }
+        }
+
+        if (url.includes('/api/auth/player/full-join') && method === 'POST') {
+          return {
+            ok: true,
+            json: async () => ({
+              token: 'full-token',
+              user: {
+                id: 'user-boot',
+                username: 'Boot User',
+                role: 'PLAYER',
+              },
+              campaignId: 'campaign-boot',
+            }),
+          }
+        }
+
+        throw new Error(`Unexpected fetch call: ${method} ${url}`)
+      })
+
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <InviteJoinPage
+          apiUrl="http://localhost:3000"
+          inviteCode="BOOT123"
+          authToken={null}
+          onAuthenticated={onAuthenticated}
+        />
+      )
+
+      await screen.findByText('Player Invite')
+
+      fireEvent.change(screen.getByLabelText('Email'), {
+        target: { value: 'boot@example.com' },
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+
+      await screen.findByLabelText('Password')
+      fireEvent.change(screen.getByLabelText('Password'), {
+        target: { value: 'Secret!123' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Join Campaign' }))
+
+      await waitFor(() => {
+        expect(onAuthenticated).toHaveBeenCalledWith('full-token', {
+          id: 'user-boot',
+          username: 'Boot User',
+          role: 'PLAYER',
+        })
+      })
+
+      const fullJoinCall = fetchMock.mock.calls.find(([input, init]) => {
+        return (
+          String(input).includes('/api/auth/player/full-join') && (init?.method || 'GET') === 'POST'
+        )
+      })
+      expect(fullJoinCall).toBeTruthy()
+      expect(JSON.parse(String(fullJoinCall?.[1]?.body || '{}'))).toEqual({
+        inviteCode: 'BOOT123',
+        email: 'boot@example.com',
+        password: 'Secret!123',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('handles /watch guest spectator direct join path', async () => {
@@ -289,14 +321,18 @@ describe('guest auth route surfaces', () => {
       target: { value: 'watcher@example.com' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Join Spectator Session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue as Guest Spectator' }))
 
     await waitFor(() => {
-      expect(onAuthenticated).toHaveBeenCalledWith('spectator-token', {
-        id: 'spectator-1',
-        username: 'spectator-one',
-        role: 'SPECTATOR',
-      })
+      expect(onAuthenticated).toHaveBeenCalledWith(
+        'spectator-token',
+        {
+          id: 'spectator-1',
+          username: 'spectator-one',
+          role: 'SPECTATOR',
+        },
+        'GUEST'
+      )
     })
   })
 
@@ -397,9 +433,9 @@ describe('guest auth route surfaces', () => {
         target: { value: 'waitlist@example.com' },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Join Spectator Session' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continue as Guest Spectator' }))
 
-      await screen.findByText(/You are on the waitlist\./)
+      await screen.findByText(/You will be promoted automatically when a slot opens\./)
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(7000)
@@ -410,11 +446,15 @@ describe('guest auth route surfaces', () => {
         await vi.advanceTimersByTimeAsync(7000)
       })
       await waitFor(() => {
-        expect(onAuthenticated).toHaveBeenCalledWith('promoted-token', {
-          id: 'spectator-promoted',
-          username: 'waitlisted-user',
-          role: 'SPECTATOR',
-        })
+        expect(onAuthenticated).toHaveBeenCalledWith(
+          'promoted-token',
+          {
+            id: 'spectator-promoted',
+            username: 'waitlisted-user',
+            role: 'SPECTATOR',
+          },
+          'GUEST'
+        )
       })
     } finally {
       vi.useRealTimers()

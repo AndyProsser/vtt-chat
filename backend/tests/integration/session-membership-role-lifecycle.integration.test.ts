@@ -39,7 +39,10 @@ const mocks = vi.hoisted(() => ({
   addUserToSession: vi.fn(),
   removeUserFromSession: vi.fn(),
   getRoom: vi.fn(),
+  getRooms: vi.fn(),
   getSessionPresence: vi.fn(),
+  joinRoom: vi.fn(),
+  ensureSessionDefaultRoomsForSession: vi.fn(),
   sendMessage: vi.fn(),
   getMessages: vi.fn(),
   editMessage: vi.fn(),
@@ -76,7 +79,10 @@ vi.mock('@/services/session.service', () => ({
 
 vi.mock('@/services/room.service', () => ({
   getRoom: mocks.getRoom,
+  getRooms: mocks.getRooms,
   getSessionPresence: mocks.getSessionPresence,
+  joinRoom: mocks.joinRoom,
+  ensureSessionDefaultRoomsForSession: mocks.ensureSessionDefaultRoomsForSession,
   applySessionStateRoomTransition: vi.fn(),
 }))
 
@@ -190,6 +196,28 @@ describe('session membership lifecycle authz', () => {
           lastSeenAt: Date.now(),
         }))
     )
+
+    mocks.getRooms.mockResolvedValue([
+      {
+        id: ROOM_ID,
+        sessionId: SESSION_ID,
+        name: 'Main Room',
+        type: 'MAIN',
+        createdBy: DM_ID,
+        createdAt: Date.now(),
+      },
+    ])
+
+    mocks.ensureSessionDefaultRoomsForSession.mockResolvedValue(undefined)
+
+    mocks.joinRoom.mockResolvedValue({
+      sessionId: SESSION_ID,
+      userId: PLAYER_ID,
+      username: 'player',
+      primaryRoomId: ROOM_ID,
+      state: 'ONLINE',
+      lastSeenAt: Date.now(),
+    })
 
     mocks.sendMessage.mockResolvedValue({
       id: '55555555-5555-4555-8555-555555555555',

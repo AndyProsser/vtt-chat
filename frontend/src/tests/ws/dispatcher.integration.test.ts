@@ -36,7 +36,15 @@ const { mockUseStore, MockWebSocketClient, clientInstances } = vi.hoisted(() => 
 })
 
 vi.mock('../../hooks/useStore', () => ({
-  useStore: () => mockUseStore(),
+  useStore: Object.assign(
+    (selector?: (state: any) => unknown) => {
+      const state = mockUseStore()
+      return typeof selector === 'function' ? selector(state) : state
+    },
+    {
+      getState: () => mockUseStore(),
+    }
+  ),
 }))
 
 vi.mock('../../ws/client', () => ({
@@ -70,6 +78,7 @@ describe('WebSocket dispatcher integration', () => {
       handleMessageSent: vi.fn(() => calls.push('CHAT:MESSAGE_SENT')),
       handleMessageEdited: vi.fn(),
       handleMessageDeleted: vi.fn(),
+      handleRoomContextCleared: vi.fn(),
       handleTypingStarted: vi.fn(() => calls.push('CHAT:TYPING_STARTED')),
       handleTypingStopped: vi.fn(),
       handleNoteCreated: vi.fn(),
@@ -86,6 +95,7 @@ describe('WebSocket dispatcher integration', () => {
       handleEnvironmentSet: vi.fn(),
       handleDMOverrideApplied: vi.fn(),
       handleDMOverrideRemoved: vi.fn(),
+      handleBroadcastStateChanged: vi.fn(),
       handleConnectionEstablished: vi.fn(),
     })
   })

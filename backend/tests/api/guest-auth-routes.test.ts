@@ -692,6 +692,7 @@ describe('guest auth routes', () => {
       id: 'spectator-2',
       username: 'spectator-b2',
       displayName: 'Spectator Two',
+      authType: 'GUEST',
     })
 
     const response = await request(app).post('/api/auth/spectator/guest-join').send({
@@ -789,6 +790,7 @@ describe('guest auth routes', () => {
         id: 'spectator-1',
         username: 'spectator-a1',
         displayName: 'Spectator User',
+        authType: 'GUEST',
       },
     })
 

@@ -12,7 +12,11 @@ describe('LoginForm', () => {
     render(<LoginForm apiUrl="http://localhost:3000" onLoginSuccess={vi.fn()} />)
 
     expect(screen.getByText('User access')).toBeTruthy()
-    expect(screen.getByText('Sign in as a local user')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Guest accounts cannot sign in here. Use your invite URL to join or rejoin a campaign.'
+      )
+    ).toBeTruthy()
     expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.queryByText('Campaign Role Context')).toBeNull()
   })

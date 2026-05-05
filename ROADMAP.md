@@ -117,7 +117,7 @@ Known readiness gap classes:
 1. Add multi-client reconnect soak scenario for rooms/presence topology recovery. - Done
 2. Add audio-state persistence and recovery soak assertions around `GET /api/audio/state/:sessionId`. - Done
 3. Verify reconnect fanout behavior under concurrent transitions. - Done
-4. Capture pass/fail thresholds and flaky-test handling policy. - In Progress
+4. Capture pass/fail thresholds and flaky-test handling policy. - Done
 
 Definition of done:
 
@@ -127,9 +127,9 @@ Definition of done:
 ### W2: Testing Program and Gates
 
 1. Add a workspace test report artifact with per-package test and coverage deltas. - Done
-2. Define release-gate thresholds for backend/frontend/admin test pass and critical-path suites. - In Progress
+2. Define release-gate thresholds for backend/frontend/admin test pass and critical-path suites. - Done
 3. Add explicit non-functional checks for authz boundaries and high-risk error paths. - Done
-4. Track and burn down flaky tests to agreed threshold. - Planned
+4. Track and burn down flaky tests to agreed threshold. - In Progress
 5. Expand frontend/backend automated coverage for refactor-sensitive paths (store selectors, integration hooks, API naming migration behavior). - In Progress
 
 Definition of done:

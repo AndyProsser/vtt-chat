@@ -21,6 +21,8 @@ Stage 15 completion outcomes:
 - Added frontend guest upgrade token-swap/auth transition and campaignPacket handoff assertions.
 - Current backend coverage verification: statements `60.99`, branches `51.69`, functions `60.17`, lines `61.35`.
 - Current admin coverage verification: statements `86.72`, branches `71.85`, functions `83.49`, lines `88.2`.
+- Added workspace QA gate scripts for coverage deltas and flaky integration detection.
+- Added flaky-test handling policy in `docs/operations/FLAKY-TEST-POLICY.md` and disabled CI workflow wiring in `.github/workflows/qa-gates.yml.disabled`.
 
 ---
 

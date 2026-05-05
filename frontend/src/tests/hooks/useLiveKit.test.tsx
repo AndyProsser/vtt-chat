@@ -57,7 +57,11 @@ const { loggerMock, mockUseStore, MockRoom, roomInstances } = vi.hoisted(() => {
 
 vi.mock('../../hooks/useStore', () => ({
   useStore: (
-    selector: (state: { currentUser: { id: string; username: string; role: string } }) => unknown
+    selector: (state: {
+      currentUser: { id: string; username: string; role: string }
+      upsertLiveKitConnection: ReturnType<typeof vi.fn>
+      clearLiveKitConnection: ReturnType<typeof vi.fn>
+    }) => unknown
   ) => mockUseStore(selector),
 }))
 
@@ -70,6 +74,12 @@ vi.mock('livekit-client', () => ({
     music: {
       maxBitrate: 96000,
     },
+  },
+  ConnectionState: {
+    Disconnected: 'disconnected',
+    Connecting: 'connecting',
+    Connected: 'connected',
+    Reconnecting: 'reconnecting',
   },
   RoomEvent: {
     Connected: 'Connected',
@@ -94,9 +104,13 @@ async function flushMicrotasks() {
 describe('useLiveKit', () => {
   beforeEach(() => {
     const currentUser = { id: 'user-1', username: 'andy', role: 'DM' }
+    const upsertLiveKitConnection = vi.fn()
+    const clearLiveKitConnection = vi.fn()
 
     roomInstances.length = 0
-    mockUseStore.mockImplementation((selector) => selector({ currentUser }))
+    mockUseStore.mockImplementation((selector) =>
+      selector({ currentUser, upsertLiveKitConnection, clearLiveKitConnection })
+    )
     loggerMock.info.mockReset()
     loggerMock.error.mockReset()
     vi.stubGlobal(
@@ -171,7 +185,6 @@ describe('useLiveKit', () => {
       await firstRoom.connect.mock.results[0]?.value
     })
 
-    expect(result.current.room).toBeNull()
     expect(result.current.isConnected).toBe(false)
 
     await act(async () => {
@@ -180,7 +193,7 @@ describe('useLiveKit', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.room).not.toBeNull()
+      expect(result.current.room).toBe(secondRoom)
       expect(result.current.isConnected).toBe(true)
     })
 
