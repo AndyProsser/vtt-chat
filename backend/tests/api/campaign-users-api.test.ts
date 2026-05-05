@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
+  mockValidateUserAuthState: vi.fn(),
   mockUserFindUnique: vi.fn(),
   mockListCampaignsForUser: vi.fn(),
   mockCreateCampaignForUser: vi.fn(),
@@ -21,6 +22,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: mocks.mockExtractTokenFromHeader,
   verifyToken: mocks.mockVerifyToken,
+}))
+
+vi.mock('@/services/auth-user-context.service', () => ({
+  validateUserAuthState: mocks.mockValidateUserAuthState,
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -79,6 +84,7 @@ beforeEach(() => {
     username: 'tester',
     role: 'DM',
   })
+  mocks.mockValidateUserAuthState.mockResolvedValue({ ok: true })
   mocks.mockUserFindUnique.mockResolvedValue({
     isActive: true,
     tokenInvalidBefore: null,

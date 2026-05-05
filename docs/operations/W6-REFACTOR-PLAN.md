@@ -259,14 +259,14 @@ frontend/src/components/audio/
 - [x] Add `campaignMembershipRole` to frontend user type
 - [x] Update SessionInit recovery flow
 - [x] Add integration tests for recovery sequence
-- [ ] Document recovery flow in architecture docs
+- [x] Document recovery flow in architecture docs
 
 ### Phase 6: Validation & Cleanup (1 day)
 
-- [ ] Full suite tests (backend + frontend)
-- [ ] Coverage reports; confirm no regression
+- [x] Full suite tests (backend + frontend)
+- [x] Coverage reports; confirm no regression
 - [ ] Remove deprecated route handlers
-- [ ] Update CHANGELOG.md with migration notes
+- [x] Update CHANGELOG.md with migration notes
 
 ---
 

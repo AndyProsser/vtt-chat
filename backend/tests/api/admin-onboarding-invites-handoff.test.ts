@@ -46,6 +46,10 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: vi.fn(),
 }))
 
+vi.mock('@/services/auth-user-context.service', () => ({
+  validateUserAuthState: vi.fn(async () => ({ ok: true })),
+}))
+
 vi.mock('@/services/admin.service', () => ({
   AdminService: {
     adminUsersExist: vi.fn().mockResolvedValue(true),

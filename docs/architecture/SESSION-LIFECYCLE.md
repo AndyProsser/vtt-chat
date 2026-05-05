@@ -208,6 +208,65 @@ When a client reconnects:
 3. Reducers apply any missed events
 4. UI renders the correct session state
 
+### **7.1 Recovery trigger points**
+
+Recovery runs when either of these conditions occurs:
+
+- The user launches/enters an active campaign session
+- WebSocket connection transitions back to `connected` after reconnecting
+
+### **7.2 Client recovery request set**
+
+The client recovery loader requests three snapshots in parallel:
+
+1. `GET /api/v1/rooms/session/:sessionId`
+2. `GET /api/v1/presence/:sessionId`
+3. `GET /api/v1/audio/sessions/:sessionId/state`
+
+Then it triggers a non-blocking snapshot reconciliation request:
+
+4. `POST /api/v1/presence/:sessionId/recover` (fire-and-forget)
+
+### **7.3 Hydration mapping**
+
+Recovery updates stores with a strict ownership split:
+
+- Rooms + presence hydrate atomically via a single topology replace operation
+- Audio environment preset hydrates from `audio.state.environment`
+- DM overrides hydrate via bulk replacement from `audio.state.dmOverrides`
+- Broadcast/voice-of-god state hydrates from `audio.state.broadcast` (or fallback `voiceOfGod`)
+
+### **7.4 Recovery consistency model**
+
+- Snapshot APIs provide initial recovery baseline
+- WebSocket events remain authoritative for ongoing state evolution
+- Presence recover endpoint is best-effort and must not block UI rendering
+- Failed recovery requests degrade gracefully; realtime updates continue
+
+### **7.5 Sequence reference**
+
+```mermaid
+sequenceDiagram
+    participant Client as SessionInit
+    participant API as REST API
+    participant Store as Zustand Store
+    participant WS as WebSocket Stream
+
+    Client->>API: GET rooms/session/:sessionId
+    Client->>API: GET presence/:sessionId
+    Client->>API: GET audio/sessions/:sessionId/state
+    API-->>Client: rooms + presence + audio snapshots
+
+    Client->>Store: replaceSessionTopology(rooms, presence)
+    Client->>Store: setEnvironment(environment)
+    Client->>Store: replaceDMOverrides(dmOverrides)
+    Client->>Store: setBroadcastState(broadcast)
+
+    Client-->>API: POST presence/:sessionId/recover (non-blocking)
+    WS-->>Client: authoritative realtime events
+    Client->>Store: apply incremental updates
+```
+
 This ensures:
 
 - No desynchronization
