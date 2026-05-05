@@ -11,18 +11,20 @@ import type { ChatSlice } from './chatSlice'
 import type { NotesSlice } from './notesSlice'
 import type { AudioSlice } from './audioSlice'
 import type { RoomSlice } from './roomSlice'
+import type { PresenceSlice } from './presenceSlice'
 import type { MetadataSlice } from './metadataSlice'
-import type { CommandCenterSlice } from './commandCenterSlice'
 import type { LiveKitSlice } from './livekitSlice'
+import type { UISlice } from './uiSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
 import { createNotesSlice } from './notesSlice'
 import { createAudioSlice } from './audioSlice'
 import { createRoomSlice } from './roomSlice'
+import { createPresenceSlice } from './presenceSlice'
 import { createMetadataSlice } from './metadataSlice'
-import { createCommandCenterSlice } from './commandCenterSlice'
 import { createLiveKitSlice } from './livekitSlice'
+import { createUISlice } from './uiSlice'
 
 /**
  * Combined store type.
@@ -31,9 +33,10 @@ export type Store = SessionSlice &
   ChatSlice &
   NotesSlice &
   AudioSlice &
+  PresenceSlice &
   RoomSlice &
   MetadataSlice &
-  CommandCenterSlice &
+  UISlice &
   LiveKitSlice
 
 /**
@@ -45,9 +48,10 @@ export const useStore = create<Store>()((...args) => ({
   ...createChatSlice(...args),
   ...createNotesSlice(...args),
   ...createAudioSlice(...args),
+  ...createPresenceSlice(...args),
   ...createRoomSlice(...args),
   ...createMetadataSlice(...args),
-  ...createCommandCenterSlice(...args),
+  ...createUISlice(...args),
   ...createLiveKitSlice(...args),
 }))
 

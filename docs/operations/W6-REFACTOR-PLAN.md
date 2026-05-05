@@ -21,6 +21,8 @@ W6 focuses on normalizing naming conventions, consolidating code organization, a
   - Stage-labeled backend telemetry test filename removed in favor of behavior-based naming.
 - In progress:
   - Audio service subdirectory split (`audio-state.service.ts` to `audio/state.service.ts` + related extraction).
+  - Presence ownership extraction from `roomSlice` into `presenceSlice` is underway (state split landed; event/action migration pending).
+  - Dedicated `uiSlice` extracted; `commandCenterSlice` now serves as a compatibility shim.
 - Reference map:
   - See `docs/operations/API-V1-DEPRECATION-MAP.md` for explicit old-to-v1 mappings.
 
@@ -141,7 +143,7 @@ uiSlice
 chatSlice (unchanged core)
 notesSlice (unchanged core)
 metadataSlice (unchanged core)
-commandCenterSlice (unchanged core)
+commandCenterSlice (compat shim during migration)
 ```
 
 **Key Distinctions:**
@@ -237,9 +239,9 @@ frontend/src/components/audio/
 
 - [ ] Create presenceSlice (extract from roomSlice)
 - [ ] Split audioSlice concerns (device/presets/overrides)
-- [ ] Extract uiSlice (toolbar state)
-- [ ] Update store.ts to new composition
-- [ ] Run tests; validate selectors
+- [x] Extract uiSlice (toolbar state)
+- [x] Update store.ts to new composition
+- [x] Run tests; validate selectors (targeted state/UI suites)
 
 ### Phase 4: Frontend Component Refactoring (1-2 days)
 

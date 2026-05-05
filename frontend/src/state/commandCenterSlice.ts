@@ -1,38 +1,11 @@
 import type { StateCreator } from 'zustand'
-import type { CenterPaneView } from '@/types/ui'
+import type { UISlice } from './uiSlice'
+import { createUISlice } from './uiSlice'
 
-export type ToolbarCenterPaneView = CenterPaneView
-export type { CenterPaneView } from '@/types/ui'
+export type {
+  ToolbarCenterPaneView,
+  CenterPaneView,
+  UISlice as CommandCenterSlice,
+} from './uiSlice'
 
-export interface CommandCenterSlice {
-  toolbarCenterPaneView: ToolbarCenterPaneView
-  toolbarRightRailOpen: boolean
-
-  setToolbarCenterPaneView: (view: ToolbarCenterPaneView) => void
-  setToolbarRightRailOpen: (open: boolean) => void
-  toggleToolbarRightRail: () => void
-  resetToolbarActionsState: () => void
-}
-
-const DEFAULT_CENTER_PANE_VIEW: ToolbarCenterPaneView = 'chat'
-const DEFAULT_RIGHT_RAIL_OPEN = false
-
-export const createCommandCenterSlice: StateCreator<CommandCenterSlice> = (set) => ({
-  toolbarCenterPaneView: DEFAULT_CENTER_PANE_VIEW,
-  toolbarRightRailOpen: DEFAULT_RIGHT_RAIL_OPEN,
-
-  setToolbarCenterPaneView: (view) => set({ toolbarCenterPaneView: view }),
-
-  setToolbarRightRailOpen: (open) => set({ toolbarRightRailOpen: open }),
-
-  toggleToolbarRightRail: () =>
-    set((state) => ({
-      toolbarRightRailOpen: !state.toolbarRightRailOpen,
-    })),
-
-  resetToolbarActionsState: () =>
-    set({
-      toolbarCenterPaneView: DEFAULT_CENTER_PANE_VIEW,
-      toolbarRightRailOpen: DEFAULT_RIGHT_RAIL_OPEN,
-    }),
-})
+export const createCommandCenterSlice: StateCreator<UISlice> = (...args) => createUISlice(...args)

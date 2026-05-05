@@ -9,13 +9,13 @@ import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { SessionState } from '@shared'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
+import type { PresenceSlice } from './presenceSlice'
 
 export type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 
 export interface RoomSlice {
   rooms: Record<UUID, Record<UUID, Room>>
   roomMembers: Record<UUID, RoomUser[]>
-  sessionPresence: Record<UUID, Record<UUID, SessionPresence>>
   sessionTransitionNotice: Record<UUID, SessionTransitionNotice>
   isLoading: boolean
 
@@ -41,10 +41,11 @@ function upsertMember(list: RoomUser[], member: RoomUser): RoomUser[] {
   return [...list.filter((m) => m.userId !== member.userId), member]
 }
 
-export const createRoomSlice: StateCreator<RoomSlice> = (set) => ({
+export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
+  set
+) => ({
   rooms: {},
   roomMembers: {},
-  sessionPresence: {},
   sessionTransitionNotice: {},
   isLoading: false,
 
