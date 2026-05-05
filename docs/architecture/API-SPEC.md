@@ -37,9 +37,10 @@ Current shipped runtime baseline through Stage 12 includes these mounted route f
 - `/api/users`
 - `/api/rooms`
 - `/api/presence`
-- `/api/livekit`
+- `/api/v1/livekit` (canonical)
 - `/api/audio`
 - `/api/admin`
+- `/api/v1/integrations` (canonical)
 
 The metadata route family remains planned follow-up work.
 
@@ -393,7 +394,7 @@ Requires valid guest token.
 
 ---
 
-### /api/integrations/external/sync`
+### /api/v1/integrations/external/sync`
 
 Pushes character or campaign data updates from the extension. Applies updates based on the campaign's `extensionSyncPolicy` and the caller's role.
 
@@ -423,10 +424,10 @@ Requires authentication (guest or full token).
 These endpoints are restricted to admin users.
 
 ```
-GET   /api/admin/integrations/systems
-POST  /api/admin/integrations/systems/:system/authorize
-POST  /api/admin/integrations/systems/:system/block
-PATCH /api/admin/integrations/systems/:system
+GET   /admin/api/v1/integrations/systems
+POST  /admin/api/v1/integrations/systems/:system/authorize
+POST  /admin/api/v1/integrations/systems/:system/block
+PATCH /admin/api/v1/integrations/systems/:system
 ```
 
 See [../extension/THIRD-PARTY-INTEGRATIONS.md § 11](../extension/THIRD-PARTY-INTEGRATIONS.md) for field descriptions and authorization state model.

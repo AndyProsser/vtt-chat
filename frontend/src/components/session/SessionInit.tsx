@@ -561,7 +561,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {
       try {
-        const response = await fetch(`${apiUrl}/api/session/${sessionId}/join`, {
+        const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/members/join`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -584,7 +584,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const response = await fetch(`${apiUrl}/api/audio/broadcast`, {
+      const response = await fetch(`${apiUrl}/api/v1/audio/broadcast/state`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -780,17 +780,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     const loadPresenceAndRooms = async () => {
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/rooms/${currentSession.id}`, {
+          fetch(`${apiUrl}/api/v1/rooms/session/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch(`${apiUrl}/api/presence/${currentSession.id}`, {
+          fetch(`${apiUrl}/api/v1/presence/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch(`${apiUrl}/api/audio/state/${currentSession.id}`, {
+          fetch(`${apiUrl}/api/v1/audio/sessions/${currentSession.id}/state`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -1324,7 +1324,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const handleLogoff = () => {
     if (currentSession && currentSession.dmId !== user.id) {
-      void fetch(`${apiUrl}/api/session/${currentSession.id}/leave`, {
+      void fetch(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1368,7 +1368,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         if (options?.autoActivate) {
           const transitionResponse = await fetch(
-            `${apiUrl}/api/session/${payload.session.id}/state`,
+            `${apiUrl}/api/v1/session/${payload.session.id}/state`,
             {
               method: 'PUT',
               headers: {
@@ -1448,7 +1448,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setError(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/session/${sessionId}/state`, {
+      const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/state`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1473,7 +1473,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const returnToCampaignSelector = async () => {
     if (currentSession && currentSession.dmId !== user.id) {
       try {
-        await fetch(`${apiUrl}/api/session/${currentSession.id}/leave`, {
+        await fetch(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1520,7 +1520,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setExitUpgradeLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/auth/upgrade`, {
+      const response = await fetch(`${apiUrl}/api/v1/auth/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

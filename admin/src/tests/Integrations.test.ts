@@ -50,7 +50,7 @@ describe('Integrations page interactions', () => {
   beforeEach(() => {
     requestJsonMock.mockReset()
     requestJsonMock.mockImplementation((path: string, init?: { method?: string }) => {
-      if (path === '/integrations/systems' && init?.method === 'GET') {
+      if (path === '/v1/integrations/systems' && init?.method === 'GET') {
         return Promise.resolve(BASE_SYSTEMS_RESPONSE)
       }
       if (path.endsWith('/authorize')) {
@@ -59,7 +59,7 @@ describe('Integrations page interactions', () => {
       if (path.endsWith('/block')) {
         return Promise.resolve({ message: 'External system blocked' })
       }
-      if (path === '/integrations/systems/dndbeyond' && init?.method === 'PATCH') {
+      if (path === '/v1/integrations/systems/dndbeyond' && init?.method === 'PATCH') {
         return Promise.resolve({ message: 'External system updated' })
       }
       return Promise.resolve({})
@@ -81,7 +81,9 @@ describe('Integrations page interactions', () => {
     await renderComponent()
     await flush()
 
-    expect(requestJsonMock).toHaveBeenCalledWith('/integrations/systems', { method: 'GET' })
+    expect(requestJsonMock).toHaveBeenCalledWith('/v1/integrations/systems', {
+      method: 'GET',
+    })
     expect(container.textContent).toContain('D&D Beyond')
   })
 
@@ -99,7 +101,7 @@ describe('Integrations page interactions', () => {
 
     await flush()
 
-    expect(requestJsonMock).toHaveBeenCalledWith('/integrations/systems/dndbeyond/authorize', {
+    expect(requestJsonMock).toHaveBeenCalledWith('/v1/integrations/systems/dndbeyond/authorize', {
       method: 'POST',
     })
   })
@@ -118,7 +120,7 @@ describe('Integrations page interactions', () => {
 
     await flush()
 
-    expect(requestJsonMock).toHaveBeenCalledWith('/integrations/systems/dndbeyond/block', {
+    expect(requestJsonMock).toHaveBeenCalledWith('/v1/integrations/systems/dndbeyond/block', {
       method: 'POST',
     })
   })
@@ -138,7 +140,7 @@ describe('Integrations page interactions', () => {
     await flush()
 
     expect(requestJsonMock).toHaveBeenCalledWith(
-      '/integrations/systems/dndbeyond',
+      '/v1/integrations/systems/dndbeyond',
       expect.objectContaining({ method: 'PATCH' })
     )
   })

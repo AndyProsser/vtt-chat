@@ -183,7 +183,7 @@ export function InviteJoinPage({
     setError(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/auth/player/precheck`, {
+      const response = await fetch(`${apiUrl}/api/v1/auth/validate/player`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -418,7 +418,7 @@ export function InviteJoinPage({
           : undefined,
     }
 
-    const response = await fetch(`${apiUrl}/api/auth/player/guest-join`, {
+    const response = await fetch(`${apiUrl}/api/v1/auth/join/guest/player`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -459,7 +459,7 @@ export function InviteJoinPage({
       return
     }
 
-    const response = await fetch(`${apiUrl}/api/auth/player/full-join`, {
+    const response = await fetch(`${apiUrl}/api/v1/auth/join/full/player`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

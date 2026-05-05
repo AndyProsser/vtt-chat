@@ -97,7 +97,7 @@ Known readiness gap classes:
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
 | W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts |
-| W6  | Refactor and Simplification | Planned     | Zustand consistency, component/file simplification, naming cleanup, API cleanup  |
+| W6  | Refactor and Simplification | In Progress | Zustand consistency, component/file simplification, naming cleanup, API cleanup  |
 
 ---
 
@@ -109,6 +109,15 @@ Known readiness gap classes:
 - Added explicit non-functional authz boundary suite for audio DM-only control surfaces (`backend/tests/api/audio-authz-boundaries.test.ts`).
 - Added workspace QA artifact for per-package coverage and threshold deltas (`scripts/qa/coverage-report.cjs`) and root scripts `qa:coverage-report` / `qa:coverage-report:json`.
 - Raised backend coverage thresholds to match current baseline signal and enforce gate floor in CI/local runs.
+
+### Latest Delivered (W6)
+
+- Added versioned API mounts for auth/session/presence/rooms/audio/livekit/integrations under `/api/v1/*` while retaining compatibility mounts for legacy paths.
+- Added normalized member-style aliases for session and room operations, plus normalized aliases for audio operations.
+- Split guest auth flow into role-oriented backend services (`guest-auth.extension`, `guest-auth.player`, `guest-auth.spectator`, `guest-auth.account-upgrade`) behind the `guest-auth.service.ts` facade.
+- Migrated frontend LiveKit token requests to `/api/v1/livekit/token`.
+- Migrated admin integrations operations to `/admin/api/v1/integrations/*` and added backend admin alias support.
+- Added centralized API-index v1 mount contract tests to validate mount consistency in one suite.
 
 ## 4) Detailed Backlog
 

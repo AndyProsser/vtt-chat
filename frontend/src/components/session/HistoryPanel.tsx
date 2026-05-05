@@ -217,7 +217,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
 
       try {
         const response = await fetch(
-          `${apiUrl}/api/session/${sessionId}/logs?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`,
+          `${apiUrl}/api/v1/session/${sessionId}/logs?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

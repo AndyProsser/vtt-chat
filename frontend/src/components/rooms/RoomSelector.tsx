@@ -117,7 +117,7 @@ export function RoomSelector({
     setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
 
     try {
-      const response = await fetch(`${apiUrl}/api/rooms/${toRoomId}/move-user`, {
+      const response = await fetch(`${apiUrl}/api/v1/rooms/${toRoomId}/members/move`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

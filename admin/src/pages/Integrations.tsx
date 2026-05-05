@@ -16,9 +16,12 @@ export default function Integrations() {
     }
 
     try {
-      const result = await requestJson<{ systems: IntegrationSystem[] }>('/integrations/systems', {
-        method: 'GET',
-      })
+      const result = await requestJson<{ systems: IntegrationSystem[] }>(
+        '/v1/integrations/systems',
+        {
+          method: 'GET',
+        }
+      )
       setSystems(result.systems)
       setNotesDrafts(
         Object.fromEntries(result.systems.map((system) => [system.system, system.notes || '']))
@@ -34,7 +37,7 @@ export default function Integrations() {
     const loadOnMount = async () => {
       try {
         const result = await requestJson<{ systems: IntegrationSystem[] }>(
-          '/integrations/systems',
+          '/v1/integrations/systems',
           {
             method: 'GET',
           }
@@ -138,7 +141,7 @@ export default function Integrations() {
                           onClick={() =>
                             void runMutation(
                               system.system,
-                              `/integrations/systems/${system.system}/authorize`,
+                              `/v1/integrations/systems/${system.system}/authorize`,
                               { method: 'POST' }
                             )
                           }
@@ -151,7 +154,7 @@ export default function Integrations() {
                           onClick={() =>
                             void runMutation(
                               system.system,
-                              `/integrations/systems/${system.system}`,
+                              `/v1/integrations/systems/${system.system}`,
                               {
                                 method: 'PATCH',
                                 body: JSON.stringify({
@@ -170,7 +173,7 @@ export default function Integrations() {
                           onClick={() =>
                             void runMutation(
                               system.system,
-                              `/integrations/systems/${system.system}/block`,
+                              `/v1/integrations/systems/${system.system}/block`,
                               { method: 'POST' }
                             )
                           }
@@ -183,7 +186,7 @@ export default function Integrations() {
                           onClick={() =>
                             void runMutation(
                               system.system,
-                              `/integrations/systems/${system.system}`,
+                              `/v1/integrations/systems/${system.system}`,
                               {
                                 method: 'PATCH',
                                 body: JSON.stringify({

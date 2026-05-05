@@ -17,6 +17,9 @@ import integrationsRoutes from './integrations.routes'
 import metadataRoutes from './metadata.routes'
 
 const router = Router()
+const enableLegacyLivekitIntegrationsPaths =
+  process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS !== '0' &&
+  process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS !== 'false'
 
 /**
  * Health check endpoint
@@ -43,6 +46,8 @@ router.use('/v1/session', sessionRoutes)
 router.use('/v1/presence', presenceRoutes)
 router.use('/v1/rooms', roomsRoutes)
 router.use('/v1/audio', audioRoutes)
+router.use('/v1/livekit', liveKitRoutes)
+router.use('/v1/integrations', integrationsRoutes)
 
 /**
  * Legacy routes (maintained for backward compatibility)
@@ -58,10 +63,13 @@ router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
 router.use('/rooms', roomsRoutes)
 router.use('/presence', presenceRoutes)
-router.use('/livekit', liveKitRoutes)
 router.use('/audio', audioRoutes)
 router.use('/telemetry', telemetryRoutes)
-router.use('/integrations', integrationsRoutes)
 router.use('/metadata', metadataRoutes)
+
+if (enableLegacyLivekitIntegrationsPaths) {
+  router.use('/livekit', liveKitRoutes)
+  router.use('/integrations', integrationsRoutes)
+}
 
 export default router

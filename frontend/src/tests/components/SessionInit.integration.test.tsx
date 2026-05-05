@@ -385,7 +385,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
+      if (url.includes(`/api/v1/session/${SESSION_ID}/logs`)) {
         return {
           ok: true,
           json: async () => ({
@@ -580,7 +580,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
+      if (url.includes(`/api/v1/session/${SESSION_ID}/logs`)) {
         return {
           ok: true,
           json: async () => ({
@@ -964,7 +964,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
+      if (url.endsWith(`/api/v1/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
         return {
           ok: true,
           json: async () => ({
@@ -1003,7 +1003,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/session/${SESSION_ID}/state`,
+        `http://localhost:3000/api/v1/session/${SESSION_ID}/state`,
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ state: SessionState.PAUSED }),

@@ -85,7 +85,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     const bootstrap = async () => {
       if (handoff) {
         try {
-          const response = await fetch(`${apiUrl}/api/auth/handoff/exchange`, {
+          const response = await fetch(`${apiUrl}/api/v1/auth/handoff/exchange`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/auth/me`, {
+        const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
           headers: {
             Authorization: `Bearer ${auth.token}`,
           },
@@ -176,7 +176,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     setAuthMessage(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/auth/upgrade`, {
+      const response = await fetch(`${apiUrl}/api/v1/auth/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,7 +228,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
     setAuthMessage(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/auth/handoff/admin`, {
+      const response = await fetch(`${apiUrl}/api/v1/auth/handoff/admin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

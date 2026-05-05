@@ -27,7 +27,9 @@ The backend issues **access tokens** that grant users permission to join a room.
 
 ### 1.1 Token Generation (Backend)
 
-**Endpoint:** `POST /api/livekit/token`
+**Endpoint (canonical):** `POST /api/v1/livekit/token`
+
+Legacy compatibility path: `POST /api/livekit/token` (removal planned via v1 cutoff gate).
 
 **Request:**
 

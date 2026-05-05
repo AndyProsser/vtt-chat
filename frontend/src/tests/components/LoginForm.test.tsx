@@ -44,7 +44,7 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/auth/login',
+        'http://localhost:3000/api/v1/auth/login',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

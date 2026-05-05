@@ -3,7 +3,19 @@ import type { Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import { sendMessage } from './chat.service'
-import { buildSessionBoundaryMessage } from './session-boundaries.service'
+const boundaryTemplates: Record<SessionBoundaryType, (sessionName: string) => string> = {
+  SESSION_STARTED: (sessionName) => `[Session Started] ${sessionName}`,
+  SESSION_PAUSED: (sessionName) => `[Session Paused] ${sessionName}`,
+  SESSION_RESUMED: (sessionName) => `[Session Resumed] ${sessionName}`,
+  SESSION_ENDED: (sessionName) => `[Session Ended] ${sessionName}`,
+}
+
+function buildSessionBoundaryMessage(
+  boundaryType: SessionBoundaryType,
+  sessionName: string
+): string {
+  return boundaryTemplates[boundaryType](sessionName)
+}
 import type { SessionBoundaryType } from '@/types/session-boundary.types'
 
 function buildSystemChatEvent(message: {

@@ -51,7 +51,7 @@ describe('guest auth route surfaces', () => {
           }
         }
 
-        if (url.includes('/api/auth/player/precheck') && method === 'POST') {
+        if (url.includes('/api/v1/auth/validate/player') && method === 'POST') {
           return {
             ok: true,
             json: async () => ({
@@ -61,7 +61,7 @@ describe('guest auth route surfaces', () => {
           }
         }
 
-        if (url.includes('/api/auth/player/guest-join') && method === 'POST') {
+        if (url.includes('/api/v1/auth/join/guest/player') && method === 'POST') {
           return {
             ok: true,
             json: async () => ({
@@ -117,7 +117,7 @@ describe('guest auth route surfaces', () => {
 
       const guestJoinCall = fetchMock.mock.calls.find(([input, init]) => {
         return (
-          String(input).includes('/api/auth/player/guest-join') &&
+          String(input).includes('/api/v1/auth/join/guest/player') &&
           (init?.method || 'GET') === 'POST'
         )
       })
@@ -172,7 +172,7 @@ describe('guest auth route surfaces', () => {
           }
         }
 
-        if (url.includes('/api/auth/player/precheck') && method === 'POST') {
+        if (url.includes('/api/v1/auth/validate/player') && method === 'POST') {
           return {
             ok: true,
             json: async () => ({
@@ -182,7 +182,7 @@ describe('guest auth route surfaces', () => {
           }
         }
 
-        if (url.includes('/api/auth/player/full-join') && method === 'POST') {
+        if (url.includes('/api/v1/auth/join/full/player') && method === 'POST') {
           return {
             ok: true,
             json: async () => ({
@@ -238,7 +238,8 @@ describe('guest auth route surfaces', () => {
 
       const fullJoinCall = fetchMock.mock.calls.find(([input, init]) => {
         return (
-          String(input).includes('/api/auth/player/full-join') && (init?.method || 'GET') === 'POST'
+          String(input).includes('/api/v1/auth/join/full/player') &&
+          (init?.method || 'GET') === 'POST'
         )
       })
       expect(fullJoinCall).toBeTruthy()
@@ -282,7 +283,7 @@ describe('guest auth route surfaces', () => {
         }
       }
 
-      if (url.includes('/api/auth/spectator/guest-join') && method === 'POST') {
+      if (url.includes('/api/v1/auth/join/guest/spectator') && method === 'POST') {
         return {
           ok: true,
           json: async () => ({
@@ -367,7 +368,7 @@ describe('guest auth route surfaces', () => {
           }
         }
 
-        if (url.includes('/api/auth/spectator/guest-join') && method === 'POST') {
+        if (url.includes('/api/v1/auth/join/guest/spectator') && method === 'POST') {
           return {
             ok: true,
             json: async () => ({

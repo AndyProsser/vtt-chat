@@ -45,6 +45,14 @@ function hasRole(actorRole: AdminRole, requiredRole: AdminRole): boolean {
   return roleRank[actorRole] >= roleRank[requiredRole]
 }
 
+const enableLegacyLivekitIntegrationsPaths =
+  process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS !== '0' &&
+  process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS !== 'false'
+
+function integrationAdminPaths(v1Path: string, legacyPath: string): string[] {
+  return enableLegacyLivekitIntegrationsPaths ? [legacyPath, v1Path] : [v1Path]
+}
+
 async function writeAudit(params: {
   actor?: AdminAuthToken
   action: string
@@ -1633,31 +1641,38 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
   }
 })
 
-router.get('/integrations/systems', adminAuthMiddleware, async (req: Request, res: Response) => {
-  try {
-    const actor = req.admin
-    if (!actor) {
-      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
-      return
-    }
+router.get(
+  integrationAdminPaths('/v1/integrations/systems', '/integrations/systems'),
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
 
-    res.status(200).json({
-      systems: listExternalSystems().map((system) => ({
-        ...system,
-        metrics: {
-          linkedUsers: 0,
-          requests24h: 0,
-          lastSeenAt: null,
-        },
-      })),
-    })
-  } catch (error) {
-    errorHandler(error as any, req, res, () => {})
+      res.status(200).json({
+        systems: listExternalSystems().map((system) => ({
+          ...system,
+          metrics: {
+            linkedUsers: 0,
+            requests24h: 0,
+            lastSeenAt: null,
+          },
+        })),
+      })
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
   }
-})
+)
 
 router.post(
-  '/integrations/systems/:system/authorize',
+  integrationAdminPaths(
+    '/v1/integrations/systems/:system/authorize',
+    '/integrations/systems/:system/authorize'
+  ),
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -1704,7 +1719,10 @@ router.post(
 )
 
 router.post(
-  '/integrations/systems/:system/block',
+  integrationAdminPaths(
+    '/v1/integrations/systems/:system/block',
+    '/integrations/systems/:system/block'
+  ),
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -1751,7 +1769,7 @@ router.post(
 )
 
 router.patch(
-  '/integrations/systems/:system',
+  integrationAdminPaths('/v1/integrations/systems/:system', '/integrations/systems/:system'),
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {

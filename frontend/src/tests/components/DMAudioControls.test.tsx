@@ -73,7 +73,7 @@ describe('DMAudioControls', () => {
     )
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/presets', {
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/v1/audio/catalog/presets', {
         headers: { Authorization: 'Bearer token' },
       })
     })
@@ -81,18 +81,21 @@ describe('DMAudioControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply Environment' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/environment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer token',
-        },
-        body: JSON.stringify({
-          sessionId: SESSION_ID,
-          roomId: ROOM_A,
-          environmentName: 'Tavern',
-        }),
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/environments/apply',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token',
+          },
+          body: JSON.stringify({
+            sessionId: SESSION_ID,
+            roomId: ROOM_A,
+            environmentName: 'Tavern',
+          }),
+        }
+      )
     })
   })
 
@@ -148,19 +151,22 @@ describe('DMAudioControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mute' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/dm-override/apply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer token',
-        },
-        body: JSON.stringify({
-          sessionId: SESSION_ID,
-          targetUserId: PLAYER_ID,
-          overrideType: 'MUTE',
-          parameters: undefined,
-        }),
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/overrides/dm/apply',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token',
+          },
+          body: JSON.stringify({
+            sessionId: SESSION_ID,
+            targetUserId: PLAYER_ID,
+            overrideType: 'MUTE',
+            parameters: undefined,
+          }),
+        }
+      )
     })
 
     expect(useStore.getState().dmOverrides.get(PLAYER_ID)?.overrideType).toBe('MUTE')
@@ -254,7 +260,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/audio/dm-override/apply',
+        'http://localhost:3000/api/v1/audio/overrides/dm/apply',
         expect.objectContaining({
           method: 'POST',
           headers: {
@@ -266,7 +272,7 @@ describe('DMAudioControls', () => {
     })
 
     const calls = fetchMock.mock.calls
-      .filter((entry) => entry[0] === 'http://localhost:3000/api/audio/dm-override/apply')
+      .filter((entry) => entry[0] === 'http://localhost:3000/api/v1/audio/overrides/dm/apply')
       .map((entry) => JSON.parse(entry[1].body as string))
 
     expect(calls.some((body) => body.parameters?.presetCategory === 'DISTANCE')).toBe(true)
@@ -335,7 +341,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/rooms/${ROOM_B}/move-user`,
+        `http://localhost:3000/api/v1/rooms/${ROOM_B}/members/move`,
         {
           method: 'POST',
           headers: {
@@ -536,7 +542,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/rooms/${ROOM_B}/move-user`,
+        `http://localhost:3000/api/v1/rooms/${ROOM_B}/members/move`,
         {
           method: 'POST',
           headers: {

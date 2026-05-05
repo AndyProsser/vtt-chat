@@ -6,6 +6,24 @@ W6 focuses on normalizing naming conventions, consolidating code organization, a
 
 **Critical Constraint:** Breaking changes are acceptable in pre-release. Once auto-deploy is enabled, refactors become risky. This work must complete before release.
 
+## Progress Snapshot (2026-05-05)
+
+- Completed:
+  - v1 mounts active for auth, session, presence, rooms, audio, livekit, integrations.
+  - Session route aliases implemented (`/members`, `/members/join`, `/members/leave`) without duplicating business logic.
+  - Rooms and audio families now expose normalized aliases while retaining legacy paths.
+  - Guest auth facade split into role-oriented services (`extension`, `player`, `spectator`, `account-upgrade`) behind a single `guest-auth.service.ts` facade.
+  - Centralized v1 mount contract test added at API index level.
+  - Frontend livekit token usage moved to v1 path.
+  - Admin integrations usage moved to v1 path.
+  - Frontend auth/session/rooms/audio/presence path usage migrated to v1 aliases for active runtime surfaces.
+  - Legacy cutoff flag coverage added to assert legacy livekit/integrations 404 behavior when disabled.
+  - Stage-labeled backend telemetry test filename removed in favor of behavior-based naming.
+- In progress:
+  - Audio service subdirectory split (`audio-state.service.ts` to `audio/state.service.ts` + related extraction).
+- Reference map:
+  - See `docs/operations/API-V1-DEPRECATION-MAP.md` for explicit old-to-v1 mappings.
+
 ---
 
 ## 1. Backend Refactoring
@@ -201,19 +219,19 @@ frontend/src/components/audio/
 
 ### Phase 1: Backend API Routes (1-2 days)
 
-- [ ] Add `/api/v1/auth/*` routes alongside current routes
-- [ ] Keep current routes with 302 redirects to v1
-- [ ] Update frontend API client to use v1
-- [ ] Tests still pass during transition
-- [ ] Deploy with both route sets active
+- [x] Add `/api/v1/auth/*` routes alongside current routes
+- [x] Keep current routes compatible while v1 is active
+- [x] Update frontend/admin API clients to use v1
+- [x] Tests still pass during transition
+- [x] Deploy-ready with both route sets active
 
 ### Phase 2: Backend Service Consolidation (1-2 days)
 
-- [ ] Merge auth-user-context into auth.service
-- [ ] Rename guest-auth services to subdirectory
-- [ ] Consolidate session-access/boundaries into session.service
+- [x] Merge auth-user-context into auth.service (compat shim retained)
+- [x] Split guest-auth flow into role-oriented services behind a single facade
+- [x] Consolidate session-access/boundaries into session.service
 - [ ] Consolidate audio services into audio/ subdirectory
-- [ ] Run tests; validate exports
+- [x] Run tests; validate exports
 
 ### Phase 3: Frontend Zustand Restructuring (2-3 days)
 

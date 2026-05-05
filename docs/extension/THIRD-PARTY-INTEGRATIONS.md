@@ -371,10 +371,10 @@ Default for new registered systems: `BLOCKED` (must be explicitly authorized).
 ### 11.2 Admin API
 
 ```text
-GET  /api/admin/integrations/systems
-POST /api/admin/integrations/systems/:system/authorize
-POST /api/admin/integrations/systems/:system/block
-PATCH /api/admin/integrations/systems/:system
+GET  /admin/api/v1/integrations/systems
+POST /admin/api/v1/integrations/systems/:system/authorize
+POST /admin/api/v1/integrations/systems/:system/block
+PATCH /admin/api/v1/integrations/systems/:system
 ```
 
 `GET` returns all registered systems and their current authorization state.

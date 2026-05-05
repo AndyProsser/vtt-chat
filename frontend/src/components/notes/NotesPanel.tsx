@@ -105,7 +105,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
     const loadShareUsers = async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/session/${sessionId}/users`, {
+        const res = await fetch(`${apiUrl}/api/v1/session/${sessionId}/members`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 

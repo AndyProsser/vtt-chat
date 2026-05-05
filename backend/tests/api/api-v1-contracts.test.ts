@@ -50,11 +50,29 @@ function makeAudioRouter() {
   return router
 }
 
+function makeLivekitRouter() {
+  const router = Router()
+  router.post('/token', (_req, res) => {
+    res.status(200).json({ scope: 'livekit-v1', route: 'token' })
+  })
+  return router
+}
+
+function makeIntegrationsRouter() {
+  const router = Router()
+  router.post('/external/sync', (_req, res) => {
+    res.status(200).json({ scope: 'integrations-v1', route: 'external/sync' })
+  })
+  return router
+}
+
 vi.mock('@/api/auth-v1.routes', () => ({ default: makeAuthV1Router() }))
 vi.mock('@/api/session.routes', () => ({ default: makeSessionRouter() }))
 vi.mock('@/api/presence.routes', () => ({ default: makePresenceRouter() }))
 vi.mock('@/api/rooms.routes', () => ({ default: makeRoomsRouter() }))
 vi.mock('@/api/audio.routes', () => ({ default: makeAudioRouter() }))
+vi.mock('@/api/livekit.routes', () => ({ default: makeLivekitRouter() }))
+vi.mock('@/api/integrations.routes', () => ({ default: makeIntegrationsRouter() }))
 
 vi.mock('@/api/auth.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/chat.routes', () => ({ default: makeEmptyRouter() }))
@@ -62,10 +80,8 @@ vi.mock('@/api/admin.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/notes.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/campaign.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/users.routes', () => ({ default: makeEmptyRouter() }))
-vi.mock('@/api/livekit.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/telemetry.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/platform.routes', () => ({ default: makeEmptyRouter() }))
-vi.mock('@/api/integrations.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/metadata.routes', () => ({ default: makeEmptyRouter() }))
 
 import apiRoutes from '../../src/api'
@@ -128,5 +144,21 @@ describe('api index v1 contracts', () => {
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ scope: 'audio-v1', route: 'catalog/presets' })
+  })
+
+  it('mounts /api/v1/livekit/token', async () => {
+    const app = buildApp()
+    const res = await request(app).post('/api/v1/livekit/token')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ scope: 'livekit-v1', route: 'token' })
+  })
+
+  it('mounts /api/v1/integrations/external/sync', async () => {
+    const app = buildApp()
+    const res = await request(app).post('/api/v1/integrations/external/sync')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ scope: 'integrations-v1', route: 'external/sync' })
   })
 })

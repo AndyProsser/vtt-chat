@@ -183,7 +183,7 @@ export function useLiveKit(
         throw new Error('Missing auth token for LiveKit token request')
       }
 
-      const response = await fetch('/api/livekit/token', {
+      const response = await fetch('/api/v1/livekit/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

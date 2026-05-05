@@ -230,7 +230,7 @@ dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {})
 
 **Needed but not yet documented:**
 
-- `POST /api/livekit/token` - Generate LiveKit access token
+- `POST /api/v1/livekit/token` - Generate LiveKit access token
 - `GET /api/livekit/room/:roomId` - Get room info (optional)
 - `POST /api/audio/effect` - Apply audio effect (broadcasts to WS)
 - `POST /api/audio/override` - DM apply override (broadcasts to WS)

@@ -459,7 +459,7 @@ Goal:
 Completed so far:
 
 - Audio event types are registered in backend/frontend WS dispatcher flows.
-- LiveKit token issuance endpoint is implemented (`POST /api/livekit/token`) with auth/session-membership checks.
+- LiveKit token issuance endpoint is implemented (`POST /api/v1/livekit/token`) with auth/session-membership checks.
 - LiveKit token generation service is implemented (server SDK integration + token grant construction).
 - Frontend LiveKit connection hook is implemented (token fetch, connect/disconnect, participant/track lifecycle).
 - Frontend audio engine hook is implemented with WebAudio graph setup and effect stack application logic.
@@ -669,7 +669,7 @@ Completed so far:
 - Stage 10.3 kickoff started: telemetry client-events now persist to durable backend sink storage and admin logs drill-down now supports source-backed detail retrieval for persisted telemetry/audit entries.
 - Stage 10.3 expansion delivered: admin logs now have dedicated UI interaction coverage (filtering, sorting, pagination, drill-down), runtime diagnostic events are persisted into durable stream storage for drill-down parity, and settings now expose retention/rotation controls for telemetry/diagnostic sink policies.
 - Stage 10.4 delivered in runtime:
-  - Backend admin authorization routes now implemented: `GET /api/admin/integrations/systems`, `POST /api/admin/integrations/systems/:system/authorize`, `POST /api/admin/integrations/systems/:system/block`, `PATCH /api/admin/integrations/systems/:system`.
+  - Backend admin authorization routes now implemented: `GET /admin/api/v1/integrations/systems`, `POST /admin/api/v1/integrations/systems/:system/authorize`, `POST /admin/api/v1/integrations/systems/:system/block`, `PATCH /admin/api/v1/integrations/systems/:system`.
   - Guest-auth and external-log-ingestion guardrails now enforce integration authorization state (`INTEGRATION_NOT_AUTHORIZED`) for blocked/unrecognized systems.
   - Admin UI now includes an `Integrations` page with authorize/log-only/block actions plus notes updates.
   - Automated coverage added for route authorization/state transitions, endpoint guardrails, and admin UI interactions.
@@ -862,7 +862,7 @@ Completed scope:
 - [x] `POST /api/auth/extension/preflight` and `POST /api/auth/extension/guest-login` are implemented with external-system authorization enforcement.
 - [x] `POST /api/auth/upgrade` guest-to-full upgrade flow is implemented.
 - [x] Spectator join/waitlist touchpoints are implemented: `POST /api/auth/spectator/guest-join` and `GET /api/campaigns/:campaignId/spectator/waitlist-status`.
-- [x] External sync/link touchpoints are implemented: `POST /api/integrations/external/sync`, `GET /api/campaigns/:campaignId/external-links`, `POST /api/campaigns/:campaignId/external-links`.
+- [x] External sync/link touchpoints are implemented: `POST /api/v1/integrations/external/sync`, `GET /api/campaigns/:campaignId/external-links`, `POST /api/campaigns/:campaignId/external-links`.
 - [x] Frontend route surfaces are implemented for `/join/:code`, `/watch/:code`, and `/browse`.
 - [x] Integration touchpoint coverage is present in repo-owned tests:
   - `backend/tests/api/guest-auth-routes.test.ts`
