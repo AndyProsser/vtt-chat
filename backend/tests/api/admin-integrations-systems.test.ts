@@ -112,7 +112,7 @@ describe('admin integrations systems endpoints', () => {
     const app = buildApp()
 
     const response = await request(app)
-      .get('/api/admin/integrations/systems')
+      .get('/api/admin/v1/integrations/systems')
       .set('Authorization', 'Bearer admin-token')
 
     expect(response.status).toBe(200)
@@ -133,7 +133,7 @@ describe('admin integrations systems endpoints', () => {
     })
 
     const response = await request(app)
-      .post('/api/admin/integrations/systems/dndbeyond/authorize')
+      .post('/api/admin/v1/integrations/systems/dndbeyond/authorize')
       .set('Authorization', 'Bearer readonly-token')
 
     expect(response.status).toBe(403)
@@ -144,14 +144,14 @@ describe('admin integrations systems endpoints', () => {
     const app = buildApp()
 
     const authorizeResponse = await request(app)
-      .post('/api/admin/integrations/systems/dndbeyond/authorize')
+      .post('/api/admin/v1/integrations/systems/dndbeyond/authorize')
       .set('Authorization', 'Bearer admin-token')
 
     expect(authorizeResponse.status).toBe(200)
     expect(authorizeResponse.body.system.authorizationState).toBe('AUTHORIZED')
 
     const blockResponse = await request(app)
-      .post('/api/admin/integrations/systems/dndbeyond/block')
+      .post('/api/admin/v1/integrations/systems/dndbeyond/block')
       .set('Authorization', 'Bearer admin-token')
 
     expect(blockResponse.status).toBe(200)
@@ -163,7 +163,7 @@ describe('admin integrations systems endpoints', () => {
     const app = buildApp()
 
     const response = await request(app)
-      .patch('/api/admin/integrations/systems/roll20')
+      .patch('/api/admin/v1/integrations/systems/roll20')
       .set('Authorization', 'Bearer admin-token')
       .send({
         authorizationState: 'LOG_ONLY',

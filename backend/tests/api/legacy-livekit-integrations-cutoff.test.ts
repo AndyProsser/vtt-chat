@@ -1,16 +1,8 @@
 import express from 'express'
 import request from 'supertest'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-const originalLegacyFlag = process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS
-
-async function buildApiAppWithLegacyFlag(flagValue: string | undefined) {
-  if (flagValue === undefined) {
-    delete process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS
-  } else {
-    process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS = flagValue
-  }
-
+async function buildApiApp() {
   vi.resetModules()
 
   const apiRoutes = (await import('../../src/api')).default
@@ -20,18 +12,9 @@ async function buildApiAppWithLegacyFlag(flagValue: string | undefined) {
   return app
 }
 
-afterEach(() => {
-  if (originalLegacyFlag === undefined) {
-    delete process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS
-  } else {
-    process.env.ENABLE_LEGACY_LIVEKIT_INTEGRATIONS_PATHS = originalLegacyFlag
-  }
-  vi.resetModules()
-})
-
-describe('legacy livekit/integrations cutoff flag', () => {
-  it('returns 404 for legacy livekit/integrations routes when cutoff flag is disabled', async () => {
-    const app = await buildApiAppWithLegacyFlag('0')
+describe('legacy livekit/integrations route retirement', () => {
+  it('returns 404 for deprecated legacy livekit/integrations/admin-integrations routes', async () => {
+    const app = await buildApiApp()
 
     const livekitLegacy = await request(app).get('/api/livekit/health')
     const integrationsLegacy = await request(app).post('/api/integrations/external/sync').send({})
@@ -42,8 +25,8 @@ describe('legacy livekit/integrations cutoff flag', () => {
     expect(adminIntegrationsLegacy.status).toBe(404)
   })
 
-  it('keeps v1 livekit/integrations routes mounted when cutoff flag is disabled', async () => {
-    const app = await buildApiAppWithLegacyFlag('0')
+  it('keeps v1 livekit/integrations/admin-integrations routes mounted', async () => {
+    const app = await buildApiApp()
 
     const livekitV1 = await request(app).get('/api/v1/livekit/health')
     const integrationsV1 = await request(app).post('/api/v1/integrations/external/sync').send({})

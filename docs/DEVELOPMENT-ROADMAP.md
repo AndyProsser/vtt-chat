@@ -9,9 +9,11 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
-This is the canonical development roadmap for feature-stage delivery and progress tracking.
+Status: Deprecated for active planning. This document is retained as feature-stage history and delivery log.
+
+Active planning source of truth: [ROADMAP.md](../ROADMAP.md)
 
 ---
 
@@ -895,7 +897,7 @@ Goal:
 
 - Build a backend debt matrix for all remaining stage stubs/placeholders and classify each file as `implement`, `remove`, or `defer`.
 - Include owner, target stage, and effort estimate for each item.
-- Current execution artifact: [docs/operations/STAGE-14-BACKEND-DEBT-MATRIX.md](operations/STAGE-14-BACKEND-DEBT-MATRIX.md).
+- Current execution artifact: [docs/operations/BACKEND-DEBT-MATRIX.md](operations/BACKEND-DEBT-MATRIX.md).
 - Exit criteria:
   - A single source-of-truth implementation backlog exists for all backend stubs/placeholders. ✅
 
@@ -1017,46 +1019,35 @@ Goal:
 
 Priority 1:
 
-- Maintain Stage 15 regression safety: keep guest/spectator/auth-flow suites green while ongoing feature work lands.
-- Current execution status: active. Nightly/merge-gate expectation remains full backend/frontend/admin test and lint/build green.
-- Immediate next action: add a single workspace-level CI check artifact that reports test + coverage deltas per package on each merge.
+- Stage 6/7 hardening completion: broader multi-client e2e/load coverage for reconnect/recovery and transition fanout behavior.
+- Current execution status: active (explicitly prioritized).
+- Immediate next action: add multi-client reconnect/recovery/fanout scenarios with failure-injection and soak assertions across websocket + presence + room transitions.
 
 Priority 2:
 
-- Expand admin SPA interaction and admin route integration/e2e coverage; normalize admin codebase type architecture.
-- Current execution status: complete. Route-level integration/e2e flows added for all four areas: users (list/filter/export/import-preview), telemetry logs (list/filter/sort/drill-down), campaign actions (list/rooms/session-end/archive/restore), and settings (GET/PUT/backup-trigger/ops-export). Backend suite now at `46` files / `297` tests passing.
-- Admin type architecture normalized: all domain types centralized under `admin/src/types/` (nine domain modules + barrel index). Feature-local `types.ts` shim files removed. `@/` path alias configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts` so all admin imports use `@/types/*`. `AdminRole` is the single canonical definition in `types/auth.ts`.
-- Immediate next action: no further action required for this priority — advance to Priority 3.
+- Admin console operations UX review: conduct a design/interaction review to ensure best-practice operations standards.
+- Current execution status: queued.
+- Immediate next action: run a focused review across information hierarchy, task completion flows, alerting clarity, auditability visibility, failure-state handling, and accessibility for high-stress operator workflows.
 
 Priority 3:
 
-- Cross-stage observability hardening: telemetry durability operations (rotation/export/restart verification) and operator drill-down ergonomics.
+- Telemetry component definition: explicitly define what telemetry is tracked, why each signal exists, and how operators/developers use it.
 - Current execution status: queued.
-- Immediate next action: add restart-survival verification tests for telemetry/diagnostic sinks and document operator runbook checks.
+- Immediate next action: publish a telemetry matrix covering:
+  - signal category and event name
+  - source surface and trigger condition
+  - retention/sampling/sensitivity policy
+  - consuming dashboards/alerts/runbooks
+  - operational decision enabled by the signal
 
 Priority 4:
 
-- Stage 6 presence/rooms and Stage 7 runtime integration hardening follow-up: multi-client validation, reconnect coverage, and durable audio-state recovery soak testing.
-- Current execution status: queued.
-- Immediate next action: add multi-client reconnect soak scenario and audio-state persistence/recovery soak assertions.
+- Remaining previously tracked priority items are intentionally deprioritized for now due to significant frontend design/refactor changes.
+- Current execution status: on hold unless reintroduced by explicit planning update.
 
 Priority 5:
 
-- Extension bridge milestones (13.4/13.5) in extension repository execution track.
-- Current execution status: externally tracked.
-- Immediate next action: keep this roadmap linked to extension milestone status snapshots only (no in-repo implementation drift).
-
-Priority 6:
-
-- Contract-alignment follow-up across architecture/API docs as implementation evolves.
-- Current execution status: active follow-up.
-- Immediate next action: run a docs parity pass for admin/auth/handoff and telemetry route behavior against current runtime and tests.
-
-Priority 7:
-
-- Ongoing UI modernization maintenance and regression control.
-- Current execution status: ongoing maintenance mode.
-- Immediate next action: continue enforcing migration boundaries and coverage-backed regression checks for touched UI surfaces.
+- No additional active items in this roadmap section.
 
 ---
 
@@ -1064,8 +1055,8 @@ Priority 7:
 
 Key risks:
 
-- Admin telemetry mixes some real signals with proxy/synthetic values in dashboard and status cards — hardening tracked under Priority 3.
-- Multi-client end-to-end validation for presence/rooms reconnect and audio state recovery remains queued under Priority 4.
+- Admin telemetry mixes some real signals with proxy/synthetic values in dashboard and status cards — definition/hardening tracked under Priority 3.
+- Multi-client end-to-end validation for presence/rooms reconnect and audio state recovery is actively prioritized under Priority 1.
 - UI specification breadth (layout, motion, theming, loading, recovery, error handling) may drift without stage-specific delivery checkpoints.
 - Extension bridge domains (13.4/13.5) remain intentionally out-of-repo and are tracked in `docs/extension/EXTENSION-ROADMAP.md`.
 - Contract-vs-concept terminology drift in docs must continue to be managed carefully.
@@ -1124,7 +1115,7 @@ The following references support the corrected stage labels and current model te
 
 - 2026-05: Stage 14.2 pass 1 completed. Removed 29 high-confidence unused backend placeholders/stubs (`infra/*`, legacy `types/*`, legacy `ws/*` stubs, and unused stub API route files), reducing backend stub/placeholder footprint from 50 to 21 files. Verification: backend tests and workspace lint passing.
 
-- 2026-05: Stage 14 started. Completed Stage 14.1 inventory and ownership lock with a file-level backend debt matrix (`docs/operations/STAGE-14-BACKEND-DEBT-MATRIX.md`) classifying all remaining backend stage stubs/placeholders into implement/remove actions and dependency-ordered execution.
+- 2026-05: Stage 14 started. Completed Stage 14.1 inventory and ownership lock with a file-level backend debt matrix (`docs/operations/BACKEND-DEBT-MATRIX.md`) classifying all remaining backend stage stubs/placeholders into implement/remove actions and dependency-ordered execution.
 
 - 2026-05: Stage 13 core closure recorded. Marked Stage 13.1-13.3 as complete for main-platform scope (backend guest/spectator auth, external identity linking, and frontend guest/spectator UX), and moved Stage 13.4-13.5 extension bridge milestones to `docs/extension/EXTENSION-ROADMAP.md` for tracking in the extension repository.
 

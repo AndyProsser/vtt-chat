@@ -1,8 +1,8 @@
-# Stage 14 Backend Debt Matrix
+# Backend Debt Matrix
 
 Last updated: 2026-05-02
 
-This document is the execution matrix for Stage 14.1.
+This document is the execution matrix for backend debt inventory and closure.
 It classifies all backend stub/placeholder files found in backend src and assigns an action:
 
 - implement: keep file and replace stub content with runtime implementation

@@ -84,6 +84,8 @@ Known readiness gap classes:
 
 - Multi-client reconnect and soak hardening (presence/rooms/audio)
 - Telemetry durability and restart-survival operational checks
+- Telemetry signal definition clarity (what is tracked, why it matters, and how it is consumed)
+- Admin console operations UX review against best-practice operator workflows
 - Docs parity and operator-facing playbook consistency
 
 ---
@@ -92,12 +94,13 @@ Known readiness gap classes:
 
 | ID  | Workstream                  | Status      | Scope                                                                            |
 | --- | --------------------------- | ----------- | -------------------------------------------------------------------------------- |
-| W1  | Hardening and Reliability   | Done        | Multi-client reconnect, recovery soak, audio-state durability validation         |
+| W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, fanout/load validation, audio durability  |
 | W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                |
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
 | W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts |
 | W6  | Refactor and Simplification | In Progress | Zustand consistency, component/file simplification, naming cleanup, API cleanup  |
+| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows |
 
 ---
 
@@ -127,6 +130,7 @@ Known readiness gap classes:
 2. Add audio-state persistence and recovery soak assertions around `GET /api/audio/state/:sessionId`. - Done
 3. Verify reconnect fanout behavior under concurrent transitions. - Done
 4. Capture pass/fail thresholds and flaky-test handling policy. - Done
+5. Expand broader multi-client e2e/load matrix for reconnect/recovery and transition fanout behavior (network loss, restart, burst reconnect, and cross-session isolation). - In Progress
 
 Definition of done:
 
@@ -151,11 +155,13 @@ Definition of done:
 2. Finalize operator runbooks for backup/restore, telemetry verification, and incident triage.
 3. Add CI/release check for Prisma schema and migration parity (`prisma migrate status`).
 4. Validate environment/config checklists for deployment and recovery drills.
+5. Publish telemetry component matrix that defines what is tracked, why each signal is collected, and how the signal is consumed in dashboards/alerts/runbooks.
 
 Definition of done:
 
 - Operations checks are scripted or procedural with reproducible outcomes.
 - Runbooks are current and validated against runtime behavior.
+- Telemetry matrix is current and maps each signal to an operational decision or quality gate.
 
 ### W4: UI Modernization Completion
 
@@ -197,12 +203,63 @@ Definition of done:
 3. Align frontend file names and folder structure with actual component/domain responsibilities.
 4. Refactor backend API route and service function naming for consistency and maintainability.
 5. Add migration-safe compatibility checks and test coverage for naming and structural refactors.
+6. Complete backend API route review and normalization:
+   - inventory all remaining legacy route mounts/aliases
+   - define canonical v1 route map and deprecation policy for compatibility paths
+   - retire or explicitly timebox legacy routes with contract tests guarding expected behavior
+
+Short API normalization checklist (actionable now):
+
+1. Snapshot current mounts from [backend/src/api/index.ts](backend/src/api/index.ts) and classify as canonical (`/v1/*`) vs compatibility (legacy).
+2. For each compatibility mount (`/auth`, `/platform`, `/chat`, `/admin`, `/notes`, `/campaigns`, `/users`, `/telemetry`, `/metadata`), decide: keep temporarily (with sunset date) or migrate immediately.
+3. Verify canonical coverage is complete for active families currently mounted at `/v1/auth`, `/v1/session`, `/v1/presence`, `/v1/rooms`, `/v1/audio`, `/v1/livekit`, and `/v1/integrations`.
+4. Add/maintain route-contract tests that assert canonical paths are available and deprecated legacy paths behave as intentionally defined (supported or 404).
+5. Publish a migration map and changelog notes for frontend/admin/shared clients before removing any compatibility path.
+6. Component/service normalization is part of this backend legacy refactor: each route family maps to its canonical backend service/module boundary for ongoing maintenance.
+
+API normalization tracking table (update during each PR):
+
+Route Family is the service-owner key for this table.
+
+| Route Family | Current Path(s)     | Canonical Path     | Sunset Date |
+| ------------ | ------------------- | ------------------ | ----------- |
+| Auth         | `/auth`, `/v1/auth` | `/v1/auth`         | TBD         |
+| Session      | `/v1/session`       | `/v1/session`      | n/a         |
+| Presence     | `/v1/presence`      | `/v1/presence`     | n/a         |
+| Rooms        | `/v1/rooms`         | `/v1/rooms`        | n/a         |
+| Audio        | `/v1/audio`         | `/v1/audio`        | n/a         |
+| LiveKit      | `/v1/livekit`       | `/v1/livekit`      | n/a         |
+| Integrations | `/v1/integrations`  | `/v1/integrations` | n/a         |
+| Platform     | `/platform`         | TBD                | TBD         |
+| Chat         | `/chat`             | TBD                | TBD         |
+| Admin        | `/admin`            | TBD                | TBD         |
+| Notes        | `/notes`            | TBD                | TBD         |
+| Campaigns    | `/campaigns`        | TBD                | TBD         |
+| Users        | `/users`            | TBD                | TBD         |
+| Telemetry    | `/telemetry`        | TBD                | TBD         |
+| Metadata     | `/metadata`         | TBD                | TBD         |
 
 Definition of done:
 
 - Cross-component runtime state uses canonical store selectors for shared concerns.
 - Targeted frontend/backend modules are renamed and reorganized without behavior regressions.
 - Refactor-related tests pass and coverage trend improves on changed modules.
+- API route inventory is documented, canonical v1 mapping is complete, and legacy compatibility paths are either retired or explicitly tracked with deprecation notes and tests.
+
+### W7: Admin Operations UX Review
+
+1. Review admin console information hierarchy for operator-critical tasks (triage, user action, incident response, and settings safety).
+2. Review task completion flows for high-impact operations (suspend/restore, force logout, archive/restore, backup/export, and integration authorization).
+3. Review alerting and status clarity to ensure incidents are visible, prioritized, and actionable.
+4. Review auditability visibility so operators can trace action -> effect -> evidence without ambiguity.
+5. Review failure-state UX (timeouts, partial success, retries, and rollback guidance) for operator confidence under stress.
+6. Review accessibility and keyboard-first workflows for operational efficiency.
+
+Definition of done:
+
+- Admin operations UX findings are documented with severity, rationale, and recommended remediation.
+- Critical/high findings are scheduled or resolved with verification notes.
+- Updated operator flow guidance is reflected in docs and test checklists.
 
 ---
 
@@ -214,11 +271,11 @@ Definition of done:
 
 ### M2: Operational Confidence
 
-- Target: complete W3 runbook + telemetry durability validation
+- Target: complete W3 runbook + telemetry durability validation + telemetry matrix (what/why/how)
 
 ### M3: UX and Documentation Readiness
 
-- Target: complete W4 regression closure, W5 user-doc publishing, and W6 panel/refactor baseline
+- Target: complete W4 regression closure, W5 user-doc publishing, W6 panel/refactor baseline, and W7 admin operations UX review
 
 ### M4: Release Readiness Review
 

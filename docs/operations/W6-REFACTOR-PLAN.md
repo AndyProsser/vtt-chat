@@ -18,7 +18,7 @@ W6 focuses on normalizing naming conventions, consolidating code organization, a
   - Admin integrations usage moved to v1 path.
   - Frontend auth/session/rooms/audio/presence path usage migrated to v1 aliases for active runtime surfaces.
   - Legacy cutoff flag coverage added to assert legacy livekit/integrations 404 behavior when disabled.
-  - Stage-labeled backend telemetry test filename removed in favor of behavior-based naming.
+  - Legacy milestone-labeled backend telemetry test filename removed in favor of behavior-based naming.
 - In progress:
   - Session recovery-hardening validation remains pending in later phases.
   - Dedicated `uiSlice` extracted; `commandCenterSlice` now serves as a compatibility shim.
@@ -265,7 +265,7 @@ frontend/src/components/audio/
 
 - [x] Full suite tests (backend + frontend)
 - [x] Coverage reports; confirm no regression
-- [ ] Remove deprecated route handlers
+- [x] Remove deprecated route handlers
 - [x] Update CHANGELOG.md with migration notes
 
 ---
