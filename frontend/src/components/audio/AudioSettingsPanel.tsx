@@ -9,7 +9,7 @@ interface MediaDeviceOption {
 
 interface AudioSettingsPanelProps {
   device: AudioDeviceState
-  transmittedMicLevel: number
+  localMicLevel: number
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void
   onClose: () => void
 }
@@ -23,7 +23,7 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
 
 export function AudioSettingsPanel({
   device,
-  transmittedMicLevel,
+  localMicLevel,
   onDeviceChange,
   onClose,
 }: AudioSettingsPanelProps) {
@@ -113,7 +113,7 @@ export function AudioSettingsPanel({
             <span
               className="audio-settings-panel__mic-meter-fill"
               style={{
-                width: `${Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)}%`,
+                width: `${Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)}%`,
               }}
             />
           </div>

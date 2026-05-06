@@ -10,13 +10,12 @@
  *    into the audio engine automatically (handled inside useAudioEngine).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
 import { Role } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
-import { logger } from '../../utils/logger'
 import { AudioDevicePanel } from './AudioDevicePanel'
 import { AudioSettingsPanel } from './AudioSettingsPanel'
 import '../../styles/components/audio/AudioPanel.css'
@@ -31,21 +30,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
-  const meterDebugRef = useRef<{ lastLogTs: number; zeroFrames: number }>({
-    lastLogTs: 0,
-    zeroFrames: 0,
-  })
-  const tracePrevRef = useRef<{
-    roomId: string
-    roomState: string
-    sharedConnectionState: string
-    connectionState: string
-    isConnected: boolean
-    isConnecting: boolean
-    statusState: string
-    deviceEnabled: boolean
-    microphoneOn: boolean
-  } | null>(null)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream) => {
@@ -179,7 +163,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         ? (fallbackTrack.mediaStreamTrack as MediaStreamTrack)
         : undefined)
 
-    const startMeterFromTrack = (track: MediaStreamTrack, sourceLabel: string) => {
+    const startMeterFromTrack = (track: MediaStreamTrack) => {
       const audioContext = new (
         window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -233,42 +217,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         smoothed = smoothed * 0.65 + calibrated * 0.35
         setLocalTransmitLevel(smoothed)
 
-        const now = performance.now()
-        if (calibrated < 0.001) {
-          meterDebugRef.current.zeroFrames += 1
-        } else {
-          meterDebugRef.current.zeroFrames = 0
-        }
-
-        if (now - meterDebugRef.current.lastLogTs > 1000) {
-          meterDebugRef.current.lastLogTs = now
-          console.debug('[audio-meter] sample', {
-            ctxState: audioContext.state,
-            localTrackMuted: localTrack?.isMuted,
-            mediaTrackEnabled: track.enabled,
-            mediaTrackMuted: track.muted,
-            mediaTrackReadyState: track.readyState,
-            source: sourceLabel,
-            rms: Number(rms.toFixed(4)),
-            spectral: Number(spectral.toFixed(4)),
-            combined: Number(combined.toFixed(4)),
-            calibrated: Number(calibrated.toFixed(4)),
-            smoothed: Number(smoothed.toFixed(4)),
-            zeroFrames: meterDebugRef.current.zeroFrames,
-            gate: {
-              microphoneOn: device.microphoneOn,
-              pttEnabled: device.pttEnabled,
-              pttActive,
-            },
-            settings: {
-              autoGainEnabled: device.autoGainEnabled,
-              noiseFilterLevel: device.noiseFilterLevel,
-              micGain: device.micGain,
-              adjustedFloor: Number(adjustedFloor.toFixed(4)),
-            },
-          })
-        }
-
         rafId = window.requestAnimationFrame(sampleLevel)
       }
 
@@ -284,27 +232,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
 
     if (!mediaStreamTrack) {
-      console.debug('[audio-meter] no local media stream track yet', {
-        microphoneOn: device.microphoneOn,
-        pttEnabled: device.pttEnabled,
-        pttActive,
-        hasLocalInputTrack: Boolean(localInputTrack),
-        hasLocalAudioTrack: Boolean(localTrack),
-        hasRoom: Boolean(livekit.room),
-        localAudioPublications: localPublications.length,
-        publicationTracks: localPublications
-          .map((publication) => ({
-            sid: publication.trackSid,
-            hasTrack: Boolean(publication.track),
-            muted: publication.isMuted,
-            source: publication.source,
-          }))
-          .slice(0, 3),
-      })
-
-      if (device.microphoneOn) {
-        console.warn('[audio-meter] mic is ON but no local track/publication is available')
-
+      const shouldPreviewWhileMuted = settingsOpen && !device.microphoneOn
+      if (device.microphoneOn || shouldPreviewWhileMuted) {
         let cancelled = false
         let cleanupMeter: () => void = () => {}
         let fallbackStream: MediaStream | null = null
@@ -329,16 +258,10 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
             }
             fallbackStream = stream
             const fallbackInputTrack = stream.getAudioTracks()[0]
-            console.debug('[audio-meter] fallback userMedia meter source attached', {
-              label: fallbackInputTrack?.label,
-              readyState: fallbackInputTrack?.readyState,
-            })
-            cleanupMeter = startMeterFromTrack(fallbackInputTrack, 'fallbackUserMedia')
+            cleanupMeter = startMeterFromTrack(fallbackInputTrack)
           })
-          .catch((error) => {
-            console.warn('[audio-meter] fallback userMedia meter source failed', {
-              error: error instanceof Error ? error.message : String(error),
-            })
+          .catch(() => {
+            // Ignore capture failures; meter remains at zero.
           })
 
         return () => {
@@ -349,14 +272,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       }
       return
     }
-    return startMeterFromTrack(
-      mediaStreamTrack,
-      localInputTrack
-        ? 'localInputTrack'
-        : localTrack?.mediaStreamTrack
-          ? 'localAudioTrack'
-          : 'publicationFallback'
-    )
+    return startMeterFromTrack(mediaStreamTrack)
   }, [
     livekit.localAudioTrack,
     livekit.localInputTrack,
@@ -368,6 +284,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     device.autoGainEnabled,
     device.noiseFilterLevel,
     device.micGain,
+    settingsOpen,
   ])
 
   const livekitRoomState = String(livekit.room?.state ?? '').toLowerCase()
@@ -389,48 +306,10 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       ? 'connecting'
       : 'disconnected'
   const isVoiceConnected = canonicalIsConnected
-
-  useEffect(() => {
-    const nextSnapshot = {
-      roomId,
-      roomState: livekitRoomState || 'none',
-      sharedConnectionState: sharedConnectionState || 'none',
-      connectionState: livekit.connectionState,
-      isConnected: livekit.isConnected,
-      isConnecting: livekit.isConnecting,
-      statusState,
-      deviceEnabled: device.enabled,
-      microphoneOn: device.microphoneOn,
-    }
-
-    const prevSnapshot = tracePrevRef.current
-    const changed =
-      !prevSnapshot ||
-      prevSnapshot.roomId !== nextSnapshot.roomId ||
-      prevSnapshot.roomState !== nextSnapshot.roomState ||
-      prevSnapshot.sharedConnectionState !== nextSnapshot.sharedConnectionState ||
-      prevSnapshot.connectionState !== nextSnapshot.connectionState ||
-      prevSnapshot.isConnected !== nextSnapshot.isConnected ||
-      prevSnapshot.isConnecting !== nextSnapshot.isConnecting ||
-      prevSnapshot.statusState !== nextSnapshot.statusState ||
-      prevSnapshot.deviceEnabled !== nextSnapshot.deviceEnabled ||
-      prevSnapshot.microphoneOn !== nextSnapshot.microphoneOn
-
-    if (changed) {
-      logger.debug('AudioPanel.trace', 'LiveKit/device transition', nextSnapshot)
-      tracePrevRef.current = nextSnapshot
-    }
-  }, [
-    roomId,
-    livekitRoomState,
-    sharedConnectionState,
-    livekit.connectionState,
-    livekit.isConnected,
-    livekit.isConnecting,
-    statusState,
-    device.enabled,
-    device.microphoneOn,
-  ])
+  const liveKitConnectionKey =
+    sharedLiveKitState?.key ?? buildLiveKitConnectionKey(sessionId, roomId, 'room')
+  const hasLocalPublication = sharedLiveKitState?.hasLocalPublication ?? false
+  const liveKitError = sharedLiveKitState?.error ?? livekit.error
 
   useEffect(() => {
     audioEngine.setLocalGain(device.volumeLevel / 100)
@@ -516,40 +395,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
   const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
 
-  useEffect(() => {
-    if (!device.microphoneOn) return
-
-    const publicationFallback = Array.from(
-      livekit.room?.localParticipant.audioTrackPublications?.values?.() ?? []
-    ).find((publication) => publication.track)
-    const effectiveTrackPresent = Boolean(
-      livekit.localInputTrack || livekit.localAudioTrack || publicationFallback?.track
-    )
-    const publicationCount = livekit.room?.localParticipant.audioTrackPublications?.size ?? 0
-
-    console.debug('[audio-meter] gate/output', {
-      microphoneOn: device.microphoneOn,
-      pttEnabled: device.pttEnabled,
-      pttActive,
-      localTransmitLevel: Number(localTransmitLevel.toFixed(4)),
-      transmittedMicLevel: Number(transmittedMicLevel.toFixed(4)),
-      localInputTrackPresent: Boolean(livekit.localInputTrack),
-      localTrackPresent: Boolean(livekit.localAudioTrack),
-      publicationTrackPresent: Boolean(publicationFallback?.track),
-      effectiveTrackPresent,
-      publicationCount,
-    })
-  }, [
-    device.microphoneOn,
-    device.pttEnabled,
-    pttActive,
-    localTransmitLevel,
-    transmittedMicLevel,
-    livekit.localInputTrack,
-    livekit.localAudioTrack,
-    livekit.room,
-  ])
-
   const overrideItems = useMemo(() => {
     return Array.from(dmOverrides.values()).map((override) => {
       const shortUser = override.userId.slice(0, 8)
@@ -598,13 +443,13 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   return (
     <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">
-      {livekit.error && <p className="audio-panel__error">⚠ {livekit.error}</p>}
+      {liveKitError && <p className="audio-panel__error">⚠ {liveKitError}</p>}
 
       <div className="audio-panel__footer">
         {settingsOpen && (
           <AudioSettingsPanel
             device={device}
-            transmittedMicLevel={transmittedMicLevel}
+            localMicLevel={localTransmitLevel}
             onDeviceChange={setDevice}
             onClose={() => setSettingsOpen(false)}
           />
@@ -613,6 +458,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           device={device}
           statusState={statusState}
           isVoiceConnected={isVoiceConnected}
+          liveKitConnectionKey={liveKitConnectionKey}
+          hasLocalPublication={hasLocalPublication}
           isDm={effectiveRole === Role.DM}
           pttActive={pttActive}
           activeEffectsCount={activeEffectsCount}

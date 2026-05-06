@@ -46,6 +46,45 @@ export enum PresenceState {
   OFFLINE = 'OFFLINE',
 }
 
+// ---------------------------------------------------------------------------
+// Connection status canonical model
+// Used by frontend, backend, and admin to refer to the same state keys.
+// ---------------------------------------------------------------------------
+
+export enum CoreWsState {
+  CONNECTED = 'CONNECTED',
+  CONNECTING = 'CONNECTING',
+  ERROR = 'ERROR',
+}
+
+export enum LiveKitConnectionState {
+  CONNECTED = 'CONNECTED',
+  CONNECTING = 'CONNECTING',
+  ERROR = 'ERROR',
+  NOT_APPLICABLE = 'NOT_APPLICABLE',
+}
+
+export enum StatusContext {
+  OUTSIDE_CAMPAIGN = 'OUTSIDE_CAMPAIGN',
+  INSIDE_CAMPAIGN = 'INSIDE_CAMPAIGN',
+}
+
+export enum StatusIconState {
+  OK = 'OK',
+  OK_PARTIAL = 'OK_PARTIAL',
+  CONNECTING = 'CONNECTING',
+  DEGRADED_AUDIO = 'DEGRADED_AUDIO',
+  ERROR = 'ERROR',
+}
+
+export enum StatusColorKey {
+  GREEN = 'GREEN',
+  PALE_GREEN = 'PALE_GREEN',
+  YELLOW = 'YELLOW',
+  ORANGE = 'ORANGE',
+  RED = 'RED',
+}
+
 /**
  * Core Domain Objects (contracts, not full models)
  */

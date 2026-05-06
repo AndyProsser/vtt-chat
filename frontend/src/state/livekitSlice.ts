@@ -9,6 +9,7 @@ export interface LiveKitConnectionSnapshot {
   connectionState: ConnectionState
   isConnected: boolean
   isConnecting: boolean
+  hasLocalPublication: boolean
   updatedAt: number
   error?: string | null
 }

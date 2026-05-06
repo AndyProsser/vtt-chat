@@ -243,12 +243,37 @@
 .audio-panel__mode-pill {
   display: inline-flex;
   align-items: center;
+  gap: 0.32rem;
   border-radius: 999px;
   padding: 0.12rem 0.48rem;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.audio-panel__mode-pill-badge {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.22);
+}
+
+.audio-panel__mode-pill-badge[data-state='disconnected'] {
+  background: color-mix(in srgb, var(--color-text-muted) 80%, #334155 20%);
+}
+
+.audio-panel__mode-pill-badge[data-state='connecting'] {
+  background: color-mix(in srgb, var(--color-warn, #f59e0b) 84%, #ffffff 16%);
+}
+
+.audio-panel__mode-pill-badge[data-state='connected-idle'] {
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 82%, #ffffff 18%);
+}
+
+.audio-panel__mode-pill-badge[data-state='connected-publishing'] {
+  background: color-mix(in srgb, var(--color-success, #22c55e) 86%, #ffffff 14%);
 }
 
 .audio-panel__mode-pill.is-muted {

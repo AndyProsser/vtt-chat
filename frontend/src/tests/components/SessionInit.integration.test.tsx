@@ -283,6 +283,7 @@ describe('SessionInit integration', () => {
         connectionState: ConnectionState.Connecting,
         isConnected: false,
         isConnecting: true,
+        hasLocalPublication: false,
         error: null,
       })
     })
@@ -299,6 +300,7 @@ describe('SessionInit integration', () => {
         connectionState: ConnectionState.Connected,
         isConnected: true,
         isConnecting: false,
+        hasLocalPublication: true,
         error: null,
       })
     })

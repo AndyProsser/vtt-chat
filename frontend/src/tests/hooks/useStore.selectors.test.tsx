@@ -89,6 +89,7 @@ describe('useStore selectors', () => {
         connectionState: ConnectionState.Connected,
         isConnected: true,
         isConnecting: false,
+        hasLocalPublication: true,
         error: null,
       })
       store.upsertLiveKitConnection('broadcast-secondary', {
@@ -98,6 +99,7 @@ describe('useStore selectors', () => {
         connectionState: ConnectionState.Connecting,
         isConnected: false,
         isConnecting: true,
+        hasLocalPublication: false,
         error: 'pending',
       })
     })

@@ -12,6 +12,8 @@ interface AudioDevicePanelProps {
   device: AudioDeviceState
   statusState: 'connected' | 'connecting' | 'disconnected'
   isVoiceConnected: boolean
+  liveKitConnectionKey: string
+  hasLocalPublication: boolean
   isDm: boolean
   pttActive: boolean
   activeEffectsCount: number
@@ -30,6 +32,8 @@ export function AudioDevicePanel({
   device,
   statusState,
   isVoiceConnected,
+  liveKitConnectionKey,
+  hasLocalPublication,
   isDm,
   pttActive,
   activeEffectsCount,
@@ -57,6 +61,14 @@ export function AudioDevicePanel({
 
   const effectsOpen = effectsHovered
   const overridesOpen = overridesHovered
+  const lkBadgeState =
+    statusState === 'disconnected'
+      ? 'disconnected'
+      : statusState === 'connecting'
+        ? 'connecting'
+        : hasLocalPublication
+          ? 'connected-publishing'
+          : 'connected-idle'
   const primaryControlClass = device.pttEnabled
     ? `audio-panel__control audio-panel__control--ptt ${pttActive ? 'is-active' : ''}`
     : `audio-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
@@ -180,6 +192,12 @@ export function AudioDevicePanel({
 
       <span className={`audio-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
         {mutedLabel}
+        <span
+          className="audio-panel__mode-pill-badge"
+          data-state={lkBadgeState}
+          title={`LiveKit ${statusState}. ${hasLocalPublication ? 'Publishing' : 'Not publishing'}. Channel ${liveKitConnectionKey}`}
+          aria-label={`LiveKit ${statusState}. ${hasLocalPublication ? 'Publishing' : 'Not publishing'}. Channel ${liveKitConnectionKey}`}
+        />
       </span>
 
       {/* Spacer pushes right-side controls to the edge */}

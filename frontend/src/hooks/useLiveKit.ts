@@ -88,19 +88,34 @@ export function useLiveKit(
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
   const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+  const sharedLiveKitState = useStore((state) => state.livekitConnections[connectionKey])
   const localInputTrack = useStore((state) => state.livekitLocalInputTracks[connectionKey] ?? null)
   const device = useStore((state) => state.device)
+
+  const getHasLocalPublication = useCallback((targetRoom?: Room | null): boolean => {
+    const roomToCheck = targetRoom ?? roomRef.current
+    if (!roomToCheck) {
+      return false
+    }
+
+    return Array.from(roomToCheck.localParticipant.audioTrackPublications.values()).some(
+      (publication) => Boolean(publication.track)
+    )
+  }, [])
 
   const publishConnectionSnapshot = useCallback(
     (params: {
       connectionState: ConnectionState
       isConnected: boolean
       isConnecting: boolean
+      hasLocalPublication?: boolean
       error?: string | null
     }) => {
       if (!sessionId || !roomId) {
         return
       }
+
+      const previous = useStore.getState().livekitConnections[connectionKey]
 
       upsertLiveKitConnection(connectionKey, {
         sessionId,
@@ -109,6 +124,7 @@ export function useLiveKit(
         connectionState: params.connectionState,
         isConnected: params.isConnected,
         isConnecting: params.isConnecting,
+        hasLocalPublication: params.hasLocalPublication ?? previous?.hasLocalPublication ?? false,
         error: params.error,
       })
     },
@@ -257,6 +273,7 @@ export function useLiveKit(
       connectionState: ConnectionState.Connecting,
       isConnected: false,
       isConnecting: true,
+      hasLocalPublication: false,
       error: null,
     })
 
@@ -309,6 +326,7 @@ export function useLiveKit(
           connectionState: roomState,
           isConnected: nextIsConnected,
           isConnecting: nextIsConnecting,
+          hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
       }
@@ -334,6 +352,45 @@ export function useLiveKit(
           connectionState: ConnectionState.Disconnected,
           isConnected: false,
           isConnecting: false,
+          hasLocalPublication: false,
+          error: null,
+        })
+      })
+
+      nextRoom.on(RoomEvent.LocalTrackPublished, () => {
+        const activeRoom = roomRef.current ?? nextRoom
+        if (!activeRoom) {
+          return
+        }
+
+        const roomState = activeRoom.state
+        publishConnectionSnapshot({
+          connectionState: roomState,
+          isConnected: roomState === ConnectionState.Connected,
+          isConnecting:
+            roomState === ConnectionState.Connecting ||
+            roomState === ConnectionState.Reconnecting ||
+            roomState === ConnectionState.SignalReconnecting,
+          hasLocalPublication: getHasLocalPublication(activeRoom),
+          error: null,
+        })
+      })
+
+      nextRoom.on(RoomEvent.LocalTrackUnpublished, () => {
+        const activeRoom = roomRef.current ?? nextRoom
+        if (!activeRoom) {
+          return
+        }
+
+        const roomState = activeRoom.state
+        publishConnectionSnapshot({
+          connectionState: roomState,
+          isConnected: roomState === ConnectionState.Connected,
+          isConnecting:
+            roomState === ConnectionState.Connecting ||
+            roomState === ConnectionState.Reconnecting ||
+            roomState === ConnectionState.SignalReconnecting,
+          hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
       })
@@ -435,6 +492,7 @@ export function useLiveKit(
         connectionState: ConnectionState.Connected,
         isConnected: true,
         isConnecting: false,
+        hasLocalPublication: getHasLocalPublication(nextRoom),
         error: null,
       })
       isConnectingRef.current = false
@@ -475,6 +533,7 @@ export function useLiveKit(
             connectionState: ConnectionState.Disconnected,
             isConnected: false,
             isConnecting: false,
+            hasLocalPublication: false,
             error: null,
           })
           return
@@ -488,11 +547,13 @@ export function useLiveKit(
         connectionState: ConnectionState.Disconnected,
         isConnected: false,
         isConnecting: false,
+        hasLocalPublication: false,
         error: expectedDisconnect ? null : errorMsg,
       })
     }
   }, [
     fetchToken,
+    getHasLocalPublication,
     isExpectedDisconnectError,
     publishConnectionSnapshot,
     roomId,
@@ -516,35 +577,24 @@ export function useLiveKit(
       })
 
       const inputTrack = stream.getAudioTracks()[0]
-      console.debug('[livekit] mic capture track', {
-        label: inputTrack?.label,
-        enabled: inputTrack?.enabled,
-        muted: inputTrack?.muted,
-        readyState: inputTrack?.readyState,
-        constraints: inputTrack?.getConstraints?.(),
-        settings: inputTrack?.getSettings?.(),
-      })
 
       const audioTrack = new LocalAudioTrack(inputTrack)
       await activeRoom.localParticipant.publishTrack(audioTrack, {
         audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
       })
 
-      const publicationEntries = Array.from(
-        activeRoom.localParticipant.audioTrackPublications.values()
-      )
-      console.debug('[livekit] local audio publications after publish', {
-        count: publicationEntries.length,
-        entries: publicationEntries.map((publication) => ({
-          sid: publication.trackSid,
-          source: publication.source,
-          muted: publication.isMuted,
-          hasTrack: Boolean(publication.track),
-        })),
-      })
-
       setLocalAudioTrackState(audioTrack)
       setLiveKitLocalInputTrack(connectionKey, inputTrack)
+      publishConnectionSnapshot({
+        connectionState: activeRoom.state,
+        isConnected: activeRoom.state === ConnectionState.Connected,
+        isConnecting:
+          activeRoom.state === ConnectionState.Connecting ||
+          activeRoom.state === ConnectionState.Reconnecting ||
+          activeRoom.state === ConnectionState.SignalReconnecting,
+        hasLocalPublication: getHasLocalPublication(activeRoom),
+        error: null,
+      })
 
       logger.info('useLiveKit', 'Audio track published')
     } catch (err) {
@@ -554,7 +604,14 @@ export function useLiveKit(
       )
       throw err
     }
-  }, [connectionKey, getLocalAudioConstraints, setLiveKitLocalInputTrack, setLocalAudioTrackState])
+  }, [
+    connectionKey,
+    getHasLocalPublication,
+    getLocalAudioConstraints,
+    publishConnectionSnapshot,
+    setLiveKitLocalInputTrack,
+    setLocalAudioTrackState,
+  ])
 
   /**
    * Unpublish local audio track
@@ -568,9 +625,25 @@ export function useLiveKit(
       activeAudioTrack.stop()
       setLocalAudioTrackState(null)
       setLiveKitLocalInputTrack(connectionKey, null)
+      publishConnectionSnapshot({
+        connectionState: activeRoom.state,
+        isConnected: activeRoom.state === ConnectionState.Connected,
+        isConnecting:
+          activeRoom.state === ConnectionState.Connecting ||
+          activeRoom.state === ConnectionState.Reconnecting ||
+          activeRoom.state === ConnectionState.SignalReconnecting,
+        hasLocalPublication: getHasLocalPublication(activeRoom),
+        error: null,
+      })
       logger.info('useLiveKit', 'Audio track unpublished')
     }
-  }, [connectionKey, setLiveKitLocalInputTrack, setLocalAudioTrackState])
+  }, [
+    connectionKey,
+    getHasLocalPublication,
+    publishConnectionSnapshot,
+    setLiveKitLocalInputTrack,
+    setLocalAudioTrackState,
+  ])
 
   /**
    * Disconnect from the current room and clear local state.
@@ -608,6 +681,7 @@ export function useLiveKit(
       connectionState: ConnectionState.Disconnected,
       isConnected: false,
       isConnecting: false,
+      hasLocalPublication: false,
       error: null,
     })
 
@@ -667,11 +741,16 @@ export function useLiveKit(
     }
   }, [clearLiveKitConnection, connectionKey, roomId, sessionId])
 
+  const effectiveConnectionState = sharedLiveKitState?.connectionState ?? connectionState
+  const effectiveIsConnected = sharedLiveKitState?.isConnected ?? isConnected
+  const effectiveIsConnecting = sharedLiveKitState?.isConnecting ?? isConnecting
+  const effectiveError = sharedLiveKitState?.error ?? error
+
   return {
-    connectionState,
-    isConnected,
-    isConnecting,
-    error,
+    connectionState: effectiveConnectionState,
+    isConnected: effectiveIsConnected,
+    isConnecting: effectiveIsConnecting,
+    error: effectiveError,
     room,
     localAudioTrack,
     localInputTrack,
