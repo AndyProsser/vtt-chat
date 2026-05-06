@@ -19,9 +19,21 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       livekit:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:3000,path:'/health',timeout:2500},res=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
     networks:
       - vttnet
 
@@ -37,6 +49,18 @@ services:
         VITE_DEBUG_BUILD: ${VITE_DEBUG_BUILD:-true}
     container_name: vttchat-frontend
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:5173,path:'/',timeout:2500},res=>{process.exit(res.statusCode<500?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - vttnet
 
@@ -46,6 +70,18 @@ services:
       dockerfile: admin/Dockerfile
     container_name: vttchat-admin
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:5174,path:'/',timeout:2500},res=>{process.exit(res.statusCode<500?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - vttnet
 
@@ -74,6 +110,12 @@ services:
     command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}', '--appendonly', 'yes']
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     networks:
       - vttnet
 
@@ -97,6 +139,12 @@ services:
       - '7881:7881/tcp' # TCP fallback for clients that can't use UDP
     volumes:
       - ./infra/livekit/livekit.yaml:/etc/livekit.yaml
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       - vttnet
 
@@ -111,10 +159,20 @@ services:
       - ./caddy/certs:/certs
       - caddy_data:/data
     depends_on:
-      - backend
-      - frontend
-      - admin
-      - livekit
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:2019/config >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       - vttnet
 

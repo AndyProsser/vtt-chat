@@ -79,3 +79,55 @@ In Docker Compose with `restart: unless-stopped`, the container will be restarte
 
 - Production should use `migrate deploy` to apply committed migrations safely.
 - Development `db push` is convenient for iteration and does not auto-accept destructive changes.
+
+## Container Healthcheck
+
+The backend container includes a healthcheck that verifies the app is running and responding to requests.
+
+**Healthcheck endpoint:** `GET http://127.0.0.1:3000/health`
+
+**Expected response:**
+
+```json
+{
+  "status": "healthy",
+  "mode": "standard",
+  "timestamp": "2026-05-07T12:34:56.789Z",
+  "message": "Backend is running with auth, session, and websocket support"
+}
+```
+
+**What it checks:**
+
+- The Express server is running on the configured port (default 3000).
+- The `/api/health` route is responsive and returns HTTP 200.
+- This confirms the app process is alive and the event loop is not blocked.
+
+**Timing:**
+
+- `start_period: 45s` — grace period before first check (allows DB wait + Prisma sync).
+- `interval: 10s` — recheck every 10 seconds.
+- `timeout: 5s` — fail if no response within 5 seconds.
+- `retries: 12` — mark unhealthy after 12 consecutive failures (~2 minutes).
+
+**Troubleshooting:**
+
+If the backend shows `unhealthy`:
+
+1. Check if database startup succeeded:
+
+   ```bash
+   docker compose logs backend | grep "startup"
+   ```
+
+2. Verify Prisma sync ran without error:
+
+   ```bash
+   docker compose logs backend | grep -E "(Running schema sync|failed|error)"
+   ```
+
+3. Check app startup logs:
+
+   ```bash
+   docker compose logs backend | tail -50
+   ```

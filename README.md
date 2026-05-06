@@ -167,7 +167,42 @@ npm run dev --prefix frontend
 
 Backend runs on `http://localhost:3000`, frontend on `http://localhost:5173`.
 
-Operator note: backend container startup wait/retry and Prisma schema sync behavior is documented in [backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior](backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior).
+Operator note: backend container startup wait/retry and Prisma schema sync behavior is documented in [backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior](backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior). For container health state details, see [Container Health Checks](#container-health-checks) below.
+
+---
+
+## Container Health Checks
+
+All services in both dev and production environments include healthchecks so Docker Compose and orchestrators can track readiness state. Services wait for their dependencies to be healthy before starting.
+
+| Container      | Port      | Check Target                            | What It Verifies                              |
+| -------------- | --------- | --------------------------------------- | --------------------------------------------- |
+| **Backend**    | 3000      | HTTP `GET /health`                      | App is running and can respond to requests    |
+| **Frontend**   | 5173      | HTTP `GET /`                            | Vite dev server (dev) or built SPA is serving |
+| **Admin**      | 5174      | HTTP `GET /`                            | Admin dashboard is serving                    |
+| **PostgreSQL** | 5432      | `pg_isready`                            | Database is accepting connections             |
+| **Redis**      | 6379      | `redis-cli PING`                        | Cache/bus is responding                       |
+| **LiveKit**    | 7880      | HTTP `GET /` (expects OK)               | WebRTC signaling server is responsive         |
+| **Caddy**      | 8080/8443 | HTTP `GET http://127.0.0.1:2019/config` | Reverse proxy admin API is responsive         |
+
+**Check status in a running stack:**
+
+```bash
+# Show all container health status
+docker compose ps
+
+# Watch real-time health changes
+docker compose ps --watch
+
+# Inspect a specific container's health
+docker inspect vttchat-backend-dev | jq '.[] | .State.Health'
+```
+
+All services use reasonable startup periods and retry counts. If a service shows `unhealthy`, check container logs:
+
+```bash
+docker compose logs <service-name>
+```
 
 ---
 
