@@ -6,7 +6,7 @@ services:
       target: builder
     container_name: vttchat-backend-dev
     working_dir: /workspace/backend
-    command: npm run dev
+    command: sh -c "npx prisma db push && npm run dev"
     restart: unless-stopped
     env_file:
       - .env
