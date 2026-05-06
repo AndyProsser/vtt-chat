@@ -1,73 +1,94 @@
-import type { Role } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 
 interface LeftRailSummaryProps {
-  role: Role
-  username: string
+  campaignName: string
+  campaignDescription?: string | null
   sessionName: string
-  sessionState: SessionState
   sessionCount: number
-  roomCount: number
-  presenceCount: number
+  connectedPlayersCount: number
+  connectedSpectatorsCount?: number
 }
 
 export function LeftRailSummary({
-  role,
-  username,
+  campaignName,
+  campaignDescription,
   sessionName,
   sessionCount,
-  roomCount,
-  presenceCount,
+  connectedPlayersCount,
+  connectedSpectatorsCount = 0,
 }: LeftRailSummaryProps) {
+  const hasSpectators = connectedSpectatorsCount > 0
+
   return (
-    <TooltipProvider delayDuration={140}>
-      <section className="voice-rail-summary" aria-label="Voice rail summary">
+    <TooltipProvider delayDuration={120}>
+      <section className="voice-rail-summary" aria-label="Campaign info panel">
         <header className="voice-rail-summary__header">
           <div className="voice-rail-summary__title-row">
-            <Icon name="voice" className="voice-rail-summary__icon" />
-            <h4 className="voice-rail-summary__title">Voice Panel</h4>
+            <Icon name="notes" className="voice-rail-summary__icon" />
+            <h4 className="voice-rail-summary__title">Info Panel</h4>
+          </div>
+
+          <div className="voice-rail-summary__stats" aria-label="Campaign activity">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <article
+                  className="voice-rail-summary__stat"
+                  aria-label={`Sessions ${sessionCount}`}
+                >
+                  <Icon name="panel" />
+                  <strong>{sessionCount}</strong>
+                </article>
+              </TooltipTrigger>
+              <TooltipContent className="session-toolbar__tooltip-content">Sessions</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <article
+                  className="voice-rail-summary__stat"
+                  aria-label={`Connected players including DM ${connectedPlayersCount}`}
+                >
+                  <Icon name="users" />
+                  <strong>{connectedPlayersCount}</strong>
+                </article>
+              </TooltipTrigger>
+              <TooltipContent className="session-toolbar__tooltip-content">
+                Connected Players + DM
+              </TooltipContent>
+            </Tooltip>
+
+            {hasSpectators ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <article
+                    className="voice-rail-summary__stat"
+                    aria-label={`Connected spectators ${connectedSpectatorsCount}`}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      visibility
+                    </span>
+                    <strong>{connectedSpectatorsCount}</strong>
+                  </article>
+                </TooltipTrigger>
+                <TooltipContent className="session-toolbar__tooltip-content">
+                  Spectators
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
         </header>
 
-        <p className="voice-rail-summary__identity">
-          Connected as <strong>{username}</strong> ({role})
+        <p className="voice-rail-summary__campaign-name">{campaignName}</p>
+        <p className="voice-rail-summary__campaign-description">
+          {campaignDescription?.trim() || 'No description provided.'}
         </p>
 
-        <p className="voice-rail-summary__session">{sessionName}</p>
+        <hr className="voice-rail-summary__divider" aria-hidden="true" />
 
-        <div className="voice-rail-summary__stats">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <article className="voice-rail-summary__stat" aria-label={`Rooms ${roomCount}`}>
-                <Icon name="rooms" />
-                <strong>{roomCount}</strong>
-              </article>
-            </TooltipTrigger>
-            <TooltipContent>Rooms</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <article
-                className="voice-rail-summary__stat"
-                aria-label={`Connected presence ${presenceCount}`}
-              >
-                <Icon name="users" />
-                <strong>{presenceCount}</strong>
-              </article>
-            </TooltipTrigger>
-            <TooltipContent>Presence</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <article className="voice-rail-summary__stat" aria-label={`Sessions ${sessionCount}`}>
-                <Icon name="panel" />
-                <strong>{sessionCount}</strong>
-              </article>
-            </TooltipTrigger>
-            <TooltipContent>Sessions</TooltipContent>
-          </Tooltip>
-        </div>
+        <p className="voice-rail-summary__session">
+          <span className="voice-rail-summary__session-value">{sessionName}</span>
+        </p>
       </section>
     </TooltipProvider>
   )

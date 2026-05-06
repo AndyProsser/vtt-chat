@@ -9,13 +9,14 @@ interface SessionLeftRailPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
+  campaignName: string
+  campaignDescription?: string | null
   role: Role
-  username: string
   sessionName: string
   sessionState: SessionState
   sessionCount: number
-  roomCount: number
-  presenceCount: number
+  connectedPlayersCount: number
+  connectedSpectatorsCount?: number
   dmUserId: UUID
   currentUserId: UUID
   rooms: Array<{ id: UUID; name: string; type: RoomType }>
@@ -32,13 +33,14 @@ export function SessionLeftRailPanel({
   apiUrl,
   token,
   sessionId,
+  campaignName,
+  campaignDescription,
   role,
-  username,
   sessionName,
   sessionState,
   sessionCount,
-  roomCount,
-  presenceCount,
+  connectedPlayersCount,
+  connectedSpectatorsCount,
   dmUserId,
   currentUserId,
   rooms,
@@ -73,58 +75,68 @@ export function SessionLeftRailPanel({
     })
 
   return (
-    <div className="session-left-rail" data-testid="session-left-rail">
-      <LeftRailSummary
-        role={role}
-        username={username}
-        sessionName={sessionName}
-        sessionState={sessionState}
-        sessionCount={sessionCount}
-        roomCount={roomCount}
-        presenceCount={presenceCount}
-      />
-      <RoomSelector
-        apiUrl={apiUrl}
-        token={token}
-        sessionId={sessionId}
-        dmUserId={dmUserId}
-        headerModeCopy={greenroomHeaderCopy}
-        canManageRooms={role === 'DM'}
-        broadcastModeEnabled={broadcastModeEnabled}
-        onToggleBroadcastMode={onToggleBroadcastMode}
-        rooms={visibleRooms.map((room) => ({
-          id: room.id,
-          name: room.name,
-          type: room.type,
-          memberCount: (roomMembersByRoomId[room.id] || []).length,
-          participants: (roomMembersByRoomId[room.id] || []).map((member) => {
-            const dmOverride = dmOverrides.get(member.userId)
+    <>
+      <section
+        className="session-left-rail-card session-left-rail-card--info"
+        data-testid="session-left-rail"
+      >
+        <LeftRailSummary
+          campaignName={campaignName}
+          campaignDescription={campaignDescription}
+          sessionName={sessionName}
+          sessionCount={sessionCount}
+          connectedPlayersCount={connectedPlayersCount}
+          connectedSpectatorsCount={connectedSpectatorsCount}
+        />
+      </section>
 
-            return {
-              userId: member.userId,
-              username: member.username || member.userId,
-              avatarUrl: member.avatarUrl,
-              characterName: member.characterName,
-              playerName: member.playerName,
-              characterClass: member.characterClass,
-              characterSubclass: member.characterSubclass,
-              characterRace: member.characterRace,
-              level: member.level,
-              characterStats: member.characterStats,
-              roleLabel: member.userId === dmUserId ? ('DM' as const) : ('PLAYER' as const),
-              presenceState: member.presenceState,
-              isMuted: dmOverride?.overrideType === 'MUTE',
-              isSpeaking: member.presenceState === PresenceState.SPEAKING,
-              condition:
-                currentConditionName && member.userId === currentUserId
-                  ? currentConditionName
-                  : undefined,
-            }
-          }),
-        }))}
-        selectedRoomId={selectedRoomId}
-        onSelectRoom={onSelectRoom}
-      />
-    </div>
+      <section
+        className="session-left-rail-card session-left-rail-card--channels"
+        aria-label="Voice channels"
+      >
+        <RoomSelector
+          apiUrl={apiUrl}
+          token={token}
+          sessionId={sessionId}
+          dmUserId={dmUserId}
+          headerModeCopy={greenroomHeaderCopy}
+          canManageRooms={role === 'DM'}
+          broadcastModeEnabled={broadcastModeEnabled}
+          onToggleBroadcastMode={onToggleBroadcastMode}
+          rooms={visibleRooms.map((room) => ({
+            id: room.id,
+            name: room.name,
+            type: room.type,
+            memberCount: (roomMembersByRoomId[room.id] || []).length,
+            participants: (roomMembersByRoomId[room.id] || []).map((member) => {
+              const dmOverride = dmOverrides.get(member.userId)
+
+              return {
+                userId: member.userId,
+                username: member.username || member.userId,
+                avatarUrl: member.avatarUrl,
+                characterName: member.characterName,
+                playerName: member.playerName,
+                characterClass: member.characterClass,
+                characterSubclass: member.characterSubclass,
+                characterRace: member.characterRace,
+                level: member.level,
+                characterStats: member.characterStats,
+                roleLabel: member.userId === dmUserId ? ('DM' as const) : ('PLAYER' as const),
+                presenceState: member.presenceState,
+                isMuted: dmOverride?.overrideType === 'MUTE',
+                isSpeaking: member.presenceState === PresenceState.SPEAKING,
+                condition:
+                  currentConditionName && member.userId === currentUserId
+                    ? currentConditionName
+                    : undefined,
+              }
+            }),
+          }))}
+          selectedRoomId={selectedRoomId}
+          onSelectRoom={onSelectRoom}
+        />
+      </section>
+    </>
   )
 }

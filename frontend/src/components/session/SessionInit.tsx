@@ -1575,6 +1575,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     roomId: selectedRoomId || null,
   })
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
+  const connectedSpectatorsCount = selectedCampaign?.connectedSpectatorsRounded ?? 0
+  const connectedPlayersWithDm =
+    selectedCampaign?.connectedPlayersRounded !== undefined || selectedCampaign?.connectedPlayers
+      ? Math.max(
+          0,
+          (selectedCampaign?.connectedPlayersRounded ?? selectedCampaign?.connectedPlayers ?? 0) +
+            (selectedCampaign?.dmOnline ? 1 : 0)
+        )
+      : Math.max(0, currentPresence.length - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
     currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
@@ -2011,34 +2020,33 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               )}
               renderLeftRail={() => (
                 <div className="session-left-rail-stack">
-                  <section className="session-left-rail-card session-left-rail-card--primary">
-                    <SessionLeftRailPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      username={user.username}
-                      sessionName={currentSession.name}
-                      sessionState={currentSession.state}
-                      sessionCount={sessionList.length}
-                      roomCount={visibleRooms.length}
-                      presenceCount={currentPresence.length}
-                      dmUserId={currentSession.dmId}
-                      currentUserId={user.id}
-                      rooms={visibleRooms.map((room) => ({
-                        id: room.id,
-                        name: room.name,
-                        type: room.type,
-                      }))}
-                      roomMembersByRoomId={typedRoomMembers}
-                      selectedRoomId={selectedRoomId}
-                      onSelectRoom={setSelectedRoomIdOverride}
-                      broadcastModeEnabled={broadcastModeEnabled}
-                      onToggleBroadcastMode={handleToggleBroadcastMode}
-                      dmOverrides={dmOverrides}
-                      currentConditionName={currentConditionName}
-                    />
-                  </section>
+                  <SessionLeftRailPanel
+                    apiUrl={apiUrl}
+                    token={token}
+                    sessionId={currentSession.id}
+                    campaignName={selectedCampaign?.name || 'Campaign'}
+                    campaignDescription={selectedCampaign?.description}
+                    role={effectiveSessionRole}
+                    sessionName={currentSession.name}
+                    sessionState={currentSession.state}
+                    sessionCount={sessionList.length}
+                    connectedPlayersCount={connectedPlayersWithDm}
+                    connectedSpectatorsCount={connectedSpectatorsCount}
+                    dmUserId={currentSession.dmId}
+                    currentUserId={user.id}
+                    rooms={visibleRooms.map((room) => ({
+                      id: room.id,
+                      name: room.name,
+                      type: room.type,
+                    }))}
+                    roomMembersByRoomId={typedRoomMembers}
+                    selectedRoomId={selectedRoomId}
+                    onSelectRoom={setSelectedRoomIdOverride}
+                    broadcastModeEnabled={broadcastModeEnabled}
+                    onToggleBroadcastMode={handleToggleBroadcastMode}
+                    dmOverrides={dmOverrides}
+                    currentConditionName={currentConditionName}
+                  />
                   {selectedRoomId ? (
                     <aside
                       className="session-left-rail-card session-left-rail-card--audio"
