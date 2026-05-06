@@ -586,9 +586,9 @@ function status() {
   if [[ "$other_running" == "true" ]]; then
     echo ""
     if [[ "$DEV_MODE" == "true" ]]; then
-      echo -e "${YELLOW}ℹ PROD instance is also running${NC}"
+      echo -e "${YELLOW}⚠ PROD instance is running${NC}"
     else
-      echo -e "${YELLOW}ℹ DEV instance is also running${NC}"
+      echo -e "${YELLOW}⚠ DEV instance is running${NC}"
     fi
   fi
 
