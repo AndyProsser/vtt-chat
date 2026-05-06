@@ -179,6 +179,7 @@ Copilot must enforce:
 - Keep local `useState` limited to strictly view-local transient UI concerns (input drafts, open/close toggles, ephemeral hover/focus state).
 - For transport/integration status (WebSocket, LiveKit, reconnect), publish normalized snapshots into Zustand and consume selectors from that shared source.
 - Derive display status from shared selectors so badges, panels, and controls render from one canonical state source.
+- Operational state needed for app behavior (published track refs, transport refs, auth/session/shared audio runtime state) MUST live in core Zustand slices; it must not exist only in hook-local state.
 
 ### **When building UI primitives and icons**
 

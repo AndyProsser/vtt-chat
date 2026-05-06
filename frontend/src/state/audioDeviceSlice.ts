@@ -13,6 +13,9 @@ export const initialAudioDeviceState: AudioDeviceState = {
   micGain: 80,
   volumeLevel: 75,
   isSpeaking: false,
+  pttEnabled: false,
+  autoGainEnabled: true,
+  noiseFilterLevel: 'auto',
 }
 
 export const createAudioDeviceSlice: StateCreator<AudioDeviceSlice, [], [], AudioDeviceSlice> = (

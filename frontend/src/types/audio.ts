@@ -15,6 +15,12 @@ export interface AudioDeviceState {
   isSpeaking: boolean
   selectedMicDeviceId?: string
   selectedSpeakerDeviceId?: string
+  /** Push-to-talk mode enabled */
+  pttEnabled: boolean
+  /** Browser auto gain control enabled */
+  autoGainEnabled: boolean
+  /** Noise suppression level */
+  noiseFilterLevel: 'auto' | 'low' | 'medium' | 'high'
 }
 
 export interface EnvironmentPreset {

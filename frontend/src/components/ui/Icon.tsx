@@ -22,6 +22,9 @@ type IconName =
   | 'signal'
   | 'logout'
   | 'status'
+  | 'mic_off'
+  | 'effects'
+  | 'overrides'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -49,6 +52,9 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   signal: 'signal_cellular_alt',
   logout: 'logout',
   status: 'circle',
+  mic_off: 'mic_off',
+  effects: 'tune',
+  overrides: 'supervisor_account',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

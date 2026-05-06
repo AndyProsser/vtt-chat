@@ -119,6 +119,8 @@ Stores must:
 - Use selectors
 - Contain no derived state
 - Contain no UI‑only state
+- Persist all operational runtime state shared across components/routes (transport lifecycle, published track/runtime refs, session-critical state)
+- Never rely on hook-local state as the only source for operational runtime data
 
 ### **3.4 Transport Rules**
 

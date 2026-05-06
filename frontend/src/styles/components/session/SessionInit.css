@@ -970,6 +970,9 @@
 
 .session-left-rail-card--audio {
   flex: 0 0 auto;
+  overflow: visible;
+  position: relative;
+  z-index: 5;
 }
 
 .session-greenroom-placeholder {

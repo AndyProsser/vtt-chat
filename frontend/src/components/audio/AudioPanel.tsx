@@ -11,16 +11,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ConnectionState, RoomEvent } from 'livekit-client'
+import { ConnectionState } from 'livekit-client'
 import { Role } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
 import { logger } from '../../utils/logger'
 import { AudioDevicePanel } from './AudioDevicePanel'
-import { AudioPresetsPanel } from './AudioPresetsPanel'
-import { AudioEffectsPanel } from './AudioEffectsPanel'
-import { AudioDMOverridesPanel } from './AudioDMOverridesPanel'
+import { AudioSettingsPanel } from './AudioSettingsPanel'
 import '../../styles/components/audio/AudioPanel.css'
 
 interface AudioPanelProps {
@@ -29,39 +27,14 @@ interface AudioPanelProps {
   role?: Role
 }
 
-const SPEAKING_ATTACK_MS = 80
-const SPEAKING_RELEASE_MS = 180
-
-function parseParticipantAudioMetadata(metadata: string | undefined): {
-  muted?: boolean
-  deafened?: boolean
-} {
-  if (!metadata) return {}
-
-  try {
-    const parsed = JSON.parse(metadata) as {
-      muted?: boolean
-      deafened?: boolean
-      selfDeaf?: boolean
-      audio?: { muted?: boolean; deafened?: boolean; selfDeaf?: boolean }
-    }
-
-    return {
-      muted: parsed.audio?.muted ?? parsed.muted,
-      deafened:
-        parsed.audio?.deafened ?? parsed.audio?.selfDeaf ?? parsed.deafened ?? parsed.selfDeaf,
-    }
-  } catch {
-    return {}
-  }
-}
-
 export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
-  const [activeSpeakerSids, setActiveSpeakerSids] = useState<Set<string>>(() => new Set())
-  const [smoothedSpeakerSids, setSmoothedSpeakerSids] = useState<Set<string>>(() => new Set())
-  const speakerAttackTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const speakerReleaseTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
+  const meterDebugRef = useRef<{ lastLogTs: number; zeroFrames: number }>({
+    lastLogTs: 0,
+    zeroFrames: 0,
+  })
   const tracePrevRef = useRef<{
     roomId: string
     roomState: string
@@ -110,7 +83,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  const privateRoomCleanMode = useStore((state) => state.privateRoomCleanMode)
   const activeEffects = useStore((state) => state.activeEffects)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
@@ -122,6 +94,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const currentICPreset = useStore((state) => state.currentICPreset)
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
+  const togglePTT = useStore((state) => state.togglePTT)
   const currentUser = useStore((state) => state.currentUser)
   const sharedLiveKitState = useStore(
     (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
@@ -191,11 +164,211 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [device.enabled, device.microphoneOn, initializeAudio])
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vol = Number(e.target.value)
-    setDevice({ volumeLevel: vol })
-    audioEngine.setLocalGain(vol / 100)
-  }
+  useEffect(() => {
+    const localTrack = livekit.localAudioTrack
+    const localInputTrack = livekit.localInputTrack
+    const localPublications = Array.from(
+      livekit.room?.localParticipant.audioTrackPublications?.values?.() ?? []
+    )
+    const publicationFallback = localPublications.find((publication) => publication.track)
+    const fallbackTrack = publicationFallback?.track
+    const mediaStreamTrack =
+      localInputTrack ??
+      localTrack?.mediaStreamTrack ??
+      (fallbackTrack && 'mediaStreamTrack' in fallbackTrack
+        ? (fallbackTrack.mediaStreamTrack as MediaStreamTrack)
+        : undefined)
+
+    const startMeterFromTrack = (track: MediaStreamTrack, sourceLabel: string) => {
+      const audioContext = new (
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      )()
+      const source = audioContext.createMediaStreamSource(new MediaStream([track]))
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 512
+      analyser.smoothingTimeConstant = 0.78
+      source.connect(analyser)
+
+      void audioContext.resume().catch(() => undefined)
+
+      const waveform = new Uint8Array(analyser.fftSize)
+      const spectrum = new Uint8Array(analyser.frequencyBinCount)
+      let rafId = 0
+      let smoothed = 0
+
+      const sampleLevel = () => {
+        analyser.getByteTimeDomainData(waveform)
+        analyser.getByteFrequencyData(spectrum)
+
+        let sumSquares = 0
+        for (let i = 0; i < waveform.length; i += 1) {
+          const normalized = (waveform[i] - 128) / 128
+          sumSquares += normalized * normalized
+        }
+
+        let peakBand = 0
+        for (let i = 0; i < spectrum.length; i += 1) {
+          if (spectrum[i] > peakBand) peakBand = spectrum[i]
+        }
+
+        const rms = Math.sqrt(sumSquares / waveform.length)
+        const spectral = peakBand / 255
+        const spectralAssist = rms > 0.02 ? spectral * 0.2 : 0
+        const combined = rms * 6.4 + spectralAssist
+        const noiseFloor =
+          device.noiseFilterLevel === 'high'
+            ? 0.09
+            : device.noiseFilterLevel === 'medium'
+              ? 0.065
+              : device.noiseFilterLevel === 'low'
+                ? 0.03
+                : 0.055
+        const autoGainBias = device.autoGainEnabled ? 0.01 : 0
+        const adjustedFloor = Math.min(0.2, noiseFloor + autoGainBias)
+        const calibrated = Math.max(
+          0,
+          Math.min(1, (combined - adjustedFloor) / (1 - adjustedFloor))
+        )
+        smoothed = smoothed * 0.65 + calibrated * 0.35
+        setLocalTransmitLevel(smoothed)
+
+        const now = performance.now()
+        if (calibrated < 0.001) {
+          meterDebugRef.current.zeroFrames += 1
+        } else {
+          meterDebugRef.current.zeroFrames = 0
+        }
+
+        if (now - meterDebugRef.current.lastLogTs > 1000) {
+          meterDebugRef.current.lastLogTs = now
+          console.debug('[audio-meter] sample', {
+            ctxState: audioContext.state,
+            localTrackMuted: localTrack?.isMuted,
+            mediaTrackEnabled: track.enabled,
+            mediaTrackMuted: track.muted,
+            mediaTrackReadyState: track.readyState,
+            source: sourceLabel,
+            rms: Number(rms.toFixed(4)),
+            spectral: Number(spectral.toFixed(4)),
+            combined: Number(combined.toFixed(4)),
+            calibrated: Number(calibrated.toFixed(4)),
+            smoothed: Number(smoothed.toFixed(4)),
+            zeroFrames: meterDebugRef.current.zeroFrames,
+            gate: {
+              microphoneOn: device.microphoneOn,
+              pttEnabled: device.pttEnabled,
+              pttActive,
+            },
+            settings: {
+              autoGainEnabled: device.autoGainEnabled,
+              noiseFilterLevel: device.noiseFilterLevel,
+              micGain: device.micGain,
+              adjustedFloor: Number(adjustedFloor.toFixed(4)),
+            },
+          })
+        }
+
+        rafId = window.requestAnimationFrame(sampleLevel)
+      }
+
+      rafId = window.requestAnimationFrame(sampleLevel)
+
+      return () => {
+        window.cancelAnimationFrame(rafId)
+        setLocalTransmitLevel(0)
+        source.disconnect()
+        analyser.disconnect()
+        void audioContext.close()
+      }
+    }
+
+    if (!mediaStreamTrack) {
+      console.debug('[audio-meter] no local media stream track yet', {
+        microphoneOn: device.microphoneOn,
+        pttEnabled: device.pttEnabled,
+        pttActive,
+        hasLocalInputTrack: Boolean(localInputTrack),
+        hasLocalAudioTrack: Boolean(localTrack),
+        hasRoom: Boolean(livekit.room),
+        localAudioPublications: localPublications.length,
+        publicationTracks: localPublications
+          .map((publication) => ({
+            sid: publication.trackSid,
+            hasTrack: Boolean(publication.track),
+            muted: publication.isMuted,
+            source: publication.source,
+          }))
+          .slice(0, 3),
+      })
+
+      if (device.microphoneOn) {
+        console.warn('[audio-meter] mic is ON but no local track/publication is available')
+
+        let cancelled = false
+        let cleanupMeter: () => void = () => {}
+        let fallbackStream: MediaStream | null = null
+
+        void navigator.mediaDevices
+          .getUserMedia({
+            audio: {
+              deviceId:
+                device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
+                  ? { exact: device.selectedMicDeviceId }
+                  : undefined,
+              channelCount: 1,
+              echoCancellation: device.noiseFilterLevel !== 'low',
+              noiseSuppression: device.noiseFilterLevel !== 'low',
+              autoGainControl: device.autoGainEnabled,
+            },
+          })
+          .then((stream) => {
+            if (cancelled) {
+              stream.getTracks().forEach((track) => track.stop())
+              return
+            }
+            fallbackStream = stream
+            const fallbackInputTrack = stream.getAudioTracks()[0]
+            console.debug('[audio-meter] fallback userMedia meter source attached', {
+              label: fallbackInputTrack?.label,
+              readyState: fallbackInputTrack?.readyState,
+            })
+            cleanupMeter = startMeterFromTrack(fallbackInputTrack, 'fallbackUserMedia')
+          })
+          .catch((error) => {
+            console.warn('[audio-meter] fallback userMedia meter source failed', {
+              error: error instanceof Error ? error.message : String(error),
+            })
+          })
+
+        return () => {
+          cancelled = true
+          cleanupMeter()
+          fallbackStream?.getTracks().forEach((track) => track.stop())
+        }
+      }
+      return
+    }
+    return startMeterFromTrack(
+      mediaStreamTrack,
+      localInputTrack
+        ? 'localInputTrack'
+        : localTrack?.mediaStreamTrack
+          ? 'localAudioTrack'
+          : 'publicationFallback'
+    )
+  }, [
+    livekit.localAudioTrack,
+    livekit.localInputTrack,
+    livekit.room,
+    device.microphoneOn,
+    device.selectedMicDeviceId,
+    device.pttEnabled,
+    pttActive,
+    device.autoGainEnabled,
+    device.noiseFilterLevel,
+    device.micGain,
+  ])
 
   const livekitRoomState = String(livekit.room?.state ?? '').toLowerCase()
   const sharedConnectionState = sharedLiveKitState?.connectionState
@@ -216,11 +389,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       ? 'connecting'
       : 'disconnected'
   const isVoiceConnected = canonicalIsConnected
-  const statusLabel = isVoiceConnected
-    ? 'Connected'
-    : canonicalIsConnecting
-      ? 'Connecting…'
-      : 'Disconnected'
 
   useEffect(() => {
     const nextSnapshot = {
@@ -265,246 +433,200 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   ])
 
   useEffect(() => {
-    const room = livekit.room
-    if (!room) {
-      return
-    }
-
-    const syncSpeakers = () => {
-      const next = new Set(room.activeSpeakers.map((speaker) => speaker.sid))
-      setActiveSpeakerSids(next)
-    }
-
-    syncSpeakers()
-    room.on(RoomEvent.ActiveSpeakersChanged, syncSpeakers)
-
-    return () => {
-      room.off(RoomEvent.ActiveSpeakersChanged, syncSpeakers)
-    }
-  }, [livekit.room])
-
-  useEffect(() => {
-    const attackTimers = speakerAttackTimersRef.current
-    const releaseTimers = speakerReleaseTimersRef.current
-
-    attackTimers.forEach((timer) => clearTimeout(timer))
-    attackTimers.clear()
-
-    releaseTimers.forEach((timer) => clearTimeout(timer))
-    releaseTimers.clear()
-
-    return () => {
-      attackTimers.forEach((timer) => clearTimeout(timer))
-      attackTimers.clear()
-
-      releaseTimers.forEach((timer) => clearTimeout(timer))
-      releaseTimers.clear()
-    }
-  }, [livekit.room])
-
-  useEffect(() => {
-    const remoteParticipants = Array.from(livekit.remoteParticipants.values())
-    const validSids = new Set(remoteParticipants.map((participant) => participant.sid))
-    const currentlySpeaking = new Set<string>()
-    const attackTimers = speakerAttackTimersRef.current
-    const releaseTimers = speakerReleaseTimersRef.current
-
-    remoteParticipants.forEach((participant) => {
-      if (participant.isSpeaking || activeSpeakerSids.has(participant.sid)) {
-        currentlySpeaking.add(participant.sid)
-      }
-    })
-
-    setSmoothedSpeakerSids((prev) => {
-      const next = new Set(prev)
-
-      // Speaking starts: cancel pending release and use a short attack delay.
-      currentlySpeaking.forEach((sid) => {
-        const existingRelease = releaseTimers.get(sid)
-        if (existingRelease) {
-          clearTimeout(existingRelease)
-          releaseTimers.delete(sid)
-        }
-
-        if (next.has(sid) || attackTimers.has(sid)) {
-          return
-        }
-
-        const attackTimer = setTimeout(() => {
-          attackTimers.delete(sid)
-          setSmoothedSpeakerSids((state) => {
-            if (state.has(sid)) return state
-            const updated = new Set(state)
-            updated.add(sid)
-            return updated
-          })
-        }, SPEAKING_ATTACK_MS)
-
-        attackTimers.set(sid, attackTimer)
-      })
-
-      // Speaking stops: cancel pending attack and hold highlight briefly (release).
-      prev.forEach((sid) => {
-        if (currentlySpeaking.has(sid)) return
-
-        const pendingAttack = attackTimers.get(sid)
-        if (pendingAttack) {
-          clearTimeout(pendingAttack)
-          attackTimers.delete(sid)
-        }
-
-        if (!validSids.has(sid)) {
-          next.delete(sid)
-          const staleRelease = releaseTimers.get(sid)
-          if (staleRelease) {
-            clearTimeout(staleRelease)
-            releaseTimers.delete(sid)
-          }
-          return
-        }
-        if (releaseTimers.has(sid)) return
-
-        const releaseTimer = setTimeout(() => {
-          releaseTimers.delete(sid)
-          setSmoothedSpeakerSids((state) => {
-            if (!state.has(sid)) return state
-            const updated = new Set(state)
-            updated.delete(sid)
-            return updated
-          })
-        }, SPEAKING_RELEASE_MS)
-
-        releaseTimers.set(sid, releaseTimer)
-      })
-
-      // Remove stale sids that no longer exist in participant map.
-      next.forEach((sid) => {
-        if (!validSids.has(sid)) {
-          next.delete(sid)
-          const staleAttack = attackTimers.get(sid)
-          if (staleAttack) {
-            clearTimeout(staleAttack)
-            attackTimers.delete(sid)
-          }
-          const staleRelease = releaseTimers.get(sid)
-          if (staleRelease) {
-            clearTimeout(staleRelease)
-            releaseTimers.delete(sid)
-          }
-        }
-      })
-
-      return next
-    })
-  }, [activeSpeakerSids, livekit.remoteParticipants])
-
-  useEffect(() => {
     audioEngine.setLocalGain(device.volumeLevel / 100)
   }, [audioEngine, device.volumeLevel])
 
-  const participants = useMemo(() => {
-    const remote = Array.from(livekit.remoteParticipants.values()).map((participant) => {
-      const metadataState = parseParticipantAudioMetadata(participant.metadata)
-      const isMuted = metadataState.muted ?? !participant.isMicrophoneEnabled
-      const isDeafened = metadataState.deafened ?? false
+  const effectItems = useMemo(() => {
+    const items: Array<{ kind: string; name: string; description: string }> = []
+
+    if (device.pttEnabled) {
+      items.push({
+        kind: 'ptt',
+        name: 'Push to Talk',
+        description: pttActive
+          ? 'Mic gate is currently open while PTT is held.'
+          : 'Mic stays muted until PTT is held.',
+      })
+    }
+
+    if (currentEnvironment) {
+      items.push({
+        kind: 'environment',
+        name: currentEnvironment.name,
+        description: 'Applies room acoustics and reverb to match environment.',
+      })
+    }
+
+    if (currentDistance) {
+      items.push({
+        kind: 'distance',
+        name: currentDistance.name,
+        description: 'Adjusts attenuation and filtering for listener distance.',
+      })
+    }
+
+    if (currentCondition) {
+      items.push({
+        kind: 'condition',
+        name: currentCondition.name,
+        description: 'Adds scene condition processing to the audio chain.',
+      })
+    }
+
+    if (currentVoicePreset) {
+      items.push({
+        kind: 'voice',
+        name: currentVoicePreset.name,
+        description: 'Transforms voice character (pitch/formant) for roleplay.',
+      })
+    }
+
+    if (currentICPreset) {
+      items.push({
+        kind: 'ic',
+        name: currentICPreset.name,
+        description: 'Applies in-character voice coloration preset.',
+      })
+    }
+
+    Object.entries(activeEffects)
+      .filter(([, enabled]) => Boolean(enabled))
+      .forEach(([effectId]) => {
+        items.push({
+          kind: 'custom',
+          name: effectId,
+          description: 'Custom active effect enabled in the current stack.',
+        })
+      })
+
+    return items
+  }, [
+    activeEffects,
+    currentCondition,
+    currentDistance,
+    currentEnvironment,
+    currentICPreset,
+    currentVoicePreset,
+    device.pttEnabled,
+    pttActive,
+  ])
+
+  const activeEffectsCount = effectItems.length
+  const dmOverridesCount = dmOverrides.size
+  const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
+  const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
+
+  useEffect(() => {
+    if (!device.microphoneOn) return
+
+    const publicationFallback = Array.from(
+      livekit.room?.localParticipant.audioTrackPublications?.values?.() ?? []
+    ).find((publication) => publication.track)
+    const effectiveTrackPresent = Boolean(
+      livekit.localInputTrack || livekit.localAudioTrack || publicationFallback?.track
+    )
+    const publicationCount = livekit.room?.localParticipant.audioTrackPublications?.size ?? 0
+
+    console.debug('[audio-meter] gate/output', {
+      microphoneOn: device.microphoneOn,
+      pttEnabled: device.pttEnabled,
+      pttActive,
+      localTransmitLevel: Number(localTransmitLevel.toFixed(4)),
+      transmittedMicLevel: Number(transmittedMicLevel.toFixed(4)),
+      localInputTrackPresent: Boolean(livekit.localInputTrack),
+      localTrackPresent: Boolean(livekit.localAudioTrack),
+      publicationTrackPresent: Boolean(publicationFallback?.track),
+      effectiveTrackPresent,
+      publicationCount,
+    })
+  }, [
+    device.microphoneOn,
+    device.pttEnabled,
+    pttActive,
+    localTransmitLevel,
+    transmittedMicLevel,
+    livekit.localInputTrack,
+    livekit.localAudioTrack,
+    livekit.room,
+  ])
+
+  const overrideItems = useMemo(() => {
+    return Array.from(dmOverrides.values()).map((override) => {
+      const shortUser = override.userId.slice(0, 8)
+
+      if (override.overrideType === 'MUTE') {
+        return {
+          kind: 'mute',
+          name: `Mute (${shortUser})`,
+          description: 'Forces the target user microphone to muted.',
+        }
+      }
+
+      if (override.overrideType === 'UNMUTE') {
+        return {
+          kind: 'unmute',
+          name: `Unmute (${shortUser})`,
+          description: 'Explicitly allows the target user microphone signal.',
+        }
+      }
+
+      if (override.overrideType === 'GAIN') {
+        const gainValue = override.parameters?.gain
+        const gainText = typeof gainValue === 'number' ? `${gainValue.toFixed(2)}x` : 'custom value'
+        return {
+          kind: 'gain',
+          name: `Gain (${shortUser})`,
+          description: `Adjusts target gain (${gainText}).`,
+        }
+      }
+
+      if (override.overrideType === 'GATE') {
+        return {
+          kind: 'gate',
+          name: `Gate (${shortUser})`,
+          description: 'Applies DM gate threshold to suppress background noise.',
+        }
+      }
 
       return {
-        id: participant.sid,
-        name: participant.identity,
-        isSelf: false,
-        isSpeaking: smoothedSpeakerSids.has(participant.sid),
-        isMuted,
-        isDeafened,
+        kind: 'filter',
+        name: `Filter (${shortUser})`,
+        description: 'Applies a DM filter profile to the target signal.',
       }
     })
-
-    const selfName = currentUser?.username || 'You'
-    const selfParticipant = {
-      id: currentUser?.id ?? 'self',
-      name: selfName,
-      isSelf: true,
-      isSpeaking: pttActive,
-      isMuted: !device.microphoneOn,
-      isDeafened: false,
-    }
-
-    return [selfParticipant, ...remote]
-  }, [currentUser, device.microphoneOn, livekit.remoteParticipants, pttActive, smoothedSpeakerSids])
-
-  const getInitials = (name: string): string => {
-    const clean = name.trim()
-    if (!clean) return 'U'
-    const parts = clean.split(/\s+/)
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase()
-    }
-    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
-  }
-
-  const activeEffectsCount = useMemo(
-    () => Object.values(activeEffects).filter(Boolean).length,
-    [activeEffects]
-  )
+  }, [dmOverrides])
 
   return (
     <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">
-      <header className="audio-panel__header">
-        <span className="audio-panel__status">
-          <span data-state={statusState} className="audio-panel__status-dot" />
-          {statusLabel}
-        </span>
-        {livekit.error && <span className="audio-panel__error">⚠ {livekit.error}</span>}
-      </header>
+      {livekit.error && <p className="audio-panel__error">⚠ {livekit.error}</p>}
 
-      <ul className="audio-panel__list" aria-label="Voice participants">
-        {participants.map((participant) => (
-          <li
-            key={participant.id}
-            className={`audio-panel__participant ${participant.isSpeaking ? 'is-speaking' : ''}`}
-          >
-            <span className="audio-panel__avatar" aria-hidden="true">
-              {getInitials(participant.name)}
-            </span>
-            <span className="audio-panel__name">
-              {participant.name}
-              {participant.isSelf ? ' (you)' : ''}
-            </span>
-            <span className="audio-panel__badges">
-              {participant.isMuted ? <span className="audio-panel__badge muted">Muted</span> : null}
-              {participant.isDeafened ? (
-                <span className="audio-panel__badge deafened">Deafened</span>
-              ) : null}
-              {participant.isSpeaking ? (
-                <span className="audio-panel__badge speaking">Speaking</span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <AudioPresetsPanel
-        currentEnvironment={currentEnvironment}
-        currentDistance={currentDistance}
-        currentCondition={currentCondition}
-        currentVoicePreset={currentVoicePreset}
-        currentICPreset={currentICPreset}
-      />
-
-      <AudioEffectsPanel
-        pttActive={pttActive}
-        privateRoomCleanMode={privateRoomCleanMode}
-        activeEffectsCount={activeEffectsCount}
-      />
-
-      <AudioDMOverridesPanel isDm={effectiveRole === Role.DM} dmOverrides={dmOverrides} />
-
-      <AudioDevicePanel
-        device={device}
-        isVoiceConnected={isVoiceConnected}
-        onGoLive={handleGoLive}
-        onMute={handleMute}
-        onVolumeChange={handleVolumeChange}
-      />
+      <div className="audio-panel__footer">
+        {settingsOpen && (
+          <AudioSettingsPanel
+            device={device}
+            transmittedMicLevel={transmittedMicLevel}
+            onDeviceChange={setDevice}
+            onClose={() => setSettingsOpen(false)}
+          />
+        )}
+        <AudioDevicePanel
+          device={device}
+          statusState={statusState}
+          isVoiceConnected={isVoiceConnected}
+          isDm={effectiveRole === Role.DM}
+          pttActive={pttActive}
+          activeEffectsCount={activeEffectsCount}
+          dmOverridesCount={dmOverridesCount}
+          transmittedMicLevel={transmittedMicLevel}
+          effectItems={effectItems}
+          overrideItems={overrideItems}
+          settingsOpen={settingsOpen}
+          onGoLive={handleGoLive}
+          onMute={handleMute}
+          onPTTChange={togglePTT}
+          onToggleSettings={() => setSettingsOpen((o) => !o)}
+        />
+      </div>
     </section>
   )
 }

@@ -29,6 +29,7 @@ export interface UseLiveKitReturn {
   error: string | null
   room: Room | null
   localAudioTrack: LocalAudioTrack | null
+  localInputTrack: MediaStreamTrack | null
   localVideoTrack: LocalVideoTrack | null
   remoteParticipants: ReadonlyMap<string, RemoteParticipant>
   publishAudio: () => Promise<void>
@@ -85,7 +86,10 @@ export function useLiveKit(
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
   const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
+  const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+  const localInputTrack = useStore((state) => state.livekitLocalInputTracks[connectionKey] ?? null)
+  const device = useStore((state) => state.device)
 
   const publishConnectionSnapshot = useCallback(
     (params: {
@@ -153,9 +157,11 @@ export function useLiveKit(
         void activeRoom.disconnect()
       }
 
+      setLiveKitLocalInputTrack(connectionKey, null)
+
       isMountedRef.current = false
     }
-  }, [])
+  }, [connectionKey, setLiveKitLocalInputTrack])
 
   // Keep callback refs up to date without triggering reconnects
   useEffect(() => {
@@ -169,6 +175,22 @@ export function useLiveKit(
     const message = (value instanceof Error ? value.message : String(value)).toLowerCase()
     return message.includes('client initiated disconnect')
   }, [])
+
+  const getLocalAudioConstraints = useCallback((): MediaTrackConstraints => {
+    const noiseSuppression = device.noiseFilterLevel !== 'low'
+    const echoCancellation = device.noiseFilterLevel !== 'low'
+
+    return {
+      deviceId:
+        device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
+          ? { exact: device.selectedMicDeviceId }
+          : undefined,
+      channelCount: 1,
+      echoCancellation,
+      noiseSuppression,
+      autoGainControl: device.autoGainEnabled,
+    }
+  }, [device.autoGainEnabled, device.noiseFilterLevel, device.selectedMicDeviceId])
 
   /**
    * Fetch a room-scoped LiveKit token from the backend.
@@ -490,18 +512,39 @@ export function useLiveKit(
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: getLocalAudioConstraints(),
       })
 
-      const audioTrack = new LocalAudioTrack(stream.getAudioTracks()[0])
+      const inputTrack = stream.getAudioTracks()[0]
+      console.debug('[livekit] mic capture track', {
+        label: inputTrack?.label,
+        enabled: inputTrack?.enabled,
+        muted: inputTrack?.muted,
+        readyState: inputTrack?.readyState,
+        constraints: inputTrack?.getConstraints?.(),
+        settings: inputTrack?.getSettings?.(),
+      })
+
+      const audioTrack = new LocalAudioTrack(inputTrack)
       await activeRoom.localParticipant.publishTrack(audioTrack, {
         audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
       })
+
+      const publicationEntries = Array.from(
+        activeRoom.localParticipant.audioTrackPublications.values()
+      )
+      console.debug('[livekit] local audio publications after publish', {
+        count: publicationEntries.length,
+        entries: publicationEntries.map((publication) => ({
+          sid: publication.trackSid,
+          source: publication.source,
+          muted: publication.isMuted,
+          hasTrack: Boolean(publication.track),
+        })),
+      })
+
       setLocalAudioTrackState(audioTrack)
+      setLiveKitLocalInputTrack(connectionKey, inputTrack)
 
       logger.info('useLiveKit', 'Audio track published')
     } catch (err) {
@@ -511,7 +554,7 @@ export function useLiveKit(
       )
       throw err
     }
-  }, [setLocalAudioTrackState])
+  }, [connectionKey, getLocalAudioConstraints, setLiveKitLocalInputTrack, setLocalAudioTrackState])
 
   /**
    * Unpublish local audio track
@@ -524,9 +567,10 @@ export function useLiveKit(
       await activeRoom.localParticipant.unpublishTrack(activeAudioTrack)
       activeAudioTrack.stop()
       setLocalAudioTrackState(null)
+      setLiveKitLocalInputTrack(connectionKey, null)
       logger.info('useLiveKit', 'Audio track unpublished')
     }
-  }, [setLocalAudioTrackState])
+  }, [connectionKey, setLiveKitLocalInputTrack, setLocalAudioTrackState])
 
   /**
    * Disconnect from the current room and clear local state.
@@ -548,6 +592,7 @@ export function useLiveKit(
 
     setRoomState(null)
     setLocalAudioTrackState(null)
+    setLiveKitLocalInputTrack(connectionKey, null)
     setLocalVideoTrackState(null)
     trackSubscriptionsRef.current = []
     clearRemoteAudioElements()
@@ -569,7 +614,9 @@ export function useLiveKit(
     connectionKeyRef.current = null
   }, [
     clearRemoteAudioElements,
+    connectionKey,
     publishConnectionSnapshot,
+    setLiveKitLocalInputTrack,
     setLocalAudioTrackState,
     setLocalVideoTrackState,
     setRoomState,
@@ -627,6 +674,7 @@ export function useLiveKit(
     error,
     room,
     localAudioTrack,
+    localInputTrack,
     localVideoTrack,
     remoteParticipants,
     publishAudio,

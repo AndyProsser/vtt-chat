@@ -15,17 +15,20 @@ export interface LiveKitConnectionSnapshot {
 
 export interface LiveKitSlice {
   livekitConnections: Record<string, LiveKitConnectionSnapshot>
+  livekitLocalInputTracks: Record<string, MediaStreamTrack | null>
 
   upsertLiveKitConnection: (
     key: string,
     snapshot: Omit<LiveKitConnectionSnapshot, 'key' | 'updatedAt'>
   ) => void
+  setLiveKitLocalInputTrack: (key: string, track: MediaStreamTrack | null) => void
   clearLiveKitConnection: (key: string) => void
   clearLiveKitConnectionsForSession: (sessionId?: string) => void
 }
 
 export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
   livekitConnections: {},
+  livekitLocalInputTracks: {},
 
   upsertLiveKitConnection: (key, snapshot) =>
     set((state) => ({
@@ -39,21 +42,39 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
       },
     })),
 
+  setLiveKitLocalInputTrack: (key, track) =>
+    set((state) => ({
+      livekitLocalInputTracks: {
+        ...state.livekitLocalInputTracks,
+        [key]: track,
+      },
+    })),
+
   clearLiveKitConnection: (key) =>
     set((state) => {
       if (!state.livekitConnections[key]) {
         return state
       }
 
-      const next = { ...state.livekitConnections }
-      delete next[key]
-      return { livekitConnections: next }
+      const nextConnections = { ...state.livekitConnections }
+      delete nextConnections[key]
+
+      const nextInputTracks = { ...state.livekitLocalInputTracks }
+      delete nextInputTracks[key]
+
+      return {
+        livekitConnections: nextConnections,
+        livekitLocalInputTracks: nextInputTracks,
+      }
     }),
 
   clearLiveKitConnectionsForSession: (sessionId) =>
     set((state) => {
       if (!sessionId) {
-        return { livekitConnections: {} }
+        return {
+          livekitConnections: {},
+          livekitLocalInputTracks: {},
+        }
       }
 
       const next = Object.fromEntries(
@@ -62,6 +83,16 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
         )
       ) as Record<string, LiveKitConnectionSnapshot>
 
-      return { livekitConnections: next }
+      const nextTracks = Object.fromEntries(
+        Object.entries(state.livekitLocalInputTracks).filter(([key]) => {
+          const connection = state.livekitConnections[key]
+          return connection?.sessionId !== sessionId
+        })
+      ) as Record<string, MediaStreamTrack | null>
+
+      return {
+        livekitConnections: next,
+        livekitLocalInputTracks: nextTracks,
+      }
     }),
 })

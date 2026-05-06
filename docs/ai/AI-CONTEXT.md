@@ -172,6 +172,8 @@ Canonical frontend state rules:
 - Shared transport state (WebSocket and LiveKit connection lifecycle) must be normalized into store snapshots.
 - Components rendering the same status must consume shared selectors from the same store source.
 - Keep local component state limited to transient UI-only concerns.
+- Operational runtime state required for app behavior (connection refs, published track refs, permission/status snapshots, shared audio/session runtime values) MUST be stored in core Zustand slices, not in hook-local component state.
+- Hook/component local state is allowed only for view-local UX concerns (panel open/close, hover/focus, temporary input drafts) or short-lived derived values that can be recomputed from store state.
 
 ### **EVENT-BUS.md**
 
