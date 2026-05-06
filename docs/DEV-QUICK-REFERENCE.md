@@ -107,6 +107,21 @@ Reducers compute the next state _only_ from `(state, event)`.
 - Panels are modular, dockable, collapsible
 - No hidden behaviours or surprises
 
+### Connection Status Canonical Names
+
+Use roadmap-defined canonical names across frontend/backend/admin:
+
+- `coreWsState`: `CONNECTED | CONNECTING | ERROR`
+- `livekitState`: `CONNECTED | CONNECTING | ERROR | NOT_APPLICABLE`
+- `statusContext`: `OUTSIDE_CAMPAIGN | INSIDE_CAMPAIGN`
+- `statusIconState`: `OK | OK_PARTIAL | CONNECTING | DEGRADED_AUDIO | ERROR`
+- `statusColorKey`: `GREEN | PALE_GREEN | YELLOW | ORANGE | RED`
+
+Implementation boundaries:
+
+- Put shared enums/types in `shared/`.
+- Keep admin presentation constants in admin-local constants, but map to shared enum names.
+
 ### **UI Modernization Guardrails**
 
 - Frontend core UI target: Radix UI + Tailwind + token-backed CSS variables

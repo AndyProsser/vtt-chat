@@ -1,5 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { PasswordResetConfirmForm } from '@/components/auth/PasswordResetConfirmForm'
+import { PasswordResetRequestForm } from '@/components/auth/PasswordResetRequestForm'
+import { RegisterForm } from '@/components/auth/RegisterForm'
+import { resolveAuthSurfaceRoute } from '@/components/auth/auth-surface'
 import type { AuthState } from '@/hooks/useAuthSession'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
@@ -22,6 +26,22 @@ type AppMainRouteViewProps = {
 
 export function AppMainRouteView(props: AppMainRouteViewProps) {
   if (!props.auth.token || !props.auth.user) {
+    const authSurfaceRoute = resolveAuthSurfaceRoute(window.location.pathname)
+
+    const renderAuthSurface = () => {
+      switch (authSurfaceRoute) {
+        case 'register':
+          return <RegisterForm apiUrl={props.apiUrl} onLoginSuccess={props.onLoginSuccess} />
+        case 'forgot-password':
+          return <PasswordResetRequestForm apiUrl={props.apiUrl} />
+        case 'reset-password':
+          return <PasswordResetConfirmForm apiUrl={props.apiUrl} />
+        case 'login':
+        default:
+          return <LoginForm apiUrl={props.apiUrl} onLoginSuccess={props.onLoginSuccess} />
+      }
+    }
+
     return (
       <div className="auth-landing">
         <section className="auth-hero">
@@ -109,9 +129,7 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
         </section>
 
         <section className="auth-form-pane">
-          <div className="auth-form-shell">
-            <LoginForm apiUrl={props.apiUrl} onLoginSuccess={props.onLoginSuccess} />
-          </div>
+          <div className="auth-form-shell">{renderAuthSurface()}</div>
         </section>
       </div>
     )

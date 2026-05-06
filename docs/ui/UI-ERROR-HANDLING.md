@@ -188,12 +188,21 @@ Examples:
 - Composer enters “retry pending” state
 - UI remains interactive
 - Automatic retry handled by transport layer
+- Primary status icon updates through canonical aggregate states (`OK`, `OK_PARTIAL`, `CONNECTING`, `DEGRADED_AUDIO`, `ERROR`).
+- LiveKit/audio indicator remains subtle; escalate primary icon to:
+  - `DEGRADED_AUDIO` when Core WS is connected but LiveKit fails
+  - `ERROR` when Core WS fails, or when both transports fail
 
 ### **Persona Rules**
 
 - All personas see transport errors
 - DM sees additional context:
   **“Some players may be disconnected.”**
+
+Status mapping guardrail:
+
+- Outside campaign, primary icon reflects Core WS only.
+- Inside campaign, primary icon reflects Core WS + LiveKit aggregate state mapping.
 
 ---
 

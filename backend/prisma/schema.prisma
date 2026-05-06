@@ -88,6 +88,7 @@ model User {
   characters               Character[]
   externalIdentities       ExternalIdentity[]
   linkedExternalCampaigns  CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
+  passwordResetTokens      PasswordResetToken[]
   spectatorWaitlistEntries SpectatorWaitlist[]
   portabilityArtifacts     ImportExportArtifact[]
   createdAt                DateTime               @default(now())
@@ -323,6 +324,19 @@ model AdminInvite {
 
   @@index([token])
   @@index([invitedByUserId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
   @@index([expiresAt])
 }
 

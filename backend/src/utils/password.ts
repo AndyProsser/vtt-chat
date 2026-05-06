@@ -12,16 +12,15 @@ export interface PasswordStrengthResult {
 
 /**
  * Minimum password requirements:
- * - At least 12 characters
+ * - At least 8 characters
  * - At least one uppercase letter
  * - At least one lowercase letter
  * - At least one number
  * - At least one special character
  *
- * These requirements are intentionally strict to support
- * password manager-generated passwords and security best practices.
+ * These requirements balance usability with baseline account security.
  */
-export const MIN_PASSWORD_LENGTH = 12
+export const MIN_PASSWORD_LENGTH = 8
 export const PASSWORD_REQUIREMENTS = {
   minLength: MIN_PASSWORD_LENGTH,
   hasUppercase: /[A-Z]/,

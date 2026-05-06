@@ -1,8 +1,8 @@
 /**
  * Tests for v1 Authentication Routes
  *
- * Validates that new normalized v1 routes work correctly.
- * Reference: docs/operations/W6-REFACTOR-PLAN.md (Phase 1)
+ * Validates that normalized v1 routes work correctly.
+ * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
  */
 
 import express from 'express'

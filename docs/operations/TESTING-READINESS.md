@@ -370,6 +370,34 @@ Use this before moving to alpha, beta, and general availability:
 - [ ] Token invalidation honored (tokenInvalidBefore respected)
 - [ ] Password strength validation enforced (12+ char, complexity)
 
+### Status Icon Acceptance (W0)
+
+- [ ] Outside campaign + `coreWsState=CONNECTED` renders primary status icon as `statusIconState=OK` with `statusColorKey=GREEN`.
+- [ ] Outside campaign + `coreWsState=CONNECTING` renders `statusIconState=CONNECTING` with `statusColorKey=YELLOW`.
+- [ ] Outside campaign + `coreWsState=ERROR` renders `statusIconState=ERROR` with `statusColorKey=RED`.
+- [ ] Inside campaign + `coreWsState=CONNECTED` + `livekitState=CONNECTED` renders `statusIconState=OK` with `statusColorKey=GREEN`.
+- [ ] Inside campaign + `coreWsState=CONNECTED` + `livekitState=CONNECTING` renders `statusIconState=OK_PARTIAL` with `statusColorKey=PALE_GREEN`.
+- [ ] Inside campaign + `coreWsState=CONNECTING` + `livekitState=CONNECTING` renders `statusIconState=CONNECTING` with `statusColorKey=YELLOW`.
+- [ ] Inside campaign + `coreWsState=CONNECTED` + `livekitState=ERROR` renders `statusIconState=DEGRADED_AUDIO` with `statusColorKey=ORANGE`.
+- [ ] Inside campaign + `coreWsState=ERROR` (any `livekitState`) renders `statusIconState=ERROR` with `statusColorKey=RED`.
+- [ ] Inside campaign + `coreWsState=CONNECTING` + `livekitState=ERROR` renders `statusIconState=ERROR` with `statusColorKey=RED`.
+- [ ] LiveKit/audio indicator remains visually subtle in normal/connecting states and only escalates primary icon when aggregate state is `DEGRADED_AUDIO` or `ERROR`.
+- [ ] Frontend, backend, and admin test fixtures/assertions use canonical enum names (`coreWsState`, `livekitState`, `statusContext`, `statusIconState`, `statusColorKey`) without alias drift.
+
+Tiny test data matrix (state inputs -> expected icon/color):
+
+| statusContext       | coreWsState | livekitState    | expectedStatusIconState | expectedStatusColorKey |
+| ------------------- | ----------- | --------------- | ----------------------- | ---------------------- |
+| OUTSIDE_CAMPAIGN    | CONNECTED   | NOT_APPLICABLE  | OK                      | GREEN                  |
+| OUTSIDE_CAMPAIGN    | CONNECTING  | NOT_APPLICABLE  | CONNECTING              | YELLOW                 |
+| OUTSIDE_CAMPAIGN    | ERROR       | NOT_APPLICABLE  | ERROR                   | RED                    |
+| INSIDE_CAMPAIGN     | CONNECTED   | CONNECTED       | OK                      | GREEN                  |
+| INSIDE_CAMPAIGN     | CONNECTED   | CONNECTING      | OK_PARTIAL              | PALE_GREEN             |
+| INSIDE_CAMPAIGN     | CONNECTING  | CONNECTING      | CONNECTING              | YELLOW                 |
+| INSIDE_CAMPAIGN     | CONNECTED   | ERROR           | DEGRADED_AUDIO          | ORANGE                 |
+| INSIDE_CAMPAIGN     | ERROR       | CONNECTED       | ERROR                   | RED                    |
+| INSIDE_CAMPAIGN     | CONNECTING  | ERROR           | ERROR                   | RED                    |
+
 ### Observability
 
 - [ ] All guest auth flows produce audit log entries

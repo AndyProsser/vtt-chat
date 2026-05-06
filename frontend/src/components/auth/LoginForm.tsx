@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
+import { isDevPasswordlessLoginEnabled, navigateAuthSurface } from '@/components/auth/auth-surface'
 
 interface LoginFormProps {
   apiUrl: string
@@ -17,13 +18,21 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const passwordlessLoginEnabled = isDevPasswordlessLoginEnabled()
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (passwordlessLoginEnabled && identifier.includes('@')) {
+      setError('Passwordless DEV testing only supports usernames.')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -33,7 +42,8 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username,
+          username: identifier,
+          ...(passwordlessLoginEnabled ? {} : { password }),
           accessMode: 'USER',
           role: Role.PLAYER,
         }),
@@ -46,12 +56,6 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
 
       const data = await response.json()
       const { token, user } = data
-
-      // Store token
-      sessionStorage.setItem('authToken', token)
-      sessionStorage.setItem('user', JSON.stringify(user))
-
-      // Callback to parent
       onLoginSuccess(token, user)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
@@ -78,30 +82,78 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       {error && <div className="auth-alert">{error}</div>}
 
       <div className="auth-field">
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username-or-email">
+          {passwordlessLoginEnabled ? 'Username' : 'Username or Email'}
+        </label>
         <input
-          id="username"
+          id="username-or-email"
           type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
           disabled={isLoading}
+          autoComplete="username"
+          placeholder={passwordlessLoginEnabled ? 'Enter username' : 'Enter username or email'}
           required
         />
-        <p className="auth-field__hint">Letters, numbers, and underscores only.</p>
+        <p className="auth-field__hint">
+          {passwordlessLoginEnabled
+            ? 'DEV Testing passwordless login uses username only.'
+            : 'Use your full account username or email address.'}
+        </p>
       </div>
 
-      <div className="auth-form-note">
-        <strong>User first</strong>
-        <p>DM, Player, and Spectator are campaign roles, not login roles.</p>
+      <div className="auth-field">
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading || passwordlessLoginEnabled}
+          autoComplete="current-password"
+          placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Enter password'}
+          required={!passwordlessLoginEnabled}
+        />
+        {passwordlessLoginEnabled ? (
+          <p className="auth-field__hint">
+            Password is disabled while passwordless DEV Testing is active.
+          </p>
+        ) : null}
       </div>
 
-      <button type="submit" disabled={isLoading || !username.trim()} className="auth-submit">
-        {isLoading ? 'Signing in...' : 'Continue'}
+      {passwordlessLoginEnabled && identifier.trim() ? (
+        <div className="auth-status-panel">Passwords aren't needed in DEV Testing.</div>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={isLoading || !identifier.trim() || (!passwordlessLoginEnabled && !password)}
+        className="auth-submit"
+      >
+        {isLoading ? 'Logging in...' : 'Login'}
       </button>
 
-      <div className="auth-form-meta">
-        <span>Invite-first authentication</span>
-        <span className="auth-pill">Guest login disabled here</span>
+      <div className="auth-form-links" aria-label="login help links">
+        <a
+          className="auth-form-link"
+          href="/register"
+          onClick={(event) => {
+            event.preventDefault()
+            navigateAuthSurface('/register')
+          }}
+        >
+          Register
+        </a>
+        <a
+          className="auth-form-link auth-form-link--align-right"
+          href="/forgot-password"
+          onClick={(event) => {
+            event.preventDefault()
+            navigateAuthSurface('/forgot-password')
+          }}
+        >
+          Forgot Password
+        </a>
       </div>
     </form>
   )

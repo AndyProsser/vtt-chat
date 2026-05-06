@@ -15,6 +15,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LIVEKIT_URL: http://livekit:7880
       NODE_ENV: development
+      ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
     volumes:
       - ./backend/src:/workspace/backend/src
       - ./backend/prisma:/workspace/backend/prisma
@@ -45,6 +46,7 @@ services:
       VITE_API_URL: http://localhost:8080
       VITE_WS_URL: ws://localhost:8080
       VITE_LIVEKIT_URL: ws://localhost:7880
+      VITE_ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
       VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-DEBUG}
     volumes:
       - ./frontend/src:/workspace/frontend/src

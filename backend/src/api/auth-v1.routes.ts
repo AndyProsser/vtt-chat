@@ -4,7 +4,7 @@
  * This module provides normalized API paths for authentication flows.
  * Migrates from mixed patterns (extension/, player/, spectator/) to unified join/* structure.
  *
- * Reference: docs/operations/W6-REFACTOR-PLAN.md
+ * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
  *
  * New Route Patterns:
  * POST /api/v1/auth/join/guest/player       - Guest player join flow
@@ -37,7 +37,6 @@ import { ErrorCode, isValidUsername } from '@shared'
 import { joinCampaignForUser } from '@/repositories/campaign.repository'
 import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
-import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
 import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth-user-context.service'
 import {
   joinGuestSpectatorViaInvite,
@@ -45,6 +44,13 @@ import {
   joinGuestPlayerViaInvite,
   upgradeGuestAccount,
 } from '@/services/guest-auth.service'
+import {
+  completePasswordReset,
+  registerFullAccount,
+  requestPasswordReset,
+  suggestAvailableUsername,
+  verifyPasswordResetToken,
+} from '@/services/self-service-auth.service'
 import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session-authz.service'
 
 const router = Router()
@@ -61,6 +67,14 @@ const tokenRefreshRateLimit = createRateLimit({
   maxRequests: 60,
   message: 'Too many token refresh attempts. Please slow down.',
 })
+
+const isDevSmokePasswordlessLoginEnabled =
+  (process.env.NODE_ENV || '').toLowerCase() === 'development' &&
+  ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ENABLE_PASSWORDLESS_LOGIN || '')
+      .trim()
+      .toLowerCase()
+  )
 
 // ============================================================================
 // Middleware
@@ -92,19 +106,30 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 // ============================================================================
 
 router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
-  const username = String(req.body?.username || '')
+  const username = String(req.body?.username || req.body?.email || '')
     .trim()
     .toLowerCase()
   const password = String(req.body?.password || '')
+  const requestedRole = String(req.body?.role || 'PLAYER')
+    .trim()
+    .toUpperCase()
+  const isEmailLogin = username.includes('@')
 
-  if (!username || !password) {
+  if (!username || (!password && !isDevSmokePasswordlessLoginEnabled)) {
     return res.status(400).json({
       code: 'INVALID_LOGIN_REQUEST',
       message: 'username and password are required',
     })
   }
 
-  if (!isValidUsername(username)) {
+  if (isEmailLogin && isDevSmokePasswordlessLoginEnabled) {
+    return res.status(400).json({
+      code: 'INVALID_LOGIN_REQUEST',
+      message: 'DEV testing passwordless login only supports usernames',
+    })
+  }
+
+  if (!isEmailLogin && !isValidUsername(username)) {
     return res.status(400).json({
       code: 'INVALID_USERNAME',
       message: 'username must be alphanumeric and 3-32 characters',
@@ -113,7 +138,7 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
 
   const user = await prisma.user.findFirst({
     where: {
-      username,
+      ...(isEmailLogin ? { email: username } : { username }),
       isActive: true,
     },
     select: {
@@ -125,6 +150,43 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     },
   })
 
+  if (!user && isDevSmokePasswordlessLoginEnabled) {
+    const fallbackRole = ['DM', 'PLAYER', 'SPECTATOR'].includes(requestedRole)
+      ? (requestedRole as 'DM' | 'PLAYER' | 'SPECTATOR')
+      : 'PLAYER'
+
+    const created = await prisma.user.create({
+      data: {
+        username,
+        displayName: username,
+        authType: 'FULL',
+        role: fallbackRole,
+      },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+      },
+    })
+
+    const resolvedRole = normalizePlayerFacingRole(created.role)
+
+    return res.status(200).json({
+      token: createToken({
+        userId: created.id as UUID,
+        username: created.username,
+        role: resolvedRole,
+        authType: 'FULL',
+      }),
+      user: {
+        id: created.id,
+        username: created.username,
+        role: resolvedRole,
+        authType: 'FULL',
+      },
+    })
+  }
+
   if (!user || user.authType !== 'FULL') {
     return res.status(401).json({
       code: 'INVALID_CREDENTIALS',
@@ -132,19 +194,29 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     })
   }
 
-  if (!user.password) {
+  if (!user.password && !isDevSmokePasswordlessLoginEnabled) {
     return res.status(401).json({
       code: 'INVALID_CREDENTIALS',
       message: 'Invalid username or password',
     })
   }
 
-  const passwordValid = await verifyPassword(password, user.password)
-  if (!passwordValid) {
-    return res.status(401).json({
-      code: 'INVALID_CREDENTIALS',
-      message: 'Invalid username or password',
-    })
+  if (!isDevSmokePasswordlessLoginEnabled) {
+    const passwordValid = await verifyPassword(password, user.password as string)
+    if (!passwordValid) {
+      return res.status(401).json({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid username or password',
+      })
+    }
+  } else if (password && user.password) {
+    const passwordValid = await verifyPassword(password, user.password)
+    if (!passwordValid) {
+      return res.status(401).json({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid username or password',
+      })
+    }
   }
 
   const resolvedRole = normalizePlayerFacingRole(user.role)
@@ -163,6 +235,181 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
       authType: 'FULL',
     },
   })
+})
+
+router.post('/register/username-suggestion', async (req: Request, res: Response) => {
+  const displayName = String(req.body?.name || '').trim()
+  const requestedUsername = String(req.body?.username || '').trim()
+
+  const username = await suggestAvailableUsername({
+    displayName,
+    requestedUsername,
+  })
+
+  return res.status(200).json({ username })
+})
+
+router.post('/register', async (req: Request, res: Response) => {
+  const displayName = String(req.body?.name || '').trim()
+  const email = String(req.body?.email || '').trim()
+  const requestedUsername = String(req.body?.username || '').trim()
+  const password = String(req.body?.password || '')
+
+  try {
+    const result = await registerFullAccount({
+      displayName,
+      email,
+      requestedUsername,
+      password,
+    })
+
+    return res.status(201).json(result)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'REGISTRATION_FAILED'
+
+    if (message === 'DISPLAY_NAME_REQUIRED') {
+      return res.status(400).json({
+        code: 'DISPLAY_NAME_REQUIRED',
+        message: 'Name is required',
+      })
+    }
+    if (message === 'INVALID_EMAIL') {
+      return res.status(400).json({
+        code: 'INVALID_EMAIL',
+        message: 'A valid email address is required',
+      })
+    }
+    if (message === 'INVALID_PASSWORD') {
+      return res.status(400).json({
+        code: 'INVALID_PASSWORD',
+        message: 'Password does not meet security requirements',
+      })
+    }
+    if (message === 'EMAIL_IN_USE') {
+      return res.status(409).json({
+        code: 'EMAIL_IN_USE',
+        message: 'That email is already registered',
+      })
+    }
+
+    return res.status(500).json({
+      code: 'REGISTRATION_FAILED',
+      message: 'Failed to register account',
+    })
+  }
+})
+
+router.post('/password-reset/request', async (req: Request, res: Response) => {
+  const identifier = String(req.body?.identifier || '').trim()
+  const appBaseUrl =
+    String(process.env.FRONTEND_URL || '').trim() || String(req.headers.origin || '').trim()
+
+  try {
+    const result = await requestPasswordReset({
+      identifier,
+      appBaseUrl,
+      isDevelopment: (process.env.NODE_ENV || '').toLowerCase() === 'development',
+    })
+
+    if (!result.accountFound) {
+      return res.status(404).json({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'No account matched that username or email',
+        accountFound: false,
+      })
+    }
+
+    return res.status(200).json({
+      accountFound: true,
+      delivery: result.delivery,
+      resetToken: result.resetToken,
+      email: result.email,
+      message:
+        result.delivery === 'passwordless'
+          ? 'DEV testing skipped email verification and opened password reset directly.'
+          : 'Password reset email sent.',
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'PASSWORD_RESET_REQUEST_FAILED'
+
+    if (message === 'IDENTIFIER_REQUIRED') {
+      return res.status(400).json({
+        code: 'IDENTIFIER_REQUIRED',
+        message: 'Username or email is required',
+      })
+    }
+    if (message === 'PASSWORD_RESET_EMAIL_NOT_CONFIGURED') {
+      return res.status(500).json({
+        code: 'PASSWORD_RESET_EMAIL_NOT_CONFIGURED',
+        message: 'Password reset email delivery is not configured',
+      })
+    }
+
+    return res.status(500).json({
+      code: 'PASSWORD_RESET_REQUEST_FAILED',
+      message: 'Failed to start password reset',
+    })
+  }
+})
+
+router.post('/password-reset/verify', async (req: Request, res: Response) => {
+  const token = String(req.body?.token || '').trim()
+
+  if (!token) {
+    return res.status(400).json({
+      code: 'RESET_TOKEN_REQUIRED',
+      message: 'Reset token is required',
+    })
+  }
+
+  const result = await verifyPasswordResetToken(token)
+  if (!result.valid) {
+    return res.status(400).json({
+      code: 'INVALID_RESET_TOKEN',
+      message: 'Password reset link is invalid or expired',
+    })
+  }
+
+  return res.status(200).json(result)
+})
+
+router.post('/password-reset/complete', async (req: Request, res: Response) => {
+  const token = String(req.body?.token || '').trim()
+  const password = String(req.body?.password || '')
+
+  if (!token || !password) {
+    return res.status(400).json({
+      code: 'INVALID_PASSWORD_RESET_REQUEST',
+      message: 'Reset token and password are required',
+    })
+  }
+
+  try {
+    await completePasswordReset({ token, password })
+    return res.status(200).json({
+      message: 'Password reset complete',
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'PASSWORD_RESET_FAILED'
+
+    if (message === 'INVALID_PASSWORD') {
+      return res.status(400).json({
+        code: 'INVALID_PASSWORD',
+        message: 'Password does not meet security requirements',
+      })
+    }
+    if (message === 'INVALID_RESET_TOKEN') {
+      return res.status(400).json({
+        code: 'INVALID_RESET_TOKEN',
+        message: 'Password reset link is invalid or expired',
+      })
+    }
+
+    return res.status(500).json({
+      code: 'PASSWORD_RESET_FAILED',
+      message: 'Failed to reset password',
+    })
+  }
 })
 
 // ============================================================================

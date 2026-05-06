@@ -41,6 +41,21 @@ Compatibility policy:
 - New integrations should use canonical broadcast names.
 - Legacy aliases remain accepted during migration to avoid breaking existing clients.
 
+### Connection Status Naming (Roadmap Alignment)
+
+Roadmap-aligned implementation naming for cross-surface status indicators:
+
+- `coreWsState`: `CONNECTED | CONNECTING | ERROR`
+- `livekitState`: `CONNECTED | CONNECTING | ERROR | NOT_APPLICABLE`
+- `statusContext`: `OUTSIDE_CAMPAIGN | INSIDE_CAMPAIGN`
+- `statusIconState`: `OK | OK_PARTIAL | CONNECTING | DEGRADED_AUDIO | ERROR`
+- `statusColorKey`: `GREEN | PALE_GREEN | YELLOW | ORANGE | RED`
+
+Placement boundary:
+
+- Shared enum/type contracts should live in `shared/`.
+- Admin keeps admin-specific presentation constants local, mapped to the same shared enums.
+
 ---
 
 ## Location

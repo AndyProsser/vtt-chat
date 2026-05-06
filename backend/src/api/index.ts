@@ -36,7 +36,7 @@ router.get('/health', (_req: Request, res: Response) => {
 
 /**
  * v1 API routes (normalized naming conventions)
- * Reference: docs/operations/W6-REFACTOR-PLAN.md
+ * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
  */
 router.use('/v1/auth', authV1Routes)
 router.use('/v1/session', sessionRoutes)

@@ -44,6 +44,31 @@ The UI uses the following stores (already defined in your architecture):
 
 No new stores are introduced.
 
+### 2.1 Connection Status Canonical Model
+
+For cross-app consistency (frontend, backend APIs, admin), status naming follows the roadmap canonical model:
+
+- `coreWsState`: `CONNECTED | CONNECTING | ERROR`
+- `livekitState`: `CONNECTED | CONNECTING | ERROR | NOT_APPLICABLE`
+- `statusContext`: `OUTSIDE_CAMPAIGN | INSIDE_CAMPAIGN`
+- `statusIconState`: `OK | OK_PARTIAL | CONNECTING | DEGRADED_AUDIO | ERROR`
+- `statusColorKey`: `GREEN | PALE_GREEN | YELLOW | ORANGE | RED`
+
+State ownership and selector expectations:
+
+- Frontend runtime state derives from stores/selectors and must not hardcode ad-hoc status strings.
+- Shared enum/type definitions belong in `shared/`.
+- Admin keeps UI presentation constants local, but maps to the same shared enum names.
+
+### 2.2 W0 UI Completion Priorities
+
+The current UX implementation track prioritizes:
+
+- Right-panel screens and layouts that are currently non-functional or incomplete.
+- Global settings usability both in-session and out-of-session.
+- User profile information in the global settings panel.
+- Consolidated websocket/audio status model with one primary status icon and subtle LiveKit/audio secondary indicators.
+
 ---
 
 ## 3. Layout Components
@@ -60,6 +85,12 @@ No new stores are introduced.
 | Selected device   | `settingsStore` | `selectSelectedDevice`   |
 | Theme             | `settingsStore` | `selectTheme`            |
 | Connection status | `sessionStore`  | `selectConnectionStatus` |
+
+Toolbar connection status behavior rules:
+
+- Outside campaign, primary icon reflects Core WS only.
+- Inside campaign, primary icon reflects aggregate Core WS + LiveKit mapping.
+- LiveKit/audio connection signals should remain visually subtle unless aggregate state is `DEGRADED_AUDIO` or `ERROR`.
 
 ---
 

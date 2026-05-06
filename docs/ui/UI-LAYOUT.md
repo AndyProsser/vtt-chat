@@ -22,6 +22,12 @@ Persona differences are expressed through **visibility**, **permissions**, and *
 Admin exception: the Admin SPA uses a dedicated two-column operations layout.
 See [ADMIN-UI-DESIGN.md](ADMIN-UI-DESIGN.md).
 
+Current implementation priority alignment:
+
+- Right-panel screen completion and usability hardening are active W0 priorities.
+- Global settings must be usable both in-session and out-of-session.
+- User profile information belongs within the global settings surface.
+
 ---
 
 ## 2. Global Layout Structure
@@ -45,6 +51,13 @@ See [ADMIN-UI-DESIGN.md](ADMIN-UI-DESIGN.md).
 ```
 
 This layout is **fluid**, **uncluttered**, and designed to complement external VTTs such as D&D Beyond Maps.
+
+Connection status presentation rules:
+
+- The toolbar primary status icon is authoritative.
+- Outside campaign, it maps to Core WS state only.
+- Inside campaign, it maps to aggregate Core WS + LiveKit state.
+- LiveKit/audio status should be visually subtle, escalating the primary icon only for degraded audio or error conditions.
 
 ---
 
@@ -187,6 +200,12 @@ Tabs vary by persona.
 5. Journal
 6. History
 7. **Settings (always last)**
+
+Settings panel expectations:
+
+- Settings is a global surface, not session-scoped only.
+- The same panel supports in-session and out-of-session access.
+- User profile settings are included in this panel.
 
 ### Tab Order (Player)
 

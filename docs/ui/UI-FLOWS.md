@@ -298,6 +298,71 @@ User clicks a tab.
    - `uiStore.activeRightPanel = tab`
 4. UI updates:
    - Slide‑in panel animates in
+
+---
+
+### **6.2 User Opens Global Settings (In or Out of Session)**
+
+**UI Action:**
+User opens Settings from authenticated shell.
+
+**Flow:**
+
+1. `ui/openPanel`
+2. Reducer: `uiReducer.openPanel`
+3. Store updates:
+   - `uiStore.activeRightPanel = 'settings'`
+4. UI updates:
+   - Settings panel opens in either context (inside campaign and outside campaign)
+   - User profile section is available from this same settings surface
+
+---
+
+## 7. Connection Status Icon Flows
+
+Connection status naming and mapping must use canonical enums from the roadmap implementation checklist.
+
+### **7.1 Outside Campaign Status Update**
+
+**Triggered by:**
+Core WS transport state change.
+
+**Flow:**
+
+1. `transport/coreWsStateChanged`
+2. Reducer computes aggregate icon state for `statusContext=OUTSIDE_CAMPAIGN`
+3. Store updates:
+   - `sessionStore.coreWsState`
+   - `sessionStore.statusIconState`
+   - `sessionStore.statusColorKey`
+4. UI updates:
+   - Primary status icon maps:
+     - CONNECTED -> GREEN
+     - CONNECTING -> YELLOW
+     - ERROR -> RED
+
+### **7.2 Inside Campaign Status Update (Core WS + LiveKit)**
+
+**Triggered by:**
+Core WS or LiveKit transport state change.
+
+**Flow:**
+
+1. `transport/coreWsStateChanged` or `transport/livekitStateChanged`
+2. Reducer computes aggregate icon state for `statusContext=INSIDE_CAMPAIGN`
+3. Store updates:
+   - `sessionStore.coreWsState`
+   - `sessionStore.livekitState`
+   - `sessionStore.statusIconState`
+   - `sessionStore.statusColorKey`
+4. UI updates:
+   - Primary status icon maps:
+     - Core CONNECTED + LiveKit CONNECTED -> GREEN
+     - Core CONNECTED + LiveKit CONNECTING -> PALE_GREEN
+     - Core CONNECTING + LiveKit CONNECTING -> YELLOW
+     - Core CONNECTED + LiveKit ERROR -> ORANGE
+     - Core ERROR (any LiveKit) or Core CONNECTING + LiveKit ERROR -> RED
+   - LiveKit/audio indicator remains subtle except in degraded/error states.
    - Chat shifts left
 
 ---

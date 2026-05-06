@@ -5,10 +5,11 @@ import { LoginForm } from '../../components/auth/LoginForm'
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     sessionStorage.clear()
   })
 
-  it('shows user access copy and no role tabs', () => {
+  it('shows login fields and help links for standard sign in', () => {
     render(<LoginForm apiUrl="http://localhost:3000" onLoginSuccess={vi.fn()} />)
 
     expect(screen.getByText('User access')).toBeTruthy()
@@ -17,8 +18,17 @@ describe('LoginForm', () => {
         'Guest accounts cannot sign in here. Use your invite URL to join or rejoin a campaign.'
       )
     ).toBeTruthy()
+    expect(screen.getByLabelText('Username or Email')).toBeTruthy()
+    expect(screen.getByLabelText('Password')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Login' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Register' }).getAttribute('href')).toBe('/register')
+    expect(screen.getByRole('link', { name: 'Forgot Password' }).getAttribute('href')).toBe(
+      '/forgot-password'
+    )
     expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.queryByText('Campaign Role Context')).toBeNull()
+    expect(screen.queryByText('User first')).toBeNull()
+    expect(screen.queryByText('Invite-first authentication')).toBeNull()
   })
 
   it('submits explicit user access login', async () => {
@@ -39,8 +49,11 @@ describe('LoginForm', () => {
     const onLoginSuccess = vi.fn()
     render(<LoginForm apiUrl="http://localhost:3000" onLoginSuccess={onLoginSuccess} />)
 
-    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'andy_user' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    fireEvent.change(screen.getByLabelText('Username or Email'), {
+      target: { value: 'andy_user' },
+    })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'ValidPassword!23' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -50,6 +63,7 @@ describe('LoginForm', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username: 'andy_user',
+            password: 'ValidPassword!23',
             accessMode: 'USER',
             role: 'PLAYER',
           }),
@@ -66,5 +80,18 @@ describe('LoginForm', () => {
         })
       )
     })
+  })
+
+  it('disables password field during DEV smoke test mode', () => {
+    vi.stubEnv('VITE_ENABLE_PASSWORDLESS_LOGIN', '1')
+
+    render(<LoginForm apiUrl="http://localhost:3000" onLoginSuccess={vi.fn()} />)
+
+    expect(screen.getByLabelText('Username')).toBeTruthy()
+    expect(screen.getByLabelText('Password').hasAttribute('disabled')).toBe(true)
+
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'devtester' } })
+
+    expect(screen.getByText("Passwords aren't needed in DEV Testing.")).toBeTruthy()
   })
 })

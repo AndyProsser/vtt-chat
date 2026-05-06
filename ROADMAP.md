@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-05
+Last updated: 2026-05-06
 
 Related roadmap:
 
@@ -50,6 +50,55 @@ Current boundary for this stage:
 - Outside campaign membership context, authenticated identity is simply `User`; DM/Player/Spectator are campaign-scoped roles.
 - Campaign owner DM handoff (resign and assign another player as DM) is planned.
 
+### Connection Status Icon Rules
+
+Status indicator simplification and behavior rules for frontend UX:
+
+- Audio/LiveKit status should be subtle in the UI.
+- Audio connection failures should influence the main status icon only when there is an audio/LiveKit connection issue.
+
+Outside campaign:
+
+- Green: connected to Core WS.
+- Yellow: connecting.
+- Red: error.
+
+Inside campaign:
+
+- Green: connected to Core WS and LiveKit.
+- Pale green: connected to Core WS, LiveKit connecting.
+- Yellow: connecting to both Core WS and LiveKit.
+- Orange: Core WS connected, LiveKit failed.
+- Red: both failed, or Core WS failed (regardless of LiveKit).
+
+### Connection Status Implementation Checklist
+
+Use the following canonical naming so frontend/backend/admin all refer to the same state keys.
+
+1. Canonical connection enums:
+   - `coreWsState`: `CONNECTED | CONNECTING | ERROR`
+   - `livekitState`: `CONNECTED | CONNECTING | ERROR | NOT_APPLICABLE`
+   - `statusContext`: `OUTSIDE_CAMPAIGN | INSIDE_CAMPAIGN`
+2. Canonical aggregate icon enum:
+   - `statusIconState`: `OK | OK_PARTIAL | CONNECTING | DEGRADED_AUDIO | ERROR`
+3. Canonical color mapping keys:
+   - `statusColorKey`: `GREEN | PALE_GREEN | YELLOW | ORANGE | RED`
+4. Canonical mapping table (primary icon):
+   - `OUTSIDE_CAMPAIGN` + `coreWsState=CONNECTED` -> `statusIconState=OK`, `statusColorKey=GREEN`
+   - `OUTSIDE_CAMPAIGN` + `coreWsState=CONNECTING` -> `statusIconState=CONNECTING`, `statusColorKey=YELLOW`
+   - `OUTSIDE_CAMPAIGN` + `coreWsState=ERROR` -> `statusIconState=ERROR`, `statusColorKey=RED`
+   - `INSIDE_CAMPAIGN` + `coreWsState=CONNECTED` + `livekitState=CONNECTED` -> `statusIconState=OK`, `statusColorKey=GREEN`
+   - `INSIDE_CAMPAIGN` + `coreWsState=CONNECTED` + `livekitState=CONNECTING` -> `statusIconState=OK_PARTIAL`, `statusColorKey=PALE_GREEN`
+   - `INSIDE_CAMPAIGN` + `coreWsState=CONNECTING` + `livekitState=CONNECTING` -> `statusIconState=CONNECTING`, `statusColorKey=YELLOW`
+   - `INSIDE_CAMPAIGN` + `coreWsState=CONNECTED` + `livekitState=ERROR` -> `statusIconState=DEGRADED_AUDIO`, `statusColorKey=ORANGE`
+   - `INSIDE_CAMPAIGN` + `coreWsState=ERROR` + any `livekitState` -> `statusIconState=ERROR`, `statusColorKey=RED`
+   - `INSIDE_CAMPAIGN` + `coreWsState=CONNECTING` + `livekitState=ERROR` -> `statusIconState=ERROR`, `statusColorKey=RED`
+5. Shared contract placement:
+   - Put enum/type definitions in `shared/` for frontend/backend parity.
+   - Keep admin UI presentation constants in admin-local constants, but map to the same shared enum names.
+6. UX guardrail:
+   - Keep LiveKit/audio as a subtle secondary indicator; only escalate the primary icon for `DEGRADED_AUDIO` and `ERROR` states.
+
 ---
 
 ## 1) Scope and Goal
@@ -94,12 +143,13 @@ Known readiness gap classes:
 
 | ID  | Workstream                  | Status      | Scope                                                                            |
 | --- | --------------------------- | ----------- | -------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, settings/profile usability, connection status UX  |
 | W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, fanout/load validation, audio durability  |
 | W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                |
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
 | W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts |
-| W6  | Refactor and Simplification | In Progress | Zustand consistency, component/file simplification, naming cleanup, API cleanup  |
+| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3 |
 | W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows |
 
 ---
@@ -123,6 +173,21 @@ Known readiness gap classes:
 - Added centralized API-index v1 mount contract tests to validate mount consistency in one suite.
 
 ## 4) Detailed Backlog
+
+### W0: Frontend Surface Completion
+
+1. Finish right-panel screens and layouts that are currently non-functional or not production-ready.
+2. Rework global user settings so the same panel works both in-session and out-of-session.
+3. Add user profile information to global settings with clear ownership and edit flow.
+4. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon.
+5. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment.
+
+Definition of done:
+
+- High-use right-panel screens are functionally complete and interaction-tested.
+- Global user settings + profile flows are usable both inside and outside session context.
+- Main status icon behavior matches the defined outside-campaign and inside-campaign matrix.
+- Audio/LiveKit indicator remains subtle while still escalating the main status icon on true audio-connection failure.
 
 ### W1: Hardening and Reliability
 
@@ -198,53 +263,29 @@ Definition of done:
 
 ### W6: Refactor and Simplification
 
-1. Standardize frontend shared runtime state on Zustand slices and selectors to eliminate duplicated local state patterns.
-2. Refactor oversized frontend components where sensible to reduce file size and complexity.
-3. Align frontend file names and folder structure with actual component/domain responsibilities.
-4. Refactor backend API route and service function naming for consistency and maintainability.
-5. Add migration-safe compatibility checks and test coverage for naming and structural refactors.
-6. Complete backend API route review and normalization:
-   - inventory all remaining legacy route mounts/aliases
-   - define canonical v1 route map and deprecation policy for compatibility paths
-   - retire or explicitly timebox legacy routes with contract tests guarding expected behavior
+Status: Completed baseline. Remaining items are tracked in active workstreams so this stage can stay closed.
 
-Short API normalization checklist (actionable now):
+Delivered baseline:
 
-1. Snapshot current mounts from [backend/src/api/index.ts](backend/src/api/index.ts) and classify as canonical (`/v1/*`) vs compatibility (legacy).
-2. For each compatibility mount (`/auth`, `/platform`, `/chat`, `/admin`, `/notes`, `/campaigns`, `/users`, `/telemetry`, `/metadata`), decide: keep temporarily (with sunset date) or migrate immediately.
-3. Verify canonical coverage is complete for active families currently mounted at `/v1/auth`, `/v1/session`, `/v1/presence`, `/v1/rooms`, `/v1/audio`, `/v1/livekit`, and `/v1/integrations`.
-4. Add/maintain route-contract tests that assert canonical paths are available and deprecated legacy paths behave as intentionally defined (supported or 404).
-5. Publish a migration map and changelog notes for frontend/admin/shared clients before removing any compatibility path.
-6. Component/service normalization is part of this backend legacy refactor: each route family maps to its canonical backend service/module boundary for ongoing maintenance.
+1. Standardized frontend shared runtime state on canonical Zustand slices/selectors for session, presence, room, audio, and UI concerns.
+2. Refactored oversized frontend audio surfaces into focused component/module boundaries.
+3. Aligned frontend and backend naming with canonical v1 API paths while retaining intentional compatibility aliases.
+4. Added migration-safe compatibility tests and v1 mount contract coverage for active route families.
 
-API normalization tracking table (update during each PR):
+Follow-up tracking (moved from this stage):
 
-Route Family is the service-owner key for this table.
-
-| Route Family | Current Path(s)     | Canonical Path     | Sunset Date |
-| ------------ | ------------------- | ------------------ | ----------- |
-| Auth         | `/auth`, `/v1/auth` | `/v1/auth`         | TBD         |
-| Session      | `/v1/session`       | `/v1/session`      | n/a         |
-| Presence     | `/v1/presence`      | `/v1/presence`     | n/a         |
-| Rooms        | `/v1/rooms`         | `/v1/rooms`        | n/a         |
-| Audio        | `/v1/audio`         | `/v1/audio`        | n/a         |
-| LiveKit      | `/v1/livekit`       | `/v1/livekit`      | n/a         |
-| Integrations | `/v1/integrations`  | `/v1/integrations` | n/a         |
-| Platform     | `/platform`         | TBD                | TBD         |
-| Chat         | `/chat`             | TBD                | TBD         |
-| Admin        | `/admin`            | TBD                | TBD         |
-| Notes        | `/notes`            | TBD                | TBD         |
-| Campaigns    | `/campaigns`        | TBD                | TBD         |
-| Users        | `/users`            | TBD                | TBD         |
-| Telemetry    | `/telemetry`        | TBD                | TBD         |
-| Metadata     | `/metadata`         | TBD                | TBD         |
+1. W1: continue reconnect/recovery soak expansion for multi-client stress and cross-session isolation.
+2. W2: continue refactor-sensitive coverage expansion (selectors, integration hooks, migration behavior).
+3. W3: finalize legacy-path deprecation policy and sunset execution via runbook + telemetry gate.
+4. Consolidate reusable constants and shared common logic into `shared/` where cross-frontend/backend reuse is intended, with migration checklist coverage to preserve behavioral parity.
 
 Definition of done:
 
 - Cross-component runtime state uses canonical store selectors for shared concerns.
 - Targeted frontend/backend modules are renamed and reorganized without behavior regressions.
 - Refactor-related tests pass and coverage trend improves on changed modules.
-- API route inventory is documented, canonical v1 mapping is complete, and legacy compatibility paths are either retired or explicitly tracked with deprecation notes and tests.
+- API route inventory is documented, canonical v1 mapping is complete, and legacy compatibility paths are explicitly tracked with deprecation notes/tests pending planned sunset in W3.
+- Reusable cross-app constants/common logic are centralized in `shared/` and consumed consistently by frontend and backend where applicable.
 
 ### W7: Admin Operations UX Review
 
@@ -254,12 +295,14 @@ Definition of done:
 4. Review auditability visibility so operators can trace action -> effect -> evidence without ambiguity.
 5. Review failure-state UX (timeouts, partial success, retries, and rollback guidance) for operator confidence under stress.
 6. Review accessibility and keyboard-first workflows for operational efficiency.
+7. Consolidate reusable admin constants into an admin-specific central constants module, using `shared/` only for truly cross-app contracts and utilities.
 
 Definition of done:
 
 - Admin operations UX findings are documented with severity, rationale, and recommended remediation.
 - Critical/high findings are scheduled or resolved with verification notes.
 - Updated operator flow guidance is reflected in docs and test checklists.
+- Admin constants usage is consistent through the admin-specific constants module, with explicit boundaries documented for admin-only vs `shared/` reuse.
 
 ---
 
@@ -275,7 +318,7 @@ Definition of done:
 
 ### M3: UX and Documentation Readiness
 
-- Target: complete W4 regression closure, W5 user-doc publishing, W6 panel/refactor baseline, and W7 admin operations UX review
+- Target: complete W0 frontend surface completion, W4 regression closure, W5 user-doc publishing, W6 panel/refactor consistency follow-up, and W7 admin operations UX review
 
 ### M4: Release Readiness Review
 
