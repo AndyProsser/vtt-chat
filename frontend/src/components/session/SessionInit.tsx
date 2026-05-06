@@ -11,6 +11,7 @@ import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import type { ConnectionState } from '../../ws/client'
+import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
@@ -1566,6 +1567,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const hasSessionSelected = currentSession !== null
+
+  const connectionStatus = useConnectionStatus({
+    wsState,
+    sessionId: currentSession?.id ?? null,
+    roomId: selectedRoomId || null,
+  })
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
@@ -1721,8 +1728,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
                 </button>
                 <span
-                  className={`session-toolbar__connection session-toolbar__connection--${wsState}`}
-                  aria-label={`Connection ${wsState}`}
+                  className="session-toolbar__connection"
+                  data-status-icon={connectionStatus.statusIconState}
+                  data-status-color={connectionStatus.statusColorKey}
+                  aria-label={`Connection: ${connectionStatus.label}`}
                   role="status"
                 >
                   <Icon name="status" />
@@ -1908,7 +1917,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   actions={actions}
                   campaignName={selectedCampaign?.name || 'No campaign selected'}
                   role={effectiveSessionRole}
-                  wsState={wsState}
+                  statusIconState={connectionStatus.statusIconState}
+                  statusColorKey={connectionStatus.statusColorKey}
+                  statusLabel={connectionStatus.label}
                   sessionState={currentSession.state}
                   canStartSession={canStartFromGreenroom}
                   canPauseSession={canPauseFromActive}

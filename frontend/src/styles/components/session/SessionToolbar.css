@@ -176,18 +176,27 @@
   letter-spacing: 0.05em;
 }
 
-.session-toolbar__connection--connected {
+.session-toolbar__connection[data-status-color='GREEN'] {
   border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
   color: #22c55e;
 }
 
-.session-toolbar__connection--connecting,
-.session-toolbar__connection--reconnecting {
+.session-toolbar__connection[data-status-color='PALE_GREEN'] {
+  border-color: color-mix(in srgb, #4ade80 35%, var(--color-border));
+  color: #86efac;
+}
+
+.session-toolbar__connection[data-status-color='YELLOW'] {
   border-color: color-mix(in srgb, #f59e0b 45%, var(--color-border));
   color: #f59e0b;
 }
 
-.session-toolbar__connection--disconnected {
+.session-toolbar__connection[data-status-color='ORANGE'] {
+  border-color: color-mix(in srgb, #f97316 45%, var(--color-border));
+  color: #f97316;
+}
+
+.session-toolbar__connection[data-status-color='RED'] {
   border-color: color-mix(in srgb, #ef4444 45%, var(--color-border));
   color: #ef4444;
 }

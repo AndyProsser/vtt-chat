@@ -4,6 +4,9 @@
   "description": "Shared types, events, permissions, and validators for VTT-Chat",
   "main": "index.ts",
   "types": "index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
   "private": true,
   "scripts": {
     "lint": "tsc --noEmit"

@@ -4,7 +4,12 @@
  * Export all core types used across backend, frontend, and admin.
  */
 Object.defineProperty(exports, '__esModule', { value: true })
-exports.PresenceState =
+exports.StatusColorKey =
+  exports.StatusIconState =
+  exports.StatusContext =
+  exports.LiveKitConnectionState =
+  exports.CoreWsState =
+  exports.PresenceState =
   exports.MessageType =
   exports.NoteVisibility =
   exports.RoomType =
@@ -52,4 +57,38 @@ var PresenceState
   PresenceState['IDLE'] = 'IDLE'
   PresenceState['OFFLINE'] = 'OFFLINE'
 })(PresenceState || (exports.PresenceState = PresenceState = {}))
+var CoreWsState
+;(function (CoreWsState) {
+  CoreWsState['CONNECTED'] = 'CONNECTED'
+  CoreWsState['CONNECTING'] = 'CONNECTING'
+  CoreWsState['ERROR'] = 'ERROR'
+})(CoreWsState || (exports.CoreWsState = CoreWsState = {}))
+var LiveKitConnectionState
+;(function (LiveKitConnectionState) {
+  LiveKitConnectionState['CONNECTED'] = 'CONNECTED'
+  LiveKitConnectionState['CONNECTING'] = 'CONNECTING'
+  LiveKitConnectionState['ERROR'] = 'ERROR'
+  LiveKitConnectionState['NOT_APPLICABLE'] = 'NOT_APPLICABLE'
+})(LiveKitConnectionState || (exports.LiveKitConnectionState = LiveKitConnectionState = {}))
+var StatusContext
+;(function (StatusContext) {
+  StatusContext['OUTSIDE_CAMPAIGN'] = 'OUTSIDE_CAMPAIGN'
+  StatusContext['INSIDE_CAMPAIGN'] = 'INSIDE_CAMPAIGN'
+})(StatusContext || (exports.StatusContext = StatusContext = {}))
+var StatusIconState
+;(function (StatusIconState) {
+  StatusIconState['OK'] = 'OK'
+  StatusIconState['OK_PARTIAL'] = 'OK_PARTIAL'
+  StatusIconState['CONNECTING'] = 'CONNECTING'
+  StatusIconState['DEGRADED_AUDIO'] = 'DEGRADED_AUDIO'
+  StatusIconState['ERROR'] = 'ERROR'
+})(StatusIconState || (exports.StatusIconState = StatusIconState = {}))
+var StatusColorKey
+;(function (StatusColorKey) {
+  StatusColorKey['GREEN'] = 'GREEN'
+  StatusColorKey['PALE_GREEN'] = 'PALE_GREEN'
+  StatusColorKey['YELLOW'] = 'YELLOW'
+  StatusColorKey['ORANGE'] = 'ORANGE'
+  StatusColorKey['RED'] = 'RED'
+})(StatusColorKey || (exports.StatusColorKey = StatusColorKey = {}))
 //# sourceMappingURL=index.js.map

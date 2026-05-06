@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ToolbarActionModel } from './CommandCenterFrame'
-import type { Role, SessionState } from '@shared'
-import type { ConnectionState } from '../../ws/client'
+import type { Role, SessionState, StatusColorKey, StatusIconState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
@@ -11,7 +10,9 @@ interface SessionToolbarProps {
   actions: ToolbarActionModel
   campaignName: string
   role: Role
-  wsState: ConnectionState
+  statusIconState: StatusIconState
+  statusColorKey: StatusColorKey
+  statusLabel: string
   sessionState: SessionState
   canStartSession: boolean
   canPauseSession: boolean
@@ -26,7 +27,9 @@ export function SessionToolbar({
   actions,
   campaignName,
   role,
-  wsState,
+  statusIconState,
+  statusColorKey,
+  statusLabel,
   sessionState,
   canStartSession,
   canPauseSession,
@@ -102,7 +105,6 @@ export function SessionToolbar({
     actions.openRightRailTab(targetTab)
   }
 
-  const wsStateLabel = wsState.charAt(0).toUpperCase() + wsState.slice(1)
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
   const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
 
@@ -207,14 +209,16 @@ export function SessionToolbar({
           <Tooltip>
             <TooltipTrigger asChild>
               <span
-                className={`session-toolbar__connection session-toolbar__connection--${wsState}`}
-                aria-label={`Connection ${wsStateLabel}`}
+                className="session-toolbar__connection"
+                data-status-icon={statusIconState}
+                data-status-color={statusColorKey}
+                aria-label={`Connection: ${statusLabel}`}
                 role="status"
               >
                 <Icon name="status" />
               </span>
             </TooltipTrigger>
-            <TooltipContent>{wsStateLabel}</TooltipContent>
+            <TooltipContent>{statusLabel}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
