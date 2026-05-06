@@ -44,7 +44,6 @@ interface RoomSelectorProps {
   headerModeCopy?: string
   canManageRooms: boolean
   broadcastModeEnabled: boolean
-  voiceConnectionStatus?: 'connected' | 'connecting' | 'disconnected'
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
   rooms: RoomSelectorRoomWithParticipants[]
   selectedRoomId?: UUID | ''
@@ -59,7 +58,6 @@ export function RoomSelector({
   headerModeCopy,
   canManageRooms,
   broadcastModeEnabled,
-  voiceConnectionStatus,
   onToggleBroadcastMode,
   rooms,
   selectedRoomId,
@@ -71,7 +69,7 @@ export function RoomSelector({
 
   const formatRoomTypeLabel = (type: RoomType): string => {
     if (type === RoomType.MAIN) return 'Main'
-    if (type === RoomType.BREAKOUT) return 'Breakout'
+    if (type === RoomType.GROUP) return 'Breakout'
     if (type === RoomType.PRIVATE) return 'Private'
     return type
   }
@@ -166,13 +164,6 @@ export function RoomSelector({
       .slice(0, 4)
   }
 
-  const voiceConnectionLabel =
-    voiceConnectionStatus === 'connected'
-      ? 'Voice connected'
-      : voiceConnectionStatus === 'connecting'
-        ? 'Voice connecting'
-        : 'Voice disconnected'
-
   return (
     <TooltipProvider delayDuration={140}>
       <section className="room-selector" aria-label="Room Selector">
@@ -181,11 +172,6 @@ export function RoomSelector({
             <Icon name="rooms" /> Voice Channels
           </h4>
           <div className="room-selector-header__meta">
-            {voiceConnectionStatus ? (
-              <span className={`room-selector-header__voice ${voiceConnectionStatus}`}>
-                {voiceConnectionLabel}
-              </span>
-            ) : null}
             <span>{headerModeCopy || rooms.length}</span>
           </div>
         </header>

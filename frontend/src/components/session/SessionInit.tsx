@@ -8,11 +8,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, Role, MessageType } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
-import { ConnectionState as LiveKitConnectionState } from 'livekit-client'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import type { ConnectionState } from '../../ws/client'
-import { buildLiveKitConnectionKey } from '../../hooks/useLiveKit'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
@@ -370,7 +368,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const rooms = useStore((state) => state.rooms)
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
-  const livekitConnections = useStore((state) => state.livekitConnections)
   const notes = useStore((state) => state.notes)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
@@ -435,37 +432,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
-  const selectedRoomVoiceSnapshot = useMemo(() => {
-    if (!currentSession || !selectedRoomId) {
-      return null
-    }
-
-    const connectionKey = buildLiveKitConnectionKey(currentSession.id, selectedRoomId, 'room')
-    return livekitConnections[connectionKey] ?? null
-  }, [currentSession, livekitConnections, selectedRoomId])
-  const selectedRoomVoiceStatus = useMemo<'connected' | 'connecting' | 'disconnected'>(() => {
-    if (!selectedRoomVoiceSnapshot) {
-      return 'disconnected'
-    }
-
-    if (
-      selectedRoomVoiceSnapshot.isConnected ||
-      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Connected
-    ) {
-      return 'connected'
-    }
-
-    if (
-      selectedRoomVoiceSnapshot.isConnecting ||
-      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Connecting ||
-      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.Reconnecting ||
-      selectedRoomVoiceSnapshot.connectionState === LiveKitConnectionState.SignalReconnecting
-    ) {
-      return 'connecting'
-    }
-
-    return 'disconnected'
-  }, [selectedRoomVoiceSnapshot])
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -1600,7 +1566,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const hasSessionSelected = currentSession !== null
-  const isSessionActive = currentSession?.state === SessionState.ACTIVE
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
@@ -1982,7 +1947,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                       onToggleBroadcastMode={handleToggleBroadcastMode}
                       dmOverrides={dmOverrides}
                       currentConditionName={currentConditionName}
-                      roomVoiceStatus={selectedRoomVoiceStatus}
                     />
                   </section>
                   {selectedRoomId ? (

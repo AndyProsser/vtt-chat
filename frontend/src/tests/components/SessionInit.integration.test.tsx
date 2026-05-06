@@ -209,7 +209,7 @@ describe('SessionInit integration', () => {
     })
   })
 
-  it('keeps left-rail voice badge and audio panel status in sync from shared LiveKit snapshot', async () => {
+  it('keeps audio panel status in sync from shared LiveKit snapshot', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)
 
@@ -270,7 +270,6 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
-      expect(screen.getByText('Voice disconnected')).toBeTruthy()
       expect(screen.getByText('Disconnected')).toBeTruthy()
     })
 
@@ -289,7 +288,6 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Voice connecting')).toBeTruthy()
       expect(screen.getByText(/Connecting/)).toBeTruthy()
     })
 
@@ -306,7 +304,6 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Voice connected')).toBeTruthy()
       expect(screen.getByText('Connected')).toBeTruthy()
     })
   })
