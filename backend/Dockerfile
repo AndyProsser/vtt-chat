@@ -29,7 +29,12 @@ COPY --from=builder /workspace/backend/scripts ./scripts
 RUN npm install
 RUN npx prisma generate
 
+# Copy built JS
 COPY --from=builder /workspace/backend/dist ./dist
+
+# Copy entrypoint script
+COPY --from=builder /workspace/backend/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 

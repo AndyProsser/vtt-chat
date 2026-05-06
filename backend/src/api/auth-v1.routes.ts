@@ -68,7 +68,7 @@ const tokenRefreshRateLimit = createRateLimit({
   message: 'Too many token refresh attempts. Please slow down.',
 })
 
-const isDevSmokePasswordlessLoginEnabled =
+const isPasswordlessLoginEnabled =
   (process.env.NODE_ENV || '').toLowerCase() === 'development' &&
   ['1', 'true', 'yes', 'on'].includes(
     String(process.env.ENABLE_PASSWORDLESS_LOGIN || '')
@@ -115,14 +115,14 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     .toUpperCase()
   const isEmailLogin = username.includes('@')
 
-  if (!username || (!password && !isDevSmokePasswordlessLoginEnabled)) {
+  if (!username || (!password && !isPasswordlessLoginEnabled)) {
     return res.status(400).json({
       code: 'INVALID_LOGIN_REQUEST',
       message: 'username and password are required',
     })
   }
 
-  if (isEmailLogin && isDevSmokePasswordlessLoginEnabled) {
+  if (isEmailLogin && isPasswordlessLoginEnabled) {
     return res.status(400).json({
       code: 'INVALID_LOGIN_REQUEST',
       message: 'DEV testing passwordless login only supports usernames',
@@ -150,7 +150,7 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     },
   })
 
-  if (!user && isDevSmokePasswordlessLoginEnabled) {
+  if (!user && isPasswordlessLoginEnabled) {
     const fallbackRole = ['DM', 'PLAYER', 'SPECTATOR'].includes(requestedRole)
       ? (requestedRole as 'DM' | 'PLAYER' | 'SPECTATOR')
       : 'PLAYER'
@@ -194,14 +194,14 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
     })
   }
 
-  if (!user.password && !isDevSmokePasswordlessLoginEnabled) {
+  if (!user.password && !isPasswordlessLoginEnabled) {
     return res.status(401).json({
       code: 'INVALID_CREDENTIALS',
       message: 'Invalid username or password',
     })
   }
 
-  if (!isDevSmokePasswordlessLoginEnabled) {
+  if (!isPasswordlessLoginEnabled) {
     const passwordValid = await verifyPassword(password, user.password as string)
     if (!passwordValid) {
       return res.status(401).json({
