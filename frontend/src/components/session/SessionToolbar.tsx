@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ToolbarActionModel } from './CommandCenterFrame'
-import type { Role, SessionState, StatusColorKey, StatusIconState } from '@shared'
+import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
@@ -8,11 +8,10 @@ import '../../styles/components/session/SessionToolbar.css'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
-  campaignName: string
-  role: Role
-  statusIconState: StatusIconState
   statusColorKey: StatusColorKey
   statusLabel: string
+  coreWsState: CoreWsState
+  livekitState: LiveKitConnectionState
   sessionState: SessionState
   canStartSession: boolean
   canPauseSession: boolean
@@ -25,11 +24,10 @@ interface SessionToolbarProps {
 
 export function SessionToolbar({
   actions,
-  campaignName,
-  role,
-  statusIconState,
   statusColorKey,
   statusLabel,
+  coreWsState,
+  livekitState,
   sessionState,
   canStartSession,
   canPauseSession,
@@ -107,88 +105,131 @@ export function SessionToolbar({
 
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
   const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
+  const hasExtraButtons = canStartSession || canStopSession || canPauseSession
+
+  const toneFromCoreState = (value: CoreWsState): 'is-green' | 'is-yellow' | 'is-red' => {
+    if (value === 'CONNECTED') return 'is-green'
+    if (value === 'CONNECTING') return 'is-yellow'
+    return 'is-red'
+  }
+
+  const toneFromAudioState = (
+    value: LiveKitConnectionState
+  ): 'is-green' | 'is-yellow' | 'is-red' => {
+    if (value === 'CONNECTED') return 'is-green'
+    if (value === 'CONNECTING' || value === 'NOT_APPLICABLE') return 'is-yellow'
+    return 'is-red'
+  }
+
+  const coreToneClass = toneFromCoreState(coreWsState)
+  const audioToneClass = toneFromAudioState(livekitState)
 
   return (
     <TooltipProvider delayDuration={140}>
       <div className="session-toolbar" data-testid="session-toolbar">
         <div className="session-toolbar__zone session-toolbar__zone--left">
-          <div className="session-toolbar__brand" aria-label="Title and campaign">
+          <div className="session-toolbar__brand" aria-label="App brand">
             <span className="session-toolbar__brand-mark" aria-hidden="true">
               <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
             </span>
             <strong className="session-toolbar__brand-title">VTT Chat</strong>
           </div>
-          <span className="session-toolbar__campaign-pill">
-            <Icon name="rooms" />
-            <span>{campaignName}</span>
-          </span>
         </div>
 
         <div className="session-toolbar__zone session-toolbar__zone--center">
-          {canStartSession ? (
-            <button
-              type="button"
-              onClick={onStartSession}
-              className="session-toolbar__action session-toolbar__action--start"
-            >
-              <Icon name="play" />
-              <span>Start</span>
-            </button>
-          ) : null}
-
-          {canStopSession ? (
-            <button
-              type="button"
-              onClick={onStopSession}
-              className="session-toolbar__action session-toolbar__action--stop"
-            >
-              <Icon name="stop" />
-              <span>End</span>
-            </button>
-          ) : null}
-
-          {!canStartSession && !canStopSession ? (
-            <span className="session-toolbar__status-pill">
-              <Icon name="users" />
-              <span>{role}</span>
-            </span>
-          ) : null}
-
           <div className="session-toolbar__timer-group">
             <span className="session-toolbar__timer-pill" aria-label="Session timer">
-              <Icon name="timer" />
-              <strong>{timerLabel}</strong>
-              <span className="session-toolbar__timer-state">{sessionState}</span>
+              <span className="session-toolbar__timer-main">
+                <Icon name="timer" />
+                <strong>{timerLabel}</strong>
+              </span>
+              <span className="session-toolbar__timer-state-wrap">
+                <span
+                  className={`session-toolbar__timer-state ${
+                    sessionState === 'ACTIVE'
+                      ? 'is-active'
+                      : sessionState === 'PAUSED'
+                        ? 'is-paused'
+                        : ''
+                  }`}
+                >
+                  {sessionState}
+                </span>
+              </span>
             </span>
-
-            {canPauseSession ? (
-              <button
-                type="button"
-                onClick={onPauseSession}
-                className="session-toolbar__icon-btn session-toolbar__icon-btn--pause"
-                aria-label={pauseLabel}
-                title={pauseLabel}
-              >
-                <Icon name={pauseIcon} />
-              </button>
-            ) : null}
           </div>
         </div>
 
         <div className="session-toolbar__zone session-toolbar__zone--right">
+          {hasExtraButtons ? (
+            <>
+              <div className="session-toolbar__extra-buttons" aria-label="Session actions">
+                {canStartSession ? (
+                  <button
+                    type="button"
+                    onClick={onStartSession}
+                    className="session-toolbar__action session-toolbar__action--start"
+                  >
+                    <Icon name="play" />
+                    <span>Start</span>
+                  </button>
+                ) : null}
+
+                {canStopSession || canPauseSession ? (
+                  <span
+                    className="session-toolbar__split-action"
+                    role="group"
+                    aria-label="Stop or pause"
+                  >
+                    {canStopSession ? (
+                      <button
+                        type="button"
+                        onClick={onStopSession}
+                        className="session-toolbar__split-btn session-toolbar__split-btn--stop"
+                        aria-label="End session"
+                        title="End session"
+                      >
+                        <Icon name="stop" />
+                      </button>
+                    ) : (
+                      <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
+                    )}
+
+                    {canPauseSession ? (
+                      <button
+                        type="button"
+                        onClick={onPauseSession}
+                        className="session-toolbar__split-btn session-toolbar__split-btn--pause"
+                        aria-label={pauseLabel}
+                        title={pauseLabel}
+                      >
+                        <Icon name={pauseIcon} />
+                      </button>
+                    ) : (
+                      <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
+                    )}
+                  </span>
+                ) : null}
+              </div>
+
+              <span className="session-toolbar__separator" aria-hidden="true" />
+            </>
+          ) : null}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={handleToggleTheme}
                 className="session-toolbar__icon-btn"
-                aria-label="Toggle theme"
-                title="Toggle theme"
+                aria-label="Theme"
               >
                 <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Toggle theme</TooltipContent>
+            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+              Theme
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -197,28 +238,14 @@ export function SessionToolbar({
                 type="button"
                 onClick={handleOpenSettings}
                 className="session-toolbar__icon-btn"
-                aria-label="Open settings"
-                title="Open settings"
+                aria-label="Settings"
               >
                 <Icon name="settings" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Open notes workspace</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="session-toolbar__connection"
-                data-status-icon={statusIconState}
-                data-status-color={statusColorKey}
-                aria-label={`Connection: ${statusLabel}`}
-                role="status"
-              >
-                <Icon name="status" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>{statusLabel}</TooltipContent>
+            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+              Settings
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -227,14 +254,42 @@ export function SessionToolbar({
                 type="button"
                 onClick={onExitToSelector}
                 className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                aria-label="Exit to campaign selector"
-                title="Exit to campaign selector"
+                aria-label="Exit Session"
               >
                 <Icon name="logout" />
-                <span className="session-toolbar__exit-label">Exit</span>
               </button>
             </TooltipTrigger>
-            <TooltipContent>Exit to campaign selector</TooltipContent>
+            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+              Exit Session
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="session-toolbar__connection"
+                data-status-color={statusColorKey}
+                aria-label={`Connection: ${statusLabel}`}
+                role="status"
+              >
+                <span className="session-toolbar__connection-dot" aria-hidden="true" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="end"
+              className="session-toolbar__tooltip-content session-toolbar__tooltip-content--status"
+            >
+              <div className="session-toolbar__status-tooltip-title">Status</div>
+              <div className="session-toolbar__status-tooltip-row">
+                <span>Core</span>
+                <strong className={coreToneClass}>{coreWsState}</strong>
+              </div>
+              <div className="session-toolbar__status-tooltip-row">
+                <span>Audio</span>
+                <strong className={audioToneClass}>{livekitState}</strong>
+              </div>
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>

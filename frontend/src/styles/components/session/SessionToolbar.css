@@ -28,6 +28,7 @@
 
 .session-toolbar__zone--center {
   justify-content: center;
+  min-width: 13.2rem;
 }
 
 .session-toolbar__zone--right {
@@ -66,8 +67,7 @@
 
 .session-toolbar__campaign-pill,
 .session-toolbar__status-pill,
-.session-toolbar__timer-pill,
-.session-toolbar__connection {
+.session-toolbar__timer-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
@@ -84,6 +84,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  justify-content: center;
 }
 
 .ui-icon {
@@ -117,6 +118,19 @@
   padding: 0.3rem 0.52rem;
 }
 
+.session-toolbar__extra-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.session-toolbar__separator {
+  width: 1px;
+  height: 1.25rem;
+  background: color-mix(in srgb, var(--color-border-soft) 75%, transparent);
+  margin: 0 0.12rem;
+}
+
 .session-toolbar__action .ui-icon,
 .session-toolbar__icon-btn .ui-icon,
 .session-toolbar__campaign-pill .ui-icon,
@@ -133,12 +147,53 @@
   background: color-mix(in srgb, #16a34a 78%, var(--color-surface));
   border-color: color-mix(in srgb, #14532d 55%, var(--color-border));
   color: #f0fdf4;
+  min-width: 4.5rem;
 }
 
 .session-toolbar__action--stop {
   background: color-mix(in srgb, #dc2626 82%, var(--color-surface));
   border-color: color-mix(in srgb, #7f1d1d 55%, var(--color-border));
   color: #fef2f2;
+}
+
+.session-toolbar__split-action {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 1.9rem;
+  min-width: 4.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface-subtle) 66%, var(--color-surface));
+}
+
+.session-toolbar__split-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.session-toolbar__split-btn + .session-toolbar__split-btn {
+  border-left: 1px solid var(--color-border-soft);
+}
+
+.session-toolbar__split-btn--stop {
+  background: color-mix(in srgb, #dc2626 80%, var(--color-surface));
+  color: #fef2f2;
+}
+
+.session-toolbar__split-btn--pause {
+  background: color-mix(in srgb, #d97706 16%, var(--color-surface));
+  color: #b45309;
+}
+
+.session-toolbar__split-btn--placeholder {
+  cursor: default;
+  background: transparent;
 }
 
 .session-toolbar__icon-btn--pause {
@@ -167,50 +222,134 @@
   color: var(--color-text-primary);
   letter-spacing: 0.03em;
   font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+  text-align: center;
+}
+
+.session-toolbar__timer-pill {
+  min-width: 12.2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.session-toolbar__timer-main,
+.session-toolbar__timer-state-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-toolbar__timer-main {
+  gap: 0.28rem;
 }
 
 .session-toolbar__timer-state {
-  opacity: 0.9;
+  opacity: 0.96;
   text-transform: uppercase;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   letter-spacing: 0.05em;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 0.1rem 0.42rem;
+  color: var(--color-text-secondary);
+}
+
+.session-toolbar__timer-state.is-active {
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #16a34a;
+}
+
+.session-toolbar__timer-state.is-paused {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #d97706;
 }
 
 .session-toolbar__connection[data-status-color='GREEN'] {
-  border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
   color: #22c55e;
 }
 
 .session-toolbar__connection[data-status-color='PALE_GREEN'] {
-  border-color: color-mix(in srgb, #4ade80 35%, var(--color-border));
   color: #86efac;
 }
 
 .session-toolbar__connection[data-status-color='YELLOW'] {
-  border-color: color-mix(in srgb, #f59e0b 45%, var(--color-border));
   color: #f59e0b;
 }
 
 .session-toolbar__connection[data-status-color='ORANGE'] {
-  border-color: color-mix(in srgb, #f97316 45%, var(--color-border));
   color: #f97316;
 }
 
 .session-toolbar__connection[data-status-color='RED'] {
-  border-color: color-mix(in srgb, #ef4444 45%, var(--color-border));
   color: #ef4444;
 }
 
 .session-toolbar__connection {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  min-width: 1.95rem;
-  padding-left: 0.42rem;
-  padding-right: 0.42rem;
+  min-width: 1.2rem;
+  min-height: 1.2rem;
+  padding: 0;
+  border: 0;
   background: transparent;
 }
 
-.session-toolbar__connection .ui-icon {
-  font-variation-settings: 'FILL' 1;
+.session-toolbar__connection-dot {
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
+  background: currentColor;
+}
+
+.session-toolbar__tooltip-content {
+  background: #111827;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.session-toolbar__tooltip-content--status {
+  min-width: 9.25rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.session-toolbar__status-tooltip-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.session-toolbar__status-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.session-toolbar__status-tooltip-row strong {
+  color: #f8fafc;
+  font-size: 0.7rem;
+}
+
+.session-toolbar__status-tooltip-row strong.is-green {
+  color: #22c55e;
+}
+
+.session-toolbar__status-tooltip-row strong.is-yellow {
+  color: #f59e0b;
+}
+
+.session-toolbar__status-tooltip-row strong.is-red {
+  color: #ef4444;
 }
 
 @media (max-width: 1080px) {
@@ -239,6 +378,10 @@
   .session-toolbar__timer-group {
     flex-wrap: wrap;
   }
+
+  .session-toolbar__separator {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {
@@ -255,8 +398,7 @@
   .session-toolbar__icon-btn,
   .session-toolbar__campaign-pill,
   .session-toolbar__status-pill,
-  .session-toolbar__timer-pill,
-  .session-toolbar__connection {
+  .session-toolbar__timer-pill {
     min-height: 1.78rem;
     padding: 0.27rem 0.44rem;
     font-size: 0.67rem;

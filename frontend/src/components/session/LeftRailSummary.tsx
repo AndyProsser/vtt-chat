@@ -1,5 +1,4 @@
 import type { Role } from '@shared'
-import { SessionState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 
@@ -17,7 +16,6 @@ export function LeftRailSummary({
   role,
   username,
   sessionName,
-  sessionState,
   sessionCount,
   roomCount,
   presenceCount,
@@ -30,17 +28,6 @@ export function LeftRailSummary({
             <Icon name="voice" className="voice-rail-summary__icon" />
             <h4 className="voice-rail-summary__title">Voice Panel</h4>
           </div>
-          <span
-            className={`voice-rail-summary__state ${
-              sessionState === SessionState.ACTIVE
-                ? 'active'
-                : sessionState === SessionState.PAUSED
-                  ? 'paused'
-                  : ''
-            }`}
-          >
-            {sessionState}
-          </span>
         </header>
 
         <p className="voice-rail-summary__identity">

@@ -26,6 +26,7 @@ import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
 import { AudioPanel } from '../audio/AudioPanel'
 import { Icon } from '../ui/Icon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
@@ -1676,75 +1677,154 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   </span>
                   <strong className="session-toolbar__brand-title">VTT Chat</strong>
                 </div>
-                <span className="session-toolbar__campaign-pill">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    home
-                  </span>
-                  <span>Campaign Lobby</span>
-                </span>
               </div>
 
               <div className="session-toolbar__zone session-toolbar__zone--right">
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={() => setShowCreateCampaignModal(true)}
-                  disabled={isCreatingCampaign}
-                  title="Create campaign"
-                  aria-label="Create campaign"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    add_circle
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={() => setShowJoinCampaignModal(true)}
-                  disabled={isJoiningCampaign}
-                  title="Join campaign"
-                  aria-label="Join campaign"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    group_add
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={() => setShowUserSettingsModal(true)}
-                  title="Open user settings"
-                  aria-label="Open user settings"
-                >
-                  <Icon name="settings" />
-                </button>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={handleToggleTheme}
-                  title="Toggle theme"
-                  aria-label="Toggle theme"
-                >
-                  <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
-                </button>
-                <span
-                  className="session-toolbar__connection"
-                  data-status-icon={connectionStatus.statusIconState}
-                  data-status-color={connectionStatus.statusColorKey}
-                  aria-label={`Connection: ${connectionStatus.label}`}
-                  role="status"
-                >
-                  <Icon name="status" />
-                </span>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                  onClick={handleLogoff}
-                  title="Log off"
-                  aria-label="Log off"
-                >
-                  <Icon name="logout" />
-                </button>
+                <TooltipProvider delayDuration={140}>
+                  <div className="session-toolbar__extra-buttons" aria-label="Campaign actions">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="session-toolbar__icon-btn"
+                          onClick={() => setShowCreateCampaignModal(true)}
+                          disabled={isCreatingCampaign}
+                          aria-label="Create campaign"
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            add_circle
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="bottom"
+                        align="end"
+                        className="session-toolbar__tooltip-content"
+                      >
+                        Create Campaign
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="session-toolbar__icon-btn"
+                          onClick={() => setShowJoinCampaignModal(true)}
+                          disabled={isJoiningCampaign}
+                          aria-label="Join campaign"
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            group_add
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="bottom"
+                        align="end"
+                        className="session-toolbar__tooltip-content"
+                      >
+                        Join Campaign
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+
+                  <span className="session-toolbar__separator" aria-hidden="true" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-toolbar__icon-btn"
+                        onClick={handleToggleTheme}
+                        aria-label="Theme"
+                      >
+                        <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="end"
+                      className="session-toolbar__tooltip-content"
+                    >
+                      Theme
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-toolbar__icon-btn"
+                        onClick={() => setShowUserSettingsModal(true)}
+                        aria-label="Settings"
+                      >
+                        <Icon name="settings" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="end"
+                      className="session-toolbar__tooltip-content"
+                    >
+                      Settings
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
+                        onClick={handleLogoff}
+                        aria-label="Logoff"
+                      >
+                        <Icon name="logout" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="end"
+                      className="session-toolbar__tooltip-content"
+                    >
+                      Logoff
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="session-toolbar__connection"
+                        data-status-color={connectionStatus.statusColorKey}
+                        aria-label={`Connection: ${connectionStatus.label}`}
+                        role="status"
+                      >
+                        <span className="session-toolbar__connection-dot" aria-hidden="true" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="end"
+                      className="session-toolbar__tooltip-content session-toolbar__tooltip-content--status"
+                    >
+                      <div className="session-toolbar__status-tooltip-title">Status</div>
+                      <div className="session-toolbar__status-tooltip-row">
+                        <span>Core</span>
+                        <strong
+                          className={
+                            connectionStatus.coreWsState === 'CONNECTED'
+                              ? 'is-green'
+                              : connectionStatus.coreWsState === 'CONNECTING'
+                                ? 'is-yellow'
+                                : 'is-red'
+                          }
+                        >
+                          {connectionStatus.coreWsState}
+                        </strong>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
 
@@ -1915,11 +1995,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               renderToolbar={(actions) => (
                 <SessionToolbar
                   actions={actions}
-                  campaignName={selectedCampaign?.name || 'No campaign selected'}
-                  role={effectiveSessionRole}
-                  statusIconState={connectionStatus.statusIconState}
                   statusColorKey={connectionStatus.statusColorKey}
                   statusLabel={connectionStatus.label}
+                  coreWsState={connectionStatus.coreWsState}
+                  livekitState={connectionStatus.livekitState}
                   sessionState={currentSession.state}
                   canStartSession={canStartFromGreenroom}
                   canPauseSession={canPauseFromActive}

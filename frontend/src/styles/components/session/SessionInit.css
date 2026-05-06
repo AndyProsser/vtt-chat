@@ -828,7 +828,7 @@
 
 .voice-rail-summary__header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.5rem;
 }
@@ -847,26 +847,6 @@
   margin: 0;
   font-size: 0.92rem;
   font-weight: 700;
-}
-
-.voice-rail-summary__state {
-  font-size: 0.66rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border: 1px solid var(--color-border-soft);
-  border-radius: 999px;
-  padding: 0.12rem 0.45rem;
-  color: var(--color-text-secondary);
-}
-
-.voice-rail-summary__state.active {
-  border-color: rgba(34, 197, 94, 0.5);
-  color: #16a34a;
-}
-
-.voice-rail-summary__state.paused {
-  border-color: rgba(245, 158, 11, 0.5);
-  color: #d97706;
 }
 
 .voice-rail-summary__identity,
