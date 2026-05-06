@@ -9,6 +9,7 @@ COPY shared ./shared
 COPY backend/package.json backend/package-lock.json* ./backend/
 COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/
+COPY backend/scripts ./backend/scripts
 WORKDIR /workspace/backend
 RUN npm install
 RUN npx prisma generate
@@ -24,6 +25,7 @@ WORKDIR /app
 COPY --from=builder /workspace/backend/package.json /workspace/backend/package-lock.json* ./
 COPY --from=builder /workspace/backend/prisma ./prisma
 COPY --from=builder /workspace/backend/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /workspace/backend/scripts ./scripts
 RUN npm install
 RUN npx prisma generate
 
@@ -31,4 +33,4 @@ COPY --from=builder /workspace/backend/dist ./dist
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --config prisma.config.ts && node dist/backend/src/index.js"]
+CMD ["sh", "-c", "node scripts/container-startup.mjs && node dist/backend/src/index.js"]

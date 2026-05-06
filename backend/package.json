@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
+    "db:prepare": "node scripts/container-startup.mjs",
     "build": "prisma generate && tsc && tsc-alias",
     "generate": "prisma generate",
     "postinstall": "prisma generate",

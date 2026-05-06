@@ -167,6 +167,8 @@ npm run dev --prefix frontend
 
 Backend runs on `http://localhost:3000`, frontend on `http://localhost:5173`.
 
+Operator note: backend container startup wait/retry and Prisma schema sync behavior is documented in [backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior](backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior).
+
 ---
 
 ## Documentation

@@ -6,7 +6,7 @@ services:
       target: builder
     container_name: vttchat-backend-dev
     working_dir: /workspace/backend
-    command: npm run dev
+    command: sh -c "npm run db:prepare && npm run dev"
     restart: unless-stopped
     env_file:
       - .env
@@ -15,6 +15,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LIVEKIT_URL: http://livekit:7880
       NODE_ENV: development
+      PRISMA_SCHEMA_SYNC_MODE: push
       ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
     volumes:
       - ./backend/src:/workspace/backend/src
