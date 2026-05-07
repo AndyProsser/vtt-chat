@@ -5,7 +5,6 @@ import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsR
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
-import { useStore } from './hooks/useStore'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { ToastViewport } from './components/ui/ToastViewport'
 import type { UUID } from '@shared'
@@ -62,7 +61,6 @@ export default function App() {
 
   const {
     auth,
-    authProfile,
     authMessage,
     handleLoginSuccess,
     handleSpectatorAuthenticated,
@@ -71,8 +69,6 @@ export default function App() {
     apiUrl,
     adminUrl,
   })
-
-  const currentSessionId = useStore((state) => state.currentSessionId)
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -99,7 +95,7 @@ export default function App() {
 
     if (window.location.pathname !== pendingPath) {
       window.history.pushState({}, '', pendingPath)
-      setRouteView(resolveRoute(pendingPath))
+      window.dispatchEvent(new PopStateEvent('popstate'))
     }
   }, [auth.token])
 

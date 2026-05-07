@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import {
@@ -26,12 +26,6 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const passwordlessLoginEnabled = isDevPasswordlessLoginEnabled()
-
-  useEffect(() => {
-    if (!usernameCustomized) {
-      setUsername(normalizeUsernameFromName(name || 'user'))
-    }
-  }, [name, usernameCustomized])
 
   const syncSuggestedUsername = async (nextName: string, nextUsername: string) => {
     try {
@@ -130,7 +124,13 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
           id="register-name"
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            const nextName = e.target.value
+            setName(nextName)
+            if (!usernameCustomized) {
+              setUsername(normalizeUsernameFromName(nextName || 'user'))
+            }
+          }}
           onBlur={() => void syncSuggestedUsername(name, username)}
           disabled={isLoading}
           autoComplete="name"

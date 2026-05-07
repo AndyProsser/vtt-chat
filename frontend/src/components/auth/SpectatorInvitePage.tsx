@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { PolicyNotice } from './PolicyNotice'
@@ -104,7 +104,7 @@ export function SpectatorInvitePage({
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null)
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null)
 
-  const validateInvite = async () => {
+  const validateInvite = useCallback(async () => {
     setLoading(true)
     setError(null)
     setErrorCode(null)
@@ -122,11 +122,15 @@ export function SpectatorInvitePage({
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    void validateInvite()
   }, [apiUrl, inviteCode])
+
+  // Defer invite validation kickoff to avoid synchronous state updates in effect body.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void validateInvite()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [validateInvite])
 
   const campaign = useMemo(() => {
     if (!validation || !validation.valid || validation.type !== 'spectator') {

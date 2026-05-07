@@ -296,6 +296,7 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
   const hasMoreVisibleEntries = visibleEntryCount < filteredEntries.length
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleEntryCount(JOURNAL_PAGE_SIZE)
   }, [keyword, selectedTag, viewMode, favoriteEntryIds, pinnedEntryIds, sessionId])
 

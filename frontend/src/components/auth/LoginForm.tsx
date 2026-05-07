@@ -122,7 +122,7 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
       </div>
 
       {passwordlessLoginEnabled && identifier.trim() ? (
-        <div className="auth-status-panel">Passwords aren't needed in DEV Testing.</div>
+        <div className="auth-status-panel">Passwords are not needed in DEV Testing.</div>
       ) : null}
 
       <button

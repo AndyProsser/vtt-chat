@@ -247,6 +247,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   )
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEvents([])
     setLoadedCount(0)
     setHasMore(true)

@@ -4,7 +4,7 @@
  * Spectators are restricted to OOC only.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
@@ -29,25 +29,20 @@ const TYPE_LABELS: Record<MessageType, string> = {
 }
 
 export function MessageInput({ onSend, disabled, role, forceMessageType }: MessageInputProps) {
-  const roleAllowedTypes = ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC]
-  const allowedTypes = forceMessageType ? [forceMessageType] : roleAllowedTypes
-  const [selectedType, setSelectedType] = useState<MessageType>(allowedTypes[0])
+  const roleAllowedTypes = useMemo(
+    () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
+    [role]
+  )
+  const allowedTypes = useMemo(
+    () => (forceMessageType ? [forceMessageType] : roleAllowedTypes),
+    [forceMessageType, roleAllowedTypes]
+  )
+  const [selectedType, setSelectedType] = useState<MessageType>(MessageType.OOC)
   const [content, setContent] = useState('')
   const [recipientId, setRecipientId] = useState('')
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
-
-  useEffect(() => {
-    if (forceMessageType) {
-      setSelectedType(forceMessageType)
-      return
-    }
-
-    if (!roleAllowedTypes.includes(selectedType)) {
-      setSelectedType(roleAllowedTypes[0])
-    }
-  }, [forceMessageType, roleAllowedTypes, selectedType])
 
   const handleSend = async () => {
     const trimmed = content.trim()

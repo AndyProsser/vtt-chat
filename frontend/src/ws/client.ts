@@ -125,7 +125,7 @@ export class WebSocketClient {
           this.handleMessage(event.data)
         }
 
-        socket.onerror = (error) => {
+        socket.onerror = () => {
           if (socket !== this.socket || this.manualDisconnect) {
             return
           }

@@ -89,10 +89,6 @@ function iconForTab(
   }
 }
 
-function isRightRailTab(value: string, tabs: RightRailTab[]): value is RightRailTab {
-  return tabs.includes(value as RightRailTab)
-}
-
 interface CommandCenterFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
@@ -206,6 +202,7 @@ export function CommandCenterFrame({
 
   useEffect(() => {
     if (toolbarRightRailOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsRightRailVisible(true)
       setIsRightRailClosing(false)
       return
@@ -226,8 +223,8 @@ export function CommandCenterFrame({
     }
   }, [isRightRailVisible, toolbarRightRailOpen])
 
-  const handleRightRailTabClick = (tab: RightRailTab) => {
-    const now = Date.now()
+  const handleRightRailTabClick = (tab: RightRailTab, timestamp: number) => {
+    const now = timestamp
     if (lastTabToggleRef.current.tab === tab && now - lastTabToggleRef.current.at < 140) {
       return
     }
@@ -311,8 +308,8 @@ export function CommandCenterFrame({
                           value={tab}
                           aria-label={`Tool ${label}`}
                           className="command-center-right-rail-trigger"
-                          onClick={() => {
-                            handleRightRailTabClick(tab)
+                          onClick={(event) => {
+                            handleRightRailTabClick(tab, event.timeStamp)
                           }}
                         >
                           <Icon name={iconForTab(tab)} />

@@ -154,6 +154,74 @@ Known readiness gap classes:
 
 ---
 
+### W0 Subtask: Voice Channel Panel (Campaign Screen)
+
+**Status**: Design finalized, implementation planning in progress
+**Related Docs**: [UI-COMPONENT-CHANNELS.md](docs/ui/UI-COMPONENT-CHANNELS.md), [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
+
+**Scope**: Enhance RoomSelector/left-rail voice channel UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create room CTA, and full accessibility support.
+
+**Implementation Phases**:
+
+| Phase                           | Timeline | Deliverables                                                                                        | Status      |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------- | ----------- |
+| Phase 1: Core UI & Layout       | Week 1   | Room headers (env icon, broadcast badge, create button), condition badge+popover, env tooltip       | Not started |
+| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop | Not started |
+| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                 | Not started |
+| Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing    | Not started |
+| Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage     | Not started |
+
+**Key Decisions** (from UX review 2026-05-07):
+
+- Mobile-first adaptive collapse (auto-collapse <768px, expand on desktop)
+- Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
+- Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
+- Environment icons (compact, hover tooltip, DM click to edit)
+- Broadcast state: indicator badge + subtle room header glow
+- Create Room: icon button in room header (top-right)
+- Sticky DM widget (always visible at top)
+- Primary condition only visible + tooltip/popover for others
+- Screen reader support priority (full ARIA labels)
+
+**New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
+
+**Backend Requirements** (verify/implement):
+
+- Confirm condition apply/remove API endpoints exist
+- Confirm DM broadcast mode toggle endpoint exists
+- Create `CampaignSettings` table for allow/disallow features
+- Add `GET/PATCH /api/v1/campaigns/{id}/settings` endpoints
+
+**Frontend Components** (existing + new):
+
+- ✅ RoomSelector.tsx (exists, enhance with above)
+- ✅ AvatarOverlay.tsx (exists, reuse for DM + players)
+- ✅ Tooltip infrastructure (exists, enhance for env icons)
+- 🆕 ConditionPopover.tsx (new)
+- 🆕 RadialMenu.tsx (new)
+- 🆕 CreateRoomModal.tsx (new)
+- 🆕 CampaignSettingsPanel.tsx (new, with condition toggle)
+
+**Testing Coverage**:
+
+- [ ] Unit: Component rendering, state management, event handlers
+- [ ] Integration: Drag-n-drop, condition mutations, room movement
+- [ ] E2E: Full user flows (drag, conditions, mobile responsive, accessibility)
+- [ ] A11y: Screen reader testing, keyboard nav, WCAG AA compliance
+
+**Success Criteria**:
+
+- ✅ Design doc complete and aligned with implementation
+- [ ] All Phase 1-5 tasks completed and tested
+- [ ] Mobile collapse/expand working on <768px viewports
+- [ ] Radial menu accessible via right-click + long-press
+- [ ] Drag-n-drop feedback visible and intuitive
+- [ ] All ARIA labels + keyboard navigation functional
+- [ ] Cross-browser tested (Chrome, Firefox, Safari, Edge)
+- [ ] Performance: <200ms re-render on drag, animations smooth 60fps
+
+---
+
 ### Latest Delivered (W1/W2)
 
 - Added backend multi-client reconnect soak suite for concurrent reconnect fanout, session isolation, and FIFO recovery behavior (`backend/tests/integration/multi-client-reconnect.integration.test.ts`).

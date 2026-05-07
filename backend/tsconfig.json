@@ -15,7 +15,6 @@
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@/api*": ["src/api/*"],

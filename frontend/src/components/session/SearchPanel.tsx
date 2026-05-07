@@ -236,24 +236,19 @@ export function SearchPanel({
       .slice(0, 24)
   }, [messages, normalizedQuery, notes, participants, rooms])
 
-  useEffect(() => {
+  const effectiveSelectedResultId = useMemo(() => {
     if (!results.length) {
-      setSelectedResultId(null)
-      return
+      return null
     }
-
-    setSelectedResultId((previousId) => {
-      if (previousId && results.some((result) => result.id === previousId)) {
-        return previousId
-      }
-
-      return results[0].id
-    })
-  }, [results])
+    if (selectedResultId && results.some((result) => result.id === selectedResultId)) {
+      return selectedResultId
+    }
+    return results[0].id
+  }, [results, selectedResultId])
 
   const selectedResult = useMemo(
-    () => results.find((result) => result.id === selectedResultId) ?? null,
-    [results, selectedResultId]
+    () => results.find((result) => result.id === effectiveSelectedResultId) ?? null,
+    [effectiveSelectedResultId, results]
   )
 
   return (
@@ -299,7 +294,7 @@ export function SearchPanel({
             {results.map((result) => (
               <article
                 key={result.id}
-                className={`knowledge-panel-card ${selectedResultId === result.id ? 'selected' : ''}`}
+                className={`knowledge-panel-card ${effectiveSelectedResultId === result.id ? 'selected' : ''}`}
                 role="listitem"
               >
                 <div className="knowledge-panel-card-header">

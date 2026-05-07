@@ -13,7 +13,6 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["src/*"],

@@ -7,15 +7,6 @@
 import type { StateCreator } from 'zustand'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
-import type {
-  AudioDeviceState,
-  EnvironmentPreset,
-  DistancePreset,
-  ConditionPreset,
-  VoicePreset,
-  ICPreset,
-  AudioDMOverride,
-} from '@/types/audio'
 import {
   createAudioDeviceSlice,
   initialAudioDeviceState,

@@ -1,6 +1,6 @@
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PolicyNotice } from './PolicyNotice'
 import '@/styles/components/auth/InviteJoinPage.css'
 
@@ -128,7 +128,7 @@ export function InviteJoinPage({
   const [characterAvatarUrl, setCharacterAvatarUrl] = useState('')
   const [characterNameTouched, setCharacterNameTouched] = useState(false)
 
-  const validateInvite = async () => {
+  const validateInvite = useCallback(async () => {
     setLoading(true)
     setError(null)
     setErrorCode(null)
@@ -147,11 +147,15 @@ export function InviteJoinPage({
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    void validateInvite()
   }, [apiUrl, inviteCode])
+
+  // Defer invite validation kickoff to avoid synchronous state updates in effect body.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void validateInvite()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [validateInvite])
 
   const campaign = useMemo(() => {
     if (!validation || !validation.valid || validation.type !== 'player') {
@@ -160,118 +164,101 @@ export function InviteJoinPage({
     return validation.campaign
   }, [validation])
 
-  useEffect(() => {
-    if (characterNameTouched) {
-      return
-    }
-
-    const trimmedPlayerName = playerName.trim()
-    setCharacterName(trimmedPlayerName)
-  }, [characterNameTouched, playerName])
-
   const isFullUserEmail = precheckResult?.accountStatus === 'full'
   const canEditJoinFields = emailChecked && !isFullUserEmail
 
-  const runEmailPrecheck = async (params: { requestId: number; emailValue: string }) => {
-    if (!campaign || !params.emailValue.trim()) {
-      setError('Email is required.')
-      return
-    }
-
-    setPrecheckLoading(true)
-    setEmailCheckStatus('checking')
-    setError(null)
-
-    try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/validate/player`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inviteCode,
-          email: params.emailValue.trim(),
-        }),
-      })
-
-      const data = (await response.json().catch(() => ({}))) as PlayerPrecheckResult & {
-        code?: string
-        message?: string
+  const runEmailPrecheck = useCallback(
+    async (params: { requestId: number; emailValue: string }) => {
+      if (!campaign || !params.emailValue.trim()) {
+        setError('Email is required.')
+        return
       }
 
-      if (!response.ok) {
+      setPrecheckLoading(true)
+      setEmailCheckStatus('checking')
+      setError(null)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/auth/validate/player`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inviteCode,
+            email: params.emailValue.trim(),
+          }),
+        })
+
+        const data = (await response.json().catch(() => ({}))) as PlayerPrecheckResult & {
+          code?: string
+          message?: string
+        }
+
+        if (!response.ok) {
+          if (precheckRequestIdRef.current !== params.requestId) {
+            return
+          }
+
+          if (data.code === 'INVITE_EXPIRED') {
+            setErrorCode('INVITE_EXPIRED')
+          }
+          throw new Error(data.message || 'Unable to check email for invite')
+        }
+
         if (precheckRequestIdRef.current !== params.requestId) {
           return
         }
 
-        if (data.code === 'INVITE_EXPIRED') {
-          setErrorCode('INVITE_EXPIRED')
+        setPrecheckResult(data)
+        setEmailChecked(true)
+        setEmailCheckStatus(data.accountStatus)
+
+        if (data.accountStatus === 'guest') {
+          if (data.guestProfile?.displayName?.trim()) {
+            setPlayerName(data.guestProfile.displayName.trim())
+          }
+
+          if (data.existingCharacter && !characterNameTouched) {
+            setCharacterName(data.existingCharacter.name || '')
+            setCharacterRace(data.existingCharacter.race || '')
+            setCharacterClass(data.existingCharacter.class || '')
+            setCharacterLevel(data.existingCharacter.level || 1)
+            setCharacterAvatarUrl(data.existingCharacter.avatarUrl || '')
+          }
+
+          if (!data.guestProfile?.displayName?.trim() && !playerName.trim()) {
+            setPlayerName(params.emailValue.split('@')[0] || 'Guest')
+          }
+        } else if (data.accountStatus === 'none') {
+          if (!playerName.trim()) {
+            setPlayerName(params.emailValue.split('@')[0] || 'Guest')
+          }
         }
-        throw new Error(data.message || 'Unable to check email for invite')
-      }
-
-      if (precheckRequestIdRef.current !== params.requestId) {
-        return
-      }
-
-      setPrecheckResult(data)
-      setEmailChecked(true)
-      setEmailCheckStatus(data.accountStatus)
-
-      if (data.accountStatus === 'guest') {
-        if (data.guestProfile?.displayName?.trim()) {
-          setPlayerName(data.guestProfile.displayName.trim())
+      } catch (precheckError) {
+        if (precheckRequestIdRef.current !== params.requestId) {
+          return
         }
 
-        if (data.existingCharacter && !characterNameTouched) {
-          setCharacterName(data.existingCharacter.name || '')
-          setCharacterRace(data.existingCharacter.race || '')
-          setCharacterClass(data.existingCharacter.class || '')
-          setCharacterLevel(data.existingCharacter.level || 1)
-          setCharacterAvatarUrl(data.existingCharacter.avatarUrl || '')
-        }
-
-        if (!data.guestProfile?.displayName?.trim() && !playerName.trim()) {
-          setPlayerName(params.emailValue.split('@')[0] || 'Guest')
-        }
-      } else if (data.accountStatus === 'none') {
-        if (!playerName.trim()) {
-          setPlayerName(params.emailValue.split('@')[0] || 'Guest')
+        const message =
+          precheckError instanceof Error ? precheckError.message : 'Email check failed'
+        setError(message)
+        setEmailChecked(false)
+        setPrecheckResult(null)
+        setEmailCheckStatus('error')
+      } finally {
+        if (precheckRequestIdRef.current === params.requestId) {
+          setPrecheckLoading(false)
         }
       }
-    } catch (precheckError) {
-      if (precheckRequestIdRef.current !== params.requestId) {
-        return
-      }
-
-      const message = precheckError instanceof Error ? precheckError.message : 'Email check failed'
-      setError(message)
-      setEmailChecked(false)
-      setPrecheckResult(null)
-      setEmailCheckStatus('error')
-    } finally {
-      if (precheckRequestIdRef.current === params.requestId) {
-        setPrecheckLoading(false)
-      }
-    }
-  }
+    },
+    [apiUrl, campaign, characterNameTouched, inviteCode, playerName]
+  )
 
   useEffect(() => {
     const trimmedEmail = email.trim()
 
-    setEmailChecked(false)
-    setPrecheckResult(null)
-    setFullAccountPassword('')
-
-    if (!trimmedEmail) {
-      setEmailCheckStatus('idle')
-      setPrecheckLoading(false)
-      return
-    }
-
-    if (!isValidEmailFormat(trimmedEmail)) {
-      setEmailCheckStatus('invalid')
-      setPrecheckLoading(false)
+    if (!trimmedEmail || !isValidEmailFormat(trimmedEmail)) {
       return
     }
 
@@ -288,7 +275,7 @@ export function InviteJoinPage({
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [email])
+  }, [email, runEmailPrecheck])
 
   const continueToCampaignSession = (campaignId: string) => {
     sessionStorage.setItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY, campaignId)
@@ -646,7 +633,18 @@ export function InviteJoinPage({
                   type="email"
                   value={email}
                   onChange={(event) => {
-                    setEmail(event.target.value)
+                    const nextEmail = event.target.value
+                    const trimmedEmail = nextEmail.trim()
+                    setEmail(nextEmail)
+                    setEmailChecked(false)
+                    setPrecheckResult(null)
+                    setFullAccountPassword('')
+                    setPrecheckLoading(false)
+                    if (!trimmedEmail) {
+                      setEmailCheckStatus('idle')
+                    } else if (!isValidEmailFormat(trimmedEmail)) {
+                      setEmailCheckStatus('invalid')
+                    }
                   }}
                   autoComplete="email"
                 />
@@ -687,7 +685,13 @@ export function InviteJoinPage({
                     id="join-player-name"
                     type="text"
                     value={playerName}
-                    onChange={(event) => setPlayerName(event.target.value)}
+                    onChange={(event) => {
+                      const nextPlayerName = event.target.value
+                      setPlayerName(nextPlayerName)
+                      if (!characterNameTouched) {
+                        setCharacterName(nextPlayerName.trim())
+                      }
+                    }}
                     autoComplete="name"
                   />
 
