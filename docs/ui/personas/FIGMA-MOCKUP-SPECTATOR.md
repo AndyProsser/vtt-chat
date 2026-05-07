@@ -2,6 +2,17 @@
 
 _Read‑only. Zero interaction. Maximum visibility._
 
+Viewport mode set for Spectator mockups:
+
+- **Minimalist Mobile**: `<=767px`
+- **Balanced Player**: `768px-1279px`
+- **DM Desktop Command**: `>=1280px` (spectator opt-in)
+
+Spectator mode policy:
+
+- Spectator remains read-only in all modes.
+- Desktop Command opt-in affects layout only, not permissions.
+
 ---
 
 ## 1. **Frame Specification**
@@ -17,6 +28,20 @@ _Read‑only. Zero interaction. Maximum visibility._
 | Padding    | 0                          |
 | Spacing    | 0                          |
 | Background | `var(--bg-app)`            |
+
+### **1.2 Mode Variant Frames**
+
+Create three linked variant frames in Figma:
+
+1. `Spectator Persona — Minimalist Mobile`
+2. `Spectator Persona — Balanced Player`
+3. `Spectator Persona — Desktop Command (Opt-in)`
+
+Variant behavior:
+
+- Minimalist Mobile: chat-first, compact left controls, bottom tool dock for read-only panels.
+- Balanced Player: default spectator shell and reduced interaction model.
+- Desktop Command opt-in: one right panel can remain pinned open for passive monitoring.
 
 ---
 
@@ -51,12 +76,20 @@ Spectator does **not** see:
 
 ## 3. **Main Layout (2 Columns)**
 
-Spectator does **not** get the right rail.
-Spectator does **not** get the composer.
-Spectator does **not** get whisper.
-Spectator does **not** get any interaction.
+Balanced baseline spectator shell:
+
+- Right rail hidden.
+- Composer hidden.
+- Whisper unavailable.
+- Interaction remains read-only.
 
 The layout becomes **Left Rail + Center Pane**, maximizing visibility.
+
+Mode adaptation note:
+
+- Minimalist Mobile uses compact left controls and bottom tool docking.
+- Balanced Player preserves default read-only density.
+- Desktop Command opt-in may add a pinned right panel for read-only tools.
 
 ---
 
@@ -148,17 +181,26 @@ Spectator cannot send messages.
 
 ## 4. **Right Rail**
 
-❌ **Not visible**
-Spectator has no tabs and no slide‑in panels.
+Balanced baseline:
 
-This maximizes center‑pane visibility.
+- Spectator right rail remains hidden to maximize chat width.
+
+Mode variants:
+
+- Minimalist Mobile: tool icons can appear in bottom dock for read-only utility views.
+- Desktop Command opt-in: right icon rail may be shown with read-only panels.
 
 ---
 
 ## 5. **Right Panel (Slide‑In Panels)**
 
-❌ **Never appears**
-Spectator cannot open any panels.
+Panel permissions remain read-only in all modes.
+
+Mode variants:
+
+- Minimalist Mobile: read-only utility views open as bottom popovers.
+- Balanced Player: read-only utility views can open as popout/slide-in surfaces when enabled.
+- Desktop Command opt-in: one read-only panel can stay pinned open.
 
 ---
 
@@ -170,11 +212,11 @@ Simplified version:
 | ------------ | ------- |
 | Toasts       | 1000    |
 | Popouts      | 900     |
+| Right Panel  | 800     |
+| Right Rail   | 700     |
 | Toolbar      | 500     |
 | Main Content | 100     |
 
-No right rail.
-No right panel.
 No DM Voice Bar.
 No composer.
 
@@ -240,10 +282,9 @@ no transform
 - `Component / Note Card`
 - `Component / Note Popout (Read‑Only)`
 
-No right rail.
-No right panel.
-No composer.
-No DM Voice Bar.
+Balanced baseline hides right rail/panel; mode variants may surface read-only tool panels.
+Composer remains hidden.
+DM Voice Bar remains hidden.
 
 ---
 

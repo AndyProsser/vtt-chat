@@ -124,6 +124,39 @@ export interface SystemToastItemProps {
 
 ---
 
+## **7. Responsive Shell Interfaces**
+
+```ts
+export type ViewportMode = 'MINIMALIST_MOBILE' | 'BALANCED_PLAYER' | 'DM_DESKTOP_COMMAND'
+
+export interface ViewportModeControllerProps {
+  width: number
+  persona: Persona
+  desktopCommandOptIn?: boolean
+  onModeChange: (mode: ViewportMode) => void
+}
+
+export interface RightRailModeProps {
+  viewportMode: ViewportMode
+  activePanel: RightPanelTab
+  lastDesktopPinnedPanel?: RightPanelTab
+  onSelectPanel: (tab: RightPanelTab) => void
+}
+
+export interface MobileBottomTabDockProps {
+  tabs: RightPanelTab[]
+  activeTab: RightPanelTab | null
+  onSelectTab: (tab: RightPanelTab) => void
+}
+
+export interface MobileDmWarningBannerProps {
+  visible: boolean
+  onDismiss: () => void
+}
+```
+
+---
+
 ## All Interfaces Are Fully Compliant
 
 These interfaces:

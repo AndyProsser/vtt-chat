@@ -28,6 +28,25 @@ Current implementation priority alignment:
 - Global settings must be usable both in-session and out-of-session.
 - User profile information belongs within the global settings surface.
 
+### Viewport Mode Model (2026-05-07)
+
+The shell now defines three responsive viewport modes:
+
+1. Minimalist Mobile (`<=767px`)
+2. Balanced Player (`768px-1279px`, with `~900px` as the primary target zone)
+3. DM Desktop Command (`>=1280px`)
+
+Role gating for DM Desktop Command:
+
+- DM auto-enables this mode on eligible widths.
+- Non-DM users can opt in when width permits.
+
+Right-panel behavior by mode:
+
+- Minimalist Mobile: right-panel icons dock to bottom and open popover panels.
+- Balanced Player: right-panel icons on right edge with popout/overlay behavior.
+- DM Desktop Command: exactly one right panel stays pinned open; clicking right-edge icons switches the pinned panel. Default is last used panel.
+
 ---
 
 ## 2. Global Layout Structure
@@ -36,18 +55,18 @@ Current implementation priority alignment:
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ TOOLBAR: Audio Devices | Theme | Connection Status                           │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN INFO: Campaign Name | DM | Session ## | Time                         │
+│ CAMPAIGN INFO: Campaign Name | DM | Session ## | Time                        │
 │ SYSTEM TOASTS (Dismissable, stacked, temporary)                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-┌───────────────┬───────────────────────────────────────────────┬──────────────┐
-│ LEFT PANEL     │                 CENTER PANEL                  │ RIGHT PANEL   │
-│ Player List    │  [Group Header]                               │ Vertical Tabs │
-│ (Grouped)      │  [Chat ▼ | Notes]                             │ Slide‑In      │
-│ Collapsible    │-----------------------------------------------│ Panels        │
-│ Avatar‑First   │  Chat Window                                   │ (Settings is  │
-│ DM Highlight   │  Message Composer                              │ last tab)     │
-└───────────────┴───────────────────────────────────────────────┴──────────────┘
+┌───────────────┬───────────────────────────────────────────────┬───────────────┐
+│ LEFT PANEL    │                 CENTER PANEL                  │ RIGHT PANEL   │
+│ Player List   │  [Group Header]                               │ Vertical Tabs │
+│ (Grouped)     │  [Chat ▼ | Notes]                             │ Slide‑In      │
+│ Collapsible   │-----------------------------------------------│ Panels        │
+│ Avatar‑First  │  Chat Window                                  │ (Settings is  │
+│ DM Highlight  │  Message Composer                             │ last tab)     │
+└───────────────┴───────────────────────────────────────────────┴───────────────┘
 ```
 
 This layout is **fluid**, **uncluttered**, and designed to complement external VTTs such as D&D Beyond Maps.
@@ -236,6 +255,17 @@ Opacity: 0.85 → 1
 
 Chat shifts left by panel width (transform only).
 
+DM Desktop Command layout rule:
+
+- Preserve existing left rail and center-pane baseline widths.
+- Allocate dedicated right-pane width for one always-open panel.
+- Allow center pane to absorb remaining flexible width.
+
+Minimalist Mobile layout rule:
+
+- Right-tab icons move to a bottom dock.
+- Opening a tab launches a bottom-anchored popover panel.
+
 ---
 
 ## 7. DM Voice Bar (DM Only)
@@ -274,6 +304,8 @@ DM Voice Bar
 Left Panel | Center Panel | Right Panel (full tabs)
 ```
 
+On `>=1280px`: DM Desktop Command behavior applies by default (one pinned right panel).
+
 ### 8.2 Player Layout
 
 ```text
@@ -282,6 +314,8 @@ Campaign Info + Toasts
 Left Panel | Center Panel | Right Panel (limited tabs)
 ```
 
+On `>=1280px`: players may opt into DM Desktop Command-style pinned panel behavior.
+
 ### 8.3 Spectator Layout
 
 ```text
@@ -289,6 +323,12 @@ Toolbar
 Campaign Info + Toasts
 Left Panel | Center Panel (read‑only) | Right Panel (read‑only tabs)
 ```
+
+On `<=767px`: all personas use Minimalist Mobile layout conventions.
+
+DM warning on Minimalist Mobile:
+
+- Show a one-time dismissible warning banner indicating the mobile layout is not optimized for DM command workflows.
 
 ---
 

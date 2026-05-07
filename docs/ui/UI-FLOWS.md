@@ -320,6 +320,78 @@ User opens Settings from authenticated shell.
 
 ---
 
+## 7. Responsive Mode Flows
+
+### **7.1 Mode Resolution on Resize**
+
+**Triggered by:**
+Viewport resize or initial shell mount.
+
+**Flow:**
+
+1. `ui/resolveViewportMode`
+2. Reducer: `uiReducer.setViewportMode`
+3. Store updates:
+   - `uiStore.viewportMode = 'MINIMALIST_MOBILE' | 'BALANCED_PLAYER' | 'DM_DESKTOP_COMMAND'`
+4. UI updates:
+   - Shell regions reposition according to mode
+   - Right panel behavior switches between popover, popout, or pinned mode
+
+Default breakpoints:
+
+- `<=767px`: `MINIMALIST_MOBILE`
+- `768px-1279px`: `BALANCED_PLAYER`
+- `>=1280px`: `DM_DESKTOP_COMMAND`
+
+### **7.2 DM Desktop Command Panel Switching**
+
+**UI Action:**
+User clicks a right-rail icon while in `DM_DESKTOP_COMMAND`.
+
+**Flow:**
+
+1. `ui/openPanel`
+2. Reducer: `uiReducer.openPanel`
+3. Store updates:
+   - `uiStore.activeRightPanel = tab`
+   - `uiStore.lastDesktopPinnedPanel = tab`
+4. UI updates:
+   - Existing pinned panel content swaps to selected tab
+   - One panel remains open at all times
+
+### **7.3 Minimalist Mobile Right Panel Dock**
+
+**UI Action:**
+User taps a bottom-dock icon in `MINIMALIST_MOBILE`.
+
+**Flow:**
+
+1. `ui/openPanel`
+2. Reducer: `uiReducer.openPanel`
+3. Store updates:
+   - `uiStore.activeRightPanel = tab`
+4. UI updates:
+   - Bottom popover panel slides up from dock
+   - Chat remains primary visual anchor behind panel
+
+### **7.4 Minimalist Mobile DM Warning Banner**
+
+**Triggered by:**
+DM enters `MINIMALIST_MOBILE` for first time on device/session.
+
+**Flow:**
+
+1. `ui/showMobileDmWarning`
+2. Reducer: `uiReducer.setMobileDmWarningVisible`
+3. Store updates:
+   - `uiStore.mobileDmWarningVisible = true`
+   - `uiStore.mobileDmWarningDismissed = false`
+4. UI updates:
+   - Dismissible warning banner appears
+   - Dismiss persists to local preference for future visits
+
+---
+
 ## 7. Connection Status Icon Flows
 
 Connection status naming and mapping must use canonical enums from the roadmap implementation checklist.

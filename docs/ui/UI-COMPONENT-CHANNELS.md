@@ -7,6 +7,18 @@
 
 ## 1) High‑Level Visual Layout
 
+### Viewport Modes
+
+- **Minimalist Mobile**: `<=767px`
+- **Balanced Player**: `768px-1279px` (primary target `~900px`)
+- **DM Desktop Command**: `>=1280px`
+
+Mode policy:
+
+- DM Desktop Command auto-enables for DM on eligible widths.
+- Non-DM users can opt in on eligible widths.
+- DM Desktop Command keeps exactly one right-side utility panel pinned open at all times (switch via right-edge icon rail).
+
 ### Desktop (Wide Panel, 300px fixed width)
 
 ```text
@@ -55,6 +67,17 @@ SCOUTS GROUP (Breakout)  [🌙] [+]
 [+ Create Group] (compact button at bottom)
 ```
 
+### Desktop Command (>=1280px, DM default)
+
+```text
+LEFT RAIL (Voice Groups) | CENTER (Chat/Notes) | PINNED RIGHT PANEL (Notes/Search/History)
+
+- Left rail remains fixed (~300px)
+- Center remains primary workspace and can flex wider
+- One right utility panel remains open persistently
+- Right-edge icons switch pinned panel content
+```
+
 ### Mobile (<768px width, Adaptive Collapse)
 
 ```text
@@ -66,6 +89,13 @@ Interaction:
 - Tap avatar → expand full widget
 - Tap group header → expand/collapse all players
 - Long-press avatar → radial menu (conditions, move, mute)
+
+Minimalist Mobile additions:
+
+- Left rail defaults to compact stacked controls (group icons + avatars + mute/unmute + meter)
+- Expand icon opens full-width left overlay panel
+- Right-panel icons move to bottom dock and open bottom popovers
+- DM sees one-time dismissible warning that mobile is not command-optimal
 ```
 
 ---

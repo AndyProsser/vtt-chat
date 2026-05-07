@@ -142,6 +142,53 @@ Secondary tools behind vertical tabs.
 - `<RightTabBar />`
 - `<SlideInPanels />`
 
+Mode behavior:
+
+- `BALANCED_PLAYER`: right-edge icon rail + popout panel behavior.
+- `DM_DESKTOP_COMMAND`: right-edge icon rail + one always-pinned panel.
+- `MINIMALIST_MOBILE`: bottom icon dock + bottom popover panel behavior.
+
+---
+
+### **2.8 `<ViewportModeController />`**
+
+**Purpose:**
+Computes active shell mode from viewport width and role/opt-in settings.
+
+**Visible to:**
+All personas (infrastructure component).
+
+**Rules:**
+
+- `<=767px`: `MINIMALIST_MOBILE`
+- `768px-1279px`: `BALANCED_PLAYER`
+- `>=1280px`: `DM_DESKTOP_COMMAND` (DM auto-on, others opt-in)
+
+---
+
+### **2.9 `<MobileBottomTabDock />`**
+
+**Purpose:**
+Bottom-pinned tab dock for right-panel tools in Minimalist Mobile mode.
+
+**Visible to:**
+All personas in `MINIMALIST_MOBILE`.
+
+**Notes:**
+
+- Opens tool panels as bottom popovers.
+- Keeps chat as primary visual layer.
+
+---
+
+### **2.10 `<MobileDmWarningBanner />`**
+
+**Purpose:**
+One-time dismissible warning when a DM enters Minimalist Mobile mode.
+
+**Visible to:**
+DM persona only, first entry to `MINIMALIST_MOBILE` until dismissed.
+
 ---
 
 ## 3. Player List Components

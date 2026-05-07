@@ -1,5 +1,21 @@
 # **DM PERSONA — HIGH‑FIDELITY ASCII WIREFRAME**
 
+## Viewport Modes (Applied to DM Persona)
+
+- **Minimalist Mobile (`<=767px`)**:
+  - Chat remains primary.
+  - Left rail defaults to compact stacked controls (group icons, avatars, mute/unmute, meter).
+  - Expand control opens full-width left overlay panel; collapse returns to compact mode.
+  - Right-panel icons move to a bottom dock and open bottom popovers.
+  - Show one-time dismissible warning that mobile is not optimal for DM command workflows.
+- **Balanced Player (`768px-1279px`, target `~900px`)**:
+  - Existing 3-column shell behavior remains the baseline.
+  - Right tools open as popout/overlay surfaces.
+- **DM Desktop Command (`>=1280px`)**:
+  - Keep one right utility panel pinned open at all times.
+  - Keep right-edge icon rail; clicking icons switches pinned panel content.
+  - Default pinned panel is the last used panel.
+
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  TOOLBAR (bg-surface-alt)                                                    │
@@ -84,6 +100,15 @@ Below is the full implementation‑ready specification.
 ---
 
 ## 1. Layout Structure
+
+### 1.3 DM Desktop Command Variant
+
+When viewport is `>=1280px`, DM persona uses desktop command behavior by default:
+
+- Left rail remains fixed.
+- Center pane remains primary and flexes to available space.
+- Dedicated pinned right panel remains visible continuously.
+- Active right panel changes via icon rail selection, not by closing/reopening popouts.
 
 ### **1.1 Top‑Level Regions**
 

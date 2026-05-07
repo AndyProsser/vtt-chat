@@ -107,6 +107,12 @@ Reducers compute the next state _only_ from `(state, event)`.
 - Panels are modular, dockable, collapsible
 - No hidden behaviours or surprises
 
+Responsive shell modes:
+
+- `<=767px`: Minimalist Mobile (chat-first, compact left column, bottom-docked tool icons)
+- `768px-1279px`: Balanced Player (primary target around `~900px`)
+- `>=1280px`: DM Desktop Command (one right panel pinned open; DM auto-enabled, others opt-in)
+
 ### Connection Status Canonical Names
 
 Use roadmap-defined canonical names across frontend/backend/admin:
@@ -196,46 +202,46 @@ Warning:
 
 1. Verify local postgres login:
 
-    ```bash
-    export PGPASSWORD='<postgres-password>'
-    psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
-    ```
+   ```bash
+   export PGPASSWORD='<postgres-password>'
+   psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
+   ```
 
 2. Ensure Prisma CLI reads env:
 
-    ```ts
-    // backend/prisma.config.ts
-    import 'dotenv/config'
-    ```
+   ```ts
+   // backend/prisma.config.ts
+   import 'dotenv/config'
+   ```
 
 3. Set backend DB URL:
 
-    ```dotenv
-    # backend/.env
-    DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
-    ```
+   ```dotenv
+   # backend/.env
+   DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
+   ```
 
 4. Reset local DB:
 
-    ```bash
-    dropdb -h localhost -U postgres --if-exists vtt-chat
-    createdb -h localhost -U postgres -O postgres vtt-chat
-    ```
+   ```bash
+   dropdb -h localhost -U postgres --if-exists vtt-chat
+   createdb -h localhost -U postgres -O postgres vtt-chat
+   ```
 
 5. Apply migrations:
 
-    ```bash
-    cd backend
-    npx prisma migrate dev --name stage6_rooms_presence_snapshots
-    ```
+   ```bash
+   cd backend
+   npx prisma migrate dev --name stage6_rooms_presence_snapshots
+   ```
 
 6. Verify:
 
-    ```bash
-    npx prisma migrate status
-    npm run build
-    npm test -- --run
-    ```
+   ```bash
+   npx prisma migrate status
+   npm run build
+   npm test -- --run
+   ```
 
 ---
 

@@ -2,6 +2,16 @@
 
 _All values are implementation‑grade and token‑driven._
 
+Viewport mode set for DM mockups:
+
+- **Minimalist Mobile**: `<=767px`
+- **Balanced Player**: `768px-1279px` (target `~900px`)
+- **DM Desktop Command**: `>=1280px` (DM default)
+
+DM Desktop Command note:
+
+- Keep one right panel pinned open at all times; right icon rail switches pinned content.
+
 ---
 
 ## 1. **Frame Specification**
@@ -17,6 +27,20 @@ _All values are implementation‑grade and token‑driven._
 | Padding    | 0                   |
 | Spacing    | 0                   |
 | Background | `var(--bg-app)`     |
+
+### **1.2 Mode Variant Frames**
+
+Create three linked variant frames in Figma:
+
+1. `DM Persona — Minimalist Mobile`
+2. `DM Persona — Balanced Player`
+3. `DM Persona — Desktop Command`
+
+Variant behavior:
+
+- Minimalist Mobile: bottom tool dock + compact left controls + one-time warning banner component.
+- Balanced Player: existing baseline shell and popout panel behavior.
+- Desktop Command: persistent pinned right-panel column with icon-switched content.
 
 ---
 
@@ -73,6 +97,18 @@ _All values are implementation‑grade and token‑driven._
 ---
 
 ## 3. **Main Layout (3 Columns)**
+
+Desktop Command column behavior (`>=1280px`):
+
+- Left Rail width stays fixed as specified.
+- Center Pane keeps core chat priority and flexes as available.
+- Right Panel is always present (one active panel pinned).
+
+Minimalist Mobile adaptation (`<=767px`):
+
+- Left controls collapse to compact column.
+- Full left panel appears as full-width overlay when expanded.
+- Right tool icons move to bottom dock; tools open as bottom popovers.
 
 ### **3.1 Left Rail — Player List**
 

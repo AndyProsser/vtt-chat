@@ -81,7 +81,7 @@ When UI implementation docs diverge from these migration docs, update the implem
 - [UI-LOADING-STATES.md](ui/UI-LOADING-STATES.md)
 - [UI-ERROR-HANDLING.md](ui/UI-ERROR-HANDLING.md)
 - [UI-PERSONAS.md](ui/UI-PERSONAS.md)
-- [COMBINED PERSONA COMPARISON SHEET](ui/personas/COMPARISION-SHEET.md)
+- [COMBINED PERSONA COMPARISON SHEET](ui/personas/COMPARISON-SHEET.md)
 - [UI PERSONA DM WIREFRAME](ui/personas/UI-PERSONA-DM.md)
 - [FIGMA MOCKUP DM](ui/personas/FIGMA-MOCKUP-DM.md)
 - [FIGMA MOCKUP PLAYER](ui/personas/FIGMA-MOCKUP-PLAYER.md)
@@ -121,7 +121,7 @@ When UI implementation docs diverge from these migration docs, update the implem
 ### **AI**
 
 - [AI-CONTEXT.md](ai/AI-CONTEXT.md) — Main onboarding context
-- [PROMPTING-RULES.md](ai/PROMPTING-RULES.md) — Behavioral rules
+- [AI-GUIDELINES.md](ai/AI-GUIDELINES.md) — Behavioral rules
 - [AI-CONTEXT-GITHUB.md](ai/AI-CONTEXT-GITHUB.md) — GitHub Copilot variant
 - [AI-CONTEXT-VSCODE.md](ai/AI-CONTEXT-VSCODE.md) — VS Code Copilot variant
 - [DESIGN.md](ai/DESIGN.md) — Deep architecture template

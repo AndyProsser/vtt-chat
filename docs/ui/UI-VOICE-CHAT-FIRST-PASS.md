@@ -61,3 +61,26 @@ Scope: frontend session shell and voice-related panels
 - Add persistent self controls (mute/deafen/input meter) at left rail footer.
 - Add richer participant avatars or uploaded profile image support.
 - Add compact mobile voice rail mode for narrow widths.
+
+## Responsive Mode Expansion (Approved 2026-05-07)
+
+The first pass remains centered on the `~900px` Balanced Player zone, but now defines two additional operating modes:
+
+1. Minimalist Mobile (`<=767px`)
+2. Balanced Player (`768px-1279px`, target `~900px`)
+3. DM Desktop Command (`>=1280px`)
+
+DM Desktop Command behavior:
+
+- Keep left rail and center-pane baseline widths intact.
+- Keep exactly one right-side panel open at all times.
+- Keep right-edge icon rail; clicking icons switches the pinned panel.
+- Default pinned panel is last used.
+
+Minimalist Mobile behavior:
+
+- Chat is the primary visual.
+- Left panel collapses into compact stacked controls (group icons, avatars, mute/unmute, meter).
+- Left panel can expand to full-width overlay and collapse again.
+- Right-panel icons move to a bottom dock and open popovers.
+- Show one-time dismissible warning for DM users that mobile is not command-optimal.

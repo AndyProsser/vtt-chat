@@ -137,12 +137,33 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 - Requires collapsible panels
 - Requires high‑density information
 
+### **DM Desktop Command Variant (`>=1280px`)**
+
+```text
+┌────────────────┬──────────────────────────────────────────────────────┬──────────────────────────┐
+│ LEFT PANEL     │ CENTER PANEL                                         │ PINNED RIGHT PANEL       │
+│ (unchanged)    │ (chat/notes, flexible width)                         │ (always open, one tab)   │
+│────────────────│───────────────────────────────────────────────────────│──────────────────────────│
+│ Group + Roster │ Chat + Composer                                      │ Notes / Search / History │
+│ Voice controls │                                                       │ (click right icon swaps) │
+└────────────────┴──────────────────────────────────────────────────────┴──────────────────────────┘
+```
+
+- Right-edge icon rail remains visible.
+- Exactly one panel stays open at all times.
+- Default pinned panel is last used.
+
 ### **Player UI**
 
 - Chat‑first
 - Minimal controls
 - IC toggle is prominent
 - Notes are secondary
+
+### **Balanced Player Variant (`768px-1279px`, target `~900px`)**
+
+- Existing popout right-panel behavior remains primary.
+- Left panel and chat remain prioritized.
 
 ### **Spectator UI**
 
@@ -151,3 +172,20 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 - No audio controls
 - No whispers
 - No private groups
+
+### **Minimalist Mobile Variant (`<=767px`)**
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│ TOP BAR: campaign + compact status + expand-left-panel icon         │
+├──────────────────────────────────────────────────────────────────────┤
+│ LEFT COMPACT COLUMN: group icons + avatars + mute/unmute + meter    │
+├──────────────────────────────────────────────────────────────────────┤
+│ CENTER: chat-first surface                                           │
+├──────────────────────────────────────────────────────────────────────┤
+│ BOTTOM DOCK: right-panel icons (open bottom popover panel)          │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- Left panel expands to full-width overlay when requested.
+- DM receives a one-time dismissible warning banner in this mode.

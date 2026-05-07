@@ -2,6 +2,16 @@
 
 _Aligned with your architecture, token system, and persona rules._
 
+Viewport mode set for Player mockups:
+
+- **Minimalist Mobile**: `<=767px`
+- **Balanced Player**: `768px-1279px` (target `~900px`, primary player baseline)
+- **DM Desktop Command**: `>=1280px` (player opt-in only)
+
+Desktop Command note for players:
+
+- Players can opt in to keep one right utility panel pinned open on wide screens.
+
 ---
 
 ## 1. **Frame Specification**
@@ -17,6 +27,20 @@ _Aligned with your architecture, token system, and persona rules._
 | Padding    | 0                       |
 | Spacing    | 0                       |
 | Background | `var(--bg-app)`         |
+
+### **1.2 Mode Variant Frames**
+
+Create three linked variant frames in Figma:
+
+1. `Player Persona — Minimalist Mobile`
+2. `Player Persona — Balanced Player`
+3. `Player Persona — Desktop Command (Opt-in)`
+
+Variant behavior:
+
+- Minimalist Mobile: chat-first, compact left controls, bottom tool dock with popover panels.
+- Balanced Player: existing baseline layout and popout right-panel interactions.
+- Desktop Command Opt-in: one pinned right panel stays open and switches via icon rail.
 
 ---
 
@@ -47,6 +71,12 @@ _No DM Voice Bar._
 ## 3. **Main Layout (3 Columns)**
 
 The Player Persona keeps the same structural grid as DM, but with **restricted functionality**.
+
+Mode adaptation:
+
+- Balanced Player is the default behavior.
+- Minimalist Mobile compresses layout around chat with bottom tool docking.
+- Desktop Command opt-in adds persistent right-panel workspace while preserving player permissions.
 
 ---
 

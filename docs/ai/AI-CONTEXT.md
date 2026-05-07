@@ -63,40 +63,70 @@ docs/
 │   ├── NOTES-SYSTEM.md
 │   ├── AUDIO-ENGINE.md
 │   ├── PRESENCE-STATE-MACHINE.md
-│   └── (future subsystem docs)
+│   ├── EVENT-REDUCER.md
+│   ├── LIVEKIT-INTEGRATION.md
+│   ├── PRESET-LIBRARY.md
+│   ├── STATE-STORES.md
+│   └── ZUSTAND-STORE-ARCHITECTURE.md
 │
 ├── ui/
 │   ├── UI-COMPONENTS.md
 │   ├── UI-COMPONENT-INTERFACES.md
 │   ├── UI-COMPONENT-PROPS.md
+│   ├── UI-COMPONENT-CHANNELS.md
 │   ├── UI-LAYOUT.md
+│   ├── UI-WIREFRAMES.md
 │   ├── UI-FLOWS.md
 │   ├── UI-EVENTS.md
+│   ├── UI-STATE-MAP.md
+│   ├── UI-STATE-RECOVERY.md
+│   ├── UI-LOADING-STATES.md
+│   ├── UI-ERROR-HANDLING.md
+│   ├── UI-MOTION.md
 │   ├── UI-PERSONAS.md
 │   ├── ADMIN-UI-DESIGN.md
-│   ├── personas/
-│   │   ├── COMPARISION-SHEET.md
-│   │   ├── UI-PERSONA-DM.md
-│   │   ├── FIGMA-MOCKUP-DM.md
-│   │   ├── FIGMA-MOCKUP-PLAYER.md
-│   │   └── FIGMA-MOCKUP-SPECTATOR.md
 │   ├── ANIMATION-AND-MOTION-SPEC.md
-│   └── UI-THEMING.md
+│   ├── REACT-COMPONENT-TREES.md
+│   ├── VOICE-CHANNEL-QUICK-REFERENCE.md
+│   ├── VOICE-CHANNEL-REVIEW-SUMMARY.md
+│   ├── W0-VOICE-CHANNEL-DOCUMENTATION-INDEX.md
+│   ├── W0-VOICE-CHANNEL-IMPLEMENTATION-CHECKLIST.md
+│   ├── UI-VOICE-CHAT-FIRST-PASS.md
+│   ├── DM-CAMPAIGN-SETTINGS.md
+│   ├── UI-THEMING.md
+│   ├── UI-THEMING-GUIDELINES.md
+│   ├── UI-THEMING-LIGHT-MODE.md
+│   ├── UI-THEMING-DARK-MODE.md
+│   ├── UI-THEMING-COMPONENT-TOKENS.md
+│   └── personas/
+│       ├── COMPARISON-SHEET.md
+│       ├── UI-PERSONA-DM.md
+│       ├── FIGMA-MOCKUP-DM.md
+│       ├── FIGMA-MOCKUP-PLAYER.md
+│       └── FIGMA-MOCKUP-SPECTATOR.md
 │
 ├── extension/
+│   ├── EXTENSION-INTEGRATION.md
+│   ├── EXTENSION-ROADMAP.md
 │   ├── EXTENSION-UX.md
+│   ├── GUEST-AUTH.md
 │   └── THIRD-PARTY-INTEGRATIONS.md
 │
 ├── dm-tools/
 │   ├── DM-TOOLS.md
-│   ├── SESSIONS.md
-│   └── (future DM tooling docs)
+│   └── SESSIONS.md
 │
 ├── operations/
 │   ├── DEPLOYMENT.md
+│   ├── DEVELOPER-DEPLOYMENT.md
 │   ├── TELEMETRY.md
 │   ├── BACKUP-RESTORE.md
-│   └── (future ops docs)
+│   ├── API-V1-DEPRECATION-MAP.md
+│   ├── BACKEND-DEBT-MATRIX.md
+│   ├── BACKEND-STRUCTURE-CONSISTENCY-PLAN.md
+│   ├── INSTALL-SCRIPT-GUIDE.md
+│   ├── FLAKY-TEST-POLICY.md
+│   └── TESTING-READINESS.md
 │
 ├── meta/
 │   ├── ONBOARDING.md
@@ -105,7 +135,10 @@ docs/
 │
 └── ai/
     ├── AI-CONTEXT.md   ← (this file)
-    └── PROMPTING-RULES.md
+    ├── AI-GUIDELINES.md
+    ├── AI-CONTEXT-GITHUB.md
+    ├── AI-CONTEXT-VSCODE.md
+    └── DESIGN.md
 ```
 
 AI assistants must use these documents as authoritative references.
@@ -351,7 +384,7 @@ AI must use consistent terminology.
 
 ---
 
-## 10. AI Behaviour Rules (From PROMPTING-RULES.md)
+## 10. AI Behaviour Rules (From AI-GUIDELINES.md)
 
 AI must:
 

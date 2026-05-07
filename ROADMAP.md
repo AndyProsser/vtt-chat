@@ -179,6 +179,11 @@ Terminology note for this stage:
 **Key Decisions** (from UX review 2026-05-07):
 
 - Mobile-first adaptive collapse (auto-collapse <768px, expand on desktop)
+- Three viewport modes: Minimalist Mobile (`<=767px`), Balanced Player (`768px-1279px`, target `~900px`), DM Desktop Command (`>=1280px`)
+- DM Desktop Command: keep exactly one right panel pinned open at all times and switch via right-edge icons
+- DM Desktop Command defaults to last-used panel; DM auto-enabled and non-DM users can opt in
+- Minimalist Mobile: compact left column (group icons + avatars + mute/meter), expandable full-width left overlay, bottom-docked right-panel icons
+- Minimalist Mobile DM warning: one-time dismissible banner for non-optimal DM command experience
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
 - Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
 - Environment icons (compact, hover tooltip, DM click to edit)

@@ -318,7 +318,43 @@ No component mutates state directly.
 
 ---
 
-## 8. Summary
+## 8. Responsive Mode Components
+
+### **8.1 `<ViewportModeController />`**
+
+| Prop                  | Type                           | Description                            |
+| --------------------- | ------------------------------ | -------------------------------------- |
+| `width`               | `number`                       | Current viewport width                 |
+| `persona`             | `Persona`                      | Active persona                         |
+| `desktopCommandOptIn` | `boolean`                      | Non-DM opt-in for desktop command mode |
+| `onModeChange`        | `(mode: ViewportMode) => void` | Emits resolved mode                    |
+
+### **8.2 `<RightRail />` (Responsive Additions)**
+
+| Prop                     | Type            | Description                                         |
+| ------------------------ | --------------- | --------------------------------------------------- |
+| `viewportMode`           | `ViewportMode`  | Active shell mode                                   |
+| `activePanel`            | `RightPanelTab` | Current right-panel tab                             |
+| `lastDesktopPinnedPanel` | `RightPanelTab` | Last pinned panel for desktop command mode defaults |
+
+### **8.3 `<MobileBottomTabDock />`**
+
+| Prop          | Type                           | Description                          |
+| ------------- | ------------------------------ | ------------------------------------ |
+| `tabs`        | `RightPanelTab[]`              | Tabs displayed in mobile bottom dock |
+| `activeTab`   | `RightPanelTab \| null`        | Active tab/popover                   |
+| `onSelectTab` | `(tab: RightPanelTab) => void` | Opens corresponding bottom popover   |
+
+### **8.4 `<MobileDmWarningBanner />`**
+
+| Prop        | Type         | Description                                 |
+| ----------- | ------------ | ------------------------------------------- |
+| `visible`   | `boolean`    | Whether warning is shown                    |
+| `onDismiss` | `() => void` | Dismisses one-time mobile DM warning banner |
+
+---
+
+## 9. Summary
 
 This file provides:
 

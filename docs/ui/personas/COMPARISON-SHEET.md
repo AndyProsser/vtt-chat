@@ -17,6 +17,18 @@ This sheet defines:
 
 This is the **single source of truth** for persona‑based UI behaviour.
 
+Viewport-mode baseline used by all persona comparisons:
+
+- **Minimalist Mobile**: `<=767px`
+- **Balanced Player**: `768px-1279px` (target zone `~900px`)
+- **DM Desktop Command**: `>=1280px`
+
+Mode activation rules:
+
+- DM auto-enables DM Desktop Command on eligible widths.
+- Non-DM users can opt in to DM Desktop Command on eligible widths.
+- Minimalist Mobile shows a one-time dismissible DM warning banner.
+
 ---
 
 ## 2. High‑Level Persona Summary
@@ -40,6 +52,14 @@ This is the **single source of truth** for persona‑based UI behaviour.
 | **Composer**               | ✔ Visible                      | ✔ Visible          | ✖ Hidden                       |
 | **Right Rail (Icon Tabs)** | ✔ All Tabs                     | ✔ Limited Tabs     | ✖ Hidden                       |
 | **Right Panel (Slide‑In)** | ✔ All Panels                   | ✔ Limited Panels   | ✖ Hidden                       |
+
+### 3.1 Viewport Mode Behavior Comparison
+
+| Mode               | DM                                                                 | Player                                                             | Spectator                                                       |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Minimalist Mobile  | Chat-first, compact left column, bottom-docked tools, DM warning   | Chat-first, compact left column, bottom-docked tools               | Chat-first, compact left column, bottom-docked tools, read-only |
+| Balanced Player    | Existing balanced shell; right tools open as popout/overlay panels | Existing balanced shell; right tools open as popout/overlay panels | Existing balanced shell with spectator read-only constraints    |
+| DM Desktop Command | One right panel pinned open at all times, switched via right icons | Optional opt-in; one pinned right panel with icon-switch behavior  | Optional opt-in; read-only panel content with pinned behavior   |
 
 ---
 
@@ -194,6 +214,11 @@ Spectator uses the same tokens but **fewer interactive states**.
 | Center Pane  | flex‑1 | flex‑1 | flex‑1 (largest) |
 
 Spectator gets the **widest possible chat area**.
+
+Desktop command mode adjustment:
+
+- In DM Desktop Command, a dedicated right-panel column is permanently reserved for one pinned panel.
+- Right-edge icon rail remains visible and swaps pinned panel content.
 
 ---
 

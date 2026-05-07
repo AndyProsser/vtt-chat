@@ -20,9 +20,20 @@ The SPA dynamically adapts based on:
 - Group state (greenroom, Main group, split group, private group)
 - Session state (pre‑session, in‑session, post‑session)
 
+Responsive viewport modes:
+
+- Minimalist Mobile (`<=767px`)
+- Balanced Player (`768px-1279px`, target `~900px`)
+- DM Desktop Command (`>=1280px`)
+
+Mode activation policy:
+
+- DM Desktop Command auto-enables for DM on eligible widths.
+- Non-DM personas may opt in on eligible widths.
+
 Detailed persona companion docs:
 
-- [Combined Persona Comparison Sheet](personas/COMPARISION-SHEET.md)
+- [Combined Persona Comparison Sheet](personas/COMPARISON-SHEET.md)
 - [DM Persona High-Fidelity Wireframe](personas/UI-PERSONA-DM.md)
 - [Figma Mockup DM](personas/FIGMA-MOCKUP-DM.md)
 - [Figma Mockup Player](personas/FIGMA-MOCKUP-PLAYER.md)
@@ -39,6 +50,7 @@ Detailed persona companion docs:
 - **Fast actions**: one‑click tools, drag‑and‑drop
 - **Zero clutter**: collapsible panels, context‑aware controls
 - **Session‑aware**: recap, journal, recording, private groups
+- **Desktop command mode**: keep one right tool panel open on wide screens
 
 ### DM Layout Structure
 
@@ -133,6 +145,7 @@ Detailed persona companion docs:
 - **No group management**
 - **No global audio overrides**
 - **No visibility into other groups**
+- **Balanced-first responsive behavior** with optional desktop command opt-in
 
 Players should feel:
 
@@ -212,6 +225,10 @@ Players should feel:
 
 Spectators are observers — not participants.
 
+Minimalist Mobile reminder:
+
+- Spectator layout follows mobile shell behavior (bottom-docked tools, compact left column).
+
 ### Spectator Layout Structure
 
 ```text
@@ -259,6 +276,14 @@ Spectators are observers — not participants.
 ---
 
 ## Cross‑Persona Behavior Rules
+
+### **Viewport Mode Behavior**
+
+| Mode               | Primary behavior                                                                  |
+| ------------------ | --------------------------------------------------------------------------------- |
+| Minimalist Mobile  | Chat-first, compact left column, bottom-docked right-panel icons + popover panels |
+| Balanced Player    | Existing popout right panel behavior and balanced tri-pane shell                  |
+| DM Desktop Command | One pinned right panel always open; right-edge icons switch pinned content        |
 
 ### **Group Visibility**
 
