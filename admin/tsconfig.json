@@ -15,7 +15,7 @@
     "types": ["node", "vitest/globals"],
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@shared": ["../shared/index.ts"],
       "@shared/*": ["../shared/*"]
     }

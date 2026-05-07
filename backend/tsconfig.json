@@ -16,10 +16,10 @@
     "allowUnreachableCode": false,
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["src/*"],
-      "@/api*": ["src/api/*"],
-      "@/types": ["src/types/index.ts"],
-      "@/types/*": ["src/types/*"],
+      "@/*": ["./src/*"],
+      "@/api*": ["./src/api/*"],
+      "@/types": ["./src/types/index.ts"],
+      "@/types/*": ["./src/types/*"],
       "@shared": ["../shared/index.ts"],
       "@shared/*": ["../shared/*"]
     }

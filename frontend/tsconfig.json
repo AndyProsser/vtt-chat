@@ -15,7 +15,7 @@
     "noEmit": true,
     "types": ["node", "react", "react-dom"],
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@shared": ["../shared/index.ts"],
       "@shared/*": ["../shared/*"]
     }
