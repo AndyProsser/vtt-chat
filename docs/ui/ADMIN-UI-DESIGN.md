@@ -91,7 +91,7 @@ The Admin UI has **six core sections**:
 
 1. **Dashboard**
 2. **Users**
-3. **Rooms & Campaigns**
+3. **Groups & Campaigns**
 4. **System Health**
 5. **Logs & Activity**
 6. **Settings**
@@ -101,7 +101,7 @@ The Admin UI has **six core sections**:
 ```text
 Dashboard
 Users
-Rooms & Campaigns
+Groups & Campaigns
 System Health
 Logs & Activity
 Settings
@@ -129,7 +129,7 @@ A high‑level overview.
 #### **Cards**
 
 - Active Users
-- Active Rooms
+- Active Groups
 - Recent Errors
 - System Load
 - Message Throughput
@@ -169,26 +169,26 @@ Admin‑level user management.
 #### **User Detail Panel**
 
 - Profile info
-- Rooms joined
+- Groups joined
 - Recent activity
 - Flags / warnings
 
 ---
 
-### **5.3 Rooms & Campaigns**
+### **5.3 Groups & Campaigns**
 
-Operational view of all rooms.
+Operational view of all groups.
 
 #### **Table Columns**
 
-- Room Name
+- Group Name
 - Campaign
 - Player Count
 - Environment
 - Status (Active / Idle)
 - Actions (View / Close / Move Players)
 
-#### **Room Detail Panel**
+#### **Group Detail Panel**
 
 - Players
 - Environment
@@ -236,7 +236,7 @@ Centralized logging.
 - Severity (Info / Warn / Error)
 - Source (API / LiveKit / DB / Frontend)
 - User ID
-- Room ID
+- Group ID
 
 #### **Log Table**
 

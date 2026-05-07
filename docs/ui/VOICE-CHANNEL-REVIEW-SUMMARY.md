@@ -1,8 +1,8 @@
-# Voice Channel Layout Review: Summary & Next Steps
+# Voice Group Layout Review: Summary & Next Steps
 
 **Completed**: 2026-05-07
 **Reviewer**: You (user)
-**Scope**: Voice channel panel UX design, documentation, and W0 roadmap planning
+**Scope**: Voice group panel UX design, documentation, and W0 roadmap planning
 
 ---
 
@@ -17,7 +17,7 @@ Asked 10 targeted questions covering:
 - Condition interaction patterns
 - Environment indicators display
 - DM broadcast routing UX
-- Create room CTA placement
+- Create group CTA placement
 - Sticky DM widget behavior
 - Speaking indicator prominence
 - Condition badge stacking
@@ -29,8 +29,8 @@ Asked 10 targeted questions covering:
 - **Full drag feedback**: highlight zones + dim invalid + ghost preview
 - **Radial menu** (right-click desktop, long-press mobile) for conditions
 - **Compact environment icons** with hover tooltips
-- **Broadcast indicator badge** + subtle room header glow
-- **Create room button** as icon in room header
+- **Broadcast indicator badge** + subtle group header glow
+- **Create group button** as icon in group header
 - **Sticky DM widget** always at top
 - **Primary condition + popover** for others
 - **Screen reader support** as accessibility priority
@@ -44,17 +44,17 @@ Asked 10 targeted questions covering:
 
 **Sections**:
 
-| Section                  | Content                                                                     |
-| ------------------------ | --------------------------------------------------------------------------- |
-| High-Level Layouts       | Desktop (300px panel) + Mobile (collapsed avatars) mockups                  |
-| UX Principles            | Simplicity, visual hierarchy, feedback & affordance                         |
-| Component Anatomy        | DM widget, room headers, player widgets, conditions, radial menu (with CSS) |
-| Interaction Flows        | Drag-n-drop, conditions, broadcast, mobile collapse, create room            |
-| Design Tokens            | Colors, spacing, animations (1.2s pulse), accessibility                     |
-| Implementation Status    | Current RoomSelector coverage + planned W0 work                             |
-| Implementation Checklist | 5-phase plan (35+ actionable tasks)                                         |
-| Future Enhancements      | Voice presets, character sheet quick-view, etc.                             |
-| Rationale                | Design decisions explained                                                  |
+| Section                  | Content                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| High-Level Layouts       | Desktop (300px panel) + Mobile (collapsed avatars) mockups                   |
+| UX Principles            | Simplicity, visual hierarchy, feedback & affordance                          |
+| Component Anatomy        | DM widget, group headers, player widgets, conditions, radial menu (with CSS) |
+| Interaction Flows        | Drag-n-drop, conditions, broadcast, mobile collapse, create group            |
+| Design Tokens            | Colors, spacing, animations (1.2s pulse), accessibility                      |
+| Implementation Status    | Current group-selector coverage + planned W0 work                            |
+| Implementation Checklist | 5-phase plan (35+ actionable tasks)                                          |
+| Future Enhancements      | Voice presets, character sheet quick-view, etc.                              |
+| Rationale                | Design decisions explained                                                   |
 
 **Key Deliverable**: Developers now have a complete, implementation-ready spec. All interactions clearly defined with CSS properties, ARIA labels, and keyboard bindings.
 
@@ -66,7 +66,8 @@ Asked 10 targeted questions covering:
 
 **Covers**:
 
-- **Settings categories**: Voice/audio, player mechanics (conditions), room management
+- **Settings categories**: Voice/audio, player mechanics (conditions), group management
+- **Future W0 tail**: DM setting for one-way Main group audio monitoring to selected secondary groups
 - **Campaign-scoped "Allow Conditions"** toggle (DM control)
 - **UI integration**: Settings panel hierarchy
 - **Implementation roadmap**: Phase 1 (W0 critical) through Phase 3 (future)
@@ -81,11 +82,11 @@ Asked 10 targeted questions covering:
 
 ### 4. ✅ Roadmap Integration
 
-**File**: [ROADMAP.md](../../ROADMAP.md) — W0 Voice Channel subtask added
+**File**: [ROADMAP.md](../../ROADMAP.md) — W0 Voice Group subtask added
 
 **Tracking**:
 
-- Dedicated "W0 Subtask: Voice Channel Panel" section
+- Dedicated "W0 Subtask: Voice Group Panel" section
 - 5-phase implementation timeline with deliverables
 - All key UX decisions cross-referenced
 - Backend + frontend component checklist
@@ -101,7 +102,7 @@ Asked 10 targeted questions covering:
 
 ### Already Built (✅ Exists)
 
-- RoomSelector component with room/player list
+- RoomSelector component with group/player list
 - Drag-and-drop move functionality
 - Broadcast mode toggle (DM voice routing)
 - Avatar overlay with speaking/muted states
@@ -111,7 +112,7 @@ Asked 10 targeted questions covering:
 
 ### Ready for W0 Implementation (🔨 Phase 1-5)
 
-**Phase 1**: Room headers, condition badge, env tooltip
+**Phase 1**: Group headers, condition badge, env tooltip
 **Phase 2**: Radial menu, condition picker, enhanced drag feedback
 **Phase 3**: Mobile collapse/expand, responsive popovers
 **Phase 4**: ARIA labels, keyboard nav, reduced motion, a11y audit
@@ -136,7 +137,7 @@ Asked 10 targeted questions covering:
 3. **Create components**:
    - ConditionPopover.tsx
    - RadialMenu.tsx
-   - CreateRoomModal.tsx
+   - CreateGroupModal.tsx
    - CampaignSettingsPanel.tsx
 4. **Enhance existing**:
    - RoomSelector.tsx (add headers, badges, etc.)
@@ -173,7 +174,7 @@ Asked 10 targeted questions covering:
 | -------------------------------- | ---------- | -------------------------------------------------------------- |
 | docs/ui/UI-COMPONENT-CHANNELS.md | ✅ Created | Complete visual design + interaction spec (600+ lines)         |
 | docs/ui/DM-CAMPAIGN-SETTINGS.md  | ✅ Created | Campaign settings framework + implementation plan (300+ lines) |
-| ROADMAP.md                       | ✅ Updated | W0 voice channel subtask with timeline + success criteria      |
+| ROADMAP.md                       | ✅ Updated | W0 voice group subtask with timeline + success criteria        |
 
 ---
 

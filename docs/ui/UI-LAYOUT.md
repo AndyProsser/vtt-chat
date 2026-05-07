@@ -42,7 +42,7 @@ Current implementation priority alignment:
 
 ┌───────────────┬───────────────────────────────────────────────┬──────────────┐
 │ LEFT PANEL     │                 CENTER PANEL                  │ RIGHT PANEL   │
-│ Player List    │  [Room Header]                                │ Vertical Tabs │
+│ Player List    │  [Group Header]                               │ Vertical Tabs │
 │ (Grouped)      │  [Chat ▼ | Notes]                             │ Slide‑In      │
 │ Collapsible    │-----------------------------------------------│ Panels        │
 │ Avatar‑First   │  Chat Window                                   │ (Settings is  │
@@ -90,7 +90,7 @@ Easing: primary
 
 - Connection restored
 - Reconnecting…
-- Room environment updated
+- Group environment updated
 - Note published
 
 ---
@@ -103,7 +103,7 @@ The left panel is the **primary anchor** of the UI.
 
 - Avatar‑first design
 - Collapsible to icon‑only mode
-- Grouped by room
+- Grouped by group
 - Speaking indicator
 - Mute indicator
 - Condition icons
@@ -131,18 +131,18 @@ The center panel is the **core interaction surface**.
 ### Structure
 
 ```text
-[Room Header]
+[Group Header]
 [Chat ▼ | Notes]
 -----------------------------------
 Chat Window OR Notes List
 Message Composer (if allowed)
 ```
 
-### Room Header
+### Group Header
 
 Shows:
 
-- Current room name
+- Current group name
 - Whisper target (if applicable)
 - Persona‑specific visibility
 
@@ -193,7 +193,7 @@ Tabs vary by persona.
 
 ### Tab Order (DM)
 
-1. Rooms
+1. Groups
 2. Audio
 3. Search
 4. Notes

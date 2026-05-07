@@ -188,9 +188,9 @@ Easing: ease-in-out
 
 ## 4.4 Center Pane
 
-### **Room Header**
+### **Group Header**
 
-Minimal fade on room change:
+Minimal fade on group change:
 
 ```text
 Duration: 120ms
@@ -353,7 +353,7 @@ Opacity: 0 → 1 → 0
 
 ---
 
-## 4.9 Environment Change (Room)
+## 4.9 Environment Change (Group)
 
 ### **Icon Update**
 
@@ -363,7 +363,7 @@ Scale: 0.8 → 1.0
 Opacity: 0 → 1
 ```
 
-### **Room Background Pulse**
+### **Group Background Pulse**
 
 ```text
 Duration: 200ms

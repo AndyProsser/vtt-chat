@@ -86,10 +86,10 @@ _All values are implementation‑grade and token‑driven._
 
 #### **Left Rail Components**
 
-##### **Rooms Section**
+##### **Groups Section**
 
 - Section Header: text-muted, 12px uppercase
-- Room Item:
+- Group Item:
   - Height: 28px
   - Text: text-secondary
   - Player Count: text-muted
@@ -121,15 +121,15 @@ _All values are implementation‑grade and token‑driven._
 | Layout     | Vertical        |
 | Padding    | 0               |
 
-#### **Room Header**
+#### **Group Header**
 
-| Property   | Value                   |
-| ---------- | ----------------------- |
-| Height     | 48px                    |
-| Background | `var(--bg-surface)`     |
-| Layout     | Horizontal              |
-| Padding    | 0 16px                  |
-| Content    | Room Name + Environment |
+| Property   | Value                    |
+| ---------- | ------------------------ |
+| Height     | 48px                     |
+| Background | `var(--bg-surface)`      |
+| Layout     | Horizontal               |
+| Padding    | 0 16px                   |
+| Content    | Group Name + Environment |
 
 #### **Chat Window**
 
@@ -178,7 +178,7 @@ _All values are implementation‑grade and token‑driven._
 
 #### **Tab Order (top → bottom)**
 
-1. Rooms
+1. Groups
 2. Journal
 3. Notes
 4. History
@@ -202,12 +202,12 @@ _All values are implementation‑grade and token‑driven._
 
 ---
 
-### **4.2 Rooms Panel**
+### **4.2 Groups Panel**
 
-- Title: “Rooms”
-- Create Room Button
-- Room List
-  - Room Name
+- Title: “Groups”
+- Create Group Button
+- Group List
+  - Group Name
   - Rename
   - Delete
   - Environment Selector
@@ -310,14 +310,14 @@ duration: 180ms
 - `Component / DM Voice Bar`
 - `Component / Left Rail`
 - `Component / Player Item`
-- `Component / Room Item`
+- `Component / Group Item`
 - `Component / Center Pane`
 - `Component / Chat Message`
 - `Component / Note Card`
 - `Component / Composer`
 - `Component / Right Rail`
 - `Component / Right Panel`
-- `Component / Rooms Panel`
+- `Component / Groups Panel`
 - `Component / Player Management Panel`
 
 All components should be built with **Auto‑Layout** and **Variants**.

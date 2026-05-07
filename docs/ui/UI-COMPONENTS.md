@@ -114,7 +114,7 @@ All personas.
 
 - Collapsible
 - Avatar‑first
-- Grouped by room
+- Grouped by group
 
 ---
 
@@ -151,7 +151,7 @@ Secondary tools behind vertical tabs.
 ### **3.1 `<PlayerList />`**
 
 **Purpose:**
-Displays all players grouped by room.
+Displays all players grouped by group.
 
 **Persona rules:**
 
@@ -198,7 +198,7 @@ DM‑only audio and condition controls.
 ### **4.1 `<RoomHeader />`**
 
 **Purpose:**
-Displays current room and whisper target.
+Displays current group and whisper target.
 
 **Persona rules:**
 
@@ -227,7 +227,7 @@ Displays chat messages.
 **Persona rules:**
 
 - DM: full visibility
-- Player: room‑scoped
+- Player: group‑scoped
 - Spectator: read‑only
 
 ---
@@ -326,13 +326,13 @@ Horizontal bar for DM audio routing.
 ### **6.2 `<RoomsPanel />`**
 
 **Purpose:**
-Room management.
+Group management.
 
 **Controls:**
 
-- Create room
-- Delete room
-- Rename room
+- Create group
+- Delete group
+- Rename group
 - Move players
 - Set environment
 
@@ -352,7 +352,7 @@ DM audio routing and bulk actions.
 ### **7.1 `<SearchPanel />`**
 
 **Purpose:**
-Search across notes, chat, players, rooms, metadata.
+Search across notes, chat, players, groups, metadata.
 
 **Persona rules:**
 

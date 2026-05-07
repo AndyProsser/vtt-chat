@@ -21,25 +21,25 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ## 2. High‑Level Persona Summary
 
-| Persona       | Role                                                  | Interaction Level | UI Complexity |
-| ------------- | ----------------------------------------------------- | ----------------- | ------------- |
-| **DM**        | Full control of rooms, players, audio, notes, history | Full              | Highest       |
-| **Player**    | Participates in chat, notes, journal                  | Medium            | Moderate      |
-| **Spectator** | Observes only                                         | None              | Lowest        |
+| Persona       | Role                                                   | Interaction Level | UI Complexity |
+| ------------- | ------------------------------------------------------ | ----------------- | ------------- |
+| **DM**        | Full control of groups, players, audio, notes, history | Full              | Highest       |
+| **Player**    | Participates in chat, notes, journal                   | Medium            | Moderate      |
+| **Spectator** | Observes only                                          | None              | Lowest        |
 
 ---
 
 ## 3. Layout Comparison
 
-| Region                     | DM                            | Player            | Spectator                     |
-| -------------------------- | ----------------------------- | ----------------- | ----------------------------- |
-| **Toolbar**                | ✔ Full                        | ✔ Full            | ✔ Simplified                  |
-| **DM Voice Bar**           | ✔ Visible                     | ✖ Hidden          | ✖ Hidden                      |
-| **Left Rail**              | ✔ Rooms + Players + Overrides | ✔ Rooms + Players | ✔ Rooms + Players (read‑only) |
-| **Center Pane**            | ✔ Chat Only                   | ✔ Chat Only       | ✔ Chat Only (read‑only)       |
-| **Composer**               | ✔ Visible                     | ✔ Visible         | ✖ Hidden                      |
-| **Right Rail (Icon Tabs)** | ✔ All Tabs                    | ✔ Limited Tabs    | ✖ Hidden                      |
-| **Right Panel (Slide‑In)** | ✔ All Panels                  | ✔ Limited Panels  | ✖ Hidden                      |
+| Region                     | DM                             | Player             | Spectator                      |
+| -------------------------- | ------------------------------ | ------------------ | ------------------------------ |
+| **Toolbar**                | ✔ Full                         | ✔ Full             | ✔ Simplified                   |
+| **DM Voice Bar**           | ✔ Visible                      | ✖ Hidden           | ✖ Hidden                       |
+| **Left Rail**              | ✔ Groups + Players + Overrides | ✔ Groups + Players | ✔ Groups + Players (read‑only) |
+| **Center Pane**            | ✔ Chat Only                    | ✔ Chat Only        | ✔ Chat Only (read‑only)        |
+| **Composer**               | ✔ Visible                      | ✔ Visible          | ✖ Hidden                       |
+| **Right Rail (Icon Tabs)** | ✔ All Tabs                     | ✔ Limited Tabs     | ✖ Hidden                       |
+| **Right Panel (Slide‑In)** | ✔ All Panels                   | ✔ Limited Panels   | ✖ Hidden                       |
 
 ---
 
@@ -63,7 +63,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 | Tab      | DM  | Player | Spectator |
 | -------- | --- | ------ | --------- |
-| Rooms    | ✔   | ✖      | ✖         |
+| Groups   | ✔   | ✖      | ✖         |
 | Journal  | ✔   | ✔      | ✖         |
 | Notes    | ✔   | ✔      | ✖         |
 | History  | ✔   | ✔      | ✖         |
@@ -76,7 +76,7 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 | Panel                   | DM  | Player                       | Spectator |
 | ----------------------- | --- | ---------------------------- | --------- |
-| Rooms Panel             | ✔   | ✖                            | ✖         |
+| Groups Panel            | ✔   | ✖                            | ✖         |
 | Player Management Panel | ✔   | ✖                            | ✖         |
 | Notes Panel             | ✔   | ✔ (read‑only)                | ✖         |
 | Journal Panel           | ✔   | ✔ (read‑only unless allowed) | ✖         |
@@ -113,16 +113,16 @@ This is the **single source of truth** for persona‑based UI behaviour.
 
 ---
 
-### **5.3 Rooms**
+### **5.3 Groups**
 
-| Action                     | DM  | Player | Spectator |
-| -------------------------- | --- | ------ | --------- |
-| Create room                | ✔   | ✖      | ✖         |
-| Rename room                | ✔   | ✖      | ✖         |
-| Delete room                | ✔   | ✖      | ✖         |
-| Change environment         | ✔   | ✖      | ✖         |
-| Move players between rooms | ✔   | ✖      | ✖         |
-| View rooms                 | ✔   | ✔      | ✔         |
+| Action                      | DM  | Player | Spectator |
+| --------------------------- | --- | ------ | --------- |
+| Create group                | ✔   | ✖      | ✖         |
+| Rename group                | ✔   | ✖      | ✖         |
+| Delete group                | ✔   | ✖      | ✖         |
+| Change environment          | ✔   | ✖      | ✖         |
+| Move players between groups | ✔   | ✖      | ✖         |
+| View groups                 | ✔   | ✔      | ✔         |
 
 ---
 

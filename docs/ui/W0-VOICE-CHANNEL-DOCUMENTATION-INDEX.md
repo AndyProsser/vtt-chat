@@ -1,6 +1,6 @@
-# W0 Voice Channel Panel: Documentation Index
+# W0 Voice Group Panel: Documentation Index
 
-**Complete package for voice channel UX modernization**
+**Complete package for voice group UX modernization**
 **Design finalized**: 2026-05-07
 **Ready for**: Developer implementation
 
@@ -8,7 +8,7 @@
 
 ## 📚 Documentation Overview
 
-This package contains 5 comprehensive documents covering design, planning, implementation, and quick reference for the W0 voice channel panel work.
+This package contains 5 comprehensive documents covering design, planning, implementation, and quick reference for the W0 voice group panel work.
 
 ### 1. **UI-COMPONENT-CHANNELS.md** — The Bible
 
@@ -36,7 +36,7 @@ Complete visual design + interaction specification covering:
 
 Detailed, actionable checklist organized by 5 implementation phases:
 
-- **Phase 1**: Core UI & Layout (room headers, conditions, env tooltips)
+- **Phase 1**: Core UI & Layout (group headers, conditions, env tooltips)
 - **Phase 2**: Interactions (radial menu, enhanced drag, broadcast)
 - **Phase 3**: Mobile & Adaptive (collapse/expand, touch interactions)
 - **Phase 4**: Accessibility & Polish (ARIA, keyboard nav, reduced motion)
@@ -60,7 +60,7 @@ Plus:
 Quick lookup guide with:
 
 - Key decision summary (1 table)
-- Component specs at a glance (DM widget, room header, player widget, radial menu)
+- Component specs at a glance (DM widget, group header, player widget, radial menu)
 - CSS class naming convention
 - Interaction quick reference (drag, broadcast, conditions, mobile)
 - Implementation phases checklist (overview)
@@ -79,7 +79,8 @@ Quick lookup guide with:
 
 Everything about the campaign-scoped "Allow Conditions" setting:
 
-- Settings categories (voice, player mechanics, room management)
+- Settings categories (voice, player mechanics, group management)
+- Future W0 tail feature: one-way Main group audio monitoring for selected secondary groups
 - Campaign settings UI location & hierarchy
 - Implementation roadmap (3 phases)
 - Prisma schema (ready to copy)
@@ -111,9 +112,9 @@ Complete summary of the review process:
 
 ### 6. **ROADMAP.md (Updated)** — Project Tracking
 
-**W0 section updated with voice channel subtask**
+**W0 section updated with voice group subtask**
 
-New dedicated "W0 Subtask: Voice Channel Panel" section with:
+New dedicated "W0 Subtask: Voice Group Panel" section with:
 
 - Status, related docs, scope
 - 5-phase implementation timeline
@@ -219,7 +220,7 @@ Developer → Code → Review → Merge → Ship
 | Radial menu (right-click/long-press)       | Space savings + familiar pattern           | New RadialMenu component            |
 | Compact env icons + tooltip                | Space efficient, progressive disclosure    | CSS positioning, Tooltip component  |
 | Broadcast badge + glow                     | Clear active state without persistent UI   | CSS states, badge styling           |
-| Create room as icon button                 | Minimal UI footprint, discoverable         | Icon in room header, modal          |
+| Create group as icon button                | Minimal UI footprint, discoverable         | Icon in group header, modal         |
 | Sticky DM widget                           | Quick access to orchestration controls     | CSS sticky positioning              |
 | Primary condition + popover                | Cognitive load reduction, space efficiency | Condition badge + popover component |
 | Screen reader priority                     | Accessibility first, WCAG AA compliance    | Comprehensive ARIA labels           |
@@ -233,13 +234,13 @@ Developer → Code → Review → Merge → Ship
 
 - `ConditionPopover.tsx` — Hover/click condition details
 - `RadialMenu.tsx` — Right-click context menu
-- `CreateRoomModal.tsx` — Quick room creation
+- `CreateGroupModal.tsx` — Quick group creation
 - `EnvironmentEditModal.tsx` — DM environment name/icon edit
 - `CampaignSettingsPanel.tsx` — Campaign settings UI
 
 ### Existing Components (Enhance These)
 
-- `RoomSelector.tsx` — Add room headers, conditions, radial menu, mobile collapse
+- `RoomSelector.tsx` — Add group headers, conditions, radial menu, mobile collapse
 - `AvatarOverlay.tsx` — Reuse for DM + players (already exists)
 
 ### Utilities (Create These)

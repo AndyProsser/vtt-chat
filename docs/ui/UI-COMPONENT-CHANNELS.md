@@ -1,4 +1,4 @@
-# Voice Channel Panel: Visual Design & Specification
+# Voice Group Panel: Visual Design & Specification
 
 **Status**: W0 Workstream (Frontend Surface Completion) — Updated 2026-05-07
 **Last reviewed**: Design finalized with UX decisions; ready for implementation review.
@@ -10,7 +10,7 @@
 ### Desktop (Wide Panel, 300px fixed width)
 
 ```text
-VOICE CHANNELS PANEL (left rail, ~300px fixed width)
+VOICE GROUPS PANEL (left rail, ~300px fixed width)
 ─────────────────────────────────────────────────────
 
 [DM] (sticky, always visible at top)
@@ -21,11 +21,11 @@ VOICE CHANNELS PANEL (left rail, ~300px fixed width)
 │        ✎ Click broadcast badge to toggle   │
 └─────────────────────────────────────────────┘
 
-MAIN ROOM  [🌲] [+]
+MAIN GROUP  [🌲] [+]
 ┌─────────────────────────────────────────────┐
 │ Env: Forest (hover for tooltip)             │
 │ Broadcast Active: ◉                        │
-│ (subtle glow on room header if active)      │
+│ (subtle glow on group header if active)     │
 ├─────────────────────────────────────────────┤
 │ [AV●]  Thalia Stormwind                     │
 │        Ranger | Lvl 4 | Elf                 │
@@ -37,7 +37,7 @@ MAIN ROOM  [🌲] [+]
 │        No conditions                        │
 └─────────────────────────────────────────────┘
 
-CAMPFIRE (Breakout)  [🌙] [+]
+SCOUTS GROUP (Breakout)  [🌙] [+]
 ┌─────────────────────────────────────────────┐
 │ Env: Night (click to edit, DM only)         │
 │ Broadcast Inactive                          │
@@ -52,7 +52,7 @@ CAMPFIRE (Breakout)  [🌙] [+]
 │        No conditions                        │
 └─────────────────────────────────────────────┘
 
-[+ Create Room] (compact button at bottom)
+[+ Create Group] (compact button at bottom)
 ```
 
 ### Mobile (<768px width, Adaptive Collapse)
@@ -64,7 +64,7 @@ Campfire (🌙): [AV][AV]  [+] [×]
 
 Interaction:
 - Tap avatar → expand full widget
-- Tap room header → expand/collapse all players
+- Tap group header → expand/collapse all players
 - Long-press avatar → radial menu (conditions, move, mute)
 ```
 
@@ -76,13 +76,13 @@ Interaction:
 
 - **Click-to-open**: Selectors and condition pickers use click/tap to reveal (no persistent UI clutter).
 - **Clean baseline**: Only show what's essential; details appear on demand (hover/tap).
-- **Drag-n-drop affordance**: Players inherently draggable to move between rooms.
+- **Drag-n-drop affordance**: Players inherently draggable to move between groups.
 
 ### 2.2 Visual Hierarchy
 
 1. **DM widget** (sticky, always top)
-2. **Room headers** (environment icon, broadcast indicator, create button)
-3. **Player widgets** (scrollable list per room)
+2. **Group headers** (environment icon, broadcast indicator, create button)
+3. **Player widgets** (scrollable list per group)
 4. **Condition badges** (secondary, only 1 visible by default + tooltip)
 
 ### 2.3 Feedback & Affordance
@@ -165,23 +165,23 @@ Interaction:
 
 ---
 
-### 3.2 Room Section Header
+### 3.2 Group Section Header
 
 **Height**: ~40px
 **Layout**: Horizontal flex (icon + label + environment + controls)
 
 ```text
-[🌲] Main Room      [Env: Forest]  [Broadcast Active ◉]  [+]  [×]
+[🌲] Main Group     [Env: Forest]  [Broadcast Active ◉]  [+]  [×]
 ```
 
 **Elements**:
 
 - **Environment icon** (🌲, 🌙, etc.): Click/hover for tooltip
-- **Room name** (label, bold)
+- **Group name** (label, bold)
 - **Environment state** (hover tooltip, DM click to edit)
 - **Broadcast indicator** (subtle glow if active, badge)
-- **Create room button** (`+` icon, compact)
-- **Close button** (`×`, only for non-Main rooms)
+- **Create group button** (`+` icon, compact)
+- **Close button** (`×`, only for non-Main groups)
 
 **CSS Properties**:
 
@@ -259,7 +259,7 @@ Interaction:
 - Cursor changes to `grab` on hover.
 - On drag start:
   - Ghost preview follows cursor (semi-transparent card).
-  - Drop zones (rooms) highlight with accent color.
+  - Drop zones (groups) highlight with accent color.
   - Invalid targets dim (50% opacity).
 - On drag end:
   - Pending move state applied immediately (optimistic UI).
@@ -594,7 +594,7 @@ Radial menu with same 4 options
 
 ## 4) Interaction Flows
 
-### 4.1 Drag & Drop (Move Player to Room)
+### 4.1 Drag & Drop (Move Player to Group)
 
 **Desktop + Mobile**:
 
@@ -602,16 +602,22 @@ Radial menu with same 4 options
 2. **Drag Start**:
    - `draggedUserId` state set.
    - Ghost preview renders at cursor position.
-   - All room headers highlight with accent color.
-   - Non-player areas dim (50% opacity).
+
+- All group headers highlight with accent color.
+- Non-player areas dim (50% opacity).
+
 3. **Drag Over**:
-   - Cursor changes to `dropzone` icon if over valid room.
-   - Room header glows brighter if hovering.
+
+- Cursor changes to `dropzone` icon if over valid group.
+- Group header glows brighter if hovering.
+
 4. **Drop**:
-   - If valid room: Call `handleMoveParticipant(userId, roomId)`.
-   - Pending move applied immediately (optimistic UI).
-   - API request in background; rollback on error.
-   - If invalid/cancelled: No change.
+
+- If valid group: Call `handleMoveParticipant(userId, roomId)`.
+- Pending move applied immediately (optimistic UI).
+- API request in background; rollback on error.
+- If invalid/cancelled: No change.
+
 5. **Drag End**: Clear `draggedUserId`, remove preview and highlights.
 
 **Error Handling**:
@@ -659,16 +665,16 @@ Radial menu with same 4 options
 
 1. User clicks broadcast badge (◉ icon or label).
 2. Badge highlights and glows (state: active).
-3. DM voice now routes to that room.
-4. Only **one room** can be active at a time (mutual exclusivity).
+3. DM voice now routes to that group.
+4. Only **one group** can be active at a time (mutual exclusivity).
 5. If user clicks again: Toggle off (broadcast stops).
-6. If user clicks a different room header's broadcast badge: Switch routing to new room.
+6. If user clicks a different group header's broadcast badge: Switch routing to new group.
 
 **Visual Feedback**:
 
-- Active room: Subtle glow on room header + badge highlights.
+- Active group: Subtle glow on group header + badge highlights.
 - DM widget: Badge shows "Broadcast Active ◉" with highlight.
-- Inactive rooms: Badge shows "Not Broadcasting" (dim).
+- Inactive groups: Badge shows "Not Broadcasting" (dim).
 
 ---
 
@@ -676,8 +682,8 @@ Radial menu with same 4 options
 
 **Viewport < 768px**:
 
-1. Default state: Rooms collapsed to avatars only.
-2. User taps room row (header or avatar): Expand full player list for that room.
+1. Default state: Groups collapsed to avatars only.
+2. User taps group row (header or avatar): Expand full player list for that group.
 3. User taps again: Collapse back to avatars.
 4. DM widget: Always expanded (sticky, always shows details).
 
@@ -687,15 +693,15 @@ Radial menu with same 4 options
 
 ---
 
-### 4.5 Create Room
+### 4.5 Create Group
 
 **Desktop**:
 
-1. User clicks `[+]` icon in room header.
+1. User clicks `[+]` icon in group header.
 2. Quick modal/popover appears:
 
    ```text
-   Create New Room
+   Create New Group
    ┌────────────────────┐
    │ Name: [____]       │
    │ Type: [Main/Group/Private dropdown]
@@ -704,8 +710,8 @@ Radial menu with same 4 options
    ```
 
 3. User enters name, selects type, clicks Create.
-4. API call; new room added to list; modal closes.
-5. New room appears in list (can be scrolled into view).
+4. API call; new group added to list; modal closes.
+5. New group appears in list (can be scrolled into view).
 
 **Mobile**:
 
@@ -721,7 +727,7 @@ Radial menu with same 4 options
 Panel width: 300px (desktop), 100% (mobile)
 Avatar size: 36px (player), 40px (DM)
 Widget height: 56px (player), 60px (DM)
-Room header height: 40px
+Group header height: 40px
 
 Speaking pulse duration: 1.2s (easing: ease-in-out)
 Hover delay: 100ms (for popover)
@@ -744,7 +750,7 @@ Error: var(--error)
 
 ```text
 - DM widget: role="region" aria-label="Dungeon Master controls"
-- Room section: role="region" aria-label="Room: {roomName}"
+- Group section: role="region" aria-label="Group: {roomName}"
 - Player widget: role="button" aria-label="{name}, {class}, {level}, {primaryCondition}"
 - Broadcast toggle: aria-pressed="true|false" aria-label="Toggle broadcast to {roomName}"
 - Condition badge: aria-label="Primary: {conditionName}" aria-describedby="tooltip-id"
@@ -754,8 +760,8 @@ Error: var(--error)
 
 **Keyboard Navigation**:
 
-- Tab through: DM widget → Room headers → Player widgets.
-- Arrow keys: Up/down to move between players in same room.
+- Tab through: DM widget → Group headers → Player widgets.
+- Arrow keys: Up/down to move between players in same group.
 - Enter: Activate radial menu on focused player.
 - Escape: Close radial menu or popover.
 - Drag-n-drop: Keyboard support (press Space to drag, arrow keys to move, Enter to drop).
@@ -786,10 +792,12 @@ Error: var(--error)
 
 ### 6.1 Frontend Components
 
+Terminology note: this spec uses **Group** as the user-facing label. Existing component/class/API names may still use `Room`/`rooms` and are treated as technical identifiers.
+
 **Already implemented** ([RoomSelector.tsx](../../frontend/src/components/rooms/RoomSelector.tsx)):
 
 - DM widget with avatar overlay
-- Room selector list with participant display
+- Group selector list with participant display
 - Drag-and-drop move participant functionality
 - Broadcast mode toggle (DM voice routing)
 - Tooltip/Popover infrastructure (TooltipProvider/TooltipTrigger/TooltipContent)
@@ -802,7 +810,7 @@ Error: var(--error)
 - Radial context menu for conditions (right-click / long-press)
 - Condition badge + popover UI
 - Environment icon display + DM edit modal
-- Create room quick modal
+- Create group quick modal
 - Mobile collapse/expand behavior
 - Accessibility ARIA labels and keyboard navigation
 - Reduced motion support
@@ -812,8 +820,8 @@ Error: var(--error)
 
 **APIs already available**:
 
-- `POST /api/v1/rooms/{roomId}/members/move` - Move participant to room
-- `POST /api/v1/rooms` - Create room (likely exists)
+- `POST /api/v1/rooms/{roomId}/members/move` - Move participant to group
+- `POST /api/v1/rooms` - Create group (likely exists)
 - Condition application (likely via session/character API)
 
 **Endpoints needed** (W0 scope verification):
@@ -828,8 +836,8 @@ Error: var(--error)
 
 ### Phase 1: Core UI & Layout (Week 1)
 
-- [ ] Implement room header with environment icon + broadcast badge + create button
-- [ ] Add create room quick modal
+- [ ] Implement group header with environment icon + broadcast badge + create button
+- [ ] Add create group quick modal
 - [ ] Implement condition badge display (primary only)
 - [ ] Implement condition popover (hover/click)
 - [ ] Add environment hover tooltip
@@ -838,7 +846,7 @@ Error: var(--error)
 
 - [ ] Implement radial context menu (right-click / long-press)
 - [ ] Wire radial menu to condition picker
-- [ ] Wire radial menu to move room selector
+- [ ] Wire radial menu to move group selector
 - [ ] Wire radial menu to mute toggle
 - [ ] Enhance drag-n-drop with ghost preview + zone highlighting
 
@@ -873,11 +881,11 @@ Error: var(--error)
 - [ ] Voice preset selection (DM voice settings)
 - [ ] Character sheet quick-view on click (modal or sidebar)
 - [ ] Advanced condition search/filtering
-- [ ] Room bulk actions (move multiple players)
+- [ ] Group bulk actions (move multiple players)
 - [ ] Floating player cards (drag out to separate panel)
 - [ ] Voice quality indicators (bitrate, latency)
 - [ ] Session recording status indicator
-- [ ] Room permissions (mute all, lock room, etc.)
+- [ ] Group permissions (mute all, lock group, etc.)
 
 ---
 
@@ -889,7 +897,7 @@ The DM is the session orchestrator and broadcast control is critical. Keeping DM
 
 - Quick access to broadcast toggle without scrolling.
 - Visibility of DM status at all times.
-- Precedent from many chat/collaboration apps (Slack's DM section, Discord's voice channels).
+- Precedent from many chat/collaboration apps (Slack's DM section, Discord's voice groups).
 
 ### Why One-Condition-Visible?
 

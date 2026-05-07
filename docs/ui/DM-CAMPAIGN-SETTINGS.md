@@ -1,13 +1,15 @@
 # DM Campaign Settings: Features & Permissions
 
 **Status**: Design/Planning — Updated 2026-05-07
-**Related**: W0 Frontend Surface Completion, Voice Channel Panel (UI-COMPONENT-CHANNELS.md)
+**Related**: W0 Frontend Surface Completion, Voice Group Panel (UI-COMPONENT-CHANNELS.md)
 
 ---
 
 ## Overview
 
 DM Campaign Settings provide per-campaign controls for features, permissions, and runtime behavior. These settings are scoped to the campaign level and managed by the DM (campaign owner).
+
+Terminology note: this document uses **Group** as the user-facing label. Existing implementation identifiers may still use `Room`/`room` naming until migration is complete.
 
 ---
 
@@ -18,7 +20,7 @@ DM Campaign Settings provide per-campaign controls for features, permissions, an
 **Broadcast Mode**
 
 - **Setting**: `allowBroadcastMode` (boolean, default: `true`)
-- **Effect**: If disabled, DM cannot route voice to individual rooms; DM voice broadcasts to all connected players.
+- **Effect**: If disabled, DM cannot route voice to individual groups; DM voice broadcasts to all connected players.
 - **UI**: Toggle in campaign settings panel.
 - **Notes**: Useful for smaller campaigns or strict narrative control.
 
@@ -46,19 +48,27 @@ DM Campaign Settings provide per-campaign controls for features, permissions, an
 
 ---
 
-### 1.3 Room Management
+### 1.3 Group Management
 
-**Allow Room Creation by Players** (planned)
+**Allow Group Creation by Players** (planned)
 
 - **Setting**: `allowPlayerRoomCreation` (boolean, default: `false`)
-- **Effect**: If enabled, players can create their own breakout rooms.
+- **Effect**: If enabled, players can create their own breakout groups.
 - **UI**: Toggle in campaign settings panel.
 
-**Room Visibility** (planned)
+**Group Visibility** (planned)
 
 - **Setting**: `roomVisibility` (enum: `public`, `dm-controlled`, `players-hidden`)
-- **Effect**: Controls whether players see all rooms or only rooms they're in.
-- **Default**: `public` (all rooms visible).
+- **Effect**: Controls whether players see all groups or only groups they're in.
+- **Default**: `public` (all groups visible).
+
+**Main Group Audio Monitoring** (future W0 tail feature)
+
+- **Setting**: `allowSecondaryGroupMainListen` (boolean, default: `false`)
+- **Effect**: If enabled, DM can mark selected secondary groups (for example "In Jail") as listen-only monitors of Main group audio.
+- **Behavior**: One-way audio only by default (secondary group hears Main; Main does not hear secondary group).
+- **UI**: Toggle in Voice & Audio settings plus per-group checkbox in group controls.
+- **Scope**: Deferred until after W0 Phase 5 hardening.
 
 ---
 
@@ -87,9 +97,9 @@ Campaign Dashboard
     ├─ Player Mechanics
     │   ├─ Allow Conditions [toggle]
     │   └─ Allowed Conditions [multi-select] (if enabled)
-    ├─ Room Management
-    │   ├─ Allow Player Room Creation [toggle]
-    │   └─ Room Visibility [dropdown]
+    ├─ Group Management
+    │   ├─ Allow Player Group Creation [toggle]
+    │   └─ Group Visibility [dropdown]
     └─ Notifications & Privacy
         ├─ Notify on Late Join [toggle]
         └─ Privacy Mode (hide player counts) [toggle]
@@ -121,11 +131,13 @@ Campaign Dashboard
 - [ ] Create condition picker/multi-select in settings panel.
 - [ ] Implement server-side validation of condition mutations.
 - [ ] Add condition filtering on frontend based on pool.
+- [ ] Add DM-managed one-way Main group audio monitoring for selected secondary groups.
 
 ### Phase 3 (Future)
 
-- [ ] Room creation by players.
-- [ ] Advanced room visibility controls.
+- [ ] Group creation by players.
+- [ ] Advanced group visibility controls.
+- [ ] Fine-grained per-group audio routing policies (beyond Main-to-secondary listen-only).
 - [ ] Notification and privacy settings.
 
 ---
@@ -145,9 +157,12 @@ model CampaignSettings {
   allowPlayerConditions   Boolean  @default(true)
   allowedConditionNames   String[] @default([]) // Empty = all allowed
 
-  // Room Management
+  // Group Management
   allowPlayerRoomCreation Boolean  @default(false)
   roomVisibility          String   @default("public") // public | dm-controlled | players-hidden
+
+  // Future W0 tail feature
+  allowSecondaryGroupMainListen Boolean @default(false)
 
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -223,6 +238,7 @@ interface RoomSelectorProps {
   campaignSettings?: {
     allowPlayerConditions: boolean
     allowBroadcastMode: boolean
+    allowSecondaryGroupMainListen?: boolean
   }
 }
 ```
@@ -283,7 +299,8 @@ function CampaignSettingsPanel({ campaignId, token, apiUrl, currentSettings, onS
 ### Additional Settings Ideas
 
 - **Greenroom audio**: Enable/disable mic in greenroom.
-- **Spectator audio**: Allow/disallow spectator listening to voice channels.
+- **Spectator audio**: Allow/disallow spectator listening to voice groups.
+- **Group audio routing**: Per-group listen-only and relay policy matrix.
 - **Session chat retention**: Ephemeral vs persistent (post-session access).
 - **Character sheet visibility**: Players see all sheets or only own.
 - **Note visibility**: DM-only notes vs shared notes.

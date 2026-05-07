@@ -72,7 +72,7 @@ export interface ChatNotesToggleProps {
 
 ## **4. `<RoomHeader />`**
 
-Displays the current room and whisper target (if applicable).
+Displays the current group and whisper target (if applicable).
 
 ```ts
 export interface RoomHeaderProps {
@@ -87,7 +87,7 @@ export interface RoomHeaderProps {
 
 - `onWhisperTargetChange` is only used by Player/DM.
 - Spectator will not receive this callback.
-- No room‑switching logic here — DM room switching is handled in Right Panel.
+- No group‑switching logic here — DM group switching is handled in Right Panel.
 
 ---
 

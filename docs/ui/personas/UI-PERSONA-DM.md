@@ -16,8 +16,8 @@
 │ LEFT RAIL (Player List)    │ CENTER PANE — CHAT ONLY                       │ RIGHT RAIL    │
 │ bg-surface                 │ bg-app                                        │ ICON TABS     │
 │                            │                                               │ bg-surface-alt│
-│  ROOMS                     │  ROOM HEADER                                  │               │
-│  • Tavern (3)              │  Tavern  |  Environment: Tavern Interior      │  [Rooms]      │
+│  GROUPS                    │  GROUP HEADER                                 │               │
+│  • Tavern (3)              │  Tavern  |  Environment: Tavern Interior      │  [Groups]     │
 │     - Alice (speaking)     │───────────────────────────────────────────────┤  [Journal]    │
 │     - Bob (muted)          │                                               │  [Notes]      │
 │     - Clara                │  CHAT WINDOW (scroll)                         │  [History]    │
@@ -34,11 +34,11 @@
 └────────────────────────────┴───────────────────────────────────────────────┴───────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ RIGHT PANEL (Slide‑In) — Example: ROOMS PANEL                                │
+│ RIGHT PANEL (Slide‑In) — Example: GROUPS PANEL                               │
 │ bg-elevated                                                                  │
 │                                                                              │
-│  ROOMS                                                                       │
-│  [ + Create Room ]                                                           │
+│  GROUPS                                                                      │
+│  [ + Create Group ]                                                          │
 │                                                                              │
 │  Tavern        [Rename] [Delete]                                             │
 │  Environment: [Tavern Interior ▼]                                            │
@@ -177,13 +177,13 @@ Below is the full implementation‑ready specification.
 
 ---
 
-## **3.3 Rooms Panel (Right Slide‑In)**
+## **3.3 Groups Panel (Right Slide‑In)**
 
 | Element       | Spec            |
 | ------------- | --------------- |
 | Width         | 360px           |
 | Background    | `--bg-elevated` |
-| Room item     | 48px height     |
+| Group item    | 48px height     |
 | Create button | accent-primary  |
 | Delete button | accent-error    |
 
@@ -196,7 +196,7 @@ Below is the full implementation‑ready specification.
 
 ## 4. Center Pane (Chat + Notes)
 
-## **4.1 Room Header**
+## **4.1 Group Header**
 
 - Height: 48px
 - Text: `--text-primary`
@@ -225,10 +225,10 @@ Below is the full implementation‑ready specification.
 
 ## 5. Left Rail (Player List)
 
-## **5.1 Rooms**
+## **5.1 Groups**
 
 - Section header: `--text-muted`
-- Room name: `--text-secondary`
+- Group name: `--text-secondary`
 
 ## **5.2 Player Item**
 

@@ -79,9 +79,9 @@ No component mutates state directly.
 
 ### **2.6 `<CenterPane />`**
 
-| Prop       | Type              | Description                       |
-| ---------- | ----------------- | --------------------------------- |
-| `children` | `React.ReactNode` | Room header, chat/notes, composer |
+| Prop       | Type              | Description                        |
+| ---------- | ----------------- | ---------------------------------- |
+| `children` | `React.ReactNode` | Group header, chat/notes, composer |
 
 ---
 
@@ -103,7 +103,7 @@ No component mutates state directly.
 | -------------------- | --------------------------------------------------------- | --------------------- |
 | `persona`            | `Persona`                                                 | DM, player, spectator |
 | `players`            | `Player[]`                                                | All players           |
-| `rooms`              | `Room[]`                                                  | Room grouping         |
+| `rooms`              | `Room[]`                                                  | Group grouping        |
 | `collapsed`          | `boolean`                                                 | Collapsed state       |
 | `onPlayerDrag`       | `(playerId: string) => void`                              | DM only               |
 | `onPlayerDrop`       | `(playerId: string, roomId: string) => void`              | DM only               |
@@ -144,7 +144,7 @@ No component mutates state directly.
 | Prop                    | Type                                 | Description         |
 | ----------------------- | ------------------------------------ | ------------------- |
 | `persona`               | `Persona`                            | Controls whisper UI |
-| `roomName`              | `string`                             | Current room        |
+| `roomName`              | `string`                             | Current group       |
 | `whisperTarget`         | `Player \| null`                     | Whisper target      |
 | `onWhisperTargetChange` | `(playerId: string \| null) => void` | DM/Player only      |
 
@@ -247,13 +247,13 @@ No component mutates state directly.
 
 | Prop               | Type                                             | Description      |
 | ------------------ | ------------------------------------------------ | ---------------- |
-| `rooms`            | `Room[]`                                         | All rooms        |
+| `rooms`            | `Room[]`                                         | All groups       |
 | `players`          | `Player[]`                                       | All players      |
 | `onSetEnvironment` | `(roomId: string, env: Environment) => void`     | Set environment  |
 | `onMoveAll`        | `(fromRoomId: string, toRoomId: string) => void` | Move all players |
-| `onRenameRoom`     | `(roomId: string, name: string) => void`         | Rename           |
-| `onDeleteRoom`     | `(roomId: string) => void`                       | Delete           |
-| `onCreateRoom`     | `(name: string) => void`                         | Create           |
+| `onRenameRoom`     | `(roomId: string, name: string) => void`         | Rename group     |
+| `onDeleteRoom`     | `(roomId: string) => void`                       | Delete group     |
+| `onCreateRoom`     | `(name: string) => void`                         | Create group     |
 
 ---
 

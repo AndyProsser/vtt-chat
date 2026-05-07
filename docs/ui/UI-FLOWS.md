@@ -28,6 +28,8 @@ UI → Event → Reducer → Store → UI
 
 No flow violates persona boundaries or privacy rules.
 
+Terminology note: this document uses Group as the user-facing label. Existing implementation identifiers may still use Room or rooms naming.
+
 ---
 
 ## 2. DM Interaction Flows
@@ -36,10 +38,10 @@ DM has the most complete set of flows.
 
 ---
 
-### **2.1 DM Moves a Player Between Rooms**
+### **2.1 DM Moves a Player Between Groups**
 
 **UI Action:**
-DM drags a player from one room group to another.
+DM drags a player from one group to another.
 
 **Flow:**
 
@@ -52,8 +54,8 @@ DM drags a player from one room group to another.
    - `presenceStore.rooms`
    - `presenceStore.players[playerId].roomId`
 5. UI updates:
-   - Player animates into new room group
-   - Chat window updates if DM is monitoring that room
+   - Player animates into new group
+   - Chat window updates if DM is monitoring that group
 
 ---
 
@@ -107,19 +109,19 @@ DM selects a condition from `<PlayerOverrides />`.
 
 ---
 
-### **2.5 DM Creates a New Room**
+### **2.5 DM Creates a New Group**
 
 **UI Action:**
-DM clicks “+ Create Room”.
+DM clicks "+ Create Group".
 
 **Flow:**
 
 1. `rooms/create`
 2. Reducer: `roomsReducer.create`
 3. Store updates:
-   - New room added to `presenceStore.rooms`
+   - New group added to `presenceStore.rooms`
 4. UI updates:
-   - Room appears in `<RoomsPanel />`
+   - Group appears in `<RoomsPanel />`
    - Left panel updates grouping
 
 ---

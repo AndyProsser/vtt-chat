@@ -244,7 +244,7 @@ Below is the **complete component → token mapping**.
 
 | Element          | Tokens             |
 | ---------------- | ------------------ |
-| Room name        | `--text-primary`   |
+| Group name       | `--text-primary`   |
 | Environment icon | `--accent-primary` |
 | Create button    | `--accent-primary` |
 | Delete button    | `--accent-error`   |

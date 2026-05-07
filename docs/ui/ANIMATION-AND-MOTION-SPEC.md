@@ -77,7 +77,7 @@ cubic-bezier(0.2, 0.0, 0.0, 1.0)
 
 ### **Panels:**
 
-- Rooms
+- Groups
 - Audio
 - Search
 - Notes
@@ -290,7 +290,7 @@ Scale: 1.0 → 1.1 → 1.0
 
 ---
 
-## 10. **Environment Change (Room)**
+## 10. **Environment Change (Group)**
 
 ### **Icon Update**
 
@@ -300,7 +300,7 @@ Scale: 0.8 → 1.0
 Opacity: 0 → 1
 ```
 
-### **Room Background Pulse**
+### **Group Background Pulse**
 
 ```text
 Duration: 200ms

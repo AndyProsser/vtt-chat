@@ -1,8 +1,10 @@
-# W0 Voice Channel Implementation Checklist
+# W0 Voice Group Implementation Checklist
 
-**Scope**: Voice channel panel UX modernization per design finalized 2026-05-07
+**Scope**: Voice group panel UX modernization per design finalized 2026-05-07
 **Target**: Campaign screen (RoomSelector + left rail)
 **Duration**: 5 weeks (single developer), or parallel if team available
+
+Terminology note: this checklist uses **Group** as the user-facing label. Existing implementation identifiers may still use `Room`/`rooms` naming until migration is complete.
 
 ---
 
@@ -12,8 +14,8 @@
 - [ ] **Backend Verify**: Confirm these endpoints exist:
   - [ ] Condition apply/remove endpoints (likely `POST /conditions` etc.)
   - [ ] DM broadcast toggle endpoint
-  - [ ] Room creation endpoint
-  - [ ] Room move endpoint (already exists: `POST /rooms/{id}/members/move`)
+  - [ ] Group creation endpoint
+  - [ ] Group move endpoint (already exists: `POST /rooms/{id}/members/move`)
 - [ ] **Database Schema**: If CampaignSettings table doesn't exist:
   - [ ] Create Prisma schema (see [DM-CAMPAIGN-SETTINGS.md](DM-CAMPAIGN-SETTINGS.md))
   - [ ] Generate migration
@@ -25,14 +27,14 @@
 
 ## Phase 1: Core UI & Layout (Week 1)
 
-### 1.1 Room Header Enhancement
+### 1.1 Group Header Enhancement
 
 - [ ] Add environment icon display (🌲, 🌙, etc.)
 - [ ] Add hover tooltip for environment
 - [ ] Add broadcast badge ("Active" / "Inactive")
-- [ ] Add create room `[+]` icon button (top-right)
-- [ ] Add close `[×]` button (non-Main rooms only)
-- [ ] Style room header per spec (40px height, flex layout)
+- [ ] Add create group `[+]` icon button (top-right)
+- [ ] Add close `[×]` button (non-Main groups only)
+- [ ] Style group header per spec (40px height, flex layout)
 - [ ] Add responsive padding/gap
 
 **Files**: Enhance `RoomSelector.tsx` or split into `RoomHeader.tsx` component
@@ -51,32 +53,32 @@
 
 **Files**: Create `frontend/src/components/rooms/ConditionPopover.tsx`
 
-### 1.3 Create Room Modal
+### 1.3 Create Group Modal
 
-- [ ] Create `CreateRoomModal.tsx` component
+- [ ] Create `CreateGroupModal.tsx` component
 - [ ] Quick form with:
-  - [ ] Room name input
-  - [ ] Room type dropdown (Main/Group/Private)
+  - [ ] Group name input
+  - [ ] Group type dropdown (Main/Group/Private)
   - [ ] Create/Cancel buttons
-- [ ] Wire create button in room header to open modal
-- [ ] On submit: call API, add room to list, close modal
+- [ ] Wire create button in group header to open modal
+- [ ] On submit: call API, add group to list, close modal
 - [ ] Error handling: show toast on failure
 
-**Files**: Create `frontend/src/components/rooms/CreateRoomModal.tsx`
+**Files**: Create `frontend/src/components/rooms/CreateGroupModal.tsx`
 
 ### 1.4 Environment Edit Modal (DM Only)
 
 - [ ] Create quick modal to edit environment name/icon
 - [ ] Trigger: DM clicks environment icon
 - [ ] Form: environment name input, icon picker dropdown
-- [ ] On submit: call API, update room header
+- [ ] On submit: call API, update group header
 - [ ] Permission: only show if user is DM
 
 **Files**: Create `frontend/src/components/rooms/EnvironmentEditModal.tsx`
 
 ### 1.5 Styling & CSS
 
-- [ ] Add room header CSS (`.room-selector-room-header*` classes)
+- [ ] Add group header CSS (`.room-selector-room-header*` classes)
 - [ ] Add condition popover CSS
 - [ ] Add modal/overlay styles
 - [ ] Ensure contrast WCAG AA compliant
@@ -108,8 +110,8 @@
 
 ### 2.2 Wire Radial Menu Options
 
-- [ ] **Move**: Open room selector popover
-  - [ ] Show available rooms
+- [ ] **Move**: Open group selector popover
+  - [ ] Show available groups
   - [ ] On select: call move API, apply optimistic UI
   - [ ] On error: show toast, allow retry
 - [ ] **Condition**: Open condition picker (if enabled in campaign settings)
@@ -127,12 +129,12 @@
 
 - [ ] **Drag Start**:
   - [ ] Create ghost preview (semi-transparent card)
-  - [ ] Highlight all room headers with accent color
+  - [ ] Highlight all group headers with accent color
   - [ ] Dim non-drop zones (50% opacity)
   - [ ] Cursor changes to `grab`
 - [ ] **Drag Over**:
   - [ ] Cursor changes to `dropzone` icon
-  - [ ] Hovered room glows brighter
+  - [ ] Hovered group glows brighter
 - [ ] **Drop**:
   - [ ] Apply pending move immediately
   - [ ] Call API in background
@@ -145,7 +147,7 @@
 
 - [ ] Add visual "active" state for broadcast badge
 - [ ] Click badge to toggle broadcast on/off
-- [ ] Only one room can be active at a time (mutual exclusivity)
+- [ ] Only one group can be active at a time (mutual exclusivity)
 - [ ] Show indicator on DM widget as well
 - [ ] Call API on toggle
 
@@ -165,7 +167,7 @@
 ### 3.1 Responsive Breakpoint CSS
 
 - [ ] Media query: `@media (max-width: 768px)`
-- [ ] Collapse rooms to avatars only by default
+- [ ] Collapse groups to avatars only by default
 - [ ] Hide character details, class, level, conditions
 - [ ] Show avatar row instead
 
@@ -173,8 +175,8 @@
 
 ### 3.2 Collapse/Expand Logic
 
-- [ ] Add state: `expandedRooms: Set<roomId>`
-- [ ] Tap room header → toggle expanded state
+- [ ] Add state: `expandedGroups: Set<roomId>`
+- [ ] Tap group header → toggle expanded state
 - [ ] Tap avatar → toggle expanded state
 - [ ] Expand shows full player widgets
 - [ ] DM widget always expanded (sticky, never collapse)
@@ -192,7 +194,7 @@
 ### 3.4 Touch Interactions
 
 - [ ] Long-press: 500ms touch hold triggers radial menu
-- [ ] Drag: touch drag for room movement (same as mouse)
+- [ ] Drag: touch drag for group movement (same as mouse)
 - [ ] Tap: tap player for radial menu (alternative to long-press)
 
 **Files**: Update event handlers in `RoomSelector.tsx`
@@ -211,21 +213,21 @@
 ### 4.1 ARIA Labels
 
 - [ ] DM widget: `role="region" aria-label="Dungeon Master controls"`
-- [ ] Room sections: `role="region" aria-label="Room: {roomName}"`
+- [ ] Group sections: `role="region" aria-label="Group: {roomName}"`
 - [ ] Player widgets: `role="button" aria-label="{name}, {class}, Level {level}, {primaryCondition}"`
 - [ ] Broadcast toggle: `aria-pressed="true|false" aria-label="Toggle broadcast to {roomName}"`
 - [ ] Condition badge: `aria-label="Primary: {conditionName}" aria-describedby="tooltip-id"`
 - [ ] Radial menu: `role="menu" aria-label="Player actions"`
 - [ ] Menu items: `role="menuitem"`
-- [ ] Create room button: `aria-label="Create new room"`
-- [ ] Close room button: `aria-label="Close room: {roomName}"`
+- [ ] Create group button: `aria-label="Create new group"`
+- [ ] Close group button: `aria-label="Close group: {roomName}"`
 
 **Files**: Update all components with ARIA attributes
 
 ### 4.2 Keyboard Navigation
 
-- [ ] Tab: Cycle through DM widget → rooms → players
-- [ ] Arrow Up/Down: Move between players in same room
+- [ ] Tab: Cycle through DM widget → groups → players
+- [ ] Arrow Up/Down: Move between players in same group
 - [ ] Enter: Activate radial menu on focused player
 - [ ] Escape: Close radial menu, popover, modal
 - [ ] For drag-n-drop: Space to start, arrow keys to move, Enter to drop
@@ -273,7 +275,7 @@
 ### 5.1 Error Handling
 
 - [ ] Move fails: revert pending move, show toast "Failed to move player"
-- [ ] Create room fails: show error details, allow retry
+- [ ] Create group fails: show error details, allow retry
 - [ ] Condition add fails: revert, show toast
 - [ ] Broadcast toggle fails: revert, show error
 - [ ] All toasts dismiss after 4-5s or on click
@@ -284,7 +286,7 @@
 
 - [ ] Pending move during network disconnect: rollback on reconnect
 - [ ] Player join/leave during drag: abort drag gracefully
-- [ ] Room closure during drag: abort drag, show message
+- [ ] Group closure during drag: abort drag, show message
 - [ ] Campaign settings change during session: update UI live
 
 **Files**: Update event handlers, WebSocket listeners
@@ -324,7 +326,7 @@
 - [ ] Drag player → move API called → optimistic UI updated
 - [ ] Apply condition → condition API called → badge updated
 - [ ] Broadcast toggle → broadcast API called → badge highlighted
-- [ ] Create room → API called → room appears in list
+- [ ] Create group → API called → group appears in list
 
 **Files**: Create `frontend/src/tests/integration/voice-channel.integration.test.ts`
 
@@ -333,6 +335,13 @@
 - [ ] Full user flow: login → campaign → session → drag player, apply condition, toggle broadcast
 - [ ] Mobile flow: tap to expand, long-press radial menu
 - [ ] Error recovery: move fails → retry succeeds
+
+### 5.8 Future W0 Tail (Deferred)
+
+- [ ] Add DM setting for one-way Main group audio monitoring.
+- [ ] Allow selected secondary groups (for example, "In Jail") to hear Main group audio.
+- [ ] Keep routing listen-only by default (no secondary-to-Main return audio).
+- [ ] Add integration tests for toggle behavior and routing boundaries.
 
 **Files**: Create E2E tests if using Playwright/Cypress
 
@@ -356,6 +365,7 @@
 - [ ] **Frontend Integration**:
   - [ ] Fetch settings on campaign load
   - [ ] Pass `allowPlayerConditions` to RoomSelector via props
+  - [ ] Add `allowSecondaryGroupMainListen` feature-flag plumbing for future W0 tail work
   - [ ] Hide Condition option in radial menu if disabled
 
 **Files**: Implement in backend, wire to frontend RoomSelector

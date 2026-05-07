@@ -200,7 +200,7 @@ Toolbar connection status behavior rules:
 
 | Data           | Store           | Selector              |
 | -------------- | --------------- | --------------------- |
-| Current room   | `presenceStore` | `selectCurrentRoom`   |
+| Current group  | `presenceStore` | `selectCurrentRoom`   |
 | Whisper target | `uiStore`       | `selectWhisperTarget` |
 | Persona        | `sessionStore`  | `selectPersona`       |
 

@@ -105,7 +105,7 @@ Examples:
 
 - Empty chat message
 - Invalid note title
-- Room name too short
+- Group name too short
 
 ### **UI Behaviour**
 
@@ -152,7 +152,7 @@ _The reducer rejected the event due to invalid state._
 
 Examples:
 
-- Moving a player to a non‑existent room
+- Moving a player to a non‑existent group
 - Updating a note that no longer exists
 - Applying a condition to a disconnected player
 
@@ -179,7 +179,7 @@ Examples:
 
 - Message send failed
 - Note update failed
-- Room update failed
+- Group update failed
 
 ### **UI Behaviour**
 
@@ -283,7 +283,7 @@ UI:
 
 Errors:
 
-- Reducer (invalid room)
+- Reducer (invalid group)
 - Validation (duplicate name)
 
 UI:

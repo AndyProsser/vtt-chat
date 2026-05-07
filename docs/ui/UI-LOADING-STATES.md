@@ -213,12 +213,12 @@ Same for all personas.
 
 ### Loading State
 
-- Skeleton room list
+- Skeleton group list
 - Disabled controls
 
 ### Empty State
 
-- “No rooms defined” (pre‑session only)
+- “No groups defined” (pre‑session only)
 
 ---
 

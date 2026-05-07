@@ -17,7 +17,7 @@ The VTT‑Chat SPA supports **three personas**, each with a different level of c
 The SPA dynamically adapts based on:
 
 - Role from backend (`DM`, `ASSISTANT_DM`, `PLAYER`, `SPECTATOR`)
-- Room state (green room, main room, group room, private room)
+- Group state (greenroom, Main group, split group, private group)
 - Session state (pre‑session, in‑session, post‑session)
 
 Detailed persona companion docs:
@@ -34,19 +34,19 @@ Detailed persona companion docs:
 
 ### DM UX Principles
 
-- **Everything visible**: all rooms, all players, all audio states
+- **Everything visible**: all groups, all players, all audio states
 - **Everything controllable**: movement, audio, notes, metadata
 - **Fast actions**: one‑click tools, drag‑and‑drop
 - **Zero clutter**: collapsible panels, context‑aware controls
-- **Session‑aware**: recap, journal, recording, private rooms
+- **Session‑aware**: recap, journal, recording, private groups
 
 ### DM Layout Structure
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ Top Bar: Session Controls + Room Selector    │
+│ Top Bar: Session Controls + Group Selector   │
 ├──────────────────────────────────────────────┤
-│ Left Panel: Player List + Room Manager       │
+│ Left Panel: Player List + Group Manager      │
 ├──────────────────────────────────────────────┤
 │ Center: Chat + Metadata Cards + Notes        │
 ├──────────────────────────────────────────────┤
@@ -61,7 +61,7 @@ Detailed persona companion docs:
 - Start/end session
 - Recap modal
 - Recording toggle
-- Room selector (DM can join/monitor any room)
+- Group selector (DM can join/monitor any group)
 - DM status indicator
 
 #### **2. Player List Panel**
@@ -70,9 +70,9 @@ Detailed persona companion docs:
 - Speaking indicator
 - Conditions
 - Distance
-- Room membership
+- Group membership
 - Right‑click actions:
-  - Move to room
+  - Move to group
   - Start private chat
   - Apply condition
   - Apply distance
@@ -80,16 +80,16 @@ Detailed persona companion docs:
   - Open notes shared with player
   - Open metadata card
 
-#### **3. Room Manager**
+#### **3. Group Manager**
 
-- Create/delete group rooms
-- Drag players between rooms
+- Create/delete groups
+- Drag players between groups
 - Force private chat
-- Monitor room (listen‑only)
+- Monitor group (listen‑only)
 
 #### **4. Chat Panel**
 
-- Room chat
+- Group chat
 - Whispers
 - System messages
 - External logs
@@ -130,9 +130,9 @@ Detailed persona companion docs:
 - **Minimal cognitive load**
 - **Fast access to chat + audio controls**
 - **No DM tools**
-- **No room management**
+- **No group management**
 - **No global audio overrides**
-- **No visibility into other rooms**
+- **No visibility into other groups**
 
 Players should feel:
 
@@ -145,9 +145,9 @@ Players should feel:
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ Top Bar: Room Name + Theme Toggle + Mute     │
+│ Top Bar: Group Name + Theme Toggle + Mute    │
 ├──────────────────────────────────────────────┤
-│ Center: Chat (room‑scoped)                   │
+│ Center: Chat (group‑scoped)                  │
 ├──────────────────────────────────────────────┤
 │ Bottom: Message Composer + IC Toggle         │
 └──────────────────────────────────────────────┘
@@ -157,14 +157,14 @@ Players should feel:
 
 #### **1. Top Bar**
 
-- Room name
+- Group name
 - Theme toggle
 - Self mute/unmute
 - Connection indicator
 
 #### **2. Chat Panel**
 
-- Room chat
+- Group chat
 - Whispers
 - Inline images
 - System messages (limited)
@@ -208,7 +208,7 @@ Players should feel:
 - **No audio controls**
 - **No chat composer**
 - **No notes editing**
-- **No room switching**
+- **No group switching**
 
 Spectators are observers — not participants.
 
@@ -243,7 +243,7 @@ Spectators are observers — not participants.
 
 - Avatar + name
 - Speaking indicator
-- Room membership
+- Group membership
 - No actions
 
 #### **4. Notes Panel**
@@ -260,16 +260,16 @@ Spectators are observers — not participants.
 
 ## Cross‑Persona Behavior Rules
 
-### **Room Visibility**
+### **Group Visibility**
 
-| Persona      | Can See Other Rooms? |
-| ------------ | -------------------- |
-| DM           | Yes                  |
-| Assistant DM | Yes                  |
-| Player       | No                   |
-| Spectator    | No                   |
+| Persona      | Can See Other Groups? |
+| ------------ | --------------------- |
+| DM           | Yes                   |
+| Assistant DM | Yes                   |
+| Player       | No                    |
+| Spectator    | No                    |
 
-### **Private Rooms**
+### **Private Groups**
 
 | Persona      | Behavior            |
 | ------------ | ------------------- |

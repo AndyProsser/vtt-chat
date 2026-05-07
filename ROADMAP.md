@@ -22,7 +22,7 @@ Deliver the pre-launch campaign flow so users move cleanly from login/register t
 Current boundary for this stage:
 
 - In scope: login/register, invite/code handling, home/dashboard visibility, launch/watch CTA behavior, and pre-launch campaign settings/invite UX.
-- Out of scope (deferred): runtime behavior inside campaigns after launch (greenroom/session chat, room movement, pause/stop runtime gates, in-session notes/audio behavior).
+- Out of scope (deferred): runtime behavior inside campaigns after launch (greenroom/session chat, group movement, pause/stop runtime gates, in-session notes/audio behavior).
 
 ### Confirmed Product Rules
 
@@ -43,7 +43,7 @@ Current boundary for this stage:
 - Spectators wait if campaign is active but no DM/player is online yet.
 - During Pause, spectators see paused screen only (no voice/chat access).
 - During End/Stop, spectators lose voice/chat and are sent to waiting/end screen.
-- On Start, only currently connected players are force-moved to Main room.
+- On Start, only currently connected players are force-moved to Main group.
 - Late-join policy for missed session start: `Open|Screened|Blocked`, with configurable grace period (default 30 minutes).
 - Screened mode includes private DM chat gate; Blocked mode still respects grace period.
 - Players only see campaign-linked note copies; templates/unlinked notes are DM-side only.
@@ -154,18 +154,23 @@ Known readiness gap classes:
 
 ---
 
-### W0 Subtask: Voice Channel Panel (Campaign Screen)
+### W0 Subtask: Voice Group Panel (Campaign Screen)
 
 **Status**: Design finalized, implementation planning in progress
 **Related Docs**: [UI-COMPONENT-CHANNELS.md](docs/ui/UI-COMPONENT-CHANNELS.md), [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
 
-**Scope**: Enhance RoomSelector/left-rail voice channel UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create room CTA, and full accessibility support.
+**Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
+
+Terminology note for this stage:
+
+- User-facing term is **Group** (for example, Main, Scouts, In Jail).
+- Existing technical component/API naming may still use `Room`/`rooms` during migration.
 
 **Implementation Phases**:
 
 | Phase                           | Timeline | Deliverables                                                                                        | Status      |
 | ------------------------------- | -------- | --------------------------------------------------------------------------------------------------- | ----------- |
-| Phase 1: Core UI & Layout       | Week 1   | Room headers (env icon, broadcast badge, create button), condition badge+popover, env tooltip       | Not started |
+| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, broadcast badge, create button), condition badge+popover, env tooltip      | Not started |
 | Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop | Not started |
 | Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                 | Not started |
 | Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing    | Not started |
@@ -177,13 +182,19 @@ Known readiness gap classes:
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
 - Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
 - Environment icons (compact, hover tooltip, DM click to edit)
-- Broadcast state: indicator badge + subtle room header glow
-- Create Room: icon button in room header (top-right)
+- Broadcast state: indicator badge + subtle group header glow
+- Create Group: icon button in group header (top-right)
 - Sticky DM widget (always visible at top)
 - Primary condition only visible + tooltip/popover for others
 - Screen reader support priority (full ARIA labels)
 
 **New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
+
+**Future W0 Feature (deferred until after Phase 5 hardening)**: Campaign-scoped DM setting for one-way group audio monitoring.
+
+- Secondary groups (for example, "In Jail") may be configured to hear Main group audio.
+- This is listen-only (no return audio path to Main by default).
+- Intended as a narrative tool and should be opt-in per group.
 
 **Backend Requirements** (verify/implement):
 
@@ -199,13 +210,13 @@ Known readiness gap classes:
 - ✅ Tooltip infrastructure (exists, enhance for env icons)
 - 🆕 ConditionPopover.tsx (new)
 - 🆕 RadialMenu.tsx (new)
-- 🆕 CreateRoomModal.tsx (new)
+- 🆕 CreateGroupModal.tsx (new)
 - 🆕 CampaignSettingsPanel.tsx (new, with condition toggle)
 
 **Testing Coverage**:
 
 - [ ] Unit: Component rendering, state management, event handlers
-- [ ] Integration: Drag-n-drop, condition mutations, room movement
+- [ ] Integration: Drag-n-drop, condition mutations, group movement
 - [ ] E2E: Full user flows (drag, conditions, mobile responsive, accessibility)
 - [ ] A11y: Screen reader testing, keyboard nav, WCAG AA compliance
 

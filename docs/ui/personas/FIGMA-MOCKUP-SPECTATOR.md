@@ -70,9 +70,9 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 | Padding    | 8px 0               |
 | Scroll     | Yes                 |
 
-#### **Rooms Section**
+#### **Groups Section**
 
-- Spectator sees **all rooms**, but cannot interact
+- Spectator sees **all groups**, but cannot interact
 - No hover states
 - No right‑click menus
 - No DM‑only overrides
@@ -104,14 +104,14 @@ The layout becomes **Left Rail + Center Pane**, maximizing visibility.
 | Background | `var(--bg-app)` |
 | Layout     | Vertical        |
 
-#### **Room Header**
+#### **Group Header**
 
-| Property   | Value                   |
-| ---------- | ----------------------- |
-| Height     | 48px                    |
-| Background | `var(--bg-surface)`     |
-| Padding    | 0 16px                  |
-| Content    | Room Name + Environment |
+| Property   | Value                    |
+| ---------- | ------------------------ |
+| Height     | 48px                     |
+| Background | `var(--bg-surface)`      |
+| Padding    | 0 16px                   |
+| Content    | Group Name + Environment |
 
 Spectator sees the environment but cannot change it.
 
@@ -135,7 +135,7 @@ Spectator sees the environment but cannot change it.
 | System Message | ✔        | Secondary text            |
 | Note Card      | ✔        | Opens popout (read‑only)  |
 
-Spectator sees **everything visible to the room**, but cannot interact.
+Spectator sees **everything visible to the group**, but cannot interact.
 
 ---
 
@@ -234,7 +234,7 @@ no transform
 - `Component / Toolbar`
 - `Component / Left Rail`
 - `Component / Player Item`
-- `Component / Room Item`
+- `Component / Group Item`
 - `Component / Center Pane`
 - `Component / Chat Message`
 - `Component / Note Card`

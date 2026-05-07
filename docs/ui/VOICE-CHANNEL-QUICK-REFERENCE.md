@@ -1,6 +1,6 @@
-# Voice Channel Quick Reference Guide
+# Voice Group Quick Reference Guide
 
-**For**: Developers implementing W0 voice channel work
+**For**: Developers implementing W0 voice group work
 **Updated**: 2026-05-07
 
 ---
@@ -13,8 +13,8 @@
 | **Drag-n-Drop**       | Highlight zones + dim invalid + ghost preview          |
 | **Conditions UI**     | Right-click radial menu (desktop), long-press (mobile) |
 | **Environment Icons** | Compact icon, hover tooltip, DM click to edit          |
-| **Broadcast State**   | Badge glows, room header glows subtly                  |
-| **Create Room**       | Icon button in room header (top-right)                 |
+| **Broadcast State**   | Badge glows, group header glows subtly                 |
+| **Create Group**      | Icon button in group header (top-right)                |
 | **DM Widget**         | Sticky at top, always visible                          |
 | **Condition Display** | Primary only + popover/tooltip for others              |
 | **Accessibility**     | Full screen reader support (ARIA labels priority)      |
@@ -35,16 +35,16 @@
 - Broadcast toggle icon changes color/glows when active
 - Shows speaking pulse on avatar
 
-### Room Header (40px height)
+### Group Header (40px height)
 
 ```
-[Icon]  Room Name    [Env: Forest]  [Broadcast ◉]  [+]  [×]
+[Icon]  Group Name   [Env: Forest]  [Broadcast ◉]  [+]  [×]
 ```
 
 - Environment icon: hover for tooltip, click (DM only) to edit
 - Broadcast badge: glows when active
-- Create room `[+]`: compact icon
-- Close `[×]`: only for non-Main rooms
+- Create group `[+]`: compact icon
+- Close `[×]`: only for non-Main groups
 
 ### Player Widget (56px height)
 
@@ -70,7 +70,7 @@
 ```
 
 - 4 options positioned around circle
-- Move: select destination room
+- Move: select destination group
 - Condition: open condition picker (if enabled)
 - Mute: toggle immediately
 - Close: dismiss menu
@@ -82,7 +82,7 @@
 ```
 .room-selector-*                    // Main container
   ├─ .room-selector-dm*             // DM widget
-  ├─ .room-selector-room-header*    // Room header
+  ├─ .room-selector-room-header*    // Group header
   ├─ .room-selector-player-*        // Player widget
   └─ .radial-menu*                  // Radial menu
 
@@ -97,15 +97,15 @@
 
 1. **Initiate**: Click + hold player widget
 2. **Drag**: Ghost preview follows cursor
-3. **Over room**: Zone highlights, cursor changes
+3. **Over group**: Zone highlights, cursor changes
 4. **Drop**: API call + optimistic UI update
 5. **Error**: Rollback + toast message
 
 ### Broadcast Mode
 
-1. User clicks broadcast badge (room header or DM widget)
+1. User clicks broadcast badge (group header or DM widget)
 2. Badge highlights and glows
-3. Only one room active at a time (mutual exclusivity)
+3. Only one group active at a time (mutual exclusivity)
 4. API call in background
 
 ### Conditions (If Enabled)
@@ -117,8 +117,8 @@
 
 ### Mobile Collapse
 
-1. Default: Rooms collapsed to avatars only
-2. Tap room header: Expand full list
+1. Default: Groups collapsed to avatars only
+2. Tap group header: Expand full list
 3. Tap again: Collapse back
 4. DM: Always expanded (sticky)
 
@@ -128,8 +128,8 @@
 
 ### ✓ Phase 1: Core UI & Layout (Week 1)
 
-- [ ] Room header with env icon + broadcast badge + create button
-- [ ] Create room quick modal
+- [ ] Group header with env icon + broadcast badge + create button
+- [ ] Create group quick modal
 - [ ] Condition badge display (primary only)
 - [ ] Condition popover (hover/click)
 - [ ] Env icon hover tooltip
@@ -140,7 +140,7 @@
 
 - [ ] Radial context menu (right-click / long-press)
 - [ ] Wire radial menu to condition picker
-- [ ] Wire radial menu to move room selector
+- [ ] Wire radial menu to move group selector
 - [ ] Wire radial menu to mute toggle
 - [ ] Enhance drag-n-drop with ghost preview + zone highlighting
 
@@ -188,7 +188,7 @@
     --text-secondary: (muted text) --error: (muted icon background) /* Spacing */ Panel width: 300px
     (desktop),
   100% (mobile) Avatar size: 36px (player), 40px (DM) Widget height: 56px (player),
-  60px (DM) Room header height: 40px Gap between elements: 8px Padding: 6-8px /* Animations */
+  60px (DM) Group header height: 40px Gap between elements: 8px Padding: 6-8px /* Animations */
     Speaking pulse: 1.2s,
   ease-in-out,
   infinite Hover delay: 100ms (popover) Transition: 0.2s (all state changes) Reduced

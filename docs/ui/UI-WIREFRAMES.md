@@ -25,7 +25,7 @@ This wireframe reflects the full control surface.
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
 │ (Players)      │                                                             │ (Vertical Tabs) │
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Room]    │  │ ROOM: Main Hall ▼                                      │ │ Rooms           │
+│ [Main Group]   │  │ GROUP: Main Hall ▼                                     │ │ Groups          │
 │  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Audio           │
 │  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search          │
 │  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ Notes           │
@@ -53,7 +53,7 @@ This wireframe reflects the full control surface.
 ## **2. Player UI Wireframe**
 
 Players get a **clean, focused, immersive** interface.
-No DM tools, no room management, no global audio controls.
+No DM tools, no group management, no global audio controls.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@ No DM tools, no room management, no global audio controls.
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
 │ (Players)      │                                                             │ (Vertical Tabs) │
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Room]    │  │ ROOM: Main Hall                                        │ │ Notes           │
+│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Notes           │
 │  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Journal (RO)    │
 │  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search          │
 │  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ History (RO)    │
@@ -108,7 +108,7 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
 │ (Read‑Only)    │                                                             │ (Vertical Tabs) │
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Room]    │  │ ROOM: Main Hall                                        │ │ Notes (RO)      │
+│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Notes (RO)      │
 │  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Journal (RO)    │
 │  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search (RO)     │
 │  • Mira        │  ├────────────────────────────────────────────────────────┤ │ History (RO)    │
@@ -150,4 +150,4 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 - No composer
 - No audio controls
 - No whispers
-- No private rooms
+- No private groups

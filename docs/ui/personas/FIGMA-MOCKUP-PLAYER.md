@@ -60,9 +60,9 @@ The Player Persona keeps the same structural grid as DM, but with **restricted f
 | Padding    | 8px 0               |
 | Scroll     | Yes                 |
 
-#### **Rooms Section**
+#### **Groups Section**
 
-- Players see **only rooms they are allowed to see**
+- Players see **only groups they are allowed to see**
 - No DM‑only overrides
 - No right‑click environment menu
 
@@ -97,14 +97,14 @@ Players have the same chat experience as DM, minus DM‑only message types.
 | Background | `var(--bg-app)` |
 | Layout     | Vertical        |
 
-#### **Room Header**
+#### **Group Header**
 
-| Property   | Value                               |
-| ---------- | ----------------------------------- |
-| Height     | 48px                                |
-| Background | `var(--bg-surface)`                 |
-| Padding    | 0 16px                              |
-| Content    | Room Name + Environment (read‑only) |
+| Property   | Value                                |
+| ---------- | ------------------------------------ |
+| Height     | 48px                                 |
+| Background | `var(--bg-surface)`                  |
+| Padding    | 0 16px                               |
+| Content    | Group Name + Environment (read‑only) |
 
 Players **see** the environment but cannot change it.
 
@@ -178,7 +178,7 @@ Players see **fewer tabs**.
 
 Players do **not** see:
 
-- Rooms tab
+- Groups tab
 - DM‑only tools
 
 ---
@@ -336,7 +336,7 @@ duration: 180ms
 - `Component / Toolbar`
 - `Component / Left Rail`
 - `Component / Player Item`
-- `Component / Room Item`
+- `Component / Group Item`
 - `Component / Center Pane`
 - `Component / Chat Message`
 - `Component / Note Card`

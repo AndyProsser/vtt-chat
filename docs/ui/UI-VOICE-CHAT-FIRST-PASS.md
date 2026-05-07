@@ -7,12 +7,12 @@ Scope: frontend session shell and voice-related panels
 ## Goals
 
 - Make the session shell feel like a focused voice-chat workspace.
-- Prioritize room switching, participant status, and current speaking context.
+- Prioritize group switching, participant status, and current speaking context.
 - Reduce placeholder language and improve visual hierarchy.
 
 ## Experience Direction
 
-- Left rail behaves as the primary voice channel rail.
+- Left rail behaves as the primary voice group rail.
 - Center pane remains content-first (chat/notes) with quick switching.
 - Right rail holds utility surfaces and optional controls.
 - Visual style: compact cards, dense status chips, icon-forward labels.
@@ -23,14 +23,14 @@ Scope: frontend session shell and voice-related panels
   - Session controls (chat/notes and tools toggle)
   - Campaign/session status card
 - Main row:
-  - Left: Voice panel summary + room selector + room member roster
+  - Left: Voice panel summary + group selector + group member roster
   - Center: Active conversation surface
   - Right: Role-based utility tabs
 
 ## Icon and Image Plan
 
 - Icons:
-  - Voice, rooms, users, mic, panel, chat, notes
+  - Voice, groups, users, mic, panel, chat, notes
   - Use inline SVG icon primitives in ui layer for consistency
 - Participant visuals:
   - Use avatar glyph cards for each participant
@@ -42,7 +42,7 @@ Scope: frontend session shell and voice-related panels
 ## First Pass Changes
 
 - Left rail summary redesigned as "Voice Panel" with state badge and stat chips.
-- Room selector reframed as "Voice Channels" with icon-led rows.
+- Group selector reframed as "Voice Groups" with icon-led rows.
 - Member list reframed as "Connected Members" using compact avatar cards.
 - Command center shell adjusted with better panel proportions and surface depth.
 - Toolbar labels now icon-led for clearer center-pane and utility controls.
@@ -50,14 +50,14 @@ Scope: frontend session shell and voice-related panels
 ## Acceptance Criteria
 
 - A user can identify active session state from the left rail at a glance.
-- Room switching controls are visually dominant over secondary metadata.
+- Group switching controls are visually dominant over secondary metadata.
 - Speaking and muted states are visible per member without interaction.
 - Center chat/notes switch is discoverable in under one second.
 - Placeholder wording is removed from active session shell copy.
 
 ## Next Iteration
 
-- Add explicit channel categories (main, breakout, private) with section grouping.
+- Add explicit group categories (main, breakout, private) with section grouping.
 - Add persistent self controls (mute/deafen/input meter) at left rail footer.
 - Add richer participant avatars or uploaded profile image support.
 - Add compact mobile voice rail mode for narrow widths.

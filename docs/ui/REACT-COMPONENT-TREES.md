@@ -11,12 +11,10 @@ Visibility and props differ by persona.
 
 ```jsx
 <App persona="dm|player|spectator">
-  <Toolbar />                     // audio devices, theme, connection
-  <CampaignInfo />                // campaign name, DM, session, time
-  <SystemToasts />                // dismissable, stacked
-
+  <Toolbar /> // audio devices, theme, connection
+  <CampaignInfo /> // campaign name, DM, session, time
+  <SystemToasts /> // dismissable, stacked
   {persona === 'dm' && <DMVoiceBar />}
-
   <MainLayout>
     <LeftRail>
       <PlayerList />
@@ -25,17 +23,16 @@ Visibility and props differ by persona.
     <CenterPane>
       <RoomHeader />
       <ChatNotesToggle />
-      <ChatWindow />              // or NotesList depending on toggle
-      <MessageComposer />         // hidden for spectator
+      <ChatWindow /> // or NotesList depending on toggle
+      <MessageComposer /> // hidden for spectator
     </CenterPane>
 
     <RightRail>
-      <RightTabBar />             // persona‑specific tabs
-      <SlideInPanels />           // persona‑specific panels
+      <RightTabBar /> // persona‑specific tabs
+      <SlideInPanels /> // persona‑specific panels
     </RightRail>
   </MainLayout>
-
-  <NotePopout />                  // optional, appears when opened
+  <NotePopout /> // optional, appears when opened
 </App>
 ```
 
@@ -43,16 +40,14 @@ Visibility and props differ by persona.
 
 ## **1. DM Component Tree (Full Command Centre)**
 
-DM gets **all components**, including overrides, room management, audio routing, and full notes.
+DM gets **all components**, including overrides, group management, audio routing, and full notes.
 
 ```jsx
 <DMApp>
   <Toolbar />
   <CampaignInfo />
   <SystemToasts />
-
-  <DMVoiceBar />   // presets, env, conditions, distance, overrides, PTT
-
+  <DMVoiceBar /> // presets, env, conditions, distance, overrides, PTT
   <MainLayout>
     <LeftRail expanded>
       <PlayerList persona="dm">
@@ -62,7 +57,7 @@ DM gets **all components**, including overrides, room management, audio routing,
           <SpeakingIndicator />
           <MuteIndicator />
           <ConditionIcons />
-          <PlayerOverrides />   // gain, mute, distance, conditions
+          <PlayerOverrides /> // gain, mute, distance, conditions
         </PlayerItem>
       </PlayerList>
     </LeftRail>
@@ -75,17 +70,7 @@ DM gets **all components**, including overrides, room management, audio routing,
     </CenterPane>
 
     <RightRail>
-      <RightTabBar
-        tabs={[
-          "rooms",
-          "audio",
-          "search",
-          "notes",
-          "journal",
-          "history",
-          "settings"
-        ]}
-      />
+      <RightTabBar tabs={['rooms', 'audio', 'search', 'notes', 'journal', 'history', 'settings']} />
 
       <SlideInPanels persona="dm">
         <RoomsPanel />
@@ -98,8 +83,7 @@ DM gets **all components**, including overrides, room management, audio routing,
       </SlideInPanels>
     </RightRail>
   </MainLayout>
-
-  <NotePopout />   // DM can edit notes here
+  <NotePopout /> // DM can edit notes here
 </DMApp>
 ```
 
@@ -114,7 +98,6 @@ Players get a **clean, minimal** UI with chat, notes, and personal settings.
   <Toolbar />
   <CampaignInfo />
   <SystemToasts />
-
   <MainLayout>
     <LeftRail collapsed>
       <PlayerList persona="player">
@@ -136,15 +119,7 @@ Players get a **clean, minimal** UI with chat, notes, and personal settings.
     </CenterPane>
 
     <RightRail>
-      <RightTabBar
-        tabs={[
-          "notes",
-          "journal",
-          "search",
-          "history",
-          "settings"
-        ]}
-      />
+      <RightTabBar tabs={['notes', 'journal', 'search', 'history', 'settings']} />
 
       <SlideInPanels persona="player">
         <NotesPanel />
@@ -155,8 +130,7 @@ Players get a **clean, minimal** UI with chat, notes, and personal settings.
       </SlideInPanels>
     </RightRail>
   </MainLayout>
-
-  <NotePopout />   // Player can view or edit depending on visibility
+  <NotePopout /> // Player can view or edit depending on visibility
 </PlayerApp>
 ```
 
@@ -171,7 +145,6 @@ Spectators get **read‑only everything**.
   <Toolbar />
   <CampaignInfo />
   <SystemToasts />
-
   <MainLayout>
     <LeftRail collapsed>
       <PlayerList persona="spectator">
@@ -188,19 +161,11 @@ Spectators get **read‑only everything**.
       <RoomHeader />
       <ChatNotesToggle />
       <ChatWindow persona="spectator" readOnly />
-      <SpectatorMessageBlocker />   // prevents input
+      <SpectatorMessageBlocker /> // prevents input
     </CenterPane>
 
     <RightRail>
-      <RightTabBar
-        tabs={[
-          "notes",
-          "journal",
-          "search",
-          "history",
-          "settings"
-        ]}
-      />
+      <RightTabBar tabs={['notes', 'journal', 'search', 'history', 'settings']} />
 
       <SlideInPanels persona="spectator">
         <NotesPanel readOnly globalOnly />
@@ -211,8 +176,7 @@ Spectators get **read‑only everything**.
       </SlideInPanels>
     </RightRail>
   </MainLayout>
-
-  <NotePopout readOnly />   // global notes only
+  <NotePopout readOnly /> // global notes only
 </SpectatorApp>
 ```
 
@@ -240,7 +204,7 @@ These are **not new subsystems** — they are UI wrappers around existing behavi
 
 ### **4.4 `<RoomHeader />`**
 
-- Displays current room
+- Displays current group
 - Whisper target (if applicable)
 
 These components already exist conceptually in your docs — this is just their placement.

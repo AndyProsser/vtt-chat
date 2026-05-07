@@ -34,7 +34,7 @@ UI events fall into these categories:
 1. **Chat Events**
 2. **Notes Events**
 3. **Player List Events**
-4. **Room Events**
+4. **Group Events**
 5. **Audio Events (DM Only)**
 6. **Search Events**
 7. **Journal Events**
@@ -255,7 +255,7 @@ Each section below lists the events and reducer mappings.
 
 ---
 
-## 6. Room Events (DM Only)
+## 6. Group Events (DM Only)
 
 ---
 

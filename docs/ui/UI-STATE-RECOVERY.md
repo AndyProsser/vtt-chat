@@ -46,7 +46,7 @@ Recovery is split into two layers:
 Recovered from backend snapshot:
 
 - Players
-- Rooms
+- Groups
 - Presence
 - Chat history (windowed)
 - Notes
@@ -83,11 +83,11 @@ Transport layer reconnects → backend sends snapshot.
 
 ### **3.2 Backend instructs client to rehydrate**
 
-E.g., after permission change, room change, or DM override.
+E.g., after permission change, group change, or DM override.
 
 ### **3.3 Reducer detects invalid state**
 
-E.g., missing room, deleted note, stale player reference.
+E.g., missing group, deleted note, stale player reference.
 
 ### **3.4 System error**
 
@@ -121,15 +121,15 @@ No optimistic UI.
 
 The following stores are **fully overwritten** by the snapshot:
 
-| Store           | Recovery Rule                                      |
-| --------------- | -------------------------------------------------- |
-| `presenceStore` | Replace players, rooms, speaking, mute, conditions |
-| `chatStore`     | Replace visible window of messages                 |
-| `notesStore`    | Replace all visible notes                          |
-| `journalStore`  | Replace entries                                    |
-| `historyStore`  | Replace events                                     |
-| `audioStore`    | Replace gain, mute, distance, conditions           |
-| `sessionStore`  | Replace campaign/session metadata                  |
+| Store           | Recovery Rule                                       |
+| --------------- | --------------------------------------------------- |
+| `presenceStore` | Replace players, groups, speaking, mute, conditions |
+| `chatStore`     | Replace visible window of messages                  |
+| `notesStore`    | Replace all visible notes                           |
+| `journalStore`  | Replace entries                                     |
+| `historyStore`  | Replace events                                      |
+| `audioStore`    | Replace gain, mute, distance, conditions            |
+| `sessionStore`  | Replace campaign/session metadata                   |
 
 ### **5.1 Atomic Application**
 
@@ -165,7 +165,7 @@ After domain hydration, the UI restores:
 
 ### **6.1 Whisper Target Validation**
 
-If whisper target no longer exists or is in another room:
+If whisper target no longer exists or is in another group:
 
 ```text
 uiStore.whisperTarget = null
@@ -305,7 +305,7 @@ Hydration is instantaneous.
 
 ### **10.3 `<PlayerList />`**
 
-- Re-renders with updated rooms/players
+- Re-renders with updated groups/players
 - Drag state cancelled
 
 ---
