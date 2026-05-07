@@ -19,6 +19,25 @@
   gap: 0.35rem;
 }
 
+.room-selector-header__meta--actions {
+  gap: 0.45rem;
+}
+
+.room-selector-header__create {
+  border: 1px solid color-mix(in srgb, var(--color-brand) 56%, var(--color-border-soft));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+  color: var(--color-text-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.16rem 0.52rem;
+  cursor: pointer;
+}
+
+.room-selector-header__create:hover {
+  background: color-mix(in srgb, var(--color-brand) 26%, transparent);
+}
+
 .room-selector-header__voice {
   font-size: 0.66rem;
   color: var(--color-text-secondary);
@@ -73,6 +92,36 @@
   gap: 0.45rem;
 }
 
+.room-selector-group-section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.room-selector-group-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed color-mix(in srgb, var(--color-border-soft) 74%, transparent);
+  padding-bottom: 0.2rem;
+}
+
+.room-selector-group-section__header h5 {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.room-selector-group-section__header span {
+  font-size: 0.68rem;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+}
+
 .room-selector-dm {
   border: 1px solid color-mix(in srgb, var(--color-brand) 46%, var(--color-border-soft));
   border-radius: var(--radius-sm);
@@ -122,6 +171,20 @@
 .room-selector-item:hover {
   border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-border-soft));
   transform: translateY(-1px);
+}
+
+.room-selector-item--private-divider {
+  margin-top: 0.35rem;
+  position: relative;
+}
+
+.room-selector-item--private-divider::before {
+  content: '';
+  position: absolute;
+  top: -0.28rem;
+  left: 0.2rem;
+  right: 0.2rem;
+  border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 82%, transparent);
 }
 
 .room-selector-item.selected {
@@ -283,4 +346,110 @@
   margin: 0;
   font-size: 0.74rem;
   color: var(--color-text-secondary);
+}
+
+.group-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.group-modal {
+  width: min(28rem, calc(100vw - 2rem));
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.3);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.group-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-modal__header h5 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.group-modal__close {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface-subtle) 72%, transparent);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-modal__form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.group-modal__field {
+  display: grid;
+  gap: 0.26rem;
+}
+
+.group-modal__field span {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.group-modal__field input,
+.group-modal__field select {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface-subtle) 74%, var(--color-surface));
+  color: var(--color-text-primary);
+  padding: 0.45rem 0.55rem;
+}
+
+.group-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.42rem;
+}
+
+.group-modal__actions button {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface-subtle) 72%, var(--color-surface));
+  color: var(--color-text-primary);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.group-modal__actions button[type='submit'] {
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
+}
+
+.group-modal__actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.group-modal__error {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-error);
 }

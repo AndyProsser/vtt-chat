@@ -53,7 +53,7 @@ export function SessionLeftRailPanel({
   currentConditionName,
 }: SessionLeftRailPanelProps) {
   const isGreenroom = sessionState === 'IDLE'
-  const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Channel Only' : undefined
+  const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
   const visibleRooms = [...rooms]
     .sort((left, right) => {
@@ -92,7 +92,7 @@ export function SessionLeftRailPanel({
 
       <section
         className="session-left-rail-card session-left-rail-card--channels"
-        aria-label="Voice channels"
+        aria-label="Voice groups"
       >
         <RoomSelector
           apiUrl={apiUrl}
