@@ -272,11 +272,36 @@ No component mutates state directly.
 
 ---
 
-## 7. Search, Journal, History, Settings
+## 7. Information & Settings Panels
 
 ---
 
-### **7.1 `<SearchPanel />`**
+### **7.1 `<InformationPanel />`**
+
+| Prop            | Type                            | Description                           |
+| --------------- | ------------------------------- | ------------------------------------- |
+| `persona`       | `Persona`                       | Role-based visibility/access          |
+| `activeTab`     | `InformationTab`                | Active info tab                       |
+| `availableTabs` | `InformationTab[]`              | Tab list (Journal feature-flag aware) |
+| `onSelectTab`   | `(tab: InformationTab) => void` | Switches info tab                     |
+
+---
+
+### **7.2 `<CampaignInfoPanel />`**
+
+| Prop           | Type                                    | Description                       |
+| -------------- | --------------------------------------- | --------------------------------- |
+| `campaignName` | `string`                                | Campaign display name             |
+| `description`  | `string`                                | Campaign description              |
+| `bannerUrl`    | `string \| null`                        | Campaign banner image             |
+| `canEdit`      | `boolean`                               | DM edit capability                |
+| `syncEnabled`  | `boolean`                               | Extension sync allow/block toggle |
+| `onToggleSync` | `(enabled: boolean) => void`            | DM-only sync policy update        |
+| `onUpdate`     | `(payload: CampaignPanelInput) => void` | DM campaign metadata update       |
+
+---
+
+### **7.3 `<SearchPanel />`**
 
 | Prop             | Type                             | Description  |
 | ---------------- | -------------------------------- | ------------ |
@@ -287,34 +312,75 @@ No component mutates state directly.
 
 ---
 
-### **7.2 `<JournalPanel />`**
+### **7.4 `<NotesPanel />` (Information Tab Variant)**
 
-| Prop          | Type                   | Description      |
-| ------------- | ---------------------- | ---------------- |
-| `entries`     | `JournalEntry[]`       | Journal entries  |
-| `readOnly`    | `boolean`              | Player/Spectator |
-| `onOpenEntry` | `(id: string) => void` | Open entry       |
-
----
-
-### **7.3 `<HistoryPanel />`**
-
-| Prop       | Type             | Description      |
-| ---------- | ---------------- | ---------------- |
-| `events`   | `HistoryEvent[]` | Timeline         |
-| `readOnly` | `boolean`        | Player/Spectator |
+| Prop                      | Type                                 | Description                           |
+| ------------------------- | ------------------------------------ | ------------------------------------- |
+| `notes`                   | `Note[]`                             | Visible notes only                    |
+| `query`                   | `string`                             | Local notes filter text               |
+| `onQueryChange`           | `(q: string) => void`                | Updates filter                        |
+| `readOnlyByDefault`       | `boolean`                            | Read-focused default behavior         |
+| `canEdit`                 | `boolean`                            | DM edit permissions                   |
+| `accessLevel`             | `'PRIVATE' \| 'PARTY' \| 'SELECTED'` | DM handout model                      |
+| `selectedPlayerIds`       | `string[]`                           | DM-selected recipients for `SELECTED` |
+| `onChangeAccessLevel`     | `(level: NotesAccessLevel) => void`  | Updates handout visibility            |
+| `onChangeSelectedPlayers` | `(ids: string[]) => void`            | Updates selected handout recipients   |
 
 ---
 
-### **7.4 `<SettingsPanel />`**
+### **7.5 `<JournalPanel />`**
 
-| Prop            | Type                                         | Description         |
-| --------------- | -------------------------------------------- | ------------------- |
-| `persona`       | `Persona`                                    | Controls visibility |
-| `audioDevices`  | `AudioDevice[]`                              | Device list         |
-| `uiSettings`    | `UISettings`                                 | UI preferences      |
-| `onUpdateAudio` | `(settings: Partial<AudioSettings>) => void` | Update audio        |
-| `onUpdateUI`    | `(settings: Partial<UISettings>) => void`    | Update UI           |
+| Prop             | Type                   | Description                                       |
+| ---------------- | ---------------------- | ------------------------------------------------- |
+| `entries`        | `JournalEntry[]`       | Journal entries                                   |
+| `readOnly`       | `boolean`              | Read-only mode                                    |
+| `featureEnabled` | `boolean`              | Feature flag (off by default for current release) |
+| `onOpenEntry`    | `(id: string) => void` | Open entry                                        |
+
+---
+
+### **7.6 `<HistoryPanel />`**
+
+| Prop             | Type                          | Description                          |
+| ---------------- | ----------------------------- | ------------------------------------ |
+| `sessions`       | `SessionHistoryItem[]`        | Reverse-chronological session list   |
+| `query`          | `string`                      | Session/history filter query         |
+| `onQueryChange`  | `(q: string) => void`         | Updates session filter               |
+| `onOpenSession`  | `(sessionId: string) => void` | Opens chat log for selected session  |
+| `summaryEnabled` | `boolean`                     | Whether summary block appears at top |
+| `readOnly`       | `boolean`                     | Player/Spectator read-only behavior  |
+
+---
+
+### **7.7 `<SettingsPanel />`**
+
+| Prop                      | Type                                        | Description                                    |
+| ------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| `persona`                 | `Persona`                                   | Role-based visibility/access                   |
+| `activeSection`           | `'SYSTEM' \| 'CAMPAIGN' \| 'PROFILE'`       | Active settings section                        |
+| `canViewCampaignSettings` | `boolean`                                   | Player/spectator read visibility (DM can hide) |
+| `canEditCampaignSettings` | `boolean`                                   | DM-only campaign edit control                  |
+| `campaignToggles`         | `CampaignFeatureToggles`                    | Per-campaign feature controls and limits       |
+| `onSelectSection`         | `(section: SettingsSection) => void`        | Switches section                               |
+| `onUpdateCampaignToggles` | `(toggles: CampaignFeatureToggles) => void` | DM campaign settings update                    |
+| `onUpdateSystemDefaults`  | `(toggles: CampaignFeatureToggles) => void` | Sets defaults for newly created campaigns only |
+
+---
+
+### **7.8 `<SessionSettingsPopover />`**
+
+| Prop                          | Type                                      | Description                        |
+| ----------------------------- | ----------------------------------------- | ---------------------------------- |
+| `sessionName`                 | `string`                                  | Editable session title             |
+| `sessionDescriptionMarkdown`  | `string`                                  | Markdown session intro/description |
+| `campaignDefaultTimerMinutes` | `number \| null`                          | Campaign default timer limit       |
+| `sessionTimerOverrideMinutes` | `number \| null`                          | Session-specific timer override    |
+| `canEdit`                     | `boolean`                                 | DM edit permission                 |
+| `onSave`                      | `(payload: SessionSettingsInput) => void` | Saves DM edits and overrides       |
+
+Notes:
+
+- Session timer overrides may exceed campaign default and should show warning-only UX.
 
 ---
 

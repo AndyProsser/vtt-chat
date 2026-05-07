@@ -11,9 +11,9 @@ This wireframe reflects the full control surface.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme]                          [Connection Status ●] │
+│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme] [Settings] [Information] [Connection Status ●] │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN: Curse of Strahd | DM: Andy | Session 12 | 02:14:33                                   │
+│ CAMPAIGN: Curse of Strahd | DM: Andy | Session 12 | 02:14:33 | [Session Cog]                   │
 │ TOASTS: [Connection Restored] [×]                                                              │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -23,20 +23,32 @@ This wireframe reflects the full control surface.
 
 ┌────────────────┬─────────────────────────────────────────────────────────────┬─────────────────┐
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
-│ (Players)      │                                                             │ (Vertical Tabs) │
+│ (Players)      │                                                             │ (Popout Surface)│
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Group]   │  │ GROUP: Main Hall ▼                                     │ │ Groups          │
+│ [Main Group]   │  │ GROUP: Main Hall ▼                                     │ │ Information:    │
 │  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Audio           │
-│  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search          │
-│  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ Notes           │
-│────────────────│  │ CHAT WINDOW                                            │ │ Journal         │
-│ [Group 1]      │  │  • System: Thorin joined                               │ │ History         │
-│  • Player A    │  │  • Lyra: “I check the door.”                           │ │ Settings        │
+│  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Campaign        │
+│  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ Search          │
+│────────────────│  │ CHAT WINDOW                                            │ │ Notes           │
+│ [Group 1]      │  │  • System: Thorin joined                               │ │ Journal (flag)  │
+│  • Player A    │  │  • Lyra: “I check the door.”                           │ │ History         │
 │────────────────│  ├────────────────────────────────────────────────────────┤ │                 │
 │ [Private: M+T] │  │ MESSAGE COMPOSER                                       │ │                 │
-│────────────────│  │  > Type message… [Whisper ▼] [Publish Note]            │ │                 │
+│────────────────│  │  > Type message… [Whisper ▼] [Publish Note]            │ │ Settings:       │
 │ [+ Create]     │  └────────────────────────────────────────────────────────┘ │                 │
+│                │                                                             │ System/Campaign │
+│                │                                                             │ /Profile        │
 └────────────────┴─────────────────────────────────────────────────────────────┴─────────────────┘
+
+Session Settings Popover (from Session Cog):
+
+┌─────────────────────────────────────────────┐
+│ SESSION SETTINGS                            │
+│ Name: [Session 12]                          │
+│ Description (markdown): [In today's ...]    │
+│ Timer override: [480 min] (warn > default)  │
+│ [Save] [Cancel]                             │
+└─────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ NOTE POP‑OUT (Optional)                                                      │
@@ -57,25 +69,26 @@ No DM tools, no group management, no global audio controls.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme]                          [Connection Status ●] │
+│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme] [Settings] [Information] [Connection Status ●] │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN: Curse of Strahd | Session 12 | 02:14:33                                              │
+│ CAMPAIGN: Curse of Strahd | Session 12 | 02:14:33 | [Session Cog]                              │
 │ TOASTS: [You joined Main Hall] [×]                                                             │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────┬─────────────────────────────────────────────────────────────┬─────────────────┐
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
-│ (Players)      │                                                             │ (Vertical Tabs) │
+│ (Players)      │                                                             │ (Popout Surface)│
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Notes           │
-│  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Journal (RO)    │
+│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Information:    │
+│  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Campaign (RO)   │
 │  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search          │
-│  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ History (RO)    │
-│────────────────│  │ CHAT WINDOW                                            │ │ Settings        │
+│  • Mira 🔇     │  ├────────────────────────────────────────────────────────┤ │ Notes (RO)      │
+│────────────────│  │ CHAT WINDOW                                            │ │ History (RO)    │
 │ [Group 1]      │  │  • Thorin: “I open the chest.”                         │ │                 │
 │────────────────│  ├────────────────────────────────────────────────────────┤ │                 │
 │                │  │ MESSAGE COMPOSER                                       │ │                 │
-│                │  │  > Type message… [Whisper ▼] [Attach] [IC]             │ │                 │
+│                │  │  > Type message… [Whisper ▼] [Attach] [IC]             │ │ Settings (RO):  │
+│                │  │                                                        │ │ Campaign/Profile│
 │                │  └────────────────────────────────────────────────────────┘ │                 │
 └────────────────┴─────────────────────────────────────────────────────────────┴─────────────────┘
 
@@ -98,23 +111,25 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme]                          [Connection Status ●] │
+│ TOOLBAR: [Logo & Title] [Audio Devices] [Theme] [Settings] [Information] [Connection Status ●] │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN: Spectator Mode | Session 12 | 02:14:33                                               │
+│ CAMPAIGN: Spectator Mode | Session 12 | 02:14:33 | [Session Cog]                               │
 │ TOASTS: [Session Started] [×]                                                                  │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────┬─────────────────────────────────────────────────────────────┬─────────────────┐
 │ LEFT PANEL     │ CENTER PANEL                                                │ RIGHT PANEL     │
-│ (Read‑Only)    │                                                             │ (Vertical Tabs) │
+│ (Read‑Only)    │                                                             │ (Popout Surface)│
 │────────────────│  ┌────────────────────────────────────────────────────────┐ │─────────────────│
-│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Notes (RO)      │
-│  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Journal (RO)    │
+│ [Main Group]   │  │ GROUP: Main Hall                                       │ │ Information:    │
+│  • Thorin 🔊   │  ├────────────────────────────────────────────────────────┤ │ Campaign (RO)   │
 │  • Lyra        │  │ [Chat ▼] [Notes]                                       │ │ Search (RO)     │
-│  • Mira        │  ├────────────────────────────────────────────────────────┤ │ History (RO)    │
-│────────────────│  │ READ‑ONLY CHAT WINDOW                                  │ │ Settings        │
+│  • Mira        │  ├────────────────────────────────────────────────────────┤ │ Notes (RO)      │
+│────────────────│  │ READ‑ONLY CHAT WINDOW                                  │ │ History (RO)    │
 │ [Group 1]      │  │  • Mira: “I scout ahead.”                              │ │                 │
 │────────────────│  └────────────────────────────────────────────────────────┘ │                 │
+│                │                                                             │ Settings (RO):  │
+│                │                                                             │ Campaign/Profile│
 └────────────────┴─────────────────────────────────────────────────────────────┴─────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -144,7 +159,7 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 │ LEFT PANEL     │ CENTER PANEL                                         │ PINNED RIGHT PANEL       │
 │ (unchanged)    │ (chat/notes, flexible width)                         │ (always open, one tab)   │
 │────────────────│───────────────────────────────────────────────────────│──────────────────────────│
-│ Group + Roster │ Chat + Composer                                      │ Notes / Search / History │
+│ Group + Roster │ Chat + Composer                                      │ Information/Settings     │
 │ Voice controls │                                                       │ (click right icon swaps) │
 └────────────────┴──────────────────────────────────────────────────────┴──────────────────────────┘
 ```

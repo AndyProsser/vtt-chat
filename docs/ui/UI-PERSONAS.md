@@ -31,6 +31,20 @@ Mode activation policy:
 - DM Desktop Command auto-enables for DM on eligible widths.
 - Non-DM personas may opt in on eligible widths.
 
+Topbar popout panel model:
+
+- Settings and Information are opened from topbar icons.
+- Session settings open from a small cog in the campaign/session header.
+- Information tab order is `Campaign | Search | Notes | Journal | History`.
+- Journal is a FUTURE feature and is feature-flagged off by default.
+
+Settings access policy:
+
+- System settings apply to defaults for newly created campaigns only.
+- Campaign settings are DM-editable.
+- Player and Spectator can view campaign settings read-only by default.
+- DM can hide campaign settings from non-DM personas.
+
 Detailed persona companion docs:
 
 - [Combined Persona Comparison Sheet](personas/COMPARISON-SHEET.md)
@@ -320,6 +334,25 @@ Minimalist Mobile reminder:
 | Assistant DM | Full (except DM‑only) |
 | Player       | Own + shared          |
 | Spectator    | Global only           |
+
+### **Settings and Information Access**
+
+| Panel / Action                  | DM     | Player      | Spectator   |
+| ------------------------------- | ------ | ----------- | ----------- |
+| Open topbar Settings            | Yes    | Yes         | Yes         |
+| Edit Campaign settings          | Yes    | No          | No          |
+| View Campaign settings          | Yes    | Yes (RO)    | Yes (RO)    |
+| DM can hide campaign settings   | Yes    | n/a         | n/a         |
+| Open topbar Information         | Yes    | Yes         | Yes         |
+| Information > Campaign          | Edit   | Read-only   | Read-only   |
+| Information > Search            | Full   | Full        | Read-only   |
+| Information > Notes             | Full   | Read-only\* | Read-only\* |
+| Information > Journal           | Future | Future      | Future      |
+| Information > History           | Full   | Read-only   | Read-only   |
+| Session settings popover (edit) | Yes    | No          | No          |
+| Session settings popover (view) | Yes    | Yes (RO)    | Yes (RO)    |
+
+`*` DM can hand out notes using `PRIVATE | PARTY | SELECTED` permissions.
 
 ---
 

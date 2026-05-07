@@ -84,3 +84,34 @@ Minimalist Mobile behavior:
 - Left panel can expand to full-width overlay and collapse again.
 - Right-panel icons move to a bottom dock and open popovers.
 - Show one-time dismissible warning for DM users that mobile is not command-optimal.
+
+## Popout Panel Expansion (Approved 2026-05-07)
+
+Two panel families are now part of the W0 shell expansion:
+
+1. Settings (topbar icon)
+2. Information (topbar icon)
+
+Settings details:
+
+- Sections: `System | Campaign | Profile`
+- `System` applies defaults for newly created campaigns only.
+- `Campaign` controls per-campaign feature flags and limits.
+- Campaign edit permissions: DM only.
+- Player/spectator can view campaign settings read-only by default.
+- DM may hide campaign settings from non-DM users.
+
+Session settings:
+
+- Opened from session header cog as a compact popover.
+- Fields: session name, markdown description, timer override.
+- DM edits; player/spectator read-only.
+- Timer override may exceed campaign default with warning-only UX.
+
+Information details:
+
+- Canonical tab order: `Campaign | Search | Notes | Journal | History`.
+- `Journal` is FUTURE and feature-flagged off by default.
+- `Search` spans session/chat data, summaries, and visible notes.
+- `Notes` is read-focused with text filter and DM handout permissions.
+- Notes handout model: `PRIVATE | PARTY | SELECTED`.

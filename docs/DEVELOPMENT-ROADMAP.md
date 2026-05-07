@@ -18,6 +18,7 @@ Active planning source of truth: [ROADMAP.md](../ROADMAP.md)
 Recent planning additions (2026-05-06) are tracked in the active roadmap:
 
 - W0 frontend surface completion (right-panel functionality, global settings/profile, and connection status UX matrix).
+- W0 topbar panel rollout (Settings/Information popout entry model and session settings cog popover).
 - W6 follow-up for shared constants/common-code consolidation into `shared/` where cross-app reuse is appropriate.
 - W7 follow-up for admin-specific constants centralization with explicit admin-vs-shared boundaries.
 - Canonical connection status implementation checklist (shared enums + mapping keys) is defined in `ROADMAP.md` under "Connection Status Implementation Checklist".

@@ -14,7 +14,7 @@ Toolbar
 Campaign Info + System Toasts
 Left Panel (Players)
 Center Panel (Chat / Notes)
-Right Panel (Vertical Tabs + Slide‑In Panels)
+Right Panel (Slide‑In Popout Surface)
 ```
 
 Persona differences are expressed through **visibility**, **permissions**, and **panel availability**, not through structural changes.
@@ -53,9 +53,9 @@ Right-panel behavior by mode:
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ TOOLBAR: Audio Devices | Theme | Connection Status                           │
+│ TOOLBAR: Audio Devices | Theme | Connection Status | Settings | Information  │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ CAMPAIGN INFO: Campaign Name | DM | Session ## | Time                        │
+│ CAMPAIGN INFO: Campaign Name | DM | Session ## | Time | Session Cog          │
 │ SYSTEM TOASTS (Dismissable, stacked, temporary)                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
@@ -64,8 +64,8 @@ Right-panel behavior by mode:
 │ Player List   │  [Group Header]                               │ Vertical Tabs │
 │ (Grouped)     │  [Chat ▼ | Notes]                             │ Slide‑In      │
 │ Collapsible   │-----------------------------------------------│ Panels        │
-│ Avatar‑First  │  Chat Window                                  │ (Settings is  │
-│ DM Highlight  │  Message Composer                             │ last tab)     │
+│ Avatar‑First  │  Chat Window                                  │ (Topbar-driven│
+│ DM Highlight  │  Message Composer                             │ content)      │
 └───────────────┴───────────────────────────────────────────────┴───────────────┘
 ```
 
@@ -169,7 +169,7 @@ Shows:
 
 - Chat is default
 - Notes replaces chat when selected
-- Notes are also accessible via right‑panel Notes tab
+- Notes are also accessible via Information > Notes
 
 ### Notes in Chat
 
@@ -208,39 +208,45 @@ Persona rules:
 ## 6. Right Panel — Vertical Tabs + Slide‑In Panels
 
 The right panel contains **secondary tools**.
-Tabs vary by persona.
+Topbar-driven panel groups:
 
-### Tab Order (DM)
+- Settings: `SYSTEM | CAMPAIGN | PROFILE`
+- Information: `CAMPAIGN | SEARCH | NOTES | JOURNAL | HISTORY`
 
-1. Groups
-2. Audio
-3. Search
-4. Notes
-5. Journal
-6. History
-7. **Settings (always last)**
+Journal behavior:
 
-Settings panel expectations:
+- `JOURNAL` tab exists in Information, but is feature-flagged off by default for current release.
 
-- Settings is a global surface, not session-scoped only.
-- The same panel supports in-session and out-of-session access.
+### Settings Panel Access
+
+1. Settings opens from topbar settings icon.
+2. Campaign settings are DM-editable.
+3. Players and spectators can view campaign settings read-only by default.
+4. DM can hide campaign settings from non-DM users.
+
+System settings expectations:
+
+- System settings define defaults for newly created campaigns.
+- System settings never mutate existing campaigns.
 - User profile settings are included in this panel.
 
-### Tab Order (Player)
+### Session Settings Popover
 
-1. Notes
-2. Journal (read‑only)
-3. Search
-4. History (read‑only)
-5. **Settings**
+- Opened from campaign/session row cog icon.
+- Session-scoped fields:
+  - Session name
+  - Session description (markdown)
+  - Session timer override
+- DM can edit.
+- Players and spectators can view read-only.
+- Timer override can exceed campaign default with warning-only UX.
 
-### Tab Order (Spectator)
+### Information Panel Behavior
 
-1. Notes (global only)
-2. Journal (read‑only)
-3. Search (read‑only)
-4. History (read‑only)
-5. **Settings**
+- Campaign tab: campaign name, description, and banner.
+- Search tab: full-text query over session/chat data, summary data, and visible notes.
+- Notes tab: read-focused list with text filter; DM can edit and hand out notes.
+- History tab: reverse-chronological sessions; opening one shows session chat log (summary first when enabled).
 
 ### Slide‑In Panels
 
@@ -301,7 +307,7 @@ Opacity: 0 → 1
 Toolbar
 Campaign Info + Toasts
 DM Voice Bar
-Left Panel | Center Panel | Right Panel (full tabs)
+Left Panel | Center Panel | Right Panel (popout surface)
 ```
 
 On `>=1280px`: DM Desktop Command behavior applies by default (one pinned right panel).
@@ -311,7 +317,7 @@ On `>=1280px`: DM Desktop Command behavior applies by default (one pinned right 
 ```text
 Toolbar
 Campaign Info + Toasts
-Left Panel | Center Panel | Right Panel (limited tabs)
+Left Panel | Center Panel | Right Panel (popout surface)
 ```
 
 On `>=1280px`: players may opt into DM Desktop Command-style pinned panel behavior.
@@ -321,7 +327,7 @@ On `>=1280px`: players may opt into DM Desktop Command-style pinned panel behavi
 ```text
 Toolbar
 Campaign Info + Toasts
-Left Panel | Center Panel (read‑only) | Right Panel (read‑only tabs)
+Left Panel | Center Panel (read‑only) | Right Panel (read‑only popouts)
 ```
 
 On `<=767px`: all personas use Minimalist Mobile layout conventions.

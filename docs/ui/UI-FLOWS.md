@@ -320,6 +320,123 @@ User opens Settings from authenticated shell.
 
 ---
 
+### **6.3 DM Updates Campaign Feature Toggles**
+
+**UI Action:**
+DM opens Settings and edits campaign-scoped toggles.
+
+**Flow:**
+
+1. `settings/updateCampaignToggles`
+2. Reducer: `settingsReducer.updateCampaignToggles`
+3. Store updates:
+   - `settingsStore.campaign.allowDmVoices`
+   - `settingsStore.campaign.allowEnvironments`
+   - `settingsStore.campaign.allowConditions`
+   - `settingsStore.campaign.allowPrivateGroupRequests`
+   - `settingsStore.campaign.allowSpectators`
+   - `settingsStore.campaign.spectatorLimit`
+   - `settingsStore.campaign.lateJoinGraceMinutes`
+   - `settingsStore.campaign.defaultSessionLimitMinutes`
+   - `settingsStore.campaign.recordingEnabled` (future)
+   - `settingsStore.campaign.transcriptionEnabled` (future)
+4. UI updates:
+   - Updated toggles are reflected immediately in settings UI
+   - Controlled features are shown/hidden/enabled/disabled by policy
+
+---
+
+### **6.4 User Opens Information Panel from Topbar**
+
+**UI Action:**
+User clicks the topbar Information icon.
+
+**Flow:**
+
+1. `ui/openPanel`
+2. Reducer: `uiReducer.openPanel`
+3. Store updates:
+   - `uiStore.activeRightPanel = 'information'`
+   - `uiStore.activeInformationTab = 'CAMPAIGN'`
+4. UI updates:
+   - Information panel opens with tabs in canonical order:
+     - `CAMPAIGN`, `SEARCH`, `NOTES`, `JOURNAL`, `HISTORY`
+
+---
+
+### **6.5 DM Opens Session Settings Popover**
+
+**UI Action:**
+DM clicks session-header cog icon.
+
+**Flow:**
+
+1. `session/openSettingsPopover`
+2. Reducer: `sessionReducer.openSettingsPopover`
+3. Store updates:
+   - `sessionStore.settingsPopoverOpen = true`
+4. UI updates:
+   - Session settings popover opens with:
+     - session name
+     - markdown description
+     - timer override
+
+---
+
+### **6.6 DM Saves Session Settings**
+
+**UI Action:**
+DM saves session settings popover.
+
+**Flow:**
+
+1. `session/updateMetadata`
+2. Reducer: `sessionReducer.updateMetadata`
+3. Store updates:
+   - `sessionStore.name`
+   - `sessionStore.descriptionMarkdown`
+   - `sessionStore.timerOverrideMinutes`
+4. UI updates:
+   - Updated values are visible to all participants
+   - If timer exceeds campaign default, warning badge/copy is shown (no hard block)
+
+---
+
+### **6.7 DM Updates Note Handout Permissions**
+
+**UI Action:**
+DM edits note visibility in Information > Notes.
+
+**Flow:**
+
+1. `notes/updateVisibility`
+2. Reducer: `notesReducer.updateVisibility`
+3. Store updates:
+   - `notesStore.items[noteId].accessLevel = 'PRIVATE' | 'PARTY' | 'SELECTED'`
+   - `notesStore.items[noteId].selectedPlayerIds`
+4. UI updates:
+   - Notes list visibility recalculates by persona and permission scope
+
+---
+
+### **6.8 User Opens Session History Entry**
+
+**UI Action:**
+User opens one session row in Information > History.
+
+**Flow:**
+
+1. `history/openSession`
+2. Reducer: `historyReducer.openSession`
+3. Store updates:
+   - `historyStore.activeSessionId`
+   - `historyStore.activeSessionChatLog`
+4. UI updates:
+   - Session chat log is displayed
+   - If summaries are enabled, summary content appears at the top
+
+---
+
 ## 7. Responsive Mode Flows
 
 ### **7.1 Mode Resolution on Resize**
@@ -392,11 +509,11 @@ DM enters `MINIMALIST_MOBILE` for first time on device/session.
 
 ---
 
-## 7. Connection Status Icon Flows
+## 8. Connection Status Icon Flows
 
 Connection status naming and mapping must use canonical enums from the roadmap implementation checklist.
 
-### **7.1 Outside Campaign Status Update**
+### **8.1 Outside Campaign Status Update**
 
 **Triggered by:**
 Core WS transport state change.
@@ -415,7 +532,7 @@ Core WS transport state change.
      - CONNECTING -> YELLOW
      - ERROR -> RED
 
-### **7.2 Inside Campaign Status Update (Core WS + LiveKit)**
+### **8.2 Inside Campaign Status Update (Core WS + LiveKit)**
 
 **Triggered by:**
 Core WS or LiveKit transport state change.

@@ -141,16 +141,16 @@ Known readiness gap classes:
 
 ## 3) Workstreams
 
-| ID  | Workstream                  | Status      | Scope                                                                            |
-| --- | --------------------------- | ----------- | -------------------------------------------------------------------------------- |
-| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, settings/profile usability, connection status UX  |
-| W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, fanout/load validation, audio durability  |
-| W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                |
-| W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks      |
-| W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through        |
-| W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts |
-| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3 |
-| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows |
+| ID  | Workstream                  | Status      | Scope                                                                                                                      |
+| --- | --------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX |
+| W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, fanout/load validation, audio durability                                            |
+| W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                                                          |
+| W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks                                                |
+| W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through                                                  |
+| W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                           |
+| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                           |
+| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                           |
 
 ---
 
@@ -184,6 +184,14 @@ Terminology note for this stage:
 - DM Desktop Command defaults to last-used panel; DM auto-enabled and non-DM users can opt in
 - Minimalist Mobile: compact left column (group icons + avatars + mute/meter), expandable full-width left overlay, bottom-docked right-panel icons
 - Minimalist Mobile DM warning: one-time dismissible banner for non-optimal DM command experience
+- Topbar popout model: Settings and Information are primary panel entry points
+- Settings sections: `System | Campaign | Profile` (`System` sets defaults for new campaigns only)
+- Campaign settings access: DM edits; player/spectator read-only by default; DM can hide campaign settings from non-DM users
+- Session settings popover: opened from session-header cog; DM edits name/markdown description/timer override; players read-only
+- Session timer override: may exceed campaign default with warning-only UX
+- Information tabs: `Campaign | Search | Notes | Journal | History` (Journal feature-flagged off by default)
+- Notes handout permissions: `PRIVATE | PARTY | SELECTED` (selected players may be offline)
+- Campaign panel extension sync: enabled by default; DM can disable external updates
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
 - Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
 - Environment icons (compact, hover tooltip, DM click to edit)
@@ -238,6 +246,34 @@ Terminology note for this stage:
 
 ---
 
+### W0 Subtask: Topbar Settings and Information Panels
+
+**Status**: Design finalized, documentation expansion in progress
+**Related Docs**: [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [UI-FLOWS.md](docs/ui/UI-FLOWS.md), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [UI-COMPONENT-PROPS.md](docs/ui/UI-COMPONENT-PROPS.md), [UI-COMPONENT-INTERFACES.md](docs/ui/UI-COMPONENT-INTERFACES.md)
+
+**Scope**: Implement and harden the topbar-driven popout panel model with Settings and Information as primary entry points, plus session settings cog popover behavior.
+
+**Delivery checklist**:
+
+- [ ] Topbar Settings panel entry is available and consistent across eligible personas.
+- [ ] Topbar Information panel entry is available and consistent across eligible personas.
+- [ ] Settings sections support `System | Campaign | Profile`.
+- [ ] Campaign settings are DM-editable; non-DM users are read-only by default.
+- [ ] DM can hide campaign settings for non-DM users.
+- [ ] Session settings cog popover supports session name, markdown description, and timer override.
+- [ ] Session timer override supports warning-only exceedance over campaign default.
+- [ ] Information tab order is canonical: `Campaign | Search | Notes | Journal | History`.
+- [ ] Journal is feature-flagged off by default.
+- [ ] Notes handout permissions enforce `PRIVATE | PARTY | SELECTED` with offline roster targeting support.
+
+**Definition of done**:
+
+- UX behavior matches W0 key decisions.
+- Access control rules are enforced in UI behavior and API contract usage.
+- Cross-persona/read-only behaviors are covered by UI tests and docs parity checks.
+
+---
+
 ### Latest Delivered (W1/W2)
 
 - Added backend multi-client reconnect soak suite for concurrent reconnect fanout, session isolation, and FIFO recovery behavior (`backend/tests/integration/multi-client-reconnect.integration.test.ts`).
@@ -261,15 +297,19 @@ Terminology note for this stage:
 ### W0: Frontend Surface Completion
 
 1. Finish right-panel screens and layouts that are currently non-functional or not production-ready.
-2. Rework global user settings so the same panel works both in-session and out-of-session.
-3. Add user profile information to global settings with clear ownership and edit flow.
-4. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon.
-5. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment.
+2. Roll out topbar Settings and Information panel entry model, including canonical Information tab order and Journal feature-flag behavior.
+3. Rework global user settings so the same settings surface works both in-session and out-of-session.
+4. Add campaign settings access controls (DM edit, non-DM read-only default, DM hide option) and include user profile flow ownership.
+5. Add session settings cog popover with DM edit permissions, non-DM read-only visibility, and timer-override warning behavior.
+6. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon.
+7. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment.
 
 Definition of done:
 
 - High-use right-panel screens are functionally complete and interaction-tested.
 - Global user settings + profile flows are usable both inside and outside session context.
+- Topbar Settings/Information panel behavior is complete and persona-permission tested.
+- Session settings popover behavior is complete and persona-permission tested.
 - Main status icon behavior matches the defined outside-campaign and inside-campaign matrix.
 - Audio/LiveKit indicator remains subtle while still escalating the main status icon on true audio-connection failure.
 

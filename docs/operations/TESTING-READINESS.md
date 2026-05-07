@@ -386,17 +386,54 @@ Use this before moving to alpha, beta, and general availability:
 
 Tiny test data matrix (state inputs -> expected icon/color):
 
-| statusContext       | coreWsState | livekitState    | expectedStatusIconState | expectedStatusColorKey |
-| ------------------- | ----------- | --------------- | ----------------------- | ---------------------- |
-| OUTSIDE_CAMPAIGN    | CONNECTED   | NOT_APPLICABLE  | OK                      | GREEN                  |
-| OUTSIDE_CAMPAIGN    | CONNECTING  | NOT_APPLICABLE  | CONNECTING              | YELLOW                 |
-| OUTSIDE_CAMPAIGN    | ERROR       | NOT_APPLICABLE  | ERROR                   | RED                    |
-| INSIDE_CAMPAIGN     | CONNECTED   | CONNECTED       | OK                      | GREEN                  |
-| INSIDE_CAMPAIGN     | CONNECTED   | CONNECTING      | OK_PARTIAL              | PALE_GREEN             |
-| INSIDE_CAMPAIGN     | CONNECTING  | CONNECTING      | CONNECTING              | YELLOW                 |
-| INSIDE_CAMPAIGN     | CONNECTED   | ERROR           | DEGRADED_AUDIO          | ORANGE                 |
-| INSIDE_CAMPAIGN     | ERROR       | CONNECTED       | ERROR                   | RED                    |
-| INSIDE_CAMPAIGN     | CONNECTING  | ERROR           | ERROR                   | RED                    |
+| statusContext    | coreWsState | livekitState   | expectedStatusIconState | expectedStatusColorKey |
+| ---------------- | ----------- | -------------- | ----------------------- | ---------------------- |
+| OUTSIDE_CAMPAIGN | CONNECTED   | NOT_APPLICABLE | OK                      | GREEN                  |
+| OUTSIDE_CAMPAIGN | CONNECTING  | NOT_APPLICABLE | CONNECTING              | YELLOW                 |
+| OUTSIDE_CAMPAIGN | ERROR       | NOT_APPLICABLE | ERROR                   | RED                    |
+| INSIDE_CAMPAIGN  | CONNECTED   | CONNECTED      | OK                      | GREEN                  |
+| INSIDE_CAMPAIGN  | CONNECTED   | CONNECTING     | OK_PARTIAL              | PALE_GREEN             |
+| INSIDE_CAMPAIGN  | CONNECTING  | CONNECTING     | CONNECTING              | YELLOW                 |
+| INSIDE_CAMPAIGN  | CONNECTED   | ERROR          | DEGRADED_AUDIO          | ORANGE                 |
+| INSIDE_CAMPAIGN  | ERROR       | CONNECTED      | ERROR                   | RED                    |
+| INSIDE_CAMPAIGN  | CONNECTING  | ERROR          | ERROR                   | RED                    |
+
+### Topbar Panel Acceptance (W0)
+
+- [ ] Topbar Settings entry opens the settings panel in-session and out-of-session for eligible personas.
+- [ ] Topbar Information entry opens the information panel with default tab `CAMPAIGN`.
+- [ ] Information tab order is canonical: `CAMPAIGN | SEARCH | NOTES | JOURNAL | HISTORY`.
+- [ ] Journal tab is feature-flagged off by default in current release.
+- [ ] Campaign settings are editable by DM only.
+- [ ] Player and spectator campaign settings view is read-only by default.
+- [ ] DM hide-campaign-settings behavior is enforced for non-DM personas.
+- [ ] Session settings popover opens from campaign/session header cog.
+- [ ] Session settings popover enforces DM-edit, non-DM read-only behavior.
+- [ ] Session timer override above campaign default shows warning-only UX (no hard block).
+- [ ] Notes visibility controls enforce `PRIVATE | PARTY | SELECTED` semantics.
+- [ ] `SELECTED` notes handout supports offline roster members.
+- [ ] History panel opens selected session log and surfaces summary first when summaries are enabled.
+- [ ] Search panel queries session/chat content, summaries, and visible notes only.
+
+### End-to-End Panel QA Matrix (W0)
+
+Use this matrix for deterministic QA execution across personas.
+
+| Persona   | Panel/Entry              | Action                                                       | Expected outcome                                                                 |
+| --------- | ------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | -------- | -------- | ------- | -------- |
+| DM        | Topbar Settings          | Open Settings in-session and out-of-session                  | Panel opens in both contexts with sections `System                               | Campaign | Profile` |
+| DM        | Settings > Campaign      | Toggle campaign feature flag (for example `allowConditions`) | Toggle persists and related UI capabilities update immediately                   |
+| Player    | Settings > Campaign      | Attempt to edit campaign setting                             | Controls are read-only; no mutation event is emitted                             |
+| Spectator | Settings > Campaign      | Open campaign settings                                       | Campaign settings are visible read-only unless DM has hidden panel               |
+| DM        | Session header cog       | Open Session Settings popover                                | Popover opens with session name, markdown description, and timer override fields |
+| DM        | Session Settings popover | Save timer override greater than campaign default            | Save succeeds; warning-only UX appears; no hard validation block                 |
+| Player    | Session Settings popover | Open and inspect fields                                      | Values are visible but all fields are read-only                                  |
+| DM        | Topbar Information       | Open panel and inspect tabs                                  | Tabs appear in canonical order: `Campaign                                        | Search   | Notes    | Journal | History` |
+| DM        | Information > Notes      | Set note visibility to `SELECTED` and choose offline players | Visibility persists and selected offline roster members are retained             |
+| Player    | Information > Notes      | Open note list                                               | Read-focused list only; no DM-only edit/permission controls                      |
+| Any       | Information > History    | Open a prior session                                         | Session chat log opens; summary appears first when summaries are enabled         |
+| Any       | Information > Search     | Run query matching chat + notes                              | Results include permitted session/chat/summary/note matches only                 |
+| Any       | Information > Journal    | Open Journal tab when feature flag is off                    | Tab is hidden or disabled per feature-flag policy                                |
 
 ### Observability
 

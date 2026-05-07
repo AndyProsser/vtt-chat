@@ -35,7 +35,7 @@ These components define the structural regions of the SPA.
 ### **2.1 `<Toolbar />`**
 
 **Purpose:**
-Top‑level control strip for audio devices, theme, and connection status.
+Top‑level control strip for audio devices, theme, connection status, Settings, and Information.
 
 **Visible to:**
 All personas.
@@ -45,9 +45,13 @@ All personas.
 - Audio device selector
 - Theme toggle
 - Connection status indicator
+- Settings trigger icon
+- Information trigger icon
 
 **Notes:**
-Settings are _not_ in the toolbar (moved to last right‑panel tab).
+
+- Settings and Information are primary topbar entry points.
+- Session settings are opened from the campaign/session header via a small cog icon.
 
 ---
 
@@ -392,14 +396,47 @@ DM audio routing and bulk actions.
 
 ---
 
-## 7. Search, Journal, History, Settings
+## 7. Information & Settings Panels
 
 ---
 
-### **7.1 `<SearchPanel />`**
+### **7.1 `<InformationPanel />`**
 
 **Purpose:**
-Search across notes, chat, players, groups, metadata.
+Single topbar-opened panel that hosts informational tabs.
+
+**Default tab order:**
+
+1. Campaign
+2. Search
+3. Notes
+4. Journal
+5. History
+
+**Notes:**
+
+- Journal is a FUTURE feature and is feature-flagged off by default.
+- Information content is simple, read-focused, and low-friction.
+
+---
+
+### **7.2 `<CampaignInfoPanel />`**
+
+**Purpose:**
+Campaign name, description, and banner display for all personas.
+
+**Persona rules:**
+
+- DM: can edit and control extension sync policy.
+- Player: read-only.
+- Spectator: read-only.
+
+---
+
+### **7.3 `<SearchPanel />`**
+
+**Purpose:**
+Full-text search across session/chat data, summaries, and visible notes.
 
 **Persona rules:**
 
@@ -409,10 +446,41 @@ Search across notes, chat, players, groups, metadata.
 
 ---
 
-### **7.2 `<JournalPanel />`**
+### **7.4 `<NotesPanel />` (Information Tab Variant)**
 
 **Purpose:**
-Displays journal entries.
+Read-focused notes list with text filter.
+
+**Notes rules:**
+
+- Default mode is read-only list browsing.
+- DM has edit controls and handout permission controls.
+- Handout permission model: `PRIVATE | PARTY | SELECTED`.
+
+---
+
+### **7.5 `<JournalPanel />`**
+
+**Purpose:**
+FUTURE panel for DM/player thought capture and session reflection.
+
+**Persona rules:**
+
+- DM: planned write access (future)
+- Player: planned write access (future)
+- Spectator: read‑only
+
+---
+
+### **7.6 `<HistoryPanel />`**
+
+**Purpose:**
+Reverse-chronological session list; opening a session shows that session's chat log.
+
+**Notes:**
+
+- If summaries are enabled, summary content appears first.
+- Includes top-level filter over session name, chat data, and summary text.
 
 **Persona rules:**
 
@@ -422,25 +490,44 @@ Displays journal entries.
 
 ---
 
-### **7.3 `<HistoryPanel />`**
+### **7.7 `<SettingsPanel />`**
 
 **Purpose:**
-Timeline of campaign events.
+Topbar-opened settings surface with System and Campaign sections.
+
+**Sections:**
+
+- System settings: defaults for new campaigns only (does not mutate existing campaigns).
+- Campaign settings: per-campaign toggles and limits.
+- User profile: available to all users.
 
 **Persona rules:**
 
-- DM: full
-- Player: read‑only
-- Spectator: read‑only
+- DM: can edit campaign settings.
+- Player: read-only campaign view by default; DM can hide entire campaign settings panel.
+- Spectator: read-only campaign view by default; DM can hide entire campaign settings panel.
 
 ---
 
-### **7.4 `<SettingsPanel />`**
+### **7.8 `<SessionSettingsPopover />`**
 
 **Purpose:**
-User‑specific settings.
+Mini popover opened from session header cog for session-scoped overrides.
 
-**Always the last right‑panel tab.**
+**Contains:**
+
+- Session name
+- Session markdown description
+- Session timer limit override
+
+**Persona rules:**
+
+- DM can edit.
+- Player and Spectator can view read-only.
+
+**Notes:**
+
+- Timer can exceed campaign default, with warning-only UX.
 
 ---
 
@@ -456,6 +543,11 @@ Vertical tab selector.
 **Persona‑specific tab sets:**
 Defined in `UI-LAYOUT.md`.
 
+**Notes:**
+
+- Topbar Settings and Information are the primary entry points for these panel groups.
+- Right rail remains available for mode-specific utility navigation.
+
 ---
 
 ### **8.2 `<SlideInPanels />`**
@@ -470,19 +562,21 @@ Right‑side slide‑in (180ms, primary easing).
 
 ## 9. Persona Visibility Matrix
 
-| Component       | DM   | Player  | Spectator |
-| --------------- | ---- | ------- | --------- |
-| Toolbar         | ✔    | ✔       | ✔         |
-| CampaignInfo    | ✔    | ✔       | ✔         |
-| SystemToasts    | ✔    | ✔       | ✔         |
-| DMVoiceBar      | ✔    | ✖       | ✖         |
-| PlayerOverrides | ✔    | ✖       | ✖         |
-| MessageComposer | ✔    | ✔       | ✖         |
-| NotesPanel      | Full | Partial | RO        |
-| NotePopout      | Full | Partial | RO        |
-| RoomsPanel      | ✔    | ✖       | ✖         |
-| AudioPanel      | ✔    | ✖       | ✖         |
-| SettingsPanel   | ✔    | ✔       | ✔         |
+| Component              | DM   | Player  | Spectator |
+| ---------------------- | ---- | ------- | --------- |
+| Toolbar                | ✔    | ✔       | ✔         |
+| CampaignInfo           | ✔    | ✔       | ✔         |
+| SystemToasts           | ✔    | ✔       | ✔         |
+| DMVoiceBar             | ✔    | ✖       | ✖         |
+| PlayerOverrides        | ✔    | ✖       | ✖         |
+| MessageComposer        | ✔    | ✔       | ✖         |
+| NotesPanel             | Full | Partial | RO        |
+| NotePopout             | Full | Partial | RO        |
+| InformationPanel       | ✔    | ✔       | ✔         |
+| SessionSettingsPopover | Edit | RO      | RO        |
+| RoomsPanel             | ✔    | ✖       | ✖         |
+| AudioPanel             | ✔    | ✖       | ✖         |
+| SettingsPanel          | ✔    | ✔       | ✔         |
 
 ---
 

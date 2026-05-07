@@ -39,9 +39,10 @@ UI events fall into these categories:
 6. **Search Events**
 7. **Journal Events**
 8. **History Events**
-9. **Settings Events**
-10. **Toast Events**
-11. **UI View Events** (toggles, panel open/close)
+9. **Information Events**
+10. **Settings Events**
+11. **Toast Events**
+12. **UI View Events** (toggles, panel open/close)
 
 Each section below lists the events and reducer mappings.
 
@@ -189,6 +190,32 @@ Each section below lists the events and reducer mappings.
 
 **Reducer:**
 `uiReducer.closeNotePopout`
+
+---
+
+### **4.6 `notes/updateVisibility`**
+
+**Triggered by:**
+`<NotesPanel />` permission controls (DM)
+
+**Payload:**
+
+```ts
+{
+  noteId: string
+  accessLevel: 'PRIVATE' | 'PARTY' | 'SELECTED'
+  selectedPlayerIds?: string[]
+}
+```
+
+**Reducer:**
+`notesReducer.updateVisibility`
+
+**Persona Rules:**
+
+- DM: allowed
+- Player: never
+- Spectator: never
 
 ---
 
@@ -480,17 +507,115 @@ Each section below lists the events and reducer mappings.
 
 ## 10. History Events
 
-History is read‑only for Player/Spectator.
-
-No UI‑originating events.
+History is read-only for Player/Spectator.
 
 ---
 
-## 11. Settings Events
+### **10.1 `history/queryChange`**
+
+**Triggered by:**
+`<HistoryPanel onQueryChange />`
+
+**Payload:**
+
+```ts
+{
+  query: string
+}
+```
+
+**Reducer:**
+`historyReducer.setQuery`
 
 ---
 
-### **11.1 `settings/updateAudio`**
+### **10.2 `history/openSession`**
+
+**Triggered by:**
+`<HistoryPanel onOpenSession />`
+
+**Payload:**
+
+```ts
+{
+  sessionId: string
+}
+```
+
+**Reducer:**
+`historyReducer.openSession`
+
+**Persona Rules:**
+
+- DM: allowed
+- Player: allowed (read-only content)
+- Spectator: allowed (read-only content)
+
+---
+
+## 11. Information Events
+
+### **11.1 `information/setActiveTab`**
+
+**Triggered by:**
+`<InformationPanel onSelectTab />`
+
+**Payload:**
+
+```ts
+{
+  tab: 'CAMPAIGN' | 'SEARCH' | 'NOTES' | 'JOURNAL' | 'HISTORY'
+}
+```
+
+**Reducer:**
+`uiReducer.setActiveInformationTab`
+
+---
+
+### **11.2 `campaign/updateMetadata`**
+
+**Triggered by:**
+`<CampaignInfoPanel onUpdate />` (DM)
+
+**Payload:**
+
+```ts
+{
+  campaignName?: string
+  description?: string
+  bannerUrl?: string | null
+}
+```
+
+**Reducer:**
+`campaignReducer.updateMetadata`
+
+---
+
+### **11.3 `campaign/toggleExtensionSync`**
+
+**Triggered by:**
+`<CampaignInfoPanel onToggleSync />` (DM)
+
+**Payload:**
+
+```ts
+{
+  enabled: boolean
+}
+```
+
+**Reducer:**
+`settingsReducer.setExtensionCampaignSyncEnabled`
+
+---
+
+## 12. Settings Events
+
+---
+
+### **12.1 `settings/updateAudio`**
 
 **Triggered by:**
 `<SettingsPanel onUpdateAudio />`
@@ -506,7 +631,7 @@ Partial<AudioSettings>
 
 ---
 
-### **11.2 `settings/updateUI`**
+### **12.2 `settings/updateUI`**
 
 **Triggered by:**
 `<SettingsPanel onUpdateUI />`
@@ -522,11 +647,73 @@ Partial<UISettings>
 
 ---
 
-## 12. Toast Events
+### **12.3 `settings/updateCampaignToggles`**
+
+**Triggered by:**
+`<SettingsPanel onUpdateCampaignToggles />` (DM)
+
+**Payload:**
+
+```ts
+CampaignFeatureToggles
+```
+
+**Reducer:**
+`settingsReducer.updateCampaignToggles`
 
 ---
 
-### **12.1 `toast/dismiss`**
+### **12.4 `settings/updateSystemDefaults`**
+
+**Triggered by:**
+`<SettingsPanel onUpdateSystemDefaults />`
+
+**Payload:**
+
+```ts
+CampaignFeatureToggles
+```
+
+**Reducer:**
+`settingsReducer.updateSystemDefaults`
+
+**Rules:**
+
+- Applies to newly created campaigns only.
+- Does not mutate existing campaigns.
+
+---
+
+### **12.5 `session/updateMetadata`**
+
+**Triggered by:**
+`<SessionSettingsPopover onSave />` (DM)
+
+**Payload:**
+
+```ts
+{
+  sessionName: string
+  sessionDescriptionMarkdown: string
+  sessionTimerOverrideMinutes: number | null
+}
+```
+
+**Reducer:**
+`sessionReducer.updateMetadata`
+
+**Rules:**
+
+- Session timer override may exceed campaign default.
+- Exceeding default should produce warning-only UI behavior.
+
+---
+
+## 13. Toast Events
+
+---
+
+### **13.1 `toast/dismiss`**
 
 **Triggered by:**
 `<SystemToasts onDismiss />`
@@ -544,11 +731,11 @@ Partial<UISettings>
 
 ---
 
-## 13. UI View Events
+## 14. UI View Events
 
 ---
 
-### **13.1 `ui/toggleChatNotes`**
+### **14.1 `ui/toggleChatNotes`**
 
 **Triggered by:**
 `<ChatNotesToggle onChange />`
@@ -566,10 +753,10 @@ Partial<UISettings>
 
 ---
 
-### **13.2 `ui/openPanel`**
+### **14.2 `ui/openPanel`**
 
 **Triggered by:**
-`<RightTabBar onTabSelect />`
+Topbar Settings/Information icons, right-edge icon rail, or mobile bottom dock.
 
 **Payload:**
 
@@ -584,7 +771,7 @@ Partial<UISettings>
 
 ---
 
-### **13.3 `ui/closePanel`**
+### **14.3 `ui/closePanel`**
 
 **Triggered by:**
 `<SlideInPanels onClose />`
@@ -594,7 +781,25 @@ Partial<UISettings>
 
 ---
 
-## 14. Summary
+### **14.4 `session/openSettingsPopover`**
+
+**Triggered by:**
+Session header cog icon.
+
+**Payload:**
+
+```ts
+{
+  open: true
+}
+```
+
+**Reducer:**
+`sessionReducer.openSettingsPopover`
+
+---
+
+## 15. Summary
 
 This file defines:
 

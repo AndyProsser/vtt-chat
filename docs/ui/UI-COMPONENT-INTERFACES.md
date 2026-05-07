@@ -157,6 +157,70 @@ export interface MobileDmWarningBannerProps {
 
 ---
 
+## **8. Settings & Information Interfaces**
+
+```ts
+export type SettingsSection = 'SYSTEM' | 'CAMPAIGN' | 'PROFILE'
+
+export type InformationTab = 'CAMPAIGN' | 'SEARCH' | 'NOTES' | 'JOURNAL' | 'HISTORY'
+
+export type NotesAccessLevel = 'PRIVATE' | 'PARTY' | 'SELECTED'
+
+export interface SettingsPanelProps {
+  persona: Persona
+  activeSection: SettingsSection
+  canViewCampaignSettings: boolean
+  canEditCampaignSettings: boolean
+  onSelectSection: (section: SettingsSection) => void
+}
+
+export interface CampaignFeatureToggles {
+  allowDmVoices: boolean
+  allowEnvironments: boolean
+  allowConditions: boolean
+  allowPrivateGroupRequests: boolean
+  allowSpectators: boolean
+  spectatorLimit: number | null
+  lateJoinGraceMinutes: number | null
+  defaultSessionLimitMinutes: number | null
+  recordingEnabled: boolean
+  transcriptionEnabled: boolean
+  extensionCampaignSyncEnabled: boolean
+}
+
+export interface SessionSettingsPopoverProps {
+  persona: Persona
+  sessionName: string
+  sessionDescriptionMarkdown: string
+  campaignDefaultTimerMinutes: number | null
+  sessionTimerOverrideMinutes: number | null
+  canEdit: boolean
+  onSave: (payload: {
+    sessionName: string
+    sessionDescriptionMarkdown: string
+    sessionTimerOverrideMinutes: number | null
+  }) => void
+}
+
+export interface InformationPanelProps {
+  persona: Persona
+  activeTab: InformationTab
+  availableTabs: InformationTab[]
+  onSelectTab: (tab: InformationTab) => void
+}
+
+export interface NotesPanelPermissionsProps {
+  persona: Persona
+  accessLevel: NotesAccessLevel
+  selectedPlayerIds: string[]
+  canEditPermissions: boolean
+  onChangeAccessLevel: (level: NotesAccessLevel) => void
+  onChangeSelectedPlayers: (playerIds: string[]) => void
+}
+```
+
+---
+
 ## All Interfaces Are Fully Compliant
 
 These interfaces:

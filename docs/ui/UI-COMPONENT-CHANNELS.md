@@ -19,6 +19,26 @@ Mode policy:
 - Non-DM users can opt in on eligible widths.
 - DM Desktop Command keeps exactly one right-side utility panel pinned open at all times (switch via right-edge icon rail).
 
+### Popout Panel Entry Model
+
+- Topbar opens two primary popout panel families:
+  - Settings: `System | Campaign | Profile`
+  - Information: `Campaign | Search | Notes | Journal | History`
+- Session settings are opened from a small cog in the campaign/session header.
+- Journal remains feature-flagged off by default for the current release.
+
+Access rules:
+
+- Campaign settings are DM-editable.
+- Player and spectator can view campaign settings read-only by default.
+- DM can hide campaign settings from non-DM users.
+- Session settings: DM edits; player/spectator read-only.
+
+Notes permission model:
+
+- DM handout visibility uses: `PRIVATE | PARTY | SELECTED`.
+- `SELECTED` supports offline roster members.
+
 ### Desktop (Wide Panel, 300px fixed width)
 
 ```text
