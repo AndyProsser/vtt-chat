@@ -137,6 +137,141 @@ describe('RoomSelector', () => {
     expect(screen.queryByText('No members in this group.')).toBeNull()
   })
 
+  it('keeps whisper docked and collapses other groups during drag in dense sessions', () => {
+    const { container } = render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 4,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-3'),
+                username: 'Kara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-4'),
+                username: 'Ivo',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-scouts'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 3,
+            participants: [
+              {
+                userId: asUuid('user-5'),
+                username: 'Nyra',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-6'),
+                username: 'Bex',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-7'),
+                username: 'Hale',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-ritual'),
+            name: 'Ritual',
+            type: RoomType.GROUP,
+            memberCount: 3,
+            participants: [
+              {
+                userId: asUuid('user-8'),
+                username: 'Orrin',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-9'),
+                username: 'Sia',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-10'),
+                username: 'Jax',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-whisper'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    expect(container.querySelector('.room-selector-whisper-dock')).toBeTruthy()
+    expect(
+      container
+        .querySelector('[aria-label="Group Scouts"] .room-selector-members-list')
+        ?.classList.contains('room-selector-members-list--constrained')
+    ).toBe(true)
+
+    fireEvent.dragStart(getDragUserButton('Tara'), {
+      dataTransfer: {
+        setData: vi.fn(),
+        getData: vi.fn(() => asUuid('user-2')),
+      },
+    })
+
+    expect(
+      screen.getByLabelText('Group Scouts').classList.contains('room-selector-item--drag-collapsed')
+    ).toBe(true)
+    expect(
+      screen.getByLabelText('Group Ritual').classList.contains('room-selector-item--drag-collapsed')
+    ).toBe(true)
+    expect(
+      screen
+        .getByLabelText('Group Main Table')
+        .classList.contains('room-selector-item--drag-collapsed')
+    ).toBe(false)
+  })
+
   it('shows optimistic group immediately while create request is pending', async () => {
     const onSelectRoom = vi.fn()
     let resolveFetch: ((value: Response) => void) | null = null
@@ -978,6 +1113,162 @@ describe('RoomSelector', () => {
         'http://localhost:3000/api/v1/rooms/room-target/members/move',
         expect.objectContaining({ method: 'POST' })
       )
+    })
+  })
+
+  it('moves participant via drag-and-drop onto another group', async () => {
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-target/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-target'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    const dragButton = getDragUserButton('Tara')
+    const dropTarget = getSelectGroupButton('Scouts').closest('section') as HTMLElement
+    const dragData: Record<string, string> = {}
+    const dataTransfer = {
+      setData: vi.fn((type: string, value: string) => {
+        dragData[type] = value
+      }),
+      getData: vi.fn((type: string) => dragData[type] || ''),
+    }
+
+    fireEvent.dragStart(dragButton, { dataTransfer })
+    fireEvent.dragOver(dropTarget, { dataTransfer })
+    fireEvent.drop(dropTarget, { dataTransfer })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-target/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+  })
+
+  it('calls DEV mock reset endpoint with session payload and shows disabled state while loading', async () => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    let resolveReset: ((response: Response) => void) | null = null
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveReset = resolve
+        })
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    const shuffleButton = screen.getByRole('button', { name: 'Reroll DEV mock players' })
+    expect(shuffleButton.hasAttribute('disabled')).toBe(false)
+
+    fireEvent.click(shuffleButton)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/dev/mock-players/reset',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ sessionId: 'session-1' }),
+        })
+      )
+    })
+
+    expect(shuffleButton.hasAttribute('disabled')).toBe(true)
+
+    resolveReset?.(
+      new Response(JSON.stringify({ ok: true, rerolledCount: 4 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    await waitFor(() => {
+      expect(shuffleButton.hasAttribute('disabled')).toBe(false)
     })
   })
 })

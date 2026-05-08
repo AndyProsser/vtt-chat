@@ -2,7 +2,10 @@
   border-radius: var(--radius-lg);
   padding: 0.75rem;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
+  min-height: 0;
+  max-height: min(72vh, calc(100dvh - 12rem));
 }
 
 .room-selector-header {
@@ -186,11 +189,36 @@
   background: color-mix(in srgb, var(--color-surface) 70%, transparent);
 }
 
+.room-selector-body {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.room-selector-stack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
 .room-selector-list {
   position: relative;
   z-index: 1;
   display: grid;
   gap: 0.45rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.2rem;
+}
+
+.room-selector-whisper-dock {
+  border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 58%, transparent);
+  padding-top: 0.45rem;
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .room-selector-group-section {
@@ -243,6 +271,7 @@
   padding: 0.5rem;
   display: grid;
   gap: 0.45rem;
+  min-height: 6.25rem;
 }
 
 .room-selector-dm__profile {
@@ -400,6 +429,14 @@
   gap: 0.24rem;
 }
 
+.room-selector-item--drag-collapsed {
+  opacity: 0.92;
+}
+
+.room-selector-item--selected-focus {
+  scroll-margin-block: 0.75rem;
+}
+
 .room-selector-item--collapsed .room-selector-item__header {
   padding-bottom: 0;
 }
@@ -525,6 +562,18 @@
 .room-selector-members-list {
   display: grid;
   gap: 0.5rem;
+  min-height: 0;
+}
+
+.room-selector-members-list--constrained {
+  max-height: 8.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.1rem;
+}
+
+.room-selector-members-list--selected {
+  max-height: clamp(6.25rem, 26vh, 16rem);
 }
 
 .room-selector-member {
@@ -821,6 +870,20 @@
   margin: 0;
   font-size: 0.74rem;
   color: var(--color-text-secondary);
+}
+
+@media (max-height: 820px) {
+  .room-selector {
+    max-height: min(78vh, calc(100dvh - 10rem));
+  }
+
+  .room-selector-members-list--constrained {
+    max-height: 7rem;
+  }
+
+  .room-selector-members-list--selected {
+    max-height: clamp(6.25rem, 22vh, 12rem);
+  }
 }
 
 .room-radial-backdrop {

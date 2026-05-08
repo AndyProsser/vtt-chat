@@ -130,8 +130,10 @@ export function RoomSelector({
   const [isDevResettingMocks, setIsDevResettingMocks] = useState(false)
   const createGroupWrapRef = useRef<HTMLDivElement | null>(null)
   const environmentPickerLayerRef = useRef<HTMLDivElement | null>(null)
+  const roomSectionRefs = useRef(new Map<UUID, HTMLElement>())
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
+  const draggedUserIdRef = useRef<UUID | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
   const whisperContextRef = useRef<WhisperContextSnapshot | null>(null)
@@ -200,6 +202,8 @@ export function RoomSelector({
   )
   const whisperParticipantCount = whisperRoom?.participants.length || 0
   const whisperActive = whisperParticipantCount > 0
+  const isDenseRoomLayout =
+    canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
 
   useEffect(() => {
     if (!broadcastModeEnabled && selectedRoomId) {
@@ -437,6 +441,19 @@ export function RoomSelector({
       return changed ? next : state
     })
   }, [visibleParticipants])
+
+  useEffect(() => {
+    if (!selectedRoomId) {
+      return
+    }
+
+    const selectedRoomNode = roomSectionRefs.current.get(selectedRoomId as UUID)
+    if (!selectedRoomNode || typeof selectedRoomNode.scrollIntoView !== 'function') {
+      return
+    }
+
+    selectedRoomNode.scrollIntoView({ block: 'nearest' })
+  }, [selectedRoomId])
 
   const handleEndWhisper = async () => {
     if (!whisperRoom) {
@@ -865,15 +882,34 @@ export function RoomSelector({
           const isEmptyGroup =
             participants.length === 0 && room.type !== RoomType.MAIN && !isGreenRoomName(room.name)
           const isWhisperGroup = isWhisperRoom(room)
-          const isCompactGroup = isEmptyGroup || isWhisperGroup
+          const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperGroup
+          const constrainMembersForDensity =
+            isDenseRoomLayout && !isWhisperGroup && !isEmptyGroup && participants.length > 2
+          const isCompactGroup = isEmptyGroup || isWhisperGroup || collapseForDrag
+          const memberListClassName = [
+            'room-selector-members-list',
+            isCompactGroup ? 'room-selector-members-list--hidden' : '',
+            constrainMembersForDensity ? 'room-selector-members-list--constrained' : '',
+            selected ? 'room-selector-members-list--selected' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
 
           return (
             <section
               key={room.id}
               className={`room-selector-item ${selected ? 'selected' : ''} ${
                 isPrivateDividerStart ? 'room-selector-item--private-divider' : ''
-              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''}`}
+              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''} ${collapseForDrag ? 'room-selector-item--drag-collapsed' : ''} ${selected && isDenseRoomLayout ? 'room-selector-item--selected-focus' : ''}`}
               aria-label={`Group ${room.name}`}
+              ref={(node) => {
+                if (node) {
+                  roomSectionRefs.current.set(room.id, node)
+                  return
+                }
+
+                roomSectionRefs.current.delete(room.id)
+              }}
               onDragOver={(event) => {
                 if (!canManageRooms || isGreenroom) {
                   return
@@ -886,6 +922,7 @@ export function RoomSelector({
                 }
                 event.preventDefault()
                 const droppedUserId = (event.dataTransfer.getData('text/plain') ||
+                  draggedUserIdRef.current ||
                   draggedUserId ||
                   '') as UUID | ''
 
@@ -894,6 +931,7 @@ export function RoomSelector({
                 }
 
                 setDraggedUserId(null)
+                draggedUserIdRef.current = null
               }}
             >
               <div className="room-selector-item__header">
@@ -1041,9 +1079,7 @@ export function RoomSelector({
                 ) : null}
               </div>
 
-              <div
-                className={`room-selector-members-list ${isCompactGroup ? 'room-selector-members-list--hidden' : ''}`}
-              >
+              <div className={memberListClassName}>
                 {participants.length === 0
                   ? null
                   : participants.map((member) => {
@@ -1066,6 +1102,7 @@ export function RoomSelector({
                                 }
                                 event.dataTransfer.setData('text/plain', member.userId)
                                 setDraggedUserId(member.userId)
+                                draggedUserIdRef.current = member.userId
                               }}
                               onContextMenu={(event) => {
                                 event.preventDefault()
@@ -1123,7 +1160,12 @@ export function RoomSelector({
                                 clearLongPressTimer()
                                 clearTouchFeedback()
                               }}
-                              onDragEnd={() => setDraggedUserId(null)}
+                              onDragEnd={() => {
+                                window.setTimeout(() => {
+                                  setDraggedUserId(null)
+                                  draggedUserIdRef.current = null
+                                }, 0)
+                              }}
                             >
                               <AvatarOverlay
                                 username={member.characterName || member.username}
@@ -1470,11 +1512,7 @@ export function RoomSelector({
           </div>
         </header>
 
-        <div
-          className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
-          role="list"
-          aria-label="Session groups"
-        >
+        <div className="room-selector-body">
           {dmParticipant && !isGreenroom ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
               <Tooltip>
@@ -1558,23 +1596,34 @@ export function RoomSelector({
             </section>
           ) : null}
 
-          {allRooms.length === 0 ? (
-            <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
-          ) : (
-            <>
-              {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
-              {otherRooms.length > 0
-                ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
-                    dividerOnly: true,
-                  })
-                : null}
-              {!isGreenroom && whisperRooms.length > 0
-                ? renderRoomSection('Whisper', whisperRooms, {
-                    dividerOnly: true,
-                  })
-                : null}
-            </>
-          )}
+          <div className="room-selector-stack">
+            <div
+              className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
+              role="list"
+              aria-label="Session groups"
+            >
+              {allRooms.length === 0 ? (
+                <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
+              ) : (
+                <>
+                  {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
+                  {otherRooms.length > 0
+                    ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
+                        dividerOnly: true,
+                      })
+                    : null}
+                </>
+              )}
+            </div>
+
+            {!isGreenroom && whisperRooms.length > 0 ? (
+              <div className="room-selector-whisper-dock">
+                {renderRoomSection('Whisper', whisperRooms, {
+                  dividerOnly: true,
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {moveError ? <p className="room-selector-error">{moveError}</p> : null}

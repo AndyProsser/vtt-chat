@@ -19,6 +19,7 @@ const prisma = getPrismaClient()
 const DEV_MOCK_PREFIX = 'dev_mock_'
 const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
 const DEV_MOCK_AVATAR_URL = '/branding/mock-races/adventurer-robot.svg'
+const MAX_DEV_MOCK_PLAYERS = 5
 
 const campaignRosterByCampaignId = new Map<UUID, string[]>()
 const sessionRosterBySessionId = new Map<UUID, string[]>()
@@ -258,7 +259,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function pickRosterSize(): number {
-  return 3 + Math.floor(Math.random() * 3)
+  return clamp(3 + Math.floor(Math.random() * 3), 1, MAX_DEV_MOCK_PLAYERS)
 }
 
 function pickLevels(count: number): number[] {
@@ -403,27 +404,63 @@ function ensureRosterMemory(
 ): string[] {
   if (campaignId) {
     if (!forceReroll && campaignRosterByCampaignId.has(campaignId)) {
-      return campaignRosterByCampaignId.get(campaignId) as string[]
+      const remembered = (campaignRosterByCampaignId.get(campaignId) as string[]).slice(
+        0,
+        MAX_DEV_MOCK_PLAYERS
+      )
+      campaignRosterByCampaignId.set(campaignId, remembered)
+      return remembered
     }
 
     const size = pickRosterSize()
     const slugs = shuffle(DND_ARCHETYPES)
       .slice(0, size)
       .map((entry) => entry.slug)
-    campaignRosterByCampaignId.set(campaignId, slugs)
-    return slugs
+    const limitedSlugs = slugs.slice(0, MAX_DEV_MOCK_PLAYERS)
+    campaignRosterByCampaignId.set(campaignId, limitedSlugs)
+    return limitedSlugs
   }
 
   if (!forceReroll && sessionRosterBySessionId.has(sessionId)) {
-    return sessionRosterBySessionId.get(sessionId) as string[]
+    const remembered = (sessionRosterBySessionId.get(sessionId) as string[]).slice(
+      0,
+      MAX_DEV_MOCK_PLAYERS
+    )
+    sessionRosterBySessionId.set(sessionId, remembered)
+    return remembered
   }
 
   const size = pickRosterSize()
   const slugs = shuffle(DND_ARCHETYPES)
     .slice(0, size)
     .map((entry) => entry.slug)
-  sessionRosterBySessionId.set(sessionId, slugs)
-  return slugs
+  const limitedSlugs = slugs.slice(0, MAX_DEV_MOCK_PLAYERS)
+  sessionRosterBySessionId.set(sessionId, limitedSlugs)
+  return limitedSlugs
+}
+
+async function removeMockMembersFromSession(
+  sessionId: UUID,
+  members: Array<{ userId: UUID; username: string }>
+): Promise<void> {
+  if (members.length === 0) {
+    return
+  }
+
+  const rooms = await getRooms(sessionId)
+
+  for (const member of members) {
+    for (const room of rooms) {
+      await leaveRoom({
+        sessionId,
+        roomId: room.id as UUID,
+        userId: member.userId,
+        state: PresenceState.OFFLINE,
+      })
+    }
+
+    await removeUserFromSession(sessionId, member.userId)
+  }
 }
 
 export async function seedMockPlayers(): Promise<void> {
@@ -474,14 +511,34 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
       sessionId,
       username: { startsWith: DEV_MOCK_PREFIX },
     },
+    orderBy: {
+      username: 'asc',
+    },
     select: {
       userId: true,
       username: true,
     },
   })
 
-  if (existingSessionMocks.length > 0) {
-    for (const member of existingSessionMocks) {
+  const retainedSessionMocks = existingSessionMocks.slice(0, MAX_DEV_MOCK_PLAYERS)
+  const overflowSessionMocks = existingSessionMocks.slice(MAX_DEV_MOCK_PLAYERS)
+
+  if (overflowSessionMocks.length > 0) {
+    await removeMockMembersFromSession(
+      sessionId,
+      overflowSessionMocks.map((member) => ({
+        userId: member.userId as UUID,
+        username: member.username,
+      }))
+    )
+    logger.warn(
+      'dev-mock-players',
+      `Trimmed ${overflowSessionMocks.length} excess DEV mock players from session ${sessionId}`
+    )
+  }
+
+  if (retainedSessionMocks.length > 0) {
+    for (const member of retainedSessionMocks) {
       await addUserToSession(sessionId, {
         id: member.userId as UUID,
         username: member.username,
@@ -498,7 +555,7 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
     }
 
     const existingUsers = await prisma.user.findMany({
-      where: { id: { in: existingSessionMocks.map((entry) => entry.userId) } },
+      where: { id: { in: retainedSessionMocks.map((entry) => entry.userId) } },
       select: { id: true, username: true, displayName: true, email: true },
     })
 
@@ -517,6 +574,7 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
   if (selectedArchetypes.length === 0) {
     selectedArchetypes = shuffle(DND_ARCHETYPES).slice(0, pickRosterSize())
   }
+  selectedArchetypes = selectedArchetypes.slice(0, MAX_DEV_MOCK_PLAYERS)
   const levels = pickLevels(selectedArchetypes.length)
   const selectedUsers: MockPlayerDef[] = []
 

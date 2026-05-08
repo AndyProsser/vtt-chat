@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
 import { DMEnvironmentSection } from '../audio/DMEnvironmentSection'
 import { DMPlayerOverridesSection } from '../audio/DMPlayerOverridesSection'
@@ -94,6 +94,7 @@ export function DMAudioControls({
   const [pendingOverrides, setPendingOverrides] = useState<Record<UUID, PendingOverride>>({})
   const [pendingRoomMoves, setPendingRoomMoves] = useState<Record<UUID, PendingMove>>({})
   const [draggedUserId, setDraggedUserId] = useState<UUID | null>(null)
+  const draggedUserIdRef = useRef<UUID | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -578,11 +579,23 @@ export function DMAudioControls({
         playersByRoom={playersByRoom}
         pendingRoomMoves={pendingRoomMoves}
         draggedUserId={draggedUserId}
-        onDragStart={setDraggedUserId}
-        onDragEnd={() => setDraggedUserId(null)}
+        onDragStart={(userId) => {
+          setDraggedUserId(userId)
+          draggedUserIdRef.current = userId
+        }}
+        onDragEnd={() => {
+          window.setTimeout(() => {
+            setDraggedUserId(null)
+            draggedUserIdRef.current = null
+          }, 0)
+        }}
         onDrop={(userId, roomId) => {
-          void moveParticipantToRoom(userId, roomId)
+          const resolvedUserId = userId || draggedUserIdRef.current
+          if (resolvedUserId) {
+            void moveParticipantToRoom(resolvedUserId, roomId)
+          }
           setDraggedUserId(null)
+          draggedUserIdRef.current = null
         }}
       />
 
