@@ -199,6 +199,10 @@ Spectator UX must feel:
 - Passive
 - Non‑interactive
 
+Exception:
+
+- During end-of-session finale cooldown, spectators may interact with players/DM in public stage chat/voice only.
+
 ---
 
 ## 5. Chat UX Principles
@@ -382,3 +386,152 @@ These UX Principles ensure that VTT‑Chat remains:
 - Emotionally supportive of tabletop play
 
 They are the foundation for every UI decision across the platform.
+
+---
+
+## 13. DM Experience Principles
+
+### **13.1 The 2‑Click Rule**
+
+Every DM action must be completable in ≤ 2 clicks or 1 drag.
+
+If it takes more, the design has failed.
+
+Examples:
+- Drag a player to a new group: 1 drag
+- Apply a condition: right-click → pick condition
+- Change a group environment: click icon → pick environment
+- Delete a group: click inline X
+
+### **13.2 Controls Must Not Distract**
+
+The DM is narrating, thinking three moves ahead, and managing five players simultaneously.
+
+UI complexity is the enemy of good storytelling. Every extra click is a moment stolen from the table.
+
+### **13.3 Power Without Complexity**
+
+The system gives the DM enormous power — silencing players, scrambling voices, setting the mood of the room — but these powers must feel effortless.
+
+The DM should feel like a wizard casting spells, not a sysadmin managing servers.
+
+### **13.4 DM Actions Must Be Reversible**
+
+Conditions can be cleared. Environments can be changed. Players can be moved back.
+
+The system supports experimentation without fear of permanent damage.
+
+---
+
+## 14. Player Experience Principles
+
+### **14.1 Players Must Know WHY**
+
+Whenever the audio changes, the player must see a clear explanation in their AudioPanel:
+
+- "Tavern environment — warm, reverberant"
+- "Condition: Drunk — voice wobble active"
+- "Silenced — only the DM can hear you"
+
+Mystery is for the fiction. Not the interface.
+
+### **14.2 Players Cannot Control DM Effects**
+
+Environment and condition effects are DM-applied. Players can see them but not remove them.
+
+This is intentional. The DM has authority over the table's experience.
+
+### **14.3 The Silence Is the Joke**
+
+When a player is silenced, they hear nothing unusual — but everyone else at the table stops hearing them. The ensuing chaos is the feature.
+
+The UI must make this clear to the silenced player: "You are silenced. Only the DM can hear you."
+
+### **14.4 Persistence Is Part of the Experience**
+
+Players returning after two weeks should be able to see what notes were given to them last session, what handouts were shared, and what their character looks like in the system.
+
+The app must remember so the players can focus on the story.
+
+---
+
+## 15. Greenroom UX Principles
+
+### **15.1 Greenroom Is Pure Staging Space**
+
+Greenroom is pre-show preparation space. It should remain uncluttered and calm.
+
+### **15.2 DM Group Management Lives in Rightbar During Greenroom**
+
+In greenroom state, the DM uses the rightbar Groups panel to create/configure groups. Group controls should not dominate the central greenroom staging experience.
+
+### **15.3 Spectators Never See Greenroom**
+
+Audience members do not see backstage activity. They wait for the show to begin.
+
+---
+
+## 16. Spectator Theatre Mode UX Principles
+
+### **16.1 Session States Map to Theatre Semantics**
+
+- `ACTIVE`: curtain up, spectators may observe public stage activity.
+- `PAUSED`: intermission, curtain down, spectators see/hear nothing.
+- `ENDED`: finale cooldown, public thank-you moment before backstage return.
+
+### **16.2 Intermission Resets the Stage View**
+
+On pause, players/DM return to `MAIN` with no active effects for stage prep. They are not moved to greenroom during intermission.
+
+On resume, the curtain goes up and pre-intermission effects are restored.
+
+### **16.3 Finale Cooldown Is Explicit and Configurable**
+
+If spectators are enabled, session end enters a cooldown window (default 60 seconds, configurable in campaign settings).
+
+During cooldown:
+
+- Players/DM are in `MAIN` with no effects
+- Spectators can interact via public voice/chat only
+- DM can extend the cooldown before it expires
+
+After cooldown expires, everyone exits to greenroom.
+
+### **16.4 Cooldown Content Is Ephemeral**
+
+Cooldown interactions are not included in session recording/history and are purged from session logs. Temporary visibility may exist only until greenroom cleanup runs.
+
+---
+
+## 17. Audio Effect UX Principles
+
+### **17.1 Effects Are Listed, Not Hidden**
+
+The AudioPanel shows every active effect as a labelled row with an icon and a short description.
+
+No effect is silent. No effect is invisible.
+
+### **17.2 Effect Order Is Predictable**
+
+Effects display in this order:
+1. PTT state (push-to-talk)
+2. Environment (room ambiance)
+3. Distance (proximity modifier)
+4. Condition (DM-applied state like Drunk, Confused)
+5. Voice preset (DM character voice)
+6. In-character preset
+
+### **17.3 Effects Clear Completely on Session End**
+
+When a session ends or transitions to greenroom:
+- All per-session conditions are cleared
+- All voice presets are cleared
+- All distance modifiers are cleared
+- The current environment is cleared
+
+Campaign-persistent environments (stored in `roomEnvironmentNames`) are preserved for next session.
+
+### **17.4 Effects Restore Correctly on Reconnect**
+
+On page refresh or reconnect, the server is the authoritative source. Audio state is re-hydrated from the audio state API before the local store is populated.
+

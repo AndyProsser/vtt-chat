@@ -124,6 +124,7 @@ Precondition:
 - DM can create non-private groups in both greenroom (`IDLE`) and active session states.
 - DM cannot create **private** groups in greenroom — the Private type option is disabled in the modal when `sessionState === IDLE`.
 - In greenroom, drag/drop movement is disabled; only the Greenroom and any pre-created groups are visible to the DM.
+- In greenroom, DM group create/configure/delete actions are performed from the rightbar Groups panel to keep the staging surface pure.
 - In greenroom, connected users that report `IDLE` are displayed as `ONLINE` in the panel for clarity.
 
 **Group lifecycle:**
@@ -260,7 +261,11 @@ Player toggles IC in composer.
 
 ## 4. Spectator Interaction Flows
 
-Spectators are read‑only.
+Spectators are show-state aware.
+
+- During `ACTIVE`, spectators are observational-only.
+- During `PAUSED` (intermission), spectators cannot view or hear the session.
+- During end-of-session cooldown, spectators can use public stage voice/chat only.
 
 ---
 
@@ -293,6 +298,69 @@ Spectator clicks “Open Note”.
    - `uiStore.activeNoteId = noteId`
 4. UI updates:
    - `<NotePopout readOnly />` slides in
+
+---
+
+### **4.3 Session Pauses (Intermission Curtain Down)**
+
+**Triggered by:**
+DM pauses the session.
+
+**Flow:**
+
+1. `session/pause`
+2. Reducer: `sessionReducer.setState('PAUSED')`
+3. Store updates:
+   - `sessionStore.state = 'PAUSED'`
+   - `presenceStore.players[*].roomId = MAIN`
+   - per-session audio effects moved to suspended snapshot for potential restore
+4. UI updates:
+   - Spectator surfaces switch to intermission/hidden state
+   - Players/DM see stage prep state in Main group with no active effects
+
+---
+
+### **4.4 Session Resumes (Curtain Up)**
+
+**Triggered by:**
+DM resumes the session.
+
+**Flow:**
+
+1. `session/resume`
+2. Reducer: `sessionReducer.setState('ACTIVE')`
+3. Store updates:
+   - `sessionStore.state = 'ACTIVE'`
+   - suspended per-session effects restored
+4. UI updates:
+   - Spectator audience view returns
+   - Prior stage effects appear again
+
+---
+
+### **4.5 Session End Cooldown (Finale Thanks)**
+
+**Triggered by:**
+DM ends a session while spectators are enabled.
+
+**Flow:**
+
+1. `session/endWithCooldown`
+2. Reducer: `sessionReducer.startCooldown`
+3. Store updates:
+   - `sessionStore.state = 'ENDED_COOLDOWN'`
+   - `sessionStore.cooldownEndsAt`
+   - players and DM moved to `MAIN`
+   - per-session active effects cleared for finale
+4. UI updates:
+   - Public finale banner with countdown timer
+   - Spectators can interact through public voice/chat only
+
+Notes:
+
+- Default cooldown duration is 60 seconds and campaign-configurable.
+- DM can extend cooldown before expiry.
+- Cooldown interactions are excluded from session recording/history and purged from logs.
 
 ---
 

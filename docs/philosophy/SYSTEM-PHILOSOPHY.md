@@ -71,6 +71,10 @@ The system gives players:
 Spectators observe.
 They do not influence the table.
 
+Exception:
+
+- During an explicit end-of-session finale cooldown window, spectators may interact through public stage voice/chat only.
+
 ### **1.7 The System Should Never Get in the Way**
 
 The UI, extension, and subsystems must be:
@@ -223,6 +227,10 @@ The system supports their creativity.
 
 Spectators watch without influencing the table.
 
+Exception:
+
+- Theatre-mode finale cooldown allows temporary public interaction before greenroom return.
+
 ### **5.4 System as Neutral Arbiter**
 
 The system:
@@ -306,3 +314,56 @@ The System Philosophy ensures that VTT‑Chat remains:
 - VTT‑agnostic
 
 It is the foundation upon which the entire platform is built.
+
+---
+
+## 9. The Ambition
+
+### **9.1 What Discord Will Never Be**
+
+VTT‑Chat is not a generic voice chat tool. It is a storytelling instrument.
+
+Discord gives players a voice. VTT‑Chat gives the DM a world.
+
+A DM can:
+- Move players between voice groups mid-combat with a drag
+- Apply audio conditions that make a player sound drunk, confused, or silenced
+- Set environmental ambiance per group so a cave sounds like a cave
+- Persist campaign history across months of play — notes, handouts, session logs
+- Control the entire session atmosphere without ever leaving the app
+
+This is the platform that makes Wizards of the Coast ask to collaborate.
+
+### **9.2 Fun Is a First‑Class Feature**
+
+The system must enable joyful, surprising, memorable moments:
+
+- A silenced player can only be heard by the DM — the table erupts in confusion and laughter
+- A drunk condition makes the player's voice slurred and wobbled — hilarity ensues
+- Moving a player into a private whisper group mid-session creates genuine dramatic tension
+- Environmental ambiance shifts without warning, immersing the table in the fiction
+
+These are not nice-to-haves. They are the reason the app exists.
+
+### **9.3 The DM Cannot Be Overwhelmed**
+
+Every DM action must be ≤ 2 clicks or 1 drag.
+
+If a DM interaction requires more than that, the design has failed.
+
+The DM has the most responsibility at the table. The system must give them superpowers that feel weightless, not burdens that feel like work.
+
+### **9.4 Campaigns Are Long**
+
+Sessions happen over months and years. The system must remember:
+
+- Which groups were created and what environments they had
+- What notes were shared and what was kept private
+- The arc of the campaign's history
+
+Persistence is not a technical detail — it is part of the experience.
+
+### **9.5 Players Must Understand Their World**
+
+Players should always know WHY their audio sounds different, WHY they cannot speak, WHY a room sounds different. The system surfaces this information clearly in the AudioPanel with icons and descriptions — not as a mystery, but as part of the fiction made tangible.
+
