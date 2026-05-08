@@ -9,7 +9,7 @@ It tracks:
 - Exit criteria for stage completion
 - Immediate next milestones
 
-Last updated: 2026-05-05
+Last updated: 2026-05-08
 
 Status: Deprecated for active planning. This document is retained as feature-stage history and delivery log.
 
@@ -22,6 +22,11 @@ Recent planning additions (2026-05-06) are tracked in the active roadmap:
 - W6 follow-up for shared constants/common-code consolidation into `shared/` where cross-app reuse is appropriate.
 - W7 follow-up for admin-specific constants centralization with explicit admin-vs-shared boundaries.
 - Canonical connection status implementation checklist (shared enums + mapping keys) is defined in `ROADMAP.md` under "Connection Status Implementation Checklist".
+
+Recent planning additions (2026-05-08) in W1 are tracked in the active roadmap:
+
+- Backend Zod-based environment validation hardening is now tracked as a planned W1 item (current baseline is manual env validation).
+- Backend Pino logging engine migration is now tracked as a planned W1 item (current baseline is custom logger implementation).
 
 ---
 

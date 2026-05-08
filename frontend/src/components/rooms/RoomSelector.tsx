@@ -95,6 +95,7 @@ export function RoomSelector({
   selectedRoomId,
   onSelectRoom,
 }: RoomSelectorProps) {
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
   const [draggedUserId, setDraggedUserId] = useState<UUID | null>(null)
   const [pendingRoomMoves, setPendingRoomMoves] = useState<Record<UUID, UUID>>({})
   const [moveError, setMoveError] = useState<string | null>(null)
@@ -830,7 +831,10 @@ export function RoomSelector({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <section className="room-selector" aria-label="Room Selector">
+      <section
+        className={`room-selector${isMobileExpanded ? ' room-selector--mobile-expanded' : ''}`}
+        aria-label="Room Selector"
+      >
         <header className="room-selector-header">
           <h4>
             <Icon name="rooms" /> Voice Groups
@@ -875,10 +879,57 @@ export function RoomSelector({
                 + Create Group
               </button>
             ) : null}
+            <button
+              type="button"
+              className="room-selector-header__mobile-toggle"
+              aria-label={isMobileExpanded ? 'Collapse voice groups' : 'Expand voice groups'}
+              aria-expanded={isMobileExpanded}
+              onClick={() => setIsMobileExpanded((prev) => !prev)}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {isMobileExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
           </div>
         </header>
 
-        <div className="room-selector-list" role="list" aria-label="Session groups">
+        {/* Mobile compact strip — visible when collapsed on small viewports */}
+        <div
+          className="room-selector-mobile-strip"
+          aria-hidden={isMobileExpanded}
+          role="presentation"
+        >
+          {allRooms.map((room) => {
+            const roomParticipants = displayedParticipantsByRoom[room.id] || []
+            const isSelected = room.id === selectedRoomId
+            return (
+              <button
+                key={room.id}
+                type="button"
+                className={`room-selector-mobile-strip__group${isSelected ? ' room-selector-mobile-strip__group--selected' : ''}`}
+                aria-label={`Select group ${room.name}`}
+                aria-pressed={isSelected}
+                onClick={() => {
+                  onSelectRoom(room.id)
+                }}
+              >
+                <span className="room-selector-mobile-strip__group-name">{room.name}</span>
+                <span className="room-selector-mobile-strip__group-count">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    group
+                  </span>
+                  {roomParticipants.length}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
+          role="list"
+          aria-label="Session groups"
+        >
           {dmParticipant && !isGreenroom ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
               <div className="room-selector-dm__profile">
@@ -911,6 +962,15 @@ export function RoomSelector({
           <CreateGroupModal
             onClose={() => setShowCreateGroupModal(false)}
             onCreateGroup={handleCreateGroup}
+          />
+        ) : null}
+
+        {isMobileExpanded ? (
+          <div
+            className="room-selector-mobile-overlay-backdrop"
+            role="presentation"
+            aria-hidden="true"
+            onClick={() => setIsMobileExpanded(false)}
           />
         ) : null}
 

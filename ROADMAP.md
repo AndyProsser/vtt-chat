@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-06
+Last updated: 2026-05-08
 
 Related roadmap:
 
@@ -144,7 +144,7 @@ Known readiness gap classes:
 | ID  | Workstream                  | Status      | Scope                                                                                                                      |
 | --- | --------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
 | W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX |
-| W1  | Hardening and Reliability   | In Progress | Multi-client reconnect, recovery soak, fanout/load validation, audio durability                                            |
+| W1  | Hardening and Reliability   | In Progress | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                      |
 | W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                                                          |
 | W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks                                                |
 | W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through                                                  |
@@ -157,7 +157,7 @@ Known readiness gap classes:
 
 ### W0 Subtask: Voice Group Panel (Campaign Screen)
 
-**Status**: Design finalized, implementation planning in progress
+**Status**: Phases 1–3 complete; Phase 4 (Accessibility & Polish) and Phase 5 (Testing & Hardening) in progress
 **Related Docs**: [UI-COMPONENT-CHANNELS.md](docs/ui/UI-COMPONENT-CHANNELS.md), [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
 
 **Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
@@ -171,9 +171,9 @@ Terminology note for this stage:
 
 | Phase                           | Timeline | Deliverables                                                                                                 | Status      |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ----------- |
-| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Not started |
-| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop          | Not started |
-| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Not started |
+| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Done        |
+| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop          | Done        |
+| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Done        |
 | Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing             | Not started |
 | Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage              | Not started |
 
@@ -224,12 +224,12 @@ Terminology note for this stage:
 
 **Frontend Components** (existing + new):
 
-- ✅ RoomSelector.tsx (exists, enhance with above)
+- ✅ RoomSelector.tsx (enhanced — Phase 1–3 complete: env icons, broadcast, create, radial menu, drag-n-drop, mobile collapse)
 - ✅ AvatarOverlay.tsx (exists, reuse for DM + players)
-- ✅ Tooltip infrastructure (exists, enhance for env icons)
-- 🆕 ConditionPopover.tsx (new)
-- 🆕 RadialMenu.tsx (new)
-- 🆕 CreateGroupModal.tsx (new)
+- ✅ Tooltip infrastructure (exists, enhanced for env icons)
+- ✅ ConditionPopover.tsx (implemented via RadialMenu condition mode)
+- ✅ RadialMenu.tsx (exists — right-click + long-press, condition/move/mute, viewport clamping)
+- ✅ CreateGroupModal.tsx (exists, functional)
 - 🆕 CampaignSettingsPanel.tsx (new, with condition toggle)
 
 **Testing Coverage**:
@@ -326,11 +326,20 @@ Definition of done:
 3. Verify reconnect fanout behavior under concurrent transitions. - Done
 4. Capture pass/fail thresholds and flaky-test handling policy. - Done
 5. Expand broader multi-client e2e/load matrix for reconnect/recovery and transition fanout behavior (network loss, restart, burst reconnect, and cross-session isolation). - In Progress
+6. Introduce schema-based backend environment validation with Zod for startup-time fail-fast config checks. - Planned
+7. Migrate backend runtime logging to Pino for structured JSON logs and consistent level/transport control. - Planned
+
+Current implementation snapshot (2026-05-08):
+
+- Environment validation: Partial. Backend currently uses manual env parsing and required-variable checks in [backend/src/infra/config/env.ts](backend/src/infra/config/env.ts).
+- Backend logging engine: Partial. Backend currently uses a custom in-memory/logger utility in [backend/src/utils/logger.ts](backend/src/utils/logger.ts); Pino is not yet adopted.
 
 Definition of done:
 
 - Soak suites are stable and repeatable.
 - No critical reconnect or state-loss defects in repeated runs.
+- Backend env validation uses a schema-first contract and fails fast on invalid/missing config in target environments.
+- Backend structured logs are Pino-based and compatible with existing operational/admin telemetry consumption patterns.
 
 ### W2: Testing Program and Gates
 
