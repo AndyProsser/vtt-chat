@@ -158,7 +158,7 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms && !isGreenroom
+  const canCreateGroups = canManageRooms
 
   const displayedParticipantsByRoom = useMemo(() => {
     const next: Record<string, RoomParticipantStatus[]> = {}

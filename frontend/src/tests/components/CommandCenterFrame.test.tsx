@@ -42,30 +42,29 @@ function renderToolbar(model: ToolbarActionModel) {
 describe('getRightRailTabsForRole', () => {
   it('returns full toolset for DM', () => {
     expect(getRightRailTabsForRole(Role.DM)).toEqual([
+      'information',
       'rooms',
-      'audio',
-      'notes',
       'search',
+      'notes',
       'journal',
       'history',
+      'audio',
       'settings',
     ])
   })
 
   it('returns full player toolset for PLAYER', () => {
     expect(getRightRailTabsForRole(Role.PLAYER)).toEqual([
-      'rooms',
-      'audio',
-      'notes',
+      'information',
       'search',
+      'notes',
       'journal',
       'history',
-      'settings',
     ])
   })
 
-  it('returns rooms-only toolset for SPECTATOR', () => {
-    expect(getRightRailTabsForRole(Role.SPECTATOR)).toEqual(['rooms'])
+  it('returns limited information toolset for SPECTATOR', () => {
+    expect(getRightRailTabsForRole(Role.SPECTATOR)).toEqual(['information', 'journal', 'history'])
   })
 })
 
@@ -137,8 +136,8 @@ describe('CommandCenterFrame', () => {
       />
     )
 
-    expect(screen.getByRole('tab', { name: 'Tool Rooms' })).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Tool Audio' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Groups' })).toBeNull()
 
     rerender(
       <CommandCenterFrame
@@ -150,6 +149,8 @@ describe('CommandCenterFrame', () => {
       />
     )
 
+    expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Groups' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
@@ -166,10 +167,13 @@ describe('CommandCenterFrame', () => {
       />
     )
 
+    expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Groups' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Tool Audio' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
   })
 
   it('renders system toasts container only when provided', () => {

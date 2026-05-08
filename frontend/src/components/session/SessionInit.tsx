@@ -15,8 +15,6 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
-import { HistoryPanel } from './HistoryPanel'
-import { JournalPanel } from './JournalPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
@@ -2403,6 +2401,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   onStartSession={() => handleStartSession(currentSession.id)}
                   onPauseSession={() => handlePauseSession(currentSession.id)}
                   onStopSession={() => handleStopSession(currentSession.id)}
+                  onOpenUserSettings={() => setShowUserSettingsModal(true)}
                   onExitToSelector={handleExitToCampaignSelector}
                 />
               )}
@@ -2488,14 +2487,27 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </div>
               )}
               renderRightRailTab={(tab) => {
+                if (tab === 'information') {
+                  return renderCampaignScaffoldPanel(
+                    'Campaign Information',
+                    'Campaign-scoped information workspace. Session state is intentionally excluded.',
+                    [
+                      'Campaign overview and metadata',
+                      'Campaign notes and references',
+                      'Policy and visibility guidance',
+                    ]
+                  )
+                }
+
                 if (tab === 'rooms') {
                   return renderCampaignScaffoldPanel(
-                    'Campaign Groups',
+                    'Groups',
                     'Voice group configuration is being rebuilt around campaign-level controls.',
                     [
+                      'DM-only group management',
+                      'Greenroom pre-create support',
                       'Group defaults and templates',
-                      'Campaign-level routing and policy',
-                      'Role-based visibility controls',
+                      'Campaign routing and policy',
                     ]
                   )
                 }
@@ -2514,7 +2526,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
                 if (tab === 'search') {
                   return renderCampaignScaffoldPanel(
-                    'Campaign Search',
+                    'Search',
                     'Search is being reset to campaign-wide discovery rather than session-only lookup.',
                     [
                       'Campaign knowledge index',
@@ -2526,46 +2538,44 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
                 if (tab === 'notes') {
                   return renderCampaignScaffoldPanel(
-                    'Information',
-                    'This panel now represents campaign information surfaces (non-session).',
+                    'Notes',
+                    'Campaign notes surface reset to a clean scaffold while legacy controls are removed.',
                     [
-                      'Campaign overview and metadata',
-                      'Campaign notes and handouts',
-                      'Policy and visibility flags',
+                      'Campaign notebook landing view',
+                      'Handout permissions and targeting',
+                      'Pinned references and templates',
                     ]
                   )
                 }
 
                 if (tab === 'journal') {
-                  return (
-                    <JournalPanel
-                      key={`journal:${currentSession.id}:${user.id}`}
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      userId={user.id}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Journal',
+                    'Session-aware journal view is reset to a clean shell while older controls are removed.',
+                    [
+                      `Session context: ${currentSession.name}`,
+                      'Chapter timeline and recap hooks',
+                      'Read/write permissions by role',
+                    ]
                   )
                 }
 
                 if (tab === 'history') {
-                  return (
-                    <HistoryPanel
-                      key={`history:${currentSession.id}:${user.id}`}
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      userId={user.id}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'History',
+                    'Session-aware history is reset to a clean shell while legacy controls are removed.',
+                    [
+                      `Session context: ${currentSession.name}`,
+                      'Chronological event timeline',
+                      'Read-only audit and recap view',
+                    ]
                   )
                 }
 
                 if (tab === 'settings') {
                   return renderCampaignScaffoldPanel(
-                    'Settings',
-                    'Topbar settings are now scoped to campaign and user defaults, not active session state.',
+                    'Campaign Settings',
+                    'Campaign-centric settings live on the right rail and are DM-only.',
                     [
                       'System defaults for new campaigns',
                       'Campaign settings and invite policy',
@@ -2822,19 +2832,16 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 ]
               )
             ) : settingsHomeTab === 'journal' ? (
-              settingsReferenceSessionId ? (
-                <JournalPanel
-                  key={`settings-journal:${settingsReferenceSessionId}`}
-                  apiUrl={apiUrl}
-                  token={token}
-                  sessionId={settingsReferenceSessionId as UUID}
-                  role={Role.DM}
-                  userId={user.id}
-                />
-              ) : (
-                <div className="session-status-message">
-                  No session available yet. Start a session chapter to unlock Journal.
-                </div>
+              renderCampaignScaffoldPanel(
+                'Campaign Journal',
+                settingsReferenceSessionId
+                  ? `Session context available: ${settingsReferenceSession?.name || settingsReferenceSessionId}`
+                  : 'No session context selected yet.',
+                [
+                  'Session recap flow and timeline anchors',
+                  'DM editing guardrails',
+                  'Player/spectator read visibility',
+                ]
               )
             ) : (
               <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">

@@ -19,6 +19,7 @@ interface SessionToolbarProps {
   onStartSession: () => void
   onPauseSession: () => void
   onStopSession: () => void
+  onOpenUserSettings: () => void
   onExitToSelector: () => void
 }
 
@@ -35,6 +36,7 @@ export function SessionToolbar({
   onStartSession,
   onPauseSession,
   onStopSession,
+  onOpenUserSettings,
   onExitToSelector,
 }: SessionToolbarProps) {
   const storageKey = 'vtt-theme-mode'
@@ -93,25 +95,7 @@ export function SessionToolbar({
   }
 
   const handleOpenSettings = () => {
-    const targetTab = actions.availableRightRailTabs.includes('settings') ? 'settings' : 'rooms'
-
-    if (actions.rightRailOpen && actions.activeRightRailTab === targetTab) {
-      actions.toggleRightRail()
-      return
-    }
-
-    actions.openRightRailTab(targetTab)
-  }
-
-  const handleOpenInformation = () => {
-    const targetTab = actions.availableRightRailTabs.includes('notes') ? 'notes' : 'search'
-
-    if (actions.rightRailOpen && actions.activeRightRailTab === targetTab) {
-      actions.toggleRightRail()
-      return
-    }
-
-    actions.openRightRailTab(targetTab)
+    onOpenUserSettings()
   }
 
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
@@ -256,22 +240,6 @@ export function SessionToolbar({
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end">
               Settings
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleOpenInformation}
-                className="session-toolbar__icon-btn"
-                aria-label="Information"
-              >
-                <Icon name="panel" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">
-              Information
             </TooltipContent>
           </Tooltip>
 

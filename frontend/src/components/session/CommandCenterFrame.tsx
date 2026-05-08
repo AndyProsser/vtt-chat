@@ -36,24 +36,17 @@ export interface ToolbarActionModel {
 }
 
 const DM_TABS: RightRailTab[] = [
+  'information',
   'rooms',
-  'audio',
-  'notes',
   'search',
+  'notes',
   'journal',
   'history',
-  'settings',
-]
-const PLAYER_TABS: RightRailTab[] = [
-  'rooms',
   'audio',
-  'notes',
-  'search',
-  'journal',
-  'history',
   'settings',
 ]
-const SPECTATOR_TABS: RightRailTab[] = ['rooms']
+const PLAYER_TABS: RightRailTab[] = ['information', 'search', 'notes', 'journal', 'history']
+const SPECTATOR_TABS: RightRailTab[] = ['information', 'journal', 'history']
 
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
   if (role === 'DM') return DM_TABS
@@ -63,8 +56,10 @@ export function getRightRailTabsForRole(role: Role): RightRailTab[] {
 
 function formatTabLabel(tab: RightRailTab): string {
   switch (tab) {
+    case 'information':
+      return 'Information'
     case 'rooms':
-      return 'Rooms'
+      return 'Groups'
     case 'audio':
       return 'Audio'
     case 'notes':
@@ -86,14 +81,16 @@ function iconForTab(
   tab: RightRailTab
 ): 'rooms' | 'voice' | 'notes' | 'search' | 'journal' | 'history' | 'settings' | 'panel' {
   switch (tab) {
+    case 'information':
+      return 'panel'
     case 'rooms':
-      return 'panel'
+      return 'rooms'
     case 'audio':
-      return 'panel'
+      return 'voice'
     case 'notes':
-      return 'panel'
+      return 'notes'
     case 'search':
-      return 'panel'
+      return 'search'
     case 'journal':
       return 'journal'
     case 'history':
@@ -287,7 +284,7 @@ export function CommandCenterFrame({
           {isRightRailVisible && (
             <aside
               data-testid="right-rail"
-              className={`command-center-surface command-center-right-rail-overlay ${
+              className={`command-center-right-rail-overlay ${
                 isRightRailClosing ? 'command-center-right-rail-overlay--closing' : ''
               }`}
               style={{
@@ -309,7 +306,7 @@ export function CommandCenterFrame({
           )}
         </div>
 
-        <aside className="command-center-surface command-center-right-rail-dock" aria-label="Tools">
+        <aside className="command-center-right-rail-dock" aria-label="Tools">
           <TooltipProvider delayDuration={140}>
             <Tabs value={activeRightRailTab}>
               <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">

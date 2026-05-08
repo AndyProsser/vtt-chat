@@ -1055,7 +1055,8 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Watch campaign' }))
 
     await screen.findByTestId('session-toolbar')
-    expect(screen.getByRole('tab', { name: 'Tool Rooms' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Groups' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'Tool Notes' })).toBeNull()
   })
 

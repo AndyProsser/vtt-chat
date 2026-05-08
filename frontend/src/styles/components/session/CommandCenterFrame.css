@@ -103,11 +103,16 @@
 .command-center-right-rail-overlay {
   position: absolute;
   top: 0;
-  right: 0.5rem;
+  right: -0.15rem;
   width: min(420px, 44vw);
   max-height: 100%;
-  overflow: auto;
-  z-index: 25;
+  overflow: hidden;
+  z-index: 70;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
   opacity: 1;
   transform: translateX(0);
   transition:
@@ -124,7 +129,7 @@
   transform: translateY(-50%);
   border-top: 0.48rem solid transparent;
   border-bottom: 0.48rem solid transparent;
-  border-left: 0.62rem solid var(--color-surface);
+  border-left: 0.62rem solid color-mix(in srgb, var(--color-surface) 94%, transparent);
   filter: drop-shadow(1px 0 0 color-mix(in srgb, var(--color-border) 80%, transparent));
 }
 
@@ -137,6 +142,10 @@
 .command-center-right-rail-layout {
   min-width: 0;
   height: 100%;
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 0.55rem;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
 }
 
 .command-center-right-rail-toolbar {
@@ -173,7 +182,9 @@
 }
 
 .command-center-right-rail-trigger[data-state='active'] {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
+  outline: 1px solid color-mix(in srgb, var(--color-brand) 48%, var(--color-border-soft));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 24%, transparent);
   color: var(--color-text-primary);
 }
 
@@ -225,6 +236,9 @@
 
 .command-center-right-rail-content {
   min-width: 0;
+  max-height: calc(100dvh - 10.2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 @keyframes slide-in-from-right {
