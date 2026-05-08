@@ -305,16 +305,6 @@
   background: currentColor;
 }
 
-.session-toolbar__tooltip-content {
-  background: #111827;
-  color: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
 .session-toolbar__tooltip-content--status {
   min-width: 9.25rem;
   padding-top: 0.4rem;

@@ -10,9 +10,10 @@
 }
 
 .avatar-glyph {
+  position: relative;
   width: 34px;
   height: 34px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -28,17 +29,44 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 999px;
+}
+
+.avatar-muted-badge {
+  position: absolute;
+  right: -0.34rem;
+  bottom: -0.3rem;
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow:
+    0 1px 0 rgba(2, 6, 23, 0.55),
+    0 2px 6px rgba(2, 6, 23, 0.5);
+  z-index: 2;
+}
+
+.avatar-muted-badge .material-symbols-outlined {
+  font-size: 0.96rem;
+  line-height: 1;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 700,
+    'GRAD' 0,
+    'opsz' 20;
 }
 
 .avatar-meta {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .avatar-meta-headline {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .avatar-name {
@@ -61,54 +89,23 @@
   gap: 0.35rem;
   font-size: 0.68rem;
   color: var(--color-text-secondary);
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.avatar-presence-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
+.avatar-meta-subline {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.avatar-presence-online {
-  background: #22c55e;
-}
+@media (max-width: 900px) {
+  .avatar-muted-badge {
+    right: -0.26rem;
+    bottom: -0.22rem;
+  }
 
-.avatar-presence-speaking {
-  background: #0ea5e9;
-}
-
-.avatar-presence-typing {
-  background: #f59e0b;
-}
-
-.avatar-presence-idle {
-  background: #94a3b8;
-}
-
-.avatar-presence-offline {
-  background: #ef4444;
-}
-
-.avatar-state-chip {
-  border-radius: 999px;
-  border: 1px solid var(--color-border-soft);
-  padding: 0.05rem 0.35rem;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.avatar-state-chip.speaking {
-  border-color: rgba(14, 165, 233, 0.6);
-  color: #0369a1;
-}
-
-.avatar-state-chip.muted {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #b91c1c;
-}
-
-.avatar-state-chip.condition {
-  border-color: rgba(124, 58, 237, 0.45);
-  color: #6d28d9;
+  .avatar-muted-badge .material-symbols-outlined {
+    font-size: 0.88rem;
+  }
 }

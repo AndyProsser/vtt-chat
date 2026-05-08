@@ -1,0 +1,15 @@
+.app-tooltip-content {
+  z-index: 1200;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #111827;
+  color: #f8fafc;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.28);
+}
+
+.app-tooltip-arrow {
+  fill: #111827;
+}

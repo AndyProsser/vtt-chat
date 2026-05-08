@@ -1,22 +1,15 @@
-import { PresenceState } from '@shared'
+import type { PresenceState } from '@shared'
+import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import '../../styles/components/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
   username: string
   avatarUrl?: string | null
   roleLabel?: 'DM' | 'PLAYER'
-  presenceState: PresenceState
+  metaLine?: string
+  presenceState?: PresenceState
   isSpeaking?: boolean
   isMuted?: boolean
-  condition?: string
-}
-
-function presenceClass(state: PresenceState): string {
-  if (state === PresenceState.SPEAKING) return 'avatar-presence-speaking'
-  if (state === PresenceState.ONLINE) return 'avatar-presence-online'
-  if (state === PresenceState.TYPING) return 'avatar-presence-typing'
-  if (state === PresenceState.OFFLINE) return 'avatar-presence-offline'
-  return 'avatar-presence-idle'
 }
 
 function initialFor(name: string): string {
@@ -28,11 +21,15 @@ export function AvatarOverlay({
   username,
   avatarUrl,
   roleLabel,
-  presenceState,
-  isSpeaking = false,
+  metaLine,
   isMuted = false,
-  condition,
 }: AvatarOverlayProps) {
+  const resolvedMetaLine =
+    metaLine?.trim() ||
+    (roleLabel === ROOM_ROLE_LABELS.dm
+      ? DEFAULT_AVATAR_META_LINES.dm
+      : DEFAULT_AVATAR_META_LINES.player)
+
   return (
     <div className="avatar-overlay" data-testid="avatar-overlay">
       <div className="avatar-glyph" aria-hidden="true">
@@ -41,6 +38,13 @@ export function AvatarOverlay({
         ) : (
           initialFor(username)
         )}
+        {isMuted ? (
+          <span className="avatar-muted-badge" aria-label="Muted microphone" role="img">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              mic_off
+            </span>
+          </span>
+        ) : null}
       </div>
       <div className="avatar-meta">
         <div className="avatar-meta-headline">
@@ -48,11 +52,7 @@ export function AvatarOverlay({
           {roleLabel ? <span className="avatar-role-chip">{roleLabel}</span> : null}
         </div>
         <div className="avatar-meta-status">
-          <span className={`avatar-presence-dot ${presenceClass(presenceState)}`} />
-          <span>{presenceState}</span>
-          {isSpeaking ? <span className="avatar-state-chip speaking">Speaking</span> : null}
-          {isMuted ? <span className="avatar-state-chip muted">Muted</span> : null}
-          {condition ? <span className="avatar-state-chip condition">{condition}</span> : null}
+          <span className="avatar-meta-subline">{resolvedMetaLine}</span>
         </div>
       </div>
     </div>

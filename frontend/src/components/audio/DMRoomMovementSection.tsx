@@ -1,4 +1,5 @@
 import type { PresenceState, RoomType, UUID } from '@shared'
+import { getPresenceLabel, ROOM_PRESENCE_COPY } from '../../constants/roomPresence.constants'
 
 interface AudioRoomOption {
   id: UUID
@@ -82,13 +83,14 @@ export function DMRoomMovementSection({
                     onDragEnd={onDragEnd}
                     className="cursor-grab rounded-ui-sm border border-ui-border-soft bg-ui-surface px-2 py-1.5 text-left text-sm text-ui-primary"
                   >
-                    {participant.username} ({participant.state}){pendingMove ? ' - moving...' : ''}
+                    {participant.username} ({getPresenceLabel(participant.state)})
+                    {pendingMove ? ' - moving...' : ''}
                   </button>
                 )
               })}
 
               {(playersByRoom[room.id] || []).length === 0 ? (
-                <p className="m-0 text-xs text-ui-muted">No players</p>
+                <p className="m-0 text-xs text-ui-muted">{ROOM_PRESENCE_COPY.noPlayers}</p>
               ) : null}
             </div>
           </section>

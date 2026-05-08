@@ -1,6 +1,7 @@
 import * as React from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { cn } from '@/utils/cn'
+import '../../styles/core-ui/Tooltip.css'
 
 const TooltipProvider = TooltipPrimitive.Provider
 const Tooltip = TooltipPrimitive.Root
@@ -14,14 +15,11 @@ const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(
-        'z-1200 rounded-md border border-slate-700/70 bg-slate-950 px-3 py-1.5 text-xs text-white shadow-lg',
-        className
-      )}
+      className={cn('app-tooltip-content', className)}
       {...props}
     >
       {props.children}
-      <TooltipPrimitive.Arrow className="fill-slate-950" width={10} height={6} />
+      <TooltipPrimitive.Arrow className="app-tooltip-arrow" width={10} height={6} />
     </TooltipPrimitive.Content>
   </TooltipPrimitive.Portal>
 ))

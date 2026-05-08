@@ -227,7 +227,7 @@ export function SessionToolbar({
                 <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+            <TooltipContent side="bottom" align="end">
               Theme
             </TooltipContent>
           </Tooltip>
@@ -243,7 +243,7 @@ export function SessionToolbar({
                 <Icon name="settings" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+            <TooltipContent side="bottom" align="end">
               Settings
             </TooltipContent>
           </Tooltip>
@@ -259,7 +259,7 @@ export function SessionToolbar({
                 <Icon name="logout" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="end" className="session-toolbar__tooltip-content">
+            <TooltipContent side="bottom" align="end">
               Exit Session
             </TooltipContent>
           </Tooltip>
@@ -278,7 +278,7 @@ export function SessionToolbar({
             <TooltipContent
               side="bottom"
               align="end"
-              className="session-toolbar__tooltip-content session-toolbar__tooltip-content--status"
+              className="session-toolbar__tooltip-content--status"
             >
               <div className="session-toolbar__status-tooltip-title">Status</div>
               <div className="session-toolbar__status-tooltip-row">

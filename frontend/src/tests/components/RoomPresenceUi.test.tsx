@@ -13,24 +13,23 @@ afterEach(() => {
 })
 
 describe('AvatarOverlay', () => {
-  it('renders speaking, muted, and condition badges', () => {
+  it('renders muted badge and D&D meta line', () => {
     render(
       <AvatarOverlay
         username="Aria"
         roleLabel="PLAYER"
         presenceState={PresenceState.SPEAKING}
+        metaLine="Wizard | Level 7 | Elf"
         isSpeaking
         isMuted
-        condition="Silenced"
       />
     )
 
     expect(screen.getByText('Aria')).toBeTruthy()
     expect(screen.getByText('PLAYER')).toBeTruthy()
-    expect(screen.getByText('SPEAKING')).toBeTruthy()
-    expect(screen.getByText('Speaking')).toBeTruthy()
-    expect(screen.getByText('Muted')).toBeTruthy()
-    expect(screen.getByText('Silenced')).toBeTruthy()
+    expect(screen.getByText('Wizard | Level 7 | Elf')).toBeTruthy()
+    expect(screen.getByLabelText('Muted microphone')).toBeTruthy()
+    expect(screen.queryByText('Muted')).toBeNull()
   })
 })
 
@@ -69,6 +68,9 @@ describe('RoomSelector', () => {
                 presenceState: PresenceState.SPEAKING,
                 isMuted: true,
                 isSpeaking: true,
+                characterClass: 'Rogue',
+                level: 5,
+                characterRace: 'Halfling',
                 condition: 'Underwater',
               },
             ],
@@ -92,7 +94,7 @@ describe('RoomSelector', () => {
     expect(screen.getByText('Other Groups')).toBeTruthy()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
-    expect(screen.getByText('Underwater')).toBeTruthy()
+    expect(screen.getByText('Rogue | Level 5 | Halfling')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /Select group Whisper Booth/i }))
     expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-2'))
@@ -545,7 +547,7 @@ describe('RoomSelector', () => {
     })
   })
 
-  it('does not show breakout labels and maps idle presence to online in the panel', () => {
+  it('does not show breakout labels and renders metadata row in the panel', () => {
     render(
       <RoomSelector
         apiUrl="http://localhost:3000"
@@ -591,7 +593,7 @@ describe('RoomSelector', () => {
     )
 
     expect(screen.queryByText('Breakout')).toBeNull()
-    expect(screen.getAllByText('ONLINE').length).toBeGreaterThan(0)
+    expect(screen.getByText('Class TBD | Level ? | Race TBD')).toBeTruthy()
     expect(screen.queryByText('IDLE')).toBeNull()
   })
 

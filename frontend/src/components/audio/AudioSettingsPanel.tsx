@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../ui/Icon'
 import type { AudioDeviceState } from '@/types/audio'
+import {
+  AUDIO_CONTROL_COPY,
+  AUDIO_SETTINGS_COPY,
+  getFallbackAudioDeviceLabel,
+} from '../../constants/audioUi.constants'
 
 interface MediaDeviceOption {
   deviceId: string
@@ -38,13 +43,13 @@ export function AudioSettingsPanel({
           .filter((d) => d.kind === 'audioinput')
           .map((d, i) => ({
             deviceId: d.deviceId,
-            label: d.label || `Microphone ${i + 1}`,
+            label: d.label || getFallbackAudioDeviceLabel('microphone', i),
           }))
         const speakers = devices
           .filter((d) => d.kind === 'audiooutput')
           .map((d, i) => ({
             deviceId: d.deviceId,
-            label: d.label || `Speaker ${i + 1}`,
+            label: d.label || getFallbackAudioDeviceLabel('speaker', i),
           }))
         setMicDevices(mics)
         setSpeakerDevices(speakers)
@@ -55,14 +60,14 @@ export function AudioSettingsPanel({
   }, [])
 
   return (
-    <div className="audio-settings-panel" role="dialog" aria-label="Audio settings">
+    <div className="audio-settings-panel" role="dialog" aria-label={AUDIO_SETTINGS_COPY.title}>
       <header className="audio-settings-panel__header">
-        <span className="audio-settings-panel__title">Audio Settings</span>
+        <span className="audio-settings-panel__title">{AUDIO_SETTINGS_COPY.title}</span>
         <button
           type="button"
           className="audio-settings-panel__close"
           onClick={onClose}
-          aria-label="Close audio settings"
+          aria-label={AUDIO_SETTINGS_COPY.close}
         >
           <Icon name="close" />
         </button>
@@ -74,14 +79,14 @@ export function AudioSettingsPanel({
           <label className="audio-settings-panel__label">
             <span className="audio-settings-panel__label-text">
               <Icon name="signal" className="audio-settings-panel__label-icon" />
-              Speaker
+              {AUDIO_SETTINGS_COPY.speaker}
             </span>
             <select
               className="audio-settings-panel__select"
               value={device.selectedSpeakerDeviceId ?? 'default'}
               onChange={(e) => onDeviceChange({ selectedSpeakerDeviceId: e.target.value })}
             >
-              <option value="default">System default</option>
+              <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
               {speakerDevices.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>
                   {d.label}
@@ -93,14 +98,14 @@ export function AudioSettingsPanel({
           <label className="audio-settings-panel__label">
             <span className="audio-settings-panel__label-text">
               <Icon name="mic" className="audio-settings-panel__label-icon" />
-              Microphone
+              {AUDIO_SETTINGS_COPY.microphone}
             </span>
             <select
               className="audio-settings-panel__select"
               value={device.selectedMicDeviceId ?? 'default'}
               onChange={(e) => onDeviceChange({ selectedMicDeviceId: e.target.value })}
             >
-              <option value="default">System default</option>
+              <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
               {micDevices.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>
                   {d.label}
@@ -109,7 +114,10 @@ export function AudioSettingsPanel({
             </select>
           </label>
 
-          <div className="audio-settings-panel__mic-meter" aria-label="Outgoing microphone signal">
+          <div
+            className="audio-settings-panel__mic-meter"
+            aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneSignal}
+          >
             <span
               className="audio-settings-panel__mic-meter-fill"
               style={{
@@ -122,7 +130,7 @@ export function AudioSettingsPanel({
         {/* Gain / Sensitivity */}
         <section className="audio-settings-panel__section">
           <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">Auto Gain</span>
+            <span className="audio-settings-panel__label-text">{AUDIO_SETTINGS_COPY.autoGain}</span>
             <button
               type="button"
               role="switch"
@@ -136,7 +144,9 @@ export function AudioSettingsPanel({
 
           {!device.autoGainEnabled && (
             <label className="audio-settings-panel__label">
-              <span className="audio-settings-panel__label-text">Sensitivity</span>
+              <span className="audio-settings-panel__label-text">
+                {AUDIO_SETTINGS_COPY.sensitivity}
+              </span>
               <div className="audio-settings-panel__slider-row">
                 <input
                   type="range"
@@ -145,7 +155,7 @@ export function AudioSettingsPanel({
                   value={device.micGain}
                   onChange={(e) => onDeviceChange({ micGain: Number(e.target.value) })}
                   className="audio-settings-panel__slider"
-                  aria-label="Microphone sensitivity"
+                  aria-label={AUDIO_SETTINGS_COPY.microphoneSensitivity}
                 />
                 <span className="audio-settings-panel__slider-value">{device.micGain}</span>
               </div>
@@ -156,7 +166,9 @@ export function AudioSettingsPanel({
         {/* Push to Talk */}
         <section className="audio-settings-panel__section">
           <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">Push to Talk</span>
+            <span className="audio-settings-panel__label-text">
+              {AUDIO_CONTROL_COPY.pushToTalk}
+            </span>
             <button
               type="button"
               role="switch"
@@ -172,12 +184,14 @@ export function AudioSettingsPanel({
         {/* Noise Filter */}
         <section className="audio-settings-panel__section">
           <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">Noise Filter</span>
+            <span className="audio-settings-panel__label-text">
+              {AUDIO_SETTINGS_COPY.noiseFilter}
+            </span>
           </div>
           <div
             className="audio-settings-panel__segment"
             role="group"
-            aria-label="Noise filter level"
+            aria-label={AUDIO_SETTINGS_COPY.noiseFilterLevel}
           >
             {NOISE_OPTIONS.map(({ value, label }) => (
               <button
@@ -196,7 +210,9 @@ export function AudioSettingsPanel({
         {/* Master Volume */}
         <section className="audio-settings-panel__section">
           <label className="audio-settings-panel__label">
-            <span className="audio-settings-panel__label-text">Master Volume</span>
+            <span className="audio-settings-panel__label-text">
+              {AUDIO_SETTINGS_COPY.masterVolume}
+            </span>
             <div className="audio-settings-panel__slider-row">
               <input
                 type="range"
@@ -205,7 +221,7 @@ export function AudioSettingsPanel({
                 value={device.volumeLevel}
                 onChange={(e) => onDeviceChange({ volumeLevel: Number(e.target.value) })}
                 className="audio-settings-panel__slider"
-                aria-label="Master volume"
+                aria-label={AUDIO_SETTINGS_COPY.masterVolumeAria}
               />
               <span className="audio-settings-panel__slider-value">{device.volumeLevel}</span>
             </div>

@@ -1,19 +1,16 @@
-import { PresenceState, RoomType } from '@shared'
+import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import type { RoomUser } from '@/types/room'
+import {
+  getPresenceDotClass,
+  getPresenceLabel,
+  ROOM_PRESENCE_COPY,
+} from '../../constants/roomPresence.constants'
 
 interface SessionRoomsStatusPanelProps {
   rooms: Array<{ id: UUID; name: string; type: RoomType }>
   roomMembersByRoomId: Record<UUID, RoomUser[]>
   presenceCount: number
-}
-
-function presenceClass(state: PresenceState): string {
-  if (state === PresenceState.ONLINE) return 'session-presence-dot-online'
-  if (state === PresenceState.SPEAKING) return 'session-presence-dot-speaking'
-  if (state === PresenceState.TYPING) return 'session-presence-dot-typing'
-  if (state === PresenceState.OFFLINE) return 'session-presence-dot-offline'
-  return 'session-presence-dot-idle'
 }
 
 export function SessionRoomsStatusPanel({
@@ -23,10 +20,8 @@ export function SessionRoomsStatusPanel({
 }: SessionRoomsStatusPanelProps) {
   return (
     <div className="session-rooms-panel" data-testid="session-rooms-panel">
-      <p className="session-rooms-panel-title">Presence and Rooms</p>
-      <p className="session-rooms-panel-subtitle">
-        Live updates from room/presence websocket events.
-      </p>
+      <p className="session-rooms-panel-title">{ROOM_PRESENCE_COPY.presencePanelTitle}</p>
+      <p className="session-rooms-panel-subtitle">{ROOM_PRESENCE_COPY.presencePanelSubtitle}</p>
 
       <div className="session-rooms-panel-grid">
         {rooms.map((room) => {
@@ -36,16 +31,18 @@ export function SessionRoomsStatusPanel({
               <p className="session-room-card-title">
                 {room.name} <span>({room.type})</span>
               </p>
-              <p className="session-room-card-count">Members: {members.length}</p>
+              <p className="session-room-card-count">
+                {ROOM_PRESENCE_COPY.membersLabel}: {members.length}
+              </p>
               {members.length === 0 ? (
-                <p className="session-room-card-empty">No members</p>
+                <p className="session-room-card-empty">{ROOM_PRESENCE_COPY.noMembers}</p>
               ) : (
                 members.map((member) => (
                   <p key={`${room.id}:${member.userId}`} className="session-room-card-member">
                     <span
-                      className={`session-presence-dot ${presenceClass(member.presenceState)}`}
+                      className={`session-presence-dot ${getPresenceDotClass(member.presenceState)}`}
                     />
-                    {member.username || member.userId} - {member.presenceState}
+                    {member.username || member.userId} - {getPresenceLabel(member.presenceState)}
                   </p>
                 ))
               )}
@@ -53,8 +50,9 @@ export function SessionRoomsStatusPanel({
           )
         })}
       </div>
-
-      <p className="session-rooms-panel-footer">Total tracked users: {presenceCount}</p>
+      <p className="session-rooms-panel-footer">
+        {ROOM_PRESENCE_COPY.totalTrackedUsersLabel}: {presenceCount}
+      </p>
     </div>
   )
 }

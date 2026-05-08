@@ -151,6 +151,7 @@ Known readiness gap classes:
 | W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                           |
 | W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                           |
 | W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                           |
+| W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                    |
 
 ---
 
@@ -433,6 +434,24 @@ Definition of done:
 - Updated operator flow guidance is reflected in docs and test checklists.
 - Admin constants usage is consistent through the admin-specific constants module, with explicit boundaries documented for admin-only vs `shared/` reuse.
 
+### W8: Localization Foundation
+
+1. Define localization architecture and boundaries (shared message catalog strategy, frontend consumption pattern, fallback policy).
+2. Introduce translation key conventions and lint/check rules to prevent hard-coded user-facing strings in new UI changes.
+3. Add language switch scaffolding and persistence behavior (user preference and safe default/fallback locale).
+4. Build extraction and validation tooling for translation catalogs (missing key detection and stale key cleanup workflow).
+5. Localize high-traffic UI surfaces first (auth, campaign list, session shell, voice group panel, admin critical workflows).
+6. Add pseudo-localization test mode for layout stress checks (overflow, truncation, RTL readiness indicators where applicable).
+7. Add localization QA gates to W2 test program (snapshot/contract checks for key rendering and fallback behavior).
+
+Definition of done:
+
+- i18n foundation is in place with documented conventions and contributor workflow.
+- New UI strings in target surfaces are key-driven rather than hard-coded.
+- At least one additional locale is wired end-to-end for smoke validation.
+- Localization checks are integrated into roadmap test/release gates.
+- Operator/user docs include localization workflow and troubleshooting basics.
+
 ---
 
 ## 5) Milestone Plan
@@ -447,7 +466,7 @@ Definition of done:
 
 ### M3: UX and Documentation Readiness
 
-- Target: complete W0 frontend surface completion, W4 regression closure, W5 user-doc publishing, W6 panel/refactor consistency follow-up, and W7 admin operations UX review
+- Target: complete W0 frontend surface completion, W4 regression closure, W5 user-doc publishing, W6 panel/refactor consistency follow-up, W7 admin operations UX review, and W8 localization foundation kickoff
 
 ### M4: Release Readiness Review
 

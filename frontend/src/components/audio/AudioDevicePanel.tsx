@@ -1,6 +1,19 @@
 import { useState } from 'react'
 import { Icon } from '../ui/Icon'
 import type { AudioDeviceState } from '@/types/audio'
+import {
+  AUDIO_CONNECTION_STATUS_TITLES,
+  AUDIO_CONTROL_COPY,
+  AUDIO_SETTINGS_COPY,
+  type AudioConnectionStatusState,
+  getAudioModeLabel,
+  getAudioQuickPanelAriaLabel,
+  getAudioQuickPanelCountLabel,
+  getDmOverridesAriaLabel,
+  getDmOverridesCountLabel,
+  getLiveKitBadgeLabel,
+  getMicrophoneControlLabel,
+} from '../../constants/audioUi.constants'
 
 interface AudioDetailItem {
   kind: string
@@ -10,7 +23,7 @@ interface AudioDetailItem {
 
 interface AudioDevicePanelProps {
   device: AudioDeviceState
-  statusState: 'connected' | 'connecting' | 'disconnected'
+  statusState: AudioConnectionStatusState
   isVoiceConnected: boolean
   liveKitConnectionKey: string
   hasLocalPublication: boolean
@@ -50,14 +63,13 @@ export function AudioDevicePanel({
   const [effectsHovered, setEffectsHovered] = useState(false)
   const [overridesHovered, setOverridesHovered] = useState(false)
 
-  const micTitle = device.microphoneOn
-    ? 'Mute microphone'
-    : isVoiceConnected
-      ? 'Unmute microphone'
-      : 'Voice not connected'
+  const micTitle = getMicrophoneControlLabel({
+    microphoneOn: device.microphoneOn,
+    isVoiceConnected,
+  })
 
   const isMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
-  const mutedLabel = isMuted ? 'Muted' : 'Live'
+  const mutedLabel = getAudioModeLabel(isMuted)
 
   const effectsOpen = effectsHovered
   const overridesOpen = overridesHovered
@@ -134,11 +146,11 @@ export function AudioDevicePanel({
     return <Icon name="status" className="audio-panel__detail-icon" />
   }
 
-  const statusTitles = {
-    connected: 'Voice connected',
-    connecting: 'Voice connecting…',
-    disconnected: 'Voice disconnected',
-  }
+  const liveKitBadgeLabel = getLiveKitBadgeLabel({
+    statusState,
+    hasLocalPublication,
+    liveKitConnectionKey,
+  })
 
   return (
     <footer className="audio-panel__controls">
@@ -146,8 +158,8 @@ export function AudioDevicePanel({
       <span
         className="audio-panel__status-dot"
         data-state={statusState}
-        title={statusTitles[statusState]}
-        aria-label={statusTitles[statusState]}
+        title={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
+        aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
       />
 
       {/* Mic toggle: go live / mute / unmute */}
@@ -171,8 +183,8 @@ export function AudioDevicePanel({
         }}
         onBlur={handlePrimaryUp}
         className={primaryControlClass}
-        title={device.pttEnabled ? 'Push to talk (hold)' : micTitle}
-        aria-label={device.pttEnabled ? 'Push to talk' : micTitle}
+        title={device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalkHold : micTitle}
+        aria-label={device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalk : micTitle}
         aria-pressed={device.pttEnabled ? pttActive : undefined}
         disabled={!device.microphoneOn && !isVoiceConnected}
       >
@@ -183,7 +195,10 @@ export function AudioDevicePanel({
         )}
       </button>
 
-      <span className="audio-panel__tx-meter" aria-label="Outgoing microphone level">
+      <span
+        className="audio-panel__tx-meter"
+        aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
+      >
         <span
           className="audio-panel__tx-meter-fill"
           style={{ height: `${Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)}%` }}
@@ -195,8 +210,8 @@ export function AudioDevicePanel({
         <span
           className="audio-panel__mode-pill-badge"
           data-state={lkBadgeState}
-          title={`LiveKit ${statusState}. ${hasLocalPublication ? 'Publishing' : 'Not publishing'}. Channel ${liveKitConnectionKey}`}
-          aria-label={`LiveKit ${statusState}. ${hasLocalPublication ? 'Publishing' : 'Not publishing'}. Channel ${liveKitConnectionKey}`}
+          title={liveKitBadgeLabel}
+          aria-label={liveKitBadgeLabel}
         />
       </span>
 
@@ -211,8 +226,8 @@ export function AudioDevicePanel({
       >
         <button
           className={`audio-panel__control audio-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
-          title={`Audio effects (${activeEffectsCount} active)`}
-          aria-label={`Audio effects, ${activeEffectsCount} active`}
+          title={getAudioQuickPanelCountLabel(activeEffectsCount)}
+          aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
           aria-expanded={effectsOpen}
           type="button"
         >
@@ -224,10 +239,14 @@ export function AudioDevicePanel({
           ) : null}
         </button>
         {effectsOpen && (
-          <div className="audio-panel__quick-panel" role="dialog" aria-label="Active audio effects">
-            <p className="audio-panel__quick-title">Audio Effects</p>
+          <div
+            className="audio-panel__quick-panel"
+            role="dialog"
+            aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
+          >
+            <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
             {effectItems.length === 0 ? (
-              <p className="audio-panel__quick-empty">No active processing enabled.</p>
+              <p className="audio-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
             ) : (
               <ul className="audio-panel__quick-list">
                 {effectItems.map((item) => (
@@ -254,8 +273,8 @@ export function AudioDevicePanel({
         >
           <button
             className={`audio-panel__control audio-panel__control--icon ${dmOverridesCount > 0 ? 'is-active' : ''}`}
-            title={`DM overrides (${dmOverridesCount} active)`}
-            aria-label={`DM audio overrides, ${dmOverridesCount} active`}
+            title={getDmOverridesCountLabel(dmOverridesCount)}
+            aria-label={getDmOverridesAriaLabel(dmOverridesCount)}
             aria-expanded={overridesOpen}
             type="button"
           >
@@ -267,10 +286,16 @@ export function AudioDevicePanel({
             ) : null}
           </button>
           {overridesOpen && (
-            <div className="audio-panel__quick-panel" role="dialog" aria-label="DM audio overrides">
-              <p className="audio-panel__quick-title">DM Audio Overrides</p>
+            <div
+              className="audio-panel__quick-panel"
+              role="dialog"
+              aria-label={AUDIO_CONTROL_COPY.dmAudioOverrides}
+            >
+              <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.dmAudioOverridesTitle}</p>
               {overrideItems.length === 0 ? (
-                <p className="audio-panel__quick-empty">No active DM audio overrides.</p>
+                <p className="audio-panel__quick-empty">
+                  {AUDIO_CONTROL_COPY.noActiveDmAudioOverrides}
+                </p>
               ) : (
                 <ul className="audio-panel__quick-list">
                   {overrideItems.map((item) => (
@@ -293,8 +318,8 @@ export function AudioDevicePanel({
       <button
         onClick={onToggleSettings}
         className={`audio-panel__control audio-panel__control--icon ${settingsOpen ? 'is-active' : ''}`}
-        title="Audio settings"
-        aria-label="Audio settings"
+        title={AUDIO_CONTROL_COPY.audioSettings}
+        aria-label={AUDIO_CONTROL_COPY.audioSettings}
         aria-expanded={settingsOpen}
       >
         <Icon name="settings" />

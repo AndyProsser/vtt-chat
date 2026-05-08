@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { UUID } from '@shared'
+import { RADIAL_MENU_COPY } from '../../constants/roomPresence.constants'
 
 const RADIAL_SAFE_MARGIN_PX = 12
 const RADIAL_ROOT_DIAMETER_PX = 148
@@ -39,10 +40,14 @@ export function RadialMenu({
 }: RadialMenuProps) {
   const rootItems = useMemo(
     () => [
-      { key: 'move', label: 'Move', onClick: onMove },
-      { key: 'condition', label: 'Condition', onClick: onCondition },
-      { key: 'mute', label: currentMuted ? 'Unmute' : 'Mute', onClick: onMute },
-      { key: 'close', label: 'Close', onClick: onClose },
+      { key: 'move', label: RADIAL_MENU_COPY.move, onClick: onMove },
+      { key: 'condition', label: RADIAL_MENU_COPY.condition, onClick: onCondition },
+      {
+        key: 'mute',
+        label: currentMuted ? RADIAL_MENU_COPY.unmute : RADIAL_MENU_COPY.mute,
+        onClick: onMute,
+      },
+      { key: 'close', label: RADIAL_MENU_COPY.close, onClick: onClose },
     ],
     [currentMuted, onClose, onCondition, onMove, onMute]
   )
@@ -89,7 +94,7 @@ export function RadialMenu({
       <button
         type="button"
         className="room-radial-backdrop"
-        aria-label="Close player actions menu"
+        aria-label={RADIAL_MENU_COPY.closePlayerActionsMenu}
         onClick={onClose}
       />
 
@@ -97,7 +102,7 @@ export function RadialMenu({
         className="room-radial-menu"
         style={clampedPosition}
         role="menu"
-        aria-label="Player actions"
+        aria-label={RADIAL_MENU_COPY.playerActions}
       >
         {mode === 'root' ? (
           <div className="room-radial-wheel">
@@ -118,14 +123,14 @@ export function RadialMenu({
         {mode === 'move' ? (
           <div className="room-radial-panel">
             <div className="room-radial-panel__header">
-              <strong>Move To</strong>
+              <strong>{RADIAL_MENU_COPY.moveTo}</strong>
               <button type="button" onClick={onBack}>
-                Back
+                {RADIAL_MENU_COPY.back}
               </button>
             </div>
             <div className="room-radial-panel__list">
               {moveTargets.length === 0 ? (
-                <p>No other groups available.</p>
+                <p>{RADIAL_MENU_COPY.noOtherGroupsAvailable}</p>
               ) : (
                 moveTargets.map((target) => (
                   <button key={target.id} type="button" onClick={() => onMoveSelect(target.id)}>
@@ -140,9 +145,9 @@ export function RadialMenu({
         {mode === 'condition' ? (
           <div className="room-radial-panel">
             <div className="room-radial-panel__header">
-              <strong>Condition</strong>
+              <strong>{RADIAL_MENU_COPY.condition}</strong>
               <button type="button" onClick={onBack}>
-                Back
+                {RADIAL_MENU_COPY.back}
               </button>
             </div>
             <div className="room-radial-panel__list">

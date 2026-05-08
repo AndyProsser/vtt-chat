@@ -40,7 +40,7 @@ export function LeftRailSummary({
                   <strong>{sessionCount}</strong>
                 </article>
               </TooltipTrigger>
-              <TooltipContent className="session-toolbar__tooltip-content">Sessions</TooltipContent>
+              <TooltipContent>Sessions</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -53,9 +53,7 @@ export function LeftRailSummary({
                   <strong>{connectedPlayersCount}</strong>
                 </article>
               </TooltipTrigger>
-              <TooltipContent className="session-toolbar__tooltip-content">
-                Connected Players + DM
-              </TooltipContent>
+              <TooltipContent>Connected Players + DM</TooltipContent>
             </Tooltip>
 
             {hasSpectators ? (
@@ -71,9 +69,7 @@ export function LeftRailSummary({
                     <strong>{connectedSpectatorsCount}</strong>
                   </article>
                 </TooltipTrigger>
-                <TooltipContent className="session-toolbar__tooltip-content">
-                  Spectators
-                </TooltipContent>
+                <TooltipContent>Spectators</TooltipContent>
               </Tooltip>
             ) : null}
           </div>

@@ -34,6 +34,8 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
+const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:']
+const SESSION_NOTE_PREFIX = 'Session Note:'
 
 function getAuthorInitial(username: string): string {
   return username.trim().charAt(0).toUpperCase() || '?'
@@ -79,6 +81,9 @@ export function MessageList({
         const previous = index > 0 ? messages[index - 1] : undefined
         const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
         const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
+        const isSessionBookend =
+          isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+        const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
         const isSelf = !isSystem && msg.authorId === currentUserId
         const authorProfile = participantDirectory?.[msg.authorId]
         const authorName = isSystem
@@ -91,6 +96,17 @@ export function MessageList({
           previous.authorId === msg.authorId &&
           msg.createdAt - previous.createdAt <= groupingWindowMs
         )
+
+        if (isSessionBookend || isSessionNote) {
+          return (
+            <article
+              key={msg.id}
+              className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'}`}
+            >
+              <span className="chat-session-marker__text">{msg.content}</span>
+            </article>
+          )
+        }
 
         return (
           <article

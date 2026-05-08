@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID, Role } from '@shared'
 import { MessageType } from '@shared'
 import { useStore } from '../../hooks/useStore'
+import { ROOM_NAMES } from '../../constants/roomPresence.constants'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import type { Message } from '@/types/chat'
@@ -42,7 +43,8 @@ export function ChatWindow({
   const messageListRef = useRef<HTMLDivElement>(null)
   const isGreenroomMode = forceMessageType === MessageType.OOC
   const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
-  const resolvedRoomName = roomName?.trim() || (isGreenroomMode ? 'Green Room' : 'Main Room')
+  const resolvedRoomName =
+    roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
   const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
 
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as

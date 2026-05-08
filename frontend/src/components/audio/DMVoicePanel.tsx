@@ -1,3 +1,5 @@
+import { AUDIO_CONTROL_COPY, getDMVoiceChannelButtonLabel } from '../../constants/audioUi.constants'
+
 interface DMVoicePanelProps {
   isEnabled: boolean
   gain: number
@@ -18,7 +20,9 @@ export function DMVoicePanel({
   return (
     <section className="rounded-ui-md border border-ui-border bg-ui-surface p-3">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="m-0 text-sm font-semibold text-ui-primary">DM Voice Override</h4>
+        <h4 className="m-0 text-sm font-semibold text-ui-primary">
+          {AUDIO_CONTROL_COPY.dmVoiceOverride}
+        </h4>
         <label className="flex items-center gap-2 text-xs text-ui-secondary">
           <input
             type="checkbox"
@@ -49,7 +53,7 @@ export function DMVoicePanel({
         className="mt-3 rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-1.5 text-xs text-ui-primary"
         onClick={() => onMutedChange(!muted)}
       >
-        {muted ? 'Unmute DM Channel' : 'Mute DM Channel'}
+        {getDMVoiceChannelButtonLabel(muted)}
       </button>
     </section>
   )

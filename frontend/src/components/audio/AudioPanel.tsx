@@ -16,6 +16,12 @@ import { Role } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
+import {
+  AUDIO_EFFECT_COPY,
+  getAudioOverrideDescription,
+  getAudioOverrideName,
+  getPushToTalkEffectDescription,
+} from '../../constants/audioUi.constants'
 import { AudioDevicePanel } from './AudioDevicePanel'
 import { AudioSettingsPanel } from './AudioSettingsPanel'
 import '../../styles/components/audio/AudioPanel.css'
@@ -321,10 +327,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     if (device.pttEnabled) {
       items.push({
         kind: 'ptt',
-        name: 'Push to Talk',
-        description: pttActive
-          ? 'Mic gate is currently open while PTT is held.'
-          : 'Mic stays muted until PTT is held.',
+        name: AUDIO_EFFECT_COPY.pushToTalkName,
+        description: getPushToTalkEffectDescription(pttActive),
       })
     }
 
@@ -332,7 +336,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       items.push({
         kind: 'environment',
         name: currentEnvironment.name,
-        description: 'Applies room acoustics and reverb to match environment.',
+        description: AUDIO_EFFECT_COPY.environmentDescription,
       })
     }
 
@@ -340,7 +344,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       items.push({
         kind: 'distance',
         name: currentDistance.name,
-        description: 'Adjusts attenuation and filtering for listener distance.',
+        description: AUDIO_EFFECT_COPY.distanceDescription,
       })
     }
 
@@ -348,7 +352,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       items.push({
         kind: 'condition',
         name: currentCondition.name,
-        description: 'Adds scene condition processing to the audio chain.',
+        description: AUDIO_EFFECT_COPY.conditionDescription,
       })
     }
 
@@ -356,7 +360,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       items.push({
         kind: 'voice',
         name: currentVoicePreset.name,
-        description: 'Transforms voice character (pitch/formant) for roleplay.',
+        description: AUDIO_EFFECT_COPY.voiceDescription,
       })
     }
 
@@ -364,7 +368,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       items.push({
         kind: 'ic',
         name: currentICPreset.name,
-        description: 'Applies in-character voice coloration preset.',
+        description: AUDIO_EFFECT_COPY.inCharacterDescription,
       })
     }
 
@@ -374,7 +378,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         items.push({
           kind: 'custom',
           name: effectId,
-          description: 'Custom active effect enabled in the current stack.',
+          description: AUDIO_EFFECT_COPY.customDescription,
         })
       })
 
@@ -398,45 +402,13 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const overrideItems = useMemo(() => {
     return Array.from(dmOverrides.values()).map((override) => {
       const shortUser = override.userId.slice(0, 8)
-
-      if (override.overrideType === 'MUTE') {
-        return {
-          kind: 'mute',
-          name: `Mute (${shortUser})`,
-          description: 'Forces the target user microphone to muted.',
-        }
-      }
-
-      if (override.overrideType === 'UNMUTE') {
-        return {
-          kind: 'unmute',
-          name: `Unmute (${shortUser})`,
-          description: 'Explicitly allows the target user microphone signal.',
-        }
-      }
-
-      if (override.overrideType === 'GAIN') {
-        const gainValue = override.parameters?.gain
-        const gainText = typeof gainValue === 'number' ? `${gainValue.toFixed(2)}x` : 'custom value'
-        return {
-          kind: 'gain',
-          name: `Gain (${shortUser})`,
-          description: `Adjusts target gain (${gainText}).`,
-        }
-      }
-
-      if (override.overrideType === 'GATE') {
-        return {
-          kind: 'gate',
-          name: `Gate (${shortUser})`,
-          description: 'Applies DM gate threshold to suppress background noise.',
-        }
-      }
-
       return {
-        kind: 'filter',
-        name: `Filter (${shortUser})`,
-        description: 'Applies a DM filter profile to the target signal.',
+        kind: override.overrideType.toLowerCase(),
+        name: getAudioOverrideName(override.overrideType, shortUser),
+        description: getAudioOverrideDescription({
+          overrideType: override.overrideType,
+          gain: typeof override.parameters?.gain === 'number' ? override.parameters.gain : null,
+        }),
       }
     })
   }, [dmOverrides])

@@ -1,4 +1,5 @@
 import type { PresenceState, UUID } from '@shared'
+import { getPresenceLabel, RADIAL_MENU_COPY } from '../../constants/roomPresence.constants'
 
 interface AudioPreset {
   id: string
@@ -93,7 +94,7 @@ export function DMPlayerOverridesSection({
           >
             {controllableParticipants.map((participant) => (
               <option key={participant.userId} value={participant.userId}>
-                {participant.username} ({participant.state})
+                {participant.username} ({getPresenceLabel(participant.state)})
               </option>
             ))}
           </select>
@@ -106,7 +107,7 @@ export function DMPlayerOverridesSection({
             onClick={onMute}
             className="rounded-ui-sm bg-ui-brand px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            Mute
+            {RADIAL_MENU_COPY.mute}
           </button>
           <button
             type="button"
@@ -114,7 +115,7 @@ export function DMPlayerOverridesSection({
             onClick={onUnmute}
             className="rounded-ui-sm border border-ui-border px-3 py-1.5 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Unmute
+            {RADIAL_MENU_COPY.unmute}
           </button>
         </div>
 

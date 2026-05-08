@@ -323,9 +323,7 @@ export function CommandCenterFrame({
                           ) : null}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="command-center-right-rail-tooltip">
-                        {label}
-                      </TooltipContent>
+                      <TooltipContent side="left">{label}</TooltipContent>
                     </Tooltip>
                   )
                 })}

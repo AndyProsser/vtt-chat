@@ -28,9 +28,11 @@ import { AudioPanel } from '../audio/AudioPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
+import { isGreenRoomName, ROOM_NAMES } from '../../constants/roomPresence.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
+import type { Note } from '@/types/notes'
 import type {
   Room as RoomRecord,
   RoomUser as RoomMember,
@@ -116,6 +118,8 @@ const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaig
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
 const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
+const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
+const SESSION_SUMMARY_TAG = 'session-summary'
 
 type CampaignSettingsPayload = {
   id: UUID
@@ -177,6 +181,10 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   return null
 }
 
+function formatSessionBookendTimestamp(timestamp: number): string {
+  return new Date(timestamp).toLocaleString()
+}
+
 function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
   const nextSessionNumber = existingSessions.length + 1
   const dateLabel = new Date().toLocaleDateString('en-CA')
@@ -194,8 +202,7 @@ function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
     return false
   }
 
-  const normalized = room.name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
+  return isGreenRoomName(room.name)
 }
 
 function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState): RoomRecord[] {
@@ -376,6 +383,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
   const notes = useStore((state) => state.notes)
+  const addMessage = useStore((state) => state.addMessage)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
@@ -417,6 +425,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const currentSessionNoteCount = currentSession
     ? Object.keys(notes[currentSession.id] ?? {}).length
     : 0
+  const typedNotesBySession = notes as Record<UUID, Record<UUID, Note>>
   const selectedRoomId = useMemo<UUID | ''>(() => {
     if (!visibleRooms.length) {
       return ''
@@ -442,6 +451,102 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+
+  const getSessionBookendRoomIds = useCallback((): UUID[] => {
+    const targetIds = new Set<UUID>()
+
+    for (const room of currentRooms) {
+      if (room.type === RoomType.MAIN || isGreenRoom(room)) {
+        targetIds.add(room.id)
+      }
+    }
+
+    if (targetIds.size === 0 && selectedRoomId) {
+      targetIds.add(selectedRoomId)
+    }
+
+    return Array.from(targetIds)
+  }, [currentRooms, selectedRoomId])
+
+  const appendSessionBookendMessages = useCallback(
+    (sessionId: UUID, nextState: SessionState) => {
+      if (nextState !== SessionState.ACTIVE && nextState !== SessionState.ENDED) {
+        return
+      }
+
+      const timestamp = Date.now()
+      const label = nextState === SessionState.ACTIVE ? 'Session Start' : 'Session End'
+      const content = `${label}: ${formatSessionBookendTimestamp(timestamp)}`
+
+      for (const roomId of getSessionBookendRoomIds()) {
+        addMessage(sessionId, {
+          id: crypto.randomUUID() as UUID,
+          roomId,
+          authorId: SYSTEM_MESSAGE_AUTHOR_ID,
+          authorUsername: 'SYSTEM',
+          content,
+          type: MessageType.SYSTEM,
+          isDmOnly: false,
+          createdAt: timestamp,
+        })
+      }
+    },
+    [addMessage, getSessionBookendRoomIds]
+  )
+
+  const appendMissingPreviousSummaryNote = useCallback(
+    async (sessionId: UUID) => {
+      const previousSession = sessionList.find((candidate) => candidate.id !== sessionId)
+      if (!previousSession) {
+        return
+      }
+
+      const localPreviousNotes = Object.values(typedNotesBySession[previousSession.id] || {})
+      let hasSummary = localPreviousNotes.some(
+        (note) => Array.isArray(note.tags) && note.tags.includes(SESSION_SUMMARY_TAG)
+      )
+
+      if (!hasSummary) {
+        try {
+          const response = await fetch(`${apiUrl}/api/notes/${previousSession.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+
+          if (response.ok) {
+            const data = await response.json().catch(() => ({}))
+            const fetchedNotes = Array.isArray(data?.notes) ? data.notes : []
+            hasSummary = fetchedNotes.some(
+              (note: any) => Array.isArray(note?.tags) && note.tags.includes(SESSION_SUMMARY_TAG)
+            )
+          }
+        } catch {
+          // Best effort: if the summary lookup fails, skip injecting a possibly incorrect reminder.
+          return
+        }
+      }
+
+      if (hasSummary) {
+        return
+      }
+
+      const timestamp = Date.now()
+      const content = 'Session Note: No previous session summary available.'
+
+      for (const roomId of getSessionBookendRoomIds()) {
+        addMessage(sessionId, {
+          id: crypto.randomUUID() as UUID,
+          roomId,
+          authorId: SYSTEM_MESSAGE_AUTHOR_ID,
+          authorUsername: 'SYSTEM',
+          content,
+          type: MessageType.SYSTEM,
+          isDmOnly: false,
+          createdAt: timestamp,
+        })
+      }
+    },
+    [addMessage, apiUrl, getSessionBookendRoomIds, sessionList, token, typedNotesBySession]
+  )
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -1454,6 +1559,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
           const activeSession = await transitionResponse.json()
           updateSession(payload.session.id, activeSession)
+          appendSessionBookendMessages(payload.session.id, SessionState.ACTIVE)
+          void appendMissingPreviousSummaryNote(payload.session.id)
         }
 
         return payload.session.id
@@ -1471,6 +1578,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setCurrentSession,
       token,
       updateSession,
+      appendMissingPreviousSummaryNote,
+      appendSessionBookendMessages,
     ]
   )
 
@@ -1532,6 +1641,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       const updatedSession = await response.json()
       updateSession(sessionId, updatedSession)
+
+      appendSessionBookendMessages(sessionId, state)
+      if (state === SessionState.ACTIVE) {
+        void appendMissingPreviousSummaryNote(sessionId)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -1754,11 +1868,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                           </span>
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        align="end"
-                        className="session-toolbar__tooltip-content"
-                      >
+                      <TooltipContent side="bottom" align="end">
                         Create Campaign
                       </TooltipContent>
                     </Tooltip>
@@ -1777,11 +1887,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                           </span>
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        align="end"
-                        className="session-toolbar__tooltip-content"
-                      >
+                      <TooltipContent side="bottom" align="end">
                         Join Campaign
                       </TooltipContent>
                     </Tooltip>
@@ -1800,11 +1906,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                         <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      align="end"
-                      className="session-toolbar__tooltip-content"
-                    >
+                    <TooltipContent side="bottom" align="end">
                       Theme
                     </TooltipContent>
                   </Tooltip>
@@ -1820,11 +1922,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                         <Icon name="settings" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      align="end"
-                      className="session-toolbar__tooltip-content"
-                    >
+                    <TooltipContent side="bottom" align="end">
                       Settings
                     </TooltipContent>
                   </Tooltip>
@@ -1840,11 +1938,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                         <Icon name="logout" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      align="end"
-                      className="session-toolbar__tooltip-content"
-                    >
+                    <TooltipContent side="bottom" align="end">
                       Logoff
                     </TooltipContent>
                   </Tooltip>
@@ -1863,7 +1957,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     <TooltipContent
                       side="bottom"
                       align="end"
-                      className="session-toolbar__tooltip-content session-toolbar__tooltip-content--status"
+                      className="session-toolbar__tooltip-content--status"
                     >
                       <div className="session-toolbar__status-tooltip-title">Status</div>
                       <div className="session-toolbar__status-tooltip-row">

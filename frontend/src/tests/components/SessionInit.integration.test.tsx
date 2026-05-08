@@ -199,7 +199,7 @@ describe('SessionInit integration', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
       expect(screen.getAllByText('Morgan').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Muted').length).toBeGreaterThan(0)
+      expect(screen.getAllByLabelText('Muted microphone').length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: /Select room Archive Cellar/i }))

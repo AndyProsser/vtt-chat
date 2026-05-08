@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { Role, RoomType, UUID } from '@shared'
+import { getPresenceLabel } from '../../constants/roomPresence.constants'
 import { useStore } from '../../hooks/useStore'
 import type { Message } from '@/types/chat'
 import type { Note } from '@/types/notes'
@@ -75,13 +76,15 @@ function createRoomResult(room: { id: UUID; name: string; type: RoomType }): Sea
 }
 
 function createParticipantResult(participant: SessionPresence): SearchResult {
+  const presenceLabel = getPresenceLabel(participant.state)
+
   return {
     id: `participant:${participant.userId}`,
     kind: 'participant',
     title: participant.username,
-    subtitle: `Participant • ${participant.state}`,
+    subtitle: `Participant • ${presenceLabel}`,
     roomId: participant.primaryRoomId,
-    searchText: `${participant.username} ${participant.state}`.toLowerCase(),
+    searchText: `${participant.username} ${presenceLabel}`.toLowerCase(),
   }
 }
 

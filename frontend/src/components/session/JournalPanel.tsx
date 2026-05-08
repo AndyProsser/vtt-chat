@@ -29,6 +29,8 @@ const JOURNAL_FAVORITE_STORAGE_KEY = 'vtt-chat:journal:favorites'
 const JOURNAL_PRESETS_STORAGE_KEY = 'vtt-chat:journal:filter-presets'
 const JOURNAL_PAGE_SIZE = 30
 const JOURNAL_SCROLL_THRESHOLD_PX = 200
+const SESSION_SUMMARY_TAG = 'session-summary'
+const SESSION_SUMMARY_TITLE = 'Session Summary'
 
 const NOTE_VISIBILITY_LABEL: Record<NoteVisibility, string> = {
   [NoteVisibility.DM_ONLY]: 'DM only',
@@ -208,6 +210,10 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
   const [renamePresetInput, setRenamePresetInput] = useState('')
   const [importPayload, setImportPayload] = useState('')
   const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
+  const [summaryExcerpt, setSummaryExcerpt] = useState('')
+  const [summaryBody, setSummaryBody] = useState('')
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [isSavingSummary, setIsSavingSummary] = useState(false)
 
   const exportPayload = JSON.stringify(
     {
@@ -248,20 +254,30 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
     })
   }, [favoriteEntryIds, pinnedEntryIds, sessionNotes])
 
+  const sessionSummaryEntry = useMemo(
+    () => entries.find((entry) => entry.tags.includes(SESSION_SUMMARY_TAG)) ?? null,
+    [entries]
+  )
+
+  const journalEntries = useMemo(
+    () => entries.filter((entry) => !entry.tags.includes(SESSION_SUMMARY_TAG)),
+    [entries]
+  )
+
   const availableTags = useMemo(() => {
     const tags = new Set<string>()
-    for (const entry of entries) {
+    for (const entry of journalEntries) {
       for (const tag of entry.tags) {
         tags.add(tag)
       }
     }
     return Array.from(tags).sort((left, right) => left.localeCompare(right))
-  }, [entries])
+  }, [journalEntries])
 
   const filteredEntries = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase()
 
-    return entries.filter((entry) => {
+    return journalEntries.filter((entry) => {
       if (selectedTag !== 'all' && !entry.tags.includes(selectedTag)) {
         return false
       }
@@ -286,7 +302,7 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
 
       return true
     })
-  }, [entries, favoriteEntryIds, keyword, pinnedEntryIds, selectedTag, viewMode])
+  }, [favoriteEntryIds, journalEntries, keyword, pinnedEntryIds, selectedTag, viewMode])
 
   const visibleEntries = useMemo(
     () => filteredEntries.slice(0, visibleEntryCount),
@@ -313,6 +329,15 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
   useEffect(() => {
     persistJournalPresets(presetStorageKey, savedPresets)
   }, [presetStorageKey, savedPresets])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSummaryExcerpt(
+      sessionSummaryEntry?.title === SESSION_SUMMARY_TITLE ? '' : (sessionSummaryEntry?.title ?? '')
+    )
+    setSummaryBody(sessionSummaryEntry?.content ?? '')
+    setSummaryError(null)
+  }, [sessionSummaryEntry])
 
   useEffect(() => {
     let cancelled = false
@@ -634,6 +659,103 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
     setVisibleEntryCount((count) => count + JOURNAL_PAGE_SIZE)
   }
 
+  const handleSaveSessionSummary = async () => {
+    if (role !== 'DM') {
+      return
+    }
+
+    const nextExcerpt = summaryExcerpt.trim()
+    const nextBody = summaryBody.trim()
+    if (!nextExcerpt && !nextBody) {
+      setSummaryError('Add an excerpt or summary before saving.')
+      return
+    }
+
+    setSummaryError(null)
+    setIsSavingSummary(true)
+
+    const tags = Array.from(
+      new Set([...(sessionSummaryEntry?.tags ?? []), SESSION_SUMMARY_TAG, `session:${sessionId}`])
+    )
+
+    try {
+      if (sessionSummaryEntry) {
+        const response = await fetch(`${apiUrl}/api/notes/${sessionSummaryEntry.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: nextExcerpt || SESSION_SUMMARY_TITLE,
+            content: nextBody,
+            visibility: sessionSummaryEntry.visibility,
+            tags,
+            allowedUsers: sessionSummaryEntry.allowedUsers,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json().catch(() => ({}))
+        const notePayload = data?.note ?? data
+        updateNote(sessionId, sessionSummaryEntry.id, {
+          title: typeof notePayload?.title === 'string' ? notePayload.title : nextExcerpt,
+          content: typeof notePayload?.content === 'string' ? notePayload.content : nextBody,
+          tags,
+          updatedAt:
+            typeof notePayload?.updatedAt === 'number' ? notePayload.updatedAt : Date.now(),
+        })
+      } else {
+        const response = await fetch(`${apiUrl}/api/notes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            title: nextExcerpt || SESSION_SUMMARY_TITLE,
+            content: nextBody,
+            visibility: NoteVisibility.DM_ONLY,
+            tags,
+            allowedUsers: [],
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json().catch(() => ({}))
+        const notePayload = data?.note
+        if (!notePayload?.id) {
+          throw new Error('Summary save response missing note payload')
+        }
+
+        addNote(sessionId, {
+          id: notePayload.id,
+          ownerId: notePayload.authorId,
+          ownerUsername: notePayload.authorUsername,
+          title: notePayload.title,
+          content: notePayload.content,
+          visibility: notePayload.visibility,
+          tags: notePayload.tags || tags,
+          allowedUsers: notePayload.allowedUsers || [],
+          publishedAt: notePayload.publishedAt,
+          createdAt: notePayload.createdAt,
+          updatedAt: notePayload.updatedAt,
+        })
+      }
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : 'Failed to save session summary.')
+    } finally {
+      setIsSavingSummary(false)
+    }
+  }
+
   return (
     <section className="knowledge-panel knowledge-panel--compact" data-testid="journal-panel">
       <header className="knowledge-panel-header">
@@ -649,6 +771,62 @@ export function JournalPanel({ apiUrl, token, sessionId, role, userId }: Journal
       <p className="knowledge-panel-copy">
         This first journal slice is compiled from visible session notes and published callouts.
       </p>
+
+      <section className="knowledge-panel-group" aria-label="Session summary">
+        <h4 className="knowledge-panel-group-title">Session Summary</h4>
+        <p className="knowledge-panel-meta">Session ID: {sessionId}</p>
+
+        {role === 'DM' ? (
+          <>
+            <label className="knowledge-panel-filter-field" htmlFor="journal-summary-excerpt">
+              <span>Excerpt</span>
+              <input
+                id="journal-summary-excerpt"
+                type="text"
+                value={summaryExcerpt}
+                placeholder="One-line recap for quick context"
+                onChange={(event) => setSummaryExcerpt(event.target.value)}
+              />
+            </label>
+
+            <label className="knowledge-panel-filter-field" htmlFor="journal-summary-body">
+              <span>Summary</span>
+              <textarea
+                id="journal-summary-body"
+                className="knowledge-panel-presets-json"
+                value={summaryBody}
+                placeholder="Long-form session summary"
+                onChange={(event) => setSummaryBody(event.target.value)}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="knowledge-panel-action"
+              onClick={handleSaveSessionSummary}
+              disabled={isSavingSummary}
+            >
+              {isSavingSummary ? 'Saving summary...' : 'Save summary'}
+            </button>
+          </>
+        ) : sessionSummaryEntry ? (
+          <>
+            <p className="knowledge-panel-meta">
+              Excerpt:{' '}
+              {sessionSummaryEntry.title === SESSION_SUMMARY_TITLE
+                ? 'Not provided'
+                : sessionSummaryEntry.title}
+            </p>
+            <p className="knowledge-panel-card-body">
+              {sessionSummaryEntry.content || 'No summary details yet.'}
+            </p>
+          </>
+        ) : (
+          <p className="knowledge-panel-meta">No session summary has been added yet.</p>
+        )}
+
+        {summaryError ? <p className="knowledge-panel-error">{summaryError}</p> : null}
+      </section>
 
       <div className="knowledge-panel-search">
         <label className="knowledge-panel-search-label" htmlFor="journal-keyword-search">

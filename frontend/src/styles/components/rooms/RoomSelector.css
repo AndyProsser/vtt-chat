@@ -343,8 +343,6 @@
 
 .room-selector-profile-tooltip {
   max-width: 18rem;
-  background: #111827;
-  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .room-selector-profile {
@@ -407,6 +405,66 @@
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 999px;
   padding: 0.08rem 0.38rem;
+}
+
+.room-selector-profile__status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.room-selector-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  padding: 0.06rem 0.38rem;
+  font-size: 0.64rem;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.room-selector-status-pill .material-symbols-outlined {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.room-selector-status-pill.role {
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #bfdbfe;
+}
+
+.room-selector-status-pill.presence.online {
+  border-color: rgba(34, 197, 94, 0.38);
+  color: #86efac;
+}
+
+.room-selector-status-pill.presence.speaking {
+  border-color: rgba(14, 165, 233, 0.4);
+  color: #7dd3fc;
+}
+
+.room-selector-status-pill.presence.idle,
+.room-selector-status-pill.presence.typing,
+.room-selector-status-pill.presence.offline {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #cbd5e1;
+}
+
+.room-selector-status-pill.speaking {
+  border-color: rgba(14, 165, 233, 0.4);
+  color: #7dd3fc;
+}
+
+.room-selector-status-pill.muted {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+.room-selector-status-pill.condition {
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #e9d5ff;
 }
 
 .room-selector-error {
@@ -507,10 +565,11 @@
   width: 13rem;
   max-height: min(18rem, 55vh);
   overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  box-shadow: 0 14px 40px rgba(3, 7, 18, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.5rem;
+  background: #111827;
+  color: #f8fafc;
+  box-shadow: 0 14px 40px rgba(3, 7, 18, 0.32);
   padding: 0.55rem;
   display: grid;
   gap: 0.4rem;
@@ -524,19 +583,22 @@
 
 .room-radial-panel__header strong {
   font-size: 0.73rem;
+  color: #f8fafc;
 }
 
 .room-radial-panel__header button {
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
   font-size: 0.64rem;
   padding: 0.08rem 0.4rem;
   cursor: pointer;
 }
 
 .room-radial-panel__header button:hover {
-  border-color: color-mix(in srgb, var(--color-brand) 30%, var(--color-border-soft));
+  border-color: color-mix(in srgb, var(--color-brand) 40%, rgba(148, 163, 184, 0.28));
+  background: color-mix(in srgb, var(--color-brand) 18%, rgba(15, 23, 42, 0.72));
 }
 
 .room-radial-panel__list {
@@ -545,9 +607,10 @@
 }
 
 .room-radial-panel__list button {
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 82%, transparent);
+  border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  background: rgba(15, 23, 42, 0.64);
+  color: #f8fafc;
   text-align: left;
   font-size: 0.68rem;
   padding: 0.28rem 0.42rem;
@@ -558,14 +621,14 @@
 }
 
 .room-radial-panel__list button:hover {
-  background: color-mix(in srgb, var(--color-brand) 16%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-brand) 34%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 18%, rgba(15, 23, 42, 0.64));
+  border-color: color-mix(in srgb, var(--color-brand) 42%, rgba(148, 163, 184, 0.24));
 }
 
 .room-radial-panel__list p {
   margin: 0;
   font-size: 0.67rem;
-  color: var(--color-text-secondary);
+  color: #cbd5e1;
 }
 
 .room-selector-member--touch-feedback {

@@ -3,6 +3,23 @@ import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import {
+  formatRoomTypeLabel,
+  getVoiceGroupPresenceState,
+  isGreenRoomName,
+  RADIAL_MENU_COPY,
+  ROOM_PRESENCE_COPY,
+  ROOM_ROLE_LABELS,
+} from '../../constants/roomPresence.constants'
+import {
+  CONDITION_PRESETS,
+  DEFAULT_PLAYER_META_LINE,
+  DM_FLAVOR_LINES,
+  LONG_PRESS_MOVE_CANCEL_PX,
+  LONG_PRESS_OPEN_MS,
+  resolveEnvironmentGlyph,
+} from '../../constants/voiceGroup.constants'
+import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
 import { AvatarOverlay } from './AvatarOverlay'
 import { RadialMenu } from './RadialMenu'
 import { Icon } from '../ui/Icon'
@@ -54,15 +71,6 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
-function isGreenRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
-}
-
-const CONDITION_PRESETS = ['Silenced', 'Poisoned', 'Bleeding', 'Exhausted']
-const LONG_PRESS_OPEN_MS = 420
-const LONG_PRESS_MOVE_CANCEL_PX = 12
-
 type RadialActionMode = 'root' | 'move' | 'condition'
 
 interface RadialMenuState {
@@ -98,6 +106,17 @@ export function RoomSelector({
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
+  const dmFlavorLine = useMemo(() => {
+    const seed = `${dmUserId}:${sessionId}`
+    let hash = 0
+    for (let index = 0; index < seed.length; index += 1) {
+      hash = (hash << 5) - hash + seed.charCodeAt(index)
+      hash |= 0
+    }
+
+    const itemIndex = Math.abs(hash) % DM_FLAVOR_LINES.length
+    return DM_FLAVOR_LINES[itemIndex]
+  }, [dmUserId, sessionId])
 
   const confirmedRoomIds = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms])
 
@@ -119,35 +138,6 @@ export function RoomSelector({
 
     return [...byId.values()].filter((room) => !pendingRoomDeletes[room.id])
   }, [rooms, optimisticRooms, pendingRoomDeletes, confirmedRoomIds])
-
-  const formatRoomTypeLabel = (type: RoomType): string => {
-    if (type === RoomType.MAIN) return ''
-    if (type === RoomType.GROUP) return ''
-    if (type === RoomType.PRIVATE) return 'Private'
-    return type
-  }
-
-  const displayPresenceState = (state: PresenceState): PresenceState => {
-    if (state === PresenceState.IDLE) {
-      return PresenceState.ONLINE
-    }
-    return state
-  }
-
-  const getEnvironmentGlyph = (environmentName?: string): string => {
-    const value = (environmentName || '').toLowerCase()
-
-    if (value.includes('cave')) return 'mountain_flag'
-    if (value.includes('forest') || value.includes('wood')) return 'forest'
-    if (value.includes('tavern')) return 'local_bar'
-    if (value.includes('city') || value.includes('street') || value.includes('market'))
-      return 'location_city'
-    if (value.includes('dungeon') || value.includes('crypt')) return 'lan'
-    if (value.includes('night') || value.includes('moon')) return 'bedtime'
-    if (value.includes('storm') || value.includes('rain')) return 'thunderstorm'
-
-    return 'graphic_eq'
-  }
 
   const baseParticipants = useMemo(
     () =>
@@ -368,7 +358,7 @@ export function RoomSelector({
     setMoveError(null)
 
     try {
-      if (conditionName === 'None') {
+      if (conditionName === RADIAL_MENU_COPY.none) {
         const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/remove`, {
           method: 'POST',
           headers: {
@@ -571,7 +561,7 @@ export function RoomSelector({
                           aria-label="Group environment"
                         >
                           <span className="material-symbols-outlined" aria-hidden="true">
-                            {getEnvironmentGlyph(room.environmentName)}
+                            {resolveEnvironmentGlyph(room.environmentName)}
                           </span>
                         </span>
                       </TooltipTrigger>
@@ -638,14 +628,13 @@ export function RoomSelector({
 
               <div className="room-selector-members-list">
                 {participants.length === 0 ? (
-                  <p className="room-selector-empty">No members in this group.</p>
+                  <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noMembersInGroup}</p>
                 ) : (
                   participants.map((member) => {
                     const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
                     const pendingTargetRoomId = pendingRoomMoves[member.userId]
                     const isMuted = Boolean(member.isMuted)
-                    const condition = member.condition
-                    const shownPresenceState = displayPresenceState(member.presenceState)
+                    const shownPresenceState = getVoiceGroupPresenceState(member.presenceState)
 
                     return (
                       <Tooltip key={member.userId}>
@@ -724,10 +713,10 @@ export function RoomSelector({
                               username={member.characterName || member.username}
                               avatarUrl={member.avatarUrl}
                               roleLabel={member.roleLabel}
+                              metaLine={getParticipantMetaLine(member)}
                               presenceState={shownPresenceState}
                               isMuted={isMuted}
                               isSpeaking={member.isSpeaking}
-                              condition={condition}
                             />
                             {pendingTargetRoomId === room.id ? (
                               <span className="room-selector-member__pending">Moving…</span>
@@ -746,7 +735,7 @@ export function RoomSelector({
                             <div className="room-selector-profile__meta">
                               <strong>{member.characterName || member.username}</strong>
                               <span>{member.playerName || member.username}</span>
-                              <p>{formatProfileDetails(member)}</p>
+                              <p>{getParticipantMetaLine(member)}</p>
                               {getStatEntries(member).length > 0 ? (
                                 <div className="room-selector-profile__stats">
                                   {getStatEntries(member).map(([key, value]) => (
@@ -756,11 +745,46 @@ export function RoomSelector({
                                   ))}
                                 </div>
                               ) : null}
-                              <p>
-                                {member.roleLabel || 'PLAYER'} · {shownPresenceState}
-                                {member.isSpeaking ? ' · Speaking' : ''}
-                                {isMuted ? ' · Muted' : ''}
-                              </p>
+                              <div className="room-selector-profile__status-pills">
+                                <span className="room-selector-status-pill role">
+                                  <span className="material-symbols-outlined" aria-hidden="true">
+                                    {STATUS_PILL_ICONS.role}
+                                  </span>
+                                  {member.roleLabel || ROOM_ROLE_LABELS.player}
+                                </span>
+                                <span
+                                  className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
+                                >
+                                  <span className="material-symbols-outlined" aria-hidden="true">
+                                    {STATUS_PILL_ICONS.presence}
+                                  </span>
+                                  {shownPresenceState}
+                                </span>
+                                {member.isSpeaking ? (
+                                  <span className="room-selector-status-pill speaking">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.speaking}
+                                    </span>
+                                    {STATUS_PILL_LABELS.speaking}
+                                  </span>
+                                ) : null}
+                                {isMuted ? (
+                                  <span className="room-selector-status-pill muted">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.muted}
+                                    </span>
+                                    {STATUS_PILL_LABELS.muted}
+                                  </span>
+                                ) : null}
+                                {member.condition ? (
+                                  <span className="room-selector-status-pill condition">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.condition}
+                                    </span>
+                                    {member.condition}
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         </TooltipContent>
@@ -779,21 +803,6 @@ export function RoomSelector({
     )
   }
 
-  const formatProfileDetails = (member: RoomParticipantStatus): string => {
-    const parts = [member.characterRace, member.characterClass, member.characterSubclass].filter(
-      Boolean
-    )
-
-    if (parts.length === 0 && typeof member.level !== 'number') {
-      return 'Character details unavailable in current session payload.'
-    }
-
-    const base = parts.join(' · ')
-    return typeof member.level === 'number'
-      ? `${base ? `${base} · ` : ''}Level ${member.level}`
-      : base
-  }
-
   const getStatEntries = (member: RoomParticipantStatus): Array<[string, unknown]> => {
     const stats = member.characterStats
     if (!stats) {
@@ -803,6 +812,20 @@ export function RoomSelector({
     return Object.entries(stats)
       .filter(([key, value]) => key !== 'level' && value !== null && value !== undefined)
       .slice(0, 4)
+  }
+
+  const getParticipantMetaLine = (member: RoomParticipantStatus): string => {
+    if (member.roleLabel === 'DM') {
+      return dmFlavorLine
+    }
+
+    const parts = [
+      member.characterClass?.trim(),
+      typeof member.level === 'number' ? `Level ${member.level}` : undefined,
+      member.characterRace?.trim(),
+    ].filter((value): value is string => Boolean(value))
+
+    return parts.length > 0 ? parts.join(' | ') : DEFAULT_PLAYER_META_LINE
   }
 
   return (
@@ -862,8 +885,9 @@ export function RoomSelector({
                 <AvatarOverlay
                   username={dmParticipant.characterName || dmParticipant.username}
                   avatarUrl={dmParticipant.avatarUrl}
-                  roleLabel="DM"
-                  presenceState={displayPresenceState(dmParticipant.presenceState)}
+                  roleLabel={ROOM_ROLE_LABELS.dm}
+                  metaLine={getParticipantMetaLine(dmParticipant)}
+                  presenceState={getVoiceGroupPresenceState(dmParticipant.presenceState)}
                   isMuted={dmParticipant.isMuted}
                   isSpeaking={dmParticipant.isSpeaking}
                 />
@@ -872,11 +896,11 @@ export function RoomSelector({
           ) : null}
 
           {allRooms.length === 0 ? (
-            <p className="room-selector-empty">No groups available.</p>
+            <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
           ) : (
             <>
-              {renderRoomSection('Main Group', mainRooms)}
-              {renderRoomSection('Other Groups', otherRooms)}
+              {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
+              {renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms)}
             </>
           )}
         </div>
@@ -903,7 +927,9 @@ export function RoomSelector({
                 : []
             }
             conditionTargets={
-              radialMenuState.mode === 'condition' ? [...CONDITION_PRESETS, 'None'] : []
+              radialMenuState.mode === 'condition'
+                ? [...CONDITION_PRESETS, RADIAL_MENU_COPY.none]
+                : []
             }
             currentMuted={Boolean(selectedRadialMember?.isMuted)}
             onMove={() =>

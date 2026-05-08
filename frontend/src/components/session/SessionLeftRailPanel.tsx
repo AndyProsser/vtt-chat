@@ -2,6 +2,8 @@ import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import type { AudioDMOverride } from '@/types/audio'
 import type { RoomUser } from '@/types/room'
+import { useStore } from '@/state/store'
+import { isGreenRoomName, ROOM_ROLE_LABELS } from '../../constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
 import { RoomSelector } from '../rooms/RoomSelector'
 
@@ -54,13 +56,13 @@ export function SessionLeftRailPanel({
   currentConditionName,
   roomEnvironmentNames,
 }: SessionLeftRailPanelProps) {
+  const device = useStore((state) => state.device)
+  const pttActive = useStore((state) => state.pttActive)
+
   const isGreenroom = sessionState === 'IDLE'
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
-  const isGreenRoomName = (name: string): boolean => {
-    const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-    return normalized === 'green room' || normalized === 'green-room'
-  }
+  const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
 
   const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
 
@@ -121,6 +123,8 @@ export function SessionLeftRailPanel({
             environmentName: isGreenroom ? undefined : roomEnvironmentNames?.[room.id],
             participants: (roomMembersByRoomId[room.id] || []).map((member) => {
               const dmOverride = dmOverrides.get(member.userId)
+              const overrideMuted = !isGreenroom && dmOverride?.overrideType === 'MUTE'
+              const isSelf = member.userId === currentUserId
               const overrideCondition =
                 dmOverride?.overrideType === 'CONDITION'
                   ? String(dmOverride.parameters?.conditionName || '')
@@ -137,9 +141,10 @@ export function SessionLeftRailPanel({
                 characterRace: member.characterRace,
                 level: member.level,
                 characterStats: member.characterStats,
-                roleLabel: member.userId === dmUserId ? ('DM' as const) : ('PLAYER' as const),
+                roleLabel:
+                  member.userId === dmUserId ? ROOM_ROLE_LABELS.dm : ROOM_ROLE_LABELS.player,
                 presenceState: member.presenceState,
-                isMuted: isGreenroom ? false : dmOverride?.overrideType === 'MUTE',
+                isMuted: isSelf ? localUserMuted || overrideMuted : overrideMuted,
                 isSpeaking: member.presenceState === PresenceState.SPEAKING,
                 condition: isGreenroom
                   ? undefined

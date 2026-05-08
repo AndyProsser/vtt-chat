@@ -80,6 +80,7 @@ When UI implementation docs diverge from these migration docs, update the implem
 - [UI-STATE-RECOVERY.md](ui/UI-STATE-RECOVERY.md)
 - [UI-LOADING-STATES.md](ui/UI-LOADING-STATES.md)
 - [UI-ERROR-HANDLING.md](ui/UI-ERROR-HANDLING.md)
+- [SESSION-SUMMARY-BOOKENDS.md](ui/SESSION-SUMMARY-BOOKENDS.md)
 - [UI-PERSONAS.md](ui/UI-PERSONAS.md)
 - [COMBINED PERSONA COMPARISON SHEET](ui/personas/COMPARISON-SHEET.md)
 - [UI PERSONA DM WIREFRAME](ui/personas/UI-PERSONA-DM.md)
