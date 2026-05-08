@@ -1788,6 +1788,14 @@ describe('SessionInit integration', () => {
                 createdBy: DM_ID,
                 createdAt: 1,
               },
+              {
+                id: ROOM_TWO_ID,
+                sessionId: SESSION_ID,
+                name: 'Scout Team',
+                type: RoomType.GROUP,
+                createdBy: DM_ID,
+                createdAt: 2,
+              },
             ],
           }),
         }
@@ -1839,6 +1847,10 @@ describe('SessionInit integration', () => {
               lowpassFreq: 7000,
               roomGain: -2,
             },
+            environments: [
+              { roomId: ROOM_ONE_ID, environmentName: 'Tavern' },
+              { roomId: ROOM_TWO_ID, environmentName: 'Cave' },
+            ],
             dmOverrides: [
               {
                 userId: OVERRIDE_USER_ID,
@@ -1894,6 +1906,12 @@ describe('SessionInit integration', () => {
       expect(storeState.dmOverrides.get(OVERRIDE_USER_ID)?.overrideType).toBe('MUTE')
     })
 
+    fireEvent.click(screen.getByRole('button', { name: /Select group Scout Team/i }))
+
+    await waitFor(() => {
+      expect(useStore.getState().currentEnvironment?.name).toBe('Cave')
+    })
+
     // Verify presence recover was triggered (fire-and-forget).
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1903,7 +1921,7 @@ describe('SessionInit integration', () => {
     })
   })
 
-  it('rehydrates audio state again on WebSocket reconnect', async () => {
+  it('rehydrates audio state and restores session markers across main + greenroom on reconnect', async () => {
     const ENV_PRESET_ID = asUuid('dddddddd-dddd-4ddd-8ddd-dddddddddddd')
 
     const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
@@ -1960,8 +1978,49 @@ describe('SessionInit integration', () => {
                 createdBy: DM_ID,
                 createdAt: 1,
               },
+              {
+                id: ROOM_TWO_ID,
+                sessionId: SESSION_ID,
+                name: 'Green Room',
+                type: RoomType.GROUP,
+                createdBy: DM_ID,
+                createdAt: 2,
+              },
             ],
           }),
+        }
+      }
+
+      if (
+        url.includes(`/api/chat/messages/${SESSION_ID}`) &&
+        url.includes(`roomId=${ROOM_ONE_ID}`)
+      ) {
+        return {
+          ok: true,
+          json: async () => ({
+            messages: [
+              {
+                id: asUuid('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1'),
+                roomId: ROOM_ONE_ID,
+                authorId: asUuid('00000000-0000-4000-8000-000000000000'),
+                authorUsername: 'SYSTEM',
+                content: 'Session Start: 2026-05-08 21:45:00',
+                type: MessageType.SYSTEM,
+                isDmOnly: false,
+                createdAt: 1_715_200_700_000,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url.includes(`/api/chat/messages/${SESSION_ID}`) &&
+        url.includes(`roomId=${ROOM_TWO_ID}`)
+      ) {
+        return {
+          ok: true,
+          json: async () => ({ messages: [] }),
         }
       }
 
@@ -2046,6 +2105,25 @@ describe('SessionInit integration', () => {
       )
       expect(audioStateCalls.length).toBeGreaterThan(1)
       expect(fetchMock.mock.calls.length).toBeGreaterThan(callCountAfterFirstLoad)
+    })
+
+    await waitFor(() => {
+      const sessionMessages = Object.values((useStore.getState().messages as any)[SESSION_ID] || {})
+      const mainMarker = sessionMessages.find(
+        (message: any) =>
+          message.roomId === ROOM_ONE_ID &&
+          typeof message.content === 'string' &&
+          message.content.startsWith('Session Start:')
+      )
+      const greenMarker = sessionMessages.find(
+        (message: any) =>
+          message.roomId === ROOM_TWO_ID &&
+          typeof message.content === 'string' &&
+          message.content.startsWith('Session Start:')
+      )
+
+      expect(mainMarker).toBeTruthy()
+      expect(greenMarker).toBeTruthy()
     })
   })
 })

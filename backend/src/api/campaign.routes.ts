@@ -4,6 +4,7 @@ import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { createSession } from '@/services/session.service'
+import { ensureSessionDefaultRoomsForSession } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import {
   createCampaignForUser,
@@ -955,6 +956,8 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
     typeof description === 'string' ? description : undefined,
     campaignId as UUID
   )
+
+  await ensureSessionDefaultRoomsForSession(session.id as UUID, session.dmId as UUID)
 
   return res.status(201).json({ session })
 })

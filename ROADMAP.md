@@ -167,6 +167,8 @@ Recent runtime follow-through (2026-05-08):
 - Greenroom/session chat carry-over and lifecycle markers were hardened for repeated `Greenroom -> Session -> Greenroom -> Session Restart` cycles.
 - Fixed a frontend chat-state bug where a restarted session could miss its immediate `Session Start` marker until the next start/stop cycle because the marker was emitted before the new session topology had hydrated into Zustand state.
 - Frontend integration coverage now includes repeated restart chronology assertions and start-transition topology re-hydration coverage.
+- Runtime hardening priority remains room/session lifecycle determinism: room CRUD sync, greenroom-only rendering out of session, greenroom default-effect lock, deterministic transition routing, and reconnect-safe presence/status state.
+- Deferred UI debt for follow-up: Create Group popover styling has intermittent selector/specificity fragility in-session; short-term guard styles are acceptable for now, and a proper shared popover/panel styling pass is queued for post-hardening review.
 
 **Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
 
@@ -388,6 +390,7 @@ Definition of done:
 3. Ensure token/theming consistency remains stable during hardening changes.
 4. Keep framework boundaries enforced (frontend core UI vs admin MUI).
 5. Refactor audio panel, campaign settings panel, and right-side panel UX so interactions are coherent and reliably functional.
+6. Resolve Create Group popover CSS reliability (selector scope, stacking-context behavior, and shared panel token parity with Audio Settings style contract).
 
 Definition of done:
 

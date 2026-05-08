@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
+import type { UUID } from '@shared'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
@@ -68,7 +69,10 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleSessionStateChanged(event)
     })
     dispatcher.register('SESSION:ENDED', (event) => {
-      useStore.getState().handleSessionEnded(event)
+      const store = useStore.getState()
+      store.handleSessionEnded(event)
+      store.resetSessionAudioState()
+      store.clearActiveEffects()
     })
 
     // Chat events
@@ -112,8 +116,33 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('ROOM:USER_LEFT', (event) => {
       useStore.getState().handleUserLeft(event)
     })
+    dispatcher.register('ROOM:DELETED', (event) => {
+      const payload = event.payload as { roomId?: UUID }
+      if (!payload.roomId) {
+        return
+      }
+
+      const store = useStore.getState()
+      const deletedEnvironmentName = store.roomEnvironmentNames[payload.roomId]
+      store.deleteRoom(event.sessionId as UUID, payload.roomId)
+      store.clearRoomEnvironmentName(payload.roomId)
+
+      if (
+        deletedEnvironmentName &&
+        store.currentEnvironment?.name?.toLowerCase() === deletedEnvironmentName.toLowerCase()
+      ) {
+        store.clearEnvironment()
+      }
+    })
     dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
-      useStore.getState().handleSessionRoomTransitionApplied(event)
+      const store = useStore.getState()
+      store.handleSessionRoomTransitionApplied(event)
+      // Clear per-session audio presets when transitioning to greenroom or session end
+      const payload = event.payload as { nextState?: string }
+      if (payload.nextState === 'IDLE' || payload.nextState === 'ENDED') {
+        store.resetSessionAudioState()
+        store.clearActiveEffects()
+      }
     })
 
     // Presence events

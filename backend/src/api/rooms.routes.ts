@@ -129,10 +129,10 @@ async function createRoomHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can create rooms' })
     }
 
-    if (session.state === SessionState.IDLE) {
+    if (session.state === SessionState.IDLE && roomType === RoomType.PRIVATE) {
       return res.status(400).json({
         code: ErrorCode.INVALID_INPUT,
-        message: 'Cannot create additional groups while session is in greenroom',
+        message: 'Cannot create private groups outside an active session',
       })
     }
 

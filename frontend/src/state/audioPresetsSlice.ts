@@ -30,6 +30,8 @@ export interface AudioPresetsSlice {
   clearVoicePreset: () => void
   setICPreset: (preset: ICPreset) => void
   clearICPreset: () => void
+  /** Clears all per-session audio presets (env, condition, distance, voice, IC). Preserves roomEnvironmentNames. */
+  resetSessionAudioState: () => void
 
   handleEnvironmentSet: (event: EventEnvelope) => void
 }
@@ -44,7 +46,8 @@ export const initialAudioPresetsState = {
 } as const
 
 export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], AudioPresetsSlice> = (
-  set
+  set,
+  get
 ) => ({
   ...initialAudioPresetsState,
 
@@ -118,6 +121,15 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
       currentICPreset: undefined,
     })),
 
+  resetSessionAudioState: () =>
+    set(() => ({
+      currentEnvironment: undefined,
+      currentDistance: undefined,
+      currentCondition: undefined,
+      currentVoicePreset: undefined,
+      currentICPreset: undefined,
+    })),
+
   handleEnvironmentSet: (event) => {
     const payload = event.payload as {
       environmentId: UUID
@@ -129,6 +141,12 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
     }
 
     if (!payload.parameters) {
+      set((state) => ({
+        roomEnvironmentNames: {
+          ...state.roomEnvironmentNames,
+          [payload.roomId]: payload.environmentName,
+        },
+      }))
       return
     }
 

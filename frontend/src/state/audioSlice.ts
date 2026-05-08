@@ -50,6 +50,7 @@ export interface AudioSlice extends AudioDeviceSlice, AudioPresetsSlice, AudioOv
   /** Track active effects */
   setEffectActive: (effectId: UUID, active: boolean) => void
   clearEffects: () => void
+  clearActiveEffects: () => void
 
   /** Update LiveKit track info */
   setLocalTrackId: (trackId: string) => void
@@ -96,6 +97,11 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set, get, api) => ({
     })),
 
   clearEffects: () =>
+    set(() => ({
+      activeEffects: {},
+    })),
+
+  clearActiveEffects: () =>
     set(() => ({
       activeEffects: {},
     })),

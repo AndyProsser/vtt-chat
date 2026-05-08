@@ -69,6 +69,18 @@ Copilot must enforce:
 - No private rooms
 - No recording
 
+### **5b. Session/Room lifecycle invariants are critical**
+
+Copilot must treat these as high-priority runtime contracts (do not regress):
+
+- Room CRUD must be reflected in canonical Zustand room topology immediately (create/delete/move).
+- Greenroom must only render the greenroom group in the left rail; do not show `Other Groups` while out of session.
+- Non-greenroom groups persist across session boundaries; they are hidden in greenroom, not deleted.
+- Greenroom forces `Default` environment: no per-room environment picker changes while in greenroom.
+- Session start/stop transitions must move users deterministically (all -> greenroom on end; DM + players restored by session start transition policy).
+- Presence/status pills must derive from canonical store state and remain consistent across reconnect/hydration.
+- Session boundary markers shown in chat must come from persisted backend system messages when available.
+
 ### **6. DM authority is absolute**
 
 - DM can override anything

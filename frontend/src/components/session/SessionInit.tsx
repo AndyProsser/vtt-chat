@@ -122,7 +122,26 @@ const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
 const SESSION_SUMMARY_TITLE = 'Session Summary'
 const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
-const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:'] as const
+const SESSION_BOOKEND_PREFIXES = [
+  'Session Start:',
+  'Session End:',
+  '[Session Started]',
+  '[Session Ended]',
+] as const
+
+const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
+  string,
+  { reverbSend: number; lowpassFreq: number; roomGain: number }
+> = {
+  default: { reverbSend: 0.3, lowpassFreq: 8000, roomGain: 0 },
+  forest: { reverbSend: 0.42, lowpassFreq: 7600, roomGain: -1 },
+  cave: { reverbSend: 0.62, lowpassFreq: 4200, roomGain: -2 },
+  tavern: { reverbSend: 0.36, lowpassFreq: 6800, roomGain: -1 },
+  city: { reverbSend: 0.28, lowpassFreq: 8200, roomGain: -0.5 },
+  dungeon: { reverbSend: 0.54, lowpassFreq: 3600, roomGain: -2.5 },
+  night: { reverbSend: 0.24, lowpassFreq: 9000, roomGain: -1.2 },
+  storm: { reverbSend: 0.48, lowpassFreq: 5200, roomGain: -1.8 },
+}
 
 type PendingSessionBookend = {
   state: SessionState
@@ -131,6 +150,20 @@ type PendingSessionBookend = {
 
 function isSessionBookendMessage(content: string): boolean {
   return SESSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
+}
+
+function buildRoomEnvironmentPreset(roomId: UUID, environmentName: string) {
+  const key = environmentName.trim().toLowerCase()
+  const fallback =
+    ROOM_ENVIRONMENT_PRESET_FALLBACKS[key] || ROOM_ENVIRONMENT_PRESET_FALLBACKS.default
+
+  return {
+    id: roomId,
+    name: environmentName,
+    reverbSend: fallback.reverbSend,
+    lowpassFreq: fallback.lowpassFreq,
+    roomGain: fallback.roomGain,
+  }
 }
 
 function resolveGreenroomCacheTtlMs(): number {
@@ -453,7 +486,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const setBroadcastState = useStore((state) => state.setBroadcastState)
+  const currentEnvironment = useStore((state) => state.currentEnvironment)
   const setEnvironment = useStore((state) => state.setEnvironment)
+  const clearEnvironment = useStore((state) => state.clearEnvironment)
+  const resetSessionAudioState = useStore((state) => state.resetSessionAudioState)
+  const clearActiveEffects = useStore((state) => state.clearActiveEffects)
   const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
   const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
@@ -519,6 +556,48 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+
+  useEffect(() => {
+    if (!currentSession || !selectedRoomId) {
+      return
+    }
+
+    if (isGreenroomChatMode) {
+      return
+    }
+
+    const hasSelectedRoomEnvironment = Object.prototype.hasOwnProperty.call(
+      roomEnvironmentNames,
+      selectedRoomId
+    )
+    if (!hasSelectedRoomEnvironment) {
+      return
+    }
+
+    const roomEnvironmentName = roomEnvironmentNames[selectedRoomId]
+    if (!roomEnvironmentName || roomEnvironmentName.trim().toLowerCase() === 'default') {
+      if (currentEnvironment) {
+        clearEnvironment()
+      }
+      return
+    }
+
+    if (
+      currentEnvironment?.name?.trim().toLowerCase() === roomEnvironmentName.trim().toLowerCase()
+    ) {
+      return
+    }
+
+    setEnvironment(buildRoomEnvironmentPreset(selectedRoomId, roomEnvironmentName))
+  }, [
+    clearEnvironment,
+    currentEnvironment,
+    currentSession,
+    isGreenroomChatMode,
+    roomEnvironmentNames,
+    selectedRoomId,
+    setEnvironment,
+  ])
 
   const getSessionBookendRoomIds = useCallback(
     (sessionId: UUID): UUID[] => {
@@ -628,6 +707,140 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     pendingGreenroomCarryBySessionIdRef.current.set(toSessionId, fromSessionId)
   }, [])
+
+  const restoreSessionBookendsFromHistory = useCallback(
+    async (sessionId: UUID, rooms: Array<Pick<RoomRecord, 'id' | 'type' | 'name'>>) => {
+      const targetRoomIds = rooms
+        .filter((room) => room.type === RoomType.MAIN || isGreenRoom(room))
+        .map((room) => room.id)
+
+      if (!targetRoomIds.length) {
+        return
+      }
+
+      const historyByRoom = await Promise.all(
+        targetRoomIds.map(async (roomId) => {
+          try {
+            const response = await fetch(
+              `${apiUrl}/api/chat/messages/${sessionId}?roomId=${roomId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            )
+
+            if (!response.ok) {
+              return [] as Message[]
+            }
+
+            const payload = (await response.json().catch(() => ({}))) as {
+              messages?: Array<{
+                id?: UUID
+                roomId?: UUID
+                authorId?: UUID
+                authorUsername?: string
+                content?: string
+                type?: MessageType
+                isDmOnly?: boolean
+                createdAt?: number | string
+                editedAt?: number
+              }>
+            }
+
+            const rawMessages = Array.isArray(payload.messages) ? payload.messages : []
+
+            return rawMessages
+              .map((entry) => {
+                const createdAtRaw = entry.createdAt
+                const createdAt =
+                  typeof createdAtRaw === 'number'
+                    ? createdAtRaw
+                    : typeof createdAtRaw === 'string'
+                      ? new Date(createdAtRaw).getTime()
+                      : Number.NaN
+
+                if (
+                  !entry.authorId ||
+                  !entry.authorUsername ||
+                  !entry.content ||
+                  !entry.type ||
+                  !Number.isFinite(createdAt)
+                ) {
+                  return null
+                }
+
+                return {
+                  id: (entry.id || crypto.randomUUID()) as UUID,
+                  roomId: (entry.roomId || roomId) as UUID,
+                  authorId: entry.authorId,
+                  authorUsername: entry.authorUsername,
+                  content: entry.content,
+                  type: entry.type,
+                  isDmOnly: Boolean(entry.isDmOnly),
+                  createdAt,
+                  editedAt: entry.editedAt,
+                } as Message
+              })
+              .filter((message): message is Message => Boolean(message))
+          } catch {
+            return [] as Message[]
+          }
+        })
+      )
+
+      const recoveredBookends = historyByRoom
+        .flat()
+        .filter(
+          (message) =>
+            message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
+        )
+        .sort((left, right) => left.createdAt - right.createdAt)
+
+      if (!recoveredBookends.length) {
+        return
+      }
+
+      const sessionMessages =
+        Object.values(
+          (useStore.getState().messages as Record<UUID, Record<UUID, Message>>)[sessionId] || {}
+        ) || []
+
+      const existingSignatures = new Set(
+        sessionMessages
+          .filter((message) => Boolean(message.roomId) && targetRoomIds.includes(message.roomId!))
+          .map(
+            (message) =>
+              `${message.roomId}:${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+          )
+      )
+
+      const uniqueBookends = new Map<string, Message>()
+      for (const message of recoveredBookends) {
+        const signature = `${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+        if (!uniqueBookends.has(signature)) {
+          uniqueBookends.set(signature, message)
+        }
+      }
+
+      for (const message of uniqueBookends.values()) {
+        for (const roomId of targetRoomIds) {
+          const roomSignature = `${roomId}:${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+          if (existingSignatures.has(roomSignature)) {
+            continue
+          }
+
+          addMessage(sessionId, {
+            ...message,
+            id: crypto.randomUUID() as UUID,
+            roomId,
+          })
+          existingSignatures.add(roomSignature)
+        }
+      }
+    },
+    [addMessage, apiUrl, token]
+  )
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -1172,6 +1385,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
 
+        // On session enter/reconnect, recover session markers from persisted chat history
+        // and mirror them across main + greenroom for consistent chronology after refresh.
+        void restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
+
+        // Clear any stale per-session audio state before re-hydrating from server.
+        // This prevents residual effects from a previous session bleeding through.
+        resetSessionAudioState()
+        clearActiveEffects()
+
         // Rehydrate audio environment preset from server state.
         const recoveredEnv = audioStatePayload.environment
         if (recoveredEnv) {
@@ -1229,10 +1451,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     token,
     wsState,
     replaceSessionTopology,
+    restoreSessionBookendsFromHistory,
     setBroadcastState,
     setEnvironment,
     replaceRoomEnvironmentNames,
     replaceDMOverrides,
+    resetSessionAudioState,
+    clearActiveEffects,
   ])
 
   useEffect(() => {

@@ -99,6 +99,7 @@ export async function listSessions(): Promise<
 
 export async function findSessionById(sessionId: string): Promise<{
   id: string
+  campaignId: string | null
   name: string
   description: string | null
   dmId: string
@@ -115,6 +116,7 @@ export async function findSessionById(sessionId: string): Promise<{
 
   return {
     id: row.id,
+    campaignId: row.campaignId,
     name: row.name,
     description: row.description,
     dmId: row.dmId,

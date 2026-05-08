@@ -16,6 +16,12 @@ import {
   listRoomsBySession,
   upsertPresenceSnapshotRecord,
 } from '@/repositories/room.repository'
+import {
+  listAudioRoomStateBySession,
+  removeAudioRoomStateRecord,
+  upsertAudioRoomStateRecord,
+} from '@/repositories/audio.repository'
+import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
 
 const MAIN_ROOM_NAME = 'Main Room'
 const GREEN_ROOM_NAME = 'Green Room'
@@ -322,11 +328,89 @@ function normalizeRoomName(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+function isGreenRoomStored(room: Pick<StoredRoom, 'name'>): boolean {
+  const normalized = normalizeRoomName(room.name)
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
+function isCampaignPersistentRoom(room: Pick<StoredRoom, 'name' | 'type'>): boolean {
+  return room.type === RoomType.GROUP && !isGreenRoomStored(room)
+}
+
+async function restoreCampaignRoomsForSession(params: {
+  sessionId: UUID
+  dmId: UUID
+  existingRooms: StoredRoom[]
+}): Promise<void> {
+  const session = await findSessionById(params.sessionId)
+  if (!session?.campaignId) {
+    return
+  }
+
+  const existingNames = new Set(
+    params.existingRooms
+      .filter(isCampaignPersistentRoom)
+      .map((room) => normalizeRoomName(room.name))
+  )
+
+  const campaignSessions = await listSessionsByCampaign(session.campaignId)
+  const previousSession = campaignSessions.find((entry) => entry.id !== params.sessionId)
+  if (!previousSession) {
+    return
+  }
+
+  const [previousRooms, previousEnvironmentStates] = await Promise.all([
+    listRoomsBySession(previousSession.id),
+    listAudioRoomStateBySession(previousSession.id),
+  ])
+
+  const previousEnvironmentByRoomId = new Map(
+    previousEnvironmentStates.map((entry) => [entry.roomId, entry])
+  )
+
+  for (const previousRoom of previousRooms.map(toStoredRoom)) {
+    if (!isCampaignPersistentRoom(previousRoom)) {
+      continue
+    }
+
+    const normalizedName = normalizeRoomName(previousRoom.name)
+    if (existingNames.has(normalizedName)) {
+      continue
+    }
+
+    const restoredRoom = await createRoom({
+      sessionId: params.sessionId,
+      name: previousRoom.name,
+      type: previousRoom.type,
+      createdBy: params.dmId,
+    })
+    existingNames.add(normalizedName)
+
+    const previousEnvironment = previousEnvironmentByRoomId.get(previousRoom.id)
+    if (!previousEnvironment) {
+      continue
+    }
+
+    await upsertAudioRoomStateRecord({
+      sessionId: params.sessionId,
+      roomId: restoredRoom.id,
+      environmentName: previousEnvironment.environmentName,
+      environmentId: previousEnvironment.environmentId,
+      parameters:
+        previousEnvironment.parameters && typeof previousEnvironment.parameters === 'object'
+          ? (previousEnvironment.parameters as Record<string, unknown>)
+          : {},
+      setBy: previousEnvironment.setBy,
+      setAt: previousEnvironment.setAt,
+    })
+  }
+}
+
 async function ensureSessionDefaultRooms(params: {
   sessionId: UUID
   dmId: UUID
 }): Promise<{ mainRoom: StoredRoom; greenRoom: StoredRoom }> {
-  const existingRooms = await getRooms(params.sessionId)
+  let existingRooms = await getRooms(params.sessionId)
 
   let mainRoom =
     existingRooms.find((room) => room.type === RoomType.MAIN) ||
@@ -339,6 +423,7 @@ async function ensureSessionDefaultRooms(params: {
       type: RoomType.MAIN,
       createdBy: params.dmId,
     })
+    existingRooms = [...existingRooms, mainRoom]
   }
 
   const greenRoomNames = new Set(['green room', 'green-room'])
@@ -351,9 +436,25 @@ async function ensureSessionDefaultRooms(params: {
       type: RoomType.GROUP,
       createdBy: params.dmId,
     })
+    existingRooms = [...existingRooms, greenRoom]
   }
 
-  return { mainRoom, greenRoom }
+  await restoreCampaignRoomsForSession({
+    sessionId: params.sessionId,
+    dmId: params.dmId,
+    existingRooms,
+  })
+
+  const hydratedRooms = await getRooms(params.sessionId)
+  return {
+    mainRoom:
+      hydratedRooms.find((room) => room.type === RoomType.MAIN) ||
+      hydratedRooms.find(
+        (room) => normalizeRoomName(room.name) === normalizeRoomName(MAIN_ROOM_NAME)
+      ) ||
+      mainRoom,
+    greenRoom: hydratedRooms.find((room) => isGreenRoomStored(room)) || greenRoom,
+  }
 }
 
 export async function ensureSessionDefaultRoomsForSession(
@@ -361,6 +462,23 @@ export async function ensureSessionDefaultRoomsForSession(
   dmId: UUID
 ): Promise<void> {
   await ensureSessionDefaultRooms({ sessionId, dmId })
+}
+
+export async function deletePrivateRoomsForEndedSession(sessionId: UUID): Promise<StoredRoom[]> {
+  const rooms = await getRooms(sessionId)
+  const privateRooms = rooms.filter((room) => room.type === RoomType.PRIVATE)
+  if (!privateRooms.length) {
+    return []
+  }
+
+  const redis = await getRedisClient()
+  for (const room of privateRooms) {
+    await redis.del(roomMembersKey(sessionId, room.id))
+    await removeAudioRoomStateRecord({ sessionId, roomId: room.id })
+    await deleteRoomRecord(room.id)
+  }
+
+  return privateRooms
 }
 
 export async function applySessionStateRoomTransition(params: {

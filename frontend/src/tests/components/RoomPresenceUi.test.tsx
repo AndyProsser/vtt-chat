@@ -121,6 +121,7 @@ describe('RoomSelector', () => {
   })
 
   it('shows optimistic group immediately while create request is pending', async () => {
+    const onSelectRoom = vi.fn()
     let resolveFetch: ((value: Response) => void) | null = null
     const fetchMock = vi.fn(
       () =>
@@ -157,7 +158,7 @@ describe('RoomSelector', () => {
           },
         ]}
         selectedRoomId={asUuid('room-main')}
-        onSelectRoom={vi.fn()}
+        onSelectRoom={onSelectRoom}
       />
     )
 
@@ -191,6 +192,10 @@ describe('RoomSelector', () => {
         'http://localhost:3000/api/v1/rooms',
         expect.objectContaining({ method: 'POST' })
       )
+    })
+
+    await waitFor(() => {
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-jail'))
     })
   })
 
@@ -587,6 +592,13 @@ describe('RoomSelector', () => {
               },
             ],
           },
+          {
+            id: asUuid('room-other'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 0,
+            participants: [],
+          },
         ]}
         selectedRoomId={asUuid('room-main')}
         onSelectRoom={vi.fn()}
@@ -602,6 +614,10 @@ describe('RoomSelector', () => {
     expect(screen.getByRole('button', { name: 'Tara' })).toBeTruthy()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
+    expect(screen.queryByText('Other Groups')).toBeNull()
+    const effectButtons = screen.getAllByRole('button', { name: /Change group environment/i })
+    expect(effectButtons).toHaveLength(1)
+    expect(effectButtons[0]?.hasAttribute('disabled')).toBe(true)
   })
 
   it('allows closing a non-main room even when members are present', async () => {
@@ -726,6 +742,153 @@ describe('RoomSelector', () => {
     expect(screen.queryByText('Breakout')).toBeNull()
     expect(screen.getByText('Class TBD | Level ? | Race TBD')).toBeTruthy()
     expect(screen.queryByText('IDLE')).toBeNull()
+  })
+
+  it('lights all DM voice controls in broadcast mode and selecting one disables broadcast', async () => {
+    const onSelectRoom = vi.fn()
+    const onToggleBroadcastMode = vi.fn(async () => {})
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={true}
+        onToggleBroadcastMode={onToggleBroadcastMode}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-scouts'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={onSelectRoom}
+      />
+    )
+
+    const voiceButtons = screen.getAllByRole('button', { name: /Set DM voice to/i })
+    expect(voiceButtons.length).toBeGreaterThan(1)
+    for (const button of voiceButtons) {
+      expect(button.className).toContain('is-broadcast')
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set DM voice to Scouts' }))
+
+    await waitFor(() => {
+      expect(onToggleBroadcastMode).toHaveBeenCalledWith(false)
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-scouts'))
+    })
+  })
+
+  it('restores previous DM voice target when broadcast is disabled from header', async () => {
+    const onSelectRoom = vi.fn()
+    const onToggleBroadcastMode = vi.fn(async () => {})
+
+    const { rerender } = render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={onToggleBroadcastMode}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-scouts'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-scouts')}
+        onSelectRoom={onSelectRoom}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enable broadcast mode' }))
+
+    await waitFor(() => {
+      expect(onToggleBroadcastMode).toHaveBeenCalledWith(true)
+    })
+
+    rerender(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={true}
+        onToggleBroadcastMode={onToggleBroadcastMode}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-scouts'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={onSelectRoom}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Disable broadcast mode' }))
+
+    await waitFor(() => {
+      expect(onToggleBroadcastMode).toHaveBeenCalledWith(false)
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-scouts'))
+    })
   })
 
   it('opens radial menu and moves a participant to another room', async () => {

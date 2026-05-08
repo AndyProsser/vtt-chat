@@ -22,6 +22,7 @@ import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
 import {
   applySessionStateRoomTransition,
+  deletePrivateRoomsForEndedSession,
   ensureSessionDefaultRoomsForSession,
   getRooms,
   getSessionPresence,
@@ -688,17 +689,17 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const audioStateBeforeReset = await getSessionAudioState(session.id)
     await clearSessionDMOverrideState(session.id)
 
-    const neutralRoomId =
-      state === 'ACTIVE'
-        ? transition.mainRoomId
-        : transition.targetRoomId === transition.greenRoomId
-          ? transition.greenRoomId
-          : transition.mainRoomId
+    // Only clear environment for the neutral room (main or greenroom), not other groups
+    const neutralRoomId = state === 'ACTIVE' ? transition.mainRoomId : transition.greenRoomId
 
     await clearRoomEnvironmentState({
       sessionId: session.id,
       roomId: neutralRoomId,
     })
+
+    if (state === 'ENDED') {
+      await deletePrivateRoomsForEndedSession(session.id)
+    }
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 

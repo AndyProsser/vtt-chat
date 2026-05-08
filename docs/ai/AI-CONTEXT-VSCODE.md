@@ -69,6 +69,18 @@ You must enforce:
 - No private rooms
 - No recording
 
+### **5b. Session/Room lifecycle invariants are critical**
+
+Treat these as non-negotiable runtime contracts:
+
+- Room create/delete/move must update canonical Zustand room topology immediately.
+- Greenroom left rail shows only the greenroom group; hide `Other Groups` while out of session.
+- Additional groups persist across session boundaries; hide them in greenroom, do not delete them.
+- Greenroom enforces `Default` environment and disables per-room environment changes.
+- Session transitions must deterministically move users between greenroom/main according to session state.
+- Presence/status pills must read from canonical store-derived state and stay correct after reconnect/hydration.
+- Session boundary markers should be restored from persisted backend system messages when present.
+
 ### **6. DM authority**
 
 - DM can override anything

@@ -86,9 +86,14 @@ describe('useWebSocket', () => {
       handleNoteUpdated: vi.fn(),
       handleNoteDeleted: vi.fn(),
       handleRoomCreated: vi.fn(),
+      deleteRoom: vi.fn(),
       handleUserJoined: vi.fn(),
       handleUserLeft: vi.fn(),
       handleSessionRoomTransitionApplied: vi.fn(),
+      roomEnvironmentNames: {},
+      clearRoomEnvironmentName: vi.fn(),
+      currentEnvironment: undefined,
+      clearEnvironment: vi.fn(),
       handlePresenceStateChanged: vi.fn(),
       handleEffectApplied: vi.fn(),
       handleEffectRemoved: vi.fn(),
@@ -187,5 +192,52 @@ describe('useWebSocket', () => {
     expect(result.current.state).toBe('connected')
     expect(result.current.isConnected).toBe(true)
     expect(store.handlePresetLoaded).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes deleted rooms and clears deleted room environment mappings', async () => {
+    const { useWebSocket } = await import('../../hooks/useWebSocket')
+    const store = mockUseStore()
+
+    store.roomEnvironmentNames = {
+      ['44444444-4444-4444-8444-444444444444']: 'Forest',
+    }
+    store.currentEnvironment = {
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Forest',
+      reverbSend: 0.2,
+      lowpassFreq: 4000,
+      roomGain: 0,
+    }
+
+    renderHook(() =>
+      useWebSocket({
+        url: 'ws://localhost:3000/ws',
+        token: 'jwt-token',
+        enabled: true,
+      })
+    )
+
+    await waitFor(() => {
+      expect(clientInstances).toHaveLength(1)
+    })
+
+    const inbound = clientInstances[0].options.onEvent
+    act(() => {
+      inbound?.({
+        ...makeEvent('ROOM:DELETED'),
+        payload: {
+          roomId: '44444444-4444-4444-8444-444444444444',
+        },
+      })
+    })
+
+    expect(store.deleteRoom).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333',
+      '44444444-4444-4444-8444-444444444444'
+    )
+    expect(store.clearRoomEnvironmentName).toHaveBeenCalledWith(
+      '44444444-4444-4444-8444-444444444444'
+    )
+    expect(store.clearEnvironment).toHaveBeenCalledTimes(1)
   })
 })

@@ -34,7 +34,12 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
-const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:']
+const SESSION_BOOKEND_PREFIXES = [
+  'Session Start:',
+  'Session End:',
+  '[Session Started]',
+  '[Session Ended]',
+]
 const SESSION_NOTE_PREFIX = 'Session Note:'
 const LEGACY_SESSION_SYSTEM_PREFIXES = ['[Session Started]', '[Session Ended]']
 

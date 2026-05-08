@@ -74,6 +74,11 @@ export function SessionLeftRailPanel({
     })
     .filter((room) => {
       if (isGreenroom) {
+        // DM can see all rooms in greenroom for management
+        if (role === 'DM') {
+          return true
+        }
+        // Players see only the green room
         return hasNamedGreenRoom ? isGreenRoomName(room.name) : room.id === selectedRoomId
       }
 
@@ -81,7 +86,9 @@ export function SessionLeftRailPanel({
         return true
       }
 
-      return true
+      // Players see MAIN room always; other rooms only when they have members
+      const memberCount = (roomMembersByRoomId[room.id] || []).length
+      return room.type === RoomType.MAIN || memberCount > 0 || room.id === selectedRoomId
     })
 
   return (
@@ -119,7 +126,7 @@ export function SessionLeftRailPanel({
             name: room.name,
             type: room.type,
             memberCount: (roomMembersByRoomId[room.id] || []).length,
-            environmentName: isGreenroom ? undefined : roomEnvironmentNames?.[room.id],
+            environmentName: roomEnvironmentNames?.[room.id],
             participants: (roomMembersByRoomId[room.id] || []).map((member) => {
               const dmOverride = dmOverrides.get(member.userId)
               const overrideMuted = !isGreenroom && dmOverride?.overrideType === 'MUTE'

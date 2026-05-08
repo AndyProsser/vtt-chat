@@ -121,18 +121,36 @@ DM clicks "+ Create Group".
 
 Precondition:
 
-- Session must not be in greenroom (`sessionState !== IDLE`).
-- In greenroom, create-group controls are hidden/disabled.
+- DM can create non-private groups in both greenroom (`IDLE`) and active session states.
+- DM cannot create **private** groups in greenroom — the Private type option is disabled in the modal when `sessionState === IDLE`.
+- In greenroom, drag/drop movement is disabled; only the Greenroom and any pre-created groups are visible to the DM.
 - In greenroom, connected users that report `IDLE` are displayed as `ONLINE` in the panel for clarity.
-- In greenroom, drag/drop movement is disabled and Greenroom is the only visible out-of-session group.
+
+**Group lifecycle:**
+
+- `GROUP` type rooms (non-greenroom, non-main) are **campaign-persistent**: they survive the end of a session and are restored to the next session for the same campaign.
+- `PRIVATE` type rooms are **session-scoped only**: they are deleted when the session transitions to `ENDED`.
+- Greenroom and Main room are fixed per-session and are not carried forward (they are always re-created).
+
+**Group visibility rules:**
+
+- The DM always sees every group in both greenroom and active session.
+- Players see a group only once at least one player is a member. When the last player leaves a group, it is hidden again from players.
+- In greenroom, players see only the Greenroom (or their assigned group if no named Greenroom exists).
+
+**Empty group display (DM only):**
+
+- When a group has no participants, it collapses to a single-line card.
+- The DM voice button is replaced by a red X (close/delete) button.
+- Empty groups are excluded from broadcast (no participants to receive audio).
+- The environment picker is still accessible on empty groups, allowing the DM to prepare environments ahead of time.
 
 State normalization:
 
 - On transition to `ACTIVE`: all users are moved to `MAIN`; DM condition/mute overrides are cleared; `MAIN` environment modifier is cleared.
-- On transition to greenroom states (`IDLE` and paused out-of-session routing): DM condition/mute/broadcast overrides are cleared; Greenroom environment modifier is cleared.
-- Non-main room environments persist across sessions and are restored when those groups are used again.
-- Chat lifecycle markers must remain visible across repeated greenroom/session transitions: each session writes its own `Session Start` and `Session End` markers, while Greenroom retains the chronological sequence for later return.
-- Restarted sessions must render their own `Session Start` marker immediately after start, even if room/presence topology hydration completes slightly after the session record is created.
+- On transition to greenroom states (`IDLE` and paused out-of-session routing): DM condition/mute/broadcast overrides are cleared; Greenroom environment modifier is cleared. Non-group room environments are NOT cleared on transition.
+- Non-main, non-greenroom room environments persist across sessions (carry-forward) and are not affected by session state transitions.
+- Chat lifecycle markers must remain visible across repeated greenroom/session transitions.
 
 Close-group behavior:
 

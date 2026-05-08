@@ -24,6 +24,7 @@ import { AvatarOverlay } from './AvatarOverlay'
 import { RadialMenu } from './RadialMenu'
 import { Icon } from '../ui/Icon'
 import { CreateGroupModal } from './CreateGroupModal'
+import { useStore } from '../../hooks/useStore'
 import '../../styles/components/rooms/RoomSelector.css'
 
 export interface RoomSelectorRoom {
@@ -122,6 +123,12 @@ export function RoomSelector({
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
+  const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
+  const createRoom = useStore((state) => state.createRoom)
+  const deleteRoom = useStore((state) => state.deleteRoom)
+  const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
+  const clearEnvironment = useStore((state) => state.clearEnvironment)
+  const setRoomEnvironmentName = useStore((state) => state.setRoomEnvironmentName)
   const dmFlavorLine = useMemo(() => {
     const seed = `${dmUserId}:${sessionId}`
     let hash = 0
@@ -173,7 +180,13 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms && !isGreenroom
+  const canCreateGroups = canManageRooms
+
+  useEffect(() => {
+    if (!broadcastModeEnabled && selectedRoomId) {
+      previousDmVoiceRoomIdRef.current = selectedRoomId
+    }
+  }, [broadcastModeEnabled, selectedRoomId])
 
   useEffect(() => {
     if (!showCreateGroupModal && !environmentPickerRoomId) {
@@ -238,8 +251,9 @@ export function RoomSelector({
     return room.name
   }
 
-  const getResolvedEnvironmentName = (room: RoomSelectorRoomWithParticipants): string =>
-    environmentOverrides[room.id] || room.environmentName || 'Default'
+  const getResolvedEnvironmentName = (room: RoomSelectorRoomWithParticipants): string => {
+    return room.environmentName || 'Default'
+  }
 
   const handleApplyEnvironment = async (roomId: UUID, environmentName: string) => {
     setMoveError(null)
@@ -264,6 +278,7 @@ export function RoomSelector({
       }
 
       setEnvironmentOverrides((state) => ({ ...state, [roomId]: environmentName }))
+      setRoomEnvironmentName(roomId, environmentName)
       setEnvironmentPickerRoomId(null)
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to apply environment')
@@ -357,19 +372,20 @@ export function RoomSelector({
       } | null
 
       if (payload?.room?.id) {
-        setOptimisticRooms((state) =>
-          state.map((room) =>
-            room.id === tempId
-              ? {
-                  id: payload.room!.id,
-                  name: payload.room!.name,
-                  type: payload.room!.type,
-                  memberCount: 0,
-                  participants: [],
-                }
-              : room
-          )
-        )
+        createRoom(sessionId, {
+          id: payload.room.id,
+          sessionId,
+          name: payload.room.name,
+          type: payload.room.type,
+          createdAt: Date.now(),
+          createdBy: dmUserId,
+        })
+
+        setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
+
+        // Keep DM voice target aligned to the newly created persisted room.
+        previousDmVoiceRoomIdRef.current = payload.room.id
+        onSelectRoom(payload.room.id)
       }
     } catch (error) {
       setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
@@ -407,7 +423,12 @@ export function RoomSelector({
         if (fallbackRoom) {
           onSelectRoom(fallbackRoom.id)
         }
+
+        clearEnvironment()
       }
+
+      deleteRoom(sessionId, room.id)
+      clearRoomEnvironmentName(room.id)
     } catch (error) {
       setPendingRoomDeletes((state) => {
         const next = { ...state }
@@ -597,6 +618,16 @@ export function RoomSelector({
     [radialMenuState, visibleParticipants]
   )
 
+  useEffect(() => {
+    if (!isGreenroom) {
+      return
+    }
+
+    if (environmentPickerRoomId) {
+      setEnvironmentPickerRoomId(null)
+    }
+  }, [environmentPickerRoomId, isGreenroom])
+
   const renderRoomSection = (
     sectionLabel: string,
     sectionRooms: RoomSelectorRoomWithParticipants[]
@@ -620,12 +651,18 @@ export function RoomSelector({
             previousRoom !== null &&
             previousRoom.type !== RoomType.PRIVATE
 
+          const isEmptyGroup =
+            canManageRooms &&
+            participants.length === 0 &&
+            room.type !== RoomType.MAIN &&
+            !isGreenRoomName(room.name)
+
           return (
             <section
               key={room.id}
               className={`room-selector-item ${selected ? 'selected' : ''} ${
                 isPrivateDividerStart ? 'room-selector-item--private-divider' : ''
-              }`}
+              } ${isEmptyGroup ? 'room-selector-item--collapsed' : ''}`}
               aria-label={`Group ${room.name}`}
               onDragOver={(event) => {
                 if (!canManageRooms || isGreenroom) {
@@ -673,6 +710,8 @@ export function RoomSelector({
                             className="room-selector-item__env-icon"
                             aria-label="Change group environment"
                             data-room-env-trigger={room.id}
+                            disabled={false}
+                            title={'Change group environment'}
                             onClick={() => {
                               setShowCreateGroupModal(false)
                               setEnvironmentPickerRoomId((current) =>
@@ -692,44 +731,43 @@ export function RoomSelector({
                     </div>
 
                     {canManageRooms && !isGreenroom ? (
-                      <button
-                        type="button"
-                        className={`room-selector-item__icon-action room-selector-item__voice-icon ${
-                          selectedRoomId === room.id && !broadcastModeEnabled ? 'active' : ''
-                        }`}
-                        aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
-                        title={`Set DM voice to ${getDisplayRoomName(room)}`}
-                        aria-pressed={selectedRoomId === room.id && !broadcastModeEnabled}
-                        onClick={() => {
-                          if (broadcastModeEnabled) {
-                            void onToggleBroadcastMode(false)
-                          }
-                          onSelectRoom(room.id)
-                        }}
-                      >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          graphic_eq
-                        </span>
-                      </button>
-                    ) : null}
-
-                    {canManageRooms &&
-                    room.type !== RoomType.MAIN &&
-                    !isGreenRoomName(room.name) ? (
-                      <button
-                        type="button"
-                        className="room-selector-item__icon-action"
-                        aria-label={`Close group ${room.name}`}
-                        title="Close group"
-                        onClick={() => {
-                          void handleDeleteGroup(room)
-                        }}
-                        disabled={Boolean(pendingRoomDeletes[room.id])}
-                      >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          close
-                        </span>
-                      </button>
+                      isEmptyGroup ? (
+                        <button
+                          type="button"
+                          className="room-selector-item__icon-action room-selector-item__close-inline"
+                          aria-label={`Delete group ${getDisplayRoomName(room)}`}
+                          title="Delete group"
+                          disabled={Boolean(pendingRoomDeletes[room.id])}
+                          onClick={() => {
+                            void handleDeleteGroup(room)
+                          }}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            close
+                          </span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`room-selector-item__icon-action room-selector-item__voice-icon ${
+                            broadcastModeEnabled
+                              ? 'is-broadcast'
+                              : selectedRoomId === room.id
+                                ? 'active'
+                                : ''
+                          }`}
+                          aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
+                          title={`Set DM voice to ${getDisplayRoomName(room)}`}
+                          aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
+                          onClick={() => {
+                            void handleSetDmVoiceRoom(room.id)
+                          }}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            record_voice_over
+                          </span>
+                        </button>
+                      )
                     ) : null}
                   </span>
                 </span>
@@ -756,7 +794,10 @@ export function RoomSelector({
                               void handleApplyEnvironment(room.id, option)
                             }}
                           >
-                            {option}
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              {resolveEnvironmentGlyph(option)}
+                            </span>
+                            <span>{option}</span>
                           </button>
                         )
                       })}
@@ -767,7 +808,9 @@ export function RoomSelector({
                 <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
               </div>
 
-              <div className="room-selector-members-list">
+              <div
+                className={`room-selector-members-list ${isEmptyGroup ? 'room-selector-members-list--hidden' : ''}`}
+              >
                 {participants.length === 0 ? (
                   <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noMembersInGroup}</p>
                 ) : (
@@ -775,7 +818,7 @@ export function RoomSelector({
                     const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
                     const pendingTargetRoomId = pendingRoomMoves[member.userId]
                     const isMuted = Boolean(member.isMuted)
-                    const shownPresenceState = getVoiceGroupPresenceState(member.presenceState)
+                    const shownPresenceState = getResolvedPresenceState(member.presenceState)
 
                     return (
                       <Tooltip key={member.userId}>
@@ -874,8 +917,31 @@ export function RoomSelector({
                               )}
                             </div>
                             <div className="room-selector-profile__meta">
-                              <strong>{member.characterName || member.username}</strong>
-                              <span>{member.playerName || member.username}</span>
+                              <div className="room-selector-profile__title-row">
+                                <span className="room-selector-profile__name-wrap">
+                                  <strong>{member.characterName || member.username}</strong>
+                                  <span className="room-selector-status-pill role compact">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.role}
+                                    </span>
+                                    {member.roleLabel || ROOM_ROLE_LABELS.player}
+                                  </span>
+                                </span>
+                                <span
+                                  className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
+                                >
+                                  <span className="material-symbols-outlined" aria-hidden="true">
+                                    {STATUS_PILL_ICONS.presence}
+                                  </span>
+                                  {shownPresenceState}
+                                </span>
+                              </div>
+                              {member.playerName &&
+                              member.playerName !== (member.characterName || member.username) ? (
+                                <span className="room-selector-profile__player-name">
+                                  {member.playerName}
+                                </span>
+                              ) : null}
                               <p>{getParticipantMetaLine(member)}</p>
                               {getStatEntries(member).length > 0 ? (
                                 <div className="room-selector-profile__stats">
@@ -887,20 +953,6 @@ export function RoomSelector({
                                 </div>
                               ) : null}
                               <div className="room-selector-profile__status-pills">
-                                <span className="room-selector-status-pill role">
-                                  <span className="material-symbols-outlined" aria-hidden="true">
-                                    {STATUS_PILL_ICONS.role}
-                                  </span>
-                                  {member.roleLabel || ROOM_ROLE_LABELS.player}
-                                </span>
-                                <span
-                                  className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
-                                >
-                                  <span className="material-symbols-outlined" aria-hidden="true">
-                                    {STATUS_PILL_ICONS.presence}
-                                  </span>
-                                  {shownPresenceState}
-                                </span>
                                 {member.isSpeaking ? (
                                   <span className="room-selector-status-pill speaking">
                                     <span className="material-symbols-outlined" aria-hidden="true">
@@ -912,7 +964,7 @@ export function RoomSelector({
                                 {isMuted ? (
                                   <span className="room-selector-status-pill muted">
                                     <span className="material-symbols-outlined" aria-hidden="true">
-                                      {STATUS_PILL_ICONS.muted}
+                                      mic_off
                                     </span>
                                     {STATUS_PILL_LABELS.muted}
                                   </span>
@@ -937,6 +989,29 @@ export function RoomSelector({
                   <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
                 ) : null}
               </div>
+
+              {canManageRooms &&
+              room.type !== RoomType.MAIN &&
+              !isGreenRoomName(room.name) &&
+              !isEmptyGroup ? (
+                <footer className="room-selector-item__footer">
+                  <button
+                    type="button"
+                    className="room-selector-item__close-btn"
+                    aria-label={`Close group ${room.name}`}
+                    title="Close group"
+                    onClick={() => {
+                      void handleDeleteGroup(room)
+                    }}
+                    disabled={Boolean(pendingRoomDeletes[room.id])}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      close
+                    </span>
+                    Close
+                  </button>
+                </footer>
+              ) : null}
             </section>
           )
         })}
@@ -969,6 +1044,50 @@ export function RoomSelector({
     return parts.length > 0 ? parts.join(' | ') : DEFAULT_PLAYER_META_LINE
   }
 
+  const getResolvedPresenceState = (presenceState: PresenceState): PresenceState => {
+    if (presenceState === PresenceState.IDLE) {
+      return PresenceState.OFFLINE
+    }
+
+    return getVoiceGroupPresenceState(presenceState)
+  }
+
+  const handleBroadcastToggleClick = async () => {
+    try {
+      if (broadcastModeEnabled) {
+        await onToggleBroadcastMode(false)
+
+        const previousRoomId = previousDmVoiceRoomIdRef.current
+        if (previousRoomId && allRooms.some((room) => room.id === previousRoomId)) {
+          onSelectRoom(previousRoomId)
+        }
+        return
+      }
+
+      if (selectedRoomId) {
+        previousDmVoiceRoomIdRef.current = selectedRoomId
+      }
+
+      await onToggleBroadcastMode(true)
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to toggle broadcast mode')
+    }
+  }
+
+  const handleSetDmVoiceRoom = async (roomId: UUID) => {
+    previousDmVoiceRoomIdRef.current = roomId
+
+    if (broadcastModeEnabled) {
+      try {
+        await onToggleBroadcastMode(false)
+      } catch (error) {
+        setMoveError(error instanceof Error ? error.message : 'Failed to toggle broadcast mode')
+      }
+    }
+
+    onSelectRoom(roomId)
+  }
+
   return (
     <TooltipProvider delayDuration={140}>
       <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
@@ -990,14 +1109,12 @@ export function RoomSelector({
                       broadcastModeEnabled ? 'Disable broadcast mode' : 'Enable broadcast mode'
                     }
                     onClick={() => {
-                      void onToggleBroadcastMode(!broadcastModeEnabled).catch((error) => {
-                        setMoveError(
-                          error instanceof Error ? error.message : 'Failed to toggle broadcast mode'
-                        )
-                      })
+                      void handleBroadcastToggleClick()
                     }}
                   >
-                    <Icon name="signal" />
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      campaign
+                    </span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
@@ -1025,6 +1142,7 @@ export function RoomSelector({
                   <CreateGroupModal
                     onClose={() => setShowCreateGroupModal(false)}
                     onCreateGroup={handleCreateGroup}
+                    isGreenroom={isGreenroom}
                   />
                 ) : null}
               </div>
@@ -1039,17 +1157,85 @@ export function RoomSelector({
         >
           {dmParticipant && !isGreenroom ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
-              <div className="room-selector-dm__profile">
-                <AvatarOverlay
-                  username={dmParticipant.characterName || dmParticipant.username}
-                  avatarUrl={dmParticipant.avatarUrl}
-                  roleLabel={ROOM_ROLE_LABELS.dm}
-                  metaLine={getParticipantMetaLine(dmParticipant)}
-                  presenceState={getVoiceGroupPresenceState(dmParticipant.presenceState)}
-                  isMuted={dmParticipant.isMuted}
-                  isSpeaking={dmParticipant.isSpeaking}
-                />
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="room-selector-dm__profile"
+                    aria-label={dmParticipant.characterName || dmParticipant.username}
+                  >
+                    <AvatarOverlay
+                      username={dmParticipant.characterName || dmParticipant.username}
+                      avatarUrl={dmParticipant.avatarUrl}
+                      roleLabel={ROOM_ROLE_LABELS.dm}
+                      metaLine={getParticipantMetaLine(dmParticipant)}
+                      presenceState={getResolvedPresenceState(dmParticipant.presenceState)}
+                      isMuted={dmParticipant.isMuted}
+                      isSpeaking={dmParticipant.isSpeaking}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="room-selector-profile-tooltip">
+                  <div className="room-selector-profile">
+                    <div className="room-selector-profile__avatar" aria-hidden="true">
+                      {dmParticipant.avatarUrl ? (
+                        <img src={dmParticipant.avatarUrl} alt="" />
+                      ) : (
+                        (dmParticipant.characterName || dmParticipant.username)
+                          .charAt(0)
+                          .toUpperCase()
+                      )}
+                    </div>
+                    <div className="room-selector-profile__meta">
+                      <div className="room-selector-profile__title-row">
+                        <span className="room-selector-profile__name-wrap">
+                          <strong>{dmParticipant.characterName || dmParticipant.username}</strong>
+                          <span className="room-selector-status-pill role compact">
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              {STATUS_PILL_ICONS.role}
+                            </span>
+                            {ROOM_ROLE_LABELS.dm}
+                          </span>
+                        </span>
+                        <span
+                          className={`room-selector-status-pill presence ${getResolvedPresenceState(dmParticipant.presenceState).toLowerCase()}`}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            {STATUS_PILL_ICONS.presence}
+                          </span>
+                          {getResolvedPresenceState(dmParticipant.presenceState)}
+                        </span>
+                      </div>
+                      {dmParticipant.playerName &&
+                      dmParticipant.playerName !==
+                        (dmParticipant.characterName || dmParticipant.username) ? (
+                        <span className="room-selector-profile__player-name">
+                          {dmParticipant.playerName}
+                        </span>
+                      ) : null}
+                      <p>{getParticipantMetaLine(dmParticipant)}</p>
+                      <div className="room-selector-profile__status-pills">
+                        {dmParticipant.isSpeaking ? (
+                          <span className="room-selector-status-pill speaking">
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              {STATUS_PILL_ICONS.speaking}
+                            </span>
+                            {STATUS_PILL_LABELS.speaking}
+                          </span>
+                        ) : null}
+                        {dmParticipant.isMuted ? (
+                          <span className="room-selector-status-pill muted">
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              mic_off
+                            </span>
+                            {STATUS_PILL_LABELS.muted}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </section>
           ) : null}
 
@@ -1058,7 +1244,7 @@ export function RoomSelector({
           ) : (
             <>
               {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
-              {renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms)}
+              {!isGreenroom ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms) : null}
             </>
           )}
         </div>

@@ -233,6 +233,16 @@ AI must follow:
 - Hydration is atomic
 - Hydration is deterministic
 
+### **6.3 Room/Greenroom Runtime Invariants**
+
+AI must preserve these behaviors unless explicitly requested otherwise:
+
+- Room create/delete/move updates are canonical store concerns and must not rely only on local component state.
+- Greenroom UI must not expose additional groups in `Other Groups`; those groups persist but remain hidden.
+- Greenroom enforces default environment (no room effect changes).
+- Session end returns users to greenroom; session start reapplies deterministic room routing policy.
+- Presence indicators and status pills must remain store-driven and reconnect-safe.
+
 ---
 
 ## 7. Output Formatting Rules
