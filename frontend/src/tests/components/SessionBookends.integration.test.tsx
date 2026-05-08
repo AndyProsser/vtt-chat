@@ -441,6 +441,165 @@ describe('Session bookend integration', () => {
     expect(screen.getByText('[Session Ended] Session Alpha')).toBeTruthy()
   })
 
+  it('rehydrates paused session state and paused marker from backend history on launch', async () => {
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: CURRENT_SESSION_ID,
+                name: 'Session Current',
+                dmId: DM_ID,
+                state: SessionState.PAUSED,
+                createdAt: 200,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/session/${CURRENT_SESSION_ID}/members/join`)) {
+        return { ok: true, json: async () => ({ ok: true }) }
+      }
+
+      if (url.endsWith(`/api/v1/rooms/session/${CURRENT_SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            rooms: [
+              {
+                id: MAIN_ROOM_ID,
+                sessionId: CURRENT_SESSION_ID,
+                name: 'Main Room',
+                type: RoomType.MAIN,
+                createdBy: DM_ID,
+                createdAt: 1,
+              },
+              {
+                id: GREEN_ROOM_ID,
+                sessionId: CURRENT_SESSION_ID,
+                name: 'Green Room',
+                type: RoomType.GROUP,
+                createdBy: DM_ID,
+                createdAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${CURRENT_SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            presence: [
+              {
+                userId: DM_ID,
+                username: 'Morgan',
+                state: PresenceState.ONLINE,
+                primaryRoomId: MAIN_ROOM_ID,
+                lastSeenAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/audio/sessions/${CURRENT_SESSION_ID}/state`)) {
+        return {
+          ok: true,
+          json: async () => ({ environments: [], dmOverrides: [] }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${CURRENT_SESSION_ID}/recover`)) {
+        return {
+          ok: true,
+          json: async () => ({ recoveredFromSnapshots: false }),
+        }
+      }
+
+      if (
+        url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
+        url.includes(`roomId=${MAIN_ROOM_ID}`)
+      ) {
+        return {
+          ok: true,
+          json: async () => ({
+            messages: [
+              {
+                id: asUuid('d1111111-1111-4111-8111-111111111111'),
+                roomId: MAIN_ROOM_ID,
+                authorId: DM_ID,
+                authorUsername: 'SYSTEM',
+                content: '[Session Paused] Session Current',
+                type: 'SYSTEM',
+                isDmOnly: false,
+                createdAt: 300,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
+        url.includes(`roomId=${GREEN_ROOM_ID}`)
+      ) {
+        return {
+          ok: true,
+          json: async () => ({ messages: [] }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    await screen.findByTestId('session-toolbar')
+
+    await waitFor(() => {
+      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.PAUSED)
+      expect(screen.getByText('[Session Paused] Session Current')).toBeTruthy()
+    })
+  })
+
   it('keeps chronological bookends but does not carry greenroom chat into the next session', async () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [

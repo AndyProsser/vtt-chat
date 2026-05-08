@@ -64,6 +64,38 @@ describe('chatSlice', () => {
       expect(Object.keys(useStore.getState().messages[SESSION_A]!)).toHaveLength(1)
       expect(Object.keys(useStore.getState().messages[SESSION_B]!)).toHaveLength(1)
     })
+
+    it('deduplicates near-identical session bookends but keeps later repeated markers', () => {
+      const pausedA: Message = {
+        ...SAMPLE_MESSAGE,
+        id: MSG_ID_1,
+        type: 'SYSTEM' as any,
+        content: '[Session Paused] Session Current',
+        createdAt: NOW,
+      }
+
+      const pausedNearDuplicate: Message = {
+        ...pausedA,
+        id: MSG_ID_2,
+        createdAt: NOW + 2_000,
+      }
+
+      const pausedLater: Message = {
+        ...pausedA,
+        id: 'abababab-abab-4aba-8aba-abababababab' as UUID,
+        createdAt: NOW + 60_000,
+      }
+
+      useStore.getState().addMessage(SESSION_A, pausedA)
+      useStore.getState().addMessage(SESSION_A, pausedNearDuplicate)
+      useStore.getState().addMessage(SESSION_A, pausedLater)
+
+      const sessionMessages = useStore.getState().messages[SESSION_A] || {}
+      expect(Object.keys(sessionMessages)).toHaveLength(2)
+      expect(sessionMessages[pausedA.id]).toBeDefined()
+      expect(sessionMessages[pausedLater.id]).toBeDefined()
+      expect(sessionMessages[pausedNearDuplicate.id]).toBeUndefined()
+    })
   })
 
   describe('updateMessage', () => {

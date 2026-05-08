@@ -48,6 +48,74 @@
   color: var(--color-danger-text, #fecaca);
 }
 
+.chat-window__queue-debug {
+  flex: 0 0 auto;
+  padding: 0.42rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 25%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 7%, transparent);
+}
+
+.chat-window__queue-debug-title {
+  margin: 0 0 0.34rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-warning-text, #f59e0b) 75%, var(--color-text-primary));
+}
+
+.chat-window__queue-debug-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+}
+
+.chat-window__queue-debug-item {
+  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 26%, transparent);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.45rem;
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-warning, #f59e0b) 10%);
+}
+
+.chat-window__queue-debug-content {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  line-height: 1.32;
+  word-break: break-word;
+}
+
+.chat-window__queue-debug-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-top: 0.28rem;
+}
+
+.chat-window__queue-debug-button {
+  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 16%, transparent);
+  color: var(--color-text-primary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.24rem 0.5rem;
+  cursor: pointer;
+}
+
+.chat-window__queue-debug-button:hover {
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 24%, transparent);
+}
+
+.chat-window__queue-debug-button--quiet {
+  border-color: color-mix(in srgb, var(--color-border-soft) 82%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 85%, transparent);
+}
+
+.chat-window__queue-debug-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.69rem;
+  color: color-mix(in srgb, var(--color-danger-text, #fecaca) 85%, var(--color-text-secondary));
+}
+
 .chat-message-list {
   display: flex;
   flex: 1 1 0;

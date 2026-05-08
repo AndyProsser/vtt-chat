@@ -204,6 +204,11 @@ Zustand is a local cache of server state. When in doubt:
 - Zustand is hydrated from the server on session enter
 - WS events keep Zustand in sync during the session
 
+Chat send queue rule:
+
+- Zustand may hold a local outgoing message queue (`queued`/`sending`/`failed`) for UX resilience.
+- Persisted chat timeline (including `SYSTEM` bookends) remains backend + WS authoritative.
+
 Reconnect/refresh authority rule:
 
 - On frontend reconnect or browser refresh, treat local Zustand as stale cache until backend snapshots/events rehydrate it.
@@ -227,6 +232,18 @@ Session boundary markers are authoritative server data, not ephemeral UI-only ma
 - Frontend must render both canonical server boundary formats (`[Session Started]`, `[Session Ended]`, `[Session Paused]`, `[Session Resumed]`) as chat bookends.
 - On page refresh/reconnect, the frontend must restore boundary markers from chat history API hydration; markers must not disappear after reload.
 - Frontend must avoid duplicate boundary markers when local fallback and server/WS boundary events arrive close together.
+
+Boundary sync and authority rules:
+
+- Pause/resume/start/end boundary markers must sync from backend via WS (`CHAT:MESSAGE_SENT`) and history APIs.
+- On refresh/reconnect (including paused sessions), backend state is authoritative; client cache must rehydrate from backend snapshots/history.
+- Bookends are `SYSTEM` chat messages with special status and may appear in both greenroom and active-session chats.
+
+Transcript/summary processing rule:
+
+- Do not drop boundary bookends from transcript/summary pipelines.
+- Include them as control/timestamp guides for downstream AI processing so pause/resume/start/end boundaries are explicit.
+- Downstream processors may use these markers to decide which content windows to include/exclude.
 
 ### Audio Must Follow Connected Voice Room
 

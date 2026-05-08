@@ -118,6 +118,7 @@ const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaig
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
 const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
+const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
 const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
 const SESSION_SUMMARY_TITLE = 'Session Summary'
@@ -679,7 +680,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           (message) =>
             message.roomId === roomId &&
             message.type === MessageType.SYSTEM &&
-            message.content === content
+            message.content === content &&
+            Math.abs(message.createdAt - timestamp) <= SESSION_BOOKEND_DEDUPE_WINDOW_MS
         )
 
         if (hasExistingBookend) {

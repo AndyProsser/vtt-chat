@@ -285,12 +285,19 @@ Boundary markers are server-authoritative and must survive refresh/reconnect.
     - `[Session Ended]`
 - Clients must rehydrate these markers from chat history APIs.
 - Clients must de-duplicate markers when local fallback and WS/server markers overlap.
+- For paused-session refresh, client must rehydrate paused state + paused boundary markers from backend before trusting local cache.
+- Boundary markers are `SYSTEM` chat messages and may surface in both active and greenroom chat views.
 
 ### **7.7 Recording/privacy contract for paused + whisper**
 
 - Whisper (`PRIVATE`) is off-the-record by definition (no persisted chat/voice recording artifacts).
 - Paused intermission is also off-the-record for runtime content.
 - The only persistent pause-related artifacts are boundary markers listed above.
+
+Transcript/summary processing contract:
+
+- Keep persisted boundary markers in transcript and summary pre-processing.
+- Treat markers as timeline guides for include/exclude windowing (for example, excluding off-the-record ranges while preserving timing context).
 
 ---
 

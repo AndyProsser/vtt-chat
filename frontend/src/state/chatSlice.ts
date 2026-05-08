@@ -11,6 +11,17 @@ import type { Message, TypingIndicator } from '@/types/chat'
 
 export type { Message, TypingIndicator } from '@/types/chat'
 
+export interface OutgoingChatMessage {
+  id: UUID
+  roomId: UUID
+  content: string
+  type: MessageType
+  recipientId?: UUID
+  createdAt: number
+  status: 'queued' | 'sending' | 'failed'
+  error?: string
+}
+
 const SESSION_BOOKEND_PREFIXES = [
   'Session Start:',
   'Session End:',
@@ -20,6 +31,8 @@ const SESSION_BOOKEND_PREFIXES = [
   '[Session Resumed]',
 ] as const
 
+const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
+
 function isSessionBookend(message: Message): boolean {
   return (
     message.type === 'SYSTEM' &&
@@ -27,10 +40,24 @@ function isSessionBookend(message: Message): boolean {
   )
 }
 
+function isDuplicateSessionBookend(existing: Message, incoming: Message): boolean {
+  if (!isSessionBookend(existing) || !isSessionBookend(incoming)) {
+    return false
+  }
+
+  return (
+    existing.roomId === incoming.roomId &&
+    existing.type === incoming.type &&
+    existing.content === incoming.content &&
+    Math.abs(existing.createdAt - incoming.createdAt) <= SESSION_BOOKEND_DEDUPE_WINDOW_MS
+  )
+}
+
 export interface ChatSlice {
   // State
   messages: Record<UUID, Record<UUID, Message>> // keyed by sessionId, then messageId
   typingIndicators: Record<UUID, TypingIndicator[]> // keyed by sessionId
+  outgoingQueue: Record<UUID, OutgoingChatMessage[]> // keyed by sessionId
   isLoading: boolean
 
   // Actions
@@ -38,6 +65,13 @@ export interface ChatSlice {
   updateMessage: (sessionId: UUID, messageId: UUID, updates: Partial<Message>) => void
   deleteMessage: (sessionId: UUID, messageId: UUID) => void
   setTypingIndicators: (sessionId: UUID, indicators: TypingIndicator[]) => void
+  enqueueOutgoingMessage: (sessionId: UUID, message: OutgoingChatMessage) => void
+  updateOutgoingMessage: (
+    sessionId: UUID,
+    messageId: UUID,
+    updates: Partial<OutgoingChatMessage>
+  ) => void
+  removeOutgoingMessage: (sessionId: UUID, messageId: UUID) => void
   clearMessages: (sessionId?: UUID) => void
   clearRoomMessages: (sessionId: UUID, roomId: UUID) => void
 
@@ -54,6 +88,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   // State
   messages: {},
   typingIndicators: {},
+  outgoingQueue: {},
   isLoading: false,
 
   // Actions
@@ -62,11 +97,8 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       const sessionMessages = state.messages[sessionId] || {}
 
       if (isSessionBookend(message)) {
-        const hasDuplicate = Object.values(sessionMessages).some(
-          (existing) =>
-            existing.roomId === message.roomId &&
-            existing.type === message.type &&
-            existing.content === message.content
+        const hasDuplicate = Object.values(sessionMessages).some((existing) =>
+          isDuplicateSessionBookend(existing, message)
         )
 
         if (hasDuplicate) {
@@ -124,20 +156,55 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       },
     })),
 
+  enqueueOutgoingMessage: (sessionId, message) =>
+    set((state) => ({
+      outgoingQueue: {
+        ...state.outgoingQueue,
+        [sessionId]: [...(state.outgoingQueue[sessionId] || []), message],
+      },
+    })),
+
+  updateOutgoingMessage: (sessionId, messageId, updates) =>
+    set((state) => {
+      const queue = state.outgoingQueue[sessionId] || []
+      return {
+        outgoingQueue: {
+          ...state.outgoingQueue,
+          [sessionId]: queue.map((entry) =>
+            entry.id === messageId ? { ...entry, ...updates } : entry
+          ),
+        },
+      }
+    }),
+
+  removeOutgoingMessage: (sessionId, messageId) =>
+    set((state) => {
+      const queue = state.outgoingQueue[sessionId] || []
+      return {
+        outgoingQueue: {
+          ...state.outgoingQueue,
+          [sessionId]: queue.filter((entry) => entry.id !== messageId),
+        },
+      }
+    }),
+
   clearMessages: (sessionId) =>
     set((state) => {
       if (!sessionId) {
-        return { messages: {}, typingIndicators: {} }
+        return { messages: {}, typingIndicators: {}, outgoingQueue: {} }
       }
 
       const newMessages = { ...state.messages }
       delete newMessages[sessionId]
       const newTyping = { ...state.typingIndicators }
       delete newTyping[sessionId]
+      const newOutgoingQueue = { ...state.outgoingQueue }
+      delete newOutgoingQueue[sessionId]
 
       return {
         messages: newMessages,
         typingIndicators: newTyping,
+        outgoingQueue: newOutgoingQueue,
       }
     }),
 
@@ -185,11 +252,8 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       const sessionMessages = state.messages[event.sessionId] || {}
 
       if (isSessionBookend(message)) {
-        const hasDuplicate = Object.values(sessionMessages).some(
-          (existing) =>
-            existing.roomId === message.roomId &&
-            existing.type === message.type &&
-            existing.content === message.content
+        const hasDuplicate = Object.values(sessionMessages).some((existing) =>
+          isDuplicateSessionBookend(existing, message)
         )
 
         if (hasDuplicate) {

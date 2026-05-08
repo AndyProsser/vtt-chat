@@ -280,6 +280,7 @@ Current shipped baseline:
 
 - Chat continues as an event-driven domain after reconnect.
 - Full chat snapshot hydration is not yet the shipped contract.
+- Client may maintain a local outgoing send queue for UX (`queued`/`sending`/`failed`), but persisted chat order/content remains backend + WS authoritative.
 
 ---
 

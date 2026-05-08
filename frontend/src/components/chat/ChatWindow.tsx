@@ -11,6 +11,7 @@ import { useStore } from '../../hooks/useStore'
 import { ROOM_NAMES } from '../../constants/roomPresence.constants'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
+import type { OutgoingChatMessage } from '../../state/chatSlice'
 import type { Message } from '@/types/chat'
 import '../../styles/components/chat/ChatWindow.css'
 
@@ -54,6 +55,12 @@ export function ChatWindow({
     | Record<UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }>
     | undefined
   const addMessage = useStore((state) => state.addMessage)
+  const enqueueOutgoingMessage = useStore((state) => state.enqueueOutgoingMessage)
+  const updateOutgoingMessage = useStore((state) => state.updateOutgoingMessage)
+  const removeOutgoingMessage = useStore((state) => state.removeOutgoingMessage)
+  const sessionOutgoingQueue = useStore((state) => (state.outgoingQueue as any)[sessionId]) as
+    | OutgoingChatMessage[]
+    | undefined
 
   const participantDirectory = useMemo(() => {
     const entries = Object.entries(sessionPresence ?? {}) as Array<
@@ -152,6 +159,14 @@ export function ChatWindow({
 
   const visibleMessages = messageList.filter((message) => message.roomId === roomId)
 
+  const failedQueueItems = useMemo(
+    () =>
+      (sessionOutgoingQueue ?? [])
+        .filter((entry) => entry.roomId === roomId && entry.status === 'failed')
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [roomId, sessionOutgoingQueue]
+  )
+
   // Auto-scroll to newest message only while user stays pinned at bottom.
   useEffect(() => {
     if (!visibleMessages.length) {
@@ -163,9 +178,8 @@ export function ChatWindow({
     }
   }, [isUserPinnedToBottom, scrollToLatest, visibleMessages.length])
 
-  const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
-    setError(null)
-    try {
+  const postMessage = useCallback(
+    async (content: string, type: MessageType, recipientId?: UUID) => {
       const res = await fetch(`${apiUrl}/api/chat/message`, {
         method: 'POST',
         headers: {
@@ -209,10 +223,59 @@ export function ChatWindow({
           addMessage(sessionId, optimisticMessage)
         }
       }
+    },
+    [addMessage, apiUrl, roomId, sessionId, token, user.id, user.username]
+  )
+
+  const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
+    setError(null)
+    const queuedMessageId = crypto.randomUUID() as UUID
+
+    enqueueOutgoingMessage(sessionId, {
+      id: queuedMessageId,
+      roomId,
+      content,
+      type,
+      recipientId: recipientId as UUID | undefined,
+      createdAt: Date.now(),
+      status: 'sending',
+    })
+
+    try {
+      await postMessage(content, type, recipientId as UUID | undefined)
+      removeOutgoingMessage(sessionId, queuedMessageId)
     } catch (err: any) {
-      setError(err.message ?? 'Failed to send message')
+      const message = err.message ?? 'Failed to send message'
+      updateOutgoingMessage(sessionId, queuedMessageId, {
+        status: 'failed',
+        error: message,
+      })
+      setError(message)
     }
   }
+
+  const retryFailedMessage = useCallback(
+    async (entry: OutgoingChatMessage) => {
+      setError(null)
+      updateOutgoingMessage(sessionId, entry.id, {
+        status: 'sending',
+        error: undefined,
+      })
+
+      try {
+        await postMessage(entry.content, entry.type, entry.recipientId)
+        removeOutgoingMessage(sessionId, entry.id)
+      } catch (err: any) {
+        const message = err.message ?? 'Failed to send message'
+        updateOutgoingMessage(sessionId, entry.id, {
+          status: 'failed',
+          error: message,
+        })
+        setError(message)
+      }
+    },
+    [postMessage, removeOutgoingMessage, sessionId, updateOutgoingMessage]
+  )
 
   return (
     <section className="chat-window">
@@ -225,6 +288,44 @@ export function ChatWindow({
 
       {/* Error banner */}
       {error && <div className="chat-window__error">{error}</div>}
+
+      {failedQueueItems.length > 0 ? (
+        <section className="chat-window__queue-debug" aria-live="polite">
+          <div className="chat-window__queue-debug-title">
+            Failed sends ({failedQueueItems.length})
+          </div>
+          <div className="chat-window__queue-debug-list">
+            {failedQueueItems.slice(0, 3).map((entry) => (
+              <div key={entry.id} className="chat-window__queue-debug-item">
+                <p className="chat-window__queue-debug-content">{entry.content}</p>
+                <div className="chat-window__queue-debug-actions">
+                  <button
+                    type="button"
+                    className="chat-window__queue-debug-button"
+                    onClick={() => {
+                      void retryFailedMessage(entry)
+                    }}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-window__queue-debug-button chat-window__queue-debug-button--quiet"
+                    onClick={() => {
+                      removeOutgoingMessage(sessionId, entry.id)
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                {entry.error ? (
+                  <p className="chat-window__queue-debug-error">{entry.error}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Message list */}
       {isLoading ? (
