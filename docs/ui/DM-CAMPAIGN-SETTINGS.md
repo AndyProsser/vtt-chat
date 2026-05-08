@@ -72,6 +72,34 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 ---
 
+### 1.4 Optional Summary Processing Module (Install-Time Gate)
+
+This feature bundle includes:
+
+- Audio recording ingest
+- Offline transcription
+- Timeline merge
+- Session summarisation
+
+Deployment policy:
+
+- Controlled by platform capability, not only campaign settings.
+- Default in production: disabled.
+- Must be explicitly enabled during install/initialization.
+
+Canonical capability key:
+
+- `summaryProcessingInstalled` (from platform capability endpoint)
+
+UI behavior when not installed:
+
+- Summary-processing-related controls remain visible but disabled.
+- Explanatory copy is required:
+  - "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- Campaign-level toggles for this module must be non-editable when capability is false.
+
+---
+
 ## 2) UI Location & Hierarchy
 
 ### Current (Pre-W0)
@@ -124,6 +152,8 @@ Campaign Dashboard
 - [ ] Wire toggle for "Allow Conditions" in campaign settings.
 - [ ] Pass `allowPlayerConditions` flag to RoomSelector via props.
 - [ ] Hide Condition option in radial menu if disabled.
+- [ ] Read platform capabilities and gate summary-processing controls with `summaryProcessingInstalled`.
+- [ ] Render canonical disabled-state message when capability is false.
 
 ### Phase 2 (Post-W0, Nice-to-Have)
 
@@ -175,6 +205,20 @@ model CampaignSettings {
 ---
 
 ## 5) Backend API Specification
+
+### GET `/api/platform/capabilities`
+
+**Description**: Returns deployment-level capability flags used by frontend/admin.
+
+**Response** (200 OK):
+
+```json
+{
+  "summaryProcessingInstalled": false
+}
+```
+
+---
 
 ### GET `/api/v1/campaigns/{id}/settings`
 
@@ -257,6 +301,12 @@ if (campaignSettings?.allowPlayerConditions) {
   // Show disabled state or skip entirely
 }
 ```
+
+### Summary Processing Settings UX
+
+- If `summaryProcessingInstalled=false`, show controls as disabled and render:
+  - "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- If `summaryProcessingInstalled=true`, campaign-level summary controls may be edited (subject to DM role checks).
 
 ### CampaignSettingsPanel Component
 

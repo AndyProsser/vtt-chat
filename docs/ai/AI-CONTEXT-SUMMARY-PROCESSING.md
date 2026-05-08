@@ -11,6 +11,9 @@ This document defines the architecture, data models, algorithms, and worker pipe
 
 to the **vtt‑chat** platform.
 
+This feature set is an **optional deployment module** and is disabled by default in production.
+It must be explicitly enabled during install/initialization.
+
 This context is used by AI agents contributing to the codebase.
 
 ---
@@ -28,6 +31,17 @@ This context is used by AI agents contributing to the codebase.
 - **Docker** — containerised deployment for home users
 
 ### **Processing Flow**
+
+### **Install-Time Capability Gate (Required)**
+
+- Canonical runtime gate: `VTTCHAT_SUMMARY_PROCESSING_ENABLED` (`true` | `false`)
+- Production default: `false`
+- Feature behavior is fail-closed:
+  - If `false`, recording/transcription/timeline-merge/summarisation workers do not run.
+  - If `false`, frontend/admin must show disabled controls with explanatory copy.
+  - If `false`, backend endpoints that mutate this feature should return a capability error.
+
+### **Processing Flow (When Enabled)**
 
 1. Session ends
 2. LiveKit sends `recording.finished`
@@ -228,6 +242,8 @@ interface LlmWindowPayload {
 
 ## **6. Worker Design**
 
+All workers in this section are created/executed only when `VTTCHAT_SUMMARY_PROCESSING_ENABLED=true`.
+
 ### **6.1 recording‑ingest**
 
 - Receives LiveKit webhook
@@ -293,6 +309,15 @@ interface LlmWindowPayload {
 - Sorting must be stable
 - Timeline must be reproducible from raw inputs
 - Summaries must be regenerable
+- Capability checks must be centralized and deterministic
+- UI/API behavior must remain consistent when module is disabled
+
+### **9.1 Capability Contract (Frontend/Admin)**
+
+- UI must read platform capability state from a backend capability contract.
+- Canonical capability key: `summaryProcessingInstalled`.
+- Canonical disabled copy:
+  - "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
 
 ---
 

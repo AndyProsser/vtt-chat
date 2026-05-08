@@ -22,6 +22,7 @@ The install script handles everything:
 - Folder structure
 - `.env` generation
 - Docker Compose / Swarm deployment
+- Optional summary processing module enablement
 
 ---
 
@@ -88,6 +89,10 @@ The script performs the following tasks in order:
    - Shows access URL
    - Shows admin notes
    - Shows where logs are stored
+
+10. **Optional summary processing module configuration**
+
+    Prompts whether to enable summary processing (recording ingest, transcription, timeline merge, summarisation), writes `VTTCHAT_SUMMARY_PROCESSING_ENABLED=true|false` to `.env`, and keeps the module disabled by default for production footprint control.
 
 ---
 
@@ -161,18 +166,24 @@ The script will:
 
 The script supports optional flags:
 
-| Flag                        | Description                       |
-| --------------------------- | --------------------------------- |
-| `--domain <domain>`         | Enables DNS‑01 ACME               |
-| `--dns-provider <provider>` | Cloudflare, Route53, etc.         |
-| `--dns-token <token>`       | API token for DNS updates         |
-| `--port <port>`             | Custom HTTPS port (default: 8443) |
-| `--no-confirm`              | Run non‑interactive               |
+- `--domain <domain>`: Enables DNS‑01 ACME
+- `--dns-provider <provider>`: Cloudflare, Route53, etc.
+- `--dns-token <token>`: API token for DNS updates
+- `--port <port>`: Custom HTTPS port (default: 8443)
+- `--enable-summary-processing`: Enables optional summary processing module
+- `--disable-summary-processing`: Forces optional summary processing module off
+- `--no-confirm`: Run non-interactive
 
 Example:
 
 ```bash
 ./infra/scripts/install.sh --domain mygame.net --dns-provider cloudflare --dns-token ABC123
+```
+
+Example with explicit module enablement:
+
+```bash
+./infra/scripts/install.sh --enable-summary-processing
 ```
 
 ---
@@ -206,9 +217,15 @@ REDIS_PASSWORD=<random>
 JWT_SECRET=<random>
 LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=<random>
+VTTCHAT_SUMMARY_PROCESSING_ENABLED=false
 ```
 
 You can edit `.env` anytime and redeploy.
+
+Capability behavior:
+
+- `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false` keeps feature unavailable and related workers off.
+- Frontend/admin should show disabled controls and explanatory copy when unavailable.
 
 ---
 
@@ -289,6 +306,16 @@ docker logs livekit
 ### DM voice/conditions not applying
 
 Check WebSocket connection in browser dev tools.
+
+### Summary processing controls are disabled in UI
+
+Expected when `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`.
+
+If you want to enable it:
+
+1. Set `VTTCHAT_SUMMARY_PROCESSING_ENABLED=true` in `.env`.
+2. Redeploy stack.
+3. Verify backend capability endpoint returns `summaryProcessingInstalled: true`.
 
 ---
 

@@ -340,9 +340,29 @@ DM opens Settings and edits campaign-scoped toggles.
    - `settingsStore.campaign.defaultSessionLimitMinutes`
    - `settingsStore.campaign.recordingEnabled` (future)
    - `settingsStore.campaign.transcriptionEnabled` (future)
+   - `settingsStore.platformCapabilities.summaryProcessingInstalled`
 4. UI updates:
    - Updated toggles are reflected immediately in settings UI
    - Controlled features are shown/hidden/enabled/disabled by policy
+   - Summary-processing controls are editable only when `summaryProcessingInstalled=true`
+
+---
+
+### **6.9 User Sees Disabled Summary Processing Controls (Not Installed)**
+
+**Triggered by:**
+Capabilities fetch resolves with `summaryProcessingInstalled=false`.
+
+**Flow:**
+
+1. `platform/fetchCapabilities`
+2. Reducer: `settingsReducer.setPlatformCapabilities`
+3. Store updates:
+   - `settingsStore.platformCapabilities.summaryProcessingInstalled = false`
+4. UI updates:
+   - Summary-processing controls render disabled in frontend/admin settings surfaces
+   - Canonical message is shown:
+     - "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
 
 ---
 
@@ -433,7 +453,8 @@ User opens one session row in Information > History.
    - `historyStore.activeSessionChatLog`
 4. UI updates:
    - Session chat log is displayed
-   - If summaries are enabled, summary content appears at the top
+   - If `summaryProcessingInstalled=true` and summaries are enabled, summary content appears at the top
+   - If `summaryProcessingInstalled=false`, summary content remains disabled and canonical explanatory copy is displayed
 
 ---
 

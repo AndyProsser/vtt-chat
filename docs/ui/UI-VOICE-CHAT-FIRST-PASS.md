@@ -112,6 +112,7 @@ Information details:
 
 - Canonical tab order: `Campaign | Search | Notes | Journal | History`.
 - `Journal` is FUTURE and feature-flagged off by default.
-- `Search` spans session/chat data, summaries, and visible notes.
+- `Search` spans session/chat data and visible notes, with summary data included only when `summaryProcessingInstalled=true`.
 - `Notes` is read-focused with text filter and DM handout permissions.
 - Notes handout model: `PRIVATE | PARTY | SELECTED`.
+- If `summaryProcessingInstalled=false`, summary controls/content are disabled and UI shows the canonical explanatory message.

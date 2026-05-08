@@ -436,7 +436,7 @@ Campaign name, description, and banner display for all personas.
 ### **7.3 `<SearchPanel />`**
 
 **Purpose:**
-Full-text search across session/chat data, summaries, and visible notes.
+Full-text search across session/chat data and visible notes, with summary data included only when `summaryProcessingInstalled=true`.
 
 **Persona rules:**
 
@@ -479,8 +479,9 @@ Reverse-chronological session list; opening a session shows that session's chat 
 
 **Notes:**
 
-- If summaries are enabled, summary content appears first.
-- Includes top-level filter over session name, chat data, and summary text.
+- If `summaryProcessingInstalled=true` and summaries are enabled at campaign level, summary content appears first.
+- If `summaryProcessingInstalled=false`, summary content and controls are disabled and the canonical explanatory message is shown.
+- Includes top-level filter over session name, chat data, and summary text (when installed).
 
 **Persona rules:**
 

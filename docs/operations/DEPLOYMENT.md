@@ -26,6 +26,7 @@ This guide covers:
 - Caddy configuration
 - LiveKit integration
 - TURN server setup
+- Optional summary processing module enablement
 - Backup strategy
 - Upgrades & zero‑downtime deploys
 
@@ -51,6 +52,11 @@ This guide covers:
 | RAM       | 8–16 GB              |
 | Disk      | 100+ GB (recordings) |
 | Network   | 20–50 Mbps up/down   |
+
+### Optional Module Resource Note (Summary Processing)
+
+If summary processing is enabled, expect additional CPU and storage usage for recording and transcription workloads.
+Keep this module disabled unless explicitly needed.
 
 ---
 
@@ -107,6 +113,9 @@ LIVEKIT_URL=https://yourdomain.com:7880
 TURN_URL=turn:yourdomain.com:3478
 TURN_USERNAME=turnuser
 TURN_PASSWORD=turnpass
+
+# Optional summary processing module (disabled by default)
+VTTCHAT_SUMMARY_PROCESSING_ENABLED=false
 ```
 
 ---
@@ -259,7 +268,26 @@ TURN_PASSWORD=turnpass
 
 ---
 
-## 8. Deployment Steps
+## 8. Optional Summary Processing Module (Install-Time)
+
+This module includes recording ingest, transcription, timeline merge, and session summarisation.
+
+Enablement policy:
+
+- Must be explicitly enabled during install/initialization.
+- Default in production is disabled (`VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`).
+- If disabled, related worker/services should not start.
+
+UI/UX behavior contract:
+
+- Frontend/admin settings for this module remain visible but disabled.
+- Explanatory message must be shown:
+  - "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- Backend must expose capability state to clients so UI can render disabled states deterministically.
+
+---
+
+## 9. Deployment Steps
 
 ### 1. Clone repo
 
@@ -301,7 +329,7 @@ https://yourdomain.com
 
 ---
 
-## 9. Health Checks
+## 10. Health Checks
 
 ### Backend
 
@@ -329,7 +357,7 @@ docker compose exec postgres psql -U vtt -c "SELECT 1;"
 
 ---
 
-## 10. Backups
+## 11. Backups
 
 ### Postgres
 
@@ -349,6 +377,8 @@ docker compose exec redis redis-cli -a $REDIS_PASSWORD save
 rsync -av ./data/recordings /backup/
 ```
 
+If summary processing is disabled, this recordings backup step can be skipped.
+
 ### Full campaign export
 
 ```text
@@ -357,7 +387,7 @@ GET /api/campaigns/:id/export
 
 ---
 
-## 11. Upgrades & Zero‑Downtime Deploys
+## 12. Upgrades & Zero‑Downtime Deploys
 
 ### Pull latest
 
@@ -385,7 +415,7 @@ docker compose restart livekit
 
 ---
 
-## 12. Design Principles
+## 13. Design Principles
 
 ### 1. HomeLab‑friendly
 
@@ -398,6 +428,8 @@ Caddy handles certificates automatically.
 ### 3. Modular
 
 Backend, frontend, LiveKit, TURN, Redis, Postgres are isolated.
+
+Optional summary processing is install-time gated to control complexity and resource footprint.
 
 ### 4. Resilient
 

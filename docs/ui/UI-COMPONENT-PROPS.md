@@ -341,14 +341,15 @@ No component mutates state directly.
 
 ### **7.6 `<HistoryPanel />`**
 
-| Prop             | Type                          | Description                          |
-| ---------------- | ----------------------------- | ------------------------------------ |
-| `sessions`       | `SessionHistoryItem[]`        | Reverse-chronological session list   |
-| `query`          | `string`                      | Session/history filter query         |
-| `onQueryChange`  | `(q: string) => void`         | Updates session filter               |
-| `onOpenSession`  | `(sessionId: string) => void` | Opens chat log for selected session  |
-| `summaryEnabled` | `boolean`                     | Whether summary block appears at top |
-| `readOnly`       | `boolean`                     | Player/Spectator read-only behavior  |
+| Prop                         | Type                          | Description                                                                      |
+| ---------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| `sessions`                   | `SessionHistoryItem[]`        | Reverse-chronological session list                                               |
+| `query`                      | `string`                      | Session/history filter query                                                     |
+| `onQueryChange`              | `(q: string) => void`         | Updates session filter                                                           |
+| `onOpenSession`              | `(sessionId: string) => void` | Opens chat log for selected session                                              |
+| `summaryProcessingInstalled` | `boolean`                     | Deployment capability gate from platform capabilities                            |
+| `summaryEnabled`             | `boolean`                     | Campaign summary toggle; requires `summaryProcessingInstalled=true`              |
+| `readOnly`                   | `boolean`                     | Player/Spectator read-only behavior                                              |
 
 ---
 

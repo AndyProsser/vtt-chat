@@ -244,9 +244,10 @@ System settings expectations:
 ### Information Panel Behavior
 
 - Campaign tab: campaign name, description, and banner.
-- Search tab: full-text query over session/chat data, summary data, and visible notes.
+- Search tab: full-text query over session/chat data, visible notes, and summary data only when `summaryProcessingInstalled=true`.
 - Notes tab: read-focused list with text filter; DM can edit and hand out notes.
-- History tab: reverse-chronological sessions; opening one shows session chat log (summary first when enabled).
+- History tab: reverse-chronological sessions; opening one shows session chat log (summary first only when `summaryProcessingInstalled=true` and campaign summary toggles are enabled).
+- If `summaryProcessingInstalled=false`, summary controls/content remain unavailable and UI shows: "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
 
 ### Slide‑In Panels
 

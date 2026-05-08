@@ -219,7 +219,32 @@ No authentication required.
   "activeUsers": 24,
   "activeCampaigns": 5,
   "activeSessions": 2,
-  "maintenanceMode": false
+  "maintenanceMode": false,
+  "capabilities": {
+    "summaryProcessingInstalled": false
+  }
+}
+```
+
+Capability semantics:
+
+- `summaryProcessingInstalled=false` means recording/transcription/timeline-merge/summarisation are not installed for this deployment.
+- Clients must render related controls disabled with explanatory copy.
+- Mutating endpoints for this module should reject requests with capability errors when disabled.
+
+---
+
+### /api/platform/capabilities`
+
+Public endpoint. Returns deployment capability flags used by frontend/admin to enable or disable optional modules.
+
+No authentication required.
+
+**Response**
+
+```json
+{
+  "summaryProcessingInstalled": false
 }
 ```
 
