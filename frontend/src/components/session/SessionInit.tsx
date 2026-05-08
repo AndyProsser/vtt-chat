@@ -557,6 +557,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+  const connectedRoomId = useMemo<UUID | ''>(() => {
+    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    return ownPresence?.primaryRoomId || ''
+  }, [currentPresence, user.id])
 
   useEffect(() => {
     if (!currentSession) {
@@ -573,23 +577,27 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }, [currentPresence, currentRooms, currentSession, setPrivateRoomCleanMode, user.id])
 
   useEffect(() => {
-    if (!currentSession || !selectedRoomId) {
+    if (!currentSession || !connectedRoomId) {
       return
     }
 
-    if (isGreenroomChatMode) {
+    const connectedRoom = currentRooms.find((room) => room.id === connectedRoomId)
+    if (connectedRoom && (isGreenRoom(connectedRoom) || connectedRoom.type === RoomType.PRIVATE)) {
+      if (currentEnvironment) {
+        clearEnvironment()
+      }
       return
     }
 
     const hasSelectedRoomEnvironment = Object.prototype.hasOwnProperty.call(
       roomEnvironmentNames,
-      selectedRoomId
+      connectedRoomId
     )
     if (!hasSelectedRoomEnvironment) {
       return
     }
 
-    const roomEnvironmentName = roomEnvironmentNames[selectedRoomId]
+    const roomEnvironmentName = roomEnvironmentNames[connectedRoomId]
     if (!roomEnvironmentName || roomEnvironmentName.trim().toLowerCase() === 'default') {
       if (currentEnvironment) {
         clearEnvironment()
@@ -603,14 +611,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    setEnvironment(buildRoomEnvironmentPreset(selectedRoomId, roomEnvironmentName))
+    setEnvironment(buildRoomEnvironmentPreset(connectedRoomId, roomEnvironmentName))
   }, [
     clearEnvironment,
+    connectedRoomId,
     currentEnvironment,
+    currentRooms,
     currentSession,
-    isGreenroomChatMode,
     roomEnvironmentNames,
-    selectedRoomId,
     setEnvironment,
   ])
 

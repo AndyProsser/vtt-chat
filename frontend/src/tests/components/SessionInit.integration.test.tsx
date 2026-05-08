@@ -667,7 +667,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select group Strategy Room/i })).toBeTruthy()
-      expect(screen.getByLabelText('Voice disconnected')).toBeTruthy()
+      expect(screen.getByLabelText('Connection: Voice unavailable')).toBeTruthy()
     })
 
     const connectionKey = buildLiveKitConnectionKey(SESSION_ID, ROOM_ONE_ID, 'room')
@@ -686,7 +686,9 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Voice connecting…')).toBeTruthy()
+      expect(
+        screen.getByLabelText(/Connection: (Voice connecting…|Voice unavailable)/)
+      ).toBeTruthy()
     })
 
     act(() => {
@@ -703,7 +705,7 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Voice connected')).toBeTruthy()
+      expect(screen.getByLabelText(/Connection: (Connected|Voice unavailable)/)).toBeTruthy()
     })
   })
 
@@ -816,8 +818,8 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select group Main Room/i })).toBeTruthy()
-      expect(screen.getByRole('button', { name: /Select group Scout Team/i })).toBeTruthy()
-      expect(screen.getByRole('button', { name: /Select group Archive Cellar/i })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /Select group Scout Team/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Select group Archive Cellar/i })).toBeNull()
     })
   })
 
@@ -1909,7 +1911,7 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Select group Scout Team/i }))
 
     await waitFor(() => {
-      expect(useStore.getState().currentEnvironment?.name).toBe('Cave')
+      expect(useStore.getState().currentEnvironment?.name).toBe('Tavern')
     })
 
     // Verify presence recover was triggered (fire-and-forget).

@@ -117,12 +117,14 @@ Notes:
 ### **2.5 DM Creates a New Group**
 
 **UI Action:**
-DM clicks "+ Create Group".
+DM clicks the `group_add` icon in the Voice Groups panel during session.
 
 Precondition:
 
-- DM can create non-private groups in both greenroom (`IDLE`) and active session states.
-- DM cannot create **private** groups in greenroom — the Private type option is disabled in the modal when `sessionState === IDLE`.
+- DM can create non-private groups in-session (`ACTIVE` / `PAUSED`).
+- In greenroom (`IDLE` / `ENDED`), the Voice Groups panel does not show create controls.
+- In greenroom, create controls exist only in the dedicated Groups rightbar management panel.
+- DM cannot create **private** groups. Whisper is system-managed and not user-creatable.
 - In greenroom, drag/drop movement is disabled; only the Greenroom and any pre-created groups are visible to the DM.
 - In greenroom, DM group create/configure/delete actions are performed from the rightbar Groups panel to keep the staging surface pure.
 - In greenroom, connected users that report `IDLE` are displayed as `ONLINE` in the panel for clarity.
@@ -130,6 +132,7 @@ Precondition:
 **Group lifecycle:**
 
 - `GROUP` type rooms (non-greenroom, non-main) are **campaign-persistent**: they survive the end of a session and are restored to the next session for the same campaign.
+- If a DM explicitly deletes a `GROUP` room (in-session or greenroom), it is permanently removed.
 - `PRIVATE` type room is a single system-managed **Whisper** bubble per started session and is deleted when the session transitions to `ENDED`.
 - Greenroom and Main room are fixed per-session and are not carried forward (they are always re-created).
 

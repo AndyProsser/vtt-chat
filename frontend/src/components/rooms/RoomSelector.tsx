@@ -4,7 +4,6 @@ import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import {
-  formatRoomTypeLabel,
   getVoiceGroupPresenceState,
   isGreenRoomName,
   RADIAL_MENU_COPY,
@@ -191,7 +190,8 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms && isGreenroom
+  const canCreateGroups = canManageRooms && !isGreenroom
+  const showCreateGroupControl = canManageRooms && !isGreenroom
 
   const whisperRoom = useMemo(
     () => allRooms.find((room) => room.type === RoomType.PRIVATE),
@@ -307,6 +307,12 @@ export function RoomSelector({
 
   const handleApplyEnvironment = async (roomId: UUID, environmentName: string) => {
     setMoveError(null)
+
+    const targetRoom = allRooms.find((room) => room.id === roomId)
+    if (targetRoom?.type === RoomType.PRIVATE) {
+      setEnvironmentPickerRoomId(null)
+      return
+    }
 
     try {
       const response = await fetch(`${apiUrl}/api/v1/audio/environments/apply`, {
@@ -448,8 +454,8 @@ export function RoomSelector({
   }
 
   const handleCreateGroup = async (name: string, type: RoomType) => {
-    if (!isGreenroom) {
-      setMoveError('Groups can only be created from greenroom')
+    if (isGreenroom) {
+      setMoveError('Groups can only be created during an active or paused session')
       return
     }
 
@@ -806,10 +812,7 @@ export function RoomSelector({
             previousRoom.type !== RoomType.PRIVATE
 
           const isEmptyGroup =
-            canManageRooms &&
-            participants.length === 0 &&
-            room.type !== RoomType.MAIN &&
-            !isGreenRoomName(room.name)
+            participants.length === 0 && room.type !== RoomType.MAIN && !isGreenRoomName(room.name)
           const isWhisperGroup = isWhisperRoom(room)
           const isCompactGroup = isEmptyGroup || isWhisperGroup
 
@@ -875,50 +878,58 @@ export function RoomSelector({
                   </button>
 
                   <span className="room-selector-item-actions">
-                    <div className="room-selector-item__env-wrap">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="room-selector-item__env-icon"
-                            aria-label="Change group environment"
-                            data-room-env-trigger={room.id}
-                            disabled={false}
-                            title={'Change group environment'}
-                            onClick={() => {
-                              setShowCreateGroupModal(false)
-                              setEnvironmentPickerRoomId((current) =>
-                                current === room.id ? null : room.id
-                              )
-                            }}
-                          >
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              {resolveEnvironmentGlyph(getResolvedEnvironmentName(room))}
-                            </span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          Environment: {getResolvedEnvironmentName(room)}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
+                    {!isWhisperGroup ? (
+                      <div className="room-selector-item__env-wrap">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="room-selector-item__env-icon"
+                              aria-label="Change group environment"
+                              data-room-env-trigger={room.id}
+                              disabled={false}
+                              title={'Change group environment'}
+                              onClick={() => {
+                                setShowCreateGroupModal(false)
+                                setEnvironmentPickerRoomId((current) =>
+                                  current === room.id ? null : room.id
+                                )
+                              }}
+                            >
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                {resolveEnvironmentGlyph(getResolvedEnvironmentName(room))}
+                              </span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Environment: {getResolvedEnvironmentName(room)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    ) : null}
 
-                    {canManageRooms && !isGreenroom ? (
-                      isEmptyGroup ? (
-                        <button
-                          type="button"
-                          className="room-selector-item__icon-action room-selector-item__close-inline"
-                          aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
-                          title={isWhisperGroup ? 'End whisper' : 'Delete group'}
-                          disabled={Boolean(pendingRoomDeletes[room.id])}
-                          onClick={() => {
-                            void handleDeleteGroup(room)
-                          }}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            close
-                          </span>
-                        </button>
+                    {canManageRooms ? (
+                      isCompactGroup ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="room-selector-item__icon-action room-selector-item__close-inline"
+                              aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
+                              disabled={Boolean(pendingRoomDeletes[room.id])}
+                              onClick={() => {
+                                void handleDeleteGroup(room)
+                              }}
+                            >
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                {isWhisperGroup ? 'exit_to_app' : 'close'}
+                              </span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            {isWhisperGroup ? 'End whisper' : 'Delete group'}
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <button
                           type="button"
@@ -945,7 +956,7 @@ export function RoomSelector({
                   </span>
                 </span>
 
-                {environmentPickerRoomId === room.id ? (
+                {!isWhisperGroup && environmentPickerRoomId === room.id ? (
                   <div
                     className="room-selector-item__env-picker"
                     role="dialog"
@@ -977,192 +988,191 @@ export function RoomSelector({
                     </div>
                   </div>
                 ) : null}
-
-                <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
               </div>
 
               <div
                 className={`room-selector-members-list ${isCompactGroup ? 'room-selector-members-list--hidden' : ''}`}
               >
-                {participants.length === 0 ? (
-                  isWhisperGroup ? null : (
-                    <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noMembersInGroup}</p>
-                  )
-                ) : (
-                  participants.map((member) => {
-                    const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
-                    const pendingTargetRoomId = pendingRoomMoves[member.userId]
-                    const isMuted = Boolean(member.isMuted)
-                    const shownPresenceState = getResolvedPresenceState(member.presenceState)
+                {participants.length === 0
+                  ? null
+                  : participants.map((member) => {
+                      const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
+                      const pendingTargetRoomId = pendingRoomMoves[member.userId]
+                      const isMuted = Boolean(member.isMuted)
+                      const shownPresenceState = getResolvedPresenceState(member.presenceState)
 
-                    return (
-                      <Tooltip key={member.userId}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
-                            draggable={canDrag}
-                            aria-label={canDrag ? `Drag ${member.username}` : member.username}
-                            onDragStart={(event) => {
-                              if (!canDrag) {
-                                return
-                              }
-                              event.dataTransfer.setData('text/plain', member.userId)
-                              setDraggedUserId(member.userId)
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault()
-                              openRadialMenu({
-                                x: event.clientX,
-                                y: event.clientY,
-                                memberUserId: member.userId,
-                                memberRoomId: room.id,
-                              })
-                            }}
-                            onTouchStart={(event) => {
-                              clearLongPressTimer()
-                              clearTouchFeedback()
-                              const touch = event.touches[0]
-                              if (!touch) {
-                                return
-                              }
-
-                              touchStartRef.current = {
-                                x: touch.clientX,
-                                y: touch.clientY,
-                                userId: member.userId,
-                              }
-                              setTouchFeedbackUserId(member.userId)
-
-                              longPressTimerRef.current = window.setTimeout(() => {
+                      return (
+                        <Tooltip key={member.userId}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
+                              draggable={canDrag}
+                              aria-label={canDrag ? `Drag ${member.username}` : member.username}
+                              onDragStart={(event) => {
+                                if (!canDrag) {
+                                  return
+                                }
+                                event.dataTransfer.setData('text/plain', member.userId)
+                                setDraggedUserId(member.userId)
+                              }}
+                              onContextMenu={(event) => {
+                                event.preventDefault()
                                 openRadialMenu({
-                                  x: touch.clientX,
-                                  y: touch.clientY,
+                                  x: event.clientX,
+                                  y: event.clientY,
                                   memberUserId: member.userId,
                                   memberRoomId: room.id,
                                 })
-                              }, LONG_PRESS_OPEN_MS)
-                            }}
-                            onTouchMove={(event) => {
-                              const touch = event.touches[0]
-                              const touchStart = touchStartRef.current
-
-                              if (!touch || !touchStart || touchStart.userId !== member.userId) {
-                                return
-                              }
-
-                              const deltaX = touch.clientX - touchStart.x
-                              const deltaY = touch.clientY - touchStart.y
-                              if (Math.hypot(deltaX, deltaY) > LONG_PRESS_MOVE_CANCEL_PX) {
+                              }}
+                              onTouchStart={(event) => {
                                 clearLongPressTimer()
-                                clearTouchFeedback(60)
-                              }
-                            }}
-                            onTouchEnd={() => {
-                              clearLongPressTimer()
-                              clearTouchFeedback(80)
-                            }}
-                            onTouchCancel={() => {
-                              clearLongPressTimer()
-                              clearTouchFeedback()
-                            }}
-                            onDragEnd={() => setDraggedUserId(null)}
-                          >
-                            <AvatarOverlay
-                              username={member.characterName || member.username}
-                              avatarUrl={member.avatarUrl}
-                              roleLabel={member.roleLabel}
-                              metaLine={getParticipantMetaLine(member)}
-                              presenceState={shownPresenceState}
-                              isMuted={isMuted}
-                              isSpeaking={member.isSpeaking}
-                            />
-                            {pendingTargetRoomId === room.id ? (
-                              <span className="room-selector-member__pending">Moving…</span>
-                            ) : null}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="room-selector-profile-tooltip">
-                          <div className="room-selector-profile">
-                            <div className="room-selector-profile__avatar" aria-hidden="true">
-                              {member.avatarUrl ? (
-                                <img src={member.avatarUrl} alt="" />
-                              ) : (
-                                (member.characterName || member.username).charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <div className="room-selector-profile__meta">
-                              <div className="room-selector-profile__title-row">
-                                <span className="room-selector-profile__name-wrap">
-                                  <strong>{member.characterName || member.username}</strong>
-                                  <span className="room-selector-status-pill role compact">
-                                    <span className="material-symbols-outlined" aria-hidden="true">
-                                      {STATUS_PILL_ICONS.role}
-                                    </span>
-                                    {member.roleLabel || ROOM_ROLE_LABELS.player}
-                                  </span>
-                                </span>
-                                <span
-                                  className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
-                                >
-                                  <span className="material-symbols-outlined" aria-hidden="true">
-                                    {STATUS_PILL_ICONS.presence}
-                                  </span>
-                                  {shownPresenceState}
-                                </span>
-                              </div>
-                              {member.playerName &&
-                              member.playerName !== (member.characterName || member.username) ? (
-                                <span className="room-selector-profile__player-name">
-                                  {member.playerName}
-                                </span>
+                                clearTouchFeedback()
+                                const touch = event.touches[0]
+                                if (!touch) {
+                                  return
+                                }
+
+                                touchStartRef.current = {
+                                  x: touch.clientX,
+                                  y: touch.clientY,
+                                  userId: member.userId,
+                                }
+                                setTouchFeedbackUserId(member.userId)
+
+                                longPressTimerRef.current = window.setTimeout(() => {
+                                  openRadialMenu({
+                                    x: touch.clientX,
+                                    y: touch.clientY,
+                                    memberUserId: member.userId,
+                                    memberRoomId: room.id,
+                                  })
+                                }, LONG_PRESS_OPEN_MS)
+                              }}
+                              onTouchMove={(event) => {
+                                const touch = event.touches[0]
+                                const touchStart = touchStartRef.current
+
+                                if (!touch || !touchStart || touchStart.userId !== member.userId) {
+                                  return
+                                }
+
+                                const deltaX = touch.clientX - touchStart.x
+                                const deltaY = touch.clientY - touchStart.y
+                                if (Math.hypot(deltaX, deltaY) > LONG_PRESS_MOVE_CANCEL_PX) {
+                                  clearLongPressTimer()
+                                  clearTouchFeedback(60)
+                                }
+                              }}
+                              onTouchEnd={() => {
+                                clearLongPressTimer()
+                                clearTouchFeedback(80)
+                              }}
+                              onTouchCancel={() => {
+                                clearLongPressTimer()
+                                clearTouchFeedback()
+                              }}
+                              onDragEnd={() => setDraggedUserId(null)}
+                            >
+                              <AvatarOverlay
+                                username={member.characterName || member.username}
+                                avatarUrl={member.avatarUrl}
+                                roleLabel={member.roleLabel}
+                                metaLine={getParticipantMetaLine(member)}
+                                presenceState={shownPresenceState}
+                                isMuted={isMuted}
+                                isSpeaking={member.isSpeaking}
+                              />
+                              {pendingTargetRoomId === room.id ? (
+                                <span className="room-selector-member__pending">Moving…</span>
                               ) : null}
-                              <p>{getParticipantMetaLine(member)}</p>
-                              {getStatEntries(member).length > 0 ? (
-                                <div className="room-selector-profile__stats">
-                                  {getStatEntries(member).map(([key, value]) => (
-                                    <span key={key}>
-                                      {key}: {String(value)}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : null}
-                              <div className="room-selector-profile__status-pills">
-                                {member.isSpeaking ? (
-                                  <span className="room-selector-status-pill speaking">
-                                    <span className="material-symbols-outlined" aria-hidden="true">
-                                      {STATUS_PILL_ICONS.speaking}
-                                    </span>
-                                    {STATUS_PILL_LABELS.speaking}
-                                  </span>
-                                ) : null}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="room-selector-profile-tooltip">
+                            <div className="room-selector-profile">
+                              <div className="room-selector-profile__avatar" aria-hidden="true">
+                                {member.avatarUrl ? (
+                                  <img src={member.avatarUrl} alt="" />
+                                ) : (
+                                  (member.characterName || member.username).charAt(0).toUpperCase()
+                                )}
                                 {isMuted ? (
-                                  <span className="room-selector-status-pill muted">
+                                  <span className="room-selector-profile__avatar-muted-badge">
                                     <span className="material-symbols-outlined" aria-hidden="true">
                                       mic_off
                                     </span>
-                                    {STATUS_PILL_LABELS.muted}
-                                  </span>
-                                ) : null}
-                                {member.condition ? (
-                                  <span className="room-selector-status-pill condition">
-                                    <span className="material-symbols-outlined" aria-hidden="true">
-                                      {STATUS_PILL_ICONS.condition}
-                                    </span>
-                                    {member.condition}
                                   </span>
                                 ) : null}
                               </div>
+                              <div className="room-selector-profile__meta">
+                                <div className="room-selector-profile__title-row">
+                                  <span className="room-selector-profile__name-wrap">
+                                    <strong>{member.characterName || member.username}</strong>
+                                    <span className="room-selector-status-pill role compact">
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        {STATUS_PILL_ICONS.role}
+                                      </span>
+                                      {member.roleLabel || ROOM_ROLE_LABELS.player}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
+                                  >
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.presence}
+                                    </span>
+                                    {shownPresenceState}
+                                  </span>
+                                </div>
+                                {member.playerName &&
+                                member.playerName !== (member.characterName || member.username) ? (
+                                  <span className="room-selector-profile__player-name">
+                                    {member.playerName}
+                                  </span>
+                                ) : null}
+                                <p>{getParticipantMetaLine(member)}</p>
+                                {getStatEntries(member).length > 0 ? (
+                                  <div className="room-selector-profile__stats">
+                                    {getStatEntries(member).map(([key, value]) => (
+                                      <span key={key}>
+                                        {key}: {String(value)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <div className="room-selector-profile__status-pills">
+                                  {member.isSpeaking ? (
+                                    <span className="room-selector-status-pill speaking">
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        {STATUS_PILL_ICONS.speaking}
+                                      </span>
+                                      {STATUS_PILL_LABELS.speaking}
+                                    </span>
+                                  ) : null}
+                                  {member.condition ? (
+                                    <span className="room-selector-status-pill condition">
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        {STATUS_PILL_ICONS.condition}
+                                      </span>
+                                      {member.condition}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    )
-                  })
-                )}
-                {formatRoomTypeLabel(room.type) ? (
-                  <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
-                ) : null}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    })}
               </div>
 
               {canManageRooms &&
@@ -1170,21 +1180,27 @@ export function RoomSelector({
               !isGreenRoomName(room.name) &&
               !isCompactGroup ? (
                 <footer className="room-selector-item__footer">
-                  <button
-                    type="button"
-                    className="room-selector-item__close-btn"
-                    aria-label={`${isWhisperGroup ? 'End whisper' : 'Close group'} ${room.name}`}
-                    title={isWhisperGroup ? 'End whisper' : 'Close group'}
-                    onClick={() => {
-                      void handleDeleteGroup(room)
-                    }}
-                    disabled={Boolean(pendingRoomDeletes[room.id])}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      close
-                    </span>
-                    Close
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="room-selector-item__close-btn"
+                        aria-label={`${isWhisperGroup ? 'End whisper' : 'Close group'} ${room.name}`}
+                        onClick={() => {
+                          void handleDeleteGroup(room)
+                        }}
+                        disabled={Boolean(pendingRoomDeletes[room.id])}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {isWhisperGroup ? 'exit_to_app' : 'close'}
+                        </span>
+                        Close
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {isWhisperGroup ? 'End whisper' : 'Close group'}
+                    </TooltipContent>
+                  </Tooltip>
                 </footer>
               ) : null}
             </section>
@@ -1312,20 +1328,31 @@ export function RoomSelector({
                 </TooltipContent>
               </Tooltip>
             ) : null}
-            {canManageRooms && canCreateGroups ? (
+            {showCreateGroupControl ? (
               <div className="room-selector-header__create-wrap" ref={createGroupWrapRef}>
-                <button
-                  type="button"
-                  className="room-selector-header__create"
-                  onClick={() => {
-                    setEnvironmentPickerRoomId(null)
-                    setShowCreateGroupModal((current) => !current)
-                  }}
-                  disabled={!canCreateGroups}
-                  aria-haspopup="dialog"
-                >
-                  Create Group
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={`room-selector-header__create-icon ${showCreateGroupModal ? 'active' : ''}`}
+                      onClick={() => {
+                        setEnvironmentPickerRoomId(null)
+                        setShowCreateGroupModal((current) => !current)
+                      }}
+                      disabled={!canCreateGroups}
+                      aria-label="Create group"
+                      aria-haspopup="dialog"
+                      aria-expanded={showCreateGroupModal}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        group_add
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {canCreateGroups ? 'Create group' : 'Create groups in greenroom'}
+                  </TooltipContent>
+                </Tooltip>
                 {showCreateGroupModal ? (
                   <CreateGroupModal
                     onClose={() => setShowCreateGroupModal(false)}
@@ -1347,7 +1374,7 @@ export function RoomSelector({
                     title="Return"
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">
-                      undo
+                      exit_to_app
                     </span>
                   </button>
                 </TooltipTrigger>
@@ -1392,6 +1419,13 @@ export function RoomSelector({
                           .charAt(0)
                           .toUpperCase()
                       )}
+                      {dmParticipant.isMuted ? (
+                        <span className="room-selector-profile__avatar-muted-badge">
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            mic_off
+                          </span>
+                        </span>
+                      ) : null}
                     </div>
                     <div className="room-selector-profile__meta">
                       <div className="room-selector-profile__title-row">
@@ -1430,14 +1464,6 @@ export function RoomSelector({
                             {STATUS_PILL_LABELS.speaking}
                           </span>
                         ) : null}
-                        {dmParticipant.isMuted ? (
-                          <span className="room-selector-status-pill muted">
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              mic_off
-                            </span>
-                            {STATUS_PILL_LABELS.muted}
-                          </span>
-                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1451,7 +1477,7 @@ export function RoomSelector({
           ) : (
             <>
               {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
-              {!isGreenroom && otherRooms.length > 0
+              {otherRooms.length > 0
                 ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
                     dividerOnly: true,
                   })

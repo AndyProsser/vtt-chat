@@ -88,7 +88,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(2)
+    expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(1)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
     expect(screen.getByText('Main Group')).toBeTruthy()
     expect(screen.getByText('Other Groups')).toBeTruthy()
@@ -162,7 +162,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'In Jail' } })
     const createDialog = screen.getByRole('dialog', { name: /Create group/i })
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
@@ -225,7 +225,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Scouts' } })
     const createDialog = screen.getByRole('dialog', { name: /Create group/i })
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
@@ -235,15 +235,15 @@ describe('RoomSelector', () => {
     })
   })
 
-  it('uses segmented buttons for create-group type selection', async () => {
+  it('always submits GROUP type in create-group modal', async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
           JSON.stringify({
             room: {
-              id: 'room-private',
-              name: 'Whisper Cell',
-              type: RoomType.PRIVATE,
+              id: 'room-group',
+              name: 'Scout Team',
+              type: RoomType.GROUP,
             },
           }),
           {
@@ -270,10 +270,10 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     const createDialog = screen.getByRole('dialog', { name: /Create group/i })
-    fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Whisper Cell' } })
-    fireEvent.click(within(createDialog).getByRole('button', { name: 'Private' }))
+    fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Scout Team' } })
+    expect(within(createDialog).queryByRole('button', { name: /Private/i })).toBeNull()
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
 
     await waitFor(() => {
@@ -282,8 +282,8 @@ describe('RoomSelector', () => {
         expect.objectContaining({
           body: JSON.stringify({
             sessionId: 'session-1',
-            name: 'Whisper Cell',
-            type: RoomType.PRIVATE,
+            name: 'Scout Team',
+            type: RoomType.GROUP,
           }),
           method: 'POST',
         })
@@ -307,13 +307,13 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: /Create group/i })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
 
     fireEvent.mouseDown(document.body)
@@ -429,10 +429,10 @@ describe('RoomSelector', () => {
     ])
   })
 
-  it('closes an empty non-main group via API and removes it from the list', async () => {
+  it('ends whisper via API for private room action', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
-        return new Response(JSON.stringify({ ok: true, deletedRoomId: 'room-private' }), {
+      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -483,24 +483,22 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Close group Whisper Booth/i }))
+    fireEvent.click(screen.getByRole('button', { name: /End whisper Whisper Booth/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private',
-        expect.objectContaining({ method: 'DELETE' })
+        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        expect.objectContaining({ method: 'POST' })
       )
     })
 
-    await waitFor(() => {
-      expect(screen.queryByText('Whisper Booth')).toBeNull()
-    })
+    expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
   })
 
   it('shows close-group API error and keeps group visible when request fails', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
-        return new Response(JSON.stringify({ message: 'Failed to close group' }), {
+      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ message: 'Failed to end whisper' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -551,16 +549,18 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Close group Whisper Booth/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(End whisper|Delete group|Close group) Whisper Booth/i })
+    )
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to close group')).toBeTruthy()
+      expect(screen.getByText('Failed to end whisper')).toBeTruthy()
     })
 
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
   })
 
-  it('disables create-group controls in greenroom and shows DM in participant list', () => {
+  it('hides voice-panel create-group controls in greenroom and shows DM management groups', () => {
     render(
       <RoomSelector
         apiUrl="http://localhost:3000"
@@ -605,25 +605,21 @@ describe('RoomSelector', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: /Create Group/i }).hasAttribute('disabled')).toBe(
-      true
-    )
-    expect(screen.queryByRole('button', { name: /Create new group/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Create group/i })).toBeNull()
     expect(screen.queryByLabelText('Dungeon Master voice controls')).toBeNull()
     expect(screen.queryByRole('button', { name: /Drag Tara/i })).toBeNull()
     expect(screen.getByRole('button', { name: 'Tara' })).toBeTruthy()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
-    expect(screen.queryByText('Other Groups')).toBeNull()
     const effectButtons = screen.getAllByRole('button', { name: /Change group environment/i })
-    expect(effectButtons).toHaveLength(1)
-    expect(effectButtons[0]?.hasAttribute('disabled')).toBe(true)
+    expect(effectButtons.length).toBeGreaterThan(0)
+    expect(effectButtons[0]?.hasAttribute('disabled')).toBe(false)
   })
 
-  it('allows closing a non-main room even when members are present', async () => {
+  it('allows ending whisper room even when members are present', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
-        return new Response(JSON.stringify({ ok: true, deletedRoomId: 'room-private' }), {
+      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -681,15 +677,17 @@ describe('RoomSelector', () => {
       />
     )
 
-    const closeButton = screen.getByRole('button', { name: /Close group Whisper Booth/i })
+    const closeButton = screen.getByRole('button', {
+      name: /(End whisper|Delete group|Close group) Whisper Booth/i,
+    })
     expect(closeButton.hasAttribute('disabled')).toBe(false)
 
     fireEvent.click(closeButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private',
-        expect.objectContaining({ method: 'DELETE' })
+        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        expect.objectContaining({ method: 'POST' })
       )
     })
   })
@@ -776,8 +774,15 @@ describe('RoomSelector', () => {
             id: asUuid('room-scouts'),
             name: 'Scouts',
             type: RoomType.GROUP,
-            memberCount: 0,
-            participants: [],
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
           },
         ]}
         selectedRoomId={asUuid('room-main')}

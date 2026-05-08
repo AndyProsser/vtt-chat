@@ -99,7 +99,7 @@ When the DM changes a group's environment, **all players in that group receive t
 
 ### Condition: SILENCED
 
-A silenced player's audio output is **routed only to the DM**. All other players hear nothing from them. This is intentional DM mischief. The silenced player sees `SILENCED` in their AudioPanel with an explanation.
+A silenced player's audio output is **routed only to the DM & spectators**. All other players hear nothing from them. This is intentional DM mischief. The silenced player sees `SILENCED` in their AudioPanel with an explanation.
 
 ### DM Simplicity
 
@@ -110,7 +110,7 @@ DM actions that must remain simple:
 - Drag a player to a new group: 1 drag
 - Apply a condition: right-click → select condition
 - Set a group environment: click environment icon → pick from list
-- Create a group: click "+ Create Group" → name it → confirm
+- Create a group: during session (`ACTIVE`/`PAUSED`), click the `group_add` icon in the Voice Groups panel → name it → confirm
 - Delete a group: click X (inline on the group card)
 - Send notes to party: click send
 - Start/stop session: 1 click
@@ -126,10 +126,12 @@ DM actions that must remain simple:
 
 - During ACTIVE session state, DM sees all groups.
 - During greenroom state, group management is done in the rightbar Groups panel to preserve greenroom purity.
+- Group creation icon is shown in the Voice Groups panel during session (`ACTIVE`/`PAUSED`) and hidden in greenroom (`IDLE`/`ENDED`).
+- In greenroom, creation exists only in the dedicated Groups rightbar panel (not in the Voice Groups panel).
 - Players see a group only when ≥1 player is a member
 - Empty groups collapse to single-line for DM, with inline X delete button
 - Empty groups are excluded from broadcast (no one to hear it)
-- DMs can create, configure, and delete `GROUP` type rooms from greenroom ahead of time
+- When a DM deletes a `GROUP` room (in-session or greenroom), it is permanently removed.
 
 ### Spectator Theatre Mode
 
