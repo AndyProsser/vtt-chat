@@ -519,17 +519,33 @@ describe('Session bookend integration', () => {
         useStore.getState().messages[NEXT_SESSION_ID] || {}
       )
         .filter((message: any) => message.roomId === NEXT_GREEN_ROOM_ID)
-        .map((message: any) => String(message.content || ''))
+        .sort((left: any, right: any) => left.createdAt - right.createdAt)
 
-      const startCount = nextGreenroomMessages.filter((content) =>
+      const nextGreenroomMarkerContents = nextGreenroomMessages
+        .map((message: any) => String(message.content || ''))
+        .filter(
+          (content) => content.startsWith('Session Start:') || content.startsWith('Session End:')
+        )
+
+      const startCount = nextGreenroomMarkerContents.filter((content) =>
         content.startsWith('Session Start:')
       ).length
-      const endCount = nextGreenroomMessages.filter((content) =>
+      const endCount = nextGreenroomMarkerContents.filter((content) =>
         content.startsWith('Session End:')
       ).length
 
+      const firstStartIndex = nextGreenroomMarkerContents.findIndex((content) =>
+        content.startsWith('Session Start:')
+      )
+      const firstEndIndex = nextGreenroomMarkerContents.findIndex((content) =>
+        content.startsWith('Session End:')
+      )
+
       expect(startCount).toBeGreaterThan(0)
       expect(endCount).toBeGreaterThan(0)
+      expect(firstStartIndex).toBeGreaterThanOrEqual(0)
+      expect(firstEndIndex).toBeGreaterThanOrEqual(0)
+      expect(firstStartIndex).toBeLessThan(firstEndIndex)
     })
   })
 })
