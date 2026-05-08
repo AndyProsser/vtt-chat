@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express'
 import { Server as HTTPServer, createServer } from 'http'
 import { config } from '@/infra/config'
 import { logger } from '@/utils'
+import { seedMockPlayers } from '@/services/dev-mock-players.service'
 import {
   requestLoggingMiddleware,
   corsMiddleware,
@@ -90,11 +91,20 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const start = async (): Promise<void> => {
     return new Promise((resolve, reject) => {
       try {
-        server.listen(config.port, '0.0.0.0', () => {
+        server.listen(config.port, '0.0.0.0', async () => {
           logger.info('bootstrap', `Server started on port ${config.port}`, {
             environment: config.environment,
             nodeVersion: process.version,
           })
+
+          if (config.isDevelopment) {
+            try {
+              await seedMockPlayers()
+            } catch (err) {
+              logger.warn('bootstrap', 'DEV mock player seed failed (non-fatal)', err)
+            }
+          }
+
           resolve()
         })
       } catch (error) {

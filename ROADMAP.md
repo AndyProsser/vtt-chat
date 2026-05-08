@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-08
+Last updated: 2026-05-09
 
 Related roadmap:
 
@@ -123,8 +123,8 @@ Out of scope:
 ## 2) Current Readiness Snapshot
 
 - Build and lint: green at workspace level
-- Backend tests: 47 files / 308 tests passing
-- Frontend tests: 31 files / 254 tests passing
+- Backend tests: 47 files / 311 tests passing
+- Frontend tests: 33 files / 368 tests passing
 - Admin tests: 17 files / 139 tests passing
 - Backend coverage snapshot: statements 60.99, branches 51.69, functions 60.17, lines 61.35
 - Admin coverage snapshot: statements 86.72, branches 71.85, functions 83.49, lines 88.2
@@ -152,6 +152,7 @@ Known readiness gap classes:
 | W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                           |
 | W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                           |
 | W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                    |
+| W9  | DEV Mock Players            | Planned     | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players    |
 
 ---
 
@@ -295,7 +296,13 @@ Current implementation boundary (2026-05-08 first pass):
 
 ---
 
-### Latest Delivered (W1/W2)
+### Latest Delivered (W1/W2) — 2026-05-09
+
+- Fixed backend session membership lifecycle integration tests: added missing `ensureSessionWhisperRoomForSession` and `deletePrivateRoomsForEndedSession` mocks to `room.service`, and added `resolveEffectiveSessionRole` mock (with `ok: true`) to `session-authz.service` — all 3 membership lifecycle tests now pass (`backend/tests/integration/session-membership-role-lifecycle.integration.test.ts`).
+- Expanded audio WS event handler test coverage: added `handleEnvironmentSet` (with/without `parameters` branches), `handleDMOverrideApplied`, `handleDMOverrideRemoved`, `handleBroadcastStateChanged`, `resetSessionAudioState` (preserves `roomEnvironmentNames`), and `replaceDMOverrides` tests (`frontend/src/tests/state/audioSlice.test.ts` — 19 tests).
+- Added new WS event dispatcher test suite covering exact-match dispatch, namespace wildcard (`CHAT:*`), global wildcard (`*`), multi-handler fanout, unregister, envelope validation (bad version/missing fields/zero timestamp), and handler error isolation (`frontend/src/tests/ws/dispatcher.test.ts` — 14 tests).
+
+### Latest Delivered (W1/W2) — 2026-05-08
 
 - Hardened frontend session-flow runtime behavior and chat-bookend rendering: session topology now re-hydrates on state transitions, active players can see empty voice groups, and restarted sessions no longer lose their immediate `Session Start` marker due to pre-hydration Zustand timing (`frontend/src/components/session/SessionInit.tsx`, `frontend/src/components/session/SessionLeftRailPanel.tsx`, `frontend/src/tests/components/SessionInit.integration.test.tsx`, `frontend/src/tests/components/SessionBookends.integration.test.tsx`).
 - Fixed session bookend dedupe so repeated pause/resume cycles are no longer suppressed after reconnect/refresh: dedupe now collapses only near-duplicate boundary echoes and allows legitimate later markers (`frontend/src/state/chatSlice.ts`, `frontend/src/components/session/SessionInit.tsx`, `frontend/src/tests/state/chatSlice.test.ts`).
@@ -479,6 +486,37 @@ Definition of done:
 - At least one additional locale is wired end-to-end for smoke validation.
 - Localization checks are integrated into roadmap test/release gates.
 - Operator/user docs include localization workflow and troubleshooting basics.
+
+### W9: DEV Mock Players
+
+Provide always-present seeded mock player accounts in the DEV environment so a single developer can test DM superpowers — conditions, drag-to-group, environments, whisper, broadcast — without needing real players to be online.
+
+**Behaviour contract**:
+
+- 3–5 mock player accounts are seeded and automatically joined to any campaign run in DEV mode.
+- Mocks are always present in the group panel: visible, named, and draggable.
+- Mocks do not have real audio; their presence is simulated (online, speaking indicator suppressed).
+- When testing you are always the DM in the default browser session. Mock players supplement your session.
+- If you accept a campaign invite in a **private browser session** (incognito), that session runs as a real player and is added alongside the mocks — the mocks do not disappear.
+- Mock accounts are never seeded in production or staging environments. They are gated behind `NODE_ENV=development` (or an explicit `DEV_MOCK_PLAYERS=true` env flag).
+- Mock player names should be clearly fictional / labelled (e.g. `[DEV] Thorin`, `[DEV] Legolas`) so they are never confused with real accounts.
+- Mock state (presence, room membership) resets on each session start, the same as any real player.
+
+**Implementation checklist**:
+
+1. Add a `dev-seed.service.ts` (or equivalent) that creates mock user accounts and campaign memberships at server startup when the DEV flag is active.
+2. Auto-join mocks to the active session's greenroom when a session is started in DEV, the same path real players would take via session join.
+3. Add a thin simulated-presence heartbeat so mocks stay `ONLINE` during the session without a real WS connection (or use a stub WS connection per mock).
+4. Expose a DEV-only `POST /dev/mock-players/reset` endpoint to re-seed presence state without a full server restart.
+5. Ensure mocks are excluded from recording, history, and any production-facing API outputs.
+6. Document the mock setup in `DEVELOPING.md` so new contributors know mocks are always there in DEV.
+
+Definition of done:
+
+- Running the dev stack produces 3–5 visible mock players in any campaign without manual setup.
+- DM can drag, condition, silence, and whisper the mocks exactly as they would a real player.
+- A real player joining via invite in a private session coexists with the mocks seamlessly.
+- Zero mock data leaks into production/staging builds or API responses.
 
 ---
 

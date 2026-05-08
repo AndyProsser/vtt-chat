@@ -15,6 +15,8 @@ import telemetryRoutes from './telemetry.routes'
 import platformRoutes from './platform.routes'
 import integrationsRoutes from './integrations.routes'
 import metadataRoutes from './metadata.routes'
+import devRoutes from './dev.routes'
+import { config } from '@/infra/config'
 
 const router = Router()
 
@@ -59,5 +61,11 @@ router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
 router.use('/telemetry', telemetryRoutes)
 router.use('/metadata', metadataRoutes)
+
+// DEV-only mock player routes — never active in production
+if (config.isDevelopment) {
+  router.use('/dev/mock-players', devRoutes)
+  router.get('/dev/health', (_req, res) => res.json({ mode: 'development', mockPlayers: true }))
+}
 
 export default router

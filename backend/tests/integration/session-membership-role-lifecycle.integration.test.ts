@@ -57,6 +57,11 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.verifyToken,
 }))
 
+vi.mock('@/services/session-authz.service', () => ({
+  resolveRoleForSessionJoin: vi.fn(async () => ({ ok: true, role: 'PLAYER' })),
+  resolveEffectiveSessionRole: vi.fn(async () => ({ ok: true, isMember: true, role: 'PLAYER' })),
+}))
+
 vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({
     session: {
@@ -85,7 +90,9 @@ vi.mock('@/services/room.service', () => ({
   getSessionPresence: mocks.getSessionPresence,
   joinRoom: mocks.joinRoom,
   ensureSessionDefaultRoomsForSession: mocks.ensureSessionDefaultRoomsForSession,
+  ensureSessionWhisperRoomForSession: vi.fn(async () => undefined),
   applySessionStateRoomTransition: vi.fn(),
+  deletePrivateRoomsForEndedSession: vi.fn(),
 }))
 
 vi.mock('@/services/chat.service', () => ({

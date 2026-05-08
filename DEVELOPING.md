@@ -256,6 +256,42 @@ npm run test
 
 ---
 
+## 🎭 11a. DEV Mock Players
+
+When running in development mode (`NODE_ENV=development`), the backend automatically seeds **5 mock player accounts** on startup so you can test DM superpowers without needing real participants.
+
+Mock players are named `[DEV] Thorin`, `[DEV] Legolas`, `[DEV] Galadriel`, `[DEV] Boromir`, and `[DEV] Samwise`. They are identifiable by the `[DEV]` prefix and their `dev_mock_*` usernames.
+
+**You are always the DM** when using the normal dev browser session.
+
+### Joining mock players to a session
+
+```bash
+curl -X POST http://localhost:3001/api/dev/mock-players/join \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "<your-session-id>"}'
+```
+
+### Getting mock player tokens (for a private browser session)
+
+```bash
+curl "http://localhost:3001/api/dev/mock-players?sessionId=<your-session-id>"
+```
+
+Copy a `token` value from the response and use it to log in as that player in an **incognito/private browser window**. That session behaves as a real player alongside the mocks.
+
+### Removing mock players from a session
+
+```bash
+curl -X POST http://localhost:3001/api/dev/mock-players/remove \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "<your-session-id>"}'
+```
+
+Mock accounts are **never seeded or accessible in production** — the routes and seed logic are hard-gated behind `config.isDevelopment`.
+
+---
+
 ## 🚀 12. Building for Production
 
 From the repo root, build both together:
