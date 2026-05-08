@@ -41,6 +41,10 @@
   cursor: not-allowed;
 }
 
+.room-selector-header__create-wrap {
+  position: relative;
+}
+
 .room-selector-header__broadcast-icon {
   width: 1.7rem;
   height: 1.7rem;
@@ -697,18 +701,11 @@
     border-color 120ms ease;
 }
 
-.group-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-}
-
-.group-modal {
-  width: min(28rem, calc(100vw - 2rem));
+.group-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(19rem, calc(100vw - 2rem));
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -716,15 +713,29 @@
   padding: 0.9rem;
   display: grid;
   gap: 0.8rem;
+  z-index: 30;
 }
 
-.group-modal__header {
+.group-popover::before {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  right: 1.2rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border-soft);
+  border-top: 1px solid var(--color-border-soft);
+  transform: rotate(45deg);
+}
+
+.group-popover__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.group-modal__header h5 {
+.group-popover__header h5 {
   margin: 0;
   font-size: 0.82rem;
   text-transform: uppercase;
@@ -734,7 +745,7 @@
   gap: 0.35rem;
 }
 
-.group-modal__close {
+.group-popover__close {
   border: 1px solid var(--color-border-soft);
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-surface-subtle) 72%, transparent);
@@ -747,23 +758,22 @@
   justify-content: center;
 }
 
-.group-modal__form {
+.group-popover__form {
   display: grid;
   gap: 0.7rem;
 }
 
-.group-modal__field {
+.group-popover__field {
   display: grid;
   gap: 0.26rem;
 }
 
-.group-modal__field span {
+.group-popover__field span {
   font-size: 0.72rem;
   color: var(--color-text-secondary);
 }
 
-.group-modal__field input,
-.group-modal__field select {
+.group-popover__field input {
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface-subtle) 74%, var(--color-surface));
@@ -771,13 +781,47 @@
   padding: 0.45rem 0.55rem;
 }
 
-.group-modal__actions {
+.group-popover__segment {
+  display: inline-flex;
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.group-popover__segment-btn {
+  flex: 1;
+  border: 0;
+  border-right: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: 0.45rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.group-popover__segment-btn:last-child {
+  border-right: 0;
+}
+
+.group-popover__segment-btn.is-active {
+  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
+  color: var(--color-text-primary);
+}
+
+.group-popover__segment-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.group-popover__actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.42rem;
 }
 
-.group-modal__actions button {
+.group-popover__actions button {
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface-subtle) 72%, var(--color-surface));
@@ -787,17 +831,17 @@
   cursor: pointer;
 }
 
-.group-modal__actions button[type='submit'] {
+.group-popover__actions button[type='submit'] {
   border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
   background: color-mix(in srgb, var(--color-brand) 20%, transparent);
 }
 
-.group-modal__actions button:disabled {
+.group-popover__actions button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.group-modal__error {
+.group-popover__error {
   margin: 0;
   font-size: 0.72rem;
   color: var(--color-error);

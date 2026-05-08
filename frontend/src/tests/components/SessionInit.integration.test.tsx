@@ -17,6 +17,7 @@ const PLAYER_ID = asUuid('44444444-4444-4444-8444-444444444444')
 const PLAYER_TWO_ID = asUuid('55555555-5555-4555-8555-555555555555')
 const ROOM_ONE_ID = asUuid('66666666-6666-4666-8666-666666666666')
 const ROOM_TWO_ID = asUuid('77777777-7777-4777-8777-777777777777')
+const ROOM_THREE_ID = asUuid('88888888-8888-4888-8888-888888888888')
 
 let wsConnectionState: 'connected' | 'reconnecting' = 'connected'
 const wsSendMock = vi.fn()
@@ -404,6 +405,207 @@ describe('SessionInit integration', () => {
     expect(screen.queryByText('June')).toBeNull()
   })
 
+  it('rehydrates room and presence topology when transitioning from greenroom to active session', async () => {
+    act(() => {
+      useStore.getState().replaceSessionTopology(
+        SESSION_ID,
+        [
+          {
+            id: ROOM_ONE_ID,
+            sessionId: SESSION_ID,
+            name: 'Main Room',
+            type: RoomType.MAIN,
+            createdAt: 1,
+            createdBy: DM_ID,
+          },
+          {
+            id: ROOM_TWO_ID,
+            sessionId: SESSION_ID,
+            name: 'Green Room',
+            type: RoomType.GROUP,
+            createdAt: 2,
+            createdBy: DM_ID,
+          },
+        ],
+        [
+          {
+            userId: DM_ID,
+            username: 'Morgan',
+            state: PresenceState.ONLINE,
+            primaryRoomId: ROOM_TWO_ID,
+            lastSeenAt: 1,
+          },
+          {
+            userId: PLAYER_ID,
+            username: 'Tara',
+            state: PresenceState.ONLINE,
+            primaryRoomId: ROOM_TWO_ID,
+            lastSeenAt: 2,
+          },
+        ]
+      )
+    })
+
+    let transitionedToActive = false
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.IDLE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url === `http://localhost:3000/api/v1/session/${SESSION_ID}/state` &&
+        init?.method === 'PUT'
+      ) {
+        transitionedToActive = true
+        return {
+          ok: true,
+          json: async () => ({
+            id: SESSION_ID,
+            name: 'Session Alpha',
+            dmId: DM_ID,
+            state: SessionState.ACTIVE,
+            createdAt: 1,
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            rooms: [
+              {
+                id: ROOM_ONE_ID,
+                sessionId: SESSION_ID,
+                name: 'Main Room',
+                type: RoomType.MAIN,
+                createdBy: DM_ID,
+                createdAt: 1,
+              },
+              {
+                id: ROOM_TWO_ID,
+                sessionId: SESSION_ID,
+                name: 'Green Room',
+                type: RoomType.GROUP,
+                createdBy: DM_ID,
+                createdAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            presence: [
+              {
+                userId: DM_ID,
+                username: 'Morgan',
+                state: PresenceState.ONLINE,
+                primaryRoomId: transitionedToActive ? ROOM_ONE_ID : ROOM_TWO_ID,
+                lastSeenAt: 1,
+              },
+              {
+                userId: PLAYER_ID,
+                username: 'Tara',
+                state: PresenceState.ONLINE,
+                primaryRoomId: transitionedToActive ? ROOM_ONE_ID : ROOM_TWO_ID,
+                lastSeenAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+        return {
+          ok: true,
+          json: async () => ({ environments: [], dmOverrides: [] }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+        return {
+          ok: true,
+          json: async () => ({ ok: true }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    await screen.findByTestId('session-toolbar')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+
+    await waitFor(() => {
+      const roomsHydrationCalls = fetchMock.mock.calls.filter(([calledUrl]) =>
+        String(calledUrl).endsWith(`/api/v1/rooms/session/${SESSION_ID}`)
+      )
+      const presenceHydrationCalls = fetchMock.mock.calls.filter(([calledUrl]) =>
+        String(calledUrl).endsWith(`/api/v1/presence/${SESSION_ID}`)
+      )
+
+      expect(roomsHydrationCalls.length).toBeGreaterThanOrEqual(2)
+      expect(presenceHydrationCalls.length).toBeGreaterThanOrEqual(2)
+
+      const sessionPresence = (useStore.getState().sessionPresence as any)[SESSION_ID] || {}
+      expect(sessionPresence[PLAYER_ID]?.primaryRoomId).toBe(ROOM_ONE_ID)
+      expect(sessionPresence[DM_ID]?.primaryRoomId).toBe(ROOM_ONE_ID)
+    })
+  })
+
   it('keeps audio panel status in sync from shared LiveKit snapshot', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)
@@ -502,6 +704,120 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Voice connected')).toBeTruthy()
+    })
+  })
+
+  it('shows empty voice groups to players during active sessions', async () => {
+    act(() => {
+      useStore.getState().replaceSessionTopology(
+        SESSION_ID,
+        [
+          {
+            id: ROOM_ONE_ID,
+            sessionId: SESSION_ID,
+            name: 'Main Room',
+            type: RoomType.MAIN,
+            createdAt: 1,
+            createdBy: DM_ID,
+          },
+          {
+            id: ROOM_TWO_ID,
+            sessionId: SESSION_ID,
+            name: 'Scout Team',
+            type: RoomType.GROUP,
+            createdAt: 2,
+            createdBy: DM_ID,
+          },
+          {
+            id: ROOM_THREE_ID,
+            sessionId: SESSION_ID,
+            name: 'Archive Cellar',
+            type: RoomType.GROUP,
+            createdAt: 3,
+            createdBy: DM_ID,
+          },
+        ],
+        [
+          {
+            userId: DM_ID,
+            username: 'Morgan',
+            state: PresenceState.ONLINE,
+            primaryRoomId: ROOM_ONE_ID,
+            lastSeenAt: 1,
+          },
+          {
+            userId: PLAYER_ID,
+            username: 'Tara',
+            state: PresenceState.ONLINE,
+            primaryRoomId: ROOM_ONE_ID,
+            lastSeenAt: 2,
+          },
+        ]
+      )
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+                description: 'Active field session',
+              },
+            ],
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: PLAYER_ID,
+          username: 'Tara',
+          role: Role.PLAYER,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Select group Main Room/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group Scout Team/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group Archive Cellar/i })).toBeTruthy()
     })
   })
 

@@ -124,6 +124,11 @@ const SESSION_SUMMARY_TITLE = 'Session Summary'
 const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
 const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:'] as const
 
+type PendingSessionBookend = {
+  state: SessionState
+  timestamp: number
+}
+
 function isSessionBookendMessage(content: string): boolean {
   return SESSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
 }
@@ -262,8 +267,7 @@ function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState
   }
 
   if (state === SessionState.ACTIVE || state === SessionState.PAUSED) {
-    const mainRooms = rooms.filter((room) => room.type === RoomType.MAIN)
-    return mainRooms.length ? mainRooms : rooms
+    return rooms
   }
 
   return rooms
@@ -367,6 +371,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
   const [showExitSessionModal, setShowExitSessionModal] = useState(false)
+  const [showStopSessionModal, setShowStopSessionModal] = useState(false)
   const [exitUpgradePassword, setExitUpgradePassword] = useState('')
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
@@ -420,8 +425,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const prevWsStateRef = useRef<ConnectionState>('disconnected')
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
   const lobbyAutoEnterTriggeredRef = useRef(false)
-  const lastHydratedSessionIdRef = useRef<UUID | null>(null)
+  const lastHydratedSessionFingerprintRef = useRef<string | null>(null)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
+  const pendingSessionBookendsBySessionIdRef = useRef<Map<UUID, PendingSessionBookend[]>>(new Map())
   const greenroomCleanupTimerRef = useRef<number | null>(null)
 
   // WebSocket connection
@@ -514,33 +520,44 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
 
-  const getSessionBookendRoomIds = useCallback((): UUID[] => {
-    const targetIds = new Set<UUID>()
+  const getSessionBookendRoomIds = useCallback(
+    (sessionId: UUID): UUID[] => {
+      const sessionRooms = Object.values(typedRoomsBySession[sessionId] || {})
+      const sourceRooms =
+        sessionRooms.length > 0
+          ? sessionRooms
+          : currentSession?.id === sessionId
+            ? currentRooms
+            : []
 
-    for (const room of currentRooms) {
-      if (room.type === RoomType.MAIN || isGreenRoom(room)) {
-        targetIds.add(room.id)
-      }
-    }
-
-    if (targetIds.size === 0 && selectedRoomId) {
-      targetIds.add(selectedRoomId)
-    }
-
-    return Array.from(targetIds)
-  }, [currentRooms, selectedRoomId])
-
-  const appendSessionBookendMessages = useCallback(
-    (sessionId: UUID, nextState: SessionState) => {
-      if (nextState !== SessionState.ACTIVE && nextState !== SessionState.ENDED) {
-        return
+      if (!sourceRooms.length) {
+        return []
       }
 
-      const timestamp = Date.now()
+      const targetIds = new Set<UUID>()
+
+      for (const room of sourceRooms) {
+        if (room.type === RoomType.MAIN || isGreenRoom(room)) {
+          targetIds.add(room.id)
+        }
+      }
+
+      return Array.from(targetIds)
+    },
+    [currentRooms, currentSession, typedRoomsBySession]
+  )
+
+  const writeSessionBookendMessages = useCallback(
+    (sessionId: UUID, nextState: SessionState, timestamp: number): boolean => {
+      const roomIds = getSessionBookendRoomIds(sessionId)
+      if (!roomIds.length) {
+        return false
+      }
+
       const label = nextState === SessionState.ACTIVE ? 'Session Start' : 'Session End'
       const content = `${label}: ${formatSessionBookendTimestamp(timestamp)}`
 
-      for (const roomId of getSessionBookendRoomIds()) {
+      for (const roomId of roomIds) {
         addMessage(sessionId, {
           id: crypto.randomUUID() as UUID,
           roomId,
@@ -552,9 +569,57 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           createdAt: timestamp,
         })
       }
+
+      return true
     },
     [addMessage, getSessionBookendRoomIds]
   )
+
+  const appendSessionBookendMessages = useCallback(
+    (sessionId: UUID, nextState: SessionState) => {
+      if (nextState !== SessionState.ACTIVE && nextState !== SessionState.ENDED) {
+        return
+      }
+
+      const timestamp = Date.now()
+      const didWrite = writeSessionBookendMessages(sessionId, nextState, timestamp)
+
+      if (didWrite) {
+        return
+      }
+
+      const pending = pendingSessionBookendsBySessionIdRef.current.get(sessionId) || []
+      pendingSessionBookendsBySessionIdRef.current.set(sessionId, [
+        ...pending,
+        { state: nextState, timestamp },
+      ])
+    },
+    [writeSessionBookendMessages]
+  )
+
+  useEffect(() => {
+    if (!pendingSessionBookendsBySessionIdRef.current.size) {
+      return
+    }
+
+    for (const [sessionId, entries] of Array.from(pendingSessionBookendsBySessionIdRef.current)) {
+      const remaining: PendingSessionBookend[] = []
+
+      for (const entry of entries) {
+        const didWrite = writeSessionBookendMessages(sessionId, entry.state, entry.timestamp)
+
+        if (!didWrite) {
+          remaining.push(entry)
+        }
+      }
+
+      if (remaining.length) {
+        pendingSessionBookendsBySessionIdRef.current.set(sessionId, remaining)
+      } else {
+        pendingSessionBookendsBySessionIdRef.current.delete(sessionId)
+      }
+    }
+  }, [currentSession, currentRooms, typedRoomsBySession, writeSessionBookendMessages])
 
   const scheduleGreenroomCarry = useCallback((fromSessionId: UUID, toSessionId: UUID) => {
     if (fromSessionId === toSessionId) {
@@ -1012,18 +1077,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     prevWsStateRef.current = wsState
 
     if (!currentSession) {
-      lastHydratedSessionIdRef.current = null
+      lastHydratedSessionFingerprintRef.current = null
       return
     }
 
-    const sessionChanged = lastHydratedSessionIdRef.current !== currentSession.id
+    const sessionFingerprint = `${currentSession.id}:${currentSession.state}`
+    const sessionChanged = lastHydratedSessionFingerprintRef.current !== sessionFingerprint
     const isReconnect = wsState === 'connected' && prev !== 'connected'
 
     if (!sessionChanged && !isReconnect) {
       return
     }
 
-    lastHydratedSessionIdRef.current = currentSession.id
+    lastHydratedSessionFingerprintRef.current = sessionFingerprint
 
     const loadPresenceAndRooms = async () => {
       try {
@@ -1837,18 +1903,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const handleStopSession = async (sessionId: UUID) => {
-    const shouldEnd =
-      typeof window === 'undefined'
-        ? true
-        : window.confirm(
-            'End this session now? This closes the current chapter for everyone and moves players back to greenroom/offline state.'
-          )
+    setShowStopSessionModal(true)
+  }
 
-    if (!shouldEnd) {
+  const handleConfirmStopSession = async () => {
+    if (!currentSession) {
+      setShowStopSessionModal(false)
       return
     }
 
-    await handleTransitionSession(sessionId, SessionState.ENDED)
+    setShowStopSessionModal(false)
+    await handleTransitionSession(currentSession.id, SessionState.ENDED)
   }
 
   const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
@@ -3353,6 +3418,41 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showStopSessionModal && (
+        <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="End session"
+          >
+            <h4 className="session-inline-form-title">End Session</h4>
+            <p className="session-card-subtitle">
+              End this session now? This closes the current chapter for everyone and moves
+              players back to greenroom/offline state.
+            </p>
+            <div className="session-action-row">
+              <button
+                type="button"
+                className="session-button session-button-neutral"
+                onClick={() => setShowStopSessionModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="session-button session-button-warn"
+                onClick={() => {
+                  void handleConfirmStopSession()
+                }}
+              >
+                End Session
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -38,59 +38,63 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
   }
 
   return (
-    <div className="group-modal-backdrop" role="presentation" onClick={onClose}>
-      <div
-        className="group-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Create group"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="group-modal__header">
-          <h5>
-            <Icon name="rooms" /> Create Group
-          </h5>
-          <button type="button" className="group-modal__close" onClick={onClose}>
-            <Icon name="close" />
-          </button>
-        </header>
+    <div className="group-popover" role="dialog" aria-label="Create group">
+      <header className="group-popover__header">
+        <h5>
+          <Icon name="rooms" /> Create Group
+        </h5>
+        <button type="button" className="group-popover__close" onClick={onClose}>
+          <Icon name="close" />
+        </button>
+      </header>
 
-        <form className="group-modal__form" onSubmit={handleSubmit}>
-          <label className="group-modal__field">
-            <span>Group name</span>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Scouts"
-              maxLength={48}
-              autoFocus
-            />
-          </label>
+      <form className="group-popover__form" onSubmit={handleSubmit}>
+        <label className="group-popover__field">
+          <span>Group name</span>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Scouts"
+            maxLength={48}
+            autoFocus
+          />
+        </label>
 
-          <label className="group-modal__field">
-            <span>Group type</span>
-            <select
-              value={type}
-              onChange={(event) => setType(event.target.value as RoomType)}
+        <div className="group-popover__field">
+          <span>Group type</span>
+          <div className="group-popover__segment" role="group" aria-label="Group type">
+            <button
+              type="button"
+              className={`group-popover__segment-btn ${type === RoomType.GROUP ? 'is-active' : ''}`}
+              aria-pressed={type === RoomType.GROUP}
+              onClick={() => setType(RoomType.GROUP)}
               disabled={isSubmitting}
             >
-              <option value={RoomType.GROUP}>Group</option>
-              <option value={RoomType.PRIVATE}>Private</option>
-            </select>
-          </label>
-
-          {error ? <p className="group-modal__error">{error}</p> : null}
-
-          <footer className="group-modal__actions">
-            <button type="button" onClick={onClose} disabled={isSubmitting}>
-              Cancel
+              Group
             </button>
-            <button type="submit" disabled={submitDisabled}>
-              {isSubmitting ? 'Creating...' : 'Create Group'}
+            <button
+              type="button"
+              className={`group-popover__segment-btn ${type === RoomType.PRIVATE ? 'is-active' : ''}`}
+              aria-pressed={type === RoomType.PRIVATE}
+              onClick={() => setType(RoomType.PRIVATE)}
+              disabled={isSubmitting}
+            >
+              Private
             </button>
-          </footer>
-        </form>
-      </div>
+          </div>
+        </div>
+
+        {error ? <p className="group-popover__error">{error}</p> : null}
+
+        <footer className="group-popover__actions">
+          <button type="button" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </button>
+          <button type="submit" disabled={submitDisabled}>
+            {isSubmitting ? 'Creating...' : 'Create Group'}
+          </button>
+        </footer>
+      </form>
     </div>
   )
 }

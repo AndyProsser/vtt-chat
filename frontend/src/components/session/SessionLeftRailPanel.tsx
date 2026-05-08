@@ -81,8 +81,7 @@ export function SessionLeftRailPanel({
         return true
       }
 
-      const memberCount = (roomMembersByRoomId[room.id] || []).length
-      return room.type === RoomType.MAIN || memberCount > 0 || room.id === selectedRoomId
+      return true
     })
 
   return (

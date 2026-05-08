@@ -131,6 +131,8 @@ State normalization:
 - On transition to `ACTIVE`: all users are moved to `MAIN`; DM condition/mute overrides are cleared; `MAIN` environment modifier is cleared.
 - On transition to greenroom states (`IDLE` and paused out-of-session routing): DM condition/mute/broadcast overrides are cleared; Greenroom environment modifier is cleared.
 - Non-main room environments persist across sessions and are restored when those groups are used again.
+- Chat lifecycle markers must remain visible across repeated greenroom/session transitions: each session writes its own `Session Start` and `Session End` markers, while Greenroom retains the chronological sequence for later return.
+- Restarted sessions must render their own `Session Start` marker immediately after start, even if room/presence topology hydration completes slightly after the session record is created.
 
 Close-group behavior:
 

@@ -89,7 +89,7 @@ describe('RoomSelector', () => {
     )
 
     expect(screen.getByText('Tavern')).toBeTruthy()
-    expect(screen.getByText('Whisper Booth')).toBeTruthy()
+    expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
     expect(screen.getByText('Main Group')).toBeTruthy()
     expect(screen.getByText('Other Groups')).toBeTruthy()
     expect(screen.getByText('Morgan')).toBeTruthy()
@@ -167,7 +167,7 @@ describe('RoomSelector', () => {
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('In Jail')).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group In Jail/i })).toBeTruthy()
     })
 
     resolveFetch?.(
@@ -227,6 +227,62 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('Only DM can create rooms').length).toBe(2)
+    })
+  })
+
+  it('uses segmented buttons for create-group type selection', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            room: {
+              id: 'room-private',
+              name: 'Whisper Cell',
+              type: RoomType.PRIVATE,
+            },
+          }),
+          {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[]}
+        selectedRoomId={''}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    const createDialog = screen.getByRole('dialog', { name: /Create group/i })
+    fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Whisper Cell' } })
+    fireEvent.click(within(createDialog).getByRole('button', { name: 'Private' }))
+    fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms',
+        expect.objectContaining({
+          body: JSON.stringify({
+            sessionId: 'session-1',
+            name: 'Whisper Cell',
+            type: RoomType.PRIVATE,
+          }),
+          method: 'POST',
+        })
+      )
     })
   })
 
@@ -423,7 +479,7 @@ describe('RoomSelector', () => {
       expect(screen.getByText('Failed to close group')).toBeTruthy()
     })
 
-    expect(screen.getByText('Whisper Booth')).toBeTruthy()
+    expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
   })
 
   it('disables create-group controls in greenroom and shows DM in participant list', () => {
@@ -464,7 +520,9 @@ describe('RoomSelector', () => {
       />
     )
 
-    expect(screen.queryByRole('button', { name: /Create Group/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Create Group/i }).hasAttribute('disabled')).toBe(
+      true
+    )
     expect(screen.queryByRole('button', { name: /Create new group/i })).toBeNull()
     expect(screen.queryByLabelText('Dungeon Master voice controls')).toBeNull()
     expect(screen.queryByRole('button', { name: /Drag Tara/i })).toBeNull()

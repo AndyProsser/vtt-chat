@@ -160,6 +160,14 @@ Known readiness gap classes:
 **Status**: Phases 1–3 complete; Phase 4 (Accessibility & Polish) and Phase 5 (Testing & Hardening) in progress
 **Related Docs**: [UI-COMPONENT-CHANNELS.md](docs/ui/UI-COMPONENT-CHANNELS.md), [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
 
+Recent runtime follow-through (2026-05-08):
+
+- Audio panel behavior is aligned with the current session-flow rules.
+- Active-session group visibility now keeps Main plus other groups visible to players, including empty groups.
+- Greenroom/session chat carry-over and lifecycle markers were hardened for repeated `Greenroom -> Session -> Greenroom -> Session Restart` cycles.
+- Fixed a frontend chat-state bug where a restarted session could miss its immediate `Session Start` marker until the next start/stop cycle because the marker was emitted before the new session topology had hydrated into Zustand state.
+- Frontend integration coverage now includes repeated restart chronology assertions and start-transition topology re-hydration coverage.
+
 **Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
 
 Terminology note for this stage:
@@ -287,6 +295,7 @@ Current implementation boundary (2026-05-08 first pass):
 
 ### Latest Delivered (W1/W2)
 
+- Hardened frontend session-flow runtime behavior and chat-bookend rendering: session topology now re-hydrates on state transitions, active players can see empty voice groups, and restarted sessions no longer lose their immediate `Session Start` marker due to pre-hydration Zustand timing (`frontend/src/components/session/SessionInit.tsx`, `frontend/src/components/session/SessionLeftRailPanel.tsx`, `frontend/src/tests/components/SessionInit.integration.test.tsx`, `frontend/src/tests/components/SessionBookends.integration.test.tsx`).
 - Added backend multi-client reconnect soak suite for concurrent reconnect fanout, session isolation, and FIFO recovery behavior (`backend/tests/integration/multi-client-reconnect.integration.test.ts`).
 - Added backend audio-state persistence/recovery soak suite for environment + DM override + broadcast lifecycle recovery (`backend/tests/integration/audio-state-recovery.integration.test.ts`).
 - Added expanded API coverage for presence and rooms route auth/validation/edge paths (`backend/tests/api/presence-routes.test.ts`, `backend/tests/api/rooms-routes.test.ts`).

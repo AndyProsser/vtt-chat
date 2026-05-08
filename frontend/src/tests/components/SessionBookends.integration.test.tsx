@@ -432,8 +432,8 @@ describe('Session bookend integration', () => {
       expect(screen.getAllByText(/Session Start:/).length).toBeGreaterThan(0)
     })
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
 
     await waitFor(() => {
       expect(screen.getAllByText(/Session End:/).length).toBeGreaterThan(0)
@@ -478,8 +478,6 @@ describe('Session bookend integration', () => {
     })
 
     vi.stubGlobal('fetch', fetchMock)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-
     render(
       <SessionInit
         apiUrl="http://localhost:3000"
@@ -504,6 +502,7 @@ describe('Session bookend integration', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
     await waitFor(() => {
       expect(screen.getAllByText(/Session End:/).length).toBeGreaterThan(0)
     })
@@ -543,6 +542,7 @@ describe('Session bookend integration', () => {
 
       expect(startCount).toBeGreaterThan(0)
       expect(endCount).toBeGreaterThan(0)
+      expect(startCount).toBeGreaterThanOrEqual(2)
       expect(firstStartIndex).toBeGreaterThanOrEqual(0)
       expect(firstEndIndex).toBeGreaterThanOrEqual(0)
       expect(firstStartIndex).toBeLessThan(firstEndIndex)

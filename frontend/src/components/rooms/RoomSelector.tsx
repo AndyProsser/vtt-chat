@@ -948,14 +948,24 @@ export function RoomSelector({
               </Tooltip>
             ) : null}
             {canManageRooms ? (
-              <button
-                type="button"
-                className="room-selector-header__create"
-                onClick={() => setShowCreateGroupModal(true)}
-                disabled={!canCreateGroups}
-              >
-                Create Group
-              </button>
+              <div className="room-selector-header__create-wrap">
+                <button
+                  type="button"
+                  className="room-selector-header__create"
+                  onClick={() => setShowCreateGroupModal((current) => !current)}
+                  disabled={!canCreateGroups}
+                  aria-expanded={showCreateGroupModal}
+                  aria-haspopup="dialog"
+                >
+                  Create Group
+                </button>
+                {showCreateGroupModal ? (
+                  <CreateGroupModal
+                    onClose={() => setShowCreateGroupModal(false)}
+                    onCreateGroup={handleCreateGroup}
+                  />
+                ) : null}
+              </div>
             ) : null}
             <button
               type="button"
@@ -1035,14 +1045,6 @@ export function RoomSelector({
         </div>
 
         {moveError ? <p className="room-selector-error">{moveError}</p> : null}
-
-        {showCreateGroupModal ? (
-          <CreateGroupModal
-            onClose={() => setShowCreateGroupModal(false)}
-            onCreateGroup={handleCreateGroup}
-          />
-        ) : null}
-
         {isMobileExpanded ? (
           <div
             className="room-selector-mobile-overlay-backdrop"
