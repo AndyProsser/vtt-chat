@@ -467,7 +467,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const prevWsStateRef = useRef<ConnectionState>('disconnected')
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
   const lobbyAutoEnterTriggeredRef = useRef(false)
-  const devMockRosterResetCampaignsRef = useRef<Set<UUID>>(new Set())
   const lastHydratedSessionFingerprintRef = useRef<string | null>(null)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
   const pendingSessionBookendsBySessionIdRef = useRef<Map<UUID, PendingSessionBookend[]>>(new Map())
@@ -1087,44 +1086,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
     },
     [apiUrl, token]
-  )
-
-  const maybeResetDevMockRosterOnPageLoad = useCallback(
-    async (campaign: CampaignSummary | undefined, sessionId: UUID) => {
-      if (!import.meta.env.DEV || !campaign) {
-        return
-      }
-
-      const isDm = campaign.memberRole === 'DM' && campaign.currentDmId === user.id
-      if (!isDm) {
-        return
-      }
-
-      if (devMockRosterResetCampaignsRef.current.has(campaign.id)) {
-        return
-      }
-
-      try {
-        const response = await fetch(`${apiUrl}/api/dev/mock-players/reset`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            sessionId,
-            campaignId: campaign.id,
-          }),
-        })
-
-        if (response.ok) {
-          devMockRosterResetCampaignsRef.current.add(campaign.id)
-        }
-      } catch {
-        // Non-fatal in DEV: ignore reset failures and continue normal join.
-      }
-    },
-    [apiUrl, token, user.id]
   )
 
   const handleToggleBroadcastMode = useCallback(
@@ -1779,7 +1740,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           : null) || getPreferredSession(targetSessions)
 
       if (preferredSession) {
-        await maybeResetDevMockRosterOnPageLoad(targetCampaign, preferredSession.id)
         await ensureSessionMembership(preferredSession.id)
         setCurrentSession(preferredSession.id)
         return
@@ -1811,7 +1771,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
-        await maybeResetDevMockRosterOnPageLoad(targetCampaign, payload.session.id)
         await ensureSessionMembership(payload.session.id)
         replaceSessions([payload.session, ...targetSessions])
         setCurrentSession(payload.session.id)
@@ -1829,7 +1788,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       replaceSessions,
       user.id,
       apiUrl,
-      maybeResetDevMockRosterOnPageLoad,
       token,
       setCurrentSession,
       onSessionCreated,

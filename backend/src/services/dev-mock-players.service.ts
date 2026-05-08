@@ -491,21 +491,6 @@ export async function listMockPlayers(): Promise<MockPlayerDef[]> {
 }
 
 export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<MockPlayerDef[]> {
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: { id: true, campaignId: true, state: true },
-  })
-  if (!session) {
-    return []
-  }
-
-  const rooms = await getRooms(sessionId)
-  const targetRoom = pickTargetRoom(rooms, session.state)
-  if (!targetRoom) {
-    logger.warn('dev-mock-players', `No MAIN/Green room found for session ${sessionId}`)
-    return []
-  }
-
   const existingSessionMocks = await prisma.sessionMember.findMany({
     where: {
       sessionId,
@@ -538,22 +523,6 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
   }
 
   if (retainedSessionMocks.length > 0) {
-    for (const member of retainedSessionMocks) {
-      await addUserToSession(sessionId, {
-        id: member.userId as UUID,
-        username: member.username,
-        role: Role.PLAYER,
-        createdAt: 0,
-      })
-      await joinRoom({
-        sessionId,
-        roomId: targetRoom.id,
-        userId: member.userId as UUID,
-        username: member.username,
-        state: PresenceState.ONLINE,
-      })
-    }
-
     const existingUsers = await prisma.user.findMany({
       where: { id: { in: retainedSessionMocks.map((entry) => entry.userId) } },
       select: { id: true, username: true, displayName: true, email: true },
@@ -565,6 +534,21 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
       displayName: user.displayName,
       email: user.email,
     }))
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { id: true, campaignId: true, state: true },
+  })
+  if (!session) {
+    return []
+  }
+
+  const rooms = await getRooms(sessionId)
+  const targetRoom = pickTargetRoom(rooms, session.state)
+  if (!targetRoom) {
+    logger.warn('dev-mock-players', `No MAIN/Green room found for session ${sessionId}`)
+    return []
   }
 
   const rememberedSlugs = ensureRosterMemory(sessionId, session.campaignId as UUID | null)
