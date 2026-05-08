@@ -116,6 +116,7 @@ const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 
 const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
 const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaign-id'
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
+const ACTIVE_SESSION_CONTEXT_STORAGE_KEY = 'vtt-chat:active-session-context'
 const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
@@ -149,6 +150,11 @@ const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
 type PendingSessionBookend = {
   content: string
   timestamp: number
+}
+
+type ActiveSessionContext = {
+  campaignId: UUID
+  sessionId: UUID
 }
 
 function isSessionBookendMessage(content: string): boolean {
@@ -1461,6 +1467,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           lastSeenAt: entry.lastSeenAt,
         }))
 
+        setSelectedRoomIdOverride('')
+
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
 
@@ -1527,6 +1535,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }, [
     apiUrl,
     currentSession,
+    setSelectedRoomIdOverride,
     token,
     wsState,
     replaceSessionTopology,
@@ -1721,7 +1730,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const handleEnterCampaign = useCallback(
-    async (campaignId?: UUID) => {
+    async (campaignId?: UUID, preferredSessionId?: UUID) => {
       setError(null)
       setLobbyNotice(null)
 
@@ -1764,7 +1773,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const preferredSession = getPreferredSession(targetSessions)
+      const preferredSession =
+        (preferredSessionId
+          ? targetSessions.find((session) => session.id === preferredSessionId) || null
+          : null) || getPreferredSession(targetSessions)
 
       if (preferredSession) {
         await maybeResetDevMockRosterOnPageLoad(targetCampaign, preferredSession.id)
@@ -1830,28 +1842,64 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     const pendingAutoEnterCampaignId = sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
+    const rawActiveSessionContext = sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
 
-    if (!pendingAutoEnterCampaignId) {
+    let activeSessionContext: ActiveSessionContext | null = null
+    if (rawActiveSessionContext) {
+      try {
+        const parsed = JSON.parse(rawActiveSessionContext) as Partial<ActiveSessionContext>
+        if (parsed.campaignId && parsed.sessionId) {
+          activeSessionContext = {
+            campaignId: parsed.campaignId,
+            sessionId: parsed.sessionId,
+          }
+        }
+      } catch {
+        sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+      }
+    }
+
+    const restoreCampaignId =
+      activeSessionContext?.campaignId || (pendingAutoEnterCampaignId as UUID | null)
+    if (!restoreCampaignId) {
       return
     }
 
-    const pendingCampaign = campaigns.find((campaign) => campaign.id === pendingAutoEnterCampaignId)
+    const pendingCampaign = campaigns.find((campaign) => campaign.id === restoreCampaignId)
 
     sessionStorage.removeItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
 
     if (!pendingCampaign) {
+      sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
       return
     }
 
     lobbyAutoEnterTriggeredRef.current = true
     const timeoutId = window.setTimeout(() => {
-      void handleEnterCampaign(pendingCampaign.id)
+      void handleEnterCampaign(pendingCampaign.id, activeSessionContext?.sessionId)
     }, 0)
 
     return () => {
       window.clearTimeout(timeoutId)
     }
   }, [campaigns, currentSessionId, handleEnterCampaign, isLoadingCampaigns])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (!currentSession || !selectedCampaignId) {
+      return
+    }
+
+    const context: ActiveSessionContext = {
+      campaignId: selectedCampaignId,
+      sessionId: currentSession.id,
+    }
+
+    window.sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, JSON.stringify(context))
+  }, [currentSession, selectedCampaignId])
 
   const handleSaveCampaignSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2274,11 +2322,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     setCurrentSession(null)
     setSelectedRoomIdOverride('')
+    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
   }
 
   const logoutToAuthScreen = () => {
     sessionStorage.removeItem('authToken')
     sessionStorage.removeItem('user')
+    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
     window.location.assign('/')
   }
 

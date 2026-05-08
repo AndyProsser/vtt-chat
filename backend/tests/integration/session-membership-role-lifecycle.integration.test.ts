@@ -253,6 +253,7 @@ describe('session membership lifecycle authz', () => {
       })),
     })
   })
+  const WHISPER_ROOM_ID = '66666666-6666-4666-8666-666666666666'
 
   it('rejects role access after leave until user rejoins session', async () => {
     const app = buildApp()
@@ -311,6 +312,61 @@ describe('session membership lifecycle authz', () => {
       })
 
     expect(afterRejoin.status).toBe(201)
+  })
+
+  it('preserves existing whisper room assignment on idempotent rejoin', async () => {
+    const app = buildApp()
+
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        userId: PLAYER_ID,
+        username: 'player',
+        state: 'OFFLINE',
+        primaryRoomId: WHISPER_ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+    ])
+
+    mocks.getRooms.mockResolvedValue([
+      {
+        id: ROOM_ID,
+        sessionId: SESSION_ID,
+        name: 'Main Room',
+        type: 'MAIN',
+        createdBy: DM_ID,
+        createdAt: Date.now(),
+      },
+      {
+        id: WHISPER_ROOM_ID,
+        sessionId: SESSION_ID,
+        name: 'Whisper',
+        type: 'PRIVATE',
+        createdBy: DM_ID,
+        createdAt: Date.now(),
+      },
+    ])
+
+    mocks.joinRoom.mockResolvedValue({
+      sessionId: SESSION_ID,
+      userId: PLAYER_ID,
+      username: 'player',
+      primaryRoomId: WHISPER_ROOM_ID,
+      state: 'ONLINE',
+      lastSeenAt: Date.now(),
+    })
+
+    const response = await request(app)
+      .post(`/api/session/${SESSION_ID}/join`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.joinRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        roomId: WHISPER_ROOM_ID,
+        userId: PLAYER_ID,
+      })
+    )
   })
 
   it('returns members through the v1 /members alias', async () => {

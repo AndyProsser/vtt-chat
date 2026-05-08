@@ -122,11 +122,14 @@ async function ensureJoinedMemberPresence(params: {
     await ensureSessionWhisperRoomForSession(params.session.id, params.session.dmId)
   }
 
-  const targetRoom = shouldUseMain ? mainRoom || greenRoom : greenRoom || mainRoom
+  const currentPresence = (await getSessionPresence(params.session.id)).find(
+    (presence) => presence.userId === params.userId
+  )
 
-  if (!targetRoom) {
-    return { changed: false }
-  }
+  const hasValidExistingRoom = Boolean(
+    currentPresence?.primaryRoomId &&
+    rooms.some((room) => room.id === currentPresence.primaryRoomId)
+  )
 
   const targetState =
     params.session.state === 'ENDED'
@@ -135,9 +138,39 @@ async function ensureJoinedMemberPresence(params: {
         ? PresenceState.ONLINE
         : PresenceState.IDLE
 
-  const currentPresence = (await getSessionPresence(params.session.id)).find(
-    (presence) => presence.userId === params.userId
-  )
+  if (hasValidExistingRoom && currentPresence?.primaryRoomId) {
+    if (currentPresence.state === targetState) {
+      return {
+        changed: false,
+        roomId: currentPresence.primaryRoomId,
+        state: targetState,
+      }
+    }
+
+    const preservedPresence = await joinRoom({
+      sessionId: params.session.id,
+      roomId: currentPresence.primaryRoomId,
+      userId: params.userId,
+      username: params.username,
+      state: targetState,
+    })
+
+    if (!preservedPresence) {
+      return { changed: false }
+    }
+
+    return {
+      changed: true,
+      roomId: preservedPresence.primaryRoomId,
+      state: preservedPresence.state,
+    }
+  }
+
+  const targetRoom = shouldUseMain ? mainRoom || greenRoom : greenRoom || mainRoom
+
+  if (!targetRoom) {
+    return { changed: false }
+  }
 
   if (currentPresence?.primaryRoomId === targetRoom.id && currentPresence.state === targetState) {
     return {

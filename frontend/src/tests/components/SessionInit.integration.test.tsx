@@ -64,6 +64,7 @@ describe('SessionInit integration', () => {
     vi.unstubAllGlobals()
     wsConnectionState = 'connected'
     wsSendMock.mockReset()
+    window.sessionStorage.clear()
 
     const store = useStore.getState()
     store.clearSessions()
@@ -126,6 +127,178 @@ describe('SessionInit integration', () => {
       id: asUuid('88888888-8888-4888-8888-888888888888'),
       name: 'Silenced',
       effects: {},
+    })
+  })
+
+  it('auto reconnects to the stored active session on refresh and hydrates from backend state', async () => {
+    window.sessionStorage.setItem(
+      'vtt-chat:active-session-context',
+      JSON.stringify({
+        campaignId: CAMPAIGN_ID,
+        sessionId: SESSION_ID,
+      })
+    )
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                inviteCode: 'KEEP-01',
+                memberRole: 'PLAYER',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+        expect(init?.method).toBe('POST')
+        return {
+          ok: true,
+          json: async () => ({
+            session: {
+              id: SESSION_ID,
+              name: 'Session Alpha',
+              dmId: DM_ID,
+              state: SessionState.ACTIVE,
+              createdAt: 2,
+            },
+            users: [],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            rooms: [
+              {
+                id: ROOM_ONE_ID,
+                sessionId: SESSION_ID,
+                name: 'Main Room',
+                type: RoomType.MAIN,
+                createdAt: 1,
+                createdBy: DM_ID,
+              },
+              {
+                id: ROOM_TWO_ID,
+                sessionId: SESSION_ID,
+                name: 'Whisper',
+                type: RoomType.PRIVATE,
+                createdAt: 2,
+                createdBy: DM_ID,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            presence: [
+              {
+                userId: DM_ID,
+                username: 'Morgan',
+                state: PresenceState.ONLINE,
+                primaryRoomId: ROOM_ONE_ID,
+                lastSeenAt: 1,
+              },
+              {
+                userId: PLAYER_ID,
+                username: 'Tara',
+                state: PresenceState.ONLINE,
+                primaryRoomId: ROOM_TWO_ID,
+                lastSeenAt: 2,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            environment: null,
+            environments: [],
+            dmOverrides: [],
+            broadcast: { enabled: false },
+          }),
+        }
+      }
+
+      if (url.includes(`/api/chat/messages/${SESSION_ID}?roomId=`)) {
+        return {
+          ok: true,
+          json: async () => ({ messages: [] }),
+        }
+      }
+
+      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+        return {
+          ok: true,
+          json: async () => ({ recoveredFromSnapshots: true, snapshotCount: 2, presence: [] }),
+        }
+      }
+
+      return {
+        ok: true,
+        json: async () => ({}),
+      }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000/ws/connect"
+        token="jwt-token"
+        user={{ id: PLAYER_ID, username: 'Tara', role: Role.PLAYER }}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${SESSION_ID}/members/join`,
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    await waitFor(() => {
+      expect(useStore.getState().currentSessionId).toBe(SESSION_ID)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Mock Chat Window')).toBeTruthy()
     })
   })
 
