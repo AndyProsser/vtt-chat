@@ -2006,7 +2006,7 @@ describe('SessionInit integration', () => {
                 roomId: ROOM_ONE_ID,
                 authorId: asUuid('00000000-0000-4000-8000-000000000000'),
                 authorUsername: 'SYSTEM',
-                content: 'Session Start: 2026-05-08 21:45:00',
+                content: '[Session Started] Session Beta',
                 type: MessageType.SYSTEM,
                 isDmOnly: false,
                 createdAt: 1_715_200_700_000,
@@ -2072,9 +2072,10 @@ describe('SessionInit integration', () => {
     await screen.findByText('Campaigns')
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
-    // Initial session-enter hydration
+    // Initial session-enter hydration: no connected room is present,
+    // so effective environment remains neutral even if a server environment exists.
     await waitFor(() => {
-      expect(useStore.getState().currentEnvironment?.name).toBe('Cave')
+      expect(useStore.getState().currentEnvironment).toBeUndefined()
     })
 
     const callCountAfterFirstLoad = fetchMock.mock.calls.length
@@ -2115,13 +2116,15 @@ describe('SessionInit integration', () => {
         (message: any) =>
           message.roomId === ROOM_ONE_ID &&
           typeof message.content === 'string' &&
-          message.content.startsWith('Session Start:')
+          (message.content.startsWith('Session Start:') ||
+            message.content.startsWith('[Session Started]'))
       )
       const greenMarker = sessionMessages.find(
         (message: any) =>
           message.roomId === ROOM_TWO_ID &&
           typeof message.content === 'string' &&
-          message.content.startsWith('Session Start:')
+          (message.content.startsWith('Session Start:') ||
+            message.content.startsWith('[Session Started]'))
       )
 
       expect(mainMarker).toBeTruthy()

@@ -41,6 +41,11 @@ Rehydration should complete in under 200ms on a typical connection.
 
 Given the same server state, all clients reconstruct the same local state.
 
+Backend authority requirement:
+
+- After disconnect/reconnect/refresh, backend snapshots + WS events are authoritative.
+- Client local cache must be treated as stale until rehydration completes.
+
 ### **1.4 Recovery must be complete**
 
 Planned architecture:
@@ -307,6 +312,11 @@ Current shipped baseline:
 - LiveKit token issuance, connection hooks, and realtime audio control events are implemented.
 - Durable persisted recovery of room-scoped environment state and DM overrides is implemented.
 - Audio reconnect/recovery currently restores room environment and DM override state; broader full snapshot-based cross-domain restore remains planned.
+
+Connected-room cue rule:
+
+- The effective environment/effect projection must follow the currently connected voice room, not merely selected UI room.
+- If no connected room exists, or connected room is private/greenroom context, effective environment must clear to neutral/default.
 
 ---
 

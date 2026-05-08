@@ -7,6 +7,24 @@ import { RoomSelector } from '../../components/rooms/RoomSelector'
 
 const asUuid = (value: string) => value as UUID
 
+const getCreateGroupButton = () => screen.queryByRole('button', { name: /Create group/i })
+
+const getCreateGroupDialog = () => screen.getByRole('dialog', { name: /Create group/i })
+
+const getSelectGroupButton = (groupName: string) =>
+  screen.getByRole('button', { name: new RegExp(`^Select group ${groupName}$`, 'i') })
+
+const getEndWhisperButton = (groupName: string) =>
+  screen.getByRole('button', {
+    name: new RegExp(`(End whisper|Delete group|Close group) ${groupName}`, 'i'),
+  })
+
+const getDmVoiceButton = (groupName: string) =>
+  screen.getByRole('button', { name: new RegExp(`^Set DM voice to ${groupName}$`, 'i') })
+
+const getDragUserButton = (username: string) =>
+  screen.getByRole('button', { name: new RegExp(`^Drag ${username}$`, 'i') })
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -91,12 +109,11 @@ describe('RoomSelector', () => {
     expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(1)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
     expect(screen.getByText('Main Group')).toBeTruthy()
-    expect(screen.getByText('Other Groups')).toBeTruthy()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
     expect(screen.getByText('Rogue | Level 5 | Halfling')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /Select group Whisper Booth/i }))
+    fireEvent.click(getSelectGroupButton('Whisper Booth'))
     expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-2'))
   })
 
@@ -164,11 +181,11 @@ describe('RoomSelector', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'In Jail' } })
-    const createDialog = screen.getByRole('dialog', { name: /Create group/i })
+    const createDialog = getCreateGroupDialog()
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Select group In Jail/i })).toBeTruthy()
+      expect(getSelectGroupButton('In Jail')).toBeTruthy()
     })
 
     resolveFetch?.(
@@ -227,7 +244,7 @@ describe('RoomSelector', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
     fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Scouts' } })
-    const createDialog = screen.getByRole('dialog', { name: /Create group/i })
+    const createDialog = getCreateGroupDialog()
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
 
     await waitFor(() => {
@@ -271,7 +288,7 @@ describe('RoomSelector', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
-    const createDialog = screen.getByRole('dialog', { name: /Create group/i })
+    const createDialog = getCreateGroupDialog()
     fireEvent.change(screen.getByPlaceholderText('Scouts'), { target: { value: 'Scout Team' } })
     expect(within(createDialog).queryByRole('button', { name: /Private/i })).toBeNull()
     fireEvent.click(within(createDialog).getByRole('button', { name: /Create Group/i }))
@@ -308,13 +325,13 @@ describe('RoomSelector', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
-    expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
+    expect(getCreateGroupDialog()).toBeTruthy()
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: /Create group/i })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /Create group/i }))
-    expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
+    expect(getCreateGroupDialog()).toBeTruthy()
 
     fireEvent.mouseDown(document.body)
     expect(screen.queryByRole('dialog', { name: /Create group/i })).toBeNull()
@@ -483,7 +500,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /End whisper Whisper Booth/i }))
+    fireEvent.click(getEndWhisperButton('Whisper Booth'))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -549,9 +566,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /(End whisper|Delete group|Close group) Whisper Booth/i })
-    )
+    fireEvent.click(getEndWhisperButton('Whisper Booth'))
 
     await waitFor(() => {
       expect(screen.getByText('Failed to end whisper')).toBeTruthy()
@@ -605,7 +620,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    expect(screen.queryByRole('button', { name: /Create group/i })).toBeNull()
+    expect(getCreateGroupButton()).toBeNull()
     expect(screen.queryByLabelText('Dungeon Master voice controls')).toBeNull()
     expect(screen.queryByRole('button', { name: /Drag Tara/i })).toBeNull()
     expect(screen.getByRole('button', { name: 'Tara' })).toBeTruthy()
@@ -677,9 +692,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    const closeButton = screen.getByRole('button', {
-      name: /(End whisper|Delete group|Close group) Whisper Booth/i,
-    })
+    const closeButton = getEndWhisperButton('Whisper Booth')
     expect(closeButton.hasAttribute('disabled')).toBe(false)
 
     fireEvent.click(closeButton)
@@ -796,7 +809,7 @@ describe('RoomSelector', () => {
       expect(button.className).toContain('is-broadcast')
     }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set DM voice to Scouts' }))
+    fireEvent.click(getDmVoiceButton('Scouts'))
 
     await waitFor(() => {
       expect(onToggleBroadcastMode).toHaveBeenCalledWith(false)
@@ -956,7 +969,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /Drag Tara/i }))
+    fireEvent.contextMenu(getDragUserButton('Tara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
     fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
 

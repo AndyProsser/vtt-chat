@@ -564,7 +564,8 @@ export async function applySessionStateRoomTransition(params: {
     await ensureSessionWhisperRoomForSession(params.sessionId, params.dmId)
   }
 
-  const toMainRoom = params.nextState === SessionState.ACTIVE
+  const toMainRoom =
+    params.nextState === SessionState.ACTIVE || params.nextState === SessionState.PAUSED
   const targetRoom = toMainRoom ? mainRoom : greenRoom
   const targetState =
     params.nextState === SessionState.ENDED

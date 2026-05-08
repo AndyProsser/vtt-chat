@@ -127,6 +127,8 @@ const SESSION_BOOKEND_PREFIXES = [
   'Session End:',
   '[Session Started]',
   '[Session Ended]',
+  '[Session Paused]',
+  '[Session Resumed]',
 ] as const
 
 const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
@@ -144,7 +146,7 @@ const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
 }
 
 type PendingSessionBookend = {
-  state: SessionState
+  content: string
   timestamp: number
 }
 
@@ -494,7 +496,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
   const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
-  const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
@@ -578,10 +579,20 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   useEffect(() => {
     if (!currentSession || !connectedRoomId) {
+      if (currentEnvironment) {
+        clearEnvironment()
+      }
       return
     }
 
     const connectedRoom = currentRooms.find((room) => room.id === connectedRoomId)
+    if (!connectedRoom) {
+      if (currentEnvironment) {
+        clearEnvironment()
+      }
+      return
+    }
+
     if (connectedRoom && (isGreenRoom(connectedRoom) || connectedRoom.type === RoomType.PRIVATE)) {
       if (currentEnvironment) {
         clearEnvironment()
@@ -594,6 +605,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       connectedRoomId
     )
     if (!hasSelectedRoomEnvironment) {
+      if (currentEnvironment) {
+        clearEnvironment()
+      }
       return
     }
 
@@ -650,16 +664,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   )
 
   const writeSessionBookendMessages = useCallback(
-    (sessionId: UUID, nextState: SessionState, timestamp: number): boolean => {
+    (sessionId: UUID, content: string, timestamp: number): boolean => {
       const roomIds = getSessionBookendRoomIds(sessionId)
       if (!roomIds.length) {
         return false
       }
 
-      const label = nextState === SessionState.ACTIVE ? 'Session Start' : 'Session End'
-      const content = `${label}: ${formatSessionBookendTimestamp(timestamp)}`
+      const existingSessionMessages = Object.values(
+        (useStore.getState().messages as Record<UUID, Record<UUID, Message>>)[sessionId] || {}
+      )
 
       for (const roomId of roomIds) {
+        const hasExistingBookend = existingSessionMessages.some(
+          (message) =>
+            message.roomId === roomId &&
+            message.type === MessageType.SYSTEM &&
+            message.content === content
+        )
+
+        if (hasExistingBookend) {
+          continue
+        }
+
         addMessage(sessionId, {
           id: crypto.randomUUID() as UUID,
           roomId,
@@ -678,13 +704,30 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   )
 
   const appendSessionBookendMessages = useCallback(
-    (sessionId: UUID, nextState: SessionState) => {
-      if (nextState !== SessionState.ACTIVE && nextState !== SessionState.ENDED) {
+    (sessionId: UUID, nextState: SessionState, previousState?: SessionState | 'ENDED' | null) => {
+      if (
+        nextState !== SessionState.ACTIVE &&
+        nextState !== SessionState.PAUSED &&
+        nextState !== SessionState.ENDED
+      ) {
         return
       }
 
+      const sessionName =
+        (currentSession?.id === sessionId ? currentSession.name : typedSessions[sessionId]?.name) ||
+        'Session'
+
+      const content =
+        nextState === SessionState.ACTIVE
+          ? previousState === SessionState.PAUSED
+            ? `[Session Resumed] ${sessionName}`
+            : `[Session Started] ${sessionName}`
+          : nextState === SessionState.PAUSED
+            ? `[Session Paused] ${sessionName}`
+            : `[Session Ended] ${sessionName}`
+
       const timestamp = Date.now()
-      const didWrite = writeSessionBookendMessages(sessionId, nextState, timestamp)
+      const didWrite = writeSessionBookendMessages(sessionId, content, timestamp)
 
       if (didWrite) {
         return
@@ -693,10 +736,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const pending = pendingSessionBookendsBySessionIdRef.current.get(sessionId) || []
       pendingSessionBookendsBySessionIdRef.current.set(sessionId, [
         ...pending,
-        { state: nextState, timestamp },
+        { content, timestamp },
       ])
     },
-    [writeSessionBookendMessages]
+    [currentSession, typedSessions, writeSessionBookendMessages]
   )
 
   useEffect(() => {
@@ -708,7 +751,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const remaining: PendingSessionBookend[] = []
 
       for (const entry of entries) {
-        const didWrite = writeSessionBookendMessages(sessionId, entry.state, entry.timestamp)
+        const didWrite = writeSessionBookendMessages(sessionId, entry.content, entry.timestamp)
 
         if (!didWrite) {
           remaining.push(entry)
@@ -833,14 +876,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         sessionMessages
           .filter((message) => Boolean(message.roomId) && targetRoomIds.includes(message.roomId!))
           .map(
-            (message) =>
-              `${message.roomId}:${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+            (message) => `${message.roomId}:${message.authorId}:${message.type}:${message.content}`
           )
       )
 
       const uniqueBookends = new Map<string, Message>()
       for (const message of recoveredBookends) {
-        const signature = `${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+        const signature = `${message.authorId}:${message.type}:${message.content}`
         if (!uniqueBookends.has(signature)) {
           uniqueBookends.set(signature, message)
         }
@@ -848,7 +890,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       for (const message of uniqueBookends.values()) {
         for (const roomId of targetRoomIds) {
-          const roomSignature = `${roomId}:${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+          const roomSignature = `${roomId}:${message.authorId}:${message.type}:${message.content}`
           if (existingSignatures.has(roomSignature)) {
             continue
           }
@@ -909,17 +951,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     const sourceSessionMessages = Object.values(typedMessagesBySession[fromSessionId] || {})
-    const fromGreenroomMessages = sourceSessionMessages.filter(
-      (message) => message.roomId === fromGreenroom.id
-    )
-
-    // Some transitions can emit bookends outside greenroom.
-    // Always fold in session bookends from any room, then de-duplicate by signature below.
+    // Carry only durable session markers across sessions.
+    // Regular greenroom chat is intentionally ephemeral.
     const bookendsFromAnyRoom = sourceSessionMessages.filter(
       (message) => message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
     )
 
-    const fromMessages = [...fromGreenroomMessages, ...bookendsFromAnyRoom].sort(
+    const fromMessages = [...bookendsFromAnyRoom].sort(
       (left, right) => left.createdAt - right.createdAt
     )
 
@@ -1482,30 +1520,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     resetSessionAudioState,
     clearActiveEffects,
   ])
-
-  useEffect(() => {
-    if (!currentSession || currentRooms.length === 0) {
-      return
-    }
-
-    if (currentSession.state === SessionState.ACTIVE) {
-      const mainRoom = currentRooms.find((room) => room.type === RoomType.MAIN)
-      if (mainRoom) {
-        clearRoomEnvironmentName(mainRoom.id)
-      }
-      return
-    }
-
-    if (
-      currentSession.state === SessionState.IDLE ||
-      currentSession.state === SessionState.PAUSED
-    ) {
-      const greenRoom = currentRooms.find((room) => isGreenRoom(room))
-      if (greenRoom) {
-        clearRoomEnvironmentName(greenRoom.id)
-      }
-    }
-  }, [clearRoomEnvironmentName, currentRooms, currentSession])
 
   useEffect(() => {
     if (!selectedCampaignId || !currentSession) {
@@ -2101,7 +2115,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
           const activeSession = await transitionResponse.json()
           updateSession(payload.session.id, activeSession)
-          appendSessionBookendMessages(payload.session.id, SessionState.ACTIVE)
+          appendSessionBookendMessages(
+            payload.session.id,
+            SessionState.ACTIVE,
+            payload.session.state
+          )
         }
 
         return payload.session.id
@@ -2184,6 +2202,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
     setError(null)
 
+    const previousState =
+      (currentSession?.id === sessionId ? currentSession.state : typedSessions[sessionId]?.state) ||
+      null
+
     try {
       const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/state`, {
         method: 'PUT',
@@ -2202,7 +2224,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const updatedSession = await response.json()
       updateSession(sessionId, updatedSession)
 
-      appendSessionBookendMessages(sessionId, state)
+      appendSessionBookendMessages(sessionId, state, previousState)
       if (state === SessionState.ENDED || state === SessionState.IDLE) {
         setSelectedRoomIdOverride('')
         resetToolbarActionsState()

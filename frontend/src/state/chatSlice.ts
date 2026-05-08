@@ -11,6 +11,22 @@ import type { Message, TypingIndicator } from '@/types/chat'
 
 export type { Message, TypingIndicator } from '@/types/chat'
 
+const SESSION_BOOKEND_PREFIXES = [
+  'Session Start:',
+  'Session End:',
+  '[Session Started]',
+  '[Session Ended]',
+  '[Session Paused]',
+  '[Session Resumed]',
+] as const
+
+function isSessionBookend(message: Message): boolean {
+  return (
+    message.type === 'SYSTEM' &&
+    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
+  )
+}
+
 export interface ChatSlice {
   // State
   messages: Record<UUID, Record<UUID, Message>> // keyed by sessionId, then messageId
@@ -44,6 +60,20 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   addMessage: (sessionId, message) =>
     set((state) => {
       const sessionMessages = state.messages[sessionId] || {}
+
+      if (isSessionBookend(message)) {
+        const hasDuplicate = Object.values(sessionMessages).some(
+          (existing) =>
+            existing.roomId === message.roomId &&
+            existing.type === message.type &&
+            existing.content === message.content
+        )
+
+        if (hasDuplicate) {
+          return state
+        }
+      }
+
       return {
         messages: {
           ...state.messages,
@@ -151,15 +181,32 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       createdAt: event.timestamp,
     }
 
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [event.sessionId]: {
-          ...(state.messages[event.sessionId] || {}),
-          [message.id]: message,
+    set((state) => {
+      const sessionMessages = state.messages[event.sessionId] || {}
+
+      if (isSessionBookend(message)) {
+        const hasDuplicate = Object.values(sessionMessages).some(
+          (existing) =>
+            existing.roomId === message.roomId &&
+            existing.type === message.type &&
+            existing.content === message.content
+        )
+
+        if (hasDuplicate) {
+          return state
+        }
+      }
+
+      return {
+        messages: {
+          ...state.messages,
+          [event.sessionId]: {
+            ...sessionMessages,
+            [message.id]: message,
+          },
         },
-      },
-    }))
+      }
+    })
   },
 
   handleMessageEdited: (event) => {

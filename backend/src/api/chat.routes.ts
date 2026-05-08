@@ -197,6 +197,13 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
+    if (session.state === SessionState.PAUSED) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_SESSION,
+        message: 'Chat is disabled during intermission',
+      })
+    }
+
     if (room.type === 'PRIVATE') {
       return res.status(403).json({
         code: ErrorCode.FORBIDDEN,

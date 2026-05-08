@@ -321,6 +321,12 @@ DM pauses the session.
    - Spectator surfaces switch to intermission/hidden state
    - Players/DM see stage prep state in Main group with no active effects
 
+Persistence/recording rules:
+
+- Intermission runtime content is off-the-record (treat pause like a private room for persistence).
+- Pause-period chat/voice/transcript content must not be persisted.
+- Only boundary markers persist: `[Session Paused]` at pause and `[Session Resumed]` at resume.
+
 ---
 
 ### **4.4 Session Resumes (Curtain Up)**
@@ -338,6 +344,10 @@ DM resumes the session.
 4. UI updates:
    - Spectator audience view returns
    - Prior stage effects appear again
+
+Persistence rule:
+
+- Resume restores live runtime behavior, but pause-period content remains non-persistent.
 
 ---
 
@@ -358,6 +368,11 @@ DM ends a session while spectators are enabled.
 4. UI updates:
    - Public finale banner with countdown timer
    - Spectators can interact through public voice/chat only
+
+Boundary marker contract:
+
+- Session boundary markers (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) are persisted and replayed on refresh/reconnect.
+- Clients must de-duplicate boundary markers when both local fallback and server/WS events are processed.
 
 Notes:
 

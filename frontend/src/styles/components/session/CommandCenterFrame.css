@@ -67,7 +67,7 @@
   );
   height: 100%;
   overflow: visible;
-  grid-template-columns: minmax(304px, 336px) minmax(0, 1fr) 3.75rem;
+  grid-template-columns: minmax(304px, 336px) minmax(0, 1fr) 2.15rem;
 }
 
 .command-center-center-pane {
@@ -96,7 +96,7 @@
   align-items: flex-start;
   min-height: 0;
   height: 100%;
-  padding: 0.3rem;
+  padding: 0;
   z-index: 26;
 }
 
@@ -152,13 +152,13 @@
 .command-center-right-rail-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
+  gap: 0.4rem;
+  width: auto;
   height: 100%;
   align-items: center;
   border-radius: var(--radius-md);
   background: transparent;
-  padding: 0.25rem;
+  padding: 0;
 }
 
 .command-center-right-rail-trigger {
@@ -166,8 +166,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 1.95rem;
+  height: 1.95rem;
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
 }

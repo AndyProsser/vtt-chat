@@ -695,8 +695,10 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const audioStateBeforeReset = await getSessionAudioState(session.id)
     await clearSessionDMOverrideState(session.id)
 
-    // Only clear environment for the neutral room (main or greenroom), not other groups
-    const neutralRoomId = state === 'ACTIVE' ? transition.mainRoomId : transition.greenRoomId
+    // Only clear environment for the neutral room (main or greenroom), not other groups.
+    // ACTIVE + PAUSED are both staged in Main Room.
+    const neutralRoomId =
+      state === 'ACTIVE' || state === 'PAUSED' ? transition.mainRoomId : transition.greenRoomId
 
     await clearRoomEnvironmentState({
       sessionId: session.id,
@@ -710,8 +712,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
     const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
-    const shouldClearGreenRoomContext =
-      movedToGreenRoom && (state === 'PAUSED' || state === 'ENDED')
+    const shouldClearGreenRoomContext = movedToGreenRoom && state === 'ENDED'
 
     if (shouldClearGreenRoomContext) {
       await clearRoomMessages(session.id, transition.greenRoomId)

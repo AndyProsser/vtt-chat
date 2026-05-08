@@ -35,8 +35,17 @@ This reminder is informational only and does not block session start.
 
 On session state transitions, chat receives lightweight bookend markers:
 
-- `Session Start: <local date/time>` when transitioning to `ACTIVE`
-- `Session End: <local date/time>` when transitioning to `ENDED`
+- `[Session Started] <session name>` when transitioning to `ACTIVE`
+- `[Session Ended] <session name>` when transitioning to `ENDED`
+- `[Session Paused] <session name>` when transitioning to `PAUSED`
+- `[Session Resumed] <session name>` when transitioning from `PAUSED` to `ACTIVE`
+
+Server/WS authority requirements (must-have):
+
+- Boundary markers are persisted by backend as chat system messages.
+- The persisted message is broadcast via WS (`CHAT:MESSAGE_SENT`) to all session members.
+- Frontend must render these server-emitted markers as bookends and must not suppress them as legacy content.
+- After refresh/reconnect, bookends are restored from chat history API hydration and remain visible.
 
 Rendering requirements:
 
@@ -46,10 +55,12 @@ Rendering requirements:
 
 Lifecycle requirements:
 
-- Every transition to `ACTIVE` must create a new `Session Start` marker for that session immediately.
-- Every transition to `ENDED` must create a new `Session End` marker for that session immediately.
+- Every transition to `ACTIVE` must create a new `[Session Started]` marker for that session immediately.
+- Every transition to `ENDED` must create a new `[Session Ended]` marker for that session immediately.
+- Every transition to `PAUSED` must create a `Session Paused` marker immediately.
+- Every resume transition back to `ACTIVE` must create a `Session Resumed` marker immediately.
 - In repeated cycles (`Greenroom -> Session -> Greenroom -> Session Restart`), Greenroom retains prior start/end markers in chronological order so returning players can reconstruct the sequence.
-- A restarted session must not rely on the next restart cycle to surface its own `Session Start` marker.
+- A restarted session must not rely on the next restart cycle to surface its own `[Session Started]` marker.
 
 Implementation note (2026-05-08 runtime fix):
 

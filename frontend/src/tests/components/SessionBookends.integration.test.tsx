@@ -360,14 +360,88 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getByText(/Session Start:/)).toBeTruthy()
+      expect(screen.getByText(/(\[Session Started\]|Session Start:)/)).toBeTruthy()
     })
 
     expect(document.querySelector('.chat-session-marker--bookend')).toBeTruthy()
     expect(screen.queryByText('Session Note: No previous session summary available.')).toBeNull()
   })
 
-  it('keeps chronological bookends and carries greenroom chat into the next session', async () => {
+  it('renders pause/resume markers as intermission bookends', () => {
+    render(
+      <MessageList
+        currentUserId={String(DM_ID)}
+        messages={
+          [
+            {
+              id: asUuid('b1111111-1111-4111-8111-111111111111'),
+              roomId: MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Paused] Session Alpha',
+              type: 'SYSTEM' as any,
+              isDmOnly: false,
+              createdAt: 100,
+            },
+            {
+              id: asUuid('b2222222-2222-4222-8222-222222222222'),
+              roomId: MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Resumed] Session Alpha',
+              type: 'SYSTEM' as any,
+              isDmOnly: false,
+              createdAt: 200,
+            },
+          ] as any
+        }
+      />
+    )
+
+    const intermissionMarkers = document.querySelectorAll('.chat-session-marker--intermission')
+    expect(intermissionMarkers.length).toBe(2)
+    expect(screen.getByText('[Session Paused] Session Alpha')).toBeTruthy()
+    expect(screen.getByText('[Session Resumed] Session Alpha')).toBeTruthy()
+  })
+
+  it('renders backend-emitted started/ended markers as bookends', () => {
+    render(
+      <MessageList
+        currentUserId={String(DM_ID)}
+        messages={
+          [
+            {
+              id: asUuid('c1111111-1111-4111-8111-111111111111'),
+              roomId: MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Alpha',
+              type: 'SYSTEM' as any,
+              isDmOnly: false,
+              createdAt: 100,
+            },
+            {
+              id: asUuid('c2222222-2222-4222-8222-222222222222'),
+              roomId: MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Ended] Session Alpha',
+              type: 'SYSTEM' as any,
+              isDmOnly: false,
+              createdAt: 200,
+            },
+          ] as any
+        }
+      />
+    )
+
+    const markers = document.querySelectorAll('.chat-session-marker--bookend')
+    expect(markers.length).toBe(2)
+    expect(screen.getByText('[Session Started] Session Alpha')).toBeTruthy()
+    expect(screen.getByText('[Session Ended] Session Alpha')).toBeTruthy()
+  })
+
+  it('keeps chronological bookends but does not carry greenroom chat into the next session', async () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
@@ -429,20 +503,20 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Session Start:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Session End:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/(\[Session Ended\]|Session End:)/).length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Session Start:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
     })
 
     await waitFor(() => {
@@ -453,7 +527,7 @@ describe('Session bookend integration', () => {
           message.content === 'Greenroom carry-over message'
       )
 
-      expect(carriedMessage).toBeTruthy()
+      expect(carriedMessage).toBeFalsy()
     })
   })
 
@@ -498,13 +572,13 @@ describe('Session bookend integration', () => {
     // Cycle 1
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
-      expect(screen.getAllByText(/Session Start:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
     await waitFor(() => {
-      expect(screen.getAllByText(/Session End:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/(\[Session Ended\]|Session End:)/).length).toBeGreaterThan(0)
     })
 
     // Start creates next session and carries bookends to its greenroom.
@@ -523,21 +597,25 @@ describe('Session bookend integration', () => {
       const nextGreenroomMarkerContents = nextGreenroomMessages
         .map((message: any) => String(message.content || ''))
         .filter(
-          (content) => content.startsWith('Session Start:') || content.startsWith('Session End:')
+          (content) =>
+            content.startsWith('Session Start:') ||
+            content.startsWith('Session End:') ||
+            content.startsWith('[Session Started]') ||
+            content.startsWith('[Session Ended]')
         )
 
-      const startCount = nextGreenroomMarkerContents.filter((content) =>
-        content.startsWith('Session Start:')
+      const startCount = nextGreenroomMarkerContents.filter(
+        (content) => content.startsWith('Session Start:') || content.startsWith('[Session Started]')
       ).length
-      const endCount = nextGreenroomMarkerContents.filter((content) =>
-        content.startsWith('Session End:')
+      const endCount = nextGreenroomMarkerContents.filter(
+        (content) => content.startsWith('Session End:') || content.startsWith('[Session Ended]')
       ).length
 
-      const firstStartIndex = nextGreenroomMarkerContents.findIndex((content) =>
-        content.startsWith('Session Start:')
+      const firstStartIndex = nextGreenroomMarkerContents.findIndex(
+        (content) => content.startsWith('Session Start:') || content.startsWith('[Session Started]')
       )
-      const firstEndIndex = nextGreenroomMarkerContents.findIndex((content) =>
-        content.startsWith('Session End:')
+      const firstEndIndex = nextGreenroomMarkerContents.findIndex(
+        (content) => content.startsWith('Session End:') || content.startsWith('[Session Ended]')
       )
 
       expect(startCount).toBeGreaterThan(0)

@@ -85,6 +85,21 @@ This must feel instant: quick private huddle, then back to play.
   - Call `resetSessionAudioState()` BEFORE re-hydrating from server state
   - Re-apply environment, conditions, and overrides from the server audio state API
 
+### Recording Policy (Contract)
+
+Recording behavior is privacy-critical and must follow these rules:
+
+- Whisper (`PRIVATE`) is always off-the-record:
+  - Whisper voice/chat is never recorded, never logged, never persisted.
+- Intermission (`PAUSED`) is also off-the-record for runtime content:
+  - Runtime voice/chat during pause must not be recorded or persisted.
+  - The only persistent artifacts allowed during pause/resume are session boundary markers.
+- Boundary-only persistence:
+  - Persist exactly these system markers when they occur: `[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`.
+  - No other pause/whisper runtime transcript content should survive history hydration.
+
+Note: if runtime recording controls are not wired yet, this remains a required contract and must be implemented before enabling recording capture in-session.
+
 ### Audio Effects Are Contextual and Visible
 
 Players must ALWAYS know WHY their audio sounds different. The AudioPanel (`<AudioPanel />`) shows a live list of active effects with icons:
@@ -189,6 +204,12 @@ Zustand is a local cache of server state. When in doubt:
 - Zustand is hydrated from the server on session enter
 - WS events keep Zustand in sync during the session
 
+Reconnect/refresh authority rule:
+
+- On frontend reconnect or browser refresh, treat local Zustand as stale cache until backend snapshots/events rehydrate it.
+- Do not trust client-only state over backend state after reconnect.
+- Recovery must replace stale local topology/audio/session projections with backend-derived values.
+
 ### WS Events Are the Sync Bus
 
 Every state change that affects multiple users must travel via a WS event:
@@ -196,6 +217,22 @@ Every state change that affects multiple users must travel via a WS event:
 - Audio: `AUDIO:ENVIRONMENT_SET`, `AUDIO:DM_OVERRIDE_APPLIED`, `AUDIO:DM_OVERRIDE_REMOVED`, `AUDIO:BROADCAST_STATE_CHANGED`
 - Rooms: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`, `ROOM:SESSION_TRANSITION_APPLIED`
 - Session: `SESSION:STATE_CHANGED`, `SESSION:ENDED`
+
+### Session Bookends Must Survive Refresh
+
+Session boundary markers are authoritative server data, not ephemeral UI-only markers.
+
+- On session transitions (`ACTIVE`, `PAUSED`, resume-to-`ACTIVE`, `ENDED`), backend must persist a system message for the boundary.
+- Backend must broadcast the persisted boundary via `CHAT:MESSAGE_SENT` so all connected clients update immediately.
+- Frontend must render both canonical server boundary formats (`[Session Started]`, `[Session Ended]`, `[Session Paused]`, `[Session Resumed]`) as chat bookends.
+- On page refresh/reconnect, the frontend must restore boundary markers from chat history API hydration; markers must not disappear after reload.
+- Frontend must avoid duplicate boundary markers when local fallback and server/WS boundary events arrive close together.
+
+### Audio Must Follow Connected Voice Room
+
+- Audio environment/effects must be driven by the user's actual connected voice room (`primaryRoomId` / voice connection target), not selected UI room.
+- If connected room changes, environment/effect projection must update immediately.
+- If connected room is `PRIVATE` or greenroom (or no connected room exists), clear room-environment projection to neutral/default.
 
 ### handleEnvironmentSet Must Always Update roomEnvironmentNames
 

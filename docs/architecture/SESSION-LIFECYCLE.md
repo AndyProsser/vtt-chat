@@ -90,6 +90,7 @@ The session is temporarily halted.
 - Presence indicators remain active
 - UI displays a paused banner
 - Players cannot trigger session‑critical actions
+- Pause runtime content is off-the-record (no persisted pause chat/voice transcript)
 
 The pause reason is **DM‑private**.
 
@@ -272,6 +273,24 @@ This ensures:
 - No desynchronization
 - No stale UI
 - No lost session context
+
+### **7.6 Boundary marker persistence contract**
+
+Boundary markers are server-authoritative and must survive refresh/reconnect.
+
+- Persist and broadcast these system markers on transition:
+    - `[Session Started]`
+    - `[Session Paused]`
+    - `[Session Resumed]`
+    - `[Session Ended]`
+- Clients must rehydrate these markers from chat history APIs.
+- Clients must de-duplicate markers when local fallback and WS/server markers overlap.
+
+### **7.7 Recording/privacy contract for paused + whisper**
+
+- Whisper (`PRIVATE`) is off-the-record by definition (no persisted chat/voice recording artifacts).
+- Paused intermission is also off-the-record for runtime content.
+- The only persistent pause-related artifacts are boundary markers listed above.
 
 ---
 

@@ -39,9 +39,11 @@ const SESSION_BOOKEND_PREFIXES = [
   'Session End:',
   '[Session Started]',
   '[Session Ended]',
+  '[Session Paused]',
+  '[Session Resumed]',
 ]
 const SESSION_NOTE_PREFIX = 'Session Note:'
-const LEGACY_SESSION_SYSTEM_PREFIXES = ['[Session Started]', '[Session Ended]']
+const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]']
 
 function getAuthorInitial(username: string): string {
   return username.trim().charAt(0).toUpperCase() || '?'
@@ -89,10 +91,10 @@ export function MessageList({
         const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
         const isSessionBookend =
           isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+        const isIntermissionBookend =
+          isSessionBookend &&
+          INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
-        const isLegacySessionSystem =
-          isSystem &&
-          LEGACY_SESSION_SYSTEM_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSelf = !isSystem && msg.authorId === currentUserId
         const authorProfile = participantDirectory?.[msg.authorId]
         const authorName = isSystem
@@ -106,15 +108,11 @@ export function MessageList({
           msg.createdAt - previous.createdAt <= groupingWindowMs
         )
 
-        if (isLegacySessionSystem) {
-          return null
-        }
-
         if (isSessionBookend || isSessionNote) {
           return (
             <article
               key={msg.id}
-              className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'}`}
+              className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${isIntermissionBookend ? 'chat-session-marker--intermission' : ''}`}
             >
               <span className="chat-session-marker__text">{msg.content}</span>
             </article>
