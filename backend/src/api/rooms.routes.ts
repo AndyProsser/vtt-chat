@@ -1,10 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { ErrorCode, PresenceState, RoomType, isValidRoomName, isValidUUID } from '@shared'
+import {
+  ErrorCode,
+  PresenceState,
+  RoomType,
+  SessionState,
+  isValidRoomName,
+  isValidUUID,
+} from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
 import {
   createRoom,
+  deleteRoom,
   ensureSessionDefaultRoomsForSession,
   getRoom,
   getRoomMemberIds,
@@ -114,6 +122,13 @@ async function createRoomHandler(req: Request, res: Response) {
       return res
         .status(403)
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can create rooms' })
+    }
+
+    if (session.state === SessionState.IDLE) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Cannot create additional groups while session is in greenroom',
+      })
     }
 
     const room = await createRoom({
@@ -417,6 +432,176 @@ async function listRoomMembersHandler(req: Request, res: Response) {
   }
 }
 
+async function deleteRoomHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { roomId } = req.params
+  const sessionId = req.body?.sessionId || req.query?.sessionId
+
+  if (!isValidUUID(roomId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
+  }
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  try {
+    const room = await getRoom(roomId as UUID)
+    if (!room) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (room.sessionId !== (sessionId as UUID)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'roomId does not belong to sessionId' })
+    }
+
+    const session = await getSession(sessionId as UUID)
+    if (!session) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (session.dmId !== (user.userId as UUID)) {
+      return res
+        .status(403)
+        .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can delete rooms' })
+    }
+
+    if (room.type === RoomType.MAIN) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be deleted' })
+    }
+
+    let mainRoom = (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN)
+    if (!mainRoom) {
+      await ensureSessionDefaultRoomsForSession(sessionId as UUID, session.dmId)
+      mainRoom = (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN)
+    }
+
+    if (!mainRoom) {
+      return internalErrorResponse(res)
+    }
+
+    const members = await getRoomMemberIds(sessionId as UUID, room.id)
+    const sessionUsers = await getSessionUsers(sessionId as UUID)
+    const usernamesById = new Map<UUID, string>()
+    for (const sessionUser of sessionUsers) {
+      usernamesById.set(sessionUser.id as UUID, sessionUser.username)
+    }
+
+    const movedUserIds: UUID[] = []
+    if (members.length > 0) {
+      const currentPresence = await getSessionPresence(sessionId as UUID)
+      for (const presence of currentPresence) {
+        if (!usernamesById.has(presence.userId)) {
+          usernamesById.set(presence.userId, presence.username)
+        }
+      }
+
+      for (const memberId of members) {
+        const username = usernamesById.get(memberId)
+        if (!username) {
+          continue
+        }
+
+        const movedPresence = await joinRoom({
+          sessionId: sessionId as UUID,
+          roomId: mainRoom.id,
+          userId: memberId,
+          username,
+          state: PresenceState.ONLINE,
+        })
+
+        if (movedPresence) {
+          movedUserIds.push(memberId)
+        }
+      }
+    }
+
+    await deleteRoom({ sessionId: sessionId as UUID, roomId: room.id })
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      const timestamp = Date.now()
+
+      for (const memberId of movedUserIds) {
+        const username = usernamesById.get(memberId)
+        if (!username) {
+          continue
+        }
+
+        const leftEvent: EventEnvelope = {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_LEFT',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: room.id,
+          timestamp,
+          payload: {
+            roomId: room.id,
+            userId: memberId,
+            username,
+            leftAt: timestamp,
+            reason: 'ROOM_CLOSED',
+            movedBy: user.userId,
+          },
+        }
+        wsManager.broadcastEventToSession(sessionId as UUID, leftEvent)
+
+        const joinedEvent: EventEnvelope = {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: mainRoom.id,
+          timestamp,
+          payload: {
+            roomId: mainRoom.id,
+            userId: memberId,
+            username,
+            joinedAt: timestamp,
+            movedBy: user.userId,
+            reason: 'ROOM_CLOSED',
+          },
+        }
+        wsManager.broadcastEventToSession(sessionId as UUID, joinedEvent)
+      }
+
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'ROOM:DELETED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: sessionId as UUID,
+        roomId: room.id,
+        timestamp,
+        payload: {
+          roomId: room.id,
+          deletedAt: timestamp,
+          deletedBy: user.userId,
+          movedToRoomId: mainRoom.id,
+          movedUserIds,
+        },
+      }
+
+      wsManager.broadcastEventToSession(sessionId as UUID, event)
+    }
+
+    return res.status(200).json({ ok: true, deletedRoomId: room.id })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
 router.get('/:sessionId', requireAuth, listSessionRoomsHandler)
 router.get('/session/:sessionId', requireAuth, listSessionRoomsHandler)
 
@@ -433,5 +618,6 @@ router.post('/:roomId/move-user', requireAuth, moveRoomMemberHandler)
 router.post('/:roomId/members/move', requireAuth, moveRoomMemberHandler)
 
 router.get('/:roomId/members', requireAuth, listRoomMembersHandler)
+router.delete('/:roomId', requireAuth, deleteRoomHandler)
 
 export default router

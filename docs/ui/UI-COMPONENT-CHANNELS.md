@@ -69,7 +69,7 @@ MAIN GROUP  [🌲] [+]
 │        No conditions                        │
 └─────────────────────────────────────────────┘
 
-SCOUTS GROUP (Breakout)  [🌙] [+]
+SCOUTS GROUP  [🌙] [+]
 ┌─────────────────────────────────────────────┐
 │ Env: Night (click to edit, DM only)         │
 │ Broadcast Inactive                          │
@@ -108,7 +108,7 @@ Campfire (🌙): [AV][AV]  [+] [×]
 Interaction:
 - Tap avatar → expand full widget
 - Tap group header → expand/collapse all players
-- Long-press avatar → radial menu (conditions, move, mute)
+- Long-press avatar → radial menu (Move, Condition, Mute, Close)
 
 Minimalist Mobile additions:
 
@@ -135,6 +135,17 @@ Minimalist Mobile additions:
 3. **Player widgets** (scrollable list per group)
 4. **Condition badges** (secondary, only 1 visible by default + tooltip)
 
+Greenroom exception:
+
+- When session state is `IDLE` (greenroom), DM is rendered in the same participant list as other users.
+- Create-group controls are disabled/hidden in greenroom.
+- Presence copy in this panel normalizes connected `IDLE` users to `ONLINE`.
+
+Header copy convention:
+
+- Do not render room counts in section headers.
+- Do not render "Breakout" text on group rows.
+
 ### 2.3 Feedback & Affordance
 
 - **Speaking indicator**: Subtle pulse glow on avatar (not intrusive).
@@ -147,6 +158,10 @@ Minimalist Mobile additions:
 ## 3) Component Anatomy
 
 ### 3.1 DM Widget (Sticky Top)
+
+Greenroom behavior:
+
+- DM widget is not rendered in greenroom; DM appears as a standard participant card in the active room list.
 
 **Height**: ~60px
 **Layout**: Horizontal flex (avatar + details + controls)
@@ -574,69 +589,36 @@ Radial menu with same 4 options
 **Each option behavior**:
 
 1. **Move**: Opens "Select destination room" popover
-2. **Condition**: Opens condition picker (add/remove)
-3. **Mute**: Toggles mute state immediately
+2. **Condition**: Opens condition picker (apply/remove via DM override API)
+3. **Mute**: Toggles mute state immediately (apply/remove via DM override API)
 4. **Close**: Dismisses menu
 
-**CSS**:
+**Current class hooks**:
 
 ```css
-.radial-menu {
+.room-radial-menu {
   position: fixed;
-  background: var(--panel-bg);
-  border: 1px solid var(--accent);
-  border-radius: 50%;
-  width: 120px;
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  z-index: 500;
+  z-index: 1300;
 }
 
-.radial-menu__item {
+.room-radial-wheel {
+  width: 9.2rem;
+  height: 9.2rem;
+}
+
+.room-radial-item {
   position: absolute;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 50%;
-  background: var(--accent-subtle);
-  transition: all 0.2s;
-  font-size: 18px;
+  width: 3.9rem;
+  height: 3.9rem;
 }
 
-.radial-menu__item:hover {
-  background: var(--accent);
-  color: var(--accent-text);
+.room-radial-panel {
+  width: 13rem;
+  max-height: min(18rem, 55vh);
 }
 
-/* Position items around circle */
-.radial-menu__item--move {
-  left: -50px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.radial-menu__item--condition {
-  right: -50px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.radial-menu__item--mute {
-  bottom: -50px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.radial-menu__item--close {
-  top: -50px;
-  left: 50%;
-  transform: translateX(-50%);
+.room-radial-panel__list {
+  display: grid;
 }
 ```
 
@@ -656,19 +638,19 @@ Radial menu with same 4 options
 - All group headers highlight with accent color.
 - Non-player areas dim (50% opacity).
 
-3. **Drag Over**:
+1. **Drag Over**:
 
 - Cursor changes to `dropzone` icon if over valid group.
 - Group header glows brighter if hovering.
 
-4. **Drop**:
+1. **Drop**:
 
 - If valid group: Call `handleMoveParticipant(userId, roomId)`.
 - Pending move applied immediately (optimistic UI).
 - API request in background; rollback on error.
 - If invalid/cancelled: No change.
 
-5. **Drag End**: Clear `draggedUserId`, remove preview and highlights.
+1. **Drag End**: Clear `draggedUserId`, remove preview and highlights.
 
 **Error Handling**:
 

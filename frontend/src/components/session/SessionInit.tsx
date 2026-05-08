@@ -101,6 +101,11 @@ interface ApiBroadcastState {
   changedAt?: number
 }
 
+interface ApiAudioEnvironmentState {
+  roomId: UUID
+  environmentName: string
+}
+
 type CampaignMembershipRole = CampaignSummary['memberRole']
 
 const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
@@ -338,6 +343,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
+  const [roomEnvironmentNames, setRoomEnvironmentNames] = useState<Record<UUID, string>>({})
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
     if (typeof window === 'undefined') {
       return DEFAULT_CHAT_GROUPING_WINDOW_MS
@@ -781,6 +787,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             lowpassFreq?: number
             roomGain?: number
           } | null
+          environments?: ApiAudioEnvironmentState[]
           dmOverrides?: Array<{
             userId: UUID
             overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
@@ -831,6 +838,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             roomGain: recoveredEnv.roomGain ?? 0,
           })
         }
+
+        const nextEnvironmentNames: Record<UUID, string> = {}
+        for (const environmentState of audioStatePayload.environments || []) {
+          if (!nextEnvironmentNames[environmentState.roomId]) {
+            nextEnvironmentNames[environmentState.roomId] = environmentState.environmentName
+          }
+        }
+        setRoomEnvironmentNames(nextEnvironmentNames)
 
         // Rehydrate DM overrides from server state (replaces any stale local copy).
         const recoveredOverrides = audioStatePayload.dmOverrides
@@ -2046,6 +2061,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     onToggleBroadcastMode={handleToggleBroadcastMode}
                     dmOverrides={dmOverrides}
                     currentConditionName={currentConditionName}
+                    roomEnvironmentNames={roomEnvironmentNames}
                   />
                   {selectedRoomId ? (
                     <aside

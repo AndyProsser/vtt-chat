@@ -193,11 +193,12 @@ describe('RoomSelector', () => {
   })
 
   it('shows create-group API error message in modal and panel', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ message: 'Only DM can create rooms' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ message: 'Only DM can create rooms' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
     )
 
     vi.stubGlobal('fetch', fetchMock)
@@ -290,5 +291,379 @@ describe('RoomSelector', () => {
       'Select group Whisper A',
       'Select group Whisper B',
     ])
+  })
+
+  it('closes an empty non-main group via API and removes it from the list', async () => {
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
+        return new Response(JSON.stringify({ ok: true, deletedRoomId: 'room-private' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Close group Whisper Booth/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-private',
+        expect.objectContaining({ method: 'DELETE' })
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Whisper Booth')).toBeNull()
+    })
+  })
+
+  it('shows close-group API error and keeps group visible when request fails', async () => {
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
+        return new Response(JSON.stringify({ message: 'Failed to close group' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Close group Whisper Booth/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to close group')).toBeTruthy()
+    })
+
+    expect(screen.getByText('Whisper Booth')).toBeTruthy()
+  })
+
+  it('disables create-group controls in greenroom and shows DM in participant list', () => {
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        isGreenroom={true}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /Create Group/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Create new group/i })).toBeNull()
+    expect(screen.queryByLabelText('Dungeon Master voice controls')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Drag Tara/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Tara' })).toBeTruthy()
+    expect(screen.getByText('Morgan')).toBeTruthy()
+    expect(screen.getByText('Tara')).toBeTruthy()
+  })
+
+  it('allows closing a non-main room even when members are present', async () => {
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-private') && options?.method === 'DELETE') {
+        return new Response(JSON.stringify({ ok: true, deletedRoomId: 'room-private' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    const closeButton = screen.getByRole('button', { name: /Close group Whisper Booth/i })
+    expect(closeButton.hasAttribute('disabled')).toBe(false)
+
+    fireEvent.click(closeButton)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-private',
+        expect.objectContaining({ method: 'DELETE' })
+      )
+    })
+  })
+
+  it('does not show breakout labels and maps idle presence to online in the panel', () => {
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-group'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.IDLE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByText('Breakout')).toBeNull()
+    expect(screen.getAllByText('ONLINE').length).toBeGreaterThan(0)
+    expect(screen.queryByText('IDLE')).toBeNull()
+  })
+
+  it('opens radial menu and moves a participant to another room', async () => {
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-target/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-target'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Drag Tara/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-target/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
   })
 })

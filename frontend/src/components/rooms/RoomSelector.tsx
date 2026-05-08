@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { AvatarOverlay } from './AvatarOverlay'
+import { RadialMenu } from './RadialMenu'
 import { Icon } from '../ui/Icon'
 import { CreateGroupModal } from './CreateGroupModal'
 import '../../styles/components/rooms/RoomSelector.css'
@@ -13,6 +14,7 @@ export interface RoomSelectorRoom {
   name: string
   type: RoomType
   memberCount: number
+  environmentName?: string
 }
 
 export interface RoomParticipantStatus {
@@ -42,6 +44,7 @@ interface RoomSelectorProps {
   token: string
   sessionId: UUID
   dmUserId: UUID
+  isGreenroom?: boolean
   headerModeCopy?: string
   canManageRooms: boolean
   broadcastModeEnabled: boolean
@@ -51,11 +54,26 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
+const CONDITION_PRESETS = ['Silenced', 'Poisoned', 'Bleeding', 'Exhausted']
+const LONG_PRESS_OPEN_MS = 420
+const LONG_PRESS_MOVE_CANCEL_PX = 12
+
+type RadialActionMode = 'root' | 'move' | 'condition'
+
+interface RadialMenuState {
+  x: number
+  y: number
+  memberUserId: UUID
+  memberRoomId: UUID
+  mode: RadialActionMode
+}
+
 export function RoomSelector({
   apiUrl,
   token,
   sessionId,
   dmUserId,
+  isGreenroom = false,
   headerModeCopy,
   canManageRooms,
   broadcastModeEnabled,
@@ -69,6 +87,16 @@ export function RoomSelector({
   const [moveError, setMoveError] = useState<string | null>(null)
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   const [optimisticRooms, setOptimisticRooms] = useState<RoomSelectorRoomWithParticipants[]>([])
+  const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
+  const [manualConditionByUser, setManualConditionByUser] = useState<Record<UUID, string>>({})
+  const [manualMutedByUser, setManualMutedByUser] = useState<Record<UUID, boolean>>({})
+  const [radialMenuState, setRadialMenuState] = useState<RadialMenuState | null>(null)
+  const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
+  const longPressTimerRef = useRef<number | null>(null)
+  const touchFeedbackTimerRef = useRef<number | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
+
+  const confirmedRoomIds = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms])
 
   const allRooms = useMemo(() => {
     const byId = new Map<UUID, RoomSelectorRoomWithParticipants>()
@@ -78,28 +106,44 @@ export function RoomSelector({
     }
 
     for (const room of optimisticRooms) {
+      if (confirmedRoomIds.has(room.id)) {
+        continue
+      }
       if (!byId.has(room.id)) {
         byId.set(room.id, room)
       }
     }
 
-    return [...byId.values()]
-  }, [rooms, optimisticRooms])
-
-  useEffect(() => {
-    if (optimisticRooms.length === 0) {
-      return
-    }
-
-    const confirmedRoomIds = new Set(rooms.map((room) => room.id))
-    setOptimisticRooms((state) => state.filter((room) => !confirmedRoomIds.has(room.id)))
-  }, [rooms, optimisticRooms.length])
+    return [...byId.values()].filter((room) => !pendingRoomDeletes[room.id])
+  }, [rooms, optimisticRooms, pendingRoomDeletes, confirmedRoomIds])
 
   const formatRoomTypeLabel = (type: RoomType): string => {
-    if (type === RoomType.MAIN) return 'Main'
-    if (type === RoomType.GROUP) return 'Breakout'
+    if (type === RoomType.MAIN) return ''
+    if (type === RoomType.GROUP) return ''
     if (type === RoomType.PRIVATE) return 'Private'
     return type
+  }
+
+  const displayPresenceState = (state: PresenceState): PresenceState => {
+    if (state === PresenceState.IDLE) {
+      return PresenceState.ONLINE
+    }
+    return state
+  }
+
+  const getEnvironmentGlyph = (environmentName?: string): string => {
+    const value = (environmentName || '').toLowerCase()
+
+    if (value.includes('cave')) return 'mountain_flag'
+    if (value.includes('forest') || value.includes('wood')) return 'forest'
+    if (value.includes('tavern')) return 'local_bar'
+    if (value.includes('city') || value.includes('street') || value.includes('market'))
+      return 'location_city'
+    if (value.includes('dungeon') || value.includes('crypt')) return 'lan'
+    if (value.includes('night') || value.includes('moon')) return 'bedtime'
+    if (value.includes('storm') || value.includes('rain')) return 'thunderstorm'
+
+    return 'graphic_eq'
   }
 
   const baseParticipants = useMemo(
@@ -115,10 +159,12 @@ export function RoomSelector({
     [baseParticipants, dmUserId]
   )
 
-  const nonDmParticipants = useMemo(
-    () => baseParticipants.filter((participant) => participant.userId !== dmUserId),
-    [baseParticipants, dmUserId]
+  const visibleParticipants = useMemo(
+    () => (isGreenroom ? baseParticipants : baseParticipants.filter((p) => p.userId !== dmUserId)),
+    [baseParticipants, dmUserId, isGreenroom]
   )
+
+  const canCreateGroups = canManageRooms && !isGreenroom
 
   const displayedParticipantsByRoom = useMemo(() => {
     const next: Record<string, RoomParticipantStatus[]> = {}
@@ -127,7 +173,7 @@ export function RoomSelector({
       next[room.id] = []
     }
 
-    for (const participant of nonDmParticipants) {
+    for (const participant of visibleParticipants) {
       const targetRoomId = pendingRoomMoves[participant.userId] || participant.roomId
       if (!next[targetRoomId]) {
         next[targetRoomId] = []
@@ -136,7 +182,7 @@ export function RoomSelector({
     }
 
     return next
-  }, [allRooms, nonDmParticipants, pendingRoomMoves])
+  }, [allRooms, visibleParticipants, pendingRoomMoves])
 
   const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
     setMoveError(null)
@@ -202,9 +248,9 @@ export function RoomSelector({
         throw new Error(message)
       }
 
-      const payload = (await response.json().catch(() => null)) as
-        | { room?: { id: UUID; name: string; type: RoomType } }
-        | null
+      const payload = (await response.json().catch(() => null)) as {
+        room?: { id: UUID; name: string; type: RoomType }
+      } | null
 
       if (payload?.room?.id) {
         setOptimisticRooms((state) =>
@@ -227,6 +273,205 @@ export function RoomSelector({
     }
   }
 
+  const handleDeleteGroup = async (room: RoomSelectorRoomWithParticipants) => {
+    if (room.type === RoomType.MAIN) {
+      return
+    }
+
+    setMoveError(null)
+    setPendingRoomDeletes((state) => ({ ...state, [room.id]: true }))
+
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/rooms/${room.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to close group')
+      }
+
+      if (selectedRoomId === room.id) {
+        const fallbackRoom = allRooms.find(
+          (entry) => entry.type === RoomType.MAIN && entry.id !== room.id
+        )
+        if (fallbackRoom) {
+          onSelectRoom(fallbackRoom.id)
+        }
+      }
+    } catch (error) {
+      setPendingRoomDeletes((state) => {
+        const next = { ...state }
+        delete next[room.id]
+        return next
+      })
+      setMoveError(error instanceof Error ? error.message : 'Failed to close group')
+    }
+  }
+
+  const handleApplyMuteOverride = async (targetUserId: UUID, muted: boolean) => {
+    setMoveError(null)
+
+    try {
+      if (muted) {
+        const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/apply`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            targetUserId,
+            overrideType: 'MUTE',
+            parameters: {},
+          }),
+        })
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to mute participant')
+        }
+
+        setManualMutedByUser((state) => ({ ...state, [targetUserId]: true }))
+      } else {
+        const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/remove`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            targetUserId,
+            overrideType: 'MUTE',
+          }),
+        })
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to unmute participant')
+        }
+
+        setManualMutedByUser((state) => ({ ...state, [targetUserId]: false }))
+      }
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to update mute override')
+    }
+  }
+
+  const handleApplyConditionOverride = async (targetUserId: UUID, conditionName: string) => {
+    setMoveError(null)
+
+    try {
+      if (conditionName === 'None') {
+        const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/remove`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            targetUserId,
+            overrideType: 'CONDITION',
+          }),
+        })
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to clear condition')
+        }
+
+        setManualConditionByUser((state) => {
+          const next = { ...state }
+          delete next[targetUserId]
+          return next
+        })
+        return
+      }
+
+      const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionId,
+          targetUserId,
+          overrideType: 'CONDITION',
+          parameters: { conditionName },
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to apply condition')
+      }
+
+      setManualConditionByUser((state) => ({ ...state, [targetUserId]: conditionName }))
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to update condition')
+    }
+  }
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const clearTouchFeedback = (delayMs = 0) => {
+    if (touchFeedbackTimerRef.current !== null) {
+      window.clearTimeout(touchFeedbackTimerRef.current)
+      touchFeedbackTimerRef.current = null
+    }
+
+    if (delayMs <= 0) {
+      setTouchFeedbackUserId(null)
+      return
+    }
+
+    touchFeedbackTimerRef.current = window.setTimeout(() => {
+      setTouchFeedbackUserId(null)
+      touchFeedbackTimerRef.current = null
+    }, delayMs)
+  }
+
+  const openRadialMenu = (params: {
+    x: number
+    y: number
+    memberUserId: UUID
+    memberRoomId: UUID
+  }) => {
+    if (!canManageRooms || params.memberUserId === dmUserId) {
+      return
+    }
+
+    setRadialMenuState({ ...params, mode: 'root' })
+    clearTouchFeedback()
+
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(10)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer()
+      if (touchFeedbackTimerRef.current !== null) {
+        window.clearTimeout(touchFeedbackTimerRef.current)
+      }
+    }
+  }, [])
+
   const mainRooms = useMemo(
     () => allRooms.filter((room) => room.type === RoomType.MAIN),
     [allRooms]
@@ -248,7 +493,18 @@ export function RoomSelector({
     [allRooms]
   )
 
-  const renderRoomSection = (sectionLabel: string, sectionRooms: RoomSelectorRoomWithParticipants[]) => {
+  const selectedRadialMember = useMemo(
+    () =>
+      radialMenuState
+        ? visibleParticipants.find((member) => member.userId === radialMenuState.memberUserId)
+        : undefined,
+    [radialMenuState, visibleParticipants]
+  )
+
+  const renderRoomSection = (
+    sectionLabel: string,
+    sectionRooms: RoomSelectorRoomWithParticipants[]
+  ) => {
     if (sectionRooms.length === 0) {
       return null
     }
@@ -257,7 +513,6 @@ export function RoomSelector({
       <section className="room-selector-group-section" aria-label={sectionLabel}>
         <header className="room-selector-group-section__header">
           <h5>{sectionLabel}</h5>
-          <span>{sectionRooms.length}</span>
         </header>
 
         {sectionRooms.map((room, index) => {
@@ -277,13 +532,13 @@ export function RoomSelector({
               }`}
               aria-label={`Group ${room.name}`}
               onDragOver={(event) => {
-                if (!canManageRooms) {
+                if (!canManageRooms || isGreenroom) {
                   return
                 }
                 event.preventDefault()
               }}
               onDrop={(event) => {
-                if (!canManageRooms) {
+                if (!canManageRooms || isGreenroom) {
                   return
                 }
                 event.preventDefault()
@@ -298,23 +553,82 @@ export function RoomSelector({
                 setDraggedUserId(null)
               }}
             >
-              <button
-                type="button"
-                className="room-selector-item__header"
-                aria-label={`Select group ${room.name}`}
-                aria-pressed={selected}
-                onClick={() => onSelectRoom(room.id)}
-              >
-                <span className="room-selector-item-name">
-                  <Icon name="voice" />
-                  {room.name}
-                </span>
-                <span className="room-selector-item-meta">
-                  {formatRoomTypeLabel(room.type)} · {participants.length}
-                </span>
-              </button>
+              <div className="room-selector-item__header">
+                <span className="room-selector-item-heading-row">
+                  <button
+                    type="button"
+                    className="room-selector-item__select"
+                    aria-label={`Select group ${room.name}`}
+                    aria-pressed={selected}
+                    onClick={() => onSelectRoom(room.id)}
+                  >
+                    <span className="room-selector-item-name">
+                      <Icon name="voice" />
+                      {room.name}
+                    </span>
+                  </button>
 
-              {canManageRooms ? (
+                  <span className="room-selector-item-actions">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="room-selector-item__env-icon"
+                          aria-label="Group environment"
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            {getEnvironmentGlyph(room.environmentName)}
+                          </span>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Environment: {room.environmentName || 'Default'}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <span
+                      className={`room-selector-item__broadcast-badge ${broadcastModeEnabled ? 'active' : ''}`}
+                      aria-label={broadcastModeEnabled ? 'Broadcast active' : 'Broadcast inactive'}
+                    >
+                      {broadcastModeEnabled ? 'Broadcast Active' : 'Broadcast Inactive'}
+                    </span>
+
+                    {canCreateGroups ? (
+                      <button
+                        type="button"
+                        className="room-selector-item__icon-action"
+                        aria-label="Create new group"
+                        title="Create new group"
+                        onClick={() => setShowCreateGroupModal(true)}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          add
+                        </span>
+                      </button>
+                    ) : null}
+
+                    {canManageRooms && room.type !== RoomType.MAIN ? (
+                      <button
+                        type="button"
+                        className="room-selector-item__icon-action"
+                        aria-label={`Close group ${room.name}`}
+                        title="Close group"
+                        onClick={() => {
+                          void handleDeleteGroup(room)
+                        }}
+                        disabled={Boolean(pendingRoomDeletes[room.id])}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          close
+                        </span>
+                      </button>
+                    ) : null}
+                  </span>
+                </span>
+
+                <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
+              </div>
+
+              {canManageRooms && !isGreenroom ? (
                 <button
                   type="button"
                   className={`room-selector-item__voice-toggle ${
@@ -337,15 +651,18 @@ export function RoomSelector({
                   <p className="room-selector-empty">No members in this group.</p>
                 ) : (
                   participants.map((member) => {
-                    const canDrag = canManageRooms && member.roleLabel !== 'DM'
+                    const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
                     const pendingTargetRoomId = pendingRoomMoves[member.userId]
+                    const isMuted = manualMutedByUser[member.userId] ?? member.isMuted
+                    const condition = manualConditionByUser[member.userId] ?? member.condition
+                    const shownPresenceState = displayPresenceState(member.presenceState)
 
                     return (
                       <Tooltip key={member.userId}>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''}`}
+                            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
                             draggable={canDrag}
                             aria-label={canDrag ? `Drag ${member.username}` : member.username}
                             onDragStart={(event) => {
@@ -355,16 +672,72 @@ export function RoomSelector({
                               event.dataTransfer.setData('text/plain', member.userId)
                               setDraggedUserId(member.userId)
                             }}
+                            onContextMenu={(event) => {
+                              event.preventDefault()
+                              openRadialMenu({
+                                x: event.clientX,
+                                y: event.clientY,
+                                memberUserId: member.userId,
+                                memberRoomId: room.id,
+                              })
+                            }}
+                            onTouchStart={(event) => {
+                              clearLongPressTimer()
+                              clearTouchFeedback()
+                              const touch = event.touches[0]
+                              if (!touch) {
+                                return
+                              }
+
+                              touchStartRef.current = {
+                                x: touch.clientX,
+                                y: touch.clientY,
+                                userId: member.userId,
+                              }
+                              setTouchFeedbackUserId(member.userId)
+
+                              longPressTimerRef.current = window.setTimeout(() => {
+                                openRadialMenu({
+                                  x: touch.clientX,
+                                  y: touch.clientY,
+                                  memberUserId: member.userId,
+                                  memberRoomId: room.id,
+                                })
+                              }, LONG_PRESS_OPEN_MS)
+                            }}
+                            onTouchMove={(event) => {
+                              const touch = event.touches[0]
+                              const touchStart = touchStartRef.current
+
+                              if (!touch || !touchStart || touchStart.userId !== member.userId) {
+                                return
+                              }
+
+                              const deltaX = touch.clientX - touchStart.x
+                              const deltaY = touch.clientY - touchStart.y
+                              if (Math.hypot(deltaX, deltaY) > LONG_PRESS_MOVE_CANCEL_PX) {
+                                clearLongPressTimer()
+                                clearTouchFeedback(60)
+                              }
+                            }}
+                            onTouchEnd={() => {
+                              clearLongPressTimer()
+                              clearTouchFeedback(80)
+                            }}
+                            onTouchCancel={() => {
+                              clearLongPressTimer()
+                              clearTouchFeedback()
+                            }}
                             onDragEnd={() => setDraggedUserId(null)}
                           >
                             <AvatarOverlay
                               username={member.characterName || member.username}
                               avatarUrl={member.avatarUrl}
                               roleLabel={member.roleLabel}
-                              presenceState={member.presenceState}
-                              isMuted={member.isMuted}
+                              presenceState={shownPresenceState}
+                              isMuted={isMuted}
                               isSpeaking={member.isSpeaking}
-                              condition={member.condition}
+                              condition={condition}
                             />
                             {pendingTargetRoomId === room.id ? (
                               <span className="room-selector-member__pending">Moving…</span>
@@ -394,9 +767,9 @@ export function RoomSelector({
                                 </div>
                               ) : null}
                               <p>
-                                {member.roleLabel || 'PLAYER'} · {member.presenceState}
+                                {member.roleLabel || 'PLAYER'} · {shownPresenceState}
                                 {member.isSpeaking ? ' · Speaking' : ''}
-                                {member.isMuted ? ' · Muted' : ''}
+                                {isMuted ? ' · Muted' : ''}
                               </p>
                             </div>
                           </div>
@@ -405,6 +778,9 @@ export function RoomSelector({
                     )
                   })
                 )}
+                {formatRoomTypeLabel(room.type) ? (
+                  <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
+                ) : null}
               </div>
             </section>
           )
@@ -447,8 +823,8 @@ export function RoomSelector({
             <Icon name="rooms" /> Voice Groups
           </h4>
           <div className="room-selector-header__meta room-selector-header__meta--actions">
-            <span>{headerModeCopy || allRooms.length}</span>
-            {canManageRooms ? (
+            {headerModeCopy ? <span>{headerModeCopy}</span> : null}
+            {canCreateGroups ? (
               <button
                 type="button"
                 className="room-selector-header__create"
@@ -461,14 +837,14 @@ export function RoomSelector({
         </header>
 
         <div className="room-selector-list" role="list" aria-label="Session groups">
-          {dmParticipant ? (
+          {dmParticipant && !isGreenroom ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
               <div className="room-selector-dm__profile">
                 <AvatarOverlay
                   username={dmParticipant.characterName || dmParticipant.username}
                   avatarUrl={dmParticipant.avatarUrl}
                   roleLabel="DM"
-                  presenceState={dmParticipant.presenceState}
+                  presenceState={displayPresenceState(dmParticipant.presenceState)}
                   isMuted={dmParticipant.isMuted}
                   isSpeaking={dmParticipant.isSpeaking}
                 />
@@ -512,6 +888,51 @@ export function RoomSelector({
           <CreateGroupModal
             onClose={() => setShowCreateGroupModal(false)}
             onCreateGroup={handleCreateGroup}
+          />
+        ) : null}
+
+        {radialMenuState ? (
+          <RadialMenu
+            x={radialMenuState.x}
+            y={radialMenuState.y}
+            mode={radialMenuState.mode}
+            moveTargets={
+              radialMenuState.mode === 'move'
+                ? allRooms
+                    .filter((room) => room.id !== radialMenuState.memberRoomId)
+                    .map((room) => ({ id: room.id, label: room.name }))
+                : []
+            }
+            conditionTargets={
+              radialMenuState.mode === 'condition' ? [...CONDITION_PRESETS, 'None'] : []
+            }
+            currentMuted={
+              manualMutedByUser[radialMenuState.memberUserId] ??
+              Boolean(selectedRadialMember?.isMuted)
+            }
+            onMove={() =>
+              setRadialMenuState((state) => (state ? { ...state, mode: 'move' } : state))
+            }
+            onCondition={() =>
+              setRadialMenuState((state) => (state ? { ...state, mode: 'condition' } : state))
+            }
+            onMute={() => {
+              const nextMuted = !Boolean(manualMutedByUser[radialMenuState.memberUserId])
+              void handleApplyMuteOverride(radialMenuState.memberUserId, nextMuted)
+              setRadialMenuState(null)
+            }}
+            onClose={() => setRadialMenuState(null)}
+            onMoveSelect={(roomId) => {
+              void handleMoveParticipant(radialMenuState.memberUserId, roomId)
+              setRadialMenuState(null)
+            }}
+            onConditionSelect={(conditionName) => {
+              void handleApplyConditionOverride(radialMenuState.memberUserId, conditionName)
+              setRadialMenuState(null)
+            }}
+            onBack={() =>
+              setRadialMenuState((state) => (state ? { ...state, mode: 'root' } : state))
+            }
           />
         ) : null}
       </section>

@@ -75,6 +75,12 @@ export async function listRoomsBySession(sessionId: string): Promise<
   }))
 }
 
+export async function deleteRoomRecord(roomId: string): Promise<void> {
+  await prisma.room.delete({
+    where: { id: roomId },
+  })
+}
+
 export async function upsertPresenceSnapshotRecord(params: {
   sessionId: string
   campaignId?: string

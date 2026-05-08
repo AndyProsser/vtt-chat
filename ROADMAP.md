@@ -200,6 +200,8 @@ Terminology note for this stage:
 - Sticky DM widget (always visible at top)
 - Primary condition only visible + tooltip/popover for others
 - Screen reader support priority (full ARIA labels)
+- Greenroom policy: no additional groups can be created while session state is `IDLE`
+- Greenroom rendering: DM appears in the same participant list as other users (no separate DM widget)
 
 **New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
 

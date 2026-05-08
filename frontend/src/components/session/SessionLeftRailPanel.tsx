@@ -27,6 +27,7 @@ interface SessionLeftRailPanelProps {
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
   dmOverrides: Map<UUID, AudioDMOverride>
   currentConditionName?: string
+  roomEnvironmentNames?: Record<UUID, string>
 }
 
 export function SessionLeftRailPanel({
@@ -51,6 +52,7 @@ export function SessionLeftRailPanel({
   onToggleBroadcastMode,
   dmOverrides,
   currentConditionName,
+  roomEnvironmentNames,
 }: SessionLeftRailPanelProps) {
   const isGreenroom = sessionState === 'IDLE'
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
@@ -99,6 +101,7 @@ export function SessionLeftRailPanel({
           token={token}
           sessionId={sessionId}
           dmUserId={dmUserId}
+          isGreenroom={isGreenroom}
           headerModeCopy={greenroomHeaderCopy}
           canManageRooms={role === 'DM'}
           broadcastModeEnabled={broadcastModeEnabled}
@@ -108,6 +111,7 @@ export function SessionLeftRailPanel({
             name: room.name,
             type: room.type,
             memberCount: (roomMembersByRoomId[room.id] || []).length,
+            environmentName: roomEnvironmentNames?.[room.id],
             participants: (roomMembersByRoomId[room.id] || []).map((member) => {
               const dmOverride = dmOverrides.get(member.userId)
 

@@ -10,6 +10,7 @@ import type {
 import { getRedisClient } from '@/infra/redis'
 import {
   createRoomRecord,
+  deleteRoomRecord,
   findRoomById,
   listPresenceSnapshotsBySession,
   listRoomsBySession,
@@ -296,6 +297,17 @@ export async function getRoomMemberIds(sessionId: UUID, roomId: UUID): Promise<U
   const redis = await getRedisClient()
   const members = await redis.sMembers(roomMembersKey(sessionId, roomId))
   return members.map((member) => member as UUID)
+}
+
+export async function deleteRoom(params: { sessionId: UUID; roomId: UUID }): Promise<void> {
+  const room = await findRoomById(params.roomId)
+  if (!room || room.sessionId !== params.sessionId) {
+    return
+  }
+
+  const redis = await getRedisClient()
+  await redis.del(roomMembersKey(params.sessionId, params.roomId))
+  await deleteRoomRecord(params.roomId)
 }
 
 export async function snapshotSessionPresence(sessionId: UUID): Promise<number> {

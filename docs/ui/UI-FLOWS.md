@@ -95,7 +95,7 @@ DM clicks “Open Note” on a note card.
 ### **2.4 DM Applies an Audio Condition**
 
 **UI Action:**
-DM selects a condition from `<PlayerOverrides />`.
+DM opens a player context menu in the Voice Group Panel (right-click desktop / long-press mobile), then selects **Condition**.
 
 **Flow:**
 
@@ -107,12 +107,23 @@ DM selects a condition from `<PlayerOverrides />`.
    - Condition icon updates
    - Player item pulses (micro‑interaction)
 
+Notes:
+
+- Context menu actions are `Move`, `Condition`, `Mute`, `Close`.
+- `Mute` and `Condition` use DM override endpoints.
+
 ---
 
 ### **2.5 DM Creates a New Group**
 
 **UI Action:**
 DM clicks "+ Create Group".
+
+Precondition:
+
+- Session must not be in greenroom (`sessionState !== IDLE`).
+- In greenroom, create-group controls are hidden/disabled.
+- In greenroom, connected users that report `IDLE` are displayed as `ONLINE` in the panel for clarity.
 
 **Flow:**
 
