@@ -59,7 +59,7 @@ export function SessionLeftRailPanel({
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
 
-  const isGreenroom = sessionState === 'IDLE'
+  const isGreenroom = sessionState === 'IDLE' || sessionState === 'ENDED'
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
   const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn

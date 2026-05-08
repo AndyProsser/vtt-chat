@@ -81,6 +81,17 @@ interface RadialMenuState {
   mode: RadialActionMode
 }
 
+const ENVIRONMENT_OPTIONS = [
+  'Default',
+  'Forest',
+  'Cave',
+  'Tavern',
+  'City',
+  'Dungeon',
+  'Night',
+  'Storm',
+] as const
+
 export function RoomSelector({
   apiUrl,
   token,
@@ -103,6 +114,8 @@ export function RoomSelector({
   const [optimisticRooms, setOptimisticRooms] = useState<RoomSelectorRoomWithParticipants[]>([])
   const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
   const [radialMenuState, setRadialMenuState] = useState<RadialMenuState | null>(null)
+  const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
+  const [environmentOverrides, setEnvironmentOverrides] = useState<Record<UUID, string>>({})
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
@@ -154,11 +167,50 @@ export function RoomSelector({
   )
 
   const visibleParticipants = useMemo(
-    () => (isGreenroom ? baseParticipants : baseParticipants.filter((p) => p.userId !== dmUserId)),
-    [baseParticipants, dmUserId, isGreenroom]
+    () => baseParticipants.filter((participant) => participant.userId !== dmUserId),
+    [baseParticipants, dmUserId]
   )
 
-  const canCreateGroups = canManageRooms
+  const canCreateGroups = canManageRooms && !isGreenroom
+
+  const getDisplayRoomName = (room: RoomSelectorRoomWithParticipants): string => {
+    if (room.type === RoomType.MAIN && room.name.trim().toLowerCase() === 'main room') {
+      return 'Main'
+    }
+    return room.name
+  }
+
+  const getResolvedEnvironmentName = (room: RoomSelectorRoomWithParticipants): string =>
+    environmentOverrides[room.id] || room.environmentName || 'Default'
+
+  const handleApplyEnvironment = async (roomId: UUID, environmentName: string) => {
+    setMoveError(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/audio/environments/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionId,
+          roomId,
+          environmentName,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to apply environment')
+      }
+
+      setEnvironmentOverrides((state) => ({ ...state, [roomId]: environmentName }))
+      setEnvironmentPickerRoomId(null)
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to apply environment')
+    }
+  }
 
   const displayedParticipantsByRoom = useMemo(() => {
     const next: Record<string, RoomParticipantStatus[]> = {}
@@ -550,37 +602,51 @@ export function RoomSelector({
                   >
                     <span className="room-selector-item-name">
                       <Icon name="voice" />
-                      {room.name}
+                      {getDisplayRoomName(room)}
                     </span>
                   </button>
 
                   <span className="room-selector-item-actions">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span
+                        <button
+                          type="button"
                           className="room-selector-item__env-icon"
-                          aria-label="Group environment"
+                          aria-label="Change group environment"
+                          onClick={() =>
+                            setEnvironmentPickerRoomId((current) =>
+                              current === room.id ? null : room.id
+                            )
+                          }
                         >
                           <span className="material-symbols-outlined" aria-hidden="true">
-                            {resolveEnvironmentGlyph(room.environmentName)}
+                            {resolveEnvironmentGlyph(getResolvedEnvironmentName(room))}
                           </span>
-                        </span>
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        Environment: {room.environmentName || 'Default'}
+                        Environment: {getResolvedEnvironmentName(room)}
                       </TooltipContent>
                     </Tooltip>
 
-                    {canCreateGroups ? (
+                    {canManageRooms && !isGreenroom ? (
                       <button
                         type="button"
-                        className="room-selector-item__icon-action"
-                        aria-label="Create new group"
-                        title="Create new group"
-                        onClick={() => setShowCreateGroupModal(true)}
+                        className={`room-selector-item__icon-action room-selector-item__voice-icon ${
+                          selectedRoomId === room.id && !broadcastModeEnabled ? 'active' : ''
+                        }`}
+                        aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
+                        title={`Set DM voice to ${getDisplayRoomName(room)}`}
+                        aria-pressed={selectedRoomId === room.id && !broadcastModeEnabled}
+                        onClick={() => {
+                          if (broadcastModeEnabled) {
+                            void onToggleBroadcastMode(false)
+                          }
+                          onSelectRoom(room.id)
+                        }}
                       >
                         <span className="material-symbols-outlined" aria-hidden="true">
-                          add
+                          graphic_eq
                         </span>
                       </button>
                     ) : null}
@@ -606,26 +672,37 @@ export function RoomSelector({
                   </span>
                 </span>
 
+                {environmentPickerRoomId === room.id ? (
+                  <div
+                    className="room-selector-item__env-picker"
+                    role="dialog"
+                    aria-label="Group environment picker"
+                  >
+                    <p className="room-selector-item__env-picker-title">Choose environment</p>
+                    <div className="room-selector-item__env-picker-list">
+                      {ENVIRONMENT_OPTIONS.map((option) => {
+                        const isSelected =
+                          getResolvedEnvironmentName(room).toLowerCase() === option.toLowerCase()
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={isSelected ? 'is-active' : ''}
+                            aria-pressed={isSelected}
+                            onClick={() => {
+                              void handleApplyEnvironment(room.id, option)
+                            }}
+                          >
+                            {option}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
                 <span className="room-selector-item-meta">{formatRoomTypeLabel(room.type)}</span>
               </div>
-
-              {canManageRooms && !isGreenroom ? (
-                <button
-                  type="button"
-                  className={`room-selector-item__voice-toggle ${
-                    selectedRoomId === room.id && !broadcastModeEnabled ? 'active' : ''
-                  }`}
-                  onClick={() => {
-                    if (broadcastModeEnabled) {
-                      void onToggleBroadcastMode(false)
-                    }
-                    onSelectRoom(room.id)
-                  }}
-                  aria-pressed={selectedRoomId === room.id && !broadcastModeEnabled}
-                >
-                  <Icon name="voice" /> DM Voice Here
-                </button>
-              ) : null}
 
               <div className="room-selector-members-list">
                 {participants.length === 0 ? (
@@ -870,13 +947,14 @@ export function RoomSelector({
                 </TooltipContent>
               </Tooltip>
             ) : null}
-            {canCreateGroups ? (
+            {canManageRooms ? (
               <button
                 type="button"
                 className="room-selector-header__create"
                 onClick={() => setShowCreateGroupModal(true)}
+                disabled={!canCreateGroups}
               >
-                + Create Group
+                Create Group
               </button>
             ) : null}
             <button
@@ -907,7 +985,7 @@ export function RoomSelector({
                 key={room.id}
                 type="button"
                 className={`room-selector-mobile-strip__group${isSelected ? ' room-selector-mobile-strip__group--selected' : ''}`}
-                aria-label={`Select group ${room.name}`}
+                aria-label={`Quick select group ${room.name}`}
                 aria-pressed={isSelected}
                 onClick={() => {
                   onSelectRoom(room.id)
@@ -930,7 +1008,7 @@ export function RoomSelector({
           role="list"
           aria-label="Session groups"
         >
-          {dmParticipant && !isGreenroom ? (
+          {dmParticipant ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
               <div className="room-selector-dm__profile">
                 <AvatarOverlay

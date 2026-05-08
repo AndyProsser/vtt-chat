@@ -36,6 +36,7 @@ const TYPE_ICONS: Record<string, string> = {
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
 const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:']
 const SESSION_NOTE_PREFIX = 'Session Note:'
+const LEGACY_SESSION_SYSTEM_PREFIXES = ['[Session Started]', '[Session Ended]']
 
 function getAuthorInitial(username: string): string {
   return username.trim().charAt(0).toUpperCase() || '?'
@@ -84,6 +85,9 @@ export function MessageList({
         const isSessionBookend =
           isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
+        const isLegacySessionSystem =
+          isSystem &&
+          LEGACY_SESSION_SYSTEM_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSelf = !isSystem && msg.authorId === currentUserId
         const authorProfile = participantDirectory?.[msg.authorId]
         const authorName = isSystem
@@ -96,6 +100,10 @@ export function MessageList({
           previous.authorId === msg.authorId &&
           msg.createdAt - previous.createdAt <= groupingWindowMs
         )
+
+        if (isLegacySessionSystem) {
+          return null
+        }
 
         if (isSessionBookend || isSessionNote) {
           return (

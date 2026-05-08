@@ -66,7 +66,7 @@
     )
   );
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   grid-template-columns: minmax(304px, 336px) minmax(0, 1fr) 3.75rem;
 }
 
@@ -78,7 +78,7 @@
   height: 100%;
   width: 100%;
   margin-inline: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .command-center-left-rail-shell {
@@ -103,11 +103,11 @@
 .command-center-right-rail-overlay {
   position: absolute;
   top: 0;
-  right: -0.15rem;
+  right: -0.6rem;
   width: min(420px, 44vw);
   max-height: 100%;
   overflow: hidden;
-  z-index: 70;
+  z-index: 120;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -143,6 +143,7 @@
   min-width: 0;
   height: 100%;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   border-radius: var(--radius-lg);
   padding: 0.55rem;
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
@@ -181,7 +182,8 @@
   color: var(--color-text-primary);
 }
 
-.command-center-right-rail-trigger[data-state='active'] {
+.command-center-right-rail-trigger[data-state='active'],
+.command-center-right-rail-trigger[aria-selected='true'] {
   background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
   outline: 1px solid color-mix(in srgb, var(--color-brand) 48%, var(--color-border-soft));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 24%, transparent);

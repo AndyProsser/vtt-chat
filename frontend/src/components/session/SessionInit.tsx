@@ -118,6 +118,11 @@ const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
 const SESSION_SUMMARY_TITLE = 'Session Summary'
 const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
+const SESSION_BOOKEND_PREFIXES = ['Session Start:', 'Session End:'] as const
+
+function isSessionBookendMessage(content: string): boolean {
+  return SESSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
+}
 
 function resolveGreenroomCacheTtlMs(): number {
   const raw = Number(import.meta.env.VITE_GREENROOM_CACHE_TTL_MS)
@@ -433,7 +438,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const notes = useStore((state) => state.notes)
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
-  const clearMessages = useStore((state) => state.clearMessages)
+  const clearRoomMessages = useStore((state) => state.clearRoomMessages)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
@@ -598,15 +603,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    const fromMessages = Object.values(typedMessagesBySession[fromSessionId] || {})
-      .filter(
-        (message) =>
-          message.roomId === fromGreenroom.id &&
-          message.type !== MessageType.SYSTEM &&
-          !message.content.startsWith('Session Start:') &&
-          !message.content.startsWith('Session End:')
-      )
-      .sort((left, right) => left.createdAt - right.createdAt)
+    const sourceSessionMessages = Object.values(typedMessagesBySession[fromSessionId] || {})
+    const fromGreenroomMessages = sourceSessionMessages.filter(
+      (message) => message.roomId === fromGreenroom.id
+    )
+
+    const fromGreenroomBookends = fromGreenroomMessages.filter(
+      (message) => message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
+    )
+
+    // Some transitions can emit bookends before the greenroom room exists.
+    // Pull session bookends from any room as a fallback to preserve chapter history.
+    const fallbackBookendsFromAnyRoom =
+      fromGreenroomBookends.length > 0
+        ? []
+        : sourceSessionMessages.filter(
+            (message) =>
+              message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
+          )
+
+    const fromMessages = [...fromGreenroomMessages, ...fallbackBookendsFromAnyRoom].sort(
+      (left, right) => left.createdAt - right.createdAt
+    )
 
     if (!fromMessages.length) {
       pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
@@ -614,24 +632,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     const targetMessages = Object.values(typedMessagesBySession[currentSession.id] || {})
-    const hasTargetGreenroomMessages = targetMessages.some(
-      (message) =>
-        message.roomId === targetGreenroom.id &&
-        message.type !== MessageType.SYSTEM &&
-        !message.content.startsWith('Session Start:') &&
-        !message.content.startsWith('Session End:')
+    const targetSignatures = new Set(
+      targetMessages
+        .filter((message) => message.roomId === targetGreenroom.id)
+        .map(
+          (message) =>
+            `${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
+        )
     )
 
-    if (!hasTargetGreenroomMessages) {
-      const baseTimestamp = Date.now()
-      for (const [index, source] of fromMessages.entries()) {
-        addMessage(currentSession.id, {
-          ...source,
-          id: crypto.randomUUID() as UUID,
-          roomId: targetGreenroom.id,
-          createdAt: baseTimestamp + index,
-        })
+    for (const source of fromMessages) {
+      const signature = `${source.authorId}:${source.type}:${source.content}:${source.isDmOnly}:${source.createdAt}`
+      if (targetSignatures.has(signature)) {
+        continue
       }
+
+      addMessage(currentSession.id, {
+        ...source,
+        id: crypto.randomUUID() as UUID,
+        roomId: targetGreenroom.id,
+        createdAt: source.createdAt,
+      })
+      targetSignatures.add(signature)
     }
 
     pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
@@ -1207,7 +1229,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     greenroomCleanupTimerRef.current = window.setTimeout(() => {
       for (const session of sessionList) {
-        clearMessages(session.id)
+        const sessionRooms = Object.values(typedRoomsBySession[session.id] || {})
+        const greenRoom = sessionRooms.find((room) => isGreenRoom(room))
+
+        if (!greenRoom) {
+          continue
+        }
+
+        clearRoomMessages(session.id, greenRoom.id)
       }
       greenroomCleanupTimerRef.current = null
     }, ttlMs)
@@ -1218,7 +1247,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         greenroomCleanupTimerRef.current = null
       }
     }
-  }, [clearMessages, currentPresence, currentSession, isGreenroom, selectedCampaignId, sessionList])
+  }, [
+    clearRoomMessages,
+    currentPresence,
+    currentSession,
+    isGreenroom,
+    selectedCampaignId,
+    sessionList,
+    typedRoomsBySession,
+  ])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
