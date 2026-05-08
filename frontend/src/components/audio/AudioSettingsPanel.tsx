@@ -60,7 +60,12 @@ export function AudioSettingsPanel({
   }, [])
 
   return (
-    <div className="audio-settings-panel" role="dialog" aria-label={AUDIO_SETTINGS_COPY.title}>
+    <div
+      className="audio-settings-panel"
+      role="dialog"
+      aria-label={AUDIO_SETTINGS_COPY.title}
+      data-audio-settings-panel="true"
+    >
       <header className="audio-settings-panel__header">
         <span className="audio-settings-panel__title">{AUDIO_SETTINGS_COPY.title}</span>
         <button

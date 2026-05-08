@@ -399,6 +399,39 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
   const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
 
+  useEffect(() => {
+    if (!settingsOpen) {
+      return
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      if (target.closest('[data-audio-settings-panel], [data-audio-settings-trigger]')) {
+        return
+      }
+
+      setSettingsOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSettingsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [settingsOpen])
+
   const overrideItems = useMemo(() => {
     return Array.from(dmOverrides.values()).map((override) => {
       const shortUser = override.userId.slice(0, 8)

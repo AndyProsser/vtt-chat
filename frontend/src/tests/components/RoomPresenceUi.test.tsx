@@ -88,7 +88,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    expect(screen.getByText('Tavern')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(2)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
     expect(screen.getByText('Main Group')).toBeTruthy()
     expect(screen.getByText('Other Groups')).toBeTruthy()
@@ -284,6 +284,79 @@ describe('RoomSelector', () => {
         })
       )
     })
+  })
+
+  it('dismisses the create-group popover on Escape and outside click', () => {
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[]}
+        selectedRoomId={''}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: /Create group/i })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Group/i }))
+    expect(screen.getByRole('dialog', { name: /Create group/i })).toBeTruthy()
+
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('dialog', { name: /Create group/i })).toBeNull()
+  })
+
+  it('dismisses the environment picker on Escape and outside click', () => {
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Change group environment/i }))
+    expect(screen.getByRole('dialog', { name: 'Group environment picker' })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Group environment picker' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Change group environment/i }))
+    expect(screen.getByRole('dialog', { name: 'Group environment picker' })).toBeTruthy()
+
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('dialog', { name: 'Group environment picker' })).toBeNull()
   })
 
   it('sorts private groups to the end of Other Groups', () => {

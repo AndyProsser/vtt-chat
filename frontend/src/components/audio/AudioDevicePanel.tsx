@@ -321,6 +321,7 @@ export function AudioDevicePanel({
         title={AUDIO_CONTROL_COPY.audioSettings}
         aria-label={AUDIO_CONTROL_COPY.audioSettings}
         aria-expanded={settingsOpen}
+        data-audio-settings-trigger="true"
       >
         <Icon name="settings" />
       </button>

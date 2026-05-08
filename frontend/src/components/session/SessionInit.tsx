@@ -1916,6 +1916,23 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     await handleTransitionSession(currentSession.id, SessionState.ENDED)
   }
 
+  useEffect(() => {
+    if (!showStopSessionModal) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowStopSessionModal(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showStopSessionModal])
+
   const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
     setError(null)
 
@@ -2060,14 +2077,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       ? 'Not provided'
       : settingsReferenceSummaryEntry?.title || 'Not provided'
   const connectedSpectatorsCount = selectedCampaign?.connectedSpectatorsRounded ?? 0
-  const connectedPlayersWithDm =
-    selectedCampaign?.connectedPlayersRounded !== undefined || selectedCampaign?.connectedPlayers
+  const liveConnectedPresenceCount = currentPresence.filter(
+    (presence) => presence.state !== PresenceState.IDLE
+  ).length
+  const hasLivePresence = currentSession !== null && currentPresence.length > 0
+  const connectedPlayersWithDm = hasLivePresence
+    ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+    : selectedCampaign?.connectedPlayersRounded !== undefined || selectedCampaign?.connectedPlayers
       ? Math.max(
           0,
           (selectedCampaign?.connectedPlayersRounded ?? selectedCampaign?.connectedPlayers ?? 0) +
             (selectedCampaign?.dmOnline ? 1 : 0)
         )
-      : Math.max(0, currentPresence.length - connectedSpectatorsCount)
+      : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
     currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
@@ -3423,17 +3445,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       )}
 
       {showStopSessionModal && (
-        <div className="session-modal-backdrop" role="presentation">
+        <div
+          className="session-modal-backdrop"
+          role="presentation"
+          onClick={() => setShowStopSessionModal(false)}
+        >
           <div
             className="session-modal"
             role="dialog"
             aria-modal="true"
             aria-label="End session"
+            onClick={(event) => event.stopPropagation()}
           >
             <h4 className="session-inline-form-title">End Session</h4>
             <p className="session-card-subtitle">
-              End this session now? This closes the current chapter for everyone and moves
-              players back to greenroom/offline state.
+              End this session now? This closes the current chapter for everyone and moves players
+              back to greenroom/offline state.
             </p>
             <div className="session-action-row">
               <button

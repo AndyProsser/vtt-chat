@@ -106,7 +106,7 @@ export function RoomSelector({
   selectedRoomId,
   onSelectRoom,
 }: RoomSelectorProps) {
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
+  const [isMobileExpanded] = useState(true)
   const [draggedUserId, setDraggedUserId] = useState<UUID | null>(null)
   const [pendingRoomMoves, setPendingRoomMoves] = useState<Record<UUID, UUID>>({})
   const [moveError, setMoveError] = useState<string | null>(null)
@@ -117,6 +117,8 @@ export function RoomSelector({
   const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
   const [environmentOverrides, setEnvironmentOverrides] = useState<Record<UUID, string>>({})
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
+  const createGroupWrapRef = useRef<HTMLDivElement | null>(null)
+  const environmentPickerLayerRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
@@ -172,6 +174,62 @@ export function RoomSelector({
   )
 
   const canCreateGroups = canManageRooms && !isGreenroom
+
+  useEffect(() => {
+    if (!showCreateGroupModal && !environmentPickerRoomId) {
+      return
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      if (
+        showCreateGroupModal &&
+        createGroupWrapRef.current &&
+        !createGroupWrapRef.current.contains(target)
+      ) {
+        setShowCreateGroupModal(false)
+      }
+
+      if (!environmentPickerRoomId) {
+        return
+      }
+
+      const currentTrigger = target.closest('[data-room-env-trigger]')
+      const triggerRoomId = currentTrigger?.getAttribute('data-room-env-trigger') as UUID | null
+      const isInsideOpenTrigger = triggerRoomId === environmentPickerRoomId
+      const isInsideOpenPicker = environmentPickerLayerRef.current?.contains(target) ?? false
+
+      if (!isInsideOpenTrigger && !isInsideOpenPicker) {
+        setEnvironmentPickerRoomId(null)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      if (environmentPickerRoomId) {
+        setEnvironmentPickerRoomId(null)
+      }
+
+      if (showCreateGroupModal) {
+        setShowCreateGroupModal(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [environmentPickerRoomId, showCreateGroupModal])
 
   const getDisplayRoomName = (room: RoomSelectorRoomWithParticipants): string => {
     if (room.type === RoomType.MAIN && room.name.trim().toLowerCase() === 'main room') {
@@ -607,27 +665,31 @@ export function RoomSelector({
                   </button>
 
                   <span className="room-selector-item-actions">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="room-selector-item__env-icon"
-                          aria-label="Change group environment"
-                          onClick={() =>
-                            setEnvironmentPickerRoomId((current) =>
-                              current === room.id ? null : room.id
-                            )
-                          }
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            {resolveEnvironmentGlyph(getResolvedEnvironmentName(room))}
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Environment: {getResolvedEnvironmentName(room)}
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="room-selector-item__env-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="room-selector-item__env-icon"
+                            aria-label="Change group environment"
+                            data-room-env-trigger={room.id}
+                            onClick={() => {
+                              setShowCreateGroupModal(false)
+                              setEnvironmentPickerRoomId((current) =>
+                                current === room.id ? null : room.id
+                              )
+                            }}
+                          >
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              {resolveEnvironmentGlyph(getResolvedEnvironmentName(room))}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          Environment: {getResolvedEnvironmentName(room)}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
 
                     {canManageRooms && !isGreenroom ? (
                       <button
@@ -677,6 +739,7 @@ export function RoomSelector({
                     className="room-selector-item__env-picker"
                     role="dialog"
                     aria-label="Group environment picker"
+                    ref={environmentPickerLayerRef}
                   >
                     <p className="room-selector-item__env-picker-title">Choose environment</p>
                     <div className="room-selector-item__env-picker-list">
@@ -908,10 +971,7 @@ export function RoomSelector({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <section
-        className={`room-selector${isMobileExpanded ? ' room-selector--mobile-expanded' : ''}`}
-        aria-label="Room Selector"
-      >
+      <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
         <header className="room-selector-header">
           <h4>
             <Icon name="rooms" /> Voice Groups
@@ -948,13 +1008,15 @@ export function RoomSelector({
               </Tooltip>
             ) : null}
             {canManageRooms ? (
-              <div className="room-selector-header__create-wrap">
+              <div className="room-selector-header__create-wrap" ref={createGroupWrapRef}>
                 <button
                   type="button"
                   className="room-selector-header__create"
-                  onClick={() => setShowCreateGroupModal((current) => !current)}
+                  onClick={() => {
+                    setEnvironmentPickerRoomId(null)
+                    setShowCreateGroupModal((current) => !current)
+                  }}
                   disabled={!canCreateGroups}
-                  aria-expanded={showCreateGroupModal}
                   aria-haspopup="dialog"
                 >
                   Create Group
@@ -967,51 +1029,8 @@ export function RoomSelector({
                 ) : null}
               </div>
             ) : null}
-            <button
-              type="button"
-              className="room-selector-header__mobile-toggle"
-              aria-label={isMobileExpanded ? 'Collapse voice groups' : 'Expand voice groups'}
-              aria-expanded={isMobileExpanded}
-              onClick={() => setIsMobileExpanded((prev) => !prev)}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {isMobileExpanded ? 'expand_less' : 'expand_more'}
-              </span>
-            </button>
           </div>
         </header>
-
-        {/* Mobile compact strip — visible when collapsed on small viewports */}
-        <div
-          className="room-selector-mobile-strip"
-          aria-hidden={isMobileExpanded}
-          role="presentation"
-        >
-          {allRooms.map((room) => {
-            const roomParticipants = displayedParticipantsByRoom[room.id] || []
-            const isSelected = room.id === selectedRoomId
-            return (
-              <button
-                key={room.id}
-                type="button"
-                className={`room-selector-mobile-strip__group${isSelected ? ' room-selector-mobile-strip__group--selected' : ''}`}
-                aria-label={`Quick group ${room.name}`}
-                aria-pressed={isSelected}
-                onClick={() => {
-                  onSelectRoom(room.id)
-                }}
-              >
-                <span className="room-selector-mobile-strip__group-name">{room.name}</span>
-                <span className="room-selector-mobile-strip__group-count">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    group
-                  </span>
-                  {roomParticipants.length}
-                </span>
-              </button>
-            )
-          })}
-        </div>
 
         <div
           className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
@@ -1045,14 +1064,6 @@ export function RoomSelector({
         </div>
 
         {moveError ? <p className="room-selector-error">{moveError}</p> : null}
-        {isMobileExpanded ? (
-          <div
-            className="room-selector-mobile-overlay-backdrop"
-            role="presentation"
-            aria-hidden="true"
-            onClick={() => setIsMobileExpanded(false)}
-          />
-        ) : null}
 
         {radialMenuState ? (
           <RadialMenu
