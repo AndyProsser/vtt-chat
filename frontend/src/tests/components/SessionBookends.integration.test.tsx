@@ -515,7 +515,9 @@ describe('Session bookend integration', () => {
     })
 
     await waitFor(() => {
-      const nextGreenroomMessages = Object.values(useStore.getState().messages[NEXT_SESSION_ID] || {})
+      const nextGreenroomMessages = Object.values(
+        useStore.getState().messages[NEXT_SESSION_ID] || {}
+      )
         .filter((message: any) => message.roomId === NEXT_GREEN_ROOM_ID)
         .map((message: any) => String(message.content || ''))
 
