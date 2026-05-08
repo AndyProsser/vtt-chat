@@ -129,10 +129,10 @@ async function createRoomHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can create rooms' })
     }
 
-    if (session.state === SessionState.IDLE && roomType === RoomType.PRIVATE) {
+    if (roomType === RoomType.PRIVATE) {
       return res.status(400).json({
         code: ErrorCode.INVALID_INPUT,
-        message: 'Cannot create private groups outside an active session',
+        message: 'Private whisper group is system-managed and cannot be created manually',
       })
     }
 

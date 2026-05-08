@@ -25,6 +25,7 @@ import { findSessionById, listSessionsByCampaign } from '@/repositories/session.
 
 const MAIN_ROOM_NAME = 'Main Room'
 const GREEN_ROOM_NAME = 'Green Room'
+const WHISPER_ROOM_NAME = 'Whisper'
 
 function presenceHashKey(sessionId: UUID): string {
   return `presence:session:${sessionId}`
@@ -464,6 +465,24 @@ export async function ensureSessionDefaultRoomsForSession(
   await ensureSessionDefaultRooms({ sessionId, dmId })
 }
 
+export async function ensureSessionWhisperRoomForSession(
+  sessionId: UUID,
+  dmId: UUID
+): Promise<StoredRoom> {
+  const rooms = await getRooms(sessionId)
+  const existingPrivate = rooms.find((room) => room.type === RoomType.PRIVATE)
+  if (existingPrivate) {
+    return existingPrivate
+  }
+
+  return createRoom({
+    sessionId,
+    name: WHISPER_ROOM_NAME,
+    type: RoomType.PRIVATE,
+    createdBy: dmId,
+  })
+}
+
 export async function deletePrivateRoomsForEndedSession(sessionId: UUID): Promise<StoredRoom[]> {
   const rooms = await getRooms(sessionId)
   const privateRooms = rooms.filter((room) => room.type === RoomType.PRIVATE)
@@ -491,6 +510,10 @@ export async function applySessionStateRoomTransition(params: {
     sessionId: params.sessionId,
     dmId: params.dmId,
   })
+
+  if (params.nextState === SessionState.ACTIVE || params.nextState === SessionState.PAUSED) {
+    await ensureSessionWhisperRoomForSession(params.sessionId, params.dmId)
+  }
 
   const toMainRoom = params.nextState === SessionState.ACTIVE
   const targetRoom = toMainRoom ? mainRoom : greenRoom

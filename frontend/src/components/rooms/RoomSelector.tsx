@@ -1142,7 +1142,6 @@ export function RoomSelector({
                   <CreateGroupModal
                     onClose={() => setShowCreateGroupModal(false)}
                     onCreateGroup={handleCreateGroup}
-                    isGreenroom={isGreenroom}
                   />
                 ) : null}
               </div>

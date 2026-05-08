@@ -503,15 +503,35 @@ Cooldown interactions are not included in session recording/history and are purg
 
 ---
 
-## 17. Audio Effect UX Principles
+## 17. Whisper Bubble UX Principles
 
-### **17.1 Effects Are Listed, Not Hidden**
+### **17.1 Single Private Bubble**
+
+Whisper is one system-managed private room per started session. It is not user-multipliable and always appears at the bottom of group listings.
+
+### **17.2 Off-the-Record By Design**
+
+Whisper interactions are never recorded and never persisted to session logs/history (voice and chat).
+
+### **17.3 Minimal Visual Leakage**
+
+Outside Whisper, users may only see membership changes (who entered/left). They cannot see speaking indicators, transcripts, or content from inside Whisper.
+
+### **17.4 Instant Restore After Huddle**
+
+When Whisper ends, all participants return to their exact pre-Whisper gameplay context (room, effects, and relevant DM voice focus state), so play flow resumes without manual cleanup.
+
+---
+
+## 18. Audio Effect UX Principles
+
+### **18.1 Effects Are Listed, Not Hidden**
 
 The AudioPanel shows every active effect as a labelled row with an icon and a short description.
 
 No effect is silent. No effect is invisible.
 
-### **17.2 Effect Order Is Predictable**
+### **18.2 Effect Order Is Predictable**
 
 Effects display in this order:
 1. PTT state (push-to-talk)
@@ -521,7 +541,7 @@ Effects display in this order:
 5. Voice preset (DM character voice)
 6. In-character preset
 
-### **17.3 Effects Clear Completely on Session End**
+### **18.3 Effects Clear Completely on Session End**
 
 When a session ends or transitions to greenroom:
 - All per-session conditions are cleared
@@ -531,7 +551,7 @@ When a session ends or transitions to greenroom:
 
 Campaign-persistent environments (stored in `roomEnvironmentNames`) are preserved for next session.
 
-### **17.4 Effects Restore Correctly on Reconnect**
+### **18.4 Effects Restore Correctly on Reconnect**
 
 On page refresh or reconnect, the server is the authoritative source. Audio state is re-hydrated from the audio state API before the local store is populated.
 

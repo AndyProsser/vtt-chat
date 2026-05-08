@@ -5,14 +5,9 @@ import { Icon } from '../ui/Icon'
 interface CreateGroupModalProps {
   onClose: () => void
   onCreateGroup: (name: string, type: RoomType) => Promise<void>
-  isGreenroom?: boolean
 }
 
-export function CreateGroupModal({
-  onClose,
-  onCreateGroup,
-  isGreenroom = false,
-}: CreateGroupModalProps) {
+export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalProps) {
   const [name, setName] = useState('')
   const [type, setType] = useState<RoomType>(RoomType.GROUP)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -106,21 +101,10 @@ export function CreateGroupModal({
               >
                 Group
               </button>
-              <button
-                type="button"
-                className={`group-popover__segment-btn audio-settings-panel__segment-btn ${type === RoomType.PRIVATE ? 'is-active' : ''}`}
-                aria-pressed={type === RoomType.PRIVATE}
-                onClick={() => setType(RoomType.PRIVATE)}
-                disabled={isSubmitting || isGreenroom}
-                title={
-                  isGreenroom
-                    ? 'Private groups cannot be created outside an active session'
-                    : undefined
-                }
-              >
-                Private
-              </button>
             </div>
+            <p className="group-popover__helper-text">
+              Whisper is a single private bubble created automatically when the session starts.
+            </p>
           </div>
         </section>
 

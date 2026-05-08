@@ -130,7 +130,7 @@ Precondition:
 **Group lifecycle:**
 
 - `GROUP` type rooms (non-greenroom, non-main) are **campaign-persistent**: they survive the end of a session and are restored to the next session for the same campaign.
-- `PRIVATE` type rooms are **session-scoped only**: they are deleted when the session transitions to `ENDED`.
+- `PRIVATE` type room is a single system-managed **Whisper** bubble per started session and is deleted when the session transitions to `ENDED`.
 - Greenroom and Main room are fixed per-session and are not carried forward (they are always re-created).
 
 **Group visibility rules:**
@@ -361,6 +361,50 @@ Notes:
 - Default cooldown duration is 60 seconds and campaign-configurable.
 - DM can extend cooldown before expiry.
 - Cooldown interactions are excluded from session recording/history and purged from logs.
+
+---
+
+### **4.6 Whisper Bubble Flow (DM Off-the-Record Huddle)**
+
+Whisper is a single private bubble for quick sidebar chats.
+
+Preconditions:
+
+- Exactly one whisper room exists in started sessions.
+- Whisper appears at the bottom of the groups list.
+- DM cannot create additional private rooms.
+
+Entry flow:
+
+1. DM drags player into Whisper.
+2. `rooms/moveMemberToWhisper`
+3. Reducer/store updates:
+   - target player moved to whisper room
+   - DM voice target auto-switches to whisper room
+   - broadcast state disabled/locked
+   - whisper participant pre-state snapshot stored (room + effects + DM focus state)
+4. UI updates:
+   - everyone sees membership change only
+   - speaking indicators suppressed for whisper participants
+   - spectators can see who is in whisper, but no whisper content/audio
+
+Runtime flow:
+
+- DM may drag additional players into Whisper.
+- While Whisper is active, DM cannot retarget voice focus or enable broadcast.
+- Whisper content is non-recorded and non-persistent.
+
+Exit flow:
+
+1. DM taps "End Whisper".
+2. `rooms/endWhisper`
+3. Reducer/store restores snapshot:
+   - players return to previous rooms
+   - prior conditions/effects restored
+   - prior DM voice focus restored
+4. UI updates:
+   - normal speaking indicators and controls resume
+   - gameplay returns to pre-whisper state without manual cleanup
 
 ---
 

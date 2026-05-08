@@ -50,6 +50,32 @@ The goal: make Wizards of the Coast ask to collaborate.
 - Audio effects, distance modifiers, voice presets, IC presets
 - Broadcast/voice-of-god state
 
+### Whisper Bubble (Single Private Group)
+
+Whisper is a single, system-managed private bubble for off-the-record side chats.
+
+- Exactly one `PRIVATE` room exists per started session.
+- The room is created automatically when the session starts and is always rendered at the bottom of the group list.
+- DMs cannot create extra private groups.
+- Private room chat and voice are never recorded, never logged, and never persisted to history.
+- Spectators can only see who is currently in Whisper; they cannot hear or read Whisper content.
+
+Whisper behavior:
+
+- When the DM drags a player into Whisper:
+  - DM voice target auto-focuses to Whisper.
+  - Broadcast mode is disabled and locked while Whisper is active.
+  - All per-session audio effects are suspended/cleared inside Whisper.
+  - Speaking indicators are hidden for Whisper participants.
+- DM can drag additional players into Whisper under the same rules.
+- DM cannot retarget DM voice/broadcast until Whisper ends.
+- Ending Whisper returns everyone to their exact previous state:
+  - previous room membership
+  - prior active conditions and effects
+  - prior DM voice target
+
+This must feel instant: quick private huddle, then back to play.
+
 ### Session Lifecycle Rules
 
 - On `SESSION:ENDED` or `ROOM:SESSION_TRANSITION_APPLIED` with `nextState === 'IDLE'` or `'ENDED'`:

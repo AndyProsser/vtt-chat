@@ -24,6 +24,7 @@ import {
   applySessionStateRoomTransition,
   deletePrivateRoomsForEndedSession,
   ensureSessionDefaultRoomsForSession,
+  ensureSessionWhisperRoomForSession,
   getRooms,
   getSessionPresence,
   joinRoom,
@@ -114,6 +115,11 @@ async function ensureJoinedMemberPresence(params: {
     rooms.find((room) => normalizeRoomName(room.name) === 'green-room')
 
   const shouldUseMain = params.session.state === 'ACTIVE' || params.session.state === 'PAUSED'
+
+  if (shouldUseMain) {
+    await ensureSessionWhisperRoomForSession(params.session.id, params.session.dmId)
+  }
+
   const targetRoom = shouldUseMain ? mainRoom || greenRoom : greenRoom || mainRoom
 
   if (!targetRoom) {
