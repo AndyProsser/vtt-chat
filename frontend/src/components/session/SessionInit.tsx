@@ -19,6 +19,10 @@ import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
 import { AudioPanel } from '../audio/AudioPanel'
+import { NotesRailPanel } from './NotesRailPanel'
+import { SearchPanel } from './SearchPanel'
+import { JournalPanel } from './JournalPanel'
+import { HistoryPanel } from './HistoryPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
@@ -608,21 +612,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       (message) => message.roomId === fromGreenroom.id
     )
 
-    const fromGreenroomBookends = fromGreenroomMessages.filter(
+    // Some transitions can emit bookends outside greenroom.
+    // Always fold in session bookends from any room, then de-duplicate by signature below.
+    const bookendsFromAnyRoom = sourceSessionMessages.filter(
       (message) => message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
     )
 
-    // Some transitions can emit bookends before the greenroom room exists.
-    // Pull session bookends from any room as a fallback to preserve chapter history.
-    const fallbackBookendsFromAnyRoom =
-      fromGreenroomBookends.length > 0
-        ? []
-        : sourceSessionMessages.filter(
-            (message) =>
-              message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
-          )
-
-    const fromMessages = [...fromGreenroomMessages, ...fallbackBookendsFromAnyRoom].sort(
+    const fromMessages = [...fromGreenroomMessages, ...bookendsFromAnyRoom].sort(
       (left, right) => left.createdAt - right.createdAt
     )
 
@@ -2562,50 +2558,58 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 }
 
                 if (tab === 'search') {
-                  return renderCampaignScaffoldPanel(
-                    'Search',
-                    'Search is being reset to campaign-wide discovery rather than session-only lookup.',
-                    [
-                      'Campaign knowledge index',
-                      'Players, groups, and notes facets',
-                      'Saved query shortcuts',
-                    ]
+                  return (
+                    <SearchPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={effectiveSessionRole}
+                      rooms={visibleRooms.map((room) => ({
+                        id: room.id,
+                        name: room.name,
+                        type: room.type,
+                      }))}
+                      participants={currentPresence}
+                      onSelectRoom={setSelectedRoomIdOverride}
+                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
+                      onOpenChatWorkspace={() => setToolbarCenterPaneView('chat')}
+                    />
                   )
                 }
 
                 if (tab === 'notes') {
-                  return renderCampaignScaffoldPanel(
-                    'Notes',
-                    'Campaign notes surface reset to a clean scaffold while legacy controls are removed.',
-                    [
-                      'Campaign notebook landing view',
-                      'Handout permissions and targeting',
-                      'Pinned references and templates',
-                    ]
+                  return (
+                    <NotesRailPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={effectiveSessionRole}
+                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
+                    />
                   )
                 }
 
                 if (tab === 'journal') {
-                  return renderCampaignScaffoldPanel(
-                    'Journal',
-                    'Session-aware journal view is reset to a clean shell while older controls are removed.',
-                    [
-                      `Session context: ${currentSession.name}`,
-                      'Chapter timeline and recap hooks',
-                      'Read/write permissions by role',
-                    ]
+                  return (
+                    <JournalPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={effectiveSessionRole}
+                      userId={user.id}
+                    />
                   )
                 }
 
                 if (tab === 'history') {
-                  return renderCampaignScaffoldPanel(
-                    'History',
-                    'Session-aware history is reset to a clean shell while legacy controls are removed.',
-                    [
-                      `Session context: ${currentSession.name}`,
-                      'Chronological event timeline',
-                      'Read-only audit and recap view',
-                    ]
+                  return (
+                    <HistoryPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={currentSession.id}
+                      role={effectiveSessionRole}
+                      userId={user.id}
+                    />
                   )
                 }
 

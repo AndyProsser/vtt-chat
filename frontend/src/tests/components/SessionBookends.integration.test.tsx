@@ -456,4 +456,78 @@ describe('Session bookend integration', () => {
       expect(carriedMessage).toBeTruthy()
     })
   })
+
+  it('retains both session start and end markers in greenroom after repeated start-stop cycles', async () => {
+    const fetchMock = createDefaultFetchMock({
+      sessions: [
+        {
+          id: PREVIOUS_SESSION_ID,
+          name: 'Session Previous',
+          dmId: DM_ID,
+          state: SessionState.ENDED,
+          createdAt: 100,
+        } as any,
+        {
+          id: CURRENT_SESSION_ID,
+          name: 'Session Current',
+          dmId: DM_ID,
+          state: SessionState.IDLE,
+          createdAt: 200,
+        } as any,
+      ],
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    await screen.findByTestId('session-toolbar')
+
+    // Cycle 1
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    await waitFor(() => {
+      expect(screen.getAllByText(/Session Start:/).length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    await waitFor(() => {
+      expect(screen.getAllByText(/Session End:/).length).toBeGreaterThan(0)
+    })
+
+    // Start creates next session and carries bookends to its greenroom.
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    await waitFor(() => {
+      expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)
+    })
+
+    await waitFor(() => {
+      const nextGreenroomMessages = Object.values(useStore.getState().messages[NEXT_SESSION_ID] || {})
+        .filter((message: any) => message.roomId === NEXT_GREEN_ROOM_ID)
+        .map((message: any) => String(message.content || ''))
+
+      const startCount = nextGreenroomMessages.filter((content) =>
+        content.startsWith('Session Start:')
+      ).length
+      const endCount = nextGreenroomMessages.filter((content) =>
+        content.startsWith('Session End:')
+      ).length
+
+      expect(startCount).toBeGreaterThan(0)
+      expect(endCount).toBeGreaterThan(0)
+    })
+  })
 })

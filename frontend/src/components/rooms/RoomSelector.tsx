@@ -167,8 +167,8 @@ export function RoomSelector({
   )
 
   const visibleParticipants = useMemo(
-    () => baseParticipants.filter((participant) => participant.userId !== dmUserId),
-    [baseParticipants, dmUserId]
+    () => (isGreenroom ? baseParticipants : baseParticipants.filter((p) => p.userId !== dmUserId)),
+    [baseParticipants, dmUserId, isGreenroom]
   )
 
   const canCreateGroups = canManageRooms && !isGreenroom
@@ -985,7 +985,7 @@ export function RoomSelector({
                 key={room.id}
                 type="button"
                 className={`room-selector-mobile-strip__group${isSelected ? ' room-selector-mobile-strip__group--selected' : ''}`}
-                aria-label={`Quick select group ${room.name}`}
+                aria-label={`Quick group ${room.name}`}
                 aria-pressed={isSelected}
                 onClick={() => {
                   onSelectRoom(room.id)
@@ -1008,7 +1008,7 @@ export function RoomSelector({
           role="list"
           aria-label="Session groups"
         >
-          {dmParticipant ? (
+          {dmParticipant && !isGreenroom ? (
             <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
               <div className="room-selector-dm__profile">
                 <AvatarOverlay
