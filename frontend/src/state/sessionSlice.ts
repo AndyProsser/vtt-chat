@@ -15,6 +15,7 @@ export interface SessionSlice {
   // State
   sessions: Record<UUID, Session>
   currentSessionId: UUID | null
+  isGreenroom: boolean
   isLoading: boolean
 
   // Actions
@@ -23,6 +24,7 @@ export interface SessionSlice {
   updateSession: (sessionId: UUID, updates: Partial<Session>) => void
   removeSession: (sessionId: UUID) => void
   setCurrentSession: (sessionId: UUID | null) => void
+  setIsGreenroom: (value: boolean) => void
   clearSessions: () => void
 
   // Event handlers
@@ -32,41 +34,71 @@ export interface SessionSlice {
 }
 
 export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
+  // Helper keeps "greenroom mode" in one place.
+  // Treat IDLE/ENDED/no-session as greenroom states.
+  // This allows UI to reliably switch back after a chapter ends.
+
   // State
   sessions: {},
   currentSessionId: null,
+  isGreenroom: true,
   isLoading: false,
 
   // Actions
   createSession: (session) =>
-    set((state) => ({
-      sessions: {
+    set((state) => {
+      const nextSessions = {
         ...state.sessions,
         [session.id]: session,
-      },
-    })),
+      }
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
+      }
+    }),
 
   replaceSessions: (sessions) =>
-    set(() => ({
-      sessions: sessions.reduce(
+    set((state) => {
+      const nextSessions = sessions.reduce(
         (acc, session) => {
           acc[session.id] = session
           return acc
         },
         {} as Record<UUID, Session>
-      ),
-    })),
+      )
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
+      }
+    }),
 
   updateSession: (sessionId, updates) =>
     set((state) => {
       const session = state.sessions[sessionId]
       if (!session) return state
 
+      const nextSessions = {
+        ...state.sessions,
+        [sessionId]: { ...session, ...updates },
+      }
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
       return {
-        sessions: {
-          ...state.sessions,
-          [sessionId]: { ...session, ...updates },
-        },
+        sessions: nextSessions,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
       }
     }),
 
@@ -74,22 +106,42 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
     set((state) => {
       const nextSessions = { ...state.sessions }
       delete nextSessions[sessionId]
+      const nextCurrentSessionId =
+        state.currentSessionId === sessionId ? null : state.currentSessionId
+      const currentSession = nextCurrentSessionId ? nextSessions[nextCurrentSessionId] : null
 
       return {
         sessions: nextSessions,
-        currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
+        currentSessionId: nextCurrentSessionId,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
       }
     }),
 
   setCurrentSession: (sessionId) =>
+    set((state) => {
+      const currentSession = sessionId ? state.sessions[sessionId] : null
+      return {
+        currentSessionId: sessionId,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
+      }
+    }),
+
+  setIsGreenroom: (value) =>
     set({
-      currentSessionId: sessionId,
+      isGreenroom: value,
     }),
 
   clearSessions: () =>
     set({
       sessions: {},
       currentSessionId: null,
+      isGreenroom: true,
     }),
 
   // Event handlers
@@ -107,13 +159,17 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           createdAt: event.timestamp,
         },
       },
+      isGreenroom:
+        !state.currentSessionId ||
+        state.sessions[state.currentSessionId]?.state === ('IDLE' as SessionState) ||
+        state.sessions[state.currentSessionId]?.state === ('ENDED' as SessionState),
     }))
   },
 
   handleSessionStateChanged: (event) => {
     const payload = event.payload as { state: SessionState }
-    set((state) => ({
-      sessions: {
+    set((state) => {
+      const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
           ...state.sessions[event.sessionId]!,
@@ -129,20 +185,38 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           endedAt:
             payload.state === 'ENDED' ? event.timestamp : state.sessions[event.sessionId]?.endedAt,
         },
-      },
-    }))
+      }
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
+      }
+    })
   },
 
   handleSessionEnded: (event) => {
-    set((state) => ({
-      sessions: {
+    set((state) => {
+      const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
           ...state.sessions[event.sessionId]!,
           state: 'ENDED' as SessionState,
           endedAt: event.timestamp,
         },
-      },
-    }))
+      }
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom:
+          !currentSession ||
+          currentSession.state === ('IDLE' as SessionState) ||
+          currentSession.state === ('ENDED' as SessionState),
+      }
+    })
   },
 })

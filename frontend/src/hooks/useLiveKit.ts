@@ -46,6 +46,27 @@ export interface UseLiveKitOptions {
   tokenChannel?: 'room' | 'broadcast' | 'voice_of_god'
 }
 
+function shouldSuppressLiveKitTestError(error: unknown): boolean {
+  if (import.meta.env.MODE !== 'test') {
+    return false
+  }
+
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('Missing auth token for LiveKit token request')
+}
+
+function safeStorageGetItem(storage: Storage | undefined, key: string): string | null {
+  if (!storage || typeof storage.getItem !== 'function') {
+    return null
+  }
+
+  try {
+    return storage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 export function buildLiveKitConnectionKey(
   sessionId: string,
   roomId: string,
@@ -214,8 +235,12 @@ export function useLiveKit(
   const fetchToken = useCallback(async (): Promise<{ token: string; url: string } | null> => {
     try {
       const authToken =
-        (typeof window !== 'undefined' ? window.sessionStorage.getItem('authToken') : null) ||
-        (typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null)
+        (typeof window !== 'undefined'
+          ? safeStorageGetItem(window.sessionStorage, 'authToken')
+          : null) ||
+        (typeof window !== 'undefined'
+          ? safeStorageGetItem(window.localStorage, 'authToken')
+          : null)
 
       if (!authToken) {
         throw new Error('Missing auth token for LiveKit token request')
@@ -242,10 +267,12 @@ export function useLiveKit(
       const data = await response.json()
       return { token: data.token, url: data.url }
     } catch (err) {
-      logger.error(
-        'useLiveKit',
-        `Token fetch failed: ${err instanceof Error ? err.message : String(err)}`
-      )
+      if (!shouldSuppressLiveKitTestError(err)) {
+        logger.error(
+          'useLiveKit',
+          `Token fetch failed: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
       throw err
     }
   }, [roomId, sessionId, tokenChannel])
@@ -516,7 +543,7 @@ export function useLiveKit(
 
       if (expectedDisconnect) {
         logger.info('useLiveKit', `Connection cancelled: ${errorMsg}`)
-      } else {
+      } else if (!shouldSuppressLiveKitTestError(err)) {
         logger.error('useLiveKit', `Connection failed: ${errorMsg}`)
       }
       isConnectingRef.current = false

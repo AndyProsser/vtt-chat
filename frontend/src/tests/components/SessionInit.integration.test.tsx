@@ -128,7 +128,7 @@ describe('SessionInit integration', () => {
     })
   })
 
-  it('updates left-rail participant status when room selection changes', async () => {
+  it('shows only the current group participants while staging in the greenroom', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)
 
@@ -146,6 +146,204 @@ describe('SessionInit integration', () => {
             ],
           }),
         }
+
+        it('shows Home, Notes, and Journal in campaign settings and switches session context across tabs', async () => {
+          const PREVIOUS_SESSION_ID = asUuid('91919191-9191-4919-8919-919191919191')
+
+          const fetchMock = vi.fn(async (input: string | URL) => {
+            const url = String(input)
+
+            if (url.endsWith('/api/campaigns')) {
+              return {
+                ok: true,
+                json: async () => ({
+                  campaigns: [
+                    {
+                      id: CAMPAIGN_ID,
+                      name: 'Iron Keep',
+                      currentDmId: DM_ID,
+                      inviteCode: 'KEEP-01',
+                      memberRole: 'DM',
+                    },
+                  ],
+                }),
+              }
+            }
+
+            if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+              return {
+                ok: true,
+                json: async () => ({
+                  sessions: [
+                    {
+                      id: PREVIOUS_SESSION_ID,
+                      name: 'Session Zero',
+                      dmId: DM_ID,
+                      state: SessionState.ENDED,
+                      createdAt: 1,
+                    },
+                    {
+                      id: SESSION_ID,
+                      name: 'Session Alpha',
+                      dmId: DM_ID,
+                      state: SessionState.IDLE,
+                      createdAt: 2,
+                    },
+                  ],
+                }),
+              }
+            }
+
+            if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/settings`)) {
+              return {
+                ok: true,
+                json: async () => ({
+                  campaign: {
+                    id: CAMPAIGN_ID,
+                    name: 'Iron Keep',
+                    description: 'Old stone walls and louder secrets.',
+                    posterUrl: null,
+                    discoverable: false,
+                    spectatorPolicy: 'NONE',
+                    spectatorMax: null,
+                    spectatorWaitlistEnabled: false,
+                    spectatorReconnectGraceSecs: 60,
+                    extensionSyncPolicy: 'DM_ONLY',
+                    lateJoinPolicy: 'OPEN',
+                    lateJoinGraceMinutes: 30,
+                    inviteCode: 'KEEP-01',
+                    inviteActive: true,
+                    spectatorInviteCode: null,
+                    spectatorInviteActive: false,
+                  },
+                }),
+              }
+            }
+
+            if (url.endsWith(`/api/notes/${SESSION_ID}`)) {
+              return {
+                ok: true,
+                json: async () => ({
+                  notes: [
+                    {
+                      id: asUuid('a1111111-bbbb-4ccc-8ddd-eeeeeeeeeee1'),
+                      authorId: DM_ID,
+                      authorUsername: 'Morgan',
+                      title: 'Latest chapter note',
+                      content: 'Keep the lanterns lit.',
+                      visibility: 'DM_ONLY',
+                      tags: ['prep'],
+                      allowedUsers: [],
+                      createdAt: 5,
+                      updatedAt: 8,
+                    },
+                    {
+                      id: asUuid('a1111111-bbbb-4ccc-8ddd-eeeeeeeeeee2'),
+                      authorId: DM_ID,
+                      authorUsername: 'Morgan',
+                      title: 'Latest recap',
+                      content: 'The party secured the gatehouse and mapped the north wall.',
+                      visibility: 'DM_ONLY',
+                      tags: ['session-summary', `session:${SESSION_ID}`],
+                      allowedUsers: [],
+                      createdAt: 9,
+                      updatedAt: 10,
+                    },
+                  ],
+                }),
+              }
+            }
+
+            if (url.endsWith(`/api/notes/${PREVIOUS_SESSION_ID}`)) {
+              return {
+                ok: true,
+                json: async () => ({
+                  notes: [
+                    {
+                      id: asUuid('b2222222-bbbb-4ccc-8ddd-eeeeeeeeeee1'),
+                      authorId: DM_ID,
+                      authorUsername: 'Morgan',
+                      title: 'Old chapter note',
+                      content: 'The cellar keys are hidden behind the chapel statue.',
+                      visibility: 'DM_ONLY',
+                      tags: ['lore'],
+                      allowedUsers: [],
+                      createdAt: 2,
+                      updatedAt: 4,
+                    },
+                    {
+                      id: asUuid('b2222222-bbbb-4ccc-8ddd-eeeeeeeeeee2'),
+                      authorId: DM_ID,
+                      authorUsername: 'Morgan',
+                      title: 'Earlier recap',
+                      content: 'Scouts reached the chapel ruins before retreating to camp.',
+                      visibility: 'DM_ONLY',
+                      tags: ['session-summary', `session:${PREVIOUS_SESSION_ID}`],
+                      allowedUsers: [],
+                      createdAt: 3,
+                      updatedAt: 5,
+                    },
+                  ],
+                }),
+              }
+            }
+
+            throw new Error(`Unexpected fetch call: ${url}`)
+          })
+
+          vi.stubGlobal('fetch', fetchMock)
+
+          render(
+            <SessionInit
+              apiUrl="http://localhost:3000"
+              wsUrl="ws://localhost:3000"
+              token="token"
+              user={{
+                id: DM_ID,
+                username: 'Morgan',
+                role: Role.DM,
+              }}
+            />
+          )
+
+          await screen.findByText('Campaigns')
+          fireEvent.click(screen.getByRole('button', { name: 'Campaign settings' }))
+
+          const dialog = await screen.findByRole('dialog', { name: 'Campaign settings' })
+
+          await waitFor(() => {
+            expect(within(dialog).getByText('Latest recap')).toBeTruthy()
+            expect(
+              within(dialog).getByText('The party secured the gatehouse and mapped the north wall.')
+            ).toBeTruthy()
+          })
+
+          fireEvent.click(within(dialog).getByRole('tab', { name: 'Notes' }))
+          expect(await within(dialog).findByTestId('notes-rail-panel')).toBeTruthy()
+          expect(within(dialog).getByText('Latest chapter note')).toBeTruthy()
+
+          fireEvent.change(within(dialog).getByLabelText('Session context'), {
+            target: { value: PREVIOUS_SESSION_ID },
+          })
+
+          await waitFor(() => {
+            expect(within(dialog).getByText('Old chapter note')).toBeTruthy()
+            expect(within(dialog).queryByText('Latest chapter note')).toBeNull()
+          })
+
+          fireEvent.click(within(dialog).getByRole('tab', { name: 'Journal' }))
+          expect(await within(dialog).findByTestId('journal-panel')).toBeTruthy()
+          expect(within(dialog).getByText('Old chapter note')).toBeTruthy()
+
+          fireEvent.click(within(dialog).getByRole('tab', { name: 'Home' }))
+
+          await waitFor(() => {
+            expect(within(dialog).getByText('Earlier recap')).toBeTruthy()
+            expect(
+              within(dialog).getByText('Scouts reached the chapel ruins before retreating to camp.')
+            ).toBeTruthy()
+          })
+        })
       }
 
       if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
@@ -197,16 +395,13 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group Strategy Room/i })).toBeTruthy()
       expect(screen.getAllByText('Morgan').length).toBeGreaterThan(0)
       expect(screen.getAllByLabelText('Muted microphone').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Select room Archive Cellar/i }))
-
-    await waitFor(() => {
-      expect(screen.getByText('June')).toBeTruthy()
-    })
+    expect(screen.queryByRole('button', { name: /Select group Archive Cellar/i })).toBeNull()
+    expect(screen.queryByText('June')).toBeNull()
   })
 
   it('keeps audio panel status in sync from shared LiveKit snapshot', async () => {
@@ -269,8 +464,8 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Select room Strategy Room/i })).toBeTruthy()
-      expect(screen.getByText('Disconnected')).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group Strategy Room/i })).toBeTruthy()
+      expect(screen.getByLabelText('Voice disconnected')).toBeTruthy()
     })
 
     const connectionKey = buildLiveKitConnectionKey(SESSION_ID, ROOM_ONE_ID, 'room')
@@ -289,7 +484,7 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText(/Connecting/)).toBeTruthy()
+      expect(screen.getByLabelText('Voice connecting…')).toBeTruthy()
     })
 
     act(() => {
@@ -306,7 +501,7 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Connected')).toBeTruthy()
+      expect(screen.getByLabelText('Voice connected')).toBeTruthy()
     })
   })
 
@@ -860,7 +1055,8 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Watch campaign' }))
 
     await screen.findByTestId('session-toolbar')
-    expect(screen.getByText('SPECTATOR')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Rooms' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Notes' })).toBeNull()
   })
 
   it('uses PLAYER role from campaign membership even when auth role is spectator', async () => {
@@ -927,7 +1123,9 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     const toolbar = await screen.findByTestId('session-toolbar')
-    expect(within(toolbar).getByText('PLAYER')).toBeTruthy()
+    expect(toolbar).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
   })
 
   it('pauses an active session from the toolbar pause button', async () => {

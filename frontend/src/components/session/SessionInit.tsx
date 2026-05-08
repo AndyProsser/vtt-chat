@@ -28,11 +28,12 @@ import { AudioPanel } from '../audio/AudioPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
-import { isGreenRoomName, ROOM_NAMES } from '../../constants/roomPresence.constants'
+import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Note } from '@/types/notes'
+import type { Message } from '@/types/chat'
 import type {
   Room as RoomRecord,
   RoomUser as RoomMember,
@@ -109,6 +110,7 @@ interface ApiAudioEnvironmentState {
 }
 
 type CampaignMembershipRole = CampaignSummary['memberRole']
+type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
 
 const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
 const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -120,6 +122,18 @@ const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
 const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
+const SESSION_SUMMARY_TITLE = 'Session Summary'
+const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
+
+function resolveGreenroomCacheTtlMs(): number {
+  const raw = Number(import.meta.env.VITE_GREENROOM_CACHE_TTL_MS)
+
+  if (!Number.isFinite(raw) || raw < 0) {
+    return DEFAULT_GREENROOM_CACHE_TTL_MS
+  }
+
+  return raw
+}
 
 type CampaignSettingsPayload = {
   id: UUID
@@ -179,6 +193,35 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   if (idle) return idle
 
   return null
+}
+
+function getSessionsSortedChronologically(sessions: SessionRecord[]): SessionRecord[] {
+  return [...sessions].sort((left, right) => {
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt - right.createdAt
+    }
+
+    return left.id.localeCompare(right.id)
+  })
+}
+
+function getLatestSessionChronologically(sessions: SessionRecord[]): SessionRecord | null {
+  const sorted = getSessionsSortedChronologically(sessions)
+  return sorted.length ? sorted[sorted.length - 1] : null
+}
+
+function getPreviousSessionChronologically(
+  sessions: SessionRecord[],
+  currentSessionId: UUID
+): SessionRecord | null {
+  const sorted = getSessionsSortedChronologically(sessions)
+  const currentIndex = sorted.findIndex((session) => session.id === currentSessionId)
+
+  if (currentIndex <= 0) {
+    return null
+  }
+
+  return sorted[currentIndex - 1] || null
 }
 
 function formatSessionBookendTimestamp(timestamp: number): string {
@@ -326,6 +369,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
   const [settingsCampaignId, setSettingsCampaignId] = useState<UUID | ''>('')
+  const [settingsHomeTab, setSettingsHomeTab] = useState<CampaignSettingsHomeTab>('home')
+  const [settingsCampaignSessions, setSettingsCampaignSessions] = useState<SessionRecord[]>([])
+  const [settingsReferenceSessionId, setSettingsReferenceSessionId] = useState<UUID | ''>('')
+  const [isSettingsReferenceNotesLoading, setIsSettingsReferenceNotesLoading] = useState(false)
+  const [settingsReferenceNotesError, setSettingsReferenceNotesError] = useState<string | null>(
+    null
+  )
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSettingsSaving, setIsSettingsSaving] = useState(false)
   const [isInviteReissuing, setIsInviteReissuing] = useState(false)
@@ -368,6 +418,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const wsTelemetryPrevRef = useRef<ConnectionState | null>(null)
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const lastHydratedSessionIdRef = useRef<UUID | null>(null)
+  const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
+  const greenroomCleanupTimerRef = useRef<number | null>(null)
 
   // WebSocket connection
   const { state: wsState, error: wsError } = useWebSocket({
@@ -379,11 +431,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   // Store
   const sessions = useStore((state) => state.sessions)
   const currentSessionId = useStore((state) => state.currentSessionId)
+  const isGreenroom = useStore((state) => state.isGreenroom)
   const rooms = useStore((state) => state.rooms)
   const sessionPresence = useStore((state) => state.sessionPresence)
   const roomMembers = useStore((state) => state.roomMembers)
+  const messages = useStore((state) => state.messages)
   const notes = useStore((state) => state.notes)
+  const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
+  const clearMessages = useStore((state) => state.clearMessages)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
@@ -398,6 +454,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const replaceSessions = useStore((state) => state.replaceSessions)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const setCurrentSession = useStore((state) => state.setCurrentSession)
+  const setIsGreenroom = useStore((state) => state.setIsGreenroom)
+  const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
   const typedSessions = sessions as Record<UUID, SessionRecord>
@@ -426,6 +484,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     ? Object.keys(notes[currentSession.id] ?? {}).length
     : 0
   const typedNotesBySession = notes as Record<UUID, Record<UUID, Note>>
+  const typedMessagesBySession = messages as Record<UUID, Record<UUID, Message>>
   const selectedRoomId = useMemo<UUID | ''>(() => {
     if (!visibleRooms.length) {
       return ''
@@ -494,59 +553,13 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [addMessage, getSessionBookendRoomIds]
   )
 
-  const appendMissingPreviousSummaryNote = useCallback(
-    async (sessionId: UUID) => {
-      const previousSession = sessionList.find((candidate) => candidate.id !== sessionId)
-      if (!previousSession) {
-        return
-      }
+  const scheduleGreenroomCarry = useCallback((fromSessionId: UUID, toSessionId: UUID) => {
+    if (fromSessionId === toSessionId) {
+      return
+    }
 
-      const localPreviousNotes = Object.values(typedNotesBySession[previousSession.id] || {})
-      let hasSummary = localPreviousNotes.some(
-        (note) => Array.isArray(note.tags) && note.tags.includes(SESSION_SUMMARY_TAG)
-      )
-
-      if (!hasSummary) {
-        try {
-          const response = await fetch(`${apiUrl}/api/notes/${previousSession.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-
-          if (response.ok) {
-            const data = await response.json().catch(() => ({}))
-            const fetchedNotes = Array.isArray(data?.notes) ? data.notes : []
-            hasSummary = fetchedNotes.some(
-              (note: any) => Array.isArray(note?.tags) && note.tags.includes(SESSION_SUMMARY_TAG)
-            )
-          }
-        } catch {
-          // Best effort: if the summary lookup fails, skip injecting a possibly incorrect reminder.
-          return
-        }
-      }
-
-      if (hasSummary) {
-        return
-      }
-
-      const timestamp = Date.now()
-      const content = 'Session Note: No previous session summary available.'
-
-      for (const roomId of getSessionBookendRoomIds()) {
-        addMessage(sessionId, {
-          id: crypto.randomUUID() as UUID,
-          roomId,
-          authorId: SYSTEM_MESSAGE_AUTHOR_ID,
-          authorUsername: 'SYSTEM',
-          content,
-          type: MessageType.SYSTEM,
-          isDmOnly: false,
-          createdAt: timestamp,
-        })
-      }
-    },
-    [addMessage, apiUrl, getSessionBookendRoomIds, sessionList, token, typedNotesBySession]
-  )
+    pendingGreenroomCarryBySessionIdRef.current.set(toSessionId, fromSessionId)
+  }, [])
 
   const activeTransitionNotice =
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
@@ -568,6 +581,67 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     setDismissedTransitionEventId(activeTransitionNotice.eventId)
   }, [activeTransitionNotice])
+
+  useEffect(() => {
+    if (!currentSession) {
+      return
+    }
+
+    const fromSessionId = pendingGreenroomCarryBySessionIdRef.current.get(currentSession.id)
+    if (!fromSessionId) {
+      return
+    }
+
+    const targetGreenroom = currentRooms.find((room) => isGreenRoom(room))
+    if (!targetGreenroom) {
+      return
+    }
+
+    const fromRooms = Object.values(typedRoomsBySession[fromSessionId] || {})
+    const fromGreenroom = fromRooms.find((room) => isGreenRoom(room))
+    if (!fromGreenroom) {
+      pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
+      return
+    }
+
+    const fromMessages = Object.values(typedMessagesBySession[fromSessionId] || {})
+      .filter(
+        (message) =>
+          message.roomId === fromGreenroom.id &&
+          message.type !== MessageType.SYSTEM &&
+          !message.content.startsWith('Session Start:') &&
+          !message.content.startsWith('Session End:')
+      )
+      .sort((left, right) => left.createdAt - right.createdAt)
+
+    if (!fromMessages.length) {
+      pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
+      return
+    }
+
+    const targetMessages = Object.values(typedMessagesBySession[currentSession.id] || {})
+    const hasTargetGreenroomMessages = targetMessages.some(
+      (message) =>
+        message.roomId === targetGreenroom.id &&
+        message.type !== MessageType.SYSTEM &&
+        !message.content.startsWith('Session Start:') &&
+        !message.content.startsWith('Session End:')
+    )
+
+    if (!hasTargetGreenroomMessages) {
+      const baseTimestamp = Date.now()
+      for (const [index, source] of fromMessages.entries()) {
+        addMessage(currentSession.id, {
+          ...source,
+          id: crypto.randomUUID() as UUID,
+          roomId: targetGreenroom.id,
+          createdAt: baseTimestamp + index,
+        })
+      }
+    }
+
+    pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
+  }, [addMessage, currentRooms, currentSession, typedMessagesBySession, typedRoomsBySession])
 
   const loadCampaignSettings = useCallback(
     async (campaignId: UUID) => {
@@ -613,15 +687,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [apiUrl, token]
   )
 
-  const openCampaignSettingsModal = useCallback(
-    (campaignId: UUID) => {
-      setSettingsCampaignId(campaignId)
-      setShowCampaignSettingsModal(true)
-      void loadCampaignSettings(campaignId)
-    },
-    [loadCampaignSettings]
-  )
-
   const fetchCampaignSessions = useCallback(
     async (campaignId: UUID): Promise<SessionRecord[]> => {
       const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions`, {
@@ -631,14 +696,40 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to load campaign sessions')
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to load campaign sessions')
       }
 
-      const data = await response.json()
-      return (data.sessions || []) as SessionRecord[]
+      const data = (await response.json()) as { sessions?: SessionRecord[] }
+      return Array.isArray(data.sessions) ? data.sessions : []
     },
     [apiUrl, token]
+  )
+
+  const loadCampaignSettingsSessionContext = useCallback(
+    async (campaignId: UUID) => {
+      try {
+        const sessions = await fetchCampaignSessions(campaignId)
+        setSettingsCampaignSessions(sessions)
+        const latestSession = getLatestSessionChronologically(sessions)
+        setSettingsReferenceSessionId(latestSession?.id || '')
+      } catch {
+        setSettingsCampaignSessions([])
+        setSettingsReferenceSessionId('')
+      }
+    },
+    [fetchCampaignSessions]
+  )
+
+  const openCampaignSettingsModal = useCallback(
+    (campaignId: UUID) => {
+      setSettingsCampaignId(campaignId)
+      setSettingsHomeTab('home')
+      setShowCampaignSettingsModal(true)
+      void loadCampaignSettings(campaignId)
+      void loadCampaignSettingsSessionContext(campaignId)
+    },
+    [loadCampaignSettings, loadCampaignSettingsSessionContext]
   )
 
   const ensureSessionMembership = useCallback(
@@ -807,6 +898,68 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     void loadCampaignSessions()
   }, [selectedCampaignId, clearSessions, fetchCampaignSessions, replaceSessions])
+
+  useEffect(() => {
+    if (!showCampaignSettingsModal || !settingsReferenceSessionId) {
+      setIsSettingsReferenceNotesLoading(false)
+      setSettingsReferenceNotesError(null)
+      return
+    }
+
+    let cancelled = false
+
+    const loadSettingsReferenceNotes = async () => {
+      setIsSettingsReferenceNotesLoading(true)
+      setSettingsReferenceNotesError(null)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/notes/${settingsReferenceSessionId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+        const fetchedEntries: Note[] = (data.notes || []).map((note: any) => ({
+          id: note.id,
+          ownerId: note.authorId,
+          ownerUsername: note.authorUsername,
+          title: note.title,
+          content: note.content,
+          visibility: note.visibility,
+          tags: note.tags || [],
+          allowedUsers: note.allowedUsers || [],
+          publishedAt: note.publishedAt,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+        }))
+
+        if (!cancelled) {
+          for (const entry of fetchedEntries) {
+            addNote(settingsReferenceSessionId as UUID, entry)
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setSettingsReferenceNotesError(
+            err instanceof Error ? err.message : 'Failed to load session notes'
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSettingsReferenceNotesLoading(false)
+        }
+      }
+    }
+
+    void loadSettingsReferenceNotes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [addNote, apiUrl, settingsReferenceSessionId, showCampaignSettingsModal, token])
 
   useEffect(() => {
     telemetryClient.setTransport(
@@ -1027,6 +1180,51 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
     }
   }, [clearRoomEnvironmentName, currentRooms, currentSession])
+
+  useEffect(() => {
+    if (!selectedCampaignId || !currentSession) {
+      if (greenroomCleanupTimerRef.current !== null) {
+        window.clearTimeout(greenroomCleanupTimerRef.current)
+        greenroomCleanupTimerRef.current = null
+      }
+      return
+    }
+
+    const connectedCount = currentPresence.filter(
+      (presence) => presence.state !== PresenceState.IDLE
+    ).length
+
+    if (!isGreenroom || connectedCount > 0) {
+      if (greenroomCleanupTimerRef.current !== null) {
+        window.clearTimeout(greenroomCleanupTimerRef.current)
+        greenroomCleanupTimerRef.current = null
+      }
+      return
+    }
+
+    const ttlMs = resolveGreenroomCacheTtlMs()
+    if (ttlMs <= 0) {
+      return
+    }
+
+    if (greenroomCleanupTimerRef.current !== null) {
+      window.clearTimeout(greenroomCleanupTimerRef.current)
+    }
+
+    greenroomCleanupTimerRef.current = window.setTimeout(() => {
+      for (const session of sessionList) {
+        clearMessages(session.id)
+      }
+      greenroomCleanupTimerRef.current = null
+    }, ttlMs)
+
+    return () => {
+      if (greenroomCleanupTimerRef.current !== null) {
+        window.clearTimeout(greenroomCleanupTimerRef.current)
+        greenroomCleanupTimerRef.current = null
+      }
+    }
+  }, [clearMessages, currentPresence, currentSession, isGreenroom, selectedCampaignId, sessionList])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1514,7 +1712,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     async (
       campaignId: UUID,
       existingSessions: SessionRecord[],
-      options?: { autoActivate?: boolean }
+      options?: { autoActivate?: boolean; carryFromSessionId?: UUID }
     ): Promise<UUID | null> => {
       try {
         const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions/start`, {
@@ -1536,6 +1734,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         const payload = (await response.json()) as { session: SessionRecord }
         await ensureSessionMembership(payload.session.id)
         replaceSessions([payload.session, ...existingSessions])
+        if (options?.carryFromSessionId) {
+          scheduleGreenroomCarry(options.carryFromSessionId, payload.session.id)
+        }
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
 
@@ -1560,7 +1761,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           const activeSession = await transitionResponse.json()
           updateSession(payload.session.id, activeSession)
           appendSessionBookendMessages(payload.session.id, SessionState.ACTIVE)
-          void appendMissingPreviousSummaryNote(payload.session.id)
         }
 
         return payload.session.id
@@ -1575,10 +1775,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       ensureSessionMembership,
       onSessionCreated,
       replaceSessions,
+      scheduleGreenroomCarry,
       setCurrentSession,
       token,
       updateSession,
-      appendMissingPreviousSummaryNote,
       appendSessionBookendMessages,
     ]
   )
@@ -1590,7 +1790,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      await startCampaignSession(selectedCampaignId, sessionList, { autoActivate: true })
+      await startCampaignSession(selectedCampaignId, sessionList, {
+        autoActivate: true,
+        carryFromSessionId: sessionId,
+      })
       return
     }
 
@@ -1643,9 +1846,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       updateSession(sessionId, updatedSession)
 
       appendSessionBookendMessages(sessionId, state)
-      if (state === SessionState.ACTIVE) {
-        void appendMissingPreviousSummaryNote(sessionId)
+      if (state === SessionState.ENDED || state === SessionState.IDLE) {
+        setSelectedRoomIdOverride('')
+        resetToolbarActionsState()
       }
+
+      setIsGreenroom(state === SessionState.IDLE || state === SessionState.ENDED)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -1738,6 +1944,29 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     roomId: selectedRoomId || null,
   })
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
+  const settingsReferenceSession = settingsCampaignSessions.find(
+    (session) => session.id === settingsReferenceSessionId
+  )
+  const settingsReferenceNotes = useMemo(
+    () =>
+      settingsReferenceSessionId
+        ? Object.values(typedNotesBySession[settingsReferenceSessionId as UUID] || {})
+        : [],
+    [settingsReferenceSessionId, typedNotesBySession]
+  )
+  const settingsReferenceSummaryEntry = useMemo(
+    () =>
+      [...settingsReferenceNotes]
+        .filter((note) => note.tags.includes(SESSION_SUMMARY_TAG))
+        .sort(
+          (left, right) => (right.updatedAt || right.createdAt) - (left.updatedAt || left.createdAt)
+        )[0] ?? null,
+    [settingsReferenceNotes]
+  )
+  const settingsReferenceSummaryExcerpt =
+    settingsReferenceSummaryEntry?.title === SESSION_SUMMARY_TITLE
+      ? 'Not provided'
+      : settingsReferenceSummaryEntry?.title || 'Not provided'
   const connectedSpectatorsCount = selectedCampaign?.connectedSpectatorsRounded ?? 0
   const connectedPlayersWithDm =
     selectedCampaign?.connectedPlayersRounded !== undefined || selectedCampaign?.connectedPlayers
@@ -1767,9 +1996,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           role: effectiveSessionRole,
           campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
         }
-  const canStartFromGreenroom =
-    currentSession?.dmId === user.id &&
-    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.ENDED)
+  const canStartFromGreenroom = currentSession?.dmId === user.id && isGreenroom
   const canPauseFromActive =
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
@@ -2489,7 +2716,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   className="session-icon-action"
                   title={isSettingsSaving ? 'Saving settings' : 'Save settings'}
                   aria-label={isSettingsSaving ? 'Saving settings' : 'Save settings'}
-                  disabled={isSettingsSaving || !settingsData || !settingsName.trim()}
+                  disabled={
+                    settingsHomeTab !== 'home' ||
+                    isSettingsSaving ||
+                    !settingsData ||
+                    !settingsName.trim()
+                  }
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
                     {isSettingsSaving ? 'hourglass_top' : 'save'}
@@ -2509,13 +2741,145 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               </div>
             </div>
 
+            <div
+              className="session-campaign-settings-tabs"
+              role="tablist"
+              aria-label="Settings home tabs"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={settingsHomeTab === 'home'}
+                className={`session-campaign-settings-tab ${settingsHomeTab === 'home' ? 'is-active' : ''}`}
+                onClick={() => setSettingsHomeTab('home')}
+              >
+                Home
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={settingsHomeTab === 'notes'}
+                className={`session-campaign-settings-tab ${settingsHomeTab === 'notes' ? 'is-active' : ''}`}
+                onClick={() => setSettingsHomeTab('notes')}
+                disabled={!settingsReferenceSessionId}
+              >
+                Notes
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={settingsHomeTab === 'journal'}
+                className={`session-campaign-settings-tab ${settingsHomeTab === 'journal' ? 'is-active' : ''}`}
+                onClick={() => setSettingsHomeTab('journal')}
+                disabled={!settingsReferenceSessionId}
+              >
+                Journal
+              </button>
+            </div>
+
+            {settingsCampaignSessions.length > 0 ? (
+              <div className="session-campaign-settings-session-context">
+                <label className="session-label" htmlFor="settings-session-context">
+                  Session context
+                </label>
+                <select
+                  id="settings-session-context"
+                  className="session-input"
+                  value={settingsReferenceSessionId}
+                  onChange={(event) => setSettingsReferenceSessionId(event.target.value as UUID)}
+                  disabled={!settingsCampaignSessions.length}
+                >
+                  {settingsCampaignSessions.length === 0 ? (
+                    <option value="">No sessions available</option>
+                  ) : (
+                    [...settingsCampaignSessions].reverse().map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {session.name} ({new Date(session.createdAt).toLocaleDateString()})
+                      </option>
+                    ))
+                  )}
+                </select>
+                {settingsReferenceSession ? (
+                  <p className="session-card-subtitle">
+                    Working in {settingsReferenceSession.name} ({settingsReferenceSession.id}).
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {isSettingsLoading ? (
               <div className="session-status-message">Loading campaign settings...</div>
             ) : !settingsData ? (
               <div className="session-status-message">Unable to load campaign settings.</div>
+            ) : settingsHomeTab === 'notes' ? (
+              settingsReferenceSessionId ? (
+                <NotesRailPanel
+                  apiUrl={apiUrl}
+                  token={token}
+                  sessionId={settingsReferenceSessionId as UUID}
+                  role={Role.DM}
+                />
+              ) : (
+                <div className="session-status-message">
+                  No session available yet. Start a session chapter to unlock Notes.
+                </div>
+              )
+            ) : settingsHomeTab === 'journal' ? (
+              settingsReferenceSessionId ? (
+                <JournalPanel
+                  key={`settings-journal:${settingsReferenceSessionId}`}
+                  apiUrl={apiUrl}
+                  token={token}
+                  sessionId={settingsReferenceSessionId as UUID}
+                  role={Role.DM}
+                  userId={user.id}
+                />
+              ) : (
+                <div className="session-status-message">
+                  No session available yet. Start a session chapter to unlock Journal.
+                </div>
+              )
             ) : (
               <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">
                 <div className="session-campaign-settings-column">
+                  <section
+                    className="session-campaign-settings-panel session-campaign-settings-summary-preview"
+                    aria-label="Session summary preview"
+                  >
+                    <h5 className="session-inline-form-title">Session Summary Preview</h5>
+                    {settingsReferenceSession ? (
+                      <>
+                        <p className="session-card-subtitle">
+                          {settingsReferenceSession.name} ({settingsReferenceSession.id})
+                        </p>
+                        {isSettingsReferenceNotesLoading ? (
+                          <p className="session-card-subtitle">Loading summary preview...</p>
+                        ) : settingsReferenceNotesError ? (
+                          <p className="session-card-subtitle">{settingsReferenceNotesError}</p>
+                        ) : settingsReferenceSummaryEntry ? (
+                          <div className="session-summary-preview-card">
+                            <p className="session-summary-preview-card__label">Excerpt</p>
+                            <p className="session-summary-preview-card__excerpt">
+                              {settingsReferenceSummaryExcerpt}
+                            </p>
+                            <p className="session-summary-preview-card__label">Summary</p>
+                            <p className="session-summary-preview-card__body">
+                              {settingsReferenceSummaryEntry.content || 'No summary details yet.'}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="session-card-subtitle">
+                            No session summary saved for this chapter yet.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="session-card-subtitle">
+                        No session available yet. Start a session chapter to unlock summary preview.
+                      </p>
+                    )}
+                  </section>
+
                   <form
                     id="campaign-settings-form"
                     className="session-campaign-settings-panel"
