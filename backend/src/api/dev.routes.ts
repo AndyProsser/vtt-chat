@@ -15,7 +15,7 @@
 import { Router, Request, Response } from 'express'
 import { isValidUUID } from '@shared'
 import {
-  MOCK_PLAYERS,
+  listMockPlayers,
   joinMockPlayersToSession,
   removeMockPlayersFromSession,
   getMockPlayerTokens,
@@ -36,10 +36,11 @@ router.get('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid sessionId' })
   }
 
-  const tokens = sessionId ? getMockPlayerTokens(sessionId as UUID) : undefined
+  const mockPlayers = await listMockPlayers()
+  const tokens = sessionId ? await getMockPlayerTokens(sessionId as UUID) : undefined
 
   return res.json({
-    mockPlayers: MOCK_PLAYERS.map((m) => ({
+    mockPlayers: mockPlayers.map((m) => ({
       id: m.id,
       username: m.username,
       displayName: m.displayName,
@@ -71,10 +72,12 @@ router.post('/join', async (req: Request, res: Response) => {
 
   await joinMockPlayersToSession(sessionId as UUID)
 
+  const mockPlayers = await listMockPlayers()
+
   return res.json({
     ok: true,
     message: `Mock players joined session ${sessionId}`,
-    count: MOCK_PLAYERS.length,
+    availableTemplates: mockPlayers.length,
   })
 })
 
@@ -92,10 +95,12 @@ router.post('/remove', async (req: Request, res: Response) => {
 
   await removeMockPlayersFromSession(sessionId as UUID)
 
+  const mockPlayers = await listMockPlayers()
+
   return res.json({
     ok: true,
     message: `Mock players removed from session ${sessionId}`,
-    count: MOCK_PLAYERS.length,
+    availableTemplates: mockPlayers.length,
   })
 })
 

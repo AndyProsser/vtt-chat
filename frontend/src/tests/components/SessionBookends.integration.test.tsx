@@ -360,10 +360,21 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getByText(/(\[Session Started\]|Session Start:)/)).toBeTruthy()
+      const currentSessionMessages = Object.values(
+        useStore.getState().messages[CURRENT_SESSION_ID] || {}
+      ) as Array<any>
+
+      const mainStartMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('Session Start:'))
+      )
+
+      expect(mainStartMarkers.length).toBeGreaterThan(0)
     })
 
-    expect(document.querySelector('.chat-session-marker--bookend')).toBeTruthy()
+    expect(document.querySelector('.chat-session-marker--bookend')).toBeNull()
     expect(screen.queryByText('Session Note: No previous session summary available.')).toBeNull()
   })
 
@@ -662,20 +673,47 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
+      const currentSessionMessages = Object.values(
+        useStore.getState().messages[CURRENT_SESSION_ID] || {}
+      ) as Array<any>
+      const mainStartMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('Session Start:'))
+      )
+      expect(mainStartMarkers.length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/(\[Session Ended\]|Session End:)/).length).toBeGreaterThan(0)
+      const currentSessionMessages = Object.values(
+        useStore.getState().messages[CURRENT_SESSION_ID] || {}
+      ) as Array<any>
+      const mainEndMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Ended]') ||
+            String(message.content || '').startsWith('Session End:'))
+      )
+      expect(mainEndMarkers.length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
+      const nextSessionMessages = Object.values(
+        useStore.getState().messages[NEXT_SESSION_ID] || {}
+      ) as Array<any>
+      const nextMainStartMarkers = nextSessionMessages.filter(
+        (message) =>
+          message.roomId === NEXT_MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('Session Start:'))
+      )
+      expect(nextMainStartMarkers.length).toBeGreaterThan(0)
     })
 
     await waitFor(() => {
@@ -690,7 +728,7 @@ describe('Session bookend integration', () => {
     })
   })
 
-  it('retains both session start and end markers in greenroom after repeated start-stop cycles', async () => {
+  it('retains session start and end markers in MAIN only after repeated start-stop cycles', async () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
@@ -731,58 +769,80 @@ describe('Session bookend integration', () => {
     // Cycle 1
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
-      expect(screen.getAllByText(/(\[Session Started\]|Session Start:)/).length).toBeGreaterThan(0)
+      const currentSessionMessages = Object.values(
+        useStore.getState().messages[CURRENT_SESSION_ID] || {}
+      ) as Array<any>
+
+      const mainMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('Session Start:'))
+      )
+      const greenMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === GREEN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('Session Start:'))
+      )
+
+      expect(mainMarkers.length).toBeGreaterThan(0)
+      expect(greenMarkers.length).toBe(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
     await waitFor(() => {
-      expect(screen.getAllByText(/(\[Session Ended\]|Session End:)/).length).toBeGreaterThan(0)
+      const currentSessionMessages = Object.values(
+        useStore.getState().messages[CURRENT_SESSION_ID] || {}
+      ) as Array<any>
+
+      const mainMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Ended]') ||
+            String(message.content || '').startsWith('Session End:'))
+      )
+      const greenMarkers = currentSessionMessages.filter(
+        (message) =>
+          message.roomId === GREEN_ROOM_ID &&
+          (String(message.content || '').startsWith('[Session Ended]') ||
+            String(message.content || '').startsWith('Session End:'))
+      )
+
+      expect(mainMarkers.length).toBeGreaterThan(0)
+      expect(greenMarkers.length).toBe(0)
     })
 
-    // Start creates next session and carries bookends to its greenroom.
+    // Start creates next session; markers remain MAIN-only.
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
       expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)
     })
 
     await waitFor(() => {
-      const nextGreenroomMessages = Object.values(
+      const nextSessionMessages = Object.values(
         useStore.getState().messages[NEXT_SESSION_ID] || {}
-      )
-        .filter((message: any) => message.roomId === NEXT_GREEN_ROOM_ID)
-        .sort((left: any, right: any) => left.createdAt - right.createdAt)
+      ) as Array<any>
 
-      const nextGreenroomMarkerContents = nextGreenroomMessages
-        .map((message: any) => String(message.content || ''))
-        .filter(
-          (content) =>
-            content.startsWith('Session Start:') ||
-            content.startsWith('Session End:') ||
-            content.startsWith('[Session Started]') ||
-            content.startsWith('[Session Ended]')
-        )
-
-      const startCount = nextGreenroomMarkerContents.filter(
-        (content) => content.startsWith('Session Start:') || content.startsWith('[Session Started]')
-      ).length
-      const endCount = nextGreenroomMarkerContents.filter(
-        (content) => content.startsWith('Session End:') || content.startsWith('[Session Ended]')
-      ).length
-
-      const firstStartIndex = nextGreenroomMarkerContents.findIndex(
-        (content) => content.startsWith('Session Start:') || content.startsWith('[Session Started]')
-      )
-      const firstEndIndex = nextGreenroomMarkerContents.findIndex(
-        (content) => content.startsWith('Session End:') || content.startsWith('[Session Ended]')
+      const nextMainStartMarkers = nextSessionMessages.filter(
+        (message) =>
+          message.roomId === NEXT_MAIN_ROOM_ID &&
+          (String(message.content || '').startsWith('Session Start:') ||
+            String(message.content || '').startsWith('[Session Started]'))
       )
 
-      expect(startCount).toBeGreaterThan(0)
-      expect(endCount).toBeGreaterThan(0)
-      expect(startCount).toBeGreaterThanOrEqual(2)
-      expect(firstStartIndex).toBeGreaterThanOrEqual(0)
-      expect(firstEndIndex).toBeGreaterThanOrEqual(0)
-      expect(firstStartIndex).toBeLessThan(firstEndIndex)
+      const nextGreenroomMarkers = nextSessionMessages.filter(
+        (message) =>
+          message.roomId === NEXT_GREEN_ROOM_ID &&
+          (String(message.content || '').startsWith('Session Start:') ||
+            String(message.content || '').startsWith('Session End:') ||
+            String(message.content || '').startsWith('[Session Started]') ||
+            String(message.content || '').startsWith('[Session Ended]'))
+      )
+
+      expect(nextMainStartMarkers.length).toBeGreaterThan(0)
+      expect(nextGreenroomMarkers.length).toBe(0)
     })
   })
 })

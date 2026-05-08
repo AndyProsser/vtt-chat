@@ -654,7 +654,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const targetIds = new Set<UUID>()
 
       for (const room of sourceRooms) {
-        if (room.type === RoomType.MAIN || isGreenRoom(room)) {
+        // Session boundary bookends are session-runtime markers and belong only
+        // to the live MAIN room timeline, never Greenroom.
+        if (room.type === RoomType.MAIN) {
           targetIds.add(room.id)
         }
       }
@@ -779,7 +781,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const restoreSessionBookendsFromHistory = useCallback(
     async (sessionId: UUID, rooms: Array<Pick<RoomRecord, 'id' | 'type' | 'name'>>) => {
       const targetRoomIds = rooms
-        .filter((room) => room.type === RoomType.MAIN || isGreenRoom(room))
+        .filter((room) => room.type === RoomType.MAIN)
         .map((room) => room.id)
 
       if (!targetRoomIds.length) {
@@ -952,46 +954,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    const sourceSessionMessages = Object.values(typedMessagesBySession[fromSessionId] || {})
-    // Carry only durable session markers across sessions.
-    // Regular greenroom chat is intentionally ephemeral.
-    const bookendsFromAnyRoom = sourceSessionMessages.filter(
-      (message) => message.type === MessageType.SYSTEM && isSessionBookendMessage(message.content)
-    )
-
-    const fromMessages = [...bookendsFromAnyRoom].sort(
-      (left, right) => left.createdAt - right.createdAt
-    )
-
-    if (!fromMessages.length) {
-      pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
-      return
-    }
-
-    const targetMessages = Object.values(typedMessagesBySession[currentSession.id] || {})
-    const targetSignatures = new Set(
-      targetMessages
-        .filter((message) => message.roomId === targetGreenroom.id)
-        .map(
-          (message) =>
-            `${message.authorId}:${message.type}:${message.content}:${message.isDmOnly}:${message.createdAt}`
-        )
-    )
-
-    for (const source of fromMessages) {
-      const signature = `${source.authorId}:${source.type}:${source.content}:${source.isDmOnly}:${source.createdAt}`
-      if (targetSignatures.has(signature)) {
-        continue
-      }
-
-      addMessage(currentSession.id, {
-        ...source,
-        id: crypto.randomUUID() as UUID,
-        roomId: targetGreenroom.id,
-        createdAt: source.createdAt,
-      })
-      targetSignatures.add(signature)
-    }
+    // Contract: session boundary markers are runtime-session only and must never
+    // appear in Greenroom. We intentionally do not carry any boundary markers.
+    void targetGreenroom
+    void fromGreenroom
 
     pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
   }, [addMessage, currentRooms, currentSession, typedMessagesBySession, typedRoomsBySession])

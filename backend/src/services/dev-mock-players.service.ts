@@ -1,191 +1,553 @@
 /**
  * DEV Mock Players Service
  *
- * Seeds 5 fictional mock player accounts and makes them available to join any
- * DEV session so a single developer can test DM superpowers (conditions, drag-
- * to-group, environments, whisper, broadcast) without needing real players.
- *
- * SAFETY CONTRACT:
- * - This module must never be imported in production code paths.
- * - All mock accounts are identifiable by the `[DEV]` prefix in displayName.
- * - Mock accounts use a fixed `DEV_MOCK_` username prefix so they can never
- *   clash with real user sign-ups (real usernames go through normalisation and
- *   can only contain word chars — `[` and `]` are stripped).
+ * DEV-only helper for generating realistic mock players in-session so DM flows
+ * can be exercised solo (drag groups, mute/conditions, environment changes).
  */
 
-import { randomUUID } from 'crypto'
 import { getPrismaClient } from '@/infra/db'
-import { hashPassword } from '@/services/auth.service'
-import { createToken } from '@/services/auth.service'
+import { createToken, hashPassword } from '@/services/auth.service'
 import { getRooms, joinRoom, leaveRoom } from '@/services/room.service'
 import { addUserToSession, removeUserFromSession } from '@/services/session.service'
-import { PresenceState, RoomType, Role } from '@shared'
-import type { UUID } from '@shared'
 import { logger } from '@/utils/logger'
+import { Prisma } from '@prisma/client'
+import { PresenceState, Role, RoomType } from '@shared'
+import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()
+
+const DEV_MOCK_PREFIX = 'dev_mock_'
+const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
+
+type MockArchetype = {
+  slug: string
+  playerName: string
+  characterName: string
+  race: string
+  className: string
+  subclass?: string
+}
+
+const DND_ARCHETYPES: MockArchetype[] = [
+  {
+    slug: 'alric',
+    playerName: 'Alric Stone',
+    characterName: 'Brom Ironshield',
+    race: 'Dwarf',
+    className: 'Fighter',
+    subclass: 'Champion',
+  },
+  {
+    slug: 'lyra',
+    playerName: 'Lyra Voss',
+    characterName: 'Selene Nightbloom',
+    race: 'Elf',
+    className: 'Wizard',
+    subclass: 'Evocation',
+  },
+  {
+    slug: 'merric',
+    playerName: 'Merric Dale',
+    characterName: 'Pip Underbough',
+    race: 'Halfling',
+    className: 'Rogue',
+    subclass: 'Thief',
+  },
+  {
+    slug: 'kael',
+    playerName: 'Kael Thorn',
+    characterName: 'Riven Emberhand',
+    race: 'Human',
+    className: 'Warlock',
+    subclass: 'Fiend',
+  },
+  {
+    slug: 'iora',
+    playerName: 'Iora Fen',
+    characterName: 'Sister Ilyana',
+    race: 'Human',
+    className: 'Cleric',
+    subclass: 'Life',
+  },
+  {
+    slug: 'brakka',
+    playerName: 'Brakka Rune',
+    characterName: 'Grommash',
+    race: 'Half-Orc',
+    className: 'Barbarian',
+    subclass: 'Berserker',
+  },
+  {
+    slug: 'nyx',
+    playerName: 'Nyx Vale',
+    characterName: 'Astra Moonveil',
+    race: 'Tiefling',
+    className: 'Sorcerer',
+    subclass: 'Draconic',
+  },
+  {
+    slug: 'tamsin',
+    playerName: 'Tamsin Crow',
+    characterName: 'Willow Reed',
+    race: 'Half-Elf',
+    className: 'Bard',
+    subclass: 'Lore',
+  },
+  {
+    slug: 'voren',
+    playerName: 'Voren Pike',
+    characterName: 'Krag Bonespear',
+    race: 'Goliath',
+    className: 'Paladin',
+    subclass: 'Vengeance',
+  },
+  {
+    slug: 'elowen',
+    playerName: 'Elowen Briar',
+    characterName: 'Faelar Mossstep',
+    race: 'Wood Elf',
+    className: 'Ranger',
+    subclass: 'Hunter',
+  },
+  {
+    slug: 'doran',
+    playerName: 'Doran Flint',
+    characterName: 'Magnus Gearwright',
+    race: 'Rock Gnome',
+    className: 'Artificer',
+    subclass: 'Battle Smith',
+  },
+  {
+    slug: 'sable',
+    playerName: 'Sable Drift',
+    characterName: 'Shade Whispers',
+    race: 'Shadar-kai',
+    className: 'Monk',
+    subclass: 'Shadow',
+  },
+  {
+    slug: 'kestrel',
+    playerName: 'Kestrel Ash',
+    characterName: 'Captain Rowen',
+    race: 'Human',
+    className: 'Fighter',
+    subclass: 'Battle Master',
+  },
+  {
+    slug: 'orin',
+    playerName: 'Orin Frost',
+    characterName: 'Tharn Icevein',
+    race: 'Dragonborn',
+    className: 'Paladin',
+    subclass: 'Devotion',
+  },
+  {
+    slug: 'vexa',
+    playerName: 'Vexa Dusk',
+    characterName: 'Mira Starfall',
+    race: 'Tiefling',
+    className: 'Wizard',
+    subclass: 'Illusion',
+  },
+  {
+    slug: 'fenric',
+    playerName: 'Fenric Hale',
+    characterName: 'Rook Grey',
+    race: 'Half-Elf',
+    className: 'Rogue',
+    subclass: 'Arcane Trickster',
+  },
+  {
+    slug: 'zana',
+    playerName: 'Zana Quill',
+    characterName: 'Brother Sol',
+    race: 'Aasimar',
+    className: 'Cleric',
+    subclass: 'Light',
+  },
+  {
+    slug: 'torin',
+    playerName: 'Torin Gale',
+    characterName: 'Skarn Thunderjaw',
+    race: 'Half-Orc',
+    className: 'Barbarian',
+    subclass: 'Totem Warrior',
+  },
+  {
+    slug: 'lumen',
+    playerName: 'Lumen Vale',
+    characterName: 'Cyris Dawnsong',
+    race: 'Eladrin',
+    className: 'Bard',
+    subclass: 'Glamour',
+  },
+  {
+    slug: 'jasper',
+    playerName: 'Jasper Reed',
+    characterName: 'Nimble Cog',
+    race: 'Forest Gnome',
+    className: 'Druid',
+    subclass: 'Moon',
+  },
+]
 
 export interface MockPlayerDef {
   id: UUID
   username: string
   displayName: string
-  email: string
+  email: string | null
 }
 
-/**
- * The fixed mock player roster. IDs are stable across runs so upserts are
- * idempotent and references survive server restarts.
- */
-export const MOCK_PLAYERS: MockPlayerDef[] = [
-  {
-    id: '00000000-de00-4000-8000-000000000001' as UUID,
-    username: 'dev_mock_thorin',
-    displayName: '[DEV] Thorin',
-    email: 'dev-mock-thorin@dev.local',
-  },
-  {
-    id: '00000000-de00-4000-8000-000000000002' as UUID,
-    username: 'dev_mock_legolas',
-    displayName: '[DEV] Legolas',
-    email: 'dev-mock-legolas@dev.local',
-  },
-  {
-    id: '00000000-de00-4000-8000-000000000003' as UUID,
-    username: 'dev_mock_galadriel',
-    displayName: '[DEV] Galadriel',
-    email: 'dev-mock-galadriel@dev.local',
-  },
-  {
-    id: '00000000-de00-4000-8000-000000000004' as UUID,
-    username: 'dev_mock_boromir',
-    displayName: '[DEV] Boromir',
-    email: 'dev-mock-boromir@dev.local',
-  },
-  {
-    id: '00000000-de00-4000-8000-000000000005' as UUID,
-    username: 'dev_mock_samwise',
-    displayName: '[DEV] Samwise',
-    email: 'dev-mock-samwise@dev.local',
-  },
-]
+function normalizeRoomName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
 
-/**
- * Ensure all mock player accounts exist in the DB.
- * Safe to call multiple times — uses upsert.
- */
-export async function seedMockPlayers(): Promise<void> {
-  // Shared password — only exists in DEV, never matters for security
-  const pw = await hashPassword('dev-mock-password')
+function isMockUsername(username: string): boolean {
+  return username.startsWith(DEV_MOCK_PREFIX)
+}
 
-  for (const mock of MOCK_PLAYERS) {
-    await prisma.user.upsert({
-      where: { id: mock.id },
-      create: {
-        id: mock.id,
-        username: mock.username,
-        displayName: mock.displayName,
-        email: mock.email,
-        password: pw,
-        role: 'PLAYER',
-        authType: 'FULL',
-        isActive: true,
+function shuffle<T>(source: T[]): T[] {
+  const next = [...source]
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[next[i], next[j]] = [next[j], next[i]]
+  }
+  return next
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function pickRosterSize(): number {
+  return 3 + Math.floor(Math.random() * 3)
+}
+
+function pickLevels(count: number): number[] {
+  const base = 3 + Math.floor(Math.random() * 12)
+  return Array.from({ length: count }, () => clamp(base + Math.floor(Math.random() * 3) - 1, 1, 20))
+}
+
+function buildStatBlock(level: number): Prisma.InputJsonValue {
+  const proficiencyBonus = level >= 17 ? 6 : level >= 13 ? 5 : level >= 9 ? 4 : level >= 5 ? 3 : 2
+  return {
+    level,
+    proficiencyBonus,
+    str: 8 + Math.floor(Math.random() * 10),
+    dex: 8 + Math.floor(Math.random() * 10),
+    con: 8 + Math.floor(Math.random() * 10),
+    int: 8 + Math.floor(Math.random() * 10),
+    wis: 8 + Math.floor(Math.random() * 10),
+    cha: 8 + Math.floor(Math.random() * 10),
+  }
+}
+
+async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> {
+  const username = `${DEV_MOCK_PREFIX}${archetype.slug}`
+  const displayName = archetype.playerName
+  const email = `${username}@${DEV_MOCK_EMAIL_DOMAIN}`
+  const passwordHash = await hashPassword('dev-mock-password')
+
+  const user = await prisma.user.upsert({
+    where: { username },
+    create: {
+      username,
+      displayName,
+      email,
+      password: passwordHash,
+      role: 'PLAYER',
+      authType: 'FULL',
+      isActive: true,
+    },
+    update: {
+      displayName,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      email: true,
+    },
+  })
+
+  return {
+    id: user.id as UUID,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
+  }
+}
+
+async function ensureCampaignCharacter(params: {
+  campaignId: UUID
+  user: MockPlayerDef
+  archetype: MockArchetype
+  level: number
+}): Promise<void> {
+  await prisma.campaignMembership.upsert({
+    where: {
+      campaignId_userId: {
+        campaignId: params.campaignId,
+        userId: params.user.id,
       },
-      update: {
-        displayName: mock.displayName,
-        isActive: true,
-      },
-    })
+    },
+    create: {
+      campaignId: params.campaignId,
+      userId: params.user.id,
+      role: 'PLAYER',
+    },
+    update: {
+      role: 'PLAYER',
+    },
+  })
+
+  const existing = await prisma.character.findFirst({
+    where: {
+      campaignId: params.campaignId,
+      userId: params.user.id,
+    },
+    orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
+    select: { id: true },
+  })
+
+  const characterPayload = {
+    name: params.archetype.characterName,
+    race: params.archetype.race,
+    class: params.archetype.className,
+    subclass: params.archetype.subclass || null,
+    isActive: true,
+    metadata: buildStatBlock(params.level),
   }
 
-  logger.info('dev-mock-players', `Seeded ${MOCK_PLAYERS.length} mock player accounts`)
-}
-
-/**
- * Join all mock players into a session's greenroom (or main room if the
- * session is ACTIVE/PAUSED).  Idempotent — safe to call repeatedly.
- *
- * Also creates SessionMember records so they appear in the member list.
- */
-export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
-  const rooms = await getRooms(sessionId)
-
-  // Target the MAIN room if present (active session), otherwise GREEN room.
-  const mainRoom = rooms.find((r) => r.type === RoomType.MAIN)
-  const greenRoom = rooms.find(
-    (r) =>
-      r.name.trim().toLowerCase() === 'green room' || r.name.trim().toLowerCase() === 'green-room'
-  )
-  const targetRoom = mainRoom || greenRoom
-
-  if (!targetRoom) {
-    logger.warn(
-      'dev-mock-players',
-      `No suitable room found in session ${sessionId} — mock players not joined`
-    )
+  if (existing) {
+    await prisma.character.update({
+      where: { id: existing.id },
+      data: characterPayload,
+    })
     return
   }
 
-  for (const mock of MOCK_PLAYERS) {
+  await prisma.character.create({
+    data: {
+      userId: params.user.id,
+      campaignId: params.campaignId,
+      ...characterPayload,
+    },
+  })
+}
+
+function pickTargetRoom(rooms: Array<{ id: UUID; name: string; type: RoomType }>) {
+  const main = rooms.find((room) => room.type === RoomType.MAIN)
+  const green = rooms.find((room) => {
+    const normalized = normalizeRoomName(room.name)
+    return normalized === 'green room' || normalized === 'green-room'
+  })
+  return main || green
+}
+
+export async function seedMockPlayers(): Promise<void> {
+  for (const archetype of DND_ARCHETYPES) {
+    await upsertMockUser(archetype)
+  }
+  logger.info('dev-mock-players', `Seeded ${DND_ARCHETYPES.length} DEV mock account templates`)
+}
+
+export async function listMockPlayers(): Promise<MockPlayerDef[]> {
+  const users = await prisma.user.findMany({
+    where: { username: { startsWith: DEV_MOCK_PREFIX } },
+    orderBy: { username: 'asc' },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      email: true,
+    },
+  })
+
+  return users.map((user) => ({
+    id: user.id as UUID,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
+  }))
+}
+
+export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<MockPlayerDef[]> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { id: true, campaignId: true },
+  })
+  if (!session) {
+    return []
+  }
+
+  const rooms = await getRooms(sessionId)
+  const targetRoom = pickTargetRoom(rooms)
+  if (!targetRoom) {
+    logger.warn('dev-mock-players', `No MAIN/Green room found for session ${sessionId}`)
+    return []
+  }
+
+  const existingSessionMocks = await prisma.sessionMember.findMany({
+    where: {
+      sessionId,
+      username: { startsWith: DEV_MOCK_PREFIX },
+    },
+    select: {
+      userId: true,
+      username: true,
+    },
+  })
+
+  if (existingSessionMocks.length > 0) {
+    for (const member of existingSessionMocks) {
+      await addUserToSession(sessionId, {
+        id: member.userId as UUID,
+        username: member.username,
+        role: Role.PLAYER,
+        createdAt: 0,
+      })
+      await joinRoom({
+        sessionId,
+        roomId: targetRoom.id,
+        userId: member.userId as UUID,
+        username: member.username,
+        state: PresenceState.ONLINE,
+      })
+    }
+
+    const existingUsers = await prisma.user.findMany({
+      where: { id: { in: existingSessionMocks.map((entry) => entry.userId) } },
+      select: { id: true, username: true, displayName: true, email: true },
+    })
+
+    return existingUsers.map((user) => ({
+      id: user.id as UUID,
+      username: user.username,
+      displayName: user.displayName,
+      email: user.email,
+    }))
+  }
+
+  const rosterSize = pickRosterSize()
+  const selectedArchetypes = shuffle(DND_ARCHETYPES).slice(0, rosterSize)
+  const levels = pickLevels(rosterSize)
+  const selectedUsers: MockPlayerDef[] = []
+
+  for (let i = 0; i < selectedArchetypes.length; i += 1) {
+    const archetype = selectedArchetypes[i]
+    const level = levels[i]
+    const user = await upsertMockUser(archetype)
+    selectedUsers.push(user)
+
+    if (session.campaignId) {
+      await ensureCampaignCharacter({
+        campaignId: session.campaignId as UUID,
+        user,
+        archetype,
+        level,
+      })
+    }
+
     await addUserToSession(sessionId, {
-      id: mock.id,
-      username: mock.username,
+      id: user.id,
+      username: user.username,
       role: Role.PLAYER,
       createdAt: 0,
     })
 
     await joinRoom({
       sessionId,
-      roomId: targetRoom.id as UUID,
-      userId: mock.id,
-      username: mock.username,
+      roomId: targetRoom.id,
+      userId: user.id,
+      username: user.username,
       state: PresenceState.ONLINE,
     })
   }
 
   logger.info(
     'dev-mock-players',
-    `Joined ${MOCK_PLAYERS.length} mock players to session ${sessionId} room "${targetRoom.name}"`
+    `Auto-joined ${selectedUsers.length} randomized DEV mock players to session ${sessionId}`
   )
+
+  return selectedUsers
 }
 
-/**
- * Remove all mock players from a session's presence and member list.
- */
+export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
+  await ensureDevMockPlayersForSession(sessionId)
+}
+
 export async function removeMockPlayersFromSession(sessionId: UUID): Promise<void> {
   const rooms = await getRooms(sessionId)
+  const members = await prisma.sessionMember.findMany({
+    where: {
+      sessionId,
+      username: { startsWith: DEV_MOCK_PREFIX },
+    },
+    select: {
+      userId: true,
+      username: true,
+    },
+  })
 
-  for (const mock of MOCK_PLAYERS) {
+  for (const member of members) {
     for (const room of rooms) {
       await leaveRoom({
         sessionId,
         roomId: room.id as UUID,
-        userId: mock.id,
+        userId: member.userId as UUID,
         state: PresenceState.OFFLINE,
       })
     }
-    await removeUserFromSession(sessionId, mock.id)
+    await removeUserFromSession(sessionId, member.userId as UUID)
   }
 
   logger.info(
     'dev-mock-players',
-    `Removed ${MOCK_PLAYERS.length} mock players from session ${sessionId}`
+    `Removed ${members.length} DEV mock players from session ${sessionId}`
   )
 }
 
-/**
- * Generate short-lived JWT tokens for all mock players so the caller can
- * impersonate them in a private browser session for testing.
- */
-export function getMockPlayerTokens(
+export async function getMockPlayerTokens(
   sessionId: UUID
-): Array<{ mock: MockPlayerDef; token: string }> {
-  return MOCK_PLAYERS.map((mock) => ({
-    mock,
-    token: createToken({
-      userId: mock.id,
-      username: mock.username,
-      role: 'PLAYER',
+): Promise<Array<{ mock: MockPlayerDef; token: string }>> {
+  const sessionMembers = await prisma.sessionMember.findMany({
+    where: {
       sessionId,
-    }),
-  }))
+      username: { startsWith: DEV_MOCK_PREFIX },
+    },
+    select: { userId: true, username: true },
+  })
+
+  const scopedUsers =
+    sessionMembers.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: sessionMembers.map((entry) => entry.userId) } },
+          select: { id: true, username: true, displayName: true, email: true },
+        })
+      : await prisma.user.findMany({
+          where: { username: { startsWith: DEV_MOCK_PREFIX } },
+          orderBy: { username: 'asc' },
+          select: { id: true, username: true, displayName: true, email: true },
+        })
+
+  return scopedUsers.map((user) => {
+    const mock = {
+      id: user.id as UUID,
+      username: user.username,
+      displayName: user.displayName,
+      email: user.email,
+    }
+
+    return {
+      mock,
+      token: createToken({
+        userId: mock.id,
+        username: mock.username,
+        role: 'PLAYER',
+        sessionId,
+      }),
+    }
+  })
 }

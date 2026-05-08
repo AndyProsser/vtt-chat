@@ -27,6 +27,26 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const SESSION_BOOKEND_PREFIXES = [
+  '[Session Started]',
+  '[Session Paused]',
+  '[Session Resumed]',
+  '[Session Ended]',
+  'Session Start:',
+  'Session End:',
+] as const
+
+function isSessionBookend(message: Pick<Message, 'type' | 'content'>): boolean {
+  return (
+    message.type === MessageType.SYSTEM &&
+    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
+  )
+}
+
+function isGreenroomRoomName(name: string): boolean {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
 
 export function ChatWindow({
   apiUrl,
@@ -47,6 +67,7 @@ export function ChatWindow({
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
   const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
+  const suppressSessionBookends = isGreenroomRoomName(resolvedRoomName)
 
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
@@ -115,8 +136,12 @@ export function ChatWindow({
           editedAt: m.editedAt as number | undefined,
         }))
 
+        const visibleHistory = suppressSessionBookends
+          ? msgs.filter((message) => !isSessionBookend(message))
+          : msgs
+
         if (!cancelled) {
-          for (const msg of msgs) {
+          for (const msg of visibleHistory) {
             addMessage(sessionId, msg)
           }
         }
@@ -131,7 +156,7 @@ export function ChatWindow({
     return () => {
       cancelled = true
     }
-  }, [addMessage, apiUrl, roomId, sessionId, token])
+  }, [addMessage, apiUrl, roomId, sessionId, suppressSessionBookends, token])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -157,7 +182,17 @@ export function ChatWindow({
     setIsUserPinnedToBottom(isNearBottom)
   }, [])
 
-  const visibleMessages = messageList.filter((message) => message.roomId === roomId)
+  const visibleMessages = messageList.filter((message) => {
+    if (message.roomId !== roomId) {
+      return false
+    }
+
+    if (suppressSessionBookends && isSessionBookend(message)) {
+      return false
+    }
+
+    return true
+  })
 
   const failedQueueItems = useMemo(
     () =>

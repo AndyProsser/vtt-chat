@@ -35,6 +35,8 @@ import {
   getSessionAudioState,
 } from '@/services/audio-state.service'
 import { clearRoomMessages } from '@/services/chat.service'
+import { ensureDevMockPlayersForSession } from '@/services/dev-mock-players.service'
+import { config } from '@/infra/config'
 import {
   logSessionJoin,
   logSessionLeave,
@@ -230,12 +232,28 @@ async function joinSessionHandler(req: Request, res: Response) {
 
     const currentUsers = await getSessionUsers(id as UUID)
     const alreadyMember = currentUsers.some((u) => u.id === user.userId)
+
+    const maybeEnsureDevMockRoster = async () => {
+      if (!config.isDevelopment) {
+        return
+      }
+
+      // DEV ergonomics: when the DM joins, auto-populate realistic mock players.
+      if ((user.userId as UUID) !== session.dmId) {
+        return
+      }
+
+      await ensureDevMockPlayersForSession(id as UUID)
+    }
+
     if (alreadyMember) {
       const ensured = await ensureJoinedMemberPresence({
         session,
         userId: user.userId as UUID,
         username: user.username,
       })
+
+      await maybeEnsureDevMockRoster()
 
       const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
       if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
@@ -276,9 +294,11 @@ async function joinSessionHandler(req: Request, res: Response) {
         })
       }
 
+      const usersAfterJoin = await getSessionUsers(id as UUID)
+
       return res.status(200).json({
         session,
-        users: currentUsers.map((u) => ({
+        users: usersAfterJoin.map((u) => ({
           id: u.id,
           username: u.username,
           role: u.role,
@@ -326,6 +346,8 @@ async function joinSessionHandler(req: Request, res: Response) {
       userId: user.userId as UUID,
       username: user.username,
     })
+
+    await maybeEnsureDevMockRoster()
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {

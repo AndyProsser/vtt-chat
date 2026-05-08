@@ -258,9 +258,14 @@ npm run test
 
 ## 🎭 11a. DEV Mock Players
 
-When running in development mode (`NODE_ENV=development`), the backend automatically seeds **5 mock player accounts** on startup so you can test DM superpowers without needing real participants.
+When running in development mode (`NODE_ENV=development`), the backend seeds a DEV mock-player catalogue and auto-populates each session with a **randomized roster of 3–5 mock players** so you can test DM superpowers without needing real participants.
 
-Mock players are named `[DEV] Thorin`, `[DEV] Legolas`, `[DEV] Galadriel`, `[DEV] Boromir`, and `[DEV] Samwise`. They are identifiable by the `[DEV]` prefix and their `dev_mock_*` usernames.
+Roster behavior:
+
+- Mock players are selected from a catalogue of at least 20 D&D archetype variations.
+- Player/character identity is randomized with race, class/subclass, and level metadata.
+- Levels are constrained to a tight party band (within 2 levels).
+- Mock usernames always use the `dev_mock_*` prefix.
 
 **You are always the DM** when using the normal dev browser session.
 

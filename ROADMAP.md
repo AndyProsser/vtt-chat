@@ -298,6 +298,9 @@ Current implementation boundary (2026-05-08 first pass):
 
 ### Latest Delivered (W1/W2) — 2026-05-09
 
+- Enforced strict session/greenroom boundary marker separation in frontend runtime: session boundary bookends (`[Session Started|Paused|Resumed|Ended]`) are now MAIN-room only and no longer written, restored, or carried into Greenroom (`frontend/src/components/session/SessionInit.tsx`, `frontend/src/components/chat/ChatWindow.tsx`, `frontend/src/tests/components/SessionBookends.integration.test.tsx`).
+- Implemented DEV-only auto-mock session population for DM testing flows: when DM joins a session in development, 3–5 randomized mock players are auto-enrolled using normal session membership + room presence pathways (`backend/src/api/session.routes.ts`, `backend/src/services/dev-mock-players.service.ts`).
+- Added D&D-style randomized mock profile generation (>=20 archetype variations with race/class/subclass + level metadata constrained within a 2-level band) and campaign character/membership hydration so mocks appear as realistic players in DM UI (`backend/src/services/dev-mock-players.service.ts`).
 - Fixed backend session membership lifecycle integration tests: added missing `ensureSessionWhisperRoomForSession` and `deletePrivateRoomsForEndedSession` mocks to `room.service`, and added `resolveEffectiveSessionRole` mock (with `ok: true`) to `session-authz.service` — all 3 membership lifecycle tests now pass (`backend/tests/integration/session-membership-role-lifecycle.integration.test.ts`).
 - Expanded audio WS event handler test coverage: added `handleEnvironmentSet` (with/without `parameters` branches), `handleDMOverrideApplied`, `handleDMOverrideRemoved`, `handleBroadcastStateChanged`, `resetSessionAudioState` (preserves `roomEnvironmentNames`), and `replaceDMOverrides` tests (`frontend/src/tests/state/audioSlice.test.ts` — 19 tests).
 - Added new WS event dispatcher test suite covering exact-match dispatch, namespace wildcard (`CHAT:*`), global wildcard (`*`), multi-handler fanout, unregister, envelope validation (bad version/missing fields/zero timestamp), and handler error isolation (`frontend/src/tests/ws/dispatcher.test.ts` — 14 tests).
@@ -491,25 +494,28 @@ Definition of done:
 
 Provide always-present seeded mock player accounts in the DEV environment so a single developer can test DM superpowers — conditions, drag-to-group, environments, whisper, broadcast — without needing real players to be online.
 
+Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed + DM-join auto-enrollment + randomized D&D profiles).
+
 **Behaviour contract**:
 
-- 3–5 mock player accounts are seeded and automatically joined to any campaign run in DEV mode.
+- 3–5 mock player accounts are automatically selected and joined per DEV session.
 - Mocks are always present in the group panel: visible, named, and draggable.
 - Mocks do not have real audio; their presence is simulated (online, speaking indicator suppressed).
 - When testing you are always the DM in the default browser session. Mock players supplement your session.
 - If you accept a campaign invite in a **private browser session** (incognito), that session runs as a real player and is added alongside the mocks — the mocks do not disappear.
 - Mock accounts are never seeded in production or staging environments. They are gated behind `NODE_ENV=development` (or an explicit `DEV_MOCK_PLAYERS=true` env flag).
-- Mock player names should be clearly fictional / labelled (e.g. `[DEV] Thorin`, `[DEV] Legolas`) so they are never confused with real accounts.
+- Mock player identities are generated from a D&D profile catalogue (at least 20 variations) with randomized names/race/class/subclass and level metadata.
+- Randomized levels are constrained to a tight party band (within 2 levels) so encounter testing feels coherent.
 - Mock state (presence, room membership) resets on each session start, the same as any real player.
 
 **Implementation checklist**:
 
-1. Add a `dev-seed.service.ts` (or equivalent) that creates mock user accounts and campaign memberships at server startup when the DEV flag is active.
-2. Auto-join mocks to the active session's greenroom when a session is started in DEV, the same path real players would take via session join.
-3. Add a thin simulated-presence heartbeat so mocks stay `ONLINE` during the session without a real WS connection (or use a stub WS connection per mock).
-4. Expose a DEV-only `POST /dev/mock-players/reset` endpoint to re-seed presence state without a full server restart.
-5. Ensure mocks are excluded from recording, history, and any production-facing API outputs.
-6. Document the mock setup in `DEVELOPING.md` so new contributors know mocks are always there in DEV.
+1. ✅ Add a DEV mock player service that creates mock user accounts and campaign memberships when the DEV flag is active.
+2. ✅ Auto-join mocks when DM joins session in DEV, via the normal session/presence paths (draggable, mutable, condition-capable like real players).
+3. ✅ Add randomized D&D profile generation (3–5 players selected from >=20 archetype variations, level spread within 2).
+4. ⏳ Expose a DEV-only `POST /dev/mock-players/reset` endpoint to re-roll and re-seed current session roster without restart.
+5. ⏳ Ensure mocks are excluded from recording/history pipelines where persistence policy requires runtime-only behavior.
+6. ✅ Document the mock setup in `DEVELOPING.md` so contributors know mocks are available in DEV.
 
 Definition of done:
 
