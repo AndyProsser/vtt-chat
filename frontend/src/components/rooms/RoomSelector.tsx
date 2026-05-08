@@ -127,6 +127,7 @@ export function RoomSelector({
   const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
   const [environmentOverrides, setEnvironmentOverrides] = useState<Record<UUID, string>>({})
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
+  const [isDevResettingMocks, setIsDevResettingMocks] = useState(false)
   const createGroupWrapRef = useRef<HTMLDivElement | null>(null)
   const environmentPickerLayerRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
@@ -416,6 +417,27 @@ export function RoomSelector({
     }
   }
 
+  useEffect(() => {
+    setPendingRoomMoves((state) => {
+      let changed = false
+      const next = { ...state }
+
+      for (const participant of visibleParticipants) {
+        const pendingTarget = next[participant.userId]
+        if (!pendingTarget) {
+          continue
+        }
+
+        if (participant.roomId === pendingTarget) {
+          delete next[participant.userId]
+          changed = true
+        }
+      }
+
+      return changed ? next : state
+    })
+  }, [visibleParticipants])
+
   const handleEndWhisper = async () => {
     if (!whisperRoom) {
       return
@@ -450,6 +472,35 @@ export function RoomSelector({
       }
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to end whisper')
+    }
+  }
+
+  const handleDevResetMocks = async () => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    setMoveError(null)
+    setIsDevResettingMocks(true)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || payload.error || 'Failed to reroll mock players')
+      }
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to reroll mock players')
+    } finally {
+      setIsDevResettingMocks(false)
     }
   }
 
@@ -1119,12 +1170,15 @@ export function RoomSelector({
                                     </span>
                                   </span>
                                   <span
-                                    className={`room-selector-status-pill presence ${shownPresenceState.toLowerCase()}`}
+                                    className="room-selector-presence-dot"
+                                    data-state={getPresenceDotState(shownPresenceState)}
+                                    role="status"
+                                    aria-label={shownPresenceState}
                                   >
-                                    <span className="material-symbols-outlined" aria-hidden="true">
-                                      {STATUS_PILL_ICONS.presence}
-                                    </span>
-                                    {shownPresenceState}
+                                    <span
+                                      className="room-selector-presence-dot__inner"
+                                      aria-hidden="true"
+                                    />
                                   </span>
                                 </div>
                                 {member.playerName &&
@@ -1216,9 +1270,17 @@ export function RoomSelector({
       return []
     }
 
-    return Object.entries(stats)
-      .filter(([key, value]) => key !== 'level' && value !== null && value !== undefined)
-      .slice(0, 4)
+    const typedStats = stats as Record<string, unknown>
+    const ordered: Array<[string, unknown]> = [
+      ['STR', typedStats.str],
+      ['DEX', typedStats.dex],
+      ['CON', typedStats.con],
+      ['INT', typedStats.int],
+      ['WIS', typedStats.wis],
+      ['CHA', typedStats.cha],
+    ]
+
+    return ordered.filter(([, value]) => value !== null && value !== undefined)
   }
 
   const getParticipantMetaLine = (member: RoomParticipantStatus): string => {
@@ -1241,6 +1303,10 @@ export function RoomSelector({
     }
 
     return getVoiceGroupPresenceState(presenceState)
+  }
+
+  const getPresenceDotState = (presenceState: PresenceState): 'online' | 'offline' => {
+    return getResolvedPresenceState(presenceState) === PresenceState.OFFLINE ? 'offline' : 'online'
   }
 
   const handleBroadcastToggleClick = async () => {
@@ -1326,6 +1392,26 @@ export function RoomSelector({
                       ? 'Broadcast enabled (global)'
                       : 'Broadcast disabled (global)'}
                 </TooltipContent>
+              </Tooltip>
+            ) : null}
+            {canManageRooms && import.meta.env.DEV ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="room-selector-header__broadcast-icon"
+                    aria-label="Reroll DEV mock players"
+                    disabled={isDevResettingMocks}
+                    onClick={() => {
+                      void handleDevResetMocks()
+                    }}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      shuffle
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Reroll DEV mock players</TooltipContent>
               </Tooltip>
             ) : null}
             {showCreateGroupControl ? (
@@ -1439,12 +1525,12 @@ export function RoomSelector({
                           </span>
                         </span>
                         <span
-                          className={`room-selector-status-pill presence ${getResolvedPresenceState(dmParticipant.presenceState).toLowerCase()}`}
+                          className="room-selector-presence-dot"
+                          data-state={getPresenceDotState(dmParticipant.presenceState)}
+                          role="status"
+                          aria-label={getResolvedPresenceState(dmParticipant.presenceState)}
                         >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            {STATUS_PILL_ICONS.presence}
-                          </span>
-                          {getResolvedPresenceState(dmParticipant.presenceState)}
+                          <span className="room-selector-presence-dot__inner" aria-hidden="true" />
                         </span>
                       </div>
                       {dmParticipant.playerName &&

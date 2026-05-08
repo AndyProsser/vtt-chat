@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Mock Arcane Avatar</title>
+  <desc id="desc">Arcane mock race avatar with robot overlay marker.</desc>
+  <rect width="256" height="256" rx="36" fill="#2e1065" />
+  <circle cx="128" cy="95" r="45" fill="#f5d0fe" />
+  <path d="M54 218c8-42 38-68 74-68s66 26 74 68" fill="#d946ef" />
+  <rect x="16" y="16" width="84" height="36" rx="10" fill="#ef4444" />
+  <text x="28" y="40" fill="#ffffff" font-size="18" font-weight="700" font-family="Verdana, sans-serif">BOT</text>
+</svg>

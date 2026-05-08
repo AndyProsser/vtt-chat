@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Mock Adventurer Avatar</title>
+  <desc id="desc">Generic mock adventurer with robot overlay marker.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1c2e" />
+      <stop offset="100%" stop-color="#1d3557" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="36" fill="url(#bg)" />
+  <circle cx="128" cy="98" r="46" fill="#93c5fd" />
+  <path d="M52 216c10-40 38-66 76-66s66 26 76 66" fill="#60a5fa" />
+  <rect x="162" y="16" width="78" height="34" rx="10" fill="#ef4444" />
+  <text x="172" y="39" fill="#ffffff" font-size="18" font-weight="700" font-family="Verdana, sans-serif">BOT</text>
+</svg>

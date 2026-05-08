@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import {
   ErrorCode,
   PresenceState,
+  Role,
   RoomType,
   SessionState,
   isValidRoomName,
@@ -65,7 +66,10 @@ function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
-async function ensureNoHomelessPresence(sessionId: UUID, dmId: UUID): Promise<UUID[]> {
+async function ensureNoHomelessPresence(
+  sessionId: UUID,
+  dmId: UUID
+): Promise<Array<{ userId: UUID; username: string; fromRoomId: UUID | null; toRoomId: UUID }>> {
   await ensureSessionDefaultRoomsForSession(sessionId, dmId)
 
   const rooms = await getRooms(sessionId)
@@ -76,7 +80,8 @@ async function ensureNoHomelessPresence(sessionId: UUID, dmId: UUID): Promise<UU
 
   const roomIds = new Set(rooms.map((room) => room.id))
   const presence = await getSessionPresence(sessionId)
-  const moved: UUID[] = []
+  const moved: Array<{ userId: UUID; username: string; fromRoomId: UUID | null; toRoomId: UUID }> =
+    []
 
   for (const entry of presence) {
     const hasValidPrimary = Boolean(entry.primaryRoomId && roomIds.has(entry.primaryRoomId))
@@ -110,10 +115,72 @@ async function ensureNoHomelessPresence(sessionId: UUID, dmId: UUID): Promise<UU
       privateRoomId: null,
       campaignId: next.campaignId,
     })
-    moved.push(entry.userId)
+    moved.push({
+      userId: entry.userId,
+      username: entry.username,
+      fromRoomId: entry.primaryRoomId || null,
+      toRoomId: mainRoom.id,
+    })
   }
 
   return moved
+}
+
+function broadcastReconciledMoves(params: {
+  wsManager?: WebSocketManager
+  sessionId: UUID
+  movedUsers: Array<{ userId: UUID; username: string; fromRoomId: UUID | null; toRoomId: UUID }>
+  actorUserId: UUID
+  actorUserRole: Role
+  reason: string
+}) {
+  if (!params.wsManager || params.movedUsers.length === 0) {
+    return
+  }
+
+  const timestamp = Date.now()
+
+  for (const moved of params.movedUsers) {
+    if (moved.fromRoomId) {
+      params.wsManager.broadcastEventToSession(params.sessionId, {
+        id: crypto.randomUUID() as UUID,
+        type: 'ROOM:USER_LEFT',
+        version: 1,
+        userId: params.actorUserId,
+        userRole: params.actorUserRole,
+        sessionId: params.sessionId,
+        roomId: moved.fromRoomId,
+        timestamp,
+        payload: {
+          roomId: moved.fromRoomId,
+          userId: moved.userId,
+          username: moved.username,
+          leftAt: timestamp,
+          reason: params.reason,
+          movedBy: params.actorUserId,
+        },
+      })
+    }
+
+    params.wsManager.broadcastEventToSession(params.sessionId, {
+      id: crypto.randomUUID() as UUID,
+      type: 'ROOM:USER_JOINED',
+      version: 1,
+      userId: params.actorUserId,
+      userRole: params.actorUserRole,
+      sessionId: params.sessionId,
+      roomId: moved.toRoomId,
+      timestamp,
+      payload: {
+        roomId: moved.toRoomId,
+        userId: moved.userId,
+        username: moved.username,
+        joinedAt: timestamp,
+        reason: params.reason,
+        movedBy: params.actorUserId,
+      },
+    })
+  }
 }
 
 async function canAccessSessionRooms(sessionId: UUID, user: any): Promise<boolean> {
@@ -362,16 +429,7 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
   }
 
   try {
-    const room = await getRoom(roomId as UUID)
-    if (!room) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
-    }
-
-    if (room.sessionId !== (sessionId as UUID)) {
-      return res
-        .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'roomId does not belong to sessionId' })
-    }
+    let room = await getRoom(roomId as UUID)
 
     const session = await getSession(sessionId as UUID)
     if (!session) {
@@ -380,11 +438,35 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
+    if (!room) {
+      await ensureSessionDefaultRoomsForSession(sessionId as UUID, session.dmId)
+      room =
+        (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN) || null
+      if (!room) {
+        return internalErrorResponse(res)
+      }
+    }
+
+    if (room.sessionId !== (sessionId as UUID)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'roomId does not belong to sessionId' })
+    }
+
     if (session.dmId !== (user.userId as UUID)) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can move users' })
     }
 
-    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+    const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+    const moveWsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    broadcastReconciledMoves({
+      wsManager: moveWsManager,
+      sessionId: sessionId as UUID,
+      movedUsers: reconciledMoves,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'ROOM_FAILBACK_RECONCILE',
+    })
 
     const sessionUsers = await getSessionUsers(sessionId as UUID)
     const targetUser = sessionUsers.find((entry) => entry.id === (targetUserId as UUID))
@@ -580,12 +662,21 @@ async function endWhisperHandler(req: Request, res: Response) {
       fallbackRoomId: mainRoom.id,
     })
 
-    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+    const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
 
     await clearRoomMessages(sessionId as UUID, room.id)
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      broadcastReconciledMoves({
+        wsManager,
+        sessionId: sessionId as UUID,
+        movedUsers: reconciledMoves,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role as Role,
+        reason: 'ROOM_FAILBACK_RECONCILE',
+      })
+
       const timestamp = Date.now()
 
       for (const moved of movedUsers) {
@@ -733,7 +824,7 @@ async function deleteRoomHandler(req: Request, res: Response) {
       return internalErrorResponse(res)
     }
 
-    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+    const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
 
     const members = await getRoomMemberIds(sessionId as UUID, room.id)
     const sessionUsers = await getSessionUsers(sessionId as UUID)
@@ -775,6 +866,15 @@ async function deleteRoomHandler(req: Request, res: Response) {
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      broadcastReconciledMoves({
+        wsManager,
+        sessionId: sessionId as UUID,
+        movedUsers: reconciledMoves,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role as Role,
+        reason: 'ROOM_FAILBACK_RECONCILE',
+      })
+
       const timestamp = Date.now()
 
       for (const memberId of movedUserIds) {

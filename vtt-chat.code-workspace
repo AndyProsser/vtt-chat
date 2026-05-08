@@ -55,5 +55,6 @@
       "npm run -s build": true,
       "npm run -s test:coverage": true,
     },
+    "chat.agent.maxRequests": 100,
   },
 }

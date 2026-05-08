@@ -18,7 +18,7 @@ const prisma = getPrismaClient()
 
 const DEV_MOCK_PREFIX = 'dev_mock_'
 const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
-const DEV_MOCK_AVATAR_URL = '/branding/mock-player-avatar.svg'
+const DEV_MOCK_AVATAR_URL = '/branding/mock-races/adventurer-robot.svg'
 
 const campaignRosterByCampaignId = new Map<UUID, string[]>()
 const sessionRosterBySessionId = new Map<UUID, string[]>()
@@ -30,6 +30,40 @@ type MockArchetype = {
   race: string
   className: string
   subclass?: string
+}
+
+function resolveMockAvatarUrl(race: string): string {
+  const normalized = race.trim().toLowerCase()
+
+  if (
+    normalized.includes('dwarf') ||
+    normalized.includes('goliath') ||
+    normalized.includes('orc')
+  ) {
+    return '/branding/mock-races/warden-robot.svg'
+  }
+
+  if (
+    normalized.includes('elf') ||
+    normalized.includes('eladrin') ||
+    normalized.includes('shadar')
+  ) {
+    return '/branding/mock-races/fey-robot.svg'
+  }
+
+  if (
+    normalized.includes('tiefling') ||
+    normalized.includes('dragonborn') ||
+    normalized.includes('aasimar')
+  ) {
+    return '/branding/mock-races/arcane-robot.svg'
+  }
+
+  if (normalized.includes('gnome') || normalized.includes('halfling')) {
+    return '/branding/mock-races/scout-robot.svg'
+  }
+
+  return DEV_MOCK_AVATAR_URL
 }
 
 const DND_ARCHETYPES: MockArchetype[] = [
@@ -251,6 +285,7 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
   const displayName = archetype.playerName
   const email = `${username}@${DEV_MOCK_EMAIL_DOMAIN}`
   const passwordHash = await hashPassword('dev-mock-password')
+  const avatarUrl = resolveMockAvatarUrl(archetype.race)
 
   const user = await prisma.user.upsert({
     where: { username },
@@ -258,7 +293,7 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
       username,
       displayName,
       email,
-      avatarUrl: DEV_MOCK_AVATAR_URL,
+      avatarUrl,
       password: passwordHash,
       role: 'PLAYER',
       authType: 'FULL',
@@ -266,7 +301,7 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
     },
     update: {
       displayName,
-      avatarUrl: DEV_MOCK_AVATAR_URL,
+      avatarUrl,
       isActive: true,
     },
     select: {
@@ -322,7 +357,7 @@ async function ensureCampaignCharacter(params: {
     race: params.archetype.race,
     class: params.archetype.className,
     subclass: params.archetype.subclass || null,
-    avatarUrl: DEV_MOCK_AVATAR_URL,
+    avatarUrl: resolveMockAvatarUrl(params.archetype.race),
     isActive: true,
     metadata: buildStatBlock(params.level),
   }

@@ -27,19 +27,12 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
-const SESSION_BOOKEND_PREFIXES = [
-  '[Session Started]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Ended]',
-  'Session Start:',
-  'Session End:',
-] as const
+const GREENROOM_SUPPRESSED_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
 
-function isSessionBookend(message: Pick<Message, 'type' | 'content'>): boolean {
+function isGreenroomSuppressedBookend(message: Pick<Message, 'type' | 'content'>): boolean {
   return (
     message.type === MessageType.SYSTEM &&
-    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
+    GREENROOM_SUPPRESSED_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
   )
 }
 
@@ -137,7 +130,7 @@ export function ChatWindow({
         }))
 
         const visibleHistory = suppressSessionBookends
-          ? msgs.filter((message) => !isSessionBookend(message))
+          ? msgs.filter((message) => !isGreenroomSuppressedBookend(message))
           : msgs
 
         if (!cancelled) {
@@ -187,7 +180,7 @@ export function ChatWindow({
       return false
     }
 
-    if (suppressSessionBookends && isSessionBookend(message)) {
+    if (suppressSessionBookends && isGreenroomSuppressedBookend(message)) {
       return false
     }
 

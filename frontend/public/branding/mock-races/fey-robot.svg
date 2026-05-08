@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Mock Fey Avatar</title>
+  <desc id="desc">Fey-themed mock race avatar with robot overlay marker.</desc>
+  <rect width="256" height="256" rx="36" fill="#0f172a" />
+  <circle cx="128" cy="95" r="45" fill="#ddd6fe" />
+  <path d="M54 218c8-42 38-68 74-68s66 26 74 68" fill="#a78bfa" />
+  <rect x="162" y="16" width="78" height="34" rx="10" fill="#ef4444" />
+  <text x="172" y="39" fill="#ffffff" font-size="18" font-weight="700" font-family="Verdana, sans-serif">BOT</text>
+</svg>

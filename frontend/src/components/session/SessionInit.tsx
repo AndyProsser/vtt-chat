@@ -639,7 +639,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   ])
 
   const getSessionBookendRoomIds = useCallback(
-    (sessionId: UUID): UUID[] => {
+    (sessionId: UUID, content: string): UUID[] => {
       const sessionRooms = Object.values(typedRoomsBySession[sessionId] || {})
       const sourceRooms =
         sessionRooms.length > 0
@@ -654,10 +654,21 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       const targetIds = new Set<UUID>()
 
+      const isStartOrEndBookend =
+        content.startsWith('[Session Started]') ||
+        content.startsWith('[Session Ended]') ||
+        content.startsWith('Session Start:') ||
+        content.startsWith('Session End:')
+
       for (const room of sourceRooms) {
-        // Session boundary bookends are session-runtime markers and belong only
-        // to the live MAIN room timeline, never Greenroom.
         if (room.type === RoomType.MAIN) {
+          targetIds.add(room.id)
+          continue
+        }
+
+        // Pause/resume remain runtime-only. Start/end can be reflected in
+        // Greenroom timeline for chapter chronology.
+        if (isStartOrEndBookend && isGreenRoomName(room.name)) {
           targetIds.add(room.id)
         }
       }
@@ -669,7 +680,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const writeSessionBookendMessages = useCallback(
     (sessionId: UUID, content: string, timestamp: number): boolean => {
-      const roomIds = getSessionBookendRoomIds(sessionId)
+      const roomIds = getSessionBookendRoomIds(sessionId, content)
       if (!roomIds.length) {
         return false
       }

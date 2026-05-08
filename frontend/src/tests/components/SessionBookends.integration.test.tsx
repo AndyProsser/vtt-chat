@@ -374,7 +374,7 @@ describe('Session bookend integration', () => {
       expect(mainStartMarkers.length).toBeGreaterThan(0)
     })
 
-    expect(document.querySelector('.chat-session-marker--bookend')).toBeNull()
+    expect(screen.getByText('[Session Started] Session Current')).toBeTruthy()
     expect(screen.queryByText('Session Note: No previous session summary available.')).toBeNull()
   })
 
@@ -728,7 +728,7 @@ describe('Session bookend integration', () => {
     })
   })
 
-  it('retains session start and end markers in MAIN only after repeated start-stop cycles', async () => {
+  it('retains session start and end markers in MAIN and Greenroom after repeated start-stop cycles', async () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
@@ -787,7 +787,7 @@ describe('Session bookend integration', () => {
       )
 
       expect(mainMarkers.length).toBeGreaterThan(0)
-      expect(greenMarkers.length).toBe(0)
+      expect(greenMarkers.length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
@@ -811,7 +811,7 @@ describe('Session bookend integration', () => {
       )
 
       expect(mainMarkers.length).toBeGreaterThan(0)
-      expect(greenMarkers.length).toBe(0)
+      expect(greenMarkers.length).toBeGreaterThan(0)
     })
 
     // Start creates next session; markers remain MAIN-only.
@@ -842,7 +842,7 @@ describe('Session bookend integration', () => {
       )
 
       expect(nextMainStartMarkers.length).toBeGreaterThan(0)
-      expect(nextGreenroomMarkers.length).toBe(0)
+      expect(nextGreenroomMarkers.length).toBeGreaterThan(0)
     })
   })
 })
