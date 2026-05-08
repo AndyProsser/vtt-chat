@@ -35,8 +35,24 @@ export interface ToolbarActionModel {
   placeholderActions: ToolbarPlaceholderAction[]
 }
 
-const DM_TABS: RightRailTab[] = ['rooms', 'audio', 'notes', 'search', 'journal', 'history']
-const PLAYER_TABS: RightRailTab[] = ['rooms', 'audio', 'notes', 'search', 'journal', 'history']
+const DM_TABS: RightRailTab[] = [
+  'rooms',
+  'audio',
+  'notes',
+  'search',
+  'journal',
+  'history',
+  'settings',
+]
+const PLAYER_TABS: RightRailTab[] = [
+  'rooms',
+  'audio',
+  'notes',
+  'search',
+  'journal',
+  'history',
+  'settings',
+]
 const SPECTATOR_TABS: RightRailTab[] = ['rooms']
 
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
@@ -68,16 +84,16 @@ function formatTabLabel(tab: RightRailTab): string {
 
 function iconForTab(
   tab: RightRailTab
-): 'rooms' | 'voice' | 'notes' | 'search' | 'journal' | 'history' | 'settings' {
+): 'rooms' | 'voice' | 'notes' | 'search' | 'journal' | 'history' | 'settings' | 'panel' {
   switch (tab) {
     case 'rooms':
-      return 'rooms'
+      return 'panel'
     case 'audio':
-      return 'voice'
+      return 'panel'
     case 'notes':
-      return 'notes'
+      return 'panel'
     case 'search':
-      return 'search'
+      return 'panel'
     case 'journal':
       return 'journal'
     case 'history':

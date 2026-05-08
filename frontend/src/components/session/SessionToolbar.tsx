@@ -93,7 +93,18 @@ export function SessionToolbar({
   }
 
   const handleOpenSettings = () => {
-    const targetTab = actions.availableRightRailTabs.includes('notes') ? 'notes' : 'rooms'
+    const targetTab = actions.availableRightRailTabs.includes('settings') ? 'settings' : 'rooms'
+
+    if (actions.rightRailOpen && actions.activeRightRailTab === targetTab) {
+      actions.toggleRightRail()
+      return
+    }
+
+    actions.openRightRailTab(targetTab)
+  }
+
+  const handleOpenInformation = () => {
+    const targetTab = actions.availableRightRailTabs.includes('notes') ? 'notes' : 'search'
 
     if (actions.rightRailOpen && actions.activeRightRailTab === targetTab) {
       actions.toggleRightRail()
@@ -245,6 +256,22 @@ export function SessionToolbar({
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end">
               Settings
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleOpenInformation}
+                className="session-toolbar__icon-btn"
+                aria-label="Information"
+              >
+                <Icon name="panel" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end">
+              Information
             </TooltipContent>
           </Tooltip>
 

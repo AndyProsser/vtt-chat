@@ -254,10 +254,15 @@ Terminology note for this stage:
 
 ### W0 Subtask: Topbar Settings and Information Panels
 
-**Status**: Design finalized, documentation expansion in progress
+**Status**: First-pass scaffold reset in progress (icons simplified, panels de-cluttered)
 **Related Docs**: [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [UI-FLOWS.md](docs/ui/UI-FLOWS.md), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [UI-COMPONENT-PROPS.md](docs/ui/UI-COMPONENT-PROPS.md), [UI-COMPONENT-INTERFACES.md](docs/ui/UI-COMPONENT-INTERFACES.md)
 
 **Scope**: Implement and harden the topbar-driven popout panel model with Settings and Information as primary entry points, plus session settings cog popover behavior.
+
+Current implementation boundary (2026-05-08 first pass):
+
+- Non-Journal/History surfaces are being reset to campaign-scoped placeholder scaffolds to reduce UI noise while final information architecture is built.
+- Session context is intentionally restricted to Journal/History (and the small DM session popover for name/timer controls).
 
 **Delivery checklist**:
 

@@ -552,6 +552,46 @@
   color: var(--color-text-secondary);
 }
 
+.session-campaign-scaffold {
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 86%, var(--color-surface-subtle) 14%);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.session-campaign-scaffold__header {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.session-campaign-scaffold__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.session-campaign-scaffold__subtitle,
+.session-campaign-scaffold__context {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.session-campaign-scaffold__list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.session-campaign-scaffold__list li + li {
+  margin-top: 0.22rem;
+}
+
 .session-action-row {
   margin-top: 0.75rem;
   display: flex;

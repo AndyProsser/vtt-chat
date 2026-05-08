@@ -15,13 +15,9 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
-import { DMAudioControls } from './DMAudioControls'
 import { HistoryPanel } from './HistoryPanel'
 import { JournalPanel } from './JournalPanel'
-import { NotesRailPanel } from './NotesRailPanel'
-import { SearchPanel } from './SearchPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
-import { SessionRoomsStatusPanel } from './SessionRoomsStatusPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
 import { AudioPanel } from '../audio/AudioPanel'
@@ -2004,6 +2000,28 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
 
+  const renderCampaignScaffoldPanel = (title: string, subtitle: string, sections: string[]) => (
+    <section className="session-campaign-scaffold" aria-label={title}>
+      <header className="session-campaign-scaffold__header">
+        <h4 className="session-campaign-scaffold__title">
+          <Icon name="panel" />
+          {title}
+        </h4>
+        <p className="session-campaign-scaffold__subtitle">{subtitle}</p>
+      </header>
+
+      <p className="session-campaign-scaffold__context">
+        Campaign context: {selectedCampaign?.name || 'Campaign'}
+      </p>
+
+      <ul className="session-campaign-scaffold__list">
+        {sections.map((section) => (
+          <li key={section}>{section}</li>
+        ))}
+      </ul>
+    </section>
+  )
+
   useEffect(() => {
     if (!error) return
 
@@ -2471,71 +2489,50 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               )}
               renderRightRailTab={(tab) => {
                 if (tab === 'rooms') {
-                  return (
-                    <SessionRoomsStatusPanel
-                      rooms={visibleRooms.map((room) => ({
-                        id: room.id,
-                        name: room.name,
-                        type: room.type,
-                      }))}
-                      roomMembersByRoomId={typedRoomMembers}
-                      presenceCount={currentPresence.length}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Campaign Groups',
+                    'Voice group configuration is being rebuilt around campaign-level controls.',
+                    [
+                      'Group defaults and templates',
+                      'Campaign-level routing and policy',
+                      'Role-based visibility controls',
+                    ]
                   )
                 }
 
                 if (tab === 'audio') {
-                  return (
-                    <DMAudioControls
-                      apiUrl={apiUrl}
-                      token={token}
-                      role={effectiveSessionRole}
-                      sessionId={currentSession.id}
-                      dmUserId={currentSession.dmId}
-                      rooms={visibleRooms.map((room) => ({
-                        id: room.id,
-                        name: room.name,
-                        type: room.type,
-                      }))}
-                      participants={currentPresence.map((presence) => ({
-                        userId: presence.userId,
-                        username: presence.username,
-                        state: presence.state,
-                        primaryRoomId: presence.primaryRoomId,
-                      }))}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Campaign Audio',
+                    'Audio policy controls are being reduced to a cleaner campaign-first surface.',
+                    [
+                      'Default campaign audio policy',
+                      'Environment and override presets',
+                      'Broadcast and moderation policy',
+                    ]
                   )
                 }
 
                 if (tab === 'search') {
-                  return (
-                    <SearchPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      rooms={visibleRooms.map((room) => ({
-                        id: room.id,
-                        name: room.name,
-                        type: room.type,
-                      }))}
-                      participants={currentPresence}
-                      onSelectRoom={setSelectedRoomIdOverride}
-                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
-                      onOpenChatWorkspace={() => setToolbarCenterPaneView('chat')}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Campaign Search',
+                    'Search is being reset to campaign-wide discovery rather than session-only lookup.',
+                    [
+                      'Campaign knowledge index',
+                      'Players, groups, and notes facets',
+                      'Saved query shortcuts',
+                    ]
                   )
                 }
 
                 if (tab === 'notes') {
-                  return (
-                    <NotesRailPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Information',
+                    'This panel now represents campaign information surfaces (non-session).',
+                    [
+                      'Campaign overview and metadata',
+                      'Campaign notes and handouts',
+                      'Policy and visibility flags',
+                    ]
                   )
                 }
 
@@ -2566,11 +2563,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 }
 
                 if (tab === 'settings') {
-                  return (
-                    <SessionUserSettingsPanel
-                      messageGroupingWindowMs={messageGroupingWindowMs}
-                      onMessageGroupingWindowChange={setMessageGroupingWindowMs}
-                    />
+                  return renderCampaignScaffoldPanel(
+                    'Settings',
+                    'Topbar settings are now scoped to campaign and user defaults, not active session state.',
+                    [
+                      'System defaults for new campaigns',
+                      'Campaign settings and invite policy',
+                      'Profile and personal preferences',
+                    ]
                   )
                 }
 
@@ -2777,7 +2777,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
               </button>
             </div>
 
-            {settingsCampaignSessions.length > 0 ? (
+            {settingsHomeTab === 'journal' && settingsCampaignSessions.length > 0 ? (
               <div className="session-campaign-settings-session-context">
                 <label className="session-label" htmlFor="settings-session-context">
                   Session context
@@ -2812,17 +2812,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             ) : !settingsData ? (
               <div className="session-status-message">Unable to load campaign settings.</div>
             ) : settingsHomeTab === 'notes' ? (
-              settingsReferenceSessionId ? (
-                <NotesRailPanel
-                  apiUrl={apiUrl}
-                  token={token}
-                  sessionId={settingsReferenceSessionId as UUID}
-                  role={Role.DM}
-                />
-              ) : (
-                <div className="session-status-message">
-                  No session available yet. Start a session chapter to unlock Notes.
-                </div>
+              renderCampaignScaffoldPanel(
+                'Campaign Notes',
+                'Notes are being transitioned to campaign-scoped authoring and sharing.',
+                [
+                  'Campaign notebook landing view',
+                  'Handout permissions and targeting',
+                  'Pinned references and templates',
+                ]
               )
             ) : settingsHomeTab === 'journal' ? (
               settingsReferenceSessionId ? (
@@ -2842,43 +2839,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             ) : (
               <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">
                 <div className="session-campaign-settings-column">
-                  <section
-                    className="session-campaign-settings-panel session-campaign-settings-summary-preview"
-                    aria-label="Session summary preview"
-                  >
-                    <h5 className="session-inline-form-title">Session Summary Preview</h5>
-                    {settingsReferenceSession ? (
-                      <>
-                        <p className="session-card-subtitle">
-                          {settingsReferenceSession.name} ({settingsReferenceSession.id})
-                        </p>
-                        {isSettingsReferenceNotesLoading ? (
-                          <p className="session-card-subtitle">Loading summary preview...</p>
-                        ) : settingsReferenceNotesError ? (
-                          <p className="session-card-subtitle">{settingsReferenceNotesError}</p>
-                        ) : settingsReferenceSummaryEntry ? (
-                          <div className="session-summary-preview-card">
-                            <p className="session-summary-preview-card__label">Excerpt</p>
-                            <p className="session-summary-preview-card__excerpt">
-                              {settingsReferenceSummaryExcerpt}
-                            </p>
-                            <p className="session-summary-preview-card__label">Summary</p>
-                            <p className="session-summary-preview-card__body">
-                              {settingsReferenceSummaryEntry.content || 'No summary details yet.'}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="session-card-subtitle">
-                            No session summary saved for this chapter yet.
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="session-card-subtitle">
-                        No session available yet. Start a session chapter to unlock summary preview.
-                      </p>
-                    )}
-                  </section>
+                  {renderCampaignScaffoldPanel(
+                    'Campaign Overview',
+                    'Home now focuses on campaign metadata and policy, not session snapshots.',
+                    [
+                      'Campaign profile and branding',
+                      'Invite and visibility controls',
+                      'Participation and access policy',
+                    ]
+                  )}
 
                   <form
                     id="campaign-settings-form"

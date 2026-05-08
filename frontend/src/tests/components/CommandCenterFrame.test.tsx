@@ -48,6 +48,7 @@ describe('getRightRailTabsForRole', () => {
       'search',
       'journal',
       'history',
+      'settings',
     ])
   })
 
@@ -59,6 +60,7 @@ describe('getRightRailTabsForRole', () => {
       'search',
       'journal',
       'history',
+      'settings',
     ])
   })
 
@@ -148,10 +150,11 @@ describe('CommandCenterFrame', () => {
       />
     )
 
-    expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
 
     rerender(
       <CommandCenterFrame
@@ -166,7 +169,7 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
   })
 
   it('renders system toasts container only when provided', () => {
