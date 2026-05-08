@@ -54,6 +54,11 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
+function isGreenRoomName(name: string): boolean {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
 const CONDITION_PRESETS = ['Silenced', 'Poisoned', 'Bleeding', 'Exhausted']
 const LONG_PRESS_OPEN_MS = 420
 const LONG_PRESS_MOVE_CANCEL_PX = 12
@@ -88,8 +93,6 @@ export function RoomSelector({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   const [optimisticRooms, setOptimisticRooms] = useState<RoomSelectorRoomWithParticipants[]>([])
   const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
-  const [manualConditionByUser, setManualConditionByUser] = useState<Record<UUID, string>>({})
-  const [manualMutedByUser, setManualMutedByUser] = useState<Record<UUID, boolean>>({})
   const [radialMenuState, setRadialMenuState] = useState<RadialMenuState | null>(null)
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
@@ -274,7 +277,7 @@ export function RoomSelector({
   }
 
   const handleDeleteGroup = async (room: RoomSelectorRoomWithParticipants) => {
-    if (room.type === RoomType.MAIN) {
+    if (room.type === RoomType.MAIN || isGreenRoomName(room.name)) {
       return
     }
 
@@ -337,8 +340,6 @@ export function RoomSelector({
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.message || 'Failed to mute participant')
         }
-
-        setManualMutedByUser((state) => ({ ...state, [targetUserId]: true }))
       } else {
         const response = await fetch(`${apiUrl}/api/v1/audio/dm-override/remove`, {
           method: 'POST',
@@ -357,8 +358,6 @@ export function RoomSelector({
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.message || 'Failed to unmute participant')
         }
-
-        setManualMutedByUser((state) => ({ ...state, [targetUserId]: false }))
       }
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to update mute override')
@@ -388,11 +387,6 @@ export function RoomSelector({
           throw new Error(payload.message || 'Failed to clear condition')
         }
 
-        setManualConditionByUser((state) => {
-          const next = { ...state }
-          delete next[targetUserId]
-          return next
-        })
         return
       }
 
@@ -414,8 +408,6 @@ export function RoomSelector({
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.message || 'Failed to apply condition')
       }
-
-      setManualConditionByUser((state) => ({ ...state, [targetUserId]: conditionName }))
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to update condition')
     }
@@ -473,14 +465,17 @@ export function RoomSelector({
   }, [])
 
   const mainRooms = useMemo(
-    () => allRooms.filter((room) => room.type === RoomType.MAIN),
-    [allRooms]
+    () =>
+      allRooms.filter(
+        (room) => room.type === RoomType.MAIN || (isGreenroom && isGreenRoomName(room.name))
+      ),
+    [allRooms, isGreenroom]
   )
 
   const otherRooms = useMemo(
     () =>
       allRooms
-        .filter((room) => room.type !== RoomType.MAIN)
+        .filter((room) => room.type !== RoomType.MAIN && !isGreenRoomName(room.name))
         .sort((left, right) => {
           const leftIsPrivate = left.type === RoomType.PRIVATE
           const rightIsPrivate = right.type === RoomType.PRIVATE
@@ -585,13 +580,6 @@ export function RoomSelector({
                       </TooltipContent>
                     </Tooltip>
 
-                    <span
-                      className={`room-selector-item__broadcast-badge ${broadcastModeEnabled ? 'active' : ''}`}
-                      aria-label={broadcastModeEnabled ? 'Broadcast active' : 'Broadcast inactive'}
-                    >
-                      {broadcastModeEnabled ? 'Broadcast Active' : 'Broadcast Inactive'}
-                    </span>
-
                     {canCreateGroups ? (
                       <button
                         type="button"
@@ -606,7 +594,9 @@ export function RoomSelector({
                       </button>
                     ) : null}
 
-                    {canManageRooms && room.type !== RoomType.MAIN ? (
+                    {canManageRooms &&
+                    room.type !== RoomType.MAIN &&
+                    !isGreenRoomName(room.name) ? (
                       <button
                         type="button"
                         className="room-selector-item__icon-action"
@@ -653,8 +643,8 @@ export function RoomSelector({
                   participants.map((member) => {
                     const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
                     const pendingTargetRoomId = pendingRoomMoves[member.userId]
-                    const isMuted = manualMutedByUser[member.userId] ?? member.isMuted
-                    const condition = manualConditionByUser[member.userId] ?? member.condition
+                    const isMuted = Boolean(member.isMuted)
+                    const condition = member.condition
                     const shownPresenceState = displayPresenceState(member.presenceState)
 
                     return (
@@ -824,6 +814,35 @@ export function RoomSelector({
           </h4>
           <div className="room-selector-header__meta room-selector-header__meta--actions">
             {headerModeCopy ? <span>{headerModeCopy}</span> : null}
+            {canManageRooms && !isGreenroom ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={`room-selector-header__broadcast-icon ${
+                      broadcastModeEnabled ? 'active' : ''
+                    }`}
+                    aria-label={
+                      broadcastModeEnabled ? 'Disable broadcast mode' : 'Enable broadcast mode'
+                    }
+                    onClick={() => {
+                      void onToggleBroadcastMode(!broadcastModeEnabled).catch((error) => {
+                        setMoveError(
+                          error instanceof Error ? error.message : 'Failed to toggle broadcast mode'
+                        )
+                      })
+                    }}
+                  >
+                    <Icon name="signal" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {broadcastModeEnabled
+                    ? 'Broadcast enabled (global)'
+                    : 'Broadcast disabled (global)'}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
             {canCreateGroups ? (
               <button
                 type="button"
@@ -849,26 +868,6 @@ export function RoomSelector({
                   isSpeaking={dmParticipant.isSpeaking}
                 />
               </div>
-              {canManageRooms ? (
-                <div className="room-selector-dm__voice-controls">
-                  <button
-                    type="button"
-                    className={`room-selector-dm__vog ${broadcastModeEnabled ? 'active' : ''}`}
-                    onClick={() => {
-                      void onToggleBroadcastMode(!broadcastModeEnabled).catch((error) => {
-                        setMoveError(
-                          error instanceof Error ? error.message : 'Failed to toggle DM Broadcast'
-                        )
-                      })
-                    }}
-                    aria-pressed={broadcastModeEnabled}
-                    title="Project DM voice to all active groups."
-                  >
-                    <Icon name="signal" />
-                    Broadcast Voice
-                  </button>
-                </div>
-              ) : null}
             </section>
           ) : null}
 
@@ -906,10 +905,7 @@ export function RoomSelector({
             conditionTargets={
               radialMenuState.mode === 'condition' ? [...CONDITION_PRESETS, 'None'] : []
             }
-            currentMuted={
-              manualMutedByUser[radialMenuState.memberUserId] ??
-              Boolean(selectedRadialMember?.isMuted)
-            }
+            currentMuted={Boolean(selectedRadialMember?.isMuted)}
             onMove={() =>
               setRadialMenuState((state) => (state ? { ...state, mode: 'move' } : state))
             }
@@ -917,7 +913,7 @@ export function RoomSelector({
               setRadialMenuState((state) => (state ? { ...state, mode: 'condition' } : state))
             }
             onMute={() => {
-              const nextMuted = !Boolean(manualMutedByUser[radialMenuState.memberUserId])
+              const nextMuted = !Boolean(selectedRadialMember?.isMuted)
               void handleApplyMuteOverride(radialMenuState.memberUserId, nextMuted)
               setRadialMenuState(null)
             }}

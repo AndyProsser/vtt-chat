@@ -124,6 +124,18 @@ Precondition:
 - Session must not be in greenroom (`sessionState !== IDLE`).
 - In greenroom, create-group controls are hidden/disabled.
 - In greenroom, connected users that report `IDLE` are displayed as `ONLINE` in the panel for clarity.
+- In greenroom, drag/drop movement is disabled and Greenroom is the only visible out-of-session group.
+
+State normalization:
+
+- On transition to `ACTIVE`: all users are moved to `MAIN`; DM condition/mute overrides are cleared; `MAIN` environment modifier is cleared.
+- On transition to greenroom states (`IDLE` and paused out-of-session routing): DM condition/mute/broadcast overrides are cleared; Greenroom environment modifier is cleared.
+- Non-main room environments persist across sessions and are restored when those groups are used again.
+
+Close-group behavior:
+
+- Closing a non-main group automatically moves any remaining members to `MAIN` before deletion.
+- Greenroom cannot be closed.
 
 **Flow:**
 

@@ -48,16 +48,16 @@ VOICE GROUPS PANEL (left rail, ~300px fixed width)
 [DM] (sticky, always visible at top)
 ┌─────────────────────────────────────────────┐
 │ [AV●]  Andy Prosser (DM)                    │
-│        Online · Broadcast Mode ◉           │
-│        (broadcast icon glows if active)     │
-│        ✎ Click broadcast badge to toggle   │
+│        Online                               │
 └─────────────────────────────────────────────┘
+
+Global controls (header, DM only, not shown in greenroom):
+- Broadcast icon button with tooltip/popover copy
+- Icon color indicates enabled vs disabled state
 
 MAIN GROUP  [🌲] [+]
 ┌─────────────────────────────────────────────┐
 │ Env: Forest (hover for tooltip)             │
-│ Broadcast Active: ◉                        │
-│ (subtle glow on group header if active)     │
 ├─────────────────────────────────────────────┤
 │ [AV●]  Thalia Stormwind                     │
 │        Ranger | Lvl 4 | Elf                 │
@@ -72,7 +72,6 @@ MAIN GROUP  [🌲] [+]
 SCOUTS GROUP  [🌙] [+]
 ┌─────────────────────────────────────────────┐
 │ Env: Night (click to edit, DM only)         │
-│ Broadcast Inactive                          │
 ├─────────────────────────────────────────────┤
 │ [AV]   Mira Sunshadow                       │
 │        Cleric | Lvl 4 | Human               │
@@ -131,7 +130,7 @@ Minimalist Mobile additions:
 ### 2.2 Visual Hierarchy
 
 1. **DM widget** (sticky, always top)
-2. **Group headers** (environment icon, broadcast indicator, create button)
+2. **Group headers** (environment icon, create button)
 3. **Player widgets** (scrollable list per group)
 4. **Condition badges** (secondary, only 1 visible by default + tooltip)
 
@@ -140,6 +139,10 @@ Greenroom exception:
 - When session state is `IDLE` (greenroom), DM is rendered in the same participant list as other users.
 - Create-group controls are disabled/hidden in greenroom.
 - Presence copy in this panel normalizes connected `IDLE` users to `ONLINE`.
+- Drag/drop movement is disabled in greenroom.
+- Greenroom is treated as the main/out-of-session room and is not rendered in "Other Groups".
+- Greenroom cannot be closed.
+- Greenroom audio is always neutral: no environment modifier, no DM condition/mute voice overrides, and no broadcast toggle.
 
 Header copy convention:
 
@@ -152,6 +155,7 @@ Header copy convention:
 - **Drag feedback**: Ghost preview + highlighted drop zones + dimmed invalid targets.
 - **Hover state**: Slight background color change, action icons appear.
 - **Broadcast state**: Badge glows/highlights when active.
+- **Broadcast state**: Global header icon changes color when active.
 
 ---
 
@@ -177,8 +181,7 @@ Greenroom behavior:
 **Elements**:
 
 - **Avatar** (36–40px circle): `AvatarOverlay` with role label
-- **Details** (name, online status, broadcast state)
-- **Broadcast toggle** (click to enable/disable DM voice routing)
+- **Details** (name, online status)
 - **Speaking indicator** (pulse on avatar if DM is speaking)
 - **Muted state**: Small icon overlay on avatar if DM is muted
 

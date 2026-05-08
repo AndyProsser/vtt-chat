@@ -57,6 +57,13 @@ export function SessionLeftRailPanel({
   const isGreenroom = sessionState === 'IDLE'
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
+  const isGreenRoomName = (name: string): boolean => {
+    const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+    return normalized === 'green room' || normalized === 'green-room'
+  }
+
+  const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
+
   const visibleRooms = [...rooms]
     .sort((left, right) => {
       if (left.type === RoomType.MAIN && right.type !== RoomType.MAIN) return -1
@@ -64,12 +71,12 @@ export function SessionLeftRailPanel({
       return left.name.localeCompare(right.name)
     })
     .filter((room) => {
-      if (role === 'DM') {
-        return true
+      if (isGreenroom) {
+        return hasNamedGreenRoom ? isGreenRoomName(room.name) : room.id === selectedRoomId
       }
 
-      if (isGreenroom) {
-        return room.id === selectedRoomId
+      if (role === 'DM') {
+        return true
       }
 
       const memberCount = (roomMembersByRoomId[room.id] || []).length
@@ -111,9 +118,13 @@ export function SessionLeftRailPanel({
             name: room.name,
             type: room.type,
             memberCount: (roomMembersByRoomId[room.id] || []).length,
-            environmentName: roomEnvironmentNames?.[room.id],
+            environmentName: isGreenroom ? undefined : roomEnvironmentNames?.[room.id],
             participants: (roomMembersByRoomId[room.id] || []).map((member) => {
               const dmOverride = dmOverrides.get(member.userId)
+              const overrideCondition =
+                dmOverride?.overrideType === 'CONDITION'
+                  ? String(dmOverride.parameters?.conditionName || '')
+                  : undefined
 
               return {
                 userId: member.userId,
@@ -128,12 +139,14 @@ export function SessionLeftRailPanel({
                 characterStats: member.characterStats,
                 roleLabel: member.userId === dmUserId ? ('DM' as const) : ('PLAYER' as const),
                 presenceState: member.presenceState,
-                isMuted: dmOverride?.overrideType === 'MUTE',
+                isMuted: isGreenroom ? false : dmOverride?.overrideType === 'MUTE',
                 isSpeaking: member.presenceState === PresenceState.SPEAKING,
-                condition:
-                  currentConditionName && member.userId === currentUserId
-                    ? currentConditionName
-                    : undefined,
+                condition: isGreenroom
+                  ? undefined
+                  : overrideCondition ||
+                    (currentConditionName && member.userId === currentUserId
+                      ? currentConditionName
+                      : undefined),
               }
             }),
           }))}

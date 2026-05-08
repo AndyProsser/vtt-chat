@@ -115,6 +115,26 @@ export async function removeAudioDMOverrideRecord(params: {
   })
 }
 
+export async function removeAudioDMOverridesBySession(sessionId: string): Promise<void> {
+  await prisma.audioDMOverride.deleteMany({
+    where: {
+      sessionId,
+    },
+  })
+}
+
+export async function removeAudioRoomStateRecord(params: {
+  sessionId: string
+  roomId: string
+}): Promise<void> {
+  await prisma.audioRoomState.deleteMany({
+    where: {
+      sessionId: params.sessionId,
+      roomId: params.roomId,
+    },
+  })
+}
+
 export async function listAudioDMOverridesBySession(sessionId: string): Promise<
   Array<{
     sessionId: string

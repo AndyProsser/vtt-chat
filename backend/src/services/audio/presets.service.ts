@@ -7,6 +7,7 @@ import type {
 import {
   listAudioDMOverridesBySession,
   listAudioRoomStateBySession,
+  removeAudioRoomStateRecord,
   upsertAudioRoomStateRecord,
 } from '@/repositories/audio.repository'
 import { AUDIO_BROADCAST_OVERRIDE_TYPE, getBroadcastRoomId } from './effects.service'
@@ -86,4 +87,14 @@ export async function getSessionAudioState(sessionId: UUID): Promise<AudioSessio
     // Backward compatibility for existing clients.
     voiceOfGod: broadcast,
   }
+}
+
+export async function clearRoomEnvironmentState(params: {
+  sessionId: UUID
+  roomId: UUID
+}): Promise<void> {
+  await removeAudioRoomStateRecord({
+    sessionId: params.sessionId,
+    roomId: params.roomId,
+  })
 }

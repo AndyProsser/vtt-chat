@@ -1,6 +1,7 @@
 import type { UUID } from '@shared'
 import type { AudioBroadcastState, AudioDMOverrideState } from '@/types/audio.types'
 import {
+  removeAudioDMOverridesBySession,
   removeAudioDMOverrideRecord,
   upsertAudioDMOverrideRecord,
 } from '@/repositories/audio.repository'
@@ -49,6 +50,10 @@ export async function removeDMOverrideState(params: {
     targetUserId: params.targetUserId,
     overrideType: params.overrideType,
   })
+}
+
+export async function clearSessionDMOverrideState(sessionId: UUID): Promise<void> {
+  await removeAudioDMOverridesBySession(sessionId)
 }
 
 export async function setBroadcastState(params: {

@@ -168,13 +168,13 @@ Terminology note for this stage:
 
 **Implementation Phases**:
 
-| Phase                           | Timeline | Deliverables                                                                                        | Status      |
-| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------- | ----------- |
-| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, broadcast badge, create button), condition badge+popover, env tooltip      | Not started |
-| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop | Not started |
-| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                 | Not started |
-| Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing    | Not started |
-| Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage     | Not started |
+| Phase                           | Timeline | Deliverables                                                                                                 | Status      |
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ----------- |
+| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Not started |
+| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop          | Not started |
+| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Not started |
+| Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing             | Not started |
+| Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage              | Not started |
 
 **Key Decisions** (from UX review 2026-05-07):
 
@@ -195,13 +195,16 @@ Terminology note for this stage:
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
 - Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
 - Environment icons (compact, hover tooltip, DM click to edit)
-- Broadcast state: indicator badge + subtle group header glow
+- Broadcast state: global header icon control (DM only, hidden in greenroom)
 - Create Group: icon button in group header (top-right)
 - Sticky DM widget (always visible at top)
 - Primary condition only visible + tooltip/popover for others
 - Screen reader support priority (full ARIA labels)
 - Greenroom policy: no additional groups can be created while session state is `IDLE`
 - Greenroom rendering: DM appears in the same participant list as other users (no separate DM widget)
+- Greenroom routing: treat greenroom as the only out-of-session room in the panel; it cannot be closed or moved into "Other Groups"
+- Greenroom audio: neutral-only (no environment modifier, no DM condition/mute/broadcast overrides)
+- Group close behavior: closing non-main groups migrates remaining members to `MAIN` before deletion
 
 **New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
 

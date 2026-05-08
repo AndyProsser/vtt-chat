@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   listAudioRoomStateBySession: vi.fn(),
   upsertAudioDMOverrideRecord: vi.fn(),
   removeAudioDMOverrideRecord: vi.fn(),
+  removeAudioDMOverridesBySession: vi.fn(),
+  removeAudioRoomStateRecord: vi.fn(),
   listAudioDMOverridesBySession: vi.fn(),
 }))
 
@@ -13,11 +15,15 @@ vi.mock('@/repositories/audio.repository', () => ({
   listAudioRoomStateBySession: mocks.listAudioRoomStateBySession,
   upsertAudioDMOverrideRecord: mocks.upsertAudioDMOverrideRecord,
   removeAudioDMOverrideRecord: mocks.removeAudioDMOverrideRecord,
+  removeAudioDMOverridesBySession: mocks.removeAudioDMOverridesBySession,
+  removeAudioRoomStateRecord: mocks.removeAudioRoomStateRecord,
   listAudioDMOverridesBySession: mocks.listAudioDMOverridesBySession,
 }))
 
 import {
   applyDMOverrideState,
+  clearRoomEnvironmentState,
+  clearSessionDMOverrideState,
   getSessionAudioState,
   removeDMOverrideState,
   setRoomEnvironmentState,
@@ -99,6 +105,23 @@ describe('audio-state service', () => {
       sessionId: SESSION_ID,
       targetUserId: USER_ID,
       overrideType: 'MUTE',
+    })
+  })
+
+  it('clears all dm overrides in a session', async () => {
+    await clearSessionDMOverrideState(SESSION_ID as any)
+    expect(mocks.removeAudioDMOverridesBySession).toHaveBeenCalledWith(SESSION_ID)
+  })
+
+  it('clears environment state for a specific room', async () => {
+    await clearRoomEnvironmentState({
+      sessionId: SESSION_ID as any,
+      roomId: ROOM_ID as any,
+    })
+
+    expect(mocks.removeAudioRoomStateRecord).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
     })
   })
 

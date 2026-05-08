@@ -89,7 +89,7 @@ export const createAudioOverridesSlice: StateCreator<
     const payload = event.payload as {
       targetUserId: UUID
       dmId: UUID
-      overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
+      overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'CONDITION' | 'VOICE_OF_GOD'
       parameters?: Record<string, any>
       appliedAt: number
     }

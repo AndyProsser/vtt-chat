@@ -15,8 +15,12 @@ export interface AudioPresetsSlice {
   currentCondition?: ConditionPreset
   currentVoicePreset?: VoicePreset
   currentICPreset?: ICPreset
+  roomEnvironmentNames: Record<UUID, string>
 
   setEnvironment: (preset: EnvironmentPreset) => void
+  setRoomEnvironmentName: (roomId: UUID, environmentName: string) => void
+  replaceRoomEnvironmentNames: (next: Record<UUID, string>) => void
+  clearRoomEnvironmentName: (roomId: UUID) => void
   clearEnvironment: () => void
   setDistance: (preset: DistancePreset) => void
   clearDistance: () => void
@@ -36,6 +40,7 @@ export const initialAudioPresetsState = {
   currentCondition: undefined,
   currentVoicePreset: undefined,
   currentICPreset: undefined,
+  roomEnvironmentNames: {},
 } as const
 
 export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], AudioPresetsSlice> = (
@@ -47,6 +52,26 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
     set(() => ({
       currentEnvironment: preset,
     })),
+
+  setRoomEnvironmentName: (roomId, environmentName) =>
+    set((state) => ({
+      roomEnvironmentNames: {
+        ...state.roomEnvironmentNames,
+        [roomId]: environmentName,
+      },
+    })),
+
+  replaceRoomEnvironmentNames: (next) =>
+    set(() => ({
+      roomEnvironmentNames: { ...next },
+    })),
+
+  clearRoomEnvironmentName: (roomId) =>
+    set((state) => {
+      const next = { ...state.roomEnvironmentNames }
+      delete next[roomId]
+      return { roomEnvironmentNames: next }
+    }),
 
   clearEnvironment: () =>
     set(() => ({
@@ -115,8 +140,12 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
       roomGain: payload.parameters.roomGain || 0,
     }
 
-    set(() => ({
+    set((state) => ({
       currentEnvironment: environmentPreset,
+      roomEnvironmentNames: {
+        ...state.roomEnvironmentNames,
+        [payload.roomId]: payload.environmentName,
+      },
     }))
   },
 })

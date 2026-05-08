@@ -1,7 +1,5 @@
 .room-selector {
-  border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface));
   padding: 0.75rem;
   display: grid;
   gap: 0.75rem;
@@ -36,6 +34,30 @@
 
 .room-selector-header__create:hover {
   background: color-mix(in srgb, var(--color-brand) 26%, transparent);
+}
+
+.room-selector-header__broadcast-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.room-selector-header__broadcast-icon.active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 58%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
+}
+
+.room-selector-header__broadcast-icon .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .room-selector-header__voice {
@@ -129,30 +151,6 @@
   padding: 0.5rem;
   display: grid;
   gap: 0.45rem;
-}
-
-.room-selector-dm__voice-controls {
-  display: flex;
-  align-items: center;
-}
-
-.room-selector-dm__vog {
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  color: var(--color-text-primary);
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.2rem 0.52rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  cursor: pointer;
-}
-
-.room-selector-dm__vog.active {
-  border-color: color-mix(in srgb, var(--color-brand) 62%, white 6%);
-  background: color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
 .room-selector-item {

@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   mockUpdateSessionState: vi.fn(),
   mockRemoveUserFromSession: vi.fn(),
   mockApplySessionStateRoomTransition: vi.fn(),
+  mockGetSessionAudioState: vi.fn(),
+  mockClearSessionDMOverrideState: vi.fn(),
+  mockClearRoomEnvironmentState: vi.fn(),
   mockClearRoomMessages: vi.fn(),
   mockEmitSessionBoundarySystemMessage: vi.fn(),
   mockLogSessionStateChange: vi.fn(),
@@ -34,6 +37,12 @@ vi.mock('@/services/session.service', () => ({
 
 vi.mock('@/services/room.service', () => ({
   applySessionStateRoomTransition: mocks.mockApplySessionStateRoomTransition,
+}))
+
+vi.mock('@/services/audio-state.service', () => ({
+  getSessionAudioState: mocks.mockGetSessionAudioState,
+  clearSessionDMOverrideState: mocks.mockClearSessionDMOverrideState,
+  clearRoomEnvironmentState: mocks.mockClearRoomEnvironmentState,
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -115,6 +124,14 @@ describe('session state room orchestration', () => {
       removed: true,
       promotedSpectator: { promoted: false },
     })
+
+    mocks.mockGetSessionAudioState.mockResolvedValue({
+      dmOverrides: [],
+      broadcast: { enabled: false, broadcastRoomId: null },
+      rooms: [],
+    })
+    mocks.mockClearSessionDMOverrideState.mockResolvedValue(undefined)
+    mocks.mockClearRoomEnvironmentState.mockResolvedValue(undefined)
 
     mocks.mockClearRoomMessages.mockResolvedValue(0)
   })
@@ -278,5 +295,168 @@ describe('session state room orchestration', () => {
         type: 'ROOM:SESSION_TRANSITION_APPLIED',
       })
     )
+  })
+
+  it('resets overrides and clears MAIN environment on ACTIVE transition', async () => {
+    const app = buildApp()
+    const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
+
+    mocks.mockGetSessionAudioState.mockResolvedValueOnce({
+      dmOverrides: [
+        {
+          targetUserId: PLAYER_ID,
+          overrideType: 'CONDITION',
+          isMuted: true,
+          condition: 'MUFFLED',
+        },
+      ],
+      broadcast: { enabled: true, broadcastRoomId: MAIN_ROOM_ID },
+      rooms: [],
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'ACTIVE' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockClearSessionDMOverrideState).toHaveBeenCalledWith(SESSION_ID)
+    expect(mocks.mockClearRoomEnvironmentState).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: MAIN_ROOM_ID,
+    })
+
+    const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+    expect(wsCalls.map(([, event]: any) => event.type)).toEqual([
+      'ROOM:SESSION_TRANSITION_APPLIED',
+      'AUDIO:DM_OVERRIDE_REMOVED',
+      'AUDIO:BROADCAST_STATE_CHANGED',
+    ])
+  })
+
+  it('resets overrides and clears Green Room environment on IDLE transition', async () => {
+    const app = buildApp()
+    const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
+
+    mocks.mockUpdateSessionState.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'IDLE',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
+      mainRoomId: '44444444-4444-4444-8444-444444444444',
+      mainRoomName: 'Main Room',
+      greenRoomId: GREEN_ROOM_ID,
+      greenRoomName: 'Green Room',
+      targetRoomId: GREEN_ROOM_ID,
+      targetRoomName: 'Green Room',
+      movedUsers: 2,
+      targetState: 'IDLE',
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'IDLE' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockClearSessionDMOverrideState).toHaveBeenCalledWith(SESSION_ID)
+    expect(mocks.mockClearRoomEnvironmentState).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: GREEN_ROOM_ID,
+    })
+  })
+
+  it('resets overrides and clears Green Room environment on PAUSED transition', async () => {
+    const app = buildApp()
+    const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
+
+    mocks.mockUpdateSessionState.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'PAUSED',
+      createdAt: Date.now(),
+      startedAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
+      mainRoomId: '44444444-4444-4444-8444-444444444444',
+      mainRoomName: 'Main Room',
+      greenRoomId: GREEN_ROOM_ID,
+      greenRoomName: 'Green Room',
+      targetRoomId: GREEN_ROOM_ID,
+      targetRoomName: 'Green Room',
+      movedUsers: 2,
+      targetState: 'IDLE',
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'PAUSED' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockClearSessionDMOverrideState).toHaveBeenCalledWith(SESSION_ID)
+    expect(mocks.mockClearRoomEnvironmentState).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: GREEN_ROOM_ID,
+    })
+  })
+
+  it('emits CHAT:ROOM_CONTEXT_CLEARED for PAUSED/ENDED only when target is Green Room', async () => {
+    const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
+    const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
+
+    const cases: Array<{
+      state: 'PAUSED' | 'ENDED'
+      targetRoomId: string
+      expectCleared: boolean
+    }> = [
+      { state: 'PAUSED', targetRoomId: GREEN_ROOM_ID, expectCleared: true },
+      { state: 'PAUSED', targetRoomId: MAIN_ROOM_ID, expectCleared: false },
+      { state: 'ENDED', targetRoomId: GREEN_ROOM_ID, expectCleared: true },
+      { state: 'ENDED', targetRoomId: MAIN_ROOM_ID, expectCleared: false },
+    ]
+
+    for (const testCase of cases) {
+      const app = buildApp()
+
+      mocks.mockUpdateSessionState.mockResolvedValueOnce({
+        id: SESSION_ID,
+        name: 'Session 1',
+        dmId: DM_ID,
+        state: testCase.state,
+        createdAt: Date.now(),
+        startedAt: Date.now(),
+      })
+
+      mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
+        mainRoomId: MAIN_ROOM_ID,
+        mainRoomName: 'Main Room',
+        greenRoomId: GREEN_ROOM_ID,
+        greenRoomName: 'Green Room',
+        targetRoomId: testCase.targetRoomId,
+        targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main Room',
+        movedUsers: 2,
+        targetState: testCase.targetRoomId === GREEN_ROOM_ID ? 'IDLE' : 'ONLINE',
+      })
+
+      const response = await request(app)
+        .put(`/api/session/${SESSION_ID}/state`)
+        .set('Authorization', 'Bearer token')
+        .send({ state: testCase.state })
+
+      expect(response.status).toBe(200)
+
+      const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+      const contextClearedEvents = wsCalls.filter(
+        ([, event]: any) => event.type === 'CHAT:ROOM_CONTEXT_CLEARED'
+      )
+      expect(contextClearedEvents).toHaveLength(testCase.expectCleared ? 1 : 0)
+    }
   })
 })

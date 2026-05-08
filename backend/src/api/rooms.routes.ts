@@ -53,6 +53,11 @@ function parseRoomType(value: unknown): RoomType | null {
   return null
 }
 
+function isGreenRoomName(name: string): boolean {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
 function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
@@ -474,6 +479,12 @@ async function deleteRoomHandler(req: Request, res: Response) {
       return res
         .status(400)
         .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be deleted' })
+    }
+
+    if (isGreenRoomName(room.name)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Greenroom cannot be deleted' })
     }
 
     let mainRoom = (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN)

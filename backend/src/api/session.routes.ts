@@ -27,6 +27,11 @@ import {
   getSessionPresence,
   joinRoom,
 } from '@/services/room.service'
+import {
+  clearRoomEnvironmentState,
+  clearSessionDMOverrideState,
+  getSessionAudioState,
+} from '@/services/audio-state.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
   logSessionJoin,
@@ -680,6 +685,21 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       })),
     })
 
+    const audioStateBeforeReset = await getSessionAudioState(session.id)
+    await clearSessionDMOverrideState(session.id)
+
+    const neutralRoomId =
+      state === 'ACTIVE'
+        ? transition.mainRoomId
+        : transition.targetRoomId === transition.greenRoomId
+          ? transition.greenRoomId
+          : transition.mainRoomId
+
+    await clearRoomEnvironmentState({
+      sessionId: session.id,
+      roomId: neutralRoomId,
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
     const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
@@ -723,6 +743,44 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           })),
         },
       })
+
+      for (const override of audioStateBeforeReset.dmOverrides) {
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'AUDIO:DM_OVERRIDE_REMOVED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            targetUserId: override.targetUserId,
+            dmId: user.userId,
+            overrideType: override.overrideType,
+            removedAt: Date.now(),
+          },
+        })
+      }
+
+      if (audioStateBeforeReset.broadcast.enabled) {
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'AUDIO:BROADCAST_STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            dmId: session.dmId,
+            enabled: false,
+            broadcastRoomId: audioStateBeforeReset.broadcast.broadcastRoomId,
+            changedAt: Date.now(),
+          },
+        })
+      }
 
       if (shouldClearGreenRoomContext) {
         wsManager.broadcastEventToSession(session.id, {

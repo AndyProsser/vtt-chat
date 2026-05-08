@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   mockCreateRoom: vi.fn(),
   mockJoinRoom: vi.fn(),
   mockLeaveRoom: vi.fn(),
+  mockDeleteRoom: vi.fn(),
   mockGetSessionPresence: vi.fn(),
   mockEnsureSessionDefaultRoomsForSession: vi.fn(),
   mockRoomMemberIds: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock('@/services/room.service', () => ({
   createRoom: mocks.mockCreateRoom,
   joinRoom: mocks.mockJoinRoom,
   leaveRoom: mocks.mockLeaveRoom,
+  deleteRoom: mocks.mockDeleteRoom,
   getSessionPresence: mocks.mockGetSessionPresence,
   ensureSessionDefaultRoomsForSession: mocks.mockEnsureSessionDefaultRoomsForSession,
   getRoomMemberIds: mocks.mockRoomMemberIds,
@@ -62,6 +64,16 @@ const ROOM_FIXTURE = {
   sessionId: SESSION_ID,
   name: 'Main Room',
   type: 'MAIN',
+  createdBy: DM_ID,
+  createdAt: 1700000000000,
+  updatedAt: 1700000000000,
+}
+
+const GROUP_ROOM_FIXTURE = {
+  id: ROOM_ID,
+  sessionId: SESSION_ID,
+  name: 'Side Room',
+  type: 'GROUP',
   createdBy: DM_ID,
   createdAt: 1700000000000,
   updatedAt: 1700000000000,
@@ -102,6 +114,8 @@ describe('rooms routes', () => {
     mocks.mockGetRoom.mockResolvedValue(ROOM_FIXTURE)
     mocks.mockEnsureSessionDefaultRoomsForSession.mockResolvedValue(undefined)
     mocks.mockGetSessionPresence.mockResolvedValue([])
+    mocks.mockDeleteRoom.mockResolvedValue(undefined)
+    mocks.mockRoomMemberIds.mockResolvedValue([])
   })
 
   // ── GET /:sessionId ──────────────────────────────────────────────────────────
@@ -412,6 +426,58 @@ describe('rooms routes', () => {
       expect(sid).toBe(SESSION_ID)
       expect(event.type).toBe('ROOM:USER_LEFT')
       expect(event.payload.reason).toBe('VOLUNTARY')
+    })
+  })
+
+  describe('DELETE /:roomId', () => {
+    it('moves members to main room before deleting', async () => {
+      mocks.mockGetRoom.mockResolvedValue(GROUP_ROOM_FIXTURE)
+      mocks.mockGetRooms.mockResolvedValue([ROOM_FIXTURE, GROUP_ROOM_FIXTURE])
+      mocks.mockRoomMemberIds.mockResolvedValue([PLAYER_ID])
+      mocks.mockJoinRoom.mockResolvedValue({
+        sessionId: SESSION_ID,
+        userId: PLAYER_ID,
+        username: 'alice',
+        primaryRoomId: ROOM_FIXTURE.id,
+        state: 'ONLINE',
+        lastSeenAt: 1700000010000,
+      })
+
+      const app = buildApp()
+      const res = await request(app)
+        .delete(`/api/rooms/${GROUP_ROOM_FIXTURE.id}`)
+        .set('Authorization', 'Bearer token')
+        .send({ sessionId: SESSION_ID })
+
+      expect(res.status).toBe(200)
+      expect(mocks.mockJoinRoom).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          roomId: ROOM_FIXTURE.id,
+          userId: PLAYER_ID,
+          username: 'alice',
+        })
+      )
+      expect(mocks.mockDeleteRoom).toHaveBeenCalledWith({
+        sessionId: SESSION_ID,
+        roomId: GROUP_ROOM_FIXTURE.id,
+      })
+    })
+
+    it('returns 400 when attempting to delete greenroom', async () => {
+      mocks.mockGetRoom.mockResolvedValue({
+        ...GROUP_ROOM_FIXTURE,
+        name: 'Green Room',
+      })
+
+      const app = buildApp()
+      const res = await request(app)
+        .delete(`/api/rooms/${GROUP_ROOM_FIXTURE.id}`)
+        .set('Authorization', 'Bearer token')
+        .send({ sessionId: SESSION_ID })
+
+      expect(res.status).toBe(400)
+      expect(res.body.message).toMatch(/Greenroom cannot be deleted/i)
     })
   })
 })

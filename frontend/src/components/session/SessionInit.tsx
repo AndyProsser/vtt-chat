@@ -343,7 +343,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
-  const [roomEnvironmentNames, setRoomEnvironmentNames] = useState<Record<UUID, string>>({})
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
     if (typeof window === 'undefined') {
       return DEFAULT_CHAT_GROUPING_WINDOW_MS
@@ -382,6 +381,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const setBroadcastState = useStore((state) => state.setBroadcastState)
   const setEnvironment = useStore((state) => state.setEnvironment)
+  const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
+  const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
+  const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
@@ -790,7 +792,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           environments?: ApiAudioEnvironmentState[]
           dmOverrides?: Array<{
             userId: UUID
-            overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
+            overrideType:
+              | 'MUTE'
+              | 'UNMUTE'
+              | 'GAIN'
+              | 'GATE'
+              | 'FILTER'
+              | 'CONDITION'
+              | 'VOICE_OF_GOD'
             parameters?: Record<string, unknown>
             appliedAt: number
           }>
@@ -845,7 +854,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             nextEnvironmentNames[environmentState.roomId] = environmentState.environmentName
           }
         }
-        setRoomEnvironmentNames(nextEnvironmentNames)
+        replaceRoomEnvironmentNames(nextEnvironmentNames)
 
         // Rehydrate DM overrides from server state (replaces any stale local copy).
         const recoveredOverrides = audioStatePayload.dmOverrides
@@ -886,8 +895,33 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     replaceSessionTopology,
     setBroadcastState,
     setEnvironment,
+    replaceRoomEnvironmentNames,
     replaceDMOverrides,
   ])
+
+  useEffect(() => {
+    if (!currentSession || currentRooms.length === 0) {
+      return
+    }
+
+    if (currentSession.state === SessionState.ACTIVE) {
+      const mainRoom = currentRooms.find((room) => room.type === RoomType.MAIN)
+      if (mainRoom) {
+        clearRoomEnvironmentName(mainRoom.id)
+      }
+      return
+    }
+
+    if (
+      currentSession.state === SessionState.IDLE ||
+      currentSession.state === SessionState.PAUSED
+    ) {
+      const greenRoom = currentRooms.find((room) => isGreenRoom(room))
+      if (greenRoom) {
+        clearRoomEnvironmentName(greenRoom.id)
+      }
+    }
+  }, [clearRoomEnvironmentName, currentRooms, currentSession])
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
