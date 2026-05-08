@@ -65,6 +65,57 @@ function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
+async function ensureNoHomelessPresence(sessionId: UUID, dmId: UUID): Promise<UUID[]> {
+  await ensureSessionDefaultRoomsForSession(sessionId, dmId)
+
+  const rooms = await getRooms(sessionId)
+  const mainRoom = rooms.find((room) => room.type === RoomType.MAIN)
+  if (!mainRoom) {
+    return []
+  }
+
+  const roomIds = new Set(rooms.map((room) => room.id))
+  const presence = await getSessionPresence(sessionId)
+  const moved: UUID[] = []
+
+  for (const entry of presence) {
+    const hasValidPrimary = Boolean(entry.primaryRoomId && roomIds.has(entry.primaryRoomId))
+    if (hasValidPrimary) {
+      continue
+    }
+
+    const next = await joinRoom({
+      sessionId,
+      roomId: mainRoom.id,
+      userId: entry.userId,
+      username: entry.username,
+      state:
+        entry.state === PresenceState.OFFLINE
+          ? PresenceState.OFFLINE
+          : entry.state === PresenceState.IDLE
+            ? PresenceState.IDLE
+            : PresenceState.ONLINE,
+    })
+
+    if (!next) {
+      continue
+    }
+
+    await updatePresenceState({
+      sessionId,
+      userId: entry.userId,
+      username: entry.username,
+      state: next.state,
+      primaryRoomId: mainRoom.id,
+      privateRoomId: null,
+      campaignId: next.campaignId,
+    })
+    moved.push(entry.userId)
+  }
+
+  return moved
+}
+
 async function canAccessSessionRooms(sessionId: UUID, user: any): Promise<boolean> {
   const session = await getSession(sessionId)
   if (!session) return false
@@ -94,6 +145,7 @@ async function listSessionRoomsHandler(req: Request, res: Response) {
     const session = await getSession(sessionId as UUID)
     if (session) {
       await ensureSessionDefaultRoomsForSession(sessionId as UUID, session.dmId)
+      await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
     }
 
     const rooms = await getRooms(sessionId as UUID)
@@ -185,7 +237,9 @@ async function joinRoomHandler(req: Request, res: Response) {
   }
 
   try {
-    const room = await getRoom(roomId as UUID)
+    let room = await getRoom(roomId as UUID)
+
+    // Failback contract: if target group no longer exists, move to MAIN.
     if (!room) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
@@ -330,6 +384,8 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can move users' })
     }
 
+    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+
     const sessionUsers = await getSessionUsers(sessionId as UUID)
     const targetUser = sessionUsers.find((entry) => entry.id === (targetUserId as UUID))
     if (!targetUser) {
@@ -352,7 +408,43 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
     })
 
     if (!updatedPresence) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+      const mainFallback = (await getRooms(sessionId as UUID)).find(
+        (entry) => entry.type === RoomType.MAIN
+      )
+      if (!mainFallback) {
+        return internalErrorResponse(res)
+      }
+
+      const fallbackPresence = await joinRoom({
+        sessionId: sessionId as UUID,
+        roomId: mainFallback.id,
+        userId: targetUser.id as UUID,
+        username: targetUser.username,
+        state: PresenceState.ONLINE,
+      })
+
+      if (!fallbackPresence) {
+        return internalErrorResponse(res)
+      }
+
+      await updatePresenceState({
+        sessionId: sessionId as UUID,
+        userId: targetUser.id as UUID,
+        username: targetUser.username,
+        state: fallbackPresence.state,
+        primaryRoomId: fallbackPresence.primaryRoomId,
+        privateRoomId: null,
+        campaignId: fallbackPresence.campaignId,
+      })
+
+      return res.status(200).json({
+        ok: true,
+        movedBy: user.userId,
+        movedFromRoomId: previousRoomId || null,
+        movedToRoomId: mainFallback.id,
+        presence: fallbackPresence,
+        failbackReason: 'TARGET_ROOM_MISSING',
+      })
     }
 
     const movedIntoWhisper = room.type === RoomType.PRIVATE && previousRoomId !== room.id
@@ -487,6 +579,8 @@ async function endWhisperHandler(req: Request, res: Response) {
       whisperRoomId: room.id,
       fallbackRoomId: mainRoom.id,
     })
+
+    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
 
     await clearRoomMessages(sessionId as UUID, room.id)
 
@@ -638,6 +732,8 @@ async function deleteRoomHandler(req: Request, res: Response) {
     if (!mainRoom) {
       return internalErrorResponse(res)
     }
+
+    await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
 
     const members = await getRoomMemberIds(sessionId as UUID, room.id)
     const sessionUsers = await getSessionUsers(sessionId as UUID)

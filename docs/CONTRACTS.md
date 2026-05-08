@@ -23,6 +23,15 @@ This document is the implementation contract for Stage 0 and currently matches `
 Some subsystem and UI docs include richer product terminology that is planned or conceptual.
 Where names differ, treat this file as canonical for current runtime behavior.
 
+### Room Presence Safety Contract
+
+Players must never be left without a valid room assignment.
+
+- If a destination room is missing, deleted, or invalid during move operations, backend must fail back to `MAIN`.
+- If Whisper/private restoration target is unavailable, backend must fail back to `MAIN`.
+- If any presence record is detected with no valid `primaryRoomId`, reconciliation must move that user to `MAIN`.
+- Group deletion must migrate all remaining members to `MAIN` before final delete completes.
+
 ### Audio Broadcast Terminology (Canonical + Legacy Aliases)
 
 Canonical runtime naming for DM session-wide narration is **broadcast**.

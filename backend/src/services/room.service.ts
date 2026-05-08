@@ -490,6 +490,9 @@ export async function endWhisperBubbleForSession(params: {
   whisperRoomId: UUID
   fallbackRoomId: UUID
 }): Promise<Array<{ userId: UUID; username: string; fromRoomId: UUID; toRoomId: UUID }>> {
+  const rooms = await getRooms(params.sessionId)
+  const validRoomIds = new Set(rooms.map((room) => room.id))
+
   const presence = await getSessionPresence(params.sessionId)
   const moved: Array<{ userId: UUID; username: string; fromRoomId: UUID; toRoomId: UUID }> = []
 
@@ -498,7 +501,9 @@ export async function endWhisperBubbleForSession(params: {
       continue
     }
 
-    const targetRoomId = entry.privateRoomId || params.fallbackRoomId
+    const preferredTarget =
+      entry.privateRoomId && validRoomIds.has(entry.privateRoomId) ? entry.privateRoomId : undefined
+    const targetRoomId = preferredTarget || params.fallbackRoomId
     const updated = await joinRoom({
       sessionId: params.sessionId,
       roomId: targetRoomId,

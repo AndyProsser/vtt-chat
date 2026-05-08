@@ -152,7 +152,7 @@ Known readiness gap classes:
 | W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                           |
 | W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                           |
 | W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                    |
-| W9  | DEV Mock Players            | Planned     | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players    |
+| W9  | DEV Mock Players            | In Progress | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players    |
 
 ---
 
@@ -494,7 +494,7 @@ Definition of done:
 
 Provide always-present seeded mock player accounts in the DEV environment so a single developer can test DM superpowers — conditions, drag-to-group, environments, whisper, broadcast — without needing real players to be online.
 
-Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed + DM-join auto-enrollment + randomized D&D profiles).
+Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed + DM-join auto-enrollment + randomized D&D profiles + reset reroll endpoint).
 
 **Behaviour contract**:
 
@@ -506,14 +506,16 @@ Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed +
 - Mock accounts are never seeded in production or staging environments. They are gated behind `NODE_ENV=development` (or an explicit `DEV_MOCK_PLAYERS=true` env flag).
 - Mock player identities are generated from a D&D profile catalogue (at least 20 variations) with randomized names/race/class/subclass and level metadata.
 - Randomized levels are constrained to a tight party band (within 2 levels) so encounter testing feels coherent.
-- Mock state (presence, room membership) resets on each session start, the same as any real player.
+- Mock roster is campaign-stable across session stop/start cycles and rerolled on browser refresh (or explicit reset endpoint).
+- Mock players use a dedicated DEV avatar marker so they are immediately distinguishable from real players.
+- Player-room safety contract: no user may end up homeless. Missing/closed/invalid room targets must fail back to `MAIN`.
 
 **Implementation checklist**:
 
 1. ✅ Add a DEV mock player service that creates mock user accounts and campaign memberships when the DEV flag is active.
 2. ✅ Auto-join mocks when DM joins session in DEV, via the normal session/presence paths (draggable, mutable, condition-capable like real players).
 3. ✅ Add randomized D&D profile generation (3–5 players selected from >=20 archetype variations, level spread within 2).
-4. ⏳ Expose a DEV-only `POST /dev/mock-players/reset` endpoint to re-roll and re-seed current session roster without restart.
+4. ✅ Expose a DEV-only `POST /api/dev/mock-players/reset` endpoint to re-roll and re-seed current session roster without restart.
 5. ⏳ Ensure mocks are excluded from recording/history pipelines where persistence policy requires runtime-only behavior.
 6. ✅ Document the mock setup in `DEVELOPING.md` so contributors know mocks are available in DEV.
 

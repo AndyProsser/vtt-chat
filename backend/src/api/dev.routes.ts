@@ -10,6 +10,7 @@
  *   GET  /dev/mock-players            — list mock player accounts + tokens for a session
  *   POST /dev/mock-players/join       — join all mocks into a session
  *   POST /dev/mock-players/remove     — remove all mocks from a session
+ *   POST /dev/mock-players/reset      — reroll current mock roster for campaign/session
  */
 
 import { Router, Request, Response } from 'express'
@@ -19,6 +20,7 @@ import {
   joinMockPlayersToSession,
   removeMockPlayersFromSession,
   getMockPlayerTokens,
+  resetDevMockRoster,
 } from '@/services/dev-mock-players.service'
 import type { UUID } from '@shared'
 
@@ -101,6 +103,41 @@ router.post('/remove', async (req: Request, res: Response) => {
     ok: true,
     message: `Mock players removed from session ${sessionId}`,
     availableTemplates: mockPlayers.length,
+  })
+})
+
+/**
+ * POST /dev/mock-players/reset
+ * Body: { sessionId?: string, campaignId?: string }
+ * Re-rolls the mock roster instantly without restarting backend.
+ */
+router.post('/reset', async (req: Request, res: Response) => {
+  const { sessionId, campaignId } = req.body || {}
+
+  if (!sessionId && !campaignId) {
+    return res.status(400).json({
+      error: 'Provide at least one of sessionId or campaignId',
+    })
+  }
+
+  if (sessionId && !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId must be a valid UUID' })
+  }
+
+  if (campaignId && !isValidUUID(campaignId)) {
+    return res.status(400).json({ error: 'campaignId must be a valid UUID' })
+  }
+
+  const result = await resetDevMockRoster({
+    sessionId: sessionId as UUID | undefined,
+    campaignId: campaignId as UUID | undefined,
+  })
+
+  return res.json({
+    ok: true,
+    rerolledCount: result.count,
+    sessionId: result.sessionId,
+    campaignId: result.campaignId,
   })
 })
 

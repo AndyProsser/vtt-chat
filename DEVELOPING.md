@@ -266,6 +266,15 @@ Roster behavior:
 - Player/character identity is randomized with race, class/subclass, and level metadata.
 - Levels are constrained to a tight party band (within 2 levels).
 - Mock usernames always use the `dev_mock_*` prefix.
+- Mock players use a dedicated avatar marker (`/branding/mock-player-avatar.svg`) so they are visually obvious.
+- The chosen roster persists across session stop/start cycles for the same campaign.
+- A fresh browser page load rerolls that campaign roster once, and you can also force reroll via the reset endpoint.
+
+Room safety behavior:
+
+- Players are never left without a valid room.
+- If a target room is missing or deleted, the backend fails movement back to `MAIN`.
+- Ending Whisper restores users to their prior valid room; if unavailable, they are moved to `MAIN`.
 
 **You are always the DM** when using the normal dev browser session.
 
@@ -291,6 +300,14 @@ Copy a `token` value from the response and use it to log in as that player in an
 curl -X POST http://localhost:3001/api/dev/mock-players/remove \
   -H "Content-Type: application/json" \
   -d '{"sessionId": "<your-session-id>"}'
+```
+
+### Rerolling mock players instantly (no restart)
+
+```bash
+curl -X POST http://localhost:3001/api/dev/mock-players/reset \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "<your-session-id>", "campaignId": "<your-campaign-id>"}'
 ```
 
 Mock accounts are **never seeded or accessible in production** — the routes and seed logic are hard-gated behind `config.isDevelopment`.

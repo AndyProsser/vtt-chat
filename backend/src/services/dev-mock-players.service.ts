@@ -18,6 +18,10 @@ const prisma = getPrismaClient()
 
 const DEV_MOCK_PREFIX = 'dev_mock_'
 const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
+const DEV_MOCK_AVATAR_URL = '/branding/mock-player-avatar.svg'
+
+const campaignRosterByCampaignId = new Map<UUID, string[]>()
+const sessionRosterBySessionId = new Map<UUID, string[]>()
 
 type MockArchetype = {
   slug: string
@@ -254,6 +258,7 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
       username,
       displayName,
       email,
+      avatarUrl: DEV_MOCK_AVATAR_URL,
       password: passwordHash,
       role: 'PLAYER',
       authType: 'FULL',
@@ -261,6 +266,7 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
     },
     update: {
       displayName,
+      avatarUrl: DEV_MOCK_AVATAR_URL,
       isActive: true,
     },
     select: {
@@ -316,6 +322,7 @@ async function ensureCampaignCharacter(params: {
     race: params.archetype.race,
     class: params.archetype.className,
     subclass: params.archetype.subclass || null,
+    avatarUrl: DEV_MOCK_AVATAR_URL,
     isActive: true,
     metadata: buildStatBlock(params.level),
   }
@@ -337,13 +344,51 @@ async function ensureCampaignCharacter(params: {
   })
 }
 
-function pickTargetRoom(rooms: Array<{ id: UUID; name: string; type: RoomType }>) {
+function pickTargetRoom(
+  rooms: Array<{ id: UUID; name: string; type: RoomType }>,
+  sessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+) {
   const main = rooms.find((room) => room.type === RoomType.MAIN)
   const green = rooms.find((room) => {
     const normalized = normalizeRoomName(room.name)
     return normalized === 'green room' || normalized === 'green-room'
   })
-  return main || green
+
+  if (sessionState === 'ACTIVE' || sessionState === 'PAUSED') {
+    return main || green
+  }
+
+  return green || main
+}
+
+function ensureRosterMemory(
+  sessionId: UUID,
+  campaignId?: UUID | null,
+  forceReroll = false
+): string[] {
+  if (campaignId) {
+    if (!forceReroll && campaignRosterByCampaignId.has(campaignId)) {
+      return campaignRosterByCampaignId.get(campaignId) as string[]
+    }
+
+    const size = pickRosterSize()
+    const slugs = shuffle(DND_ARCHETYPES)
+      .slice(0, size)
+      .map((entry) => entry.slug)
+    campaignRosterByCampaignId.set(campaignId, slugs)
+    return slugs
+  }
+
+  if (!forceReroll && sessionRosterBySessionId.has(sessionId)) {
+    return sessionRosterBySessionId.get(sessionId) as string[]
+  }
+
+  const size = pickRosterSize()
+  const slugs = shuffle(DND_ARCHETYPES)
+    .slice(0, size)
+    .map((entry) => entry.slug)
+  sessionRosterBySessionId.set(sessionId, slugs)
+  return slugs
 }
 
 export async function seedMockPlayers(): Promise<void> {
@@ -376,14 +421,14 @@ export async function listMockPlayers(): Promise<MockPlayerDef[]> {
 export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<MockPlayerDef[]> {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    select: { id: true, campaignId: true },
+    select: { id: true, campaignId: true, state: true },
   })
   if (!session) {
     return []
   }
 
   const rooms = await getRooms(sessionId)
-  const targetRoom = pickTargetRoom(rooms)
+  const targetRoom = pickTargetRoom(rooms, session.state)
   if (!targetRoom) {
     logger.warn('dev-mock-players', `No MAIN/Green room found for session ${sessionId}`)
     return []
@@ -430,9 +475,14 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
     }))
   }
 
-  const rosterSize = pickRosterSize()
-  const selectedArchetypes = shuffle(DND_ARCHETYPES).slice(0, rosterSize)
-  const levels = pickLevels(rosterSize)
+  const rememberedSlugs = ensureRosterMemory(sessionId, session.campaignId as UUID | null)
+  let selectedArchetypes = rememberedSlugs
+    .map((slug) => DND_ARCHETYPES.find((entry) => entry.slug === slug))
+    .filter((entry): entry is MockArchetype => Boolean(entry))
+  if (selectedArchetypes.length === 0) {
+    selectedArchetypes = shuffle(DND_ARCHETYPES).slice(0, pickRosterSize())
+  }
+  const levels = pickLevels(selectedArchetypes.length)
   const selectedUsers: MockPlayerDef[] = []
 
   for (let i = 0; i < selectedArchetypes.length; i += 1) {
@@ -476,6 +526,63 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
 
 export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
   await ensureDevMockPlayersForSession(sessionId)
+}
+
+export async function resetDevMockRoster(params: {
+  sessionId?: UUID
+  campaignId?: UUID
+}): Promise<{ count: number; campaignId?: UUID; sessionId?: UUID }> {
+  if (!params.sessionId && !params.campaignId) {
+    return { count: 0 }
+  }
+
+  let resolvedCampaignId = params.campaignId
+  let resolvedSessionId = params.sessionId
+
+  if (!resolvedCampaignId && resolvedSessionId) {
+    const session = await prisma.session.findUnique({
+      where: { id: resolvedSessionId },
+      select: { campaignId: true },
+    })
+    if (session?.campaignId) {
+      resolvedCampaignId = session.campaignId as UUID
+    }
+  }
+
+  if (resolvedCampaignId) {
+    campaignRosterByCampaignId.delete(resolvedCampaignId)
+  }
+  if (resolvedSessionId) {
+    sessionRosterBySessionId.delete(resolvedSessionId)
+  }
+
+  if (resolvedSessionId) {
+    await removeMockPlayersFromSession(resolvedSessionId)
+
+    const session = await prisma.session.findUnique({
+      where: { id: resolvedSessionId },
+      select: { campaignId: true },
+    })
+
+    if (session?.campaignId) {
+      ensureRosterMemory(resolvedSessionId, session.campaignId as UUID, true)
+    } else {
+      ensureRosterMemory(resolvedSessionId, null, true)
+    }
+
+    const users = await ensureDevMockPlayersForSession(resolvedSessionId)
+    return {
+      count: users.length,
+      campaignId: resolvedCampaignId,
+      sessionId: resolvedSessionId,
+    }
+  }
+
+  return {
+    count: 0,
+    campaignId: resolvedCampaignId,
+    sessionId: resolvedSessionId,
+  }
 }
 
 export async function removeMockPlayersFromSession(sessionId: UUID): Promise<void> {
