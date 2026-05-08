@@ -72,6 +72,10 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
+function isWhisperRoom(room: RoomSelectorRoom): boolean {
+  return room.type === RoomType.PRIVATE
+}
+
 interface WhisperContextSnapshot {
   previousDmVoiceRoomId: UUID | ''
   previousBroadcastEnabled: boolean
@@ -519,6 +523,29 @@ export function RoomSelector({
     setPendingRoomDeletes((state) => ({ ...state, [room.id]: true }))
 
     try {
+      if (isWhisperRoom(room)) {
+        const whisperResponse = await fetch(`${apiUrl}/api/v1/rooms/${room.id}/end-whisper`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        })
+
+        if (!whisperResponse.ok) {
+          const payload = await whisperResponse.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to end whisper')
+        }
+
+        setPendingRoomDeletes((state) => {
+          const next = { ...state }
+          delete next[room.id]
+          return next
+        })
+        return
+      }
+
       const response = await fetch(`${apiUrl}/api/v1/rooms/${room.id}`, {
         method: 'DELETE',
         headers: {
@@ -714,16 +741,19 @@ export function RoomSelector({
   const otherRooms = useMemo(
     () =>
       allRooms
-        .filter((room) => room.type !== RoomType.MAIN && !isGreenRoomName(room.name))
-        .sort((left, right) => {
-          const leftIsPrivate = left.type === RoomType.PRIVATE
-          const rightIsPrivate = right.type === RoomType.PRIVATE
+        .filter(
+          (room) =>
+            room.type !== RoomType.MAIN && !isGreenRoomName(room.name) && !isWhisperRoom(room)
+        )
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [allRooms]
+  )
 
-          if (!leftIsPrivate && rightIsPrivate) return -1
-          if (leftIsPrivate && !rightIsPrivate) return 1
-
-          return left.name.localeCompare(right.name)
-        }),
+  const whisperRooms = useMemo(
+    () =>
+      allRooms
+        .filter((room) => isWhisperRoom(room))
+        .sort((left, right) => left.name.localeCompare(right.name)),
     [allRooms]
   )
 
@@ -747,7 +777,8 @@ export function RoomSelector({
 
   const renderRoomSection = (
     sectionLabel: string,
-    sectionRooms: RoomSelectorRoomWithParticipants[]
+    sectionRooms: RoomSelectorRoomWithParticipants[],
+    options?: { dividerOnly?: boolean }
   ) => {
     if (sectionRooms.length === 0) {
       return null
@@ -755,8 +786,14 @@ export function RoomSelector({
 
     return (
       <section className="room-selector-group-section" aria-label={sectionLabel}>
-        <header className="room-selector-group-section__header">
-          <h5>{sectionLabel}</h5>
+        <header
+          className={`room-selector-group-section__header ${options?.dividerOnly ? 'room-selector-group-section__header--divider-only' : ''}`}
+        >
+          {options?.dividerOnly ? (
+            <span className="room-selector-group-section__divider" />
+          ) : (
+            <h5>{sectionLabel}</h5>
+          )}
         </header>
 
         {sectionRooms.map((room, index) => {
@@ -773,13 +810,15 @@ export function RoomSelector({
             participants.length === 0 &&
             room.type !== RoomType.MAIN &&
             !isGreenRoomName(room.name)
+          const isWhisperGroup = isWhisperRoom(room)
+          const isCompactGroup = isEmptyGroup || isWhisperGroup
 
           return (
             <section
               key={room.id}
               className={`room-selector-item ${selected ? 'selected' : ''} ${
                 isPrivateDividerStart ? 'room-selector-item--private-divider' : ''
-              } ${isEmptyGroup ? 'room-selector-item--collapsed' : ''}`}
+              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''}`}
               aria-label={`Group ${room.name}`}
               onDragOver={(event) => {
                 if (!canManageRooms || isGreenroom) {
@@ -824,7 +863,13 @@ export function RoomSelector({
                     }}
                   >
                     <span className="room-selector-item-name">
-                      <Icon name="voice" />
+                      {isWhisperGroup ? (
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          lock
+                        </span>
+                      ) : (
+                        <Icon name="voice" />
+                      )}
                       {getDisplayRoomName(room)}
                     </span>
                   </button>
@@ -863,8 +908,8 @@ export function RoomSelector({
                         <button
                           type="button"
                           className="room-selector-item__icon-action room-selector-item__close-inline"
-                          aria-label={`Delete group ${getDisplayRoomName(room)}`}
-                          title="Delete group"
+                          aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
+                          title={isWhisperGroup ? 'End whisper' : 'Delete group'}
                           disabled={Boolean(pendingRoomDeletes[room.id])}
                           onClick={() => {
                             void handleDeleteGroup(room)
@@ -937,10 +982,12 @@ export function RoomSelector({
               </div>
 
               <div
-                className={`room-selector-members-list ${isEmptyGroup ? 'room-selector-members-list--hidden' : ''}`}
+                className={`room-selector-members-list ${isCompactGroup ? 'room-selector-members-list--hidden' : ''}`}
               >
                 {participants.length === 0 ? (
-                  <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noMembersInGroup}</p>
+                  isWhisperGroup ? null : (
+                    <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noMembersInGroup}</p>
+                  )
                 ) : (
                   participants.map((member) => {
                     const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
@@ -1121,13 +1168,13 @@ export function RoomSelector({
               {canManageRooms &&
               room.type !== RoomType.MAIN &&
               !isGreenRoomName(room.name) &&
-              !isEmptyGroup ? (
+              !isCompactGroup ? (
                 <footer className="room-selector-item__footer">
                   <button
                     type="button"
                     className="room-selector-item__close-btn"
-                    aria-label={`Close group ${room.name}`}
-                    title="Close group"
+                    aria-label={`${isWhisperGroup ? 'End whisper' : 'Close group'} ${room.name}`}
+                    title={isWhisperGroup ? 'End whisper' : 'Close group'}
                     onClick={() => {
                       void handleDeleteGroup(room)
                     }}
@@ -1288,16 +1335,24 @@ export function RoomSelector({
               </div>
             ) : null}
             {canManageRooms && whisperActive ? (
-              <button
-                type="button"
-                className="room-selector-header__end-whisper"
-                onClick={() => {
-                  void handleEndWhisper()
-                }}
-                title="End whisper and restore everyone"
-              >
-                End Whisper
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="room-selector-header__end-whisper"
+                    onClick={() => {
+                      void handleEndWhisper()
+                    }}
+                    aria-label="Return"
+                    title="Return"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      undo
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Return</TooltipContent>
+              </Tooltip>
             ) : null}
           </div>
         </header>
@@ -1396,7 +1451,16 @@ export function RoomSelector({
           ) : (
             <>
               {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
-              {!isGreenroom ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms) : null}
+              {!isGreenroom && otherRooms.length > 0
+                ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
+                    dividerOnly: true,
+                  })
+                : null}
+              {!isGreenroom && whisperRooms.length > 0
+                ? renderRoomSection('Whisper', whisperRooms, {
+                    dividerOnly: true,
+                  })
+                : null}
             </>
           )}
         </div>

@@ -619,6 +619,10 @@ async function deleteRoomHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be deleted' })
     }
 
+    if (room.type === RoomType.PRIVATE) {
+      return endWhisperHandler(req, res)
+    }
+
     if (isGreenRoomName(room.name)) {
       return res
         .status(400)
