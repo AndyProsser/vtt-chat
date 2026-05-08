@@ -273,7 +273,7 @@ export async function updatePresenceState(params: {
   username: string
   state: PresenceState
   primaryRoomId?: UUID
-  privateRoomId?: UUID
+  privateRoomId?: UUID | null
   campaignId?: UUID
 }): Promise<RealtimePresence> {
   await ensurePresenceRecoveredFromSnapshots(params.sessionId)
@@ -291,7 +291,9 @@ export async function updatePresenceState(params: {
     primaryRoomId:
       params.primaryRoomId !== undefined ? params.primaryRoomId : (existing?.primaryRoomId as UUID),
     privateRoomId:
-      params.privateRoomId !== undefined ? params.privateRoomId : (existing?.privateRoomId as UUID),
+      params.privateRoomId !== undefined
+        ? params.privateRoomId || undefined
+        : (existing?.privateRoomId as UUID),
     state: params.state,
     lastSeenAt: Date.now(),
   }
@@ -483,6 +485,53 @@ export async function ensureSessionWhisperRoomForSession(
   })
 }
 
+export async function endWhisperBubbleForSession(params: {
+  sessionId: UUID
+  whisperRoomId: UUID
+  fallbackRoomId: UUID
+}): Promise<Array<{ userId: UUID; username: string; fromRoomId: UUID; toRoomId: UUID }>> {
+  const presence = await getSessionPresence(params.sessionId)
+  const moved: Array<{ userId: UUID; username: string; fromRoomId: UUID; toRoomId: UUID }> = []
+
+  for (const entry of presence) {
+    if (entry.primaryRoomId !== params.whisperRoomId) {
+      continue
+    }
+
+    const targetRoomId = entry.privateRoomId || params.fallbackRoomId
+    const updated = await joinRoom({
+      sessionId: params.sessionId,
+      roomId: targetRoomId,
+      userId: entry.userId,
+      username: entry.username,
+      state: PresenceState.ONLINE,
+    })
+
+    if (!updated) {
+      continue
+    }
+
+    await updatePresenceState({
+      sessionId: params.sessionId,
+      userId: entry.userId,
+      username: entry.username,
+      state: updated.state,
+      primaryRoomId: updated.primaryRoomId,
+      privateRoomId: null,
+      campaignId: updated.campaignId,
+    })
+
+    moved.push({
+      userId: entry.userId,
+      username: entry.username,
+      fromRoomId: params.whisperRoomId,
+      toRoomId: targetRoomId,
+    })
+  }
+
+  return moved
+}
+
 export async function deletePrivateRoomsForEndedSession(sessionId: UUID): Promise<StoredRoom[]> {
   const rooms = await getRooms(sessionId)
   const privateRooms = rooms.filter((room) => room.type === RoomType.PRIVATE)
@@ -534,7 +583,18 @@ export async function applySessionStateRoomTransition(params: {
       state: targetState,
     })
 
-    if (result) movedUsers += 1
+    if (result) {
+      await updatePresenceState({
+        sessionId: params.sessionId,
+        userId: user.id,
+        username: user.username,
+        state: targetState,
+        primaryRoomId: targetRoom.id,
+        privateRoomId: null,
+        campaignId: result.campaignId,
+      })
+      movedUsers += 1
+    }
   }
 
   return {

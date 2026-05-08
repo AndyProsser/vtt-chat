@@ -151,7 +151,10 @@ export function SessionLeftRailPanel({
                   member.userId === dmUserId ? ROOM_ROLE_LABELS.dm : ROOM_ROLE_LABELS.player,
                 presenceState: member.presenceState,
                 isMuted: isSelf ? localUserMuted || overrideMuted : overrideMuted,
-                isSpeaking: member.presenceState === PresenceState.SPEAKING,
+                isSpeaking:
+                  room.type === RoomType.PRIVATE
+                    ? false
+                    : member.presenceState === PresenceState.SPEAKING,
                 condition: isGreenroom
                   ? undefined
                   : overrideCondition ||

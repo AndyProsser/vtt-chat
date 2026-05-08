@@ -10,9 +10,11 @@ import {
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
+import { clearRoomMessages } from '@/services/chat.service'
 import {
   createRoom,
   deleteRoom,
+  endWhisperBubbleForSession,
   ensureSessionDefaultRoomsForSession,
   getRoom,
   getRoomMemberIds,
@@ -20,6 +22,7 @@ import {
   getRooms,
   joinRoom,
   leaveRoom,
+  updatePresenceState,
 } from '@/services/room.service'
 import type { WebSocketManager } from '@/ws'
 
@@ -338,6 +341,7 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
     const presence = await getSessionPresence(sessionId as UUID)
     const previousPresence = presence.find((entry) => entry.userId === (targetUserId as UUID))
     const previousRoomId = previousPresence?.primaryRoomId
+    const previousRoom = previousRoomId ? await getRoom(previousRoomId) : null
 
     const updatedPresence = await joinRoom({
       sessionId: sessionId as UUID,
@@ -349,6 +353,22 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
 
     if (!updatedPresence) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    const movedIntoWhisper = room.type === RoomType.PRIVATE && previousRoomId !== room.id
+    const movedOutOfWhisper =
+      previousRoom?.type === RoomType.PRIVATE && room.type !== RoomType.PRIVATE
+
+    if (movedIntoWhisper || movedOutOfWhisper) {
+      await updatePresenceState({
+        sessionId: sessionId as UUID,
+        userId: targetUser.id as UUID,
+        username: targetUser.username,
+        state: updatedPresence.state,
+        primaryRoomId: updatedPresence.primaryRoomId,
+        privateRoomId: movedIntoWhisper ? previousRoomId || null : null,
+        campaignId: updatedPresence.campaignId,
+      })
     }
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -405,6 +425,124 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
       movedFromRoomId: previousRoomId || null,
       movedToRoomId: room.id,
       presence: updatedPresence,
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
+async function endWhisperHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { roomId } = req.params
+  const sessionId = req.body?.sessionId || req.query?.sessionId
+
+  if (!isValidUUID(roomId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
+  }
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  try {
+    const room = await getRoom(roomId as UUID)
+    if (!room) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (room.sessionId !== (sessionId as UUID)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'roomId does not belong to sessionId' })
+    }
+
+    if (room.type !== RoomType.PRIVATE) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Only whisper room can be ended' })
+    }
+
+    const session = await getSession(sessionId as UUID)
+    if (!session) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (session.dmId !== (user.userId as UUID)) {
+      return res
+        .status(403)
+        .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can end whisper mode' })
+    }
+
+    const mainRoom = (await getRooms(sessionId as UUID)).find(
+      (entry) => entry.type === RoomType.MAIN
+    )
+    if (!mainRoom) {
+      return internalErrorResponse(res)
+    }
+
+    const movedUsers = await endWhisperBubbleForSession({
+      sessionId: sessionId as UUID,
+      whisperRoomId: room.id,
+      fallbackRoomId: mainRoom.id,
+    })
+
+    await clearRoomMessages(sessionId as UUID, room.id)
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      const timestamp = Date.now()
+
+      for (const moved of movedUsers) {
+        wsManager.broadcastEventToSession(sessionId as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_LEFT',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: moved.fromRoomId,
+          timestamp,
+          payload: {
+            roomId: moved.fromRoomId,
+            userId: moved.userId,
+            username: moved.username,
+            leftAt: timestamp,
+            reason: 'WHISPER_ENDED',
+            movedBy: user.userId,
+          },
+        })
+
+        wsManager.broadcastEventToSession(sessionId as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: moved.toRoomId,
+          timestamp,
+          payload: {
+            roomId: moved.toRoomId,
+            userId: moved.userId,
+            username: moved.username,
+            joinedAt: timestamp,
+            reason: 'WHISPER_ENDED',
+            movedBy: user.userId,
+          },
+        })
+      }
+    }
+
+    return res.status(200).json({
+      ok: true,
+      whisperRoomId: room.id,
+      movedUsers: movedUsers.map((entry) => ({
+        userId: entry.userId,
+        fromRoomId: entry.fromRoomId,
+        toRoomId: entry.toRoomId,
+      })),
     })
   } catch {
     return internalErrorResponse(res)
@@ -627,6 +765,7 @@ router.post('/:roomId/members/leave', requireAuth, leaveRoomHandler)
 
 router.post('/:roomId/move-user', requireAuth, moveRoomMemberHandler)
 router.post('/:roomId/members/move', requireAuth, moveRoomMemberHandler)
+router.post('/:roomId/end-whisper', requireAuth, endWhisperHandler)
 
 router.get('/:roomId/members', requireAuth, listRoomMembersHandler)
 router.delete('/:roomId', requireAuth, deleteRoomHandler)

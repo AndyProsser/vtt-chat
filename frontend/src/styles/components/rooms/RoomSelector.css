@@ -48,6 +48,21 @@
   isolation: isolate;
 }
 
+.room-selector-header__end-whisper {
+  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 16%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 74%, var(--color-text-primary));
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.16rem 0.52rem;
+  cursor: pointer;
+}
+
+.room-selector-header__end-whisper:hover {
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 22%, transparent);
+}
+
 .room-selector-header__broadcast-icon {
   width: 1.7rem;
   height: 1.7rem;

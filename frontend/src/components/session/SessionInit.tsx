@@ -491,6 +491,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const clearEnvironment = useStore((state) => state.clearEnvironment)
   const resetSessionAudioState = useStore((state) => state.resetSessionAudioState)
   const clearActiveEffects = useStore((state) => state.clearActiveEffects)
+  const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
   const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
   const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
@@ -556,6 +557,20 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+
+  useEffect(() => {
+    if (!currentSession) {
+      setPrivateRoomCleanMode(false)
+      return
+    }
+
+    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    const ownRoomType = ownPresence?.primaryRoomId
+      ? currentRooms.find((room) => room.id === ownPresence.primaryRoomId)?.type
+      : undefined
+
+    setPrivateRoomCleanMode(ownRoomType === RoomType.PRIVATE)
+  }, [currentPresence, currentRooms, currentSession, setPrivateRoomCleanMode, user.id])
 
   useEffect(() => {
     if (!currentSession || !selectedRoomId) {
@@ -2835,9 +2850,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 if (tab === 'information') {
                   return renderCampaignScaffoldPanel(
                     'Campaign Information',
-                    'Campaign-scoped information workspace. Session state is intentionally excluded.',
+                    'Read-only during live sessions. Edit campaign metadata from the home screen settings modal only.',
                     [
-                      'Campaign overview and metadata',
+                      'Campaign overview and metadata (read-only)',
                       'Campaign notes and references',
                       'Policy and visibility guidance',
                     ]
@@ -2928,10 +2943,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 if (tab === 'settings') {
                   return renderCampaignScaffoldPanel(
                     'Campaign Settings',
-                    'Campaign-centric settings live on the right rail and are DM-only.',
+                    'Locked while in a campaign. Use home screen settings to update campaign metadata and policy.',
                     [
-                      'System defaults for new campaigns',
-                      'Campaign settings and invite policy',
+                      'In-session settings are view-only',
+                      'Campaign metadata and invite policy (home screen only)',
                       'Profile and personal preferences',
                     ]
                   )

@@ -9,7 +9,6 @@ interface CreateGroupModalProps {
 
 export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalProps) {
   const [name, setName] = useState('')
-  const [type, setType] = useState<RoomType>(RoomType.GROUP)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +37,7 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
     setIsSubmitting(true)
 
     try {
-      await onCreateGroup(nextName, type)
+      await onCreateGroup(nextName, RoomType.GROUP)
       onClose()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to create group')
@@ -82,30 +81,6 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
               autoFocus
             />
           </label>
-        </section>
-
-        <section className="audio-settings-panel__section">
-          <div className="group-popover__field">
-            <span className="audio-settings-panel__label-text">Group type</span>
-            <div
-              className="group-popover__segment audio-settings-panel__segment"
-              role="group"
-              aria-label="Group type"
-            >
-              <button
-                type="button"
-                className={`group-popover__segment-btn audio-settings-panel__segment-btn ${type === RoomType.GROUP ? 'is-active' : ''}`}
-                aria-pressed={type === RoomType.GROUP}
-                onClick={() => setType(RoomType.GROUP)}
-                disabled={isSubmitting}
-              >
-                Group
-              </button>
-            </div>
-            <p className="group-popover__helper-text">
-              Whisper is a single private bubble created automatically when the session starts.
-            </p>
-          </div>
         </section>
 
         {error ? <p className="group-popover__error">{error}</p> : null}

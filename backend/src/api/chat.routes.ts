@@ -197,6 +197,13 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
+    if (room.type === 'PRIVATE') {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Whisper bubble does not allow chat logging or message persistence',
+      })
+    }
+
     if (requesterRole !== 'DM') {
       const presence = await getSessionPresence(sessionId as UUID)
       const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
@@ -297,6 +304,10 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const room = await getRoom(roomId as UUID)
     if (!room || room.sessionId !== (sessionId as UUID)) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (room.type === 'PRIVATE') {
+      return res.status(200).json({ messages: [] })
     }
 
     if (requesterRole !== 'DM') {

@@ -72,6 +72,12 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
+interface WhisperContextSnapshot {
+  previousDmVoiceRoomId: UUID | ''
+  previousBroadcastEnabled: boolean
+  memberPreviousRoomIds: Record<UUID, UUID>
+}
+
 type RadialActionMode = 'root' | 'move' | 'condition'
 
 interface RadialMenuState {
@@ -124,6 +130,7 @@ export function RoomSelector({
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
+  const whisperContextRef = useRef<WhisperContextSnapshot | null>(null)
   const createRoom = useStore((state) => state.createRoom)
   const deleteRoom = useStore((state) => state.deleteRoom)
   const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
@@ -180,7 +187,14 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms
+  const canCreateGroups = canManageRooms && isGreenroom
+
+  const whisperRoom = useMemo(
+    () => allRooms.find((room) => room.type === RoomType.PRIVATE),
+    [allRooms]
+  )
+  const whisperParticipantCount = whisperRoom?.participants.length || 0
+  const whisperActive = whisperParticipantCount > 0
 
   useEffect(() => {
     if (!broadcastModeEnabled && selectedRoomId) {
@@ -243,6 +257,38 @@ export function RoomSelector({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [environmentPickerRoomId, showCreateGroupModal])
+
+  useEffect(() => {
+    if (!whisperActive || !whisperRoom) {
+      return
+    }
+
+    if (!whisperContextRef.current) {
+      whisperContextRef.current = {
+        previousDmVoiceRoomId: selectedRoomId || previousDmVoiceRoomIdRef.current || '',
+        previousBroadcastEnabled: broadcastModeEnabled,
+        memberPreviousRoomIds: {},
+      }
+    }
+
+    if (broadcastModeEnabled) {
+      void onToggleBroadcastMode(false).catch((error) => {
+        setMoveError(error instanceof Error ? error.message : 'Failed to disable broadcast mode')
+      })
+    }
+
+    if (selectedRoomId !== whisperRoom.id) {
+      previousDmVoiceRoomIdRef.current = selectedRoomId || previousDmVoiceRoomIdRef.current
+      onSelectRoom(whisperRoom.id)
+    }
+  }, [
+    broadcastModeEnabled,
+    onSelectRoom,
+    onToggleBroadcastMode,
+    selectedRoomId,
+    whisperActive,
+    whisperRoom,
+  ])
 
   const getDisplayRoomName = (room: RoomSelectorRoomWithParticipants): string => {
     if (room.type === RoomType.MAIN && room.name.trim().toLowerCase() === 'main room') {
@@ -308,6 +354,28 @@ export function RoomSelector({
     setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
 
     try {
+      const targetRoom = allRooms.find((room) => room.id === toRoomId)
+      const movedParticipant = visibleParticipants.find(
+        (participant) => participant.userId === userId
+      )
+      const movedFromRoomId = movedParticipant?.roomId
+
+      if (
+        targetRoom?.type === RoomType.PRIVATE &&
+        movedFromRoomId &&
+        movedFromRoomId !== toRoomId
+      ) {
+        if (!whisperContextRef.current) {
+          whisperContextRef.current = {
+            previousDmVoiceRoomId: selectedRoomId || previousDmVoiceRoomIdRef.current || '',
+            previousBroadcastEnabled: broadcastModeEnabled,
+            memberPreviousRoomIds: {},
+          }
+        }
+
+        whisperContextRef.current.memberPreviousRoomIds[userId] = movedFromRoomId
+      }
+
       const response = await fetch(`${apiUrl}/api/v1/rooms/${toRoomId}/members/move`, {
         method: 'POST',
         headers: {
@@ -321,6 +389,13 @@ export function RoomSelector({
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.message || 'Failed to move participant')
       }
+
+      if (targetRoom?.type === RoomType.PRIVATE) {
+        if (broadcastModeEnabled) {
+          await onToggleBroadcastMode(false)
+        }
+        onSelectRoom(toRoomId)
+      }
     } catch (error) {
       setPendingRoomMoves((state) => {
         const next = { ...state }
@@ -331,7 +406,49 @@ export function RoomSelector({
     }
   }
 
+  const handleEndWhisper = async () => {
+    if (!whisperRoom) {
+      return
+    }
+
+    setMoveError(null)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/rooms/${whisperRoom.id}/end-whisper`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to end whisper')
+      }
+
+      const snapshot = whisperContextRef.current
+      whisperContextRef.current = null
+
+      if (snapshot?.previousDmVoiceRoomId) {
+        onSelectRoom(snapshot.previousDmVoiceRoomId)
+      }
+
+      if (snapshot?.previousBroadcastEnabled) {
+        await onToggleBroadcastMode(true)
+      }
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : 'Failed to end whisper')
+    }
+  }
+
   const handleCreateGroup = async (name: string, type: RoomType) => {
+    if (!isGreenroom) {
+      setMoveError('Groups can only be created from greenroom')
+      return
+    }
+
     setMoveError(null)
 
     const tempId = crypto.randomUUID() as UUID
@@ -693,7 +810,18 @@ export function RoomSelector({
                     className="room-selector-item__select"
                     aria-label={`Select group ${room.name}`}
                     aria-pressed={selected}
-                    onClick={() => onSelectRoom(room.id)}
+                    onClick={() => {
+                      if (
+                        whisperActive &&
+                        whisperRoom &&
+                        canManageRooms &&
+                        room.id !== whisperRoom.id
+                      ) {
+                        setMoveError('DM voice target is locked to whisper while whisper is active')
+                        return
+                      }
+                      onSelectRoom(room.id)
+                    }}
                   >
                     <span className="room-selector-item-name">
                       <Icon name="voice" />
@@ -1053,6 +1181,11 @@ export function RoomSelector({
   }
 
   const handleBroadcastToggleClick = async () => {
+    if (whisperActive) {
+      setMoveError('Broadcast is locked while whisper is active')
+      return
+    }
+
     try {
       if (broadcastModeEnabled) {
         await onToggleBroadcastMode(false)
@@ -1075,6 +1208,11 @@ export function RoomSelector({
   }
 
   const handleSetDmVoiceRoom = async (roomId: UUID) => {
+    if (whisperActive && whisperRoom && roomId !== whisperRoom.id) {
+      setMoveError('DM voice target is locked to whisper while whisper is active')
+      return
+    }
+
     previousDmVoiceRoomIdRef.current = roomId
 
     if (broadcastModeEnabled) {
@@ -1108,6 +1246,7 @@ export function RoomSelector({
                     aria-label={
                       broadcastModeEnabled ? 'Disable broadcast mode' : 'Enable broadcast mode'
                     }
+                    disabled={whisperActive}
                     onClick={() => {
                       void handleBroadcastToggleClick()
                     }}
@@ -1118,13 +1257,15 @@ export function RoomSelector({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  {broadcastModeEnabled
-                    ? 'Broadcast enabled (global)'
-                    : 'Broadcast disabled (global)'}
+                  {whisperActive
+                    ? 'Broadcast locked while whisper is active'
+                    : broadcastModeEnabled
+                      ? 'Broadcast enabled (global)'
+                      : 'Broadcast disabled (global)'}
                 </TooltipContent>
               </Tooltip>
             ) : null}
-            {canManageRooms ? (
+            {canManageRooms && canCreateGroups ? (
               <div className="room-selector-header__create-wrap" ref={createGroupWrapRef}>
                 <button
                   type="button"
@@ -1145,6 +1286,18 @@ export function RoomSelector({
                   />
                 ) : null}
               </div>
+            ) : null}
+            {canManageRooms && whisperActive ? (
+              <button
+                type="button"
+                className="room-selector-header__end-whisper"
+                onClick={() => {
+                  void handleEndWhisper()
+                }}
+                title="End whisper and restore everyone"
+              >
+                End Whisper
+              </button>
             ) : null}
           </div>
         </header>
