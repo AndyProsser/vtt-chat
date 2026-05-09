@@ -381,7 +381,19 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       },
     },
     include: {
-      campaign: true,
+      campaign: {
+        include: {
+          sessions: {
+            select: {
+              id: true,
+              state: true,
+              endedAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      },
     },
   })
 
@@ -397,6 +409,9 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
 
   return res.status(200).json({
     campaign: {
+      latestSessionId: membership.campaign.sessions[0]?.id || null,
+      latestSessionState: membership.campaign.sessions[0]?.state || null,
+      latestSessionEndedAt: membership.campaign.sessions[0]?.endedAt || null,
       id: membership.campaign.id,
       name: membership.campaign.name,
       description: membership.campaign.description,

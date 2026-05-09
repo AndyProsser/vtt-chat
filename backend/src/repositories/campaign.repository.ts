@@ -1,9 +1,8 @@
 import { Prisma } from '@prisma/client'
+import { deriveCampaignDisplayState, type CampaignDisplayState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
-
-type CampaignDisplayState = 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
 
 function roundPresenceCountForPrivacy(count: number): number {
   if (count <= 0) return 0
@@ -17,15 +16,6 @@ function toPresenceCountLabel(count: number, rounded: number): string {
   if (count <= 0) return '0'
   if (count <= 2) return String(count)
   return `~${rounded}`
-}
-
-function deriveCampaignDisplayState(
-  latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
-): CampaignDisplayState {
-  if (!latestSessionState) return 'INACTIVE'
-  if (latestSessionState === 'ACTIVE') return 'ACTIVE'
-  if (latestSessionState === 'PAUSED') return 'PAUSED'
-  return 'GREENROOM'
 }
 
 function generateInviteCode(): string {

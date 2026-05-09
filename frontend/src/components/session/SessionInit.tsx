@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SessionState, Role, MessageType } from '@shared'
+import { SessionState, Role, MessageType, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -186,6 +186,9 @@ function resolveGreenroomCacheTtlMs(): number {
 }
 
 type CampaignSettingsPayload = {
+  latestSessionId?: UUID | null
+  latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+  latestSessionEndedAt?: string | null
   id: UUID
   name: string
   description?: string | null
@@ -225,11 +228,7 @@ function getCampaignDisplayState(
     return campaign.displayState
   }
 
-  const latest = campaign.latestSessionState
-  if (latest === SessionState.ACTIVE) return 'ACTIVE'
-  if (latest === SessionState.PAUSED) return 'PAUSED'
-  if (latest === SessionState.IDLE || latest === 'ENDED') return 'GREENROOM'
-  return 'INACTIVE'
+  return deriveCampaignDisplayState(campaign.latestSessionState)
 }
 
 function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
@@ -985,7 +984,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }, [addMessage, currentRooms, currentSession, typedMessagesBySession, typedRoomsBySession])
 
   const loadCampaignSettings = useCallback(
-    async (campaignId: UUID) => {
+    async (campaignId: UUID): Promise<CampaignSettingsPayload | null> => {
       setIsSettingsLoading(true)
       setError(null)
 
@@ -1003,6 +1002,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
         setSettingsData(payload.campaign)
+        setSettingsReferenceSessionId(payload.campaign.latestSessionId || '')
         setSettingsName(payload.campaign.name)
         setSettingsDescription(payload.campaign.description || '')
         setSettingsVisibility(payload.campaign.discoverable ? 'PUBLIC' : 'PRIVATE')
@@ -1022,9 +1022,11 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
         setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
         setSettingsPosterUrl(payload.campaign.posterUrl || '')
+        return payload.campaign
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load campaign settings'
         setError(message)
+        return null
       } finally {
         setIsSettingsLoading(false)
       }
@@ -1052,15 +1054,26 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   )
 
   const loadCampaignSettingsSessionContext = useCallback(
-    async (campaignId: UUID) => {
+    async (campaignId: UUID, authoritativeLatestSessionId: UUID | '' = '') => {
       try {
         const sessions = await fetchCampaignSessions(campaignId)
         setSettingsCampaignSessions(sessions)
+
+        if (
+          authoritativeLatestSessionId &&
+          sessions.some((session) => session.id === authoritativeLatestSessionId)
+        ) {
+          setSettingsReferenceSessionId(authoritativeLatestSessionId)
+          return
+        }
+
         const latestSession = getLatestSessionChronologically(sessions)
         setSettingsReferenceSessionId(latestSession?.id || '')
       } catch {
         setSettingsCampaignSessions([])
-        setSettingsReferenceSessionId('')
+        if (!authoritativeLatestSessionId) {
+          setSettingsReferenceSessionId('')
+        }
       }
     },
     [fetchCampaignSessions]
@@ -1071,8 +1084,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setSettingsCampaignId(campaignId)
       setSettingsHomeTab('home')
       setShowCampaignSettingsModal(true)
-      void loadCampaignSettings(campaignId)
-      void loadCampaignSettingsSessionContext(campaignId)
+
+      void (async () => {
+        const settingsPayload = await loadCampaignSettings(campaignId)
+        const authoritativeLatestSessionId = (settingsPayload?.latestSessionId || '') as UUID | ''
+        await loadCampaignSettingsSessionContext(campaignId, authoritativeLatestSessionId)
+      })()
     },
     [loadCampaignSettings, loadCampaignSettingsSessionContext]
   )

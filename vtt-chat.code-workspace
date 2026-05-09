@@ -54,6 +54,7 @@
       "npm run lint": true,
       "npm run -s build": true,
       "npm run -s test:coverage": true,
+      "./node_modules/.bin/vitest": true,
     },
     "chat.agent.maxRequests": 100,
   },

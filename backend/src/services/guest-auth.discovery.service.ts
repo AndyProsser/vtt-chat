@@ -1,5 +1,6 @@
 import { getPrismaClient } from '@/infra/db'
 import type { TokenPayload } from '@/services/auth.service'
+import { deriveCampaignDisplayState } from '@shared'
 import {
   sanitizeEmail,
   sanitizeExternalSystem,
@@ -27,15 +28,6 @@ function toPresenceCountLabel(count: number, rounded: number): string {
   if (count <= 0) return '0'
   if (count <= 2) return String(count)
   return `~${rounded}`
-}
-
-function deriveCampaignDisplayState(
-  latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
-): 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' {
-  if (!latestSessionState) return 'INACTIVE'
-  if (latestSessionState === 'ACTIVE') return 'ACTIVE'
-  if (latestSessionState === 'PAUSED') return 'PAUSED'
-  return 'GREENROOM'
 }
 
 export async function getPlatformStatus(): Promise<PlatformStatus> {
