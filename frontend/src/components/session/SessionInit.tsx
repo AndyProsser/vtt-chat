@@ -202,6 +202,8 @@ type CampaignSettingsPayload = {
   inviteActive: boolean
   spectatorInviteCode?: string | null
   spectatorInviteActive: boolean
+  postSessionChatEnabled: boolean
+  postSessionChatDurationMs: number
 }
 
 function formatTransitionNotice(params: {
@@ -440,6 +442,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [settingsExtensionSyncPolicy, setSettingsExtensionSyncPolicy] = useState<
     'ALLOW' | 'DM_ONLY' | 'NONE'
   >('ALLOW')
+  const [settingsPostSessionChatEnabled, setSettingsPostSessionChatEnabled] = useState(true)
+  const [settingsPostSessionChatDurationMinutes, setSettingsPostSessionChatDurationMinutes] =
+    useState(5)
   const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<
     'OPEN' | 'SCREENED' | 'BLOCKED'
   >('OPEN')
@@ -1005,6 +1010,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setSettingsSpectatorMax(payload.campaign.spectatorMax ?? 10)
         setSettingsSpectatorWaitlistEnabled(payload.campaign.spectatorWaitlistEnabled)
         setSettingsSpectatorReconnectGraceSecs(payload.campaign.spectatorReconnectGraceSecs)
+        setSettingsPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
+        setSettingsPostSessionChatDurationMinutes(
+          Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+        )
         setSettingsExtensionSyncPolicy(
           payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
             ? 'ALLOW'
@@ -3535,6 +3544,57 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     }
                     disabled={isSettingsSaving || !settingsSpectatorsEnabled}
                   />
+
+                  <label className="session-label" htmlFor="campaign-settings-post-session-chat">
+                    Post-session spectator chat
+                  </label>
+                  <div
+                    className="session-toggle-group"
+                    role="group"
+                    aria-label="Post-session spectator chat"
+                  >
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${settingsPostSessionChatEnabled ? 'is-active' : ''}`}
+                      aria-pressed={settingsPostSessionChatEnabled}
+                      onClick={() => setSettingsPostSessionChatEnabled(true)}
+                      disabled={isSettingsSaving}
+                    >
+                      ON
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-toggle-button ${!settingsPostSessionChatEnabled ? 'is-active' : ''}`}
+                      aria-pressed={!settingsPostSessionChatEnabled}
+                      onClick={() => setSettingsPostSessionChatEnabled(false)}
+                      disabled={isSettingsSaving}
+                    >
+                      OFF
+                    </button>
+                  </div>
+
+                  <label
+                    className="session-label"
+                    htmlFor="campaign-settings-post-session-duration"
+                  >
+                    Post-session duration: {settingsPostSessionChatDurationMinutes} min
+                  </label>
+                  <input
+                    id="campaign-settings-post-session-duration"
+                    className="session-slider"
+                    type="range"
+                    min={1}
+                    max={60}
+                    step={1}
+                    value={settingsPostSessionChatDurationMinutes}
+                    onChange={(event) =>
+                      setSettingsPostSessionChatDurationMinutes(Number(event.target.value))
+                    }
+                    disabled={isSettingsSaving || !settingsPostSessionChatEnabled}
+                  />
+                  <p className="session-card-subtitle">
+                    Default 5 minutes. Minimum 1 minute, maximum 60 minutes.
+                  </p>
 
                   <label
                     className="session-label"

@@ -556,6 +556,8 @@ describe('SessionInit integration', () => {
                     spectatorMax: null,
                     spectatorWaitlistEnabled: false,
                     spectatorReconnectGraceSecs: 60,
+                    postSessionChatEnabled: true,
+                    postSessionChatDurationMs: 300000,
                     extensionSyncPolicy: 'DM_ONLY',
                     lateJoinPolicy: 'OPEN',
                     lateJoinGraceMinutes: 30,

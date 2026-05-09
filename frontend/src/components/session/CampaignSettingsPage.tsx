@@ -17,6 +17,8 @@ type CampaignSettingsPayload = {
   inviteActive: boolean
   spectatorInviteCode?: string | null
   spectatorInviteActive: boolean
+  postSessionChatEnabled: boolean
+  postSessionChatDurationMs: number
 }
 
 export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
@@ -24,6 +26,8 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
   const [settings, setSettings] = useState<CampaignSettingsPayload | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [postSessionChatEnabled, setPostSessionChatEnabled] = useState(true)
+  const [postSessionChatDurationMinutes, setPostSessionChatDurationMinutes] = useState(5)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -78,6 +82,10 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
         setSettings(payload.campaign)
         setName(payload.campaign.name)
         setDescription(payload.campaign.description || '')
+        setPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
+        setPostSessionChatDurationMinutes(
+          Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+        )
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
@@ -105,6 +113,10 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
         body: JSON.stringify({
           name,
           description,
+          postSessionChatEnabled,
+          postSessionChatDurationMs: postSessionChatEnabled
+            ? postSessionChatDurationMinutes * 60_000
+            : 300_000,
         }),
       })
 
@@ -117,6 +129,10 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
       setSettings(payload.campaign)
       setName(payload.campaign.name)
       setDescription(payload.campaign.description || '')
+      setPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
+      setPostSessionChatDurationMinutes(
+        Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+      )
       setNotice('Campaign metadata saved.')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
@@ -242,6 +258,49 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
                   {isSaving ? 'Saving...' : 'Save Metadata'}
                 </button>
               </div>
+
+              <h4 className="session-inline-form-title">Post-session chat</h4>
+              <label className="session-label" htmlFor="post-session-chat-toggle">
+                Enable spectator chat after ENDED
+              </label>
+              <div className="session-toggle-group" role="group" aria-label="Post-session chat">
+                <button
+                  type="button"
+                  className={`session-toggle-button ${postSessionChatEnabled ? 'is-active' : ''}`}
+                  aria-pressed={postSessionChatEnabled}
+                  onClick={() => setPostSessionChatEnabled(true)}
+                  disabled={isSaving}
+                >
+                  ON
+                </button>
+                <button
+                  type="button"
+                  className={`session-toggle-button ${!postSessionChatEnabled ? 'is-active' : ''}`}
+                  aria-pressed={!postSessionChatEnabled}
+                  onClick={() => setPostSessionChatEnabled(false)}
+                  disabled={isSaving}
+                >
+                  OFF
+                </button>
+              </div>
+
+              <label className="session-label" htmlFor="post-session-chat-duration">
+                Duration: {postSessionChatDurationMinutes} min
+              </label>
+              <input
+                id="post-session-chat-duration"
+                className="session-slider"
+                type="range"
+                min={1}
+                max={60}
+                step={1}
+                value={postSessionChatDurationMinutes}
+                onChange={(event) => setPostSessionChatDurationMinutes(Number(event.target.value))}
+                disabled={isSaving || !postSessionChatEnabled}
+              />
+              <p className="session-card-subtitle">
+                Default 5 minutes. Minimum 1 minute, maximum 60 minutes.
+              </p>
             </form>
 
             <section className="session-campaign-settings-panel" aria-label="Invite controls">

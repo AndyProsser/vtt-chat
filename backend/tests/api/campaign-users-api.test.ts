@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   mockListCharactersForUser: vi.fn(),
   mockCreateSession: vi.fn(),
   mockListSessionsByCampaign: vi.fn(),
+  mockEnsureSessionDefaultRoomsForSession: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -49,6 +50,10 @@ vi.mock('@/repositories/campaign.repository', () => ({
 
 vi.mock('@/services/session.service', () => ({
   createSession: mocks.mockCreateSession,
+}))
+
+vi.mock('@/services/room.service', () => ({
+  ensureSessionDefaultRoomsForSession: mocks.mockEnsureSessionDefaultRoomsForSession,
 }))
 
 vi.mock('@/repositories/session.repository', () => ({
@@ -160,6 +165,10 @@ describe('campaign routes', () => {
       description: null,
       inviteCode: 'MOON42',
       currentDmId: USER_ID,
+      postSessionChatEnabled: false,
+      postSessionChatDurationMs: 300000,
+      latestSessionState: 'ENDED',
+      latestSessionEndedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -170,6 +179,7 @@ describe('campaign routes', () => {
       state: 'IDLE',
       createdAt: Date.now(),
     })
+    mocks.mockEnsureSessionDefaultRoomsForSession.mockResolvedValue(undefined)
 
     const response = await request(app)
       .post(`/api/campaigns/${CAMPAIGN_ID}/sessions/start`)
@@ -183,6 +193,36 @@ describe('campaign routes', () => {
       'Arrival',
       CAMPAIGN_ID
     )
+    expect(mocks.mockEnsureSessionDefaultRoomsForSession).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333',
+      USER_ID
+    )
+  })
+
+  it('rejects starting a new session while the post-session window is active', async () => {
+    const app = buildAppForCampaigns()
+    mocks.mockGetCampaignForUser.mockResolvedValue({
+      id: CAMPAIGN_ID,
+      name: 'Moonfall',
+      description: null,
+      inviteCode: 'MOON42',
+      currentDmId: USER_ID,
+      postSessionChatEnabled: true,
+      postSessionChatDurationMs: 300000,
+      latestSessionState: 'ENDED',
+      latestSessionEndedAt: new Date(Date.now() - 120000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const response = await request(app)
+      .post(`/api/campaigns/${CAMPAIGN_ID}/sessions/start`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Chapter 2', description: 'Too early' })
+
+    expect(response.status).toBe(409)
+    expect(response.body.message).toMatch(/post-session window is still active/i)
+    expect(mocks.mockCreateSession).not.toHaveBeenCalled()
   })
 
   it('lists sessions for campaign members', async () => {

@@ -302,6 +302,10 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
   description: string | null
   inviteCode: string
   currentDmId: string
+  postSessionChatEnabled: boolean
+  postSessionChatDurationMs: number
+  latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+  latestSessionEndedAt: Date | null
   createdAt: Date
   updatedAt: Date
 } | null> {
@@ -313,7 +317,18 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
       },
     },
     include: {
-      campaign: true,
+      campaign: {
+        include: {
+          sessions: {
+            select: {
+              state: true,
+              endedAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      },
     },
   })
 
@@ -325,6 +340,15 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
     description: membership.campaign.description,
     inviteCode: membership.campaign.inviteCode,
     currentDmId: membership.campaign.currentDmId,
+    postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
+    postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
+    latestSessionState: (membership.campaign.sessions[0]?.state || null) as
+      | 'IDLE'
+      | 'ACTIVE'
+      | 'PAUSED'
+      | 'ENDED'
+      | null,
+    latestSessionEndedAt: membership.campaign.sessions[0]?.endedAt || null,
     createdAt: membership.campaign.createdAt,
     updatedAt: membership.campaign.updatedAt,
   }

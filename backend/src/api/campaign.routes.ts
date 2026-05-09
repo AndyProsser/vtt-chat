@@ -406,6 +406,8 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       spectatorMax: membership.campaign.spectatorMax,
       spectatorWaitlistEnabled: membership.campaign.spectatorWaitlistEnabled,
       spectatorReconnectGraceSecs: membership.campaign.spectatorReconnectGraceSecs,
+      postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
+      postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
       extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
       lateJoinPolicy: membership.campaign.lateJoinPolicy,
       lateJoinGraceMinutes: membership.campaign.lateJoinGraceMinutes,
@@ -429,6 +431,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     spectatorMax,
     spectatorWaitlistEnabled,
     spectatorReconnectGraceSecs,
+    postSessionChatEnabled,
+    postSessionChatDurationMs,
     extensionSyncPolicy,
     lateJoinPolicy,
     lateJoinGraceMinutes,
@@ -551,6 +555,29 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   const normalizedPosterUrl =
     typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
 
+  if (typeof postSessionChatEnabled !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'postSessionChatEnabled must be a boolean',
+      field: 'postSessionChatEnabled',
+    })
+  }
+
+  const parsedPostSessionChatDurationMs = Number(postSessionChatDurationMs)
+  if (
+    !Number.isFinite(parsedPostSessionChatDurationMs) ||
+    parsedPostSessionChatDurationMs < 60_000 ||
+    parsedPostSessionChatDurationMs > 3_600_000 ||
+    parsedPostSessionChatDurationMs % 60_000 !== 0
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message:
+        'postSessionChatDurationMs must be a number between 60000 and 3600000 in 60000ms increments',
+      field: 'postSessionChatDurationMs',
+    })
+  }
+
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
   if (!campaign) {
     return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
@@ -577,6 +604,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       spectatorMax: spectatorsEnabled ? Math.round(parsedSpectatorMax) : null,
       spectatorWaitlistEnabled: normalizedSpectatorWaitlistEnabled,
       spectatorReconnectGraceSecs: Math.round(parsedReconnectGraceSecs),
+      postSessionChatEnabled,
+      postSessionChatDurationMs: Math.round(parsedPostSessionChatDurationMs),
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
       lateJoinPolicy,
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
@@ -591,6 +620,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       spectatorMax: true,
       spectatorWaitlistEnabled: true,
       spectatorReconnectGraceSecs: true,
+      postSessionChatEnabled: true,
+      postSessionChatDurationMs: true,
       extensionSyncPolicy: true,
       lateJoinPolicy: true,
       lateJoinGraceMinutes: true,
@@ -948,6 +979,21 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
     return res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can start sessions' })
+  }
+
+  if (
+    campaign.latestSessionState === 'ENDED' &&
+    campaign.postSessionChatEnabled &&
+    campaign.latestSessionEndedAt
+  ) {
+    const elapsedMs = Date.now() - campaign.latestSessionEndedAt.getTime()
+    if (elapsedMs < campaign.postSessionChatDurationMs) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_STATE_TRANSITION,
+        message:
+          'The post-session window is still active. Wait for ENDED to clear or disable post-session chat in campaign settings.',
+      })
+    }
   }
 
   const session = await createSession(

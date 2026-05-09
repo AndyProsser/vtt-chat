@@ -160,15 +160,17 @@ Known readiness gap classes:
 
 **Purpose:** Define and finalize the canonical state machine contract before Stage 1+ implementation. This ensures all subsystems (session lifecycle, presence, audio, group management) operate with consistent state authority, transition rules, and error recovery.
 
-**Status:** Design phase (in progress)
+**Status:** Active design lock (in progress)
+
+**Current focus:** Final wording sweep, then lock-in approval before any Stage 1 implementation begins.
 
 **Deliverables:**
 
 - [x] Contract document: [docs/changes/STATE-MACHINE.md](docs/changes/STATE-MACHINE.md) — State layers, session transitions, presence rules, disconnect timers, group semantics, audio routing, mute enforcement, boundary markers, spectator cooldown
 - [x] Implementation mapping: [docs/changes/STATE-MACHINE-IMPLEMENTATION.md](docs/changes/STATE-MACHINE-IMPLEMENTATION.md) — Codebase locations, current status, action items, phasing, testing checklist
-- [ ] Codebase clarifications (from feedback/review)
+- [x] Codebase clarifications (from feedback/review)
 - [ ] Lock-in gate (approval from Andy + team)
-- [ ] W0 roadmap update to reference state machine as blocking upstream for later W0/W1 reliability work
+- [x] W0 roadmap update to reference state machine as blocking upstream for later W0/W1 reliability work
 
 **Key Clarifications (From Review 2026-05-09):**
 

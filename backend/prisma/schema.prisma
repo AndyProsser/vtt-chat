@@ -114,6 +114,8 @@ model Campaign {
   spectatorMax                Int?
   spectatorWaitlistEnabled    Boolean                @default(false)
   spectatorReconnectGraceSecs Int                    @default(60)
+  postSessionChatEnabled      Boolean                @default(true)
+  postSessionChatDurationMs   Int                    @default(300000)
   discoverable                Boolean                @default(false)
   extensionSyncPolicy         ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
   currentDmId                 String                 @db.Uuid
