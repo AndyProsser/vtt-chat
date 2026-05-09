@@ -156,6 +156,61 @@ Known readiness gap classes:
 
 ---
 
+### W0 Subtask: State Machine Contract Lock (Critical Prerequisite)
+
+**Purpose:** Define and finalize the canonical state machine contract before Stage 1+ implementation. This ensures all subsystems (session lifecycle, presence, audio, group management) operate with consistent state authority, transition rules, and error recovery.
+
+**Status:** Design phase (in progress)
+
+**Deliverables:**
+
+- [x] Contract document: [docs/changes/STATE-MACHINE.md](docs/changes/STATE-MACHINE.md) — State layers, session transitions, presence rules, disconnect timers, group semantics, audio routing, mute enforcement, boundary markers, spectator cooldown
+- [x] Implementation mapping: [docs/changes/STATE-MACHINE-IMPLEMENTATION.md](docs/changes/STATE-MACHINE-IMPLEMENTATION.md) — Codebase locations, current status, action items, phasing, testing checklist
+- [ ] Codebase clarifications (from feedback/review)
+- [ ] Lock-in gate (approval from Andy + team)
+- [ ] W0 roadmap update to reference state machine as blocking upstream for later W0/W1 reliability work
+
+**Key Clarifications (From Review 2026-05-09):**
+
+| Area                         | Clarification                                                                                                                                                                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **State naming**             | IDLE (codebase) ≡ INACTIVE (contract). Add CLEANUP state. Keep ENDED as the explicit post-stop processing window; the backend must trigger stop/summary work immediately and may advance to INACTIVE without waiting for that work to finish. |
+| **Ghost-mode storage**       | Authoritative in Redis presence hash. Frontend caches via `PRESENCE:USER_GHOST_MODE_CHANGED` WS event. Backend enforces timers (5s entry, 60s TTL).                                                                                           |
+| **Disconnect cascade**       | Player intentional: immediate DISCONNECTED → 5s ghost-mode → 60s remove. DM intentional: immediate DISCONNECTED + session PAUSE. Everyone leaves: 60s → auto-stop to INACTIVE → 20min CLEANUP with greenroom purge.                           |
+| **Cleanup state visibility** | Backend-only (clients never see CLEANUP state). Silent cleanup on 20min TTL expiry.                                                                                                                                                           |
+| **Boundary markers**         | Backend-authoritative only. Created as SYSTEM chat on state transition, persisted to DB, broadcast via WS. Frontend must not create markers (eliminates duplicates on refresh).                                                               |
+| **Reconnect authority**      | Optimistic frontend: holds intent during session; trusts backend snapshot on reconnect (replaces, not merges).                                                                                                                                |
+| **Mute enforcement**         | Defense-in-depth: client-side UI + audio mute; server-side validation before audio packet accept.                                                                                                                                             |
+| **Previous group tracking**  | One-level only (previousGroupId = last non-greenroom group). Restored on private room exit or populated on each non-greenroom join.                                                                                                           |
+| **Post-session chat**        | Part of ENDED state, not separate CLEANUP. Default enabled, 5 mins, slider min 1 min max 60 mins. DM can disable, extend, or end early. When disabled, ENDED only triggers processing and then advances.                                      |
+
+**Exit Criteria:**
+
+- [ ] Contract reviewed and approved by team
+- [ ] Codebase entry points documented in implementation map
+- [ ] No ambiguities in state authority or transition rules
+- [ ] Testing charter defined (unit + integration coverage per subsystem)
+- [ ] Blocking items resolved before Stage 1 implementation begins
+
+**Blockers for Stage 1+:**
+
+- ✅ Contract finalized
+- ⬜ Codebase updates to add CLEANUP state, rename IDLE → INACTIVE, implement timers
+- ⬜ Disconnect timer implementation (5s ghost, 60s TTL, auto-stop, 20min cleanup)
+- ⬜ Ghost-mode WS event handlers
+- ⬜ Previous group ID tracking
+- ⬜ Backend-authoritative boundary marker creation
+- ⬜ Post-session chat timer logic and ENDED processing window
+
+**Related Docs:**
+
+- [CONTRACTS.md](docs/CONTRACTS.md) — Event and permission contracts
+- [SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md) — Session state semantics
+- [PRESENCE-STATE-MACHINE.md](docs/subsystems/PRESENCE-STATE-MACHINE.md) — Presence model (legacy; see STATE-MACHINE.md § 3)
+- [copilot-instructions.md](.github/copilot-instructions.md) — Session lifecycle rules and recording policy
+
+---
+
 ### W0 Subtask: Voice Group Panel (Campaign Screen)
 
 **Status**: Phases 1–3 complete; Phase 4 (Accessibility & Polish) and Phase 5 (Testing & Hardening) in progress
