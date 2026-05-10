@@ -12,6 +12,10 @@ import {
   snapshotSessionPresence,
   updatePresenceState,
 } from '@/services/room.service'
+import {
+  broadcastSessionStatsSnapshot,
+  getSessionStatsSnapshot,
+} from '@/services/session-stats.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -67,12 +71,14 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 
     const presence = await getSessionPresence(sessionId as UUID)
     const profiles = await getSessionParticipantProfiles(sessionId as UUID)
+    const stats = await getSessionStatsSnapshot(sessionId as UUID)
 
     return res.status(200).json({
       presence: presence.map((entry) => ({
         ...entry,
         ...(profiles[entry.userId] || {}),
       })),
+      stats,
     })
   } catch {
     return internalErrorResponse(res)
@@ -158,6 +164,12 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       }
 
       wsManager.broadcastEventToSession(sessionId as UUID, event)
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: sessionId as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({ presence: updated })

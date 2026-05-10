@@ -14,7 +14,7 @@
  */
 
 import { Router, Request, Response } from 'express'
-import { isValidUUID } from '@shared'
+import { isValidUUID, Role } from '@shared'
 import {
   listMockPlayers,
   joinMockPlayersToSession,
@@ -22,6 +22,9 @@ import {
   getMockPlayerTokens,
   resetDevMockRoster,
 } from '@/services/dev-mock-players.service'
+import { getSession } from '@/services/session.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
+import type { WebSocketManager } from '@/ws'
 import type { UUID } from '@shared'
 
 const router = Router()
@@ -132,6 +135,69 @@ router.post('/reset', async (req: Request, res: Response) => {
     sessionId: sessionId as UUID | undefined,
     campaignId: campaignId as UUID | undefined,
   })
+
+  // Broadcast WS events so all clients update without a page refresh
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (result.sessionId && wsManager) {
+    const sid = result.sessionId
+    const now = Date.now()
+
+    for (const removed of result.removedUsers) {
+      if (removed.primaryRoomId) {
+        wsManager.broadcastEventToSession(sid, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_LEFT',
+          version: 1,
+          userId: removed.userId,
+          userRole: Role.PLAYER,
+          sessionId: sid,
+          roomId: removed.primaryRoomId,
+          timestamp: now,
+          payload: {
+            roomId: removed.primaryRoomId,
+            userId: removed.userId,
+            username: removed.username,
+            leftAt: now,
+            reason: 'dev_mock_reroll',
+          },
+        })
+      }
+    }
+
+    for (const added of result.addedUsers) {
+      if (added.roomId) {
+        wsManager.broadcastEventToSession(sid, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: added.userId,
+          userRole: Role.PLAYER,
+          sessionId: sid,
+          roomId: added.roomId,
+          timestamp: now,
+          payload: {
+            roomId: added.roomId,
+            userId: added.userId,
+            username: added.username,
+            joinedAt: now,
+            reason: 'dev_mock_reroll',
+          },
+        })
+      }
+    }
+
+    const session = await getSession(sid)
+    const actorUserId =
+      session?.dmId || result.addedUsers[0]?.userId || result.removedUsers[0]?.userId || sid
+    const actorUserRole = session?.dmId ? Role.DM : Role.SYSTEM
+
+    await broadcastSessionStatsSnapshot({
+      wsManager,
+      sessionId: sid,
+      actorUserId,
+      actorUserRole,
+    })
+  }
 
   return res.json({
     ok: true,

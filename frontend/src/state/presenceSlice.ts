@@ -1,15 +1,27 @@
 import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
+import type { EventEnvelope } from '@shared'
 import type { SessionPresence } from '@/types/room'
 import type { StateCreator } from 'zustand'
 
+export interface SessionStatsSnapshot {
+  connectedPlayersWithDm: number
+  connectedPlayers: number
+  connectedSpectators: number
+  connectedTotal: number
+  updatedAt: number
+}
+
 export interface PresenceSlice {
   sessionPresence: Record<UUID, Record<UUID, SessionPresence>>
+  sessionStatsBySessionId: Record<UUID, SessionStatsSnapshot>
 
   replaceSessionPresenceMap: (
     sessionId: UUID,
     presenceByUser: Record<UUID, SessionPresence>
   ) => void
+  replaceSessionStatsSnapshot: (sessionId: UUID, snapshot: SessionStatsSnapshot) => void
+  handleSessionStatsUpdated: (event: EventEnvelope) => void
   clearSessionPresence: (sessionId?: UUID) => void
   upsertSessionPresenceOnJoin: (params: {
     sessionId: UUID
@@ -38,6 +50,7 @@ export interface PresenceSlice {
 
 export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
   sessionPresence: {},
+  sessionStatsBySessionId: {},
 
   replaceSessionPresenceMap: (sessionId, presenceByUser) =>
     set((state) => ({
@@ -47,15 +60,45 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       },
     })),
 
+  replaceSessionStatsSnapshot: (sessionId, snapshot) =>
+    set((state) => ({
+      sessionStatsBySessionId: {
+        ...state.sessionStatsBySessionId,
+        [sessionId]: snapshot,
+      },
+    })),
+
+  handleSessionStatsUpdated: (event) => {
+    const payload = event.payload as SessionStatsSnapshot
+    if (!payload) {
+      return
+    }
+
+    set((state) => ({
+      sessionStatsBySessionId: {
+        ...state.sessionStatsBySessionId,
+        [event.sessionId]: {
+          connectedPlayersWithDm: Math.max(0, payload.connectedPlayersWithDm || 0),
+          connectedPlayers: Math.max(0, payload.connectedPlayers || 0),
+          connectedSpectators: Math.max(0, payload.connectedSpectators || 0),
+          connectedTotal: Math.max(0, payload.connectedTotal || 0),
+          updatedAt: payload.updatedAt || event.timestamp,
+        },
+      },
+    }))
+  },
+
   clearSessionPresence: (sessionId) =>
     set((state) => {
       if (!sessionId) {
-        return { sessionPresence: {} }
+        return { sessionPresence: {}, sessionStatsBySessionId: {} }
       }
 
       const nextPresence = { ...state.sessionPresence }
+      const nextStats = { ...state.sessionStatsBySessionId }
       delete nextPresence[sessionId]
-      return { sessionPresence: nextPresence }
+      delete nextStats[sessionId]
+      return { sessionPresence: nextPresence, sessionStatsBySessionId: nextStats }
     }),
 
   upsertSessionPresenceOnJoin: ({ sessionId, userId, username, roomId, joinedAt }) =>

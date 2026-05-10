@@ -74,6 +74,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       store.resetSessionAudioState()
       store.clearActiveEffects()
     })
+    dispatcher.register('SESSION:STATS_UPDATED', (event) => {
+      useStore.getState().handleSessionStatsUpdated(event)
+    })
 
     // Chat events
     dispatcher.register('CHAT:MESSAGE_SENT', (event) => {

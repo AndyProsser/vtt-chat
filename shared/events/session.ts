@@ -17,6 +17,7 @@ export type SessionEventType =
   | 'SESSION:RESUMED'
   | 'SESSION:ENDED'
   | 'SESSION:ARCHIVED'
+  | 'SESSION:STATS_UPDATED'
 
 /**
  * SESSION:CREATED
@@ -105,6 +106,21 @@ export interface SessionArchived {
 export type SessionArchivedEvent = EventEnvelope<SessionArchived>
 
 /**
+ * SESSION:STATS_UPDATED
+ * Backend-authoritative connected participant counters for a session.
+ * Broadcast whenever presence/membership changes affect live counts.
+ */
+export interface SessionStatsUpdated {
+  connectedPlayersWithDm: number
+  connectedPlayers: number
+  connectedSpectators: number
+  connectedTotal: number
+  updatedAt: number
+}
+
+export type SessionStatsUpdatedEvent = EventEnvelope<SessionStatsUpdated>
+
+/**
  * Union type for all session events.
  */
 export type SessionEvent =
@@ -114,3 +130,4 @@ export type SessionEvent =
   | SessionResumedEvent
   | SessionEndedEvent
   | SessionArchivedEvent
+  | SessionStatsUpdatedEvent

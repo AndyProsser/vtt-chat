@@ -368,8 +368,8 @@ export function RoomSelector({
         const leftIsDm = left.userId === dmUserId
         const rightIsDm = right.userId === dmUserId
 
-        // In greenroom, keep the DM at the top of the main room list.
-        if (isGreenroom && room.type === RoomType.MAIN && leftIsDm !== rightIsDm) {
+        // Keep the DM at the top of every room, then sort the rest alphabetically.
+        if (leftIsDm !== rightIsDm) {
           return leftIsDm ? -1 : 1
         }
 

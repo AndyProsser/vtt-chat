@@ -25,6 +25,7 @@ import {
   leaveRoom,
   updatePresenceState,
 } from '@/services/room.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -348,6 +349,12 @@ async function joinRoomHandler(req: Request, res: Response) {
       }
 
       wsManager.broadcastEventToSession(room.sessionId, event)
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: room.sessionId,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({ ok: true, presence })
@@ -403,6 +410,12 @@ async function leaveRoomHandler(req: Request, res: Response) {
       }
 
       wsManager.broadcastEventToSession(room.sessionId, event)
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: room.sessionId,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({ ok: true, presence })
@@ -591,6 +604,12 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
       }
 
       wsManager.broadcastEventToSession(sessionId as UUID, joinedEvent)
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: sessionId as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({
@@ -718,6 +737,13 @@ async function endWhisperHandler(req: Request, res: Response) {
           },
         })
       }
+
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: sessionId as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({
@@ -943,6 +969,13 @@ async function deleteRoomHandler(req: Request, res: Response) {
       }
 
       wsManager.broadcastEventToSession(sessionId as UUID, event)
+
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: sessionId as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     return res.status(200).json({ ok: true, deletedRoomId: room.id })

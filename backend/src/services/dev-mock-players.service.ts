@@ -7,7 +7,7 @@
 
 import { getPrismaClient } from '@/infra/db'
 import { createToken, hashPassword } from '@/services/auth.service'
-import { getRooms, joinRoom, leaveRoom } from '@/services/room.service'
+import { getSessionPresence, getRooms, joinRoom, leaveRoom } from '@/services/room.service'
 import { addUserToSession, removeUserFromSession } from '@/services/session.service'
 import { logger } from '@/utils/logger'
 import { Prisma } from '@prisma/client'
@@ -611,12 +611,15 @@ export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
   await ensureDevMockPlayersForSession(sessionId)
 }
 
-export async function resetDevMockRoster(params: {
-  sessionId?: UUID
+export async function resetDevMockRoster(params: { sessionId?: UUID; campaignId?: UUID }): Promise<{
+  count: number
   campaignId?: UUID
-}): Promise<{ count: number; campaignId?: UUID; sessionId?: UUID }> {
+  sessionId?: UUID
+  removedUsers: Array<{ userId: UUID; username: string; primaryRoomId?: UUID }>
+  addedUsers: Array<{ userId: UUID; username: string; roomId?: UUID }>
+}> {
   if (!params.sessionId && !params.campaignId) {
-    return { count: 0 }
+    return { count: 0, removedUsers: [], addedUsers: [] }
   }
 
   let resolvedCampaignId = params.campaignId
@@ -640,6 +643,15 @@ export async function resetDevMockRoster(params: {
   }
 
   if (resolvedSessionId) {
+    // Snapshot presence before removal so we know which rooms to broadcast USER_LEFT for
+    const presenceBefore = await getSessionPresence(resolvedSessionId)
+    const mockPresenceBefore = presenceBefore.filter((p) => p.username?.startsWith(DEV_MOCK_PREFIX))
+    const removedUsers = mockPresenceBefore.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      primaryRoomId: p.primaryRoomId,
+    }))
+
     await removeMockPlayersFromSession(resolvedSessionId)
 
     const session = await prisma.session.findUnique({
@@ -654,10 +666,20 @@ export async function resetDevMockRoster(params: {
     }
 
     const users = await ensureDevMockPlayersForSession(resolvedSessionId)
+    // Snapshot presence after addition so we know which room the new players joined
+    const presenceAfter = await getSessionPresence(resolvedSessionId)
+    const addedUsers = users.map((u) => ({
+      userId: u.id,
+      username: u.username,
+      roomId: presenceAfter.find((p) => p.userId === u.id)?.primaryRoomId,
+    }))
+
     return {
       count: users.length,
       campaignId: resolvedCampaignId,
       sessionId: resolvedSessionId,
+      removedUsers,
+      addedUsers,
     }
   }
 
@@ -665,6 +687,8 @@ export async function resetDevMockRoster(params: {
     count: 0,
     campaignId: resolvedCampaignId,
     sessionId: resolvedSessionId,
+    removedUsers: [],
+    addedUsers: [],
   }
 }
 

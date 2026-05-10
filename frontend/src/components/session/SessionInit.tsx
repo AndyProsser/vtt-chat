@@ -95,6 +95,14 @@ interface ApiPresence {
   lastSeenAt: number
 }
 
+interface ApiSessionStats {
+  connectedPlayersWithDm: number
+  connectedPlayers: number
+  connectedSpectators: number
+  connectedTotal: number
+  updatedAt: number
+}
+
 interface ApiBroadcastState {
   enabled: boolean
   dmId?: UUID
@@ -498,6 +506,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const isGreenroom = useStore((state) => state.isGreenroom)
   const rooms = useStore((state) => state.rooms)
   const sessionPresence = useStore((state) => state.sessionPresence)
+  const sessionStatsBySessionId = useStore((state) => state.sessionStatsBySessionId)
   const roomMembers = useStore((state) => state.roomMembers)
   const messages = useStore((state) => state.messages)
   const notes = useStore((state) => state.notes)
@@ -521,6 +530,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
+  const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
@@ -531,6 +541,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const currentSession = currentSessionId ? sessions[currentSessionId] : null
   const typedRoomsBySession = rooms as Record<UUID, Record<UUID, RoomRecord>>
   const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
+  const typedSessionStatsBySession = sessionStatsBySessionId as Record<UUID, ApiSessionStats>
   const typedRoomMembers = roomMembers as Record<UUID, RoomMember[]>
   const currentRooms = useMemo<RoomRecord[]>(
     () => (currentSession ? Object.values(typedRoomsBySession[currentSession.id] || {}) : []),
@@ -540,6 +551,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     () => (currentSession ? Object.values(typedPresenceBySession[currentSession.id] || {}) : []),
     [currentSession, typedPresenceBySession]
   )
+  const currentSessionStats = currentSession
+    ? typedSessionStatsBySession[currentSession.id]
+    : undefined
   const visibleRooms = useMemo<RoomRecord[]>(
     () =>
       currentSession ? getVisibleRoomsForSessionState(currentRooms, currentSession.state) : [],
@@ -1410,7 +1424,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         }
 
         const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
-        const presencePayload = (await presenceResponse.json()) as { presence?: ApiPresence[] }
+        const presencePayload = (await presenceResponse.json()) as {
+          presence?: ApiPresence[]
+          stats?: ApiSessionStats
+        }
         const audioStatePayload = (await audioStateResponse.json()) as {
           environment?: {
             id: UUID
@@ -1467,6 +1484,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         // Atomic: both rooms and presence replace in a single store update.
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
+        if (presencePayload.stats) {
+          replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
+        }
 
         // On session enter/reconnect, recover session markers from persisted chat history
         // and mirror them across main + greenroom for consistent chronology after refresh.
@@ -1535,6 +1555,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     token,
     wsState,
     replaceSessionTopology,
+    replaceSessionStatsSnapshot,
     restoreSessionBookendsFromHistory,
     setBroadcastState,
     setEnvironment,
@@ -1553,9 +1574,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
-    const connectedCount = currentPresence.filter(
-      (presence) => presence.state !== PresenceState.IDLE
-    ).length
+    const connectedCount =
+      currentSessionStats?.connectedTotal ??
+      currentPresence.filter(
+        (presence) =>
+          presence.state === PresenceState.ONLINE ||
+          presence.state === PresenceState.TYPING ||
+          presence.state === PresenceState.SPEAKING
+      ).length
 
     if (!isGreenroom || connectedCount > 0) {
       if (greenroomCleanupTimerRef.current !== null) {
@@ -1597,6 +1623,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }, [
     clearRoomMessages,
     currentPresence,
+    currentSessionStats,
     currentSession,
     isGreenroom,
     selectedCampaignId,
@@ -2416,20 +2443,27 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     settingsReferenceSummaryEntry?.title === SESSION_SUMMARY_TITLE
       ? 'Not provided'
       : settingsReferenceSummaryEntry?.title || 'Not provided'
-  const connectedSpectatorsCount = selectedCampaign?.connectedSpectatorsRounded ?? 0
+  const connectedSpectatorsCount =
+    currentSessionStats?.connectedSpectators ?? selectedCampaign?.connectedSpectatorsRounded ?? 0
   const liveConnectedPresenceCount = currentPresence.filter(
-    (presence) => presence.state !== PresenceState.IDLE
+    (presence) =>
+      presence.state === PresenceState.ONLINE ||
+      presence.state === PresenceState.TYPING ||
+      presence.state === PresenceState.SPEAKING
   ).length
   const hasLivePresence = currentSession !== null && currentPresence.length > 0
-  const connectedPlayersWithDm = hasLivePresence
-    ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
-    : selectedCampaign?.connectedPlayersRounded !== undefined || selectedCampaign?.connectedPlayers
-      ? Math.max(
-          0,
-          (selectedCampaign?.connectedPlayersRounded ?? selectedCampaign?.connectedPlayers ?? 0) +
-            (selectedCampaign?.dmOnline ? 1 : 0)
-        )
-      : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+  const connectedPlayersWithDm = currentSessionStats
+    ? currentSessionStats.connectedPlayersWithDm
+    : hasLivePresence
+      ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+      : selectedCampaign?.connectedPlayersRounded !== undefined ||
+          selectedCampaign?.connectedPlayers
+        ? Math.max(
+            0,
+            (selectedCampaign?.connectedPlayersRounded ?? selectedCampaign?.connectedPlayers ?? 0) +
+              (selectedCampaign?.dmOnline ? 1 : 0)
+          )
+        : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
     currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
