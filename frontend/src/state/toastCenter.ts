@@ -6,6 +6,8 @@ export interface ToastCenterItem {
   id: string
   message: string
   variant: ToastVariant
+  actionLabel?: string
+  onAction?: () => void
   onDismiss?: () => void
 }
 
@@ -13,7 +15,9 @@ export interface ShowToastInput {
   id?: string
   message: string
   variant?: ToastVariant
-  durationMs?: number
+  durationMs?: number | null
+  actionLabel?: string
+  onAction?: () => void
   onDismiss?: () => void
 }
 
@@ -68,6 +72,8 @@ export function showToast(input: ShowToastInput): string {
     id,
     message: input.message,
     variant: input.variant ?? 'info',
+    actionLabel: input.actionLabel,
+    onAction: input.onAction,
     onDismiss: input.onDismiss,
   }
 
@@ -75,11 +81,16 @@ export function showToast(input: ShowToastInput): string {
   items = [...items.filter((item) => item.id !== id), nextItem]
   emit()
 
-  const durationMs = Math.max(0, input.durationMs ?? DEFAULT_TOAST_DURATION_MS)
-  const timeoutHandle = window.setTimeout(() => {
-    dismissToast(id)
-  }, durationMs)
-  timeoutHandles.set(id, timeoutHandle)
+  const shouldAutoDismiss =
+    input.durationMs !== null && Number.isFinite(input.durationMs ?? DEFAULT_TOAST_DURATION_MS)
+
+  if (shouldAutoDismiss) {
+    const durationMs = Math.max(0, input.durationMs ?? DEFAULT_TOAST_DURATION_MS)
+    const timeoutHandle = window.setTimeout(() => {
+      dismissToast(id)
+    }, durationMs)
+    timeoutHandles.set(id, timeoutHandle)
+  }
 
   return id
 }

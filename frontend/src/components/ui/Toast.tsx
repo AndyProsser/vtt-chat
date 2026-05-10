@@ -14,6 +14,8 @@ export interface ToastProps {
   /** Display message — must already be persona-safe (no raw error stack traces). */
   message: string
   variant: ToastVariant
+  actionLabel?: string
+  onAction?: () => void
   onDismiss?: () => void
 }
 
@@ -28,7 +30,7 @@ const ARIA_LIVE_MAP: Record<ToastVariant, 'assertive' | 'polite'> = {
   error: 'assertive',
 }
 
-export function Toast({ message, variant, onDismiss }: ToastProps) {
+export function Toast({ message, variant, actionLabel, onAction, onDismiss }: ToastProps) {
   const ariaLive = ARIA_LIVE_MAP[variant]
 
   return (
@@ -39,17 +41,24 @@ export function Toast({ message, variant, onDismiss }: ToastProps) {
       data-variant={variant}
       className="vtt-toast"
     >
-      <span>{message}</span>
-      {onDismiss && (
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label="Dismiss notification"
-          className="vtt-toast__dismiss"
-        >
-          ×
-        </button>
-      )}
+      <span className="vtt-toast__message">{message}</span>
+      <span className="vtt-toast__actions">
+        {actionLabel && onAction ? (
+          <button type="button" onClick={onAction} className="vtt-toast__action">
+            {actionLabel}
+          </button>
+        ) : null}
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Dismiss notification"
+            className="vtt-toast__dismiss"
+          >
+            ×
+          </button>
+        )}
+      </span>
     </div>
   )
 }

@@ -17,9 +17,15 @@ export interface ReconnectBannerProps {
   wsState: ConnectionState
   /** When true, a reconnect was just completed and the store is being re-hydrated. */
   isHydrating?: boolean
+  /** Optional countdown for when manual retry becomes available. */
+  manualRetryCountdownSeconds?: number | null
 }
 
-export function ReconnectBanner({ wsState, isHydrating }: ReconnectBannerProps) {
+export function ReconnectBanner({
+  wsState,
+  isHydrating,
+  manualRetryCountdownSeconds,
+}: ReconnectBannerProps) {
   if (wsState === 'connected' && !isHydrating) return null
 
   let message: string
@@ -43,7 +49,14 @@ export function ReconnectBanner({ wsState, isHydrating }: ReconnectBannerProps) 
       data-hydrating={isHydrating ? 'true' : 'false'}
       className="vtt-reconnect-banner"
     >
-      {message}
+      <span>{message}</span>
+      {!isHydrating &&
+      typeof manualRetryCountdownSeconds === 'number' &&
+      manualRetryCountdownSeconds > 0 ? (
+        <small className="vtt-reconnect-banner__countdown">
+          Manual retry in {manualRetryCountdownSeconds}s.
+        </small>
+      ) : null}
     </div>
   )
 }

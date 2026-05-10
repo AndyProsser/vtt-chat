@@ -18,6 +18,28 @@
   pointer-events: auto;
 }
 
+.vtt-toast__message {
+  min-width: 0;
+}
+
+.vtt-toast__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.vtt-toast__action {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.16rem 0.52rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .vtt-toast-viewport {
   position: fixed;
   top: 0;

@@ -23,6 +23,8 @@ export function ToastViewport() {
           key={item.id}
           variant={item.variant}
           message={item.message}
+          actionLabel={item.actionLabel}
+          onAction={item.onAction}
           onDismiss={() => dismissToast(item.id)}
         />
       ))}

@@ -21,6 +21,7 @@ export interface UseWebSocketOptions {
 export interface UseWebSocketReturn {
   state: ConnectionState
   send: (event: EventEnvelope) => void
+  retryConnection: () => Promise<void>
   isConnected: boolean
   error: Error | null
 }
@@ -49,7 +50,16 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     const client = new WebSocketClient({
       url,
       token,
-      onStateChange: setState,
+      onStateChange: (nextState) => {
+        setState(nextState)
+        if (
+          nextState === 'connected' ||
+          nextState === 'connecting' ||
+          nextState === 'reconnecting'
+        ) {
+          setError(null)
+        }
+      },
       onError: setError,
       onEvent: (event) => {
         if (dispatcherRef.current) {
@@ -209,9 +219,26 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }
 
+  const retryConnection = async () => {
+    const client = clientRef.current
+    if (!client) {
+      return
+    }
+
+    setError(null)
+    client.disconnect()
+
+    try {
+      await client.connect()
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)))
+    }
+  }
+
   return {
     state,
     send,
+    retryConnection,
     isConnected: state === 'connected',
     error,
   }

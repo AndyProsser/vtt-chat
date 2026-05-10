@@ -18,6 +18,7 @@ import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { SessionToolbar } from './SessionToolbar'
+import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { AudioPanel } from '../audio/AudioPanel'
 import { NotesRailPanel } from './NotesRailPanel'
 import { SearchPanel } from './SearchPanel'
@@ -26,6 +27,7 @@ import { HistoryPanel } from './HistoryPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
+import { dismissToast } from '../../state/toastCenter'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
@@ -131,6 +133,8 @@ const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
 const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
 const SESSION_SUMMARY_TITLE = 'Session Summary'
+const WS_ERROR_TOAST_ID = 'session-init:ws-error'
+const WS_AUTO_RETRY_WINDOW_MS = 30_000
 const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
 const SESSION_BOOKEND_PREFIXES = [
   'Session Start:',
@@ -492,9 +496,18 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
   const pendingSessionBookendsBySessionIdRef = useRef<Map<UUID, PendingSessionBookend[]>>(new Map())
   const greenroomCleanupTimerRef = useRef<number | null>(null)
+  const wsRetryWindowStartRef = useRef<number | null>(null)
+  const wsRetryToastTimerRef = useRef<number | null>(null)
+  const wsErrorMessageRef = useRef<string | null>(null)
+  const [wsRetryWindowExpired, setWsRetryWindowExpired] = useState(false)
+  const [wsRetrySecondsRemaining, setWsRetrySecondsRemaining] = useState<number | null>(null)
 
   // WebSocket connection
-  const { state: wsState, error: wsError } = useWebSocket({
+  const {
+    state: wsState,
+    error: wsError,
+    retryConnection,
+  } = useWebSocket({
     url: wsUrl,
     token,
     enabled: !!token,
@@ -2548,19 +2561,112 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     })
   }, [activeTransitionNotice, hideTransitionToast, showToast])
 
+  useEffect(() => {
+    wsErrorMessageRef.current = wsError?.message || null
+  }, [wsError])
+
+  useEffect(() => {
+    if (wsState === 'connected') {
+      wsRetryWindowStartRef.current = null
+      setWsRetryWindowExpired(false)
+      setWsRetrySecondsRemaining(null)
+
+      if (wsRetryToastTimerRef.current !== null) {
+        window.clearTimeout(wsRetryToastTimerRef.current)
+        wsRetryToastTimerRef.current = null
+      }
+
+      dismissToast(WS_ERROR_TOAST_ID)
+      return
+    }
+
+    if (wsRetryWindowStartRef.current === null) {
+      wsRetryWindowStartRef.current = Date.now()
+    }
+
+    const elapsedMs = Date.now() - wsRetryWindowStartRef.current
+    const remainingMs = Math.max(0, WS_AUTO_RETRY_WINDOW_MS - elapsedMs)
+    setWsRetrySecondsRemaining(Math.ceil(remainingMs / 1000))
+
+    if (remainingMs <= 0) {
+      setWsRetryWindowExpired(true)
+      setWsRetrySecondsRemaining(null)
+      return
+    }
+
+    if (wsRetryToastTimerRef.current !== null) {
+      window.clearTimeout(wsRetryToastTimerRef.current)
+    }
+
+    wsRetryToastTimerRef.current = window.setTimeout(() => {
+      setWsRetryWindowExpired(true)
+    }, remainingMs)
+
+    return () => {
+      if (wsRetryToastTimerRef.current !== null) {
+        window.clearTimeout(wsRetryToastTimerRef.current)
+        wsRetryToastTimerRef.current = null
+      }
+    }
+  }, [wsState])
+
+  useEffect(() => {
+    if (wsState === 'connected' || wsRetryWindowExpired || wsRetryWindowStartRef.current === null) {
+      return
+    }
+
+    const updateCountdown = () => {
+      if (wsRetryWindowStartRef.current === null) {
+        setWsRetrySecondsRemaining(null)
+        return
+      }
+
+      const elapsedMs = Date.now() - wsRetryWindowStartRef.current
+      const remainingMs = Math.max(0, WS_AUTO_RETRY_WINDOW_MS - elapsedMs)
+      setWsRetrySecondsRemaining(remainingMs > 0 ? Math.ceil(remainingMs / 1000) : null)
+    }
+
+    updateCountdown()
+    const intervalId = window.setInterval(updateCountdown, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [wsRetryWindowExpired, wsState])
+
+  useEffect(() => {
+    if (!wsRetryWindowExpired || wsState === 'connected') {
+      dismissToast(WS_ERROR_TOAST_ID)
+      return
+    }
+
+    const detail = wsErrorMessageRef.current
+      ? ` Last log from the crystal: ${wsErrorMessageRef.current}.`
+      : ''
+
+    showToast({
+      id: WS_ERROR_TOAST_ID,
+      variant: 'error',
+      message:
+        `Our sending stone has tried for 30 seconds and now lies ominously silent. ` +
+        `The system appears to be down in this realm.${detail} Roll for patience, then press Retry now.`,
+      actionLabel: 'Retry now',
+      onAction: () => {
+        wsRetryWindowStartRef.current = Date.now()
+        setWsRetryWindowExpired(false)
+        setWsRetrySecondsRemaining(Math.ceil(WS_AUTO_RETRY_WINDOW_MS / 1000))
+        dismissToast(WS_ERROR_TOAST_ID)
+        void retryConnection()
+      },
+      durationMs: null,
+    })
+  }, [retryConnection, showToast, wsRetryWindowExpired, wsState])
+
   return (
     <>
       <div
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home'}`}
       >
-        {wsError && (
-          <div className="session-status-card">
-            <p className="session-ws-error">
-              <strong>WS Error:</strong> {wsError.message}
-            </p>
-          </div>
-        )}
-
         {!hasSessionSelected && (
           <>
             <div
@@ -2873,6 +2979,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             <CommandCenterFrame
               role={effectiveSessionRole}
               rightRailIndicators={rightRailIndicators}
+              renderSystemToasts={() => (
+                <ReconnectBanner
+                  wsState={wsState}
+                  manualRetryCountdownSeconds={wsRetrySecondsRemaining}
+                />
+              )}
               renderToolbar={(actions) => (
                 <SessionToolbar
                   actions={actions}

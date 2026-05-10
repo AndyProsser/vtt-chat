@@ -73,6 +73,20 @@ describe('ReconnectBanner', () => {
     const banner = screen.getByTestId('reconnect-banner')
     expect(banner.getAttribute('data-hydrating')).toBe('true')
   })
+
+  it('renders manual retry countdown when provided', () => {
+    render(<ReconnectBanner wsState="reconnecting" manualRetryCountdownSeconds={23} />)
+    const banner = screen.getByTestId('reconnect-banner')
+    expect(banner.textContent).toMatch(/manual retry in 23s/i)
+  })
+
+  it('hides manual retry countdown while hydrating', () => {
+    render(
+      <ReconnectBanner wsState="connected" isHydrating={true} manualRetryCountdownSeconds={18} />
+    )
+    const banner = screen.getByTestId('reconnect-banner')
+    expect(banner.textContent).not.toMatch(/manual retry in/i)
+  })
 })
 
 /**
