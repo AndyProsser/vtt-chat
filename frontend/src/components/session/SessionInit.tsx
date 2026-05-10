@@ -389,6 +389,15 @@ function parsePlayerInviteCode(input: string): string {
   return raw.toUpperCase()
 }
 
+function toValidPostSessionDurationMinutes(value: unknown, fallback = 5): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.max(1, Math.min(60, Math.round(parsed)))
+}
+
 export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: SessionInitProps) {
   const showToast = useToast()
 
@@ -1012,7 +1021,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setSettingsSpectatorReconnectGraceSecs(payload.campaign.spectatorReconnectGraceSecs)
         setSettingsPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
         setSettingsPostSessionChatDurationMinutes(
-          Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+          toValidPostSessionDurationMinutes(payload.campaign.postSessionChatDurationMs / 60000)
         )
         setSettingsExtensionSyncPolicy(
           payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
@@ -1771,8 +1780,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const canStartAsDm =
-        targetCampaign?.currentDmId === user.id && targetCampaign?.memberRole === 'DM'
+      const canStartAsDm = targetCampaign?.currentDmId === user.id
 
       if (!canStartAsDm) {
         setError('No campaign chapter is available yet. Wait for the DM to start the session.')
@@ -1909,6 +1917,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         ? settingsSpectatorReconnectGraceSecs
         : 60,
       extensionSyncPolicy: settingsSpectatorsEnabled ? settingsExtensionSyncPolicy : 'ALLOW',
+      postSessionChatEnabled: Boolean(settingsPostSessionChatEnabled),
+      postSessionChatDurationMs:
+        toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000,
       lateJoinPolicy: settingsLateJoinPolicy,
       lateJoinGraceMinutes: settingsLateJoinPolicy === 'OPEN' ? 30 : settingsLateJoinGraceMinutes,
     }
@@ -1941,6 +1952,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
           ? 'ALLOW'
           : payload.campaign.extensionSyncPolicy
+      )
+      setSettingsPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
+      setSettingsPostSessionChatDurationMinutes(
+        toValidPostSessionDurationMinutes(payload.campaign.postSessionChatDurationMs / 60000)
       )
       setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
       setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
@@ -3605,7 +3620,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     step={1}
                     value={settingsPostSessionChatDurationMinutes}
                     onChange={(event) =>
-                      setSettingsPostSessionChatDurationMinutes(Number(event.target.value))
+                      setSettingsPostSessionChatDurationMinutes(
+                        toValidPostSessionDurationMinutes(event.target.value)
+                      )
                     }
                     disabled={isSettingsSaving || !settingsPostSessionChatEnabled}
                   />

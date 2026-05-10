@@ -37,7 +37,7 @@ Complete visual design + interaction specification covering:
 Detailed, actionable checklist organized by 5 implementation phases:
 
 - **Phase 1**: Core UI & Layout (group headers, conditions, env tooltips)
-- **Phase 2**: Interactions (radial menu, enhanced drag, broadcast)
+- **Phase 2**: Interactions (player context menu parity, enhanced drag, broadcast)
 - **Phase 3**: Mobile & Adaptive (collapse/expand, touch interactions)
 - **Phase 4**: Accessibility & Polish (ARIA, keyboard nav, reduced motion)
 - **Phase 5**: Testing & Hardening (error handling, cross-browser, perf audit)
@@ -60,7 +60,7 @@ Plus:
 Quick lookup guide with:
 
 - Key decision summary (1 table)
-- Component specs at a glance (DM widget, group header, player widget, radial menu)
+- Component specs at a glance (DM widget, group header, player widget, player context menu)
 - CSS class naming convention
 - Interaction quick reference (drag, broadcast, conditions, mobile)
 - Implementation phases checklist (overview)
@@ -213,18 +213,18 @@ Developer → Code → Review → Merge → Ship
 
 ## ✅ Key Decisions (Summary)
 
-| Decision                                   | Rationale                                  | Impact                              |
-| ------------------------------------------ | ------------------------------------------ | ----------------------------------- |
-| Adaptive collapse (<768px)                 | Mobile efficiency vs desktop usability     | CSS media query, state management   |
-| Full drag feedback (zones + preview + dim) | Clarity + confidence                       | Enhanced drag-drop logic            |
-| Radial menu (right-click/long-press)       | Space savings + familiar pattern           | New RadialMenu component            |
-| Compact env icons + tooltip                | Space efficient, progressive disclosure    | CSS positioning, Tooltip component  |
-| Broadcast badge + glow                     | Clear active state without persistent UI   | CSS states, badge styling           |
-| Create group as icon button                | Minimal UI footprint, discoverable         | Icon in group header, modal         |
-| Sticky DM widget                           | Quick access to orchestration controls     | CSS sticky positioning              |
-| Primary condition + popover                | Cognitive load reduction, space efficiency | Condition badge + popover component |
-| Screen reader priority                     | Accessibility first, WCAG AA compliance    | Comprehensive ARIA labels           |
-| Campaign settings toggle                   | DM control over feature availability       | CampaignSettings table + API        |
+| Decision                                     | Rationale                                  | Impact                                |
+| -------------------------------------------- | ------------------------------------------ | ------------------------------------- |
+| Adaptive collapse (<768px)                   | Mobile efficiency vs desktop usability     | CSS media query, state management     |
+| Full drag feedback (zones + preview + dim)   | Clarity + confidence                       | Enhanced drag-drop logic              |
+| Player context menu (right-click/long-press) | Role-aware action groups + submenu clarity | Context-menu surface (RadialMenu.tsx) |
+| Compact env icons + tooltip                  | Space efficient, progressive disclosure    | CSS positioning, Tooltip component    |
+| Broadcast badge + glow                       | Clear active state without persistent UI   | CSS states, badge styling             |
+| Create group as icon button                  | Minimal UI footprint, discoverable         | Icon in group header, modal           |
+| Sticky DM widget                             | Quick access to orchestration controls     | CSS sticky positioning                |
+| Primary condition + popover                  | Cognitive load reduction, space efficiency | Condition badge + popover component   |
+| Screen reader priority                       | Accessibility first, WCAG AA compliance    | Comprehensive ARIA labels             |
+| Campaign settings toggle                     | DM control over feature availability       | CampaignSettings table + API          |
 
 ---
 
@@ -233,19 +233,19 @@ Developer → Code → Review → Merge → Ship
 ### New Components (Create These)
 
 - `ConditionPopover.tsx` — Hover/click condition details
-- `RadialMenu.tsx` — Right-click context menu
+- `RadialMenu.tsx` — Player context-menu surface (role-gated options)
 - `CreateGroupModal.tsx` — Quick group creation
 - `EnvironmentEditModal.tsx` — DM environment name/icon edit
 - `CampaignSettingsPanel.tsx` — Campaign settings UI
 
 ### Existing Components (Enhance These)
 
-- `RoomSelector.tsx` — Add group headers, conditions, radial menu, mobile collapse
+- `RoomSelector.tsx` — Add group headers, conditions, context menu, mobile collapse
 - `AvatarOverlay.tsx` — Reuse for DM + players (already exists)
 
 ### Utilities (Create These)
 
-- `useRadialMenu.ts` — Radial menu state/logic
+- `useRadialMenu.ts` — Context-menu state/logic
 - `useRoomDragDrop.ts` — Enhanced drag-drop logic
 - `conditionUtils.ts` — Condition formatting, icons, etc.
 

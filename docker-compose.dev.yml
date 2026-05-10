@@ -6,7 +6,7 @@ services:
       target: builder
     container_name: vttchat-backend-dev
     working_dir: /workspace/backend
-    command: sh -c "npx prisma db push && npm run dev"
+    command: sh -c "node scripts/container-startup.mjs && npm run dev"
     restart: unless-stopped
     env_file:
       - .env
@@ -125,6 +125,8 @@ services:
       POSTGRES_DB: vttchat
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '${DEV_POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data_dev:/var/lib/postgresql
     healthcheck:

@@ -62,6 +62,11 @@ vi.mock('@/infra/redis', () => ({
   getRedisClient: vi.fn(async () => redisMock),
 }))
 
+vi.mock('@/repositories/session.repository', () => ({
+  findSessionById: vi.fn(async () => null),
+  listSessionsByCampaign: vi.fn(async () => []),
+}))
+
 vi.mock('@/repositories/room.repository', () => ({
   createRoomRecord: vi.fn(async (params: any) => {
     roomRows.set(params.id, {

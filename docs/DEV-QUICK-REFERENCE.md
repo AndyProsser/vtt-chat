@@ -245,6 +245,47 @@ Warning:
 
 ---
 
+## DEV Diagnostics: Postgres + Prisma Studio
+
+Use this quick path when debugging data issues in the Docker DEV stack.
+
+Assumptions:
+
+- `docker-compose.dev.yml` is running.
+- DEV Postgres is exposed on host port `${DEV_POSTGRES_PORT:-5432}`.
+
+1. Connect with `psql` (host machine):
+
+```bash
+export PGPASSWORD='<postgres-password>'
+psql -h localhost -p "${DEV_POSTGRES_PORT:-5432}" -U postgres -d vttchat
+```
+
+2. Quick sanity check query:
+
+```sql
+SELECT id, name, "postSessionChatEnabled", "postSessionChatDurationMs"
+FROM "Campaign"
+ORDER BY "createdAt" DESC
+LIMIT 5;
+```
+
+3. Open Prisma Studio against DEV DB:
+
+```bash
+cd backend
+DATABASE_URL="postgresql://postgres:<postgres-password>@localhost:${DEV_POSTGRES_PORT:-5432}/vttchat?schema=public" \
+  npx prisma studio --schema prisma/schema.prisma --port 5555
+```
+
+4. Open Studio in browser:
+
+```text
+http://localhost:5555
+```
+
+---
+
 ## File & Folder Conventions
 
 ### **Events**

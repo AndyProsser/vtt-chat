@@ -19,7 +19,8 @@ const prisma = getPrismaClient()
 const DEV_MOCK_PREFIX = 'dev_mock_'
 const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
 const DEV_MOCK_AVATAR_URL = '/branding/mock-races/adventurer-robot.svg'
-const MAX_DEV_MOCK_PLAYERS = 5
+const MIN_DEV_MOCK_PLAYERS = 5
+const MAX_DEV_MOCK_PLAYERS = 9
 
 const campaignRosterByCampaignId = new Map<UUID, string[]>()
 const sessionRosterBySessionId = new Map<UUID, string[]>()
@@ -259,7 +260,12 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function pickRosterSize(): number {
-  return clamp(3 + Math.floor(Math.random() * 3), 1, MAX_DEV_MOCK_PLAYERS)
+  return clamp(
+    MIN_DEV_MOCK_PLAYERS +
+      Math.floor(Math.random() * (MAX_DEV_MOCK_PLAYERS - MIN_DEV_MOCK_PLAYERS + 1)),
+    MIN_DEV_MOCK_PLAYERS,
+    MAX_DEV_MOCK_PLAYERS
+  )
 }
 
 function pickLevels(count: number): number[] {

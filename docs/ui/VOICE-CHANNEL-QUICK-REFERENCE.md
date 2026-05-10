@@ -1,24 +1,24 @@
 # Voice Group Quick Reference Guide
 
 **For**: Developers implementing W0 voice group work
-**Updated**: 2026-05-07
+**Updated**: 2026-05-10
 
 ---
 
 ## 🎯 Key Decision Summary
 
-| Aspect                | Decision                                               |
-| --------------------- | ------------------------------------------------------ |
-| **Mobile Responsive** | Collapse to avatars <768px, expand on desktop          |
-| **Drag-n-Drop**       | Highlight zones + dim invalid + ghost preview          |
-| **Conditions UI**     | Right-click radial menu (desktop), long-press (mobile) |
-| **Environment Icons** | Compact icon, hover tooltip, DM click to edit          |
-| **Broadcast State**   | Badge glows, group header glows subtly                 |
-| **Create Group**      | Icon button in group header (top-right)                |
-| **DM Widget**         | Sticky at top, always visible                          |
-| **Condition Display** | Primary only + popover/tooltip for others              |
-| **Accessibility**     | Full screen reader support (ARIA labels priority)      |
-| **New Feature**       | Campaign setting to enable/disable conditions          |
+| Aspect                  | Decision                                                         |
+| ----------------------- | ---------------------------------------------------------------- |
+| **Mobile Responsive**   | Collapse to avatars <768px, expand on desktop                    |
+| **Drag-n-Drop**         | Highlight zones + dim invalid + ghost preview                    |
+| **Player Context Menu** | Right-click/long-press menu with role-gated actions and submenus |
+| **Environment Icons**   | Compact icon, hover tooltip, DM click to edit                    |
+| **Broadcast State**     | Badge glows, group header glows subtly                           |
+| **Create Group**        | Icon button in group header (top-right)                          |
+| **DM Widget**           | Sticky at top, always visible                                    |
+| **Condition Display**   | Primary only + popover/tooltip for others                        |
+| **Accessibility**       | Full screen reader support (ARIA labels priority)                |
+| **New Feature**         | Campaign setting to enable/disable conditions                    |
 
 ---
 
@@ -57,23 +57,33 @@
 - Avatar: 36px circle with speaking pulse (if speaking)
 - Muted: small icon overlay bottom-right
 - Condition: badge on right; click/hover for popover
-- Actions: revealed on hover (or in radial menu via right-click)
+- Actions: revealed on hover (or in player context menu via right-click)
 
-### Radial Menu (Right-click / Long-press)
+### Player Context Menu (Right-click / Long-press)
+
+Canonical spec source: [UI-PLAYER-CONTEXT-MENU.md](UI-PLAYER-CONTEXT-MENU.md)
 
 ```
-        [×]
-         ↑
-   [Move] [Condition]
-      ↙   ↗
-   [Mute]
+[Send Private Message]
+[View Profile]
+----------------------
+[Mute/Unmute]
+----------------------
+[Clear Effects]
+[Distance >]
+[Condition >]
+----------------------
+[Kick Player]
+[Ban Player]
+----------------------
+[Grant/Revoke DM Priv] (DM only)
 ```
 
-- 4 options positioned around circle
-- Move: select destination group
-- Condition: open condition picker (if enabled)
-- Mute: toggle immediately
-- Close: dismiss menu
+- Available to all users: Send Private Message, View Profile
+- Available to DM/Assistant DM: Mute/Unmute, Clear Effects, Distance >, Condition >, Kick Player, Ban Player
+- Available to DM only: Grant/Revoke DM Priv
+- `Distance >` submenu: Default, Nearby, Visible, Far
+- `Condition >` submenu: Default + supported condition list (including Silenced)
 
 ---
 
@@ -84,7 +94,7 @@
   ├─ .room-selector-dm*             // DM widget
   ├─ .room-selector-room-header*    // Group header
   ├─ .room-selector-player-*        // Player widget
-  └─ .radial-menu*                  // Radial menu
+  └─ .radial-menu*                  // Existing context-menu class hooks
 
 .condition-popover*                 // Condition popover/tooltip
 ```
@@ -138,10 +148,12 @@
 
 ### ✓ Phase 2: Interactions (Week 2)
 
-- [ ] Radial context menu (right-click / long-press)
-- [ ] Wire radial menu to condition picker
-- [ ] Wire radial menu to move group selector
-- [ ] Wire radial menu to mute toggle
+- [ ] Player context menu parity (right-click / long-press)
+- [ ] Role-gated visibility (Player vs Assistant DM vs DM)
+- [ ] Wire Condition submenu to condition picker
+- [ ] Wire Distance submenu to distance overrides
+- [ ] Wire moderation actions (mute/clear/kick/ban)
+- [ ] Wire DM-only grant/revoke assistant DM action
 - [ ] Enhance drag-n-drop with ghost preview + zone highlighting
 
 **Files**: Create RadialMenu.tsx, enhance RoomSelector.tsx drag logic
@@ -151,7 +163,7 @@
 - [ ] Mobile collapse/expand behavior (<768px)
 - [ ] Touch interactions (long-press, drag)
 - [ ] Popover positioning on mobile
-- [ ] Radial menu on mobile
+- [ ] Player context menu on mobile
 
 **Files**: Add responsive CSS, touch event handlers
 
@@ -247,7 +259,7 @@ POST /api/v1/rooms/{roomId}/members/move
 ### E2E Tests
 
 - [ ] Full user scenario: drag player, apply condition, toggle broadcast
-- [ ] Mobile: tap to collapse, long-press radial menu
+- [ ] Mobile: tap to collapse, long-press player context menu
 - [ ] Error recovery: move fails, shows toast, allows retry
 - [ ] Accessibility: navigate with keyboard only, screen reader output
 

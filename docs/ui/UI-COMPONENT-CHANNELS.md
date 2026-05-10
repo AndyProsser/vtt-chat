@@ -314,11 +314,11 @@ Greenroom behavior:
 │ [AV●] Thalia Stormwind                  │
 │       Ranger | Lvl 4 | Elf              │
 │       Primary: Poisoned 🪶              │
-│       ✎ Hover to reveal: +2 more       │
+│       ✎ Hover to reveal: +2 more        │
 │                                         │
-│ ✎ Right-click (long-press mobile) →    │
-│   Radial menu: Apply Condition,        │
-│   Remove, Mute, Move to Room           │
+│ ✎ Right-click (long-press mobile) →     │
+│   Player context menu (role-aware)      │
+│   with Distance/Condition submenus      │
 └─────────────────────────────────────────┘
 ```
 
@@ -338,7 +338,7 @@ Greenroom behavior:
 - **Avatar** (36px circle): `AvatarOverlay` with speaking indicator + muted state
 - **Name & details** (character name, class/race/level)
 - **Condition badge** (primary only, with popover on hover/click)
-- **Actions** (revealed on hover, or in radial menu on right-click)
+- **Actions** (revealed on hover, or in player context menu on right-click)
 
 **CSS Properties**:
 
@@ -571,30 +571,63 @@ Other conditions:
 
 ---
 
-### 3.5 Radial Menu (Right-Click / Long-Press)
+### 3.5 Player Context Menu (Right-Click / Long-Press)
+
+Canonical spec source: [UI-PLAYER-CONTEXT-MENU.md](UI-PLAYER-CONTEXT-MENU.md)
+
+The player card interaction model uses a permission-aware context menu. The first
+two actions are available to all users; moderation/audio controls are restricted
+to DM and Assistant DM; DM privilege controls are DM-only.
+
+**Available to all users**:
+
+- Send Private Message
+- View Profile
+
+**DM + Assistant DM actions**:
+
+- Mute/Unmute
+- Clear Effects
+- Distance (submenu): `Default`, `Nearby`, `Visible`, `Far`
+- Condition (submenu): `Default` plus supported condition list (including `Silenced`)
+- Kick Player
+- Ban Player
+
+**DM-only action**:
+
+- Grant/Revoke DM Priv
 
 **Desktop** (right-click on player):
 
 ```text
-        [× Close]
-           ↑
-[Move] ← [Player] → [Condition]
-           ↓
-        [Mute]
+[Send Private Message]
+[View Profile]
+----------------------
+[Mute/Unmute]
+----------------------
+[Clear Effects]
+[Distance >]
+[Condition >]
+----------------------
+[Kick Player]
+[Ban Player]
+----------------------
+[Grant/Revoke DM Priv] (DM only)
 ```
 
 **Mobile** (long-press on player):
 
 ```text
-Radial menu with same 4 options
+Bottom-sheet style context menu with same permission model and submenu access
 ```
 
-**Each option behavior**:
+**Menu behavior**:
 
-1. **Move**: Opens "Select destination room" popover
-2. **Condition**: Opens condition picker (apply/remove via DM override API)
-3. **Mute**: Toggles mute state immediately (apply/remove via DM override API)
-4. **Close**: Dismisses menu
+1. `Distance` and `Condition` open nested submenus on hover/tap.
+2. `Condition > Silenced` uses DM override routing (target player audible to DM/spectators only).
+3. `Mute/Unmute`, `Clear Effects`, `Kick`, and `Ban` execute immediately with confirmation where required.
+4. `Send Private Message` and `View Profile` stay available even for non-DM users.
+5. Menu items are filtered by role and relationship eligibility before render.
 
 **Current class hooks**:
 
@@ -624,6 +657,12 @@ Radial menu with same 4 options
   display: grid;
 }
 ```
+
+Implementation note:
+
+- Existing runtime uses radial-menu class hooks and interaction plumbing.
+- W0 follow-up aligns rendering to this canonical context-menu hierarchy while
+  reusing existing action handlers and permission guards.
 
 ---
 
@@ -664,10 +703,10 @@ Radial menu with same 4 options
 
 ### 4.2 Apply/Remove Conditions
 
-**Via Radial Menu (Right-Click / Long-Press)**:
+**Via Player Context Menu (Right-Click / Long-Press)**:
 
 1. User right-clicks (desktop) or long-presses (mobile) on player.
-2. Radial menu appears with 4 options: Move, Condition, Mute, Close.
+2. Context menu appears with role-filtered actions and `Condition >` submenu.
 3. User clicks **Condition**.
 4. Condition picker popover opens:
    - If campaign setting allows conditions: Full picker (add/remove).
@@ -689,7 +728,7 @@ Radial menu with same 4 options
 **Campaign Setting** (DM-scoped):
 
 - In **DM-Campaign Settings** doc (separate, not yet created), DM can toggle "Allow Conditions" on/off.
-- If disabled globally: Radial menu hides Condition option entirely.
+- If disabled globally: Context menu hides Condition option entirely.
 - If enabled: Full workflow as above.
 
 ---
@@ -789,7 +828,7 @@ Error: var(--error)
 - Player widget: role="button" aria-label="{name}, {class}, {level}, {primaryCondition}"
 - Broadcast toggle: aria-pressed="true|false" aria-label="Toggle broadcast to {roomName}"
 - Condition badge: aria-label="Primary: {conditionName}" aria-describedby="tooltip-id"
-- Radial menu: role="menu" aria-label="Player actions"
+- Player context menu: role="menu" aria-label="Player actions"
   - Menu items: role="menuitem"
 ```
 
@@ -797,8 +836,8 @@ Error: var(--error)
 
 - Tab through: DM widget → Group headers → Player widgets.
 - Arrow keys: Up/down to move between players in same group.
-- Enter: Activate radial menu on focused player.
-- Escape: Close radial menu or popover.
+- Enter: Activate player context menu on focused player.
+- Escape: Close context menu or popover.
 - Drag-n-drop: Keyboard support (press Space to drag, arrow keys to move, Enter to drop).
 
 **Motion & Reduced Motion**:
@@ -842,7 +881,7 @@ Terminology note: this spec uses **Group** as the user-facing label. Existing co
 
 **Planned/In-Progress** (W0 scope):
 
-- Radial context menu for conditions (right-click / long-press)
+- Player context menu parity pass (right-click / long-press; role-gated option matrix)
 - Condition badge + popover UI
 - Environment icon display + DM edit modal
 - Create group quick modal
@@ -879,10 +918,12 @@ Terminology note: this spec uses **Group** as the user-facing label. Existing co
 
 ### Phase 2: Interactions (Week 2)
 
-- [ ] Implement radial context menu (right-click / long-press)
-- [ ] Wire radial menu to condition picker
-- [ ] Wire radial menu to move group selector
-- [ ] Wire radial menu to mute toggle
+- [ ] Implement player context menu (right-click / long-press)
+- [ ] Align with canonical player context menu option matrix and role-gated visibility
+- [ ] Wire context-menu condition submenu to condition picker
+- [ ] Wire context-menu distance submenu to distance overrides
+- [ ] Wire context-menu moderation actions (mute/clear/kick/ban)
+- [ ] Wire DM-only grant/revoke assistant DM action
 - [ ] Enhance drag-n-drop with ghost preview + zone highlighting
 
 ### Phase 3: Mobile & Adaptive (Week 3)

@@ -1,6 +1,6 @@
 import { getPrismaClient } from '@/infra/db'
 import type { TokenPayload } from '@/services/auth.service'
-import { deriveCampaignDisplayState } from '@shared'
+import { deriveCampaignDisplayState, type SessionState } from '@shared'
 import {
   sanitizeEmail,
   sanitizeExternalSystem,
@@ -96,12 +96,7 @@ export async function validatePlayerInviteCode(
     }
   }
 
-  const latestSessionState = (campaign.sessions?.[0]?.state || null) as
-    | 'IDLE'
-    | 'ACTIVE'
-    | 'PAUSED'
-    | 'ENDED'
-    | null
+  const latestSessionState = (campaign.sessions?.[0]?.state || null) as SessionState | null
 
   const latestSessionPresence = (campaign.sessions?.[0]?.presence || []) as Array<{
     userId: string

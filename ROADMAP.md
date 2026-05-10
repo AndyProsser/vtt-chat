@@ -228,7 +228,17 @@ Recent runtime follow-through (2026-05-08):
 - Runtime hardening priority remains room/session lifecycle determinism: room CRUD sync, greenroom-only rendering out of session, greenroom default-effect lock, deterministic transition routing, and reconnect-safe presence/status state.
 - Deferred UI debt for follow-up: Create Group popover styling has intermittent selector/specificity fragility in-session; short-term guard styles are acceptable for now, and a proper shared popover/panel styling pass is queued for post-hardening review.
 
-**Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: radial context menu for conditions, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
+**Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: permission-aware player context menu, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
+
+Player context-menu spec alignment (2026-05-10):
+
+- Canonical option matrix is documented in [docs/ui/UI-PLAYER-CONTEXT-MENU.md](docs/ui/UI-PLAYER-CONTEXT-MENU.md).
+- Shared actions for all users: `Send Private Message`, `View Profile`.
+- DM/Assistant DM actions: `Mute/Unmute`, `Clear Effects`, `Distance >`, `Condition >`, `Kick Player`, `Ban Player`.
+- DM-only action: `Grant/Revoke DM Priv`.
+- `Distance >` submenu options: `Default`, `Nearby`, `Visible`, `Far`.
+- `Condition >` submenu includes `Default` and the full condition set, including `Silenced` routing behavior.
+- Phase 2 delivered the baseline radial action surface; W0 follow-through now tracks parity with the full hierarchical menu contract.
 
 Terminology note for this stage:
 
@@ -240,7 +250,7 @@ Terminology note for this stage:
 | Phase                           | Timeline | Deliverables                                                                                                 | Status      |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ----------- |
 | Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Done        |
-| Phase 2: Interactions           | Week 2   | Radial context menu (right-click/long-press), condition picker, move selector, enhanced drag-n-drop          | Done        |
+| Phase 2: Interactions           | Week 2   | Baseline context actions (right-click/long-press), condition picker, move selector, enhanced drag-n-drop     | Done        |
 | Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Done        |
 | Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing             | Not started |
 | Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage              | Not started |
@@ -262,7 +272,9 @@ Terminology note for this stage:
 - Notes handout permissions: `PRIVATE | PARTY | SELECTED` (selected players may be offline)
 - Campaign panel extension sync: enabled by default; DM can disable external updates
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
-- Radial menu (right-click desktop / long-press mobile) for conditions, move, mute
+- Player context menu (right-click desktop / long-press mobile) with role-gated action visibility and grouped sections
+- Distance submenu with `Default`, `Nearby`, `Visible`, `Far`
+- Condition submenu with `Default` + full condition catalog, including `Silenced`
 - Environment icons (compact, hover tooltip, DM click to edit)
 - Broadcast state: global header icon control (DM only, hidden in greenroom)
 - Create Group: icon button in group header (top-right)
@@ -299,12 +311,15 @@ Terminology note for this stage:
 - ✅ RadialMenu.tsx (exists — right-click + long-press, condition/move/mute, viewport clamping)
 - ✅ CreateGroupModal.tsx (exists, functional)
 - 🆕 CampaignSettingsPanel.tsx (new, with condition toggle)
+- 🆕 PlayerContextMenu parity pass (align baseline radial interaction to canonical option matrix + nested submenus)
 
 **Testing Coverage**:
 
 - [ ] Unit: Component rendering, state management, event handlers
 - [ ] Integration: Drag-n-drop, condition mutations, group movement
+- [ ] Integration: Role-gated context-menu rendering and submenu action routing
 - [ ] E2E: Full user flows (drag, conditions, mobile responsive, accessibility)
+- [ ] E2E: DM vs Assistant DM vs Player action visibility and guardrails
 - [ ] A11y: Screen reader testing, keyboard nav, WCAG AA compliance
 
 **Success Criteria**:
@@ -312,7 +327,8 @@ Terminology note for this stage:
 - ✅ Design doc complete and aligned with implementation
 - [ ] All Phase 1-5 tasks completed and tested
 - [ ] Mobile collapse/expand working on <768px viewports
-- [ ] Radial menu accessible via right-click + long-press
+- [ ] Player context menu accessible via right-click + long-press
+- [ ] Player context menu matches canonical option matrix and permission rules
 - [ ] Drag-n-drop feedback visible and intuitive
 - [ ] All ARIA labels + keyboard navigation functional
 - [ ] Cross-browser tested (Chrome, Firefox, Safari, Edge)

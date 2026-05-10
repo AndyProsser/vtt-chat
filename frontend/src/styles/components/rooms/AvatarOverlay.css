@@ -1,18 +1,18 @@
 .avatar-overlay {
   display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 0.55rem;
+  grid-template-columns: 30px 1fr;
+  gap: 0.4rem;
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 75%, transparent);
   border-radius: 10px;
-  padding: 0.35rem 0.45rem;
+  padding: 0.22rem 0.36rem;
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
 }
 
 .avatar-glyph {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   overflow: visible;
   border-radius: 999px;
   display: inline-flex;
@@ -62,7 +62,7 @@
 
 .avatar-meta {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   min-width: 0;
 }
 

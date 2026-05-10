@@ -27,7 +27,7 @@ Asked 10 targeted questions covering:
 
 - **Adaptive collapse** on mobile (<768px), expand on desktop
 - **Full drag feedback**: highlight zones + dim invalid + ghost preview
-- **Radial menu** (right-click desktop, long-press mobile) for conditions
+- **Player context menu** (right-click desktop, long-press mobile) with role-gated actions and submenus
 - **Compact environment icons** with hover tooltips
 - **Broadcast indicator badge** + subtle group header glow
 - **Create group button** as icon in group header
@@ -44,17 +44,17 @@ Asked 10 targeted questions covering:
 
 **Sections**:
 
-| Section                  | Content                                                                      |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| High-Level Layouts       | Desktop (300px panel) + Mobile (collapsed avatars) mockups                   |
-| UX Principles            | Simplicity, visual hierarchy, feedback & affordance                          |
-| Component Anatomy        | DM widget, group headers, player widgets, conditions, radial menu (with CSS) |
-| Interaction Flows        | Drag-n-drop, conditions, broadcast, mobile collapse, create group            |
-| Design Tokens            | Colors, spacing, animations (1.2s pulse), accessibility                      |
-| Implementation Status    | Current group-selector coverage + planned W0 work                            |
-| Implementation Checklist | 5-phase plan (35+ actionable tasks)                                          |
-| Future Enhancements      | Voice presets, character sheet quick-view, etc.                              |
-| Rationale                | Design decisions explained                                                   |
+| Section                  | Content                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| High-Level Layouts       | Desktop (300px panel) + Mobile (collapsed avatars) mockups                           |
+| UX Principles            | Simplicity, visual hierarchy, feedback & affordance                                  |
+| Component Anatomy        | DM widget, group headers, player widgets, conditions, player context menu (with CSS) |
+| Interaction Flows        | Drag-n-drop, conditions, broadcast, mobile collapse, create group                    |
+| Design Tokens            | Colors, spacing, animations (1.2s pulse), accessibility                              |
+| Implementation Status    | Current group-selector coverage + planned W0 work                                    |
+| Implementation Checklist | 5-phase plan (35+ actionable tasks)                                                  |
+| Future Enhancements      | Voice presets, character sheet quick-view, etc.                                      |
+| Rationale                | Design decisions explained                                                           |
 
 **Key Deliverable**: Developers now have a complete, implementation-ready spec. All interactions clearly defined with CSS properties, ARIA labels, and keyboard bindings.
 
@@ -113,7 +113,7 @@ Asked 10 targeted questions covering:
 ### Ready for W0 Implementation (🔨 Phase 1-5)
 
 **Phase 1**: Group headers, condition badge, env tooltip
-**Phase 2**: Radial menu, condition picker, enhanced drag feedback
+**Phase 2**: Player context menu parity, condition picker, enhanced drag feedback
 **Phase 3**: Mobile collapse/expand, responsive popovers
 **Phase 4**: ARIA labels, keyboard nav, reduced motion, a11y audit
 **Phase 5**: Error handling, reconnection, testing, perf audit
@@ -162,7 +162,7 @@ Asked 10 targeted questions covering:
 
 **Why sticky DM?** — Session orchestration critical; quick access to broadcast toggle.
 **Why one condition visible?** — Cognitive load; space efficiency; progressive disclosure via popover.
-**Why radial menu?** — Space savings; familiar game UI pattern; touch-friendly long-press.
+**Why player context menu?** — Role-aware actions and grouped submenus keep the interaction contract explicit while staying fast on right-click/long-press.
 **Why ghost preview?** — Clarity + confidence before release; standard in modern UIs.
 **Why adaptive collapse?** — Mobile efficiency vs desktop usability; responsive, not forced.
 

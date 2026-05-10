@@ -108,7 +108,7 @@ describe('RoomSelector', () => {
 
     expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(1)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
-    expect(screen.getByText('Main Group')).toBeTruthy()
+    expect(screen.queryByText('Main Group')).toBeNull()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
     expect(screen.getByText('Rogue | Level 5 | Halfling')).toBeTruthy()
@@ -250,7 +250,7 @@ describe('RoomSelector', () => {
       container
         .querySelector('[aria-label="Group Scouts"] .room-selector-members-list')
         ?.classList.contains('room-selector-members-list--constrained')
-    ).toBe(true)
+    ).toBe(false)
 
     fireEvent.dragStart(getDragUserButton('Tara'), {
       dataTransfer: {
@@ -764,6 +764,63 @@ describe('RoomSelector', () => {
     const effectButtons = screen.getAllByRole('button', { name: /Change group environment/i })
     expect(effectButtons.length).toBeGreaterThan(0)
     expect(effectButtons[0]?.hasAttribute('disabled')).toBe(false)
+  })
+
+  it('keeps DM first and sorts remaining greenroom members alphabetically', () => {
+    const { container } = render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        isGreenroom={true}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Green Room',
+            type: RoomType.MAIN,
+            memberCount: 4,
+            participants: [
+              {
+                userId: asUuid('user-3'),
+                username: 'Tharn',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-4'),
+                username: 'Rook',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Aria',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    const memberButtons = Array.from(
+      container.querySelectorAll('[aria-label="Group Green Room"] .room-selector-member')
+    ).map((node) => node.getAttribute('aria-label'))
+
+    expect(memberButtons).toEqual(['Morgan', 'Aria', 'Rook', 'Tharn'])
   })
 
   it('allows ending whisper room even when members are present', async () => {

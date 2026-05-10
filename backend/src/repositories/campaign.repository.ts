@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { deriveCampaignDisplayState, type CampaignDisplayState } from '@shared'
+import { deriveCampaignDisplayState, type CampaignDisplayState, type SessionState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
@@ -102,7 +102,7 @@ export async function listCampaignsForUser(userId: string): Promise<
     inviteCode: string
     currentDmId: string
     memberRole: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
-    latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+    latestSessionState: SessionState | null
     displayState: CampaignDisplayState
     dmOnline: boolean
     connectedPlayers: number
@@ -157,12 +157,7 @@ export async function listCampaignsForUser(userId: string): Promise<
 
   return memberships.map((m: any) => ({
     ...(() => {
-      const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as
-        | 'IDLE'
-        | 'ACTIVE'
-        | 'PAUSED'
-        | 'ENDED'
-        | null
+      const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as SessionState | null
 
       const latestSessionPresence = (m.campaign.sessions?.[0]?.presence || []) as Array<{
         userId: string
@@ -294,7 +289,7 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
   currentDmId: string
   postSessionChatEnabled: boolean
   postSessionChatDurationMs: number
-  latestSessionState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+  latestSessionState: SessionState | null
   latestSessionEndedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -332,12 +327,7 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
     currentDmId: membership.campaign.currentDmId,
     postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
     postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
-    latestSessionState: (membership.campaign.sessions[0]?.state || null) as
-      | 'IDLE'
-      | 'ACTIVE'
-      | 'PAUSED'
-      | 'ENDED'
-      | null,
+    latestSessionState: (membership.campaign.sessions[0]?.state || null) as SessionState | null,
     latestSessionEndedAt: membership.campaign.sessions[0]?.endedAt || null,
     createdAt: membership.campaign.createdAt,
     updatedAt: membership.campaign.updatedAt,

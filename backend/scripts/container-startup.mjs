@@ -96,9 +96,34 @@ async function runPrismaCommand() {
   })
 }
 
+async function runPrismaGenerate() {
+  console.log('[startup] Running Prisma client generation: npx prisma generate --config prisma.config.ts')
+
+  await new Promise((resolve, reject) => {
+    const child = spawn('npx', ['prisma', 'generate', '--config', 'prisma.config.ts'], {
+      stdio: 'inherit',
+      env: process.env,
+    })
+
+    child.on('error', (error) => {
+      reject(error)
+    })
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(undefined)
+        return
+      }
+
+      reject(new Error(`Prisma client generation failed with exit code ${code}`))
+    })
+  })
+}
+
 async function main() {
   await waitForDatabase()
   await runPrismaCommand()
+  await runPrismaGenerate()
 }
 
 main().catch((error) => {

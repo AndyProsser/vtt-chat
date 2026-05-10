@@ -50,6 +50,7 @@ export interface RoomParticipantStatus {
   isMuted?: boolean
   isSpeaking?: boolean
   condition?: string
+  distanceLabel?: string
 }
 
 interface RoomSelectorRoomWithParticipants extends RoomSelectorRoom {
@@ -361,8 +362,26 @@ export function RoomSelector({
       next[targetRoomId].push(participant)
     }
 
+    for (const room of allRooms) {
+      const participants = next[room.id] || []
+      participants.sort((left, right) => {
+        const leftIsDm = left.userId === dmUserId
+        const rightIsDm = right.userId === dmUserId
+
+        // In greenroom, keep the DM at the top of the main room list.
+        if (isGreenroom && room.type === RoomType.MAIN && leftIsDm !== rightIsDm) {
+          return leftIsDm ? -1 : 1
+        }
+
+        const leftName = (left.characterName || left.username).trim().toLowerCase()
+        const rightName = (right.characterName || right.username).trim().toLowerCase()
+        return leftName.localeCompare(rightName)
+      })
+      next[room.id] = participants
+    }
+
     return next
-  }, [allRooms, visibleParticipants, pendingRoomMoves])
+  }, [allRooms, visibleParticipants, pendingRoomMoves, dmUserId, isGreenroom])
 
   const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
     setMoveError(null)
@@ -852,7 +871,7 @@ export function RoomSelector({
   const renderRoomSection = (
     sectionLabel: string,
     sectionRooms: RoomSelectorRoomWithParticipants[],
-    options?: { dividerOnly?: boolean }
+    options?: { dividerOnly?: boolean; hideHeader?: boolean }
   ) => {
     if (sectionRooms.length === 0) {
       return null
@@ -860,15 +879,17 @@ export function RoomSelector({
 
     return (
       <section className="room-selector-group-section" aria-label={sectionLabel}>
-        <header
-          className={`room-selector-group-section__header ${options?.dividerOnly ? 'room-selector-group-section__header--divider-only' : ''}`}
-        >
-          {options?.dividerOnly ? (
-            <span className="room-selector-group-section__divider" />
-          ) : (
-            <h5>{sectionLabel}</h5>
-          )}
-        </header>
+        {options?.hideHeader ? null : (
+          <header
+            className={`room-selector-group-section__header ${options?.dividerOnly ? 'room-selector-group-section__header--divider-only' : ''}`}
+          >
+            {options?.dividerOnly ? (
+              <span className="room-selector-group-section__divider" />
+            ) : (
+              <h5>{sectionLabel}</h5>
+            )}
+          </header>
+        )}
 
         {sectionRooms.map((room, index) => {
           const selected = room.id === selectedRoomId
@@ -883,13 +904,10 @@ export function RoomSelector({
             participants.length === 0 && room.type !== RoomType.MAIN && !isGreenRoomName(room.name)
           const isWhisperGroup = isWhisperRoom(room)
           const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperGroup
-          const constrainMembersForDensity =
-            isDenseRoomLayout && !isWhisperGroup && !isEmptyGroup && participants.length > 2
           const isCompactGroup = isEmptyGroup || isWhisperGroup || collapseForDrag
           const memberListClassName = [
             'room-selector-members-list',
             isCompactGroup ? 'room-selector-members-list--hidden' : '',
-            constrainMembersForDensity ? 'room-selector-members-list--constrained' : '',
             selected ? 'room-selector-members-list--selected' : '',
           ]
             .filter(Boolean)
@@ -1240,6 +1258,37 @@ export function RoomSelector({
                                   </div>
                                 ) : null}
                                 <div className="room-selector-profile__status-pills">
+                                  <span className="room-selector-status-pill environment">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.environment}
+                                    </span>
+                                    Env: {getResolvedEnvironmentName(room)}
+                                  </span>
+                                  <span className="room-selector-status-pill distance">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.distance}
+                                    </span>
+                                    Distance:{' '}
+                                    {member.distanceLabel || STATUS_PILL_LABELS.distanceDefault}
+                                  </span>
+                                  <span className="room-selector-status-pill condition">
+                                    <span className="material-symbols-outlined" aria-hidden="true">
+                                      {STATUS_PILL_ICONS.condition}
+                                    </span>
+                                    Condition:{' '}
+                                    {member.condition || STATUS_PILL_LABELS.conditionNone}
+                                  </span>
+                                  {isMuted ? (
+                                    <span className="room-selector-status-pill muted">
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        {STATUS_PILL_ICONS.muted}
+                                      </span>
+                                      {STATUS_PILL_LABELS.muted}
+                                    </span>
+                                  ) : null}
                                   {member.isSpeaking ? (
                                     <span className="room-selector-status-pill speaking">
                                       <span
@@ -1249,17 +1298,6 @@ export function RoomSelector({
                                         {STATUS_PILL_ICONS.speaking}
                                       </span>
                                       {STATUS_PILL_LABELS.speaking}
-                                    </span>
-                                  ) : null}
-                                  {member.condition ? (
-                                    <span className="room-selector-status-pill condition">
-                                      <span
-                                        className="material-symbols-outlined"
-                                        aria-hidden="true"
-                                      >
-                                        {STATUS_PILL_ICONS.condition}
-                                      </span>
-                                      {member.condition}
                                     </span>
                                   ) : null}
                                 </div>
@@ -1606,7 +1644,9 @@ export function RoomSelector({
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
               ) : (
                 <>
-                  {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms)}
+                  {renderRoomSection(ROOM_PRESENCE_COPY.mainGroup, mainRooms, {
+                    hideHeader: true,
+                  })}
                   {otherRooms.length > 0
                     ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
                         dividerOnly: true,

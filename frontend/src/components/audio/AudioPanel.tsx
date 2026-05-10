@@ -434,7 +434,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const overrideItems = useMemo(() => {
     return Array.from(dmOverrides.values()).map((override) => {
-      const shortUser = override.userId.slice(0, 8)
+      const shortUser = override.userId?.slice(0, 8) ?? 'unknown'
       return {
         kind: override.overrideType.toLowerCase(),
         name: getAudioOverrideName(override.overrideType, shortUser),

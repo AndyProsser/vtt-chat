@@ -922,17 +922,17 @@
 .voice-rail-summary {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.72rem 0.75rem;
+  padding: 0.6rem 0.65rem;
   background: color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-subtle) 10%);
   display: grid;
-  gap: 0.44rem;
+  gap: 0.32rem;
 }
 
 .voice-rail-summary__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.45rem;
 }
 
 .voice-rail-summary__title-row {
@@ -1034,7 +1034,7 @@
   min-height: 0;
   height: 100%;
   flex: 1 1 auto;
-  gap: 0.75rem;
+  gap: 0.62rem;
   align-items: stretch;
   overflow: hidden;
 }
@@ -1059,7 +1059,7 @@
 .session-left-rail-stack {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-height: 0;
   height: 100%;
 }
@@ -1108,7 +1108,7 @@
 
 .session-left-rail {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .session-rooms-panel-title {

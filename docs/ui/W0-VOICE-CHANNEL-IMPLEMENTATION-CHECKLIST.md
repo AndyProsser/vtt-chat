@@ -96,32 +96,36 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 
 ## Phase 2: Interactions (Week 2)
 
-### 2.1 Radial Context Menu
+### 2.1 Player Context Menu
 
 - [ ] Create `RadialMenu.tsx` component
-- [ ] 4 options: Move, Condition, Mute, Close
-- [ ] Position around circle (120px diameter)
+- [ ] Align menu to canonical option matrix in `UI-PLAYER-CONTEXT-MENU.md`
+- [ ] Group options by permission tier (All users, DM/Assistant DM, DM-only)
 - [ ] Trigger: right-click on player widget (desktop)
 - [ ] Trigger: long-press on player widget (mobile, 500ms)
 - [ ] Click-outside to dismiss
-- [ ] Hover effects on items
+- [ ] Submenu open behavior for `Distance >` and `Condition >`
 
 **Files**: Create `frontend/src/components/rooms/RadialMenu.tsx`
 
-### 2.2 Wire Radial Menu Options
+### 2.2 Wire Player Context Menu Options
 
-- [ ] **Move**: Open group selector popover
-  - [ ] Show available groups
-  - [ ] On select: call move API, apply optimistic UI
+- [ ] **Send Private Message**: Open private message composer for selected player
+- [ ] **View Profile**: Open selected player profile panel/modal
+- [ ] **Distance >**: Open submenu with `Default`, `Nearby`, `Visible`, `Far`
+  - [ ] On select: apply distance override + optimistic UI
   - [ ] On error: show toast, allow retry
 - [ ] **Condition**: Open condition picker (if enabled in campaign settings)
   - [ ] Show available conditions dropdown
   - [ ] On select: apply condition, update badge
   - [ ] If disabled: show message "Conditions disabled by DM"
-- [ ] **Mute**: Toggle immediately
+- [ ] **Mute/Unmute**: Toggle immediately
   - [ ] Update player widget muted state
   - [ ] Call API in background
-- [ ] **Close**: Dismiss menu
+- [ ] **Clear Effects**: Clear active effects for selected player
+- [ ] **Kick Player**: Confirmation + remove player flow
+- [ ] **Ban Player**: Confirmation + ban + remove flow
+- [ ] **Grant/Revoke DM Priv**: DM-only visibility and action wiring
 
 **Files**: Update `RoomSelector.tsx` to integrate RadialMenu.tsx
 
@@ -155,8 +159,8 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 
 ### Phase 2 Testing
 
-- [ ] Unit: Right-click/long-press trigger radial menu
-- [ ] Integration: Radial menu → move → optimistic UI
+- [ ] Unit: Right-click/long-press trigger player context menu
+- [ ] Integration: Context menu actions + submenus route correctly by role
 - [ ] Integration: Drag-n-drop with ghost preview
 - [ ] Manual: Test on desktop + mobile
 
@@ -186,23 +190,23 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 ### 3.3 Popover Positioning on Mobile
 
 - [ ] Condition popover: position relative to avatar, not fixed
-- [ ] Radial menu: position near player widget, avoid viewport edges
+- [ ] Player context menu: position near player widget, avoid viewport edges
 - [ ] Test popover not cut off on small screens
 
 **Files**: Update CSS positioning logic
 
 ### 3.4 Touch Interactions
 
-- [ ] Long-press: 500ms touch hold triggers radial menu
+- [ ] Long-press: 500ms touch hold triggers player context menu
 - [ ] Drag: touch drag for group movement (same as mouse)
-- [ ] Tap: tap player for radial menu (alternative to long-press)
+- [ ] Tap: tap player for context menu (alternative to long-press)
 
 **Files**: Update event handlers in `RoomSelector.tsx`
 
 ### Phase 3 Testing
 
 - [ ] Mobile: Collapse/expand works
-- [ ] Mobile: Radial menu appears on long-press
+- [ ] Mobile: Player context menu appears on long-press
 - [ ] Mobile: Drag-n-drop works with touch
 - [ ] Responsive: Resize browser, check breakpoint transitions
 
@@ -217,7 +221,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 - [ ] Player widgets: `role="button" aria-label="{name}, {class}, Level {level}, {primaryCondition}"`
 - [ ] Broadcast toggle: `aria-pressed="true|false" aria-label="Toggle broadcast to {roomName}"`
 - [ ] Condition badge: `aria-label="Primary: {conditionName}" aria-describedby="tooltip-id"`
-- [ ] Radial menu: `role="menu" aria-label="Player actions"`
+- [ ] Player context menu: `role="menu" aria-label="Player actions"`
 - [ ] Menu items: `role="menuitem"`
 - [ ] Create group button: `aria-label="Create new group"`
 - [ ] Close group button: `aria-label="Close group: {roomName}"`
@@ -228,8 +232,8 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 
 - [ ] Tab: Cycle through DM widget → groups → players
 - [ ] Arrow Up/Down: Move between players in same group
-- [ ] Enter: Activate radial menu on focused player
-- [ ] Escape: Close radial menu, popover, modal
+- [ ] Enter: Activate player context menu on focused player
+- [ ] Escape: Close context menu, popover, modal
 - [ ] For drag-n-drop: Space to start, arrow keys to move, Enter to drop
 
 **Files**: Add keyboard event handlers in `RoomSelector.tsx`
@@ -306,7 +310,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 - [ ] Re-render on drag: <200ms
 - [ ] Animation frame rate: 60fps
 - [ ] Popover paint: <100ms
-- [ ] Radial menu paint: <100ms
+- [ ] Context menu paint: <100ms
 - [ ] Use React DevTools Profiler + Chrome DevTools
 
 **Files**: Optimize if thresholds exceeded
@@ -314,7 +318,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 ### 5.5 Unit Testing
 
 - [ ] RoomSelector component renders
-- [ ] Radial menu appears on right-click
+- [ ] Player context menu appears on right-click
 - [ ] Drag-drop state management
 - [ ] Collapse/expand on mobile
 - [ ] ARIA labels present
@@ -333,7 +337,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 ### 5.7 E2E Testing
 
 - [ ] Full user flow: login → campaign → session → drag player, apply condition, toggle broadcast
-- [ ] Mobile flow: tap to expand, long-press radial menu
+- [ ] Mobile flow: tap to expand, long-press player context menu
 - [ ] Error recovery: move fails → retry succeeds
 
 ### 5.8 Future W0 Tail (Deferred)
@@ -366,7 +370,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
   - [ ] Fetch settings on campaign load
   - [ ] Pass `allowPlayerConditions` to RoomSelector via props
   - [ ] Add `allowSecondaryGroupMainListen` feature-flag plumbing for future W0 tail work
-  - [ ] Hide Condition option in radial menu if disabled
+  - [ ] Hide Condition option in player context menu if disabled
 
 **Files**: Implement in backend, wire to frontend RoomSelector
 
@@ -379,7 +383,7 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 - [ ] Tests pass (unit + integration)
 - [ ] No console errors/warnings
 - [ ] Mobile collapse/expand working
-- [ ] Radial menu accessible (right-click + long-press)
+- [ ] Player context menu accessible (right-click + long-press)
 - [ ] Drag-n-drop with ghost preview
 - [ ] All ARIA labels present
 - [ ] Keyboard navigation functional
