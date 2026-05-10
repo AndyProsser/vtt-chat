@@ -598,8 +598,8 @@
 }
 
 .room-selector-profile-tooltip {
-  max-width: 24rem;
-  min-width: 23rem;
+  max-width: min(17.5rem, calc(100vw - 2rem));
+  min-width: 16.5rem;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;

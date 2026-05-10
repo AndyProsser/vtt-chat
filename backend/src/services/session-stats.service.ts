@@ -13,11 +13,7 @@ export interface SessionStatsSnapshot {
 }
 
 function isConnectedPresence(state: PresenceState): boolean {
-  return (
-    state === PresenceState.ONLINE ||
-    state === PresenceState.TYPING ||
-    state === PresenceState.SPEAKING
-  )
+  return state !== PresenceState.OFFLINE
 }
 
 export async function getSessionStatsSnapshot(sessionId: UUID): Promise<SessionStatsSnapshot> {

@@ -1576,12 +1576,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     const connectedCount =
       currentSessionStats?.connectedTotal ??
-      currentPresence.filter(
-        (presence) =>
-          presence.state === PresenceState.ONLINE ||
-          presence.state === PresenceState.TYPING ||
-          presence.state === PresenceState.SPEAKING
-      ).length
+      currentPresence.filter((presence) => presence.state !== PresenceState.OFFLINE).length
 
     if (!isGreenroom || connectedCount > 0) {
       if (greenroomCleanupTimerRef.current !== null) {
@@ -2446,10 +2441,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const connectedSpectatorsCount =
     currentSessionStats?.connectedSpectators ?? selectedCampaign?.connectedSpectatorsRounded ?? 0
   const liveConnectedPresenceCount = currentPresence.filter(
-    (presence) =>
-      presence.state === PresenceState.ONLINE ||
-      presence.state === PresenceState.TYPING ||
-      presence.state === PresenceState.SPEAKING
+    (presence) => presence.state !== PresenceState.OFFLINE
   ).length
   const hasLivePresence = currentSession !== null && currentPresence.length > 0
   const connectedPlayersWithDm = currentSessionStats

@@ -47,6 +47,7 @@ import {
   listSessionUsersForRequester,
 } from '@/services/session-access.service'
 import { resolveRoleForSessionJoin } from '@/services/session-authz.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -325,6 +326,13 @@ async function joinSessionHandler(req: Request, res: Response) {
             changedAt: timestamp,
           },
         })
+
+        await broadcastSessionStatsSnapshot({
+          wsManager,
+          sessionId: id as UUID,
+          actorUserId: user.userId as UUID,
+          actorUserRole: user.role,
+        })
       }
 
       const usersAfterJoin = await getSessionUsers(id as UUID)
@@ -443,6 +451,13 @@ async function joinSessionHandler(req: Request, res: Response) {
           createdAt: Date.now(),
           whisperTo: null,
         },
+      })
+
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: id as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
       })
     }
 
@@ -861,6 +876,13 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           },
         })
       }
+
+      await broadcastSessionStatsSnapshot({
+        wsManager,
+        sessionId: session.id,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role,
+      })
     }
 
     const boundaryType =

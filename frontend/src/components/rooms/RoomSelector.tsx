@@ -143,6 +143,8 @@ export function RoomSelector({
   const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
   const clearEnvironment = useStore((state) => state.clearEnvironment)
   const setRoomEnvironmentName = useStore((state) => state.setRoomEnvironmentName)
+  const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
+  const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const dmFlavorLine = useMemo(() => {
     const seed = `${dmUserId}:${sessionId}`
     let hash = 0
@@ -532,6 +534,77 @@ export function RoomSelector({
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.message || payload.error || 'Failed to reroll mock players')
+      }
+
+      // Ensure immediate UI consistency even if WS delivery is delayed.
+      const [roomsResponse, presenceResponse] = await Promise.all([
+        fetch(`${apiUrl}/api/v1/rooms/session/${sessionId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      ])
+
+      if (roomsResponse.ok && presenceResponse.ok) {
+        const roomsPayload = (await roomsResponse.json()) as {
+          rooms?: Array<{
+            id: UUID
+            sessionId: UUID
+            name: string
+            type: RoomType
+            createdBy: UUID
+            createdAt: number
+          }>
+        }
+
+        const presencePayload = (await presenceResponse.json()) as {
+          presence?: Array<{
+            sessionId: UUID
+            userId: UUID
+            username: string
+            playerName?: string
+            avatarUrl?: string | null
+            characterName?: string | null
+            characterClass?: string | null
+            characterSubclass?: string | null
+            characterRace?: string | null
+            level?: number | null
+            characterStats?: Record<string, unknown> | null
+            primaryRoomId?: UUID
+            privateRoomId?: UUID
+            state: PresenceState
+            lastSeenAt: number
+          }>
+          stats?: {
+            connectedPlayersWithDm: number
+            connectedPlayers: number
+            connectedSpectators: number
+            connectedTotal: number
+            updatedAt: number
+          }
+        }
+
+        replaceSessionTopology(
+          sessionId,
+          (roomsPayload.rooms || []).map((room) => ({
+            id: room.id,
+            sessionId: room.sessionId,
+            name: room.name,
+            type: room.type,
+            createdAt: room.createdAt,
+            createdBy: room.createdBy,
+          })),
+          presencePayload.presence || []
+        )
+
+        if (presencePayload.stats) {
+          replaceSessionStatsSnapshot(sessionId, presencePayload.stats)
+        }
       }
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to reroll mock players')
@@ -994,9 +1067,16 @@ export function RoomSelector({
                               className="room-selector-item__env-icon"
                               aria-label="Change group environment"
                               data-room-env-trigger={room.id}
-                              disabled={false}
-                              title={'Change group environment'}
+                              disabled={isGreenroom}
+                              title={
+                                isGreenroom
+                                  ? 'Environment controls are disabled in greenroom'
+                                  : 'Change group environment'
+                              }
                               onClick={() => {
+                                if (isGreenroom) {
+                                  return
+                                }
                                 setShowCreateGroupModal(false)
                                 setEnvironmentPickerRoomId((current) =>
                                   current === room.id ? null : room.id
@@ -1050,7 +1130,11 @@ export function RoomSelector({
                           aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
                           title={`Set DM voice to ${getDisplayRoomName(room)}`}
                           aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
+                          disabled={isGreenroom}
                           onClick={() => {
+                            if (isGreenroom) {
+                              return
+                            }
                             void handleSetDmVoiceRoom(room.id)
                           }}
                         >

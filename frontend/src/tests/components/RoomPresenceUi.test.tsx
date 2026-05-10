@@ -763,7 +763,7 @@ describe('RoomSelector', () => {
     expect(screen.getByText('Tara')).toBeTruthy()
     const effectButtons = screen.getAllByRole('button', { name: /Change group environment/i })
     expect(effectButtons.length).toBeGreaterThan(0)
-    expect(effectButtons[0]?.hasAttribute('disabled')).toBe(false)
+    expect(effectButtons[0]?.hasAttribute('disabled')).toBe(true)
   })
 
   it('keeps DM first and sorts remaining greenroom members alphabetically', () => {
@@ -1261,12 +1261,75 @@ describe('RoomSelector', () => {
     }
 
     let resolveReset: ((response: Response) => void) | null = null
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
+    const fetchMock = vi.fn((input: string | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/dev/mock-players/reset')) {
+        return new Promise<Response>((resolve) => {
           resolveReset = resolve
         })
-    )
+      }
+
+      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              rooms: [
+                {
+                  id: 'room-main',
+                  sessionId: 'session-1',
+                  name: 'Main Table',
+                  type: RoomType.MAIN,
+                  createdBy: 'user-1',
+                  createdAt: 1,
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          )
+        )
+      }
+
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              presence: [
+                {
+                  sessionId: 'session-1',
+                  userId: 'user-1',
+                  username: 'Morgan',
+                  state: PresenceState.ONLINE,
+                  primaryRoomId: 'room-main',
+                  lastSeenAt: 1,
+                },
+              ],
+              stats: {
+                connectedPlayersWithDm: 1,
+                connectedPlayers: 0,
+                connectedSpectators: 0,
+                connectedTotal: 1,
+                updatedAt: 1,
+              },
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          )
+        )
+      }
+
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    })
 
     vi.stubGlobal('fetch', fetchMock)
 

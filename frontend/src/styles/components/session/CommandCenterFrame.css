@@ -15,7 +15,7 @@
   margin: 0 auto;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0.35rem;
+  padding: 0.22rem;
   border-radius: var(--radius-lg);
   background: transparent;
 }
@@ -53,8 +53,8 @@
 }
 
 .command-center-rails {
-  --command-center-rails-bottom-gap: 8px;
-  --command-center-rails-desktop-offset: 9rem;
+  --command-center-rails-bottom-gap: 2px;
+  --command-center-rails-desktop-offset: 7.65rem;
   display: grid;
   gap: 0.72rem;
   align-items: stretch;

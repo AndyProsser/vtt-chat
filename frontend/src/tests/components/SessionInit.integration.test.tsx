@@ -466,7 +466,7 @@ describe('SessionInit integration', () => {
     })
 
     const whisperButton = await screen.findByRole('button', { name: 'Select group Whisper' })
-    const mainButton = await screen.findByRole('button', { name: 'Select group Main' })
+    const mainButton = await screen.findByRole('button', { name: /Select group Main/i })
 
     await waitFor(() => {
       expect(whisperButton.getAttribute('aria-pressed')).toBe('true')
