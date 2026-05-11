@@ -14,6 +14,8 @@ services:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
       NODE_ENV: development
       PRISMA_SCHEMA_SYNC_MODE: push
       ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
@@ -158,7 +160,7 @@ services:
     command: ['--config', '/etc/livekit.yaml']
     environment:
       # LIVEKIT_KEYS format: "<key>: <secret>" (YAML map)
-      LIVEKIT_KEYS: '${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
+      LIVEKIT_KEYS: '${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}'
       # Optional: pin ICE candidate IP for LAN/dev setups.
       # Leave unset to let LiveKit auto-detect.
       NODE_IP: ${LIVEKIT_NODE_IP:-}
