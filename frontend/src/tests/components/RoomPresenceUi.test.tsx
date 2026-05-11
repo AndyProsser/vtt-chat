@@ -711,12 +711,11 @@ describe('RoomSelector', () => {
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
   })
 
-  it('keeps a deleting group visible until delete completes and parent/store topology update removes it', async () => {
+  it('keeps an empty group visible until delete completes and parent/store topology update removes it', async () => {
     useStore.getState().reset()
 
     const mainRoomId = asUuid('room-main')
     const groupRoomId = asUuid('room-group')
-    const movedUserId = asUuid('user-2')
 
     let resolveDelete: ((value: Response) => void) | null = null
     let deleteResolved = false
@@ -788,8 +787,8 @@ describe('RoomSelector', () => {
                 },
                 {
                   sessionId: 'session-1',
-                  userId: 'user-2',
-                  username: 'Tara',
+                  userId: 'user-1',
+                  username: 'Morgan',
                   state: PresenceState.ONLINE,
                   primaryRoomId: 'room-main',
                   lastSeenAt: 1,
@@ -845,15 +844,8 @@ describe('RoomSelector', () => {
         id: groupRoomId,
         name: 'Scouts',
         type: RoomType.GROUP,
-        memberCount: 1,
-        participants: [
-          {
-            userId: movedUserId,
-            username: 'Tara',
-            roleLabel: 'PLAYER' as const,
-            presenceState: PresenceState.ONLINE,
-          },
-        ],
+        memberCount: 0,
+        participants: [],
       },
     ]
 
@@ -888,47 +880,19 @@ describe('RoomSelector', () => {
     })
 
     // Parent/session topology updates after deletion are reflected in props.
-    rerender(
-      <RoomSelector
-        {...baseProps}
-        rooms={[
-          {
-            id: mainRoomId,
-            name: 'Main Table',
-            type: RoomType.MAIN,
-            memberCount: 2,
-            participants: [
-              {
-                userId: asUuid('user-1'),
-                username: 'Morgan',
-                roleLabel: 'DM' as const,
-                presenceState: PresenceState.ONLINE,
-              },
-              {
-                userId: movedUserId,
-                username: 'Tara',
-                roleLabel: 'PLAYER' as const,
-                presenceState: PresenceState.ONLINE,
-              },
-            ],
-          },
-        ]}
-      />
-    )
+    rerender(<RoomSelector {...baseProps} rooms={initialRooms.slice(0, 1)} />)
 
     await waitFor(() => {
       expect(screen.queryByLabelText('Group Scouts')).toBeNull()
       expect(screen.getByLabelText('Group Main Table')).toBeTruthy()
-      expect(screen.getByText('Tara')).toBeTruthy()
     })
   })
 
-  it('disables delete button while delete is in flight and re-enables it after failure for retry', async () => {
+  it('disables delete button while deleting an empty group and re-enables it after failure for retry', async () => {
     useStore.getState().reset()
 
     const mainRoomId = asUuid('room-main')
     const groupRoomId = asUuid('room-group')
-    const movedUserId = asUuid('user-2')
 
     let deleteCallCount = 0
     let resolveFirstDelete: ((value: Response) => void) | null = null
@@ -989,15 +953,8 @@ describe('RoomSelector', () => {
             id: groupRoomId,
             name: 'Scouts',
             type: RoomType.GROUP,
-            memberCount: 1,
-            participants: [
-              {
-                userId: movedUserId,
-                username: 'Tara',
-                roleLabel: 'PLAYER',
-                presenceState: PresenceState.ONLINE,
-              },
-            ],
+            memberCount: 0,
+            participants: [],
           },
         ]}
         selectedRoomId={asUuid('room-main')}
@@ -1039,6 +996,145 @@ describe('RoomSelector', () => {
       )
       expect(deleteCalls.length).toBe(2)
     })
+  })
+
+  it('first close on non-empty group evacuates players to Main and does not delete the group', async () => {
+    useStore.getState().reset()
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+        return new Response(
+          JSON.stringify({
+            rooms: [
+              {
+                id: 'room-main',
+                sessionId: 'session-1',
+                name: 'Main Table',
+                type: RoomType.MAIN,
+                createdBy: 'user-1',
+                createdAt: 1,
+              },
+              {
+                id: 'room-group',
+                sessionId: 'session-1',
+                name: 'Scouts',
+                type: RoomType.GROUP,
+                createdBy: 'user-1',
+                createdAt: 1,
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return new Response(
+          JSON.stringify({
+            presence: [
+              {
+                sessionId: 'session-1',
+                userId: 'user-1',
+                username: 'Morgan',
+                state: PresenceState.ONLINE,
+                primaryRoomId: 'room-main',
+                lastSeenAt: 1,
+              },
+              {
+                sessionId: 'session-1',
+                userId: 'user-2',
+                username: 'Tara',
+                state: PresenceState.ONLINE,
+                primaryRoomId: 'room-main',
+                lastSeenAt: 1,
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-group'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-group')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete group Scouts/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    const deleteCalls = fetchMock.mock.calls.filter(
+      ([url, options]) =>
+        String(url).endsWith('/api/v1/rooms/room-group') &&
+        (options as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(0)
+    expect(screen.getByLabelText('Group Scouts')).toBeTruthy()
   })
 
   it('hides voice-panel create-group controls in greenroom and shows DM management groups', () => {

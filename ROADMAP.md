@@ -285,7 +285,15 @@ Terminology note for this stage:
 - Greenroom rendering: DM appears in the same participant list as other users (no separate DM widget)
 - Greenroom routing: treat greenroom as the only out-of-session room in the panel; it cannot be closed or moved into "Other Groups"
 - Greenroom audio: neutral-only (no environment modifier, no DM condition/mute/broadcast overrides)
-- Group close behavior: closing non-main groups migrates remaining members to `MAIN` before deletion
+- Group close behavior (interim safety mode 2026-05-11): first close on a non-empty non-main group migrates remaining members to `MAIN` without deleting; a second close when empty deletes the group.
+
+Interim issue note and follow-up tasks (2026-05-11):
+
+- Issue observed: delete-while-members-move sequencing in `RoomSelector` can produce race-prone UX under real multi-client timing.
+- Temporary product behavior: two-step close for non-main groups (evacuate first, delete when empty) to protect player topology consistency.
+- Follow-up task: replace local UI sequencing with a server-authoritative close-group contract + explicit WS reconciliation event for all clients.
+- Follow-up task: add integration coverage for cross-client close-group reconciliation (initiator + observer clients) including retry/failure branches.
+- Follow-up task: add backend audit/log hooks so group-close/evacuation transitions are captured for transcript and alignment pipelines.
 
 **New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
 
@@ -519,6 +527,9 @@ Follow-up tracking (moved from this stage):
 2. W2: continue refactor-sensitive coverage expansion (selectors, integration hooks, migration behavior).
 3. W3: finalize legacy-path deprecation policy and sunset execution via runbook + telemetry gate.
 4. Consolidate reusable constants and shared common logic into `shared/` where cross-frontend/backend reuse is intended, with migration checklist coverage to preserve behavioral parity.
+5. Break oversized session/voice components into task-focused sub-components with explicit ownership boundaries (for example, `RoomSelector` split into list rendering, group actions, delete/close flow controller, and move/reconcile controller).
+6. Introduce a small orchestration layer for close/delete/move async flows so UI components do not own transport timing/retry logic directly.
+7. Add component-map complexity caps (max file length/concern count) and enforce with refactor checklists in PR reviews.
 
 Definition of done:
 

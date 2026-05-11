@@ -607,6 +607,30 @@ export function RoomSelector({
     }
   }
 
+  const getRoomMemberIdsFromServer = async (roomId: UUID): Promise<UUID[] | null> => {
+    const response = await fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const payload = (await response.json()) as {
+      presence?: Array<{
+        userId: UUID
+        primaryRoomId?: UUID
+      }>
+    }
+
+    const presence = payload.presence || []
+    return presence
+      .filter((entry) => entry.primaryRoomId === roomId)
+      .map((entry) => entry.userId)
+  }
+
   const waitForRoomDeleteReconciled = async (deletedRoomId: UUID, maxWaitMs = 5000) => {
     const startedAt = Date.now()
     const pollIntervalMs = 150
@@ -817,6 +841,35 @@ export function RoomSelector({
         }
 
         await syncSessionTopologyFromServer()
+
+        clearPendingRoomDelete(room.id)
+        return
+      }
+
+      // Guard against stale local participant arrays by asking the server for
+      // authoritative room membership before deciding whether this close action
+      // should evacuate members or delete the group.
+      const serverMemberIds = await getRoomMemberIdsFromServer(room.id)
+      const fallbackMemberIds = room.participants.map((participant) => participant.userId)
+      const memberIds = (serverMemberIds || fallbackMemberIds).filter((userId) => userId !== dmUserId)
+      const membersToEvacuate = [...new Set(memberIds)]
+
+      if (membersToEvacuate.length > 0) {
+        const mainRoom = allRooms.find((entry) => entry.type === RoomType.MAIN)
+        if (!mainRoom) {
+          throw new Error('Main room not found')
+        }
+
+        for (const memberId of membersToEvacuate) {
+          await moveParticipantToRoom(memberId, mainRoom.id, { suppressSelection: true })
+        }
+
+        await syncSessionTopologyFromServer()
+
+        if (selectedRoomId === room.id) {
+          onSelectRoom(mainRoom.id)
+          clearEnvironment()
+        }
 
         clearPendingRoomDelete(room.id)
         return
