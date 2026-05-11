@@ -5,7 +5,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SessionState, Role, MessageType, deriveCampaignDisplayState } from '@shared'
+import {
+  SessionState,
+  Role,
+  MessageType,
+  deriveCampaignDisplayState,
+  isGreenroomSessionState,
+} from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -253,8 +259,8 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   const paused = sessions.find((session) => session.state === SessionState.PAUSED)
   if (paused) return paused
 
-  const idle = sessions.find((session) => session.state === SessionState.IDLE)
-  if (idle) return idle
+  const greenroom = sessions.find((session) => isGreenroomSessionState(session.state))
+  if (greenroom) return greenroom
 
   return null
 }
@@ -317,7 +323,7 @@ function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState
     return rooms
   }
 
-  if (state === SessionState.IDLE || state === SessionState.ENDED) {
+  if (isGreenroomSessionState(state)) {
     const greenRooms = rooms.filter((room) => isGreenRoom(room))
     return greenRooms.length ? greenRooms : rooms
   }
@@ -2426,12 +2432,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       updateSession(sessionId, updatedSession)
 
       appendSessionBookendMessages(sessionId, state, previousState)
-      if (state === SessionState.ENDED || state === SessionState.IDLE) {
+      if (isGreenroomSessionState(state)) {
         setSelectedRoomIdOverride('')
         resetToolbarActionsState()
       }
 
-      setIsGreenroom(state === SessionState.IDLE || state === SessionState.ENDED)
+      setIsGreenroom(isGreenroomSessionState(state))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)

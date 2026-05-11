@@ -11,25 +11,14 @@ import type {
   SessionMetadataSnapshot,
 } from '@/types/metadata.types'
 import type { TokenPayload } from '@/services/auth.service'
-import { SessionState } from '@shared'
+import { SessionState, normalizeSessionState } from '@shared'
 
 const prisma = getPrismaClient()
 
 type MetadataAccessSession = Extract<MetadataAccessResult, { ok: true }>['session']
 
 function toSharedSessionState(state: string): SessionState {
-  switch (state) {
-    case SessionState.IDLE:
-      return SessionState.IDLE
-    case SessionState.ACTIVE:
-      return SessionState.ACTIVE
-    case SessionState.PAUSED:
-      return SessionState.PAUSED
-    case SessionState.ENDED:
-      return SessionState.ENDED
-    default:
-      return SessionState.IDLE
-  }
+  return normalizeSessionState(state as any) ?? SessionState.IDLE
 }
 
 async function requireMetadataSessionAccess(

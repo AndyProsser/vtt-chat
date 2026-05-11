@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-09
+Last updated: 2026-05-11
 
 Related roadmap:
 
@@ -141,18 +141,19 @@ Known readiness gap classes:
 
 ## 3) Workstreams
 
-| ID  | Workstream                  | Status      | Scope                                                                                                                      |
-| --- | --------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX |
-| W1  | Hardening and Reliability   | In Progress | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                      |
-| W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                                                          |
-| W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks                                                |
-| W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through                                                  |
-| W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                           |
-| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                           |
-| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                           |
-| W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                    |
-| W9  | DEV Mock Players            | In Progress | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players    |
+| ID  | Workstream                  | Status      | Scope                                                                                                                       |
+| --- | --------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX  |
+| W1  | Hardening and Reliability   | In Progress | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                       |
+| W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                                                           |
+| W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks                                                 |
+| W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through                                                   |
+| W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                            |
+| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                            |
+| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                            |
+| W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                     |
+| W9  | DEV Mock Players            | In Progress | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players     |
+| W10 | Voice Group Panel Follow-up | Planned     | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel |
 
 ---
 
@@ -162,13 +163,14 @@ Known readiness gap classes:
 
 **Status:** Active design lock (in progress)
 
-**Current focus:** Final wording sweep, then lock-in approval before any Stage 1 implementation begins.
+**Current focus:** Compatibility helper layer landed; timer wiring, CLEANUP rollout, and state rename work remain queued behind the lock-in gate.
 
 **Deliverables:**
 
 - [x] Contract document: [docs/changes/STATE-MACHINE.md](docs/changes/STATE-MACHINE.md) — State layers, session transitions, presence rules, disconnect timers, group semantics, audio routing, mute enforcement, boundary markers, spectator cooldown
 - [x] Implementation mapping: [docs/changes/STATE-MACHINE-IMPLEMENTATION.md](docs/changes/STATE-MACHINE-IMPLEMENTATION.md) — Codebase locations, current status, action items, phasing, testing checklist
 - [x] Codebase clarifications (from feedback/review)
+- [x] Shared session-lifecycle compatibility helpers + greenroom normalization
 - [ ] Lock-in gate (approval from Andy + team)
 - [x] W0 roadmap update to reference state machine as blocking upstream for later W0/W1 reliability work
 
@@ -215,7 +217,7 @@ Known readiness gap classes:
 
 ### W0 Subtask: Voice Group Panel (Campaign Screen)
 
-**Status**: Phases 1–3 complete; Phase 4 (Accessibility & Polish) and Phase 5 (Testing & Hardening) in progress
+**Status**: Closed out for current build scope; residual non-blocking follow-up items deferred to W10
 **Related Docs**: [UI-COMPONENT-CHANNELS.md](docs/ui/UI-COMPONENT-CHANNELS.md), [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
 
 Recent runtime follow-through (2026-05-08):
@@ -248,13 +250,13 @@ Terminology note for this stage:
 
 **Implementation Phases**:
 
-| Phase                           | Timeline | Deliverables                                                                                                 | Status      |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ----------- |
-| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Done        |
-| Phase 2: Interactions           | Week 2   | Baseline context actions (right-click/long-press), condition picker, move selector, enhanced drag-n-drop     | Done        |
-| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Done        |
-| Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing             | Not started |
-| Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage              | Not started |
+| Phase                           | Timeline | Deliverables                                                                                                 | Status          |
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | --------------- |
+| Phase 1: Core UI & Layout       | Week 1   | Group headers (env icon, create button), global broadcast icon+popover, condition badge+popover, env tooltip | Done            |
+| Phase 2: Interactions           | Week 2   | Baseline context actions (right-click/long-press), condition picker, move selector, enhanced drag-n-drop     | Done            |
+| Phase 3: Mobile & Adaptive      | Week 3   | Mobile collapse/expand (<768px), touch interactions, responsive popover positioning                          | Done            |
+| Phase 4: Accessibility & Polish | Week 4   | ARIA labels, keyboard nav, reduced-motion support, WCAG AA contrast audit, screen reader testing             | Deferred to W10 |
+| Phase 5: Testing & Hardening    | Week 5   | Error handling, reconnection edge cases, cross-browser testing, performance audit, E2E coverage              | Deferred to W10 |
 
 **Key Decisions** (from UX review 2026-05-07):
 
@@ -301,7 +303,7 @@ Naming conventions contract (2026-05-11):
 - Hard rule: any existing non-Zustand `*Slice` file must be renamed in the next refactor cycle when in scope.
 - See [docs/meta/NAMING-CONVENTIONS.md](docs/meta/NAMING-CONVENTIONS.md).
 
-Interim issue note and follow-up tasks (2026-05-11):
+Interim issue note and follow-up tasks (deferred to W10, 2026-05-11):
 
 - Issue observed: delete-while-members-move sequencing in the group selector flow (`RoomSelector` legacy component) can produce race-prone UX under real multi-client timing.
 - Temporary product behavior: two-step close for non-main groups (evacuate first, delete when empty) to protect player topology consistency.
@@ -311,13 +313,13 @@ Interim issue note and follow-up tasks (2026-05-11):
 
 **New Feature**: Campaign-scoped "Allow Conditions" setting (DM can disable conditions UI).
 
-**Future W0 Feature (deferred until after Phase 5 hardening)**: Campaign-scoped DM setting for one-way group audio monitoring.
+**Deferred W10 Follow-up**: Campaign-scoped DM setting for one-way group audio monitoring.
 
 - Secondary groups (for example, "In Jail") may be configured to hear Main group audio.
 - This is listen-only (no return audio path to Main by default).
 - Intended as a narrative tool and should be opt-in per group.
 
-**Backend Requirements** (verify/implement):
+**Backend Requirements (deferred to W10)**:
 
 - Confirm condition apply/remove API endpoints exist
 - Confirm DM broadcast mode toggle endpoint exists
@@ -335,27 +337,22 @@ Interim issue note and follow-up tasks (2026-05-11):
 - 🆕 CampaignSettingsPanel.tsx (new, with condition toggle)
 - 🆕 PlayerContextMenu parity pass (align baseline radial interaction to canonical option matrix + nested submenus)
 
-**Testing Coverage**:
+**Closeout Summary**:
 
-- [ ] Unit: Component rendering, state management, event handlers
-- [ ] Integration: Drag-n-drop, condition mutations, group movement
-- [ ] Integration: Role-gated context-menu rendering and submenu action routing
-- [ ] E2E: Full user flows (drag, conditions, mobile responsive, accessibility)
-- [ ] E2E: DM vs Assistant DM vs Player action visibility and guardrails
-- [ ] A11y: Screen reader testing, keyboard nav, WCAG AA compliance
+- Phase 1–3 delivered and retained in the current build baseline.
+- Voice group interactions now cover group headers, context actions, drag-and-drop, mobile collapse/expand, whisper handling, and DM voice routing.
+- The remaining validation and polish items are non-blocking and have been deferred to W10.
 
-**Success Criteria**:
+**Deferred to W10**:
 
-- ✅ Design doc complete and aligned with implementation
-- [ ] All Phase 1-5 tasks completed and tested
-- [ ] Mobile collapse/expand working on <768px viewports
-- [ ] Player context menu accessible via right-click + long-press
-- [ ] Player context menu matches canonical option matrix and permission rules
-- [ ] Drag-n-drop feedback visible and intuitive
-- [ ] All ARIA labels + keyboard navigation functional
-- [ ] Cross-browser tested (Chrome, Firefox, Safari, Edge)
-- [ ] Performance: <200ms re-render on drag, animations smooth 60fps
-- [ ] Theme QA pass completed in both dark and light mode for changed surfaces (including chat bubbles, overlays, and banner/poster backgrounds).
+- Accessibility polish: ARIA labels, keyboard nav, reduced-motion support, WCAG AA audit, and screen reader passes.
+- Hardening pass: reconnection edge cases, cross-browser verification, performance audit, and E2E coverage.
+- UI follow-up: create-group popover selector/specificity polish and any remaining shared panel token cleanup.
+- Close-group follow-up: server-authoritative close-group contract, explicit WS reconciliation event, and cross-client retry/failure coverage.
+- Audit follow-up: backend audit/log hooks for group close and evacuation transitions.
+- Optional narrative follow-up: campaign-scoped one-way group audio monitoring.
+
+**Note**: The prior W0 checklist items above are intentionally closed out here instead of remaining as open W0 backlog.
 
 ---
 
@@ -364,7 +361,7 @@ Interim issue note and follow-up tasks (2026-05-11):
 **Status**: First-pass scaffold reset in progress (icons simplified, panels de-cluttered)
 **Related Docs**: [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [UI-FLOWS.md](docs/ui/UI-FLOWS.md), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [UI-COMPONENT-PROPS.md](docs/ui/UI-COMPONENT-PROPS.md), [UI-COMPONENT-INTERFACES.md](docs/ui/UI-COMPONENT-INTERFACES.md)
 
-**Scope**: Implement and harden the topbar-driven popout panel model with Settings and Information as primary entry points, plus session settings cog popover behavior.
+**Scope**: Implement and harden the topbar-driven popout panel model with Settings as primary entry points.
 
 Current implementation boundary (2026-05-08 first pass):
 

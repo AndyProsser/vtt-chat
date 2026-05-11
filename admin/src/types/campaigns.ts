@@ -1,5 +1,5 @@
 import type { Role, SessionState } from '@shared'
-import { prettySessionState, sessionStatusClass } from '@shared/utils/session-state'
+import { prettySessionState, sessionStatusClass } from '@shared'
 
 export type { SessionState }
 export type CampaignStatusFilter = 'all' | 'active' | 'idle' | 'ended' | 'no_session'

@@ -7,6 +7,7 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
+import { isGreenroomSessionState } from '@shared'
 import type { Session } from '@/types/session'
 
 export type { Session } from '@/types/session'
@@ -55,10 +56,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       return {
         sessions: nextSessions,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),
 
@@ -75,10 +73,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       return {
         sessions: nextSessions,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),
 
@@ -95,10 +90,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       return {
         sessions: nextSessions,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),
 
@@ -113,10 +105,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       return {
         sessions: nextSessions,
         currentSessionId: nextCurrentSessionId,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),
 
@@ -125,10 +114,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       const currentSession = sessionId ? state.sessions[sessionId] : null
       return {
         currentSessionId: sessionId,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),
 
@@ -159,10 +145,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           createdAt: event.timestamp,
         },
       },
-      isGreenroom:
-        !state.currentSessionId ||
-        state.sessions[state.currentSessionId]?.state === ('IDLE' as SessionState) ||
-        state.sessions[state.currentSessionId]?.state === ('ENDED' as SessionState),
+      isGreenroom: isGreenroomSessionState(state.sessions[state.currentSessionId]?.state),
     }))
   },
 
@@ -190,10 +173,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       return {
         sessions: nextSessions,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     })
   },
@@ -212,10 +192,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       return {
         sessions: nextSessions,
-        isGreenroom:
-          !currentSession ||
-          currentSession.state === ('IDLE' as SessionState) ||
-          currentSession.state === ('ENDED' as SessionState),
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     })
   },

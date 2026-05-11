@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
+import { isGreenroomSessionState } from '@shared'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
@@ -152,7 +153,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       store.handleSessionRoomTransitionApplied(event)
       // Clear per-session audio presets when transitioning to greenroom or session end
       const payload = event.payload as { nextState?: string }
-      if (payload.nextState === 'IDLE' || payload.nextState === 'ENDED') {
+      if (isGreenroomSessionState(payload.nextState)) {
         store.resetSessionAudioState()
         store.clearActiveEffects()
       }

@@ -1,5 +1,6 @@
 import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
+import { isGreenroomSessionState } from '@shared'
 import type { AudioDMOverride } from '@/types/audio'
 import type { RoomUser } from '@/types/room'
 import { useStore } from '@/state/store'
@@ -61,7 +62,7 @@ export function SessionLeftRailPanel({
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
 
-  const isGreenroom = sessionState === 'IDLE' || sessionState === 'ENDED'
+  const isGreenroom = isGreenroomSessionState(sessionState)
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
   const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
