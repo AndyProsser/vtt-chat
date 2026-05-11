@@ -214,6 +214,15 @@ export function RoomSelector({
   )
   const whisperParticipantCount = whisperRoom?.participants.length || 0
   const whisperActive = whisperParticipantCount > 0
+  const pendingMovesToWhisperCount = useMemo(() => {
+    if (!whisperRoom) {
+      return 0
+    }
+
+    return Object.values(pendingRoomMoves).filter((targetRoomId) => targetRoomId === whisperRoom.id)
+      .length
+  }, [pendingRoomMoves, whisperRoom])
+  const whisperEndBlockedByPendingMoves = pendingMovesToWhisperCount > 0
   const whisperModeLocked = whisperActive || Boolean(whisperContextRef.current)
   const isDenseRoomLayout =
     canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
@@ -281,7 +290,7 @@ export function RoomSelector({
   }, [environmentPickerRoomId, showCreateGroupModal])
 
   useEffect(() => {
-    if (!whisperActive || !whisperRoom) {
+    if (!whisperActive || !whisperRoom || whisperEndBlockedByPendingMoves) {
       return
     }
 
@@ -309,6 +318,7 @@ export function RoomSelector({
     onToggleBroadcastMode,
     selectedRoomId,
     whisperActive,
+    whisperEndBlockedByPendingMoves,
     whisperRoom,
   ])
 
@@ -672,6 +682,56 @@ export function RoomSelector({
     clearRoomEnvironmentName(roomId)
   }
 
+  const endWhisperWithReconcile = async (whisperRoomId: UUID) => {
+    const pendingMovesToWhisper = Object.values(pendingRoomMoves).filter(
+      (targetRoomId) => targetRoomId === whisperRoomId
+    ).length
+
+    if (pendingMovesToWhisper > 0) {
+      throw new Error('Please wait for players to finish moving into whisper, then try again.')
+    }
+
+    const endWhisperOnce = async () => {
+      const response = await fetch(`${apiUrl}/api/v1/rooms/${whisperRoomId}/end-whisper`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to end whisper')
+      }
+    }
+
+    await endWhisperOnce()
+    await syncSessionTopologyFromServer()
+
+    for (let retry = 0; retry < 2; retry += 1) {
+      const serverMemberIds = await getRoomMemberIdsFromServer(whisperRoomId)
+      const remainingPlayers = (serverMemberIds || []).filter((userId) => userId !== dmUserId)
+
+      if (remainingPlayers.length === 0) {
+        return
+      }
+
+      await endWhisperOnce()
+      await syncSessionTopologyFromServer()
+    }
+
+    const finalServerMemberIds = await getRoomMemberIdsFromServer(whisperRoomId)
+    const finalRemainingPlayers = (finalServerMemberIds || []).filter(
+      (userId) => userId !== dmUserId
+    )
+
+    if (finalRemainingPlayers.length > 0) {
+      throw new Error('Whisper is still reconciling. Try End whisper again in a moment.')
+    }
+  }
+
   const handleEndWhisper = async () => {
     if (!whisperRoom) {
       return
@@ -686,21 +746,7 @@ export function RoomSelector({
     setMoveError(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/rooms/${whisperRoom.id}/end-whisper`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId }),
-      })
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to end whisper')
-      }
-
-      await syncSessionTopologyFromServer()
+      await endWhisperWithReconcile(whisperRoom.id)
 
       const snapshot = whisperContextRef.current
       whisperContextRef.current = null
@@ -824,21 +870,7 @@ export function RoomSelector({
 
     try {
       if (isWhisperRoom(room)) {
-        const whisperResponse = await fetch(`${apiUrl}/api/v1/rooms/${room.id}/end-whisper`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ sessionId }),
-        })
-
-        if (!whisperResponse.ok) {
-          const payload = await whisperResponse.json().catch(() => ({}))
-          throw new Error(payload.message || 'Failed to end whisper')
-        }
-
-        await syncSessionTopologyFromServer()
+        await endWhisperWithReconcile(room.id)
 
         clearPendingRoomDelete(room.id)
         return
@@ -866,8 +898,11 @@ export function RoomSelector({
 
         await syncSessionTopologyFromServer()
 
+        // Close flow always snaps DM voice target back to Main.
+        previousDmVoiceRoomIdRef.current = mainRoom.id
+        onSelectRoom(mainRoom.id)
+
         if (selectedRoomId === room.id) {
-          onSelectRoom(mainRoom.id)
           clearEnvironment()
         }
 
@@ -1146,9 +1181,7 @@ export function RoomSelector({
           const hasDetectedPlayers =
             room.type === RoomType.GROUP &&
             participants.some((participant) => participant.userId !== dmUserId)
-          const isEmptyTargetableGroup =
-            room.type === RoomType.GROUP &&
-            participants.filter((participant) => participant.userId !== dmUserId).length === 0
+          const isEmptyTargetableGroup = room.type === RoomType.GROUP && !hasDetectedPlayers
           const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperGroup
           const isCompactGroup = isEmptyGroup || isWhisperGroup || collapseForDrag
           const memberListClassName = [
@@ -1310,7 +1343,6 @@ export function RoomSelector({
                                 aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
                                 disabled={
                                   isGreenroom ||
-                                  isEmptyTargetableGroup ||
                                   (whisperModeLocked && whisperRoom
                                     ? room.id !== whisperRoom.id
                                     : false)
@@ -1329,7 +1361,7 @@ export function RoomSelector({
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               {isEmptyTargetableGroup
-                                ? 'Cannot target an empty group'
+                                ? 'No players detected locally yet. Click to verify with server.'
                                 : whisperModeLocked && whisperRoom && room.id !== whisperRoom.id
                                   ? 'DM voice target is locked to whisper while whisper is active'
                                   : `Set DM voice to ${getDisplayRoomName(room)}`}
@@ -1344,7 +1376,11 @@ export function RoomSelector({
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                className="room-selector-item__icon-action room-selector-item__close-inline"
+                                className={`room-selector-item__icon-action room-selector-item__close-inline ${
+                                  !isWhisperGroup && hasDetectedPlayers
+                                    ? 'room-selector-item__close-inline--return'
+                                    : 'room-selector-item__close-inline--delete'
+                                }`}
                                 aria-label={`${
                                   isWhisperGroup
                                     ? 'End whisper'
@@ -1352,7 +1388,10 @@ export function RoomSelector({
                                       ? 'Returns players to Main'
                                       : 'Delete group'
                                 } ${getDisplayRoomName(room)}`}
-                                disabled={Boolean(pendingRoomDeletes[room.id])}
+                                disabled={
+                                  Boolean(pendingRoomDeletes[room.id]) ||
+                                  (isWhisperGroup && whisperEndBlockedByPendingMoves)
+                                }
                                 onClick={() => {
                                   void handleDeleteGroup(room)
                                 }}
@@ -1368,10 +1407,12 @@ export function RoomSelector({
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               {isWhisperGroup
-                                ? 'End whisper'
+                                ? whisperEndBlockedByPendingMoves
+                                  ? 'Waiting for whisper moves to finish'
+                                  : 'End whisper'
                                 : hasDetectedPlayers
-                                  ? 'Returns players to Main'
-                                  : 'Actually deletes the group with the 500ms fade.'}
+                                  ? 'Close Group'
+                                  : 'Delete Group'}
                             </TooltipContent>
                           </Tooltip>
                         ) : null}
@@ -1708,13 +1749,20 @@ export function RoomSelector({
 
     const targetRoom = allRooms.find((room) => room.id === roomId)
     if (targetRoom?.type === RoomType.GROUP) {
-      const targetPlayers = (targetRoom.participants || []).filter(
+      const locallyDetectedPlayers = (displayedParticipantsByRoom[roomId] || []).filter(
         (participant) => participant.userId !== dmUserId
       )
 
-      if (targetPlayers.length === 0) {
-        setMoveError('Cannot set DM voice target to an empty group')
-        return
+      if (locallyDetectedPlayers.length === 0) {
+        const serverMemberIds = await getRoomMemberIdsFromServer(roomId)
+        const serverPlayerCount = (serverMemberIds || []).filter(
+          (userId) => userId !== dmUserId
+        ).length
+
+        if (serverPlayerCount === 0) {
+          setMoveError('Cannot set DM voice target to an empty group')
+          return
+        }
       }
     }
 
@@ -1736,12 +1784,18 @@ export function RoomSelector({
       return
     }
 
-    if (!whisperModeLocked || whisperParticipantCount > 0) {
+    if (!whisperModeLocked || whisperParticipantCount > 0 || whisperEndBlockedByPendingMoves) {
       return
     }
 
     void handleEndWhisper()
-  }, [canManageRooms, whisperModeLocked, whisperParticipantCount, whisperRoom])
+  }, [
+    canManageRooms,
+    whisperEndBlockedByPendingMoves,
+    whisperModeLocked,
+    whisperParticipantCount,
+    whisperRoom,
+  ])
 
   useEffect(() => {
     if (!canManageRooms || !selectedRoomId) {
@@ -1753,7 +1807,7 @@ export function RoomSelector({
       return
     }
 
-    const targetedPlayers = (targetedRoom.participants || []).filter(
+    const targetedPlayers = (displayedParticipantsByRoom[selectedRoomId] || []).filter(
       (participant) => participant.userId !== dmUserId
     )
     if (targetedPlayers.length > 0) {
@@ -1766,7 +1820,14 @@ export function RoomSelector({
     }
 
     onSelectRoom(mainRoom.id)
-  }, [allRooms, canManageRooms, dmUserId, onSelectRoom, selectedRoomId])
+  }, [
+    allRooms,
+    canManageRooms,
+    displayedParticipantsByRoom,
+    dmUserId,
+    onSelectRoom,
+    selectedRoomId,
+  ])
 
   useEffect(() => {
     if (!environmentPickerRoomId) {
@@ -1902,15 +1963,24 @@ export function RoomSelector({
                     onClick={() => {
                       void handleEndWhisper()
                     }}
+                    disabled={whisperEndBlockedByPendingMoves}
                     aria-label="End whisper"
-                    title="End whisper"
+                    title={
+                      whisperEndBlockedByPendingMoves
+                        ? 'Waiting for whisper moves to finish'
+                        : 'End whisper'
+                    }
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">
                       exit_to_app
                     </span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top">End whisper</TooltipContent>
+                <TooltipContent side="top">
+                  {whisperEndBlockedByPendingMoves
+                    ? 'Waiting for whisper moves to finish'
+                    : 'End whisper'}
+                </TooltipContent>
               </Tooltip>
             ) : null}
           </div>

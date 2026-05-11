@@ -630,8 +630,15 @@ describe('RoomSelector', () => {
             id: asUuid('room-private'),
             name: 'Whisper Booth',
             type: RoomType.PRIVATE,
-            memberCount: 0,
-            participants: [],
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
           },
         ]}
         selectedRoomId={asUuid('room-main')}
@@ -696,8 +703,15 @@ describe('RoomSelector', () => {
             id: asUuid('room-private'),
             name: 'Whisper Booth',
             type: RoomType.PRIVATE,
-            memberCount: 0,
-            participants: [],
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
           },
         ]}
         selectedRoomId={asUuid('room-main')}
@@ -967,6 +981,7 @@ describe('RoomSelector', () => {
 
     const deleteButton = screen.getByRole('button', { name: /Delete group Scouts/i })
     expect(deleteButton.hasAttribute('disabled')).toBe(false)
+    expect(deleteButton.className).toContain('room-selector-item__close-inline--delete')
 
     fireEvent.click(deleteButton)
 
@@ -1003,6 +1018,8 @@ describe('RoomSelector', () => {
 
   it('first close on non-empty group evacuates players to Main and does not delete the group', async () => {
     useStore.getState().reset()
+
+    const onSelectRoom = vi.fn()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
@@ -1118,11 +1135,15 @@ describe('RoomSelector', () => {
           },
         ]}
         selectedRoomId={asUuid('room-group')}
-        onSelectRoom={vi.fn()}
+        onSelectRoom={onSelectRoom}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Returns players to Main Scouts/i }))
+    const returnToMainButton = screen.getByRole('button', {
+      name: /Returns players to Main Scouts/i,
+    })
+    expect(returnToMainButton.className).toContain('room-selector-item__close-inline--return')
+    fireEvent.click(returnToMainButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1137,7 +1158,91 @@ describe('RoomSelector', () => {
         (options as RequestInit | undefined)?.method === 'DELETE'
     )
     expect(deleteCalls.length).toBe(0)
+    expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-main'))
     expect(screen.getByLabelText('Group Scouts')).toBeTruthy()
+  })
+
+  it('allows DM voice target when server presence confirms group has players', async () => {
+    useStore.getState().reset()
+
+    const onSelectRoom = vi.fn()
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return new Response(
+          JSON.stringify({
+            presence: [
+              {
+                sessionId: 'session-1',
+                userId: 'user-2',
+                username: 'Tara',
+                state: PresenceState.ONLINE,
+                primaryRoomId: 'room-group',
+                lastSeenAt: 1,
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-group'),
+            name: 'Scouts',
+            type: RoomType.GROUP,
+            memberCount: 1,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={onSelectRoom}
+      />
+    )
+
+    fireEvent.click(getDmVoiceButton('Scouts'))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/presence/session-1',
+        expect.any(Object)
+      )
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-group'))
+      expect(screen.queryByText('Cannot set DM voice target to an empty group')).toBeNull()
+    })
   })
 
   it('hides voice-panel create-group controls in greenroom and shows DM management groups', () => {

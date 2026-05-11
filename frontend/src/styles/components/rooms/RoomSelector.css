@@ -508,6 +508,18 @@
   flex-shrink: 0;
 }
 
+.room-selector-item__close-inline--return {
+  border-color: color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.room-selector-item__close-inline--delete {
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 18%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 78%, var(--color-text-primary));
+}
+
 .room-selector-item__close-inline .material-symbols-outlined {
   font-size: 0.9rem;
 }
