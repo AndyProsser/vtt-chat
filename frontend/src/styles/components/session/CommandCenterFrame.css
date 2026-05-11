@@ -56,8 +56,8 @@
 }
 
 .command-center-rails {
-  --command-center-rails-bottom-gap: 0px;
-  --command-center-rails-desktop-offset: 7.65rem;
+  --command-center-rails-bottom-gap: 8px;
+  --command-center-rails-desktop-offset: 5.35rem;
   --command-center-rails-height: calc(
     100dvh - var(--command-center-rails-desktop-offset) - var(--command-center-rails-bottom-gap)
   );

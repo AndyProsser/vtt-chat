@@ -182,7 +182,7 @@ export default function App() {
 
         <main
           className="font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
-          style={{ width: '100%', maxWidth: '900px', paddingBottom: '10px' }}
+          style={{ width: '100%', maxWidth: '900px', paddingBottom: '0px' }}
         >
           <ToastViewport />
           <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
