@@ -797,6 +797,9 @@ export function RoomSelector({
 
       deleteRoom(sessionId, room.id)
       clearRoomEnvironmentName(room.id)
+      // Sync topology from server so displaced members appear in Main immediately,
+      // rather than waiting for WS USER_JOINED events to be processed.
+      await syncSessionTopologyFromServer()
     } catch (error) {
       setPendingRoomDeletes((state) => {
         const next = { ...state }
