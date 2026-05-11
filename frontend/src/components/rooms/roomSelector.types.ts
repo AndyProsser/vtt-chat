@@ -59,16 +59,6 @@ export interface WhisperContextSnapshot {
   memberPreviousRoomIds: Record<UUID, UUID>
 }
 
-export type RadialActionMode = 'root' | 'move' | 'condition'
-
-export interface RadialMenuState {
-  x: number
-  y: number
-  memberUserId: UUID
-  memberRoomId: UUID
-  mode: RadialActionMode
-}
-
 export function isWhisperRoom(room: RoomSelectorRoom): boolean {
   return room.type === RoomType.PRIVATE
 }

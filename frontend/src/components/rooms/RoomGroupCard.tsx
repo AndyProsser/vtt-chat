@@ -9,7 +9,6 @@ import { resolveEnvironmentGlyph } from '../../constants/voiceGroup.constants'
 import { RoomMemberList } from './RoomMemberList'
 import { ENVIRONMENT_OPTIONS, isWhisperRoom } from './roomSelector.types'
 import type {
-  RadialMenuState,
   RoomParticipantWithRoomId,
   RoomSelectorRoomWithParticipants,
 } from './roomSelector.types'
@@ -40,7 +39,14 @@ interface RoomGroupCardProps {
   onDeleteGroup: (room: RoomSelectorRoomWithParticipants) => void
   onRoomDragOver: (event: React.DragEvent<HTMLElement>, disabled: boolean) => void
   onRoomDrop: (event: React.DragEvent<HTMLElement>, roomId: UUID, disabled: boolean) => void
-  onOpenRadialMenu: (params: Omit<RadialMenuState, 'mode'>) => void
+  getMoveTargets: (memberRoomId: UUID) => Array<{ id: UUID; label: string }>
+  conditionTargets: string[]
+  onMoveParticipant: (userId: UUID, toRoomId: UUID) => void
+  onApplyConditionOverride: (userId: UUID, conditionName: string) => void
+  onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onClearMemberEffects: (userId: UUID) => void
+  onSendPrivateMessage: (userId: UUID) => void
+  onViewProfile: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -85,7 +91,14 @@ export function RoomGroupCard({
   onDeleteGroup,
   onRoomDragOver,
   onRoomDrop,
-  onOpenRadialMenu,
+  getMoveTargets,
+  conditionTargets,
+  onMoveParticipant,
+  onApplyConditionOverride,
+  onApplyMuteOverride,
+  onClearMemberEffects,
+  onSendPrivateMessage,
+  onViewProfile,
   onMemberDragStart,
   onMemberDragEnd,
   getDisplayRoomName,
@@ -343,7 +356,6 @@ export function RoomGroupCard({
           participants={participants}
           canManageRooms={canManageRooms}
           isGreenroom={isGreenroom}
-          dmUserId={dmUserId}
           touchFeedbackUserId={touchFeedbackUserId}
           setTouchFeedbackUserId={setTouchFeedbackUserId}
           getParticipantMetaLine={getParticipantMetaLine}
@@ -351,7 +363,14 @@ export function RoomGroupCard({
           getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
           getResolvedEnvironmentName={getResolvedEnvironmentName}
-          onOpenRadialMenu={onOpenRadialMenu}
+          getMoveTargets={getMoveTargets}
+          conditionTargets={conditionTargets}
+          onMoveParticipant={onMoveParticipant}
+          onApplyConditionOverride={onApplyConditionOverride}
+          onApplyMuteOverride={onApplyMuteOverride}
+          onClearMemberEffects={onClearMemberEffects}
+          onSendPrivateMessage={onSendPrivateMessage}
+          onViewProfile={onViewProfile}
           onMemberDragStart={onMemberDragStart}
           onMemberDragEnd={onMemberDragEnd}
         />

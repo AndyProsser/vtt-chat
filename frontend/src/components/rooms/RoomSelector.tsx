@@ -14,7 +14,6 @@ import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGrou
 import { useStore } from '../../hooks/useStore'
 import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
-import { RadialMenu } from './RadialMenu'
 import { RoomGroupCard } from './RoomGroupCard'
 import { RoomHeaderActions } from './RoomHeaderActions'
 import { WhisperDock } from './WhisperDock'
@@ -27,7 +26,6 @@ import {
 } from './roomSelector.helpers'
 import {
   isWhisperRoom,
-  type RadialMenuState,
   type RoomParticipantStatus,
   type RoomParticipantWithRoomId,
   type RoomSelectorProps,
@@ -60,7 +58,6 @@ export function RoomSelector({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   const [optimisticRooms, setOptimisticRooms] = useState<RoomSelectorRoomWithParticipants[]>([])
   const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
-  const [radialMenuState, setRadialMenuState] = useState<RadialMenuState | null>(null)
   const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
   const [isDevResettingMocks, setIsDevResettingMocks] = useState(false)
@@ -446,30 +443,6 @@ export function RoomSelector({
     [allRooms]
   )
 
-  const selectedRadialMember = useMemo(
-    () =>
-      radialMenuState
-        ? visibleParticipants.find((member) => member.userId === radialMenuState.memberUserId)
-        : undefined,
-    [radialMenuState, visibleParticipants]
-  )
-
-  const openRadialMenu = useCallback(
-    (params: Omit<RadialMenuState, 'mode'>) => {
-      if (!canManageRooms || params.memberUserId === dmUserId) {
-        return
-      }
-
-      setRadialMenuState({ ...params, mode: 'root' })
-      setTouchFeedbackUserId(null)
-
-      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-        navigator.vibrate(10)
-      }
-    },
-    [canManageRooms, dmUserId]
-  )
-
   const handleApplyEnvironment = useCallback(
     async (roomId: UUID, environmentName: string) => {
       setMoveError(null)
@@ -685,6 +658,33 @@ export function RoomSelector({
     },
     [roomMoves]
   )
+
+  const getMoveTargets = useCallback(
+    (memberRoomId: UUID) =>
+      allRooms
+        .filter((room) => room.id !== memberRoomId)
+        .map((room) => ({
+          id: room.id,
+          label: room.name,
+        })),
+    [allRooms]
+  )
+
+  const handleClearMemberEffects = useCallback(
+    async (targetUserId: UUID) => {
+      setMoveError(null)
+
+      await Promise.all([
+        handleApplyMuteOverride(targetUserId, false),
+        handleApplyConditionOverride(targetUserId, RADIAL_MENU_COPY.none),
+      ])
+    },
+    [handleApplyConditionOverride, handleApplyMuteOverride]
+  )
+
+  const notifyNotYetImplemented = useCallback((featureName: string) => {
+    setMoveError(`${featureName} is not wired yet`)
+  }, [])
 
   const handleDevResetMocks = useCallback(async () => {
     if (!import.meta.env.DEV) {
@@ -961,7 +961,22 @@ export function RoomSelector({
       onDeleteGroup={handleDeleteGroup}
       onRoomDragOver={roomMoves.handleRoomDragOver}
       onRoomDrop={roomMoves.handleRoomDrop}
-      onOpenRadialMenu={openRadialMenu}
+      getMoveTargets={getMoveTargets}
+      conditionTargets={[...CONDITION_PRESETS, RADIAL_MENU_COPY.none]}
+      onMoveParticipant={(userId, toRoomId) => {
+        void handleMoveParticipant(userId, toRoomId)
+      }}
+      onApplyConditionOverride={(userId, conditionName) => {
+        void handleApplyConditionOverride(userId, conditionName)
+      }}
+      onApplyMuteOverride={(userId, nextMuted) => {
+        void handleApplyMuteOverride(userId, nextMuted)
+      }}
+      onClearMemberEffects={(userId) => {
+        void handleClearMemberEffects(userId)
+      }}
+      onSendPrivateMessage={() => notifyNotYetImplemented('Private messaging')}
+      onViewProfile={() => notifyNotYetImplemented('Profile view')}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
       getDisplayRoomName={getDisplayRoomName}
@@ -1149,50 +1164,6 @@ export function RoomSelector({
               ✕
             </button>
           </div>
-        ) : null}
-
-        {radialMenuState ? (
-          <RadialMenu
-            x={radialMenuState.x}
-            y={radialMenuState.y}
-            mode={radialMenuState.mode}
-            moveTargets={
-              radialMenuState.mode === 'move'
-                ? allRooms
-                    .filter((room) => room.id !== radialMenuState.memberRoomId)
-                    .map((room) => ({ id: room.id, label: room.name }))
-                : []
-            }
-            conditionTargets={
-              radialMenuState.mode === 'condition'
-                ? [...CONDITION_PRESETS, RADIAL_MENU_COPY.none]
-                : []
-            }
-            currentMuted={Boolean(selectedRadialMember?.isMuted)}
-            onMove={() =>
-              setRadialMenuState((state) => (state ? { ...state, mode: 'move' } : state))
-            }
-            onCondition={() =>
-              setRadialMenuState((state) => (state ? { ...state, mode: 'condition' } : state))
-            }
-            onMute={() => {
-              const nextMuted = !Boolean(selectedRadialMember?.isMuted)
-              void handleApplyMuteOverride(radialMenuState.memberUserId, nextMuted)
-              setRadialMenuState(null)
-            }}
-            onClose={() => setRadialMenuState(null)}
-            onMoveSelect={(roomId) => {
-              void handleMoveParticipant(radialMenuState.memberUserId, roomId)
-              setRadialMenuState(null)
-            }}
-            onConditionSelect={(conditionName) => {
-              void handleApplyConditionOverride(radialMenuState.memberUserId, conditionName)
-              setRadialMenuState(null)
-            }}
-            onBack={() =>
-              setRadialMenuState((state) => (state ? { ...state, mode: 'root' } : state))
-            }
-          />
         ) : null}
       </section>
     </TooltipProvider>

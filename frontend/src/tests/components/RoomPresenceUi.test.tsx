@@ -1572,7 +1572,7 @@ describe('RoomSelector', () => {
 
     fireEvent.contextMenu(getDragUserButton('Tara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Main Table' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Main Table' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1672,7 +1672,7 @@ describe('RoomSelector', () => {
 
     fireEvent.contextMenu(getDragUserButton('Tara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Main Table' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Main Table' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1773,7 +1773,7 @@ describe('RoomSelector', () => {
     // Open context menu and move Zara to the whisper room
     fireEvent.contextMenu(getDragUserButton('Zara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
 
     // Wait for the move to be pending and end-whisper button to become disabled
     await waitFor(() => {
@@ -1882,7 +1882,7 @@ describe('RoomSelector', () => {
 
     fireEvent.contextMenu(getDragUserButton('Zara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2176,7 +2176,7 @@ describe('RoomSelector', () => {
 
     fireEvent.contextMenu(getDragUserButton('Tara'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

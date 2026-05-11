@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
-import { LONG_PRESS_MOVE_CANCEL_PX, LONG_PRESS_OPEN_MS } from '../../constants/voiceGroup.constants'
+import { LONG_PRESS_MOVE_CANCEL_PX } from '../../constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
 import { AvatarOverlay } from './AvatarOverlay'
+import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
-  RadialMenuState,
   RoomParticipantWithRoomId,
   RoomSelectorRoomWithParticipants,
 } from './roomSelector.types'
@@ -15,7 +15,6 @@ interface RoomMemberListProps {
   participants: RoomParticipantWithRoomId[]
   canManageRooms: boolean
   isGreenroom: boolean
-  dmUserId: UUID
   touchFeedbackUserId: UUID | null
   setTouchFeedbackUserId: (userId: UUID | null) => void
   getParticipantMetaLine: (member: RoomParticipantWithRoomId) => string
@@ -27,7 +26,14 @@ interface RoomMemberListProps {
   ) => 'online' | 'offline'
   getStatEntries: (member: RoomParticipantWithRoomId) => Array<[string, unknown]>
   getResolvedEnvironmentName: (room: RoomSelectorRoomWithParticipants) => string
-  onOpenRadialMenu: (params: Omit<RadialMenuState, 'mode'>) => void
+  getMoveTargets: (memberRoomId: UUID) => Array<{ id: UUID; label: string }>
+  conditionTargets: string[]
+  onMoveParticipant: (userId: UUID, toRoomId: UUID) => void
+  onApplyConditionOverride: (userId: UUID, conditionName: string) => void
+  onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onClearMemberEffects: (userId: UUID) => void
+  onSendPrivateMessage: (userId: UUID) => void
+  onViewProfile: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -41,7 +47,6 @@ export function RoomMemberList({
   participants,
   canManageRooms,
   isGreenroom,
-  dmUserId,
   touchFeedbackUserId,
   setTouchFeedbackUserId,
   getParticipantMetaLine,
@@ -49,20 +54,19 @@ export function RoomMemberList({
   getPresenceDotState,
   getStatEntries,
   getResolvedEnvironmentName,
-  onOpenRadialMenu,
+  getMoveTargets,
+  conditionTargets,
+  onMoveParticipant,
+  onApplyConditionOverride,
+  onApplyMuteOverride,
+  onClearMemberEffects,
+  onSendPrivateMessage,
+  onViewProfile,
   onMemberDragStart,
   onMemberDragEnd,
 }: RoomMemberListProps) {
-  const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
-
-  const clearLongPressTimer = useCallback(() => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }, [])
 
   const clearTouchFeedback = useCallback(
     (delayMs = 0) => {
@@ -86,29 +90,14 @@ export function RoomMemberList({
 
   useEffect(() => {
     return () => {
-      clearLongPressTimer()
       if (touchFeedbackTimerRef.current !== null) {
         window.clearTimeout(touchFeedbackTimerRef.current)
       }
     }
-  }, [clearLongPressTimer])
-
-  const handleContextMenu = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>, memberUserId: UUID, memberRoomId: UUID) => {
-      event.preventDefault()
-      onOpenRadialMenu({
-        x: event.clientX,
-        y: event.clientY,
-        memberUserId,
-        memberRoomId,
-      })
-    },
-    [onOpenRadialMenu]
-  )
+  }, [])
 
   const handleTouchStart = useCallback(
-    (event: React.TouchEvent<HTMLButtonElement>, memberUserId: UUID, memberRoomId: UUID) => {
-      clearLongPressTimer()
+    (event: React.TouchEvent<HTMLButtonElement>, memberUserId: UUID) => {
       clearTouchFeedback()
       const touch = event.touches[0]
       if (!touch) {
@@ -121,17 +110,8 @@ export function RoomMemberList({
         userId: memberUserId,
       }
       setTouchFeedbackUserId(memberUserId)
-
-      longPressTimerRef.current = window.setTimeout(() => {
-        onOpenRadialMenu({
-          x: touch.clientX,
-          y: touch.clientY,
-          memberUserId,
-          memberRoomId,
-        })
-      }, LONG_PRESS_OPEN_MS)
     },
-    [clearLongPressTimer, clearTouchFeedback, onOpenRadialMenu, setTouchFeedbackUserId]
+    [clearTouchFeedback, setTouchFeedbackUserId]
   )
 
   const handleTouchMove = useCallback(
@@ -146,11 +126,10 @@ export function RoomMemberList({
       const deltaX = touch.clientX - touchStart.x
       const deltaY = touch.clientY - touchStart.y
       if (Math.hypot(deltaX, deltaY) > LONG_PRESS_MOVE_CANCEL_PX) {
-        clearLongPressTimer()
         clearTouchFeedback(60)
       }
     },
-    [clearLongPressTimer, clearTouchFeedback]
+    [clearTouchFeedback]
   )
 
   if (participants.length === 0) {
@@ -162,41 +141,59 @@ export function RoomMemberList({
       {participants.map((member) => {
         const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
         const isMuted = Boolean(member.isMuted)
+        const isPlayerTarget = member.roleLabel === 'PLAYER'
         const shownPresenceState = getResolvedPresenceState(member.presenceState)
+
+        const memberButton = (
+          <button
+            type="button"
+            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
+            draggable={canDrag}
+            aria-label={canDrag ? `Drag ${member.username}` : member.username}
+            onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}
+            onTouchStart={(event) => handleTouchStart(event, member.userId)}
+            onTouchMove={(event) => handleTouchMove(event, member.userId)}
+            onTouchEnd={() => {
+              clearTouchFeedback(80)
+            }}
+            onTouchCancel={() => {
+              clearTouchFeedback()
+            }}
+            onDragEnd={onMemberDragEnd}
+          >
+            <AvatarOverlay
+              username={member.characterName || member.username}
+              avatarUrl={member.avatarUrl}
+              roleLabel={member.roleLabel}
+              metaLine={getParticipantMetaLine(member)}
+              presenceState={shownPresenceState}
+              isMuted={isMuted}
+              isSpeaking={member.isSpeaking}
+              isGhost={Boolean(member.ghost)}
+            />
+          </button>
+        )
 
         return (
           <Tooltip key={member.userId}>
             <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
-                draggable={canDrag}
-                aria-label={canDrag ? `Drag ${member.username}` : member.username}
-                onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}
-                onContextMenu={(event) => handleContextMenu(event, member.userId, room.id)}
-                onTouchStart={(event) => handleTouchStart(event, member.userId, room.id)}
-                onTouchMove={(event) => handleTouchMove(event, member.userId)}
-                onTouchEnd={() => {
-                  clearLongPressTimer()
-                  clearTouchFeedback(80)
-                }}
-                onTouchCancel={() => {
-                  clearLongPressTimer()
-                  clearTouchFeedback()
-                }}
-                onDragEnd={onMemberDragEnd}
+              <PlayerContextMenu
+                enabled={isPlayerTarget}
+                canManageRooms={canManageRooms}
+                memberIsMuted={isMuted}
+                moveTargets={getMoveTargets(room.id)}
+                conditionTargets={conditionTargets}
+                onSendPrivateMessage={() => onSendPrivateMessage(member.userId)}
+                onViewProfile={() => onViewProfile(member.userId)}
+                onMoveSelect={(targetRoomId) => onMoveParticipant(member.userId, targetRoomId)}
+                onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
+                onClearEffects={() => onClearMemberEffects(member.userId)}
+                onConditionSelect={(conditionName) =>
+                  onApplyConditionOverride(member.userId, conditionName)
+                }
               >
-                <AvatarOverlay
-                  username={member.characterName || member.username}
-                  avatarUrl={member.avatarUrl}
-                  roleLabel={member.roleLabel}
-                  metaLine={getParticipantMetaLine(member)}
-                  presenceState={shownPresenceState}
-                  isMuted={isMuted}
-                  isSpeaking={member.isSpeaking}
-                  isGhost={Boolean(member.ghost)}
-                />
-              </button>
+                {memberButton}
+              </PlayerContextMenu>
             </TooltipTrigger>
             <TooltipContent side="right" className="room-selector-profile-tooltip">
               <div className="room-selector-profile">

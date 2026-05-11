@@ -444,6 +444,102 @@ Current implementation boundary (2026-05-08 first pass):
 
 ---
 
+### W0 Substask: Radix UI Component Audit and Migration
+
+**Status**: Discovery + initial implementation (2026-05-12); ongoing migration pathway
+**Related Docs**: [core-ui/index.ts](frontend/src/core-ui/index.ts), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md)
+
+**Scope**: Audit existing custom and legacy UI components; establish a standardized Radix UI-first component library to improve accessibility, consistency, and maintainability across the codebase.
+
+**Rationale**:
+
+- Current UI is a mix of custom components, Radix primitives, and Material UI (admin only). Consolidation on Radix for frontend UX surfaces reduces maintenance burden and improves accessibility/WCAG compliance.
+- Radix provides unstyled, accessible primitives that scale with the codebase and avoid vendor lock-in to framework-specific component libraries.
+- Component inventory audit enables roadmap prioritization and prevents ad-hoc reimplementation of existing functionality.
+
+**Phase 1: Component Inventory & Assessment** (2026-05-12)
+
+**Current core-ui exports**:
+
+- `dialog` — Radix Dialog wrapper (modal behavior)
+- `separator` — Radix Separator wrapper (visual divider)
+- `tabs` — Radix Tabs wrapper (tabbed interface)
+- `tooltip` — Radix Tooltip wrapper (hover/focus disclosure)
+
+**Identified custom/legacy components requiring audit**:
+
+- `RadialMenu.tsx` (custom context-menu radial widget) — **Completed replacement** with Radix Context Menu (2026-05-12)
+  - New: `PlayerContextMenu.tsx` + `PlayerContextMenuContent.tsx` (nested submenus for Move, Distance, Condition)
+  - Benefit: keyboard navigation, full accessibility, semantic menu role structure
+  - Dependency added: `@radix-ui/react-context-menu@^2.2.16`
+  - Tests updated for Radix `menuitem` role (replaced custom button role)
+- `CreateGroupModal.tsx` (existing, likely needs audit for form patterns)
+- `EnvironmentPicker.tsx` (if exists; needs assessment for combobox vs custom selector)
+- Audio/Broadcast/Condition popovers (assess for Radix Popover migration)
+- Chat composer and message bubbles (assess for potential Radix form/composition improvements)
+
+**Phase 2: Migration Roadmap**
+
+| Priority | Component                | Target Radix Primitive               | Estimated Effort | Timeline      |
+| -------- | ------------------------ | ------------------------------------ | ---------------- | ------------- |
+| 1        | Environment picker       | Radix Select or custom Popover       | Medium           | W0 (ongoing)  |
+| 2        | Audio settings popover   | Radix Popover                        | Small            | W0 finish     |
+| 3        | Broadcast state toggle   | Radix Toggle or custom button        | Small            | W0 finish     |
+| 4        | Create Group modal form  | Radix Dialog + form patterns         | Medium           | W0 finish     |
+| 5        | Chat composer textarea   | Radix Textarea (if available) or btn | Small            | W0/W4 buffer  |
+| 6        | Session settings popover | Radix Popover                        | Small            | W0 finish     |
+| 7        | Player list filters      | Radix Select or custom checkbox list | Medium           | W1 (optional) |
+
+**Phase 3: Standardization Guidelines**
+
+- **core-ui patterns**: Each Radix primitive gets a thin frontend-specific wrapper in `frontend/src/core-ui/` that applies theming, dark-mode support, and VTT-Chat design tokens.
+- **Naming convention**: Wrappers use PascalCase component names matching Radix conventions (e.g., `Dialog`, `Popover`, `Select`).
+- **Token consistency**: All Radix-wrapped components consume shared CSS variables (`--color-*`, `--radius-*`, `--shadow-*`) from [frontend/src/styles/tokens.css](frontend/src/styles/tokens.css).
+- **Accessibility first**: Every migrated component must pass WCAG AA keyboard nav, focus management, and screen-reader tests.
+- **Deprecation path**: Mark legacy custom components as deprecated in comments with migration guidance, but retain until replacement is shipped and tested.
+
+**Phase 4: Testing and Validation**
+
+- [ ] Migrated components pass existing interaction/role tests without modification.
+- [ ] New Radix-wrapped components have unit tests for state, keyboard nav, and accessibility attributes.
+- [ ] Integration tests verify role-gated visibility (DM-only actions, persona permissions).
+- [ ] Dark/light theme adaptation validated for all new surfaces.
+- [ ] No regressions in existing contextual-menu test suite after initial `PlayerContextMenu` replacement.
+
+**Definition of done (per migration)**:
+
+- Component replaced with Radix equivalent in core-ui.
+- All usages updated to new component interface.
+- Tests updated for new accessibility role attributes and keyboard behavior.
+- Theme/token validation confirmed.
+- Legacy custom component is marked deprecated or removed (depending on usage extent).
+- PR includes migration summary and any breaking changes to component API.
+
+**Latest Delivered (Phase 1, 2026-05-12)**:
+
+- ✅ Replaced custom `RadialMenu` context-menu widget with `PlayerContextMenu` + `PlayerContextMenuContent` Radix-based components.
+  - Added `@radix-ui/react-context-menu@^2.2.16` dependency.
+  - Implemented nested submenus for Move (room targets), Distance (Default/Nearby/Visible/Far), and Condition (condition catalog).
+  - Wired player-only context-menu trigger (role label = PLAYER) with DM-gated action sections (Mute/Unmute, Clear Effects, Kick, Ban, Grant/Revoke DM Priv).
+  - Shared action items for all viewers: Send Private Message, View Profile (currently placeholder "not wired yet" handlers).
+  - Added Radix context-menu styles to [frontend/src/styles/components/rooms/RoomSelector.css](frontend/src/styles/components/rooms/RoomSelector.css).
+  - Updated [frontend/src/tests/components/RoomPresenceUi.test.tsx](frontend/src/tests/components/RoomPresenceUi.test.tsx) to query by `menuitem` role (Radix semantic role) instead of `button`.
+  - Frontend tests pass: 30 tests, 0 failures.
+  - Frontend build passes: no TypeScript or bundler errors.
+
+**Next Steps (Phase 2)**:
+
+1. Audit environment-picker interaction patterns for Radix Select vs custom Popover (depends on expected interaction breadth).
+2. Assess audio settings popover for Radix Popover + form primitive migration.
+3. Review create-group modal form for Radix Dialog + Radix Form patterns (Radix does not have built-in form; consider Zod + react-hook-form).
+4. Schedule broader accessibility pass on topbar/rightbar surfaces as part of W4 regression hardening.
+
+---
+
+### Latest Delivered (W0 Radix Audit) — 2026-05-12
+
+- ✅ **W0 Substask: Player Context Menu Radix Migration** — Replaced custom `RadialMenu` with Radix-based `PlayerContextMenu` + `PlayerContextMenuContent` providing semantic nested submenus (Move, Distance, Condition), full keyboard navigation, and ARIA accessibility attributes. Shared actions (`Send Private Message`, `View Profile`) and DM-gated actions (`Mute/Unmute`, `Clear Effects`, `Distance >`, `Condition >`, `Kick`, `Ban`, `Grant/Revoke DM Priv`) now use Radix `ContextMenu`, `SubTrigger`, `SubContent`, and `Item` primitives. Tests updated for Radix `menuitem` role. All 30 RoomPresence UI tests pass; frontend build green. Component audit inventory established; Phase 2 migration roadmap (environment picker, audio settings, broadcast toggle, create group form) scheduled for W0 close-out.
+
 ### Latest Delivered (W1/W2) — 2026-05-09
 
 - Enforced strict session/greenroom boundary marker separation in frontend runtime: session boundary bookends (`[Session Started|Paused|Resumed|Ended]`) are now MAIN-room only and no longer written, restored, or carried into Greenroom (`frontend/src/components/session/SessionInit.tsx`, `frontend/src/components/chat/ChatWindow.tsx`, `frontend/src/tests/components/SessionBookends.integration.test.tsx`).
