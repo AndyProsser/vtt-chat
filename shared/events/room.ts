@@ -19,6 +19,7 @@ export type RoomEventType =
 
 export type PresenceEventType =
   | 'PRESENCE:STATE_CHANGED'
+  | 'PRESENCE:USER_GHOST_MODE_CHANGED'
   | 'PRESENCE:HEARTBEAT'
   | 'PRESENCE:RECONNECTED'
 
@@ -128,6 +129,21 @@ export interface PresenceStateChanged {
 export type PresenceStateChangedEvent = EventEnvelope<PresenceStateChanged>
 
 /**
+ * PRESENCE:USER_GHOST_MODE_CHANGED
+ * User ghost-mode projection changed.
+ * Visibility: All session members receive this projection update.
+ */
+export interface PresenceUserGhostModeChanged {
+  userId: UUID
+  username: string
+  roomId: UUID | null
+  ghostMode: boolean
+  changedAt: number
+}
+
+export type PresenceUserGhostModeChangedEvent = EventEnvelope<PresenceUserGhostModeChanged>
+
+/**
  * PRESENCE:HEARTBEAT
  * Ephemeral keepalive to maintain presence state.
  * Sent periodically to detect stale connections.
@@ -170,5 +186,6 @@ export type RoomEvent =
 
 export type PresenceEvent =
   | PresenceStateChangedEvent
+  | PresenceUserGhostModeChangedEvent
   | PresenceHeartbeatEvent
   | PresenceReconnectedEvent

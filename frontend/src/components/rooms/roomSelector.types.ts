@@ -21,6 +21,7 @@ export interface RoomParticipantStatus {
   level?: number | null
   characterStats?: Record<string, unknown> | null
   presenceState: PresenceState
+  ghost?: boolean
   roleLabel?: 'DM' | 'PLAYER'
   isMuted?: boolean
   isSpeaking?: boolean

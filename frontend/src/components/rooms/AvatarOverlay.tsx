@@ -10,6 +10,7 @@ interface AvatarOverlayProps {
   presenceState?: PresenceState
   isSpeaking?: boolean
   isMuted?: boolean
+  isGhost?: boolean
 }
 
 function initialFor(name: string): string {
@@ -23,6 +24,7 @@ export function AvatarOverlay({
   roleLabel,
   metaLine,
   isMuted = false,
+  isGhost = false,
 }: AvatarOverlayProps) {
   const resolvedMetaLine =
     metaLine?.trim() ||
@@ -32,7 +34,7 @@ export function AvatarOverlay({
 
   return (
     <div className="avatar-overlay" data-testid="avatar-overlay">
-      <div className="avatar-glyph" aria-hidden="true">
+      <div className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''}`} aria-hidden="true">
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="avatar-glyph__image" />
         ) : (
@@ -42,6 +44,13 @@ export function AvatarOverlay({
           <span className="avatar-muted-badge" aria-label="Muted microphone" role="img">
             <span className="material-symbols-outlined" aria-hidden="true">
               mic_off
+            </span>
+          </span>
+        ) : null}
+        {isGhost ? (
+          <span className="avatar-ghost-badge" aria-label="Ghost mode" role="img">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              visibility_off
             </span>
           </span>
         ) : null}

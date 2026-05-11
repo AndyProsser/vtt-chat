@@ -89,6 +89,7 @@ export interface PresenceEntity {
   level?: number | null
   characterStats?: Record<string, unknown> | null
   state: PresenceState
+  ghost?: boolean
   primaryRoomId?: UUID
   privateRoomId?: UUID
   lastSeenAt: number

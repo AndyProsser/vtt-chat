@@ -204,6 +204,7 @@ describe('presence routes', () => {
         userId: USER_ID,
         username: 'alice',
         state: 'ONLINE',
+        ghost: false,
         primaryRoomId: ROOM_ID,
         lastSeenAt: 1700000001000,
       })
@@ -254,6 +255,16 @@ describe('presence routes', () => {
         .put(`/api/presence/${SESSION_ID}/state`)
         .set('Authorization', 'Bearer token')
         .send({ state: 'ONLINE', privateRoomId: 'not-a-uuid' })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_INPUT')
+    })
+
+    it('returns 400 for non-boolean ghostMode', async () => {
+      const app = buildApp()
+      const res = await request(app)
+        .put(`/api/presence/${SESSION_ID}/state`)
+        .set('Authorization', 'Bearer token')
+        .send({ state: 'ONLINE', ghostMode: 'yes' })
       expect(res.status).toBe(400)
       expect(res.body.code).toBe('INVALID_INPUT')
     })
@@ -332,11 +343,51 @@ describe('presence routes', () => {
         .send({ state: 'IDLE' })
       expect(res.status).toBe(200)
       const wsManager = app.locals.wsManager
-      expect(wsManager.broadcastEventToSession).toHaveBeenCalledOnce()
-      const [sid, event] = wsManager.broadcastEventToSession.mock.calls[0]
+      const stateChangedCall = wsManager.broadcastEventToSession.mock.calls.find(
+        (call: any[]) => call[1]?.type === 'PRESENCE:STATE_CHANGED'
+      )
+      expect(stateChangedCall).toBeDefined()
+      const [sid, event] = stateChangedCall
       expect(sid).toBe(SESSION_ID)
       expect(event.type).toBe('PRESENCE:STATE_CHANGED')
       expect(event.payload.newState).toBe('ONLINE') // from mock return
+    })
+
+    it('broadcasts PRESENCE:USER_GHOST_MODE_CHANGED when ghost mode flips', async () => {
+      mocks.mockGetSessionPresence.mockResolvedValue([
+        {
+          sessionId: SESSION_ID,
+          userId: USER_ID,
+          username: 'alice',
+          state: 'ONLINE',
+          ghost: false,
+          primaryRoomId: ROOM_ID,
+          lastSeenAt: 1700000000500,
+        },
+      ])
+      mocks.mockUpdatePresenceState.mockResolvedValue({
+        sessionId: SESSION_ID,
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        ghost: true,
+        primaryRoomId: ROOM_ID,
+        lastSeenAt: 1700000001000,
+      })
+
+      const app = buildAppWithWS()
+      const res = await request(app)
+        .put(`/api/presence/${SESSION_ID}/state`)
+        .set('Authorization', 'Bearer token')
+        .send({ state: 'ONLINE', ghostMode: true })
+
+      expect(res.status).toBe(200)
+      const wsManager = app.locals.wsManager
+      const ghostModeCall = wsManager.broadcastEventToSession.mock.calls.find(
+        (call: any[]) => call[1]?.type === 'PRESENCE:USER_GHOST_MODE_CHANGED'
+      )
+      expect(ghostModeCall).toBeDefined()
+      expect(ghostModeCall[1].payload.ghostMode).toBe(true)
     })
 
     it('accepts null roomId and null privateRoomId without 400', async () => {

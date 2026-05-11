@@ -38,6 +38,7 @@ export interface PresenceSlice {
     roomId?: UUID
     state: PresenceState
     changedAt: number
+    ghost?: boolean
   }) => void
   applySessionRoomTransitionPresence: (params: {
     sessionId: UUID
@@ -151,7 +152,15 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       }
     }),
 
-  applySessionPresenceStateChange: ({ sessionId, userId, username, roomId, state, changedAt }) =>
+  applySessionPresenceStateChange: ({
+    sessionId,
+    userId,
+    username,
+    roomId,
+    state,
+    changedAt,
+    ghost,
+  }) =>
     set((currentState) => {
       const bySession = currentState.sessionPresence[sessionId] || {}
       const existing = bySession[userId]
@@ -167,6 +176,7 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               userId,
               username: username || existing?.username || '',
               state,
+              ghost: ghost !== undefined ? ghost : existing?.ghost || false,
               primaryRoomId: resolvedRoomId,
               privateRoomId: existing?.privateRoomId,
               lastSeenAt: changedAt,

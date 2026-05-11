@@ -169,7 +169,7 @@ export function RoomMemberList({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
+                className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
                 draggable={canDrag}
                 aria-label={canDrag ? `Drag ${member.username}` : member.username}
                 onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}
@@ -194,6 +194,7 @@ export function RoomMemberList({
                   presenceState={shownPresenceState}
                   isMuted={isMuted}
                   isSpeaking={member.isSpeaking}
+                  isGhost={Boolean(member.ghost)}
                 />
               </button>
             </TooltipTrigger>
@@ -280,6 +281,14 @@ export function RoomMemberList({
                           {STATUS_PILL_ICONS.speaking}
                         </span>
                         {STATUS_PILL_LABELS.speaking}
+                      </span>
+                    ) : null}
+                    {member.ghost ? (
+                      <span className="room-selector-status-pill ghost">
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          visibility_off
+                        </span>
+                        Ghost Mode
                       </span>
                     ) : null}
                   </div>

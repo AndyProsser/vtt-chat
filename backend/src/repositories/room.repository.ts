@@ -151,3 +151,15 @@ export async function listPresenceSnapshotsBySession(sessionId: string): Promise
     updatedAt: row.updatedAt,
   }))
 }
+
+export async function deletePresenceSnapshotRecord(params: {
+  sessionId: string
+  userId: string
+}): Promise<void> {
+  await prisma.presenceSnapshot.deleteMany({
+    where: {
+      sessionId: params.sessionId,
+      userId: params.userId,
+    },
+  })
+}

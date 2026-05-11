@@ -14,6 +14,7 @@ export interface RoomUser {
   level?: number | null
   characterStats?: Record<string, unknown> | null
   presenceState: PresenceState
+  ghost?: boolean
   joinedAt: number
 }
 

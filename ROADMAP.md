@@ -161,9 +161,9 @@ Known readiness gap classes:
 
 **Purpose:** Define and finalize the canonical state machine contract before Stage 1+ implementation. This ensures all subsystems (session lifecycle, presence, audio, group management) operate with consistent state authority, transition rules, and error recovery.
 
-**Status:** Active design lock (in progress)
+**Status:** Lock-in approved; implementation in progress
 
-**Current focus:** Compatibility helper layer landed; timer wiring, CLEANUP rollout, and state rename work remain queued behind the lock-in gate.
+**Current focus:** Ghost-mode WS contract path and disconnect timer cascade wiring have landed; CLEANUP rollout/state rename follow-up remains in progress.
 
 **Deliverables:**
 
@@ -171,7 +171,8 @@ Known readiness gap classes:
 - [x] Implementation mapping: [docs/changes/STATE-MACHINE-IMPLEMENTATION.md](docs/changes/STATE-MACHINE-IMPLEMENTATION.md) — Codebase locations, current status, action items, phasing, testing checklist
 - [x] Codebase clarifications (from feedback/review)
 - [x] Shared session-lifecycle compatibility helpers + greenroom normalization
-- [ ] Lock-in gate (approval from Andy + team)
+- [x] Lock-in gate (approval from Andy + team)
+- [x] Ghost-mode WS event contract + frontend/backend handler wiring
 - [x] W0 roadmap update to reference state machine as blocking upstream for later W0/W1 reliability work
 
 **Key Clarifications (From Review 2026-05-09):**
@@ -190,7 +191,7 @@ Known readiness gap classes:
 
 **Exit Criteria:**
 
-- [ ] Contract reviewed and approved by team
+- [x] Contract reviewed and approved by team
 - [ ] Codebase entry points documented in implementation map
 - [ ] No ambiguities in state authority or transition rules
 - [ ] Testing charter defined (unit + integration coverage per subsystem)
@@ -200,8 +201,8 @@ Known readiness gap classes:
 
 - ✅ Contract finalized
 - ⬜ Codebase updates to add CLEANUP state, rename IDLE → INACTIVE, implement timers
-- ⬜ Disconnect timer implementation (5s ghost, 60s TTL, auto-stop, 20min cleanup)
-- ⬜ Ghost-mode WS event handlers
+- ✅ Disconnect timer implementation (5s ghost, 60s TTL, auto-stop, 20min cleanup)
+- ✅ Ghost-mode WS event handlers
 - ⬜ Previous group ID tracking
 - ⬜ Backend-authoritative boundary marker creation
 - ⬜ Post-session chat timer logic and ENDED processing window

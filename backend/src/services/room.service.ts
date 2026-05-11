@@ -10,6 +10,7 @@ import type {
 import { getRedisClient } from '@/infra/redis'
 import {
   createRoomRecord,
+  deletePresenceSnapshotRecord,
   deleteRoomRecord,
   findRoomById,
   listPresenceSnapshotsBySession,
@@ -150,6 +151,7 @@ export async function ensurePresenceRecoveredFromSnapshots(sessionId: UUID): Pro
       username: snapshot.username,
       primaryRoomId: snapshot.primaryRoomId ? (snapshot.primaryRoomId as UUID) : undefined,
       privateRoomId: snapshot.privateRoomId ? (snapshot.privateRoomId as UUID) : undefined,
+      ghost: false,
       // Redis failure recovery restores users as offline until they reconnect.
       state: PresenceState.OFFLINE,
       lastSeenAt: snapshot.lastSeenAt.getTime(),
@@ -189,6 +191,7 @@ export async function getSessionPresence(sessionId: UUID): Promise<RealtimePrese
     username: snapshot.username,
     primaryRoomId: snapshot.primaryRoomId ? (snapshot.primaryRoomId as UUID) : undefined,
     privateRoomId: snapshot.privateRoomId ? (snapshot.privateRoomId as UUID) : undefined,
+    ghost: false,
     state: snapshot.state as PresenceState,
     lastSeenAt: snapshot.lastSeenAt.getTime(),
   }))
@@ -226,6 +229,7 @@ export async function joinRoom(params: {
     username: params.username,
     primaryRoomId: params.roomId,
     privateRoomId: existing?.privateRoomId,
+    ghost: existing?.ghost || false,
     state: params.state || existing?.state || PresenceState.ONLINE,
     lastSeenAt: Date.now(),
   }
@@ -259,6 +263,7 @@ export async function leaveRoom(params: {
   const next: RealtimePresence = {
     ...existing,
     primaryRoomId: existing.primaryRoomId === params.roomId ? undefined : existing.primaryRoomId,
+    ghost: existing.ghost || false,
     state: params.state || existing.state,
     lastSeenAt: Date.now(),
   }
@@ -272,6 +277,7 @@ export async function updatePresenceState(params: {
   userId: UUID
   username: string
   state: PresenceState
+  ghost?: boolean
   primaryRoomId?: UUID
   privateRoomId?: UUID | null
   campaignId?: UUID
@@ -294,6 +300,7 @@ export async function updatePresenceState(params: {
       params.privateRoomId !== undefined
         ? params.privateRoomId || undefined
         : (existing?.privateRoomId as UUID),
+    ghost: params.ghost !== undefined ? params.ghost : existing?.ghost || false,
     state: params.state,
     lastSeenAt: Date.now(),
   }
@@ -306,6 +313,29 @@ export async function getRoomMemberIds(sessionId: UUID, roomId: UUID): Promise<U
   const redis = await getRedisClient()
   const members = await redis.sMembers(roomMembersKey(sessionId, roomId))
   return members.map((member) => member as UUID)
+}
+
+export async function removePresenceProjection(params: {
+  sessionId: UUID
+  userId: UUID
+}): Promise<void> {
+  await ensurePresenceRecoveredFromSnapshots(params.sessionId)
+
+  const redis = await getRedisClient()
+  const key = presenceHashKey(params.sessionId)
+  const existingRaw = await redis.hGet(key, params.userId)
+  const existing = existingRaw ? parsePresence(existingRaw) : null
+
+  if (existing?.primaryRoomId) {
+    await redis.sRem(roomMembersKey(params.sessionId, existing.primaryRoomId), params.userId)
+  }
+
+  await redis.hDel(key, params.userId)
+  await redis.zRem(roomActivityKey(params.sessionId), params.userId)
+  await deletePresenceSnapshotRecord({
+    sessionId: params.sessionId,
+    userId: params.userId,
+  })
 }
 
 export async function deleteRoom(params: { sessionId: UUID; roomId: UUID }): Promise<void> {

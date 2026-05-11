@@ -26,6 +26,7 @@ import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/services/event-broadcaster.service'
+import { sessionDisconnectCascadeService } from '@/services/session-disconnect-cascade.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
   snapshotSessionPresence,
@@ -238,6 +239,10 @@ export class WebSocketManager {
     )
 
     if (connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
+      sessionDisconnectCascadeService.handleUserConnected(
+        connectionState.sessionId,
+        payload.userId as UUID
+      )
       void this.recoverAndMarkConnected(connectionState.sessionId, payload)
     }
   }
@@ -400,18 +405,50 @@ export class WebSocketManager {
     const connectionId = ws.connectionState.connectionId
     logger.info('ws', `Client disconnected: ${connectionId}`)
 
+    this.connections.delete(connectionId)
+
     if (ws.authPayload && ws.connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
-      void updatePresenceState({
-        sessionId: ws.connectionState.sessionId,
-        userId: ws.authPayload.userId as UUID,
-        username: ws.authPayload.username,
-        state: PresenceState.OFFLINE,
-      })
+      const sessionId = ws.connectionState.sessionId
+      const userId = ws.authPayload.userId as UUID
+
+      if (!this.hasActiveConnectionForUser(sessionId, userId)) {
+        void sessionDisconnectCascadeService.handleUserDisconnected({
+          sessionId,
+          userId,
+          username: ws.authPayload.username,
+          userRole: ws.authPayload.role,
+          wsManager: this,
+          isUserConnected: (candidateSessionId, candidateUserId) =>
+            this.hasActiveConnectionForUser(candidateSessionId, candidateUserId),
+          isSessionConnected: (candidateSessionId) =>
+            this.hasActiveConnectionsInSession(candidateSessionId),
+        })
+      }
+    }
+  }
+
+  hasActiveConnectionForUser(sessionId: UUID, userId: UUID): boolean {
+    for (const ws of this.connections.values()) {
+      if (
+        ws.authPayload?.userId === userId &&
+        ws.connectionState?.sessionId === sessionId &&
+        ws.readyState === WebSocket.OPEN
+      ) {
+        return true
+      }
     }
 
-    // Keep connection state for reconnection recovery (timeout after 30 mins)
-    // For now, just remove it
-    this.connections.delete(connectionId)
+    return false
+  }
+
+  hasActiveConnectionsInSession(sessionId: UUID): boolean {
+    for (const ws of this.connections.values()) {
+      if (ws.connectionState?.sessionId === sessionId && ws.readyState === WebSocket.OPEN) {
+        return true
+      }
+    }
+
+    return false
   }
 
   /**

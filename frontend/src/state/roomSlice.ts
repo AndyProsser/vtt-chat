@@ -34,6 +34,7 @@ export interface RoomSlice {
   handleUserJoined: (event: EventEnvelope) => void
   handleUserLeft: (event: EventEnvelope) => void
   handlePresenceStateChanged: (event: EventEnvelope) => void
+  handlePresenceGhostModeChanged: (event: EventEnvelope) => void
   handleSessionRoomTransitionApplied: (event: EventEnvelope) => void
 }
 
@@ -54,6 +55,7 @@ function presenceToRoomMember(entry: SessionPresence): RoomUser {
     level: entry.level,
     characterStats: entry.characterStats,
     presenceState: entry.state,
+    ghost: entry.ghost,
     joinedAt: entry.lastSeenAt,
   }
 }
@@ -322,6 +324,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       level: existingPresence?.level,
       characterStats: existingPresence?.characterStats,
       presenceState: PresenceState.ONLINE,
+      ghost: existingPresence?.ghost,
       joinedAt,
     }
 
@@ -404,6 +407,30 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     })
   },
 
+  handlePresenceGhostModeChanged: (event) => {
+    const payload = event.payload as {
+      userId: UUID
+      username?: string
+      roomId?: UUID | null
+      ghostMode?: boolean
+      changedAt?: number
+    }
+
+    const changedAt = payload.changedAt || event.timestamp
+    const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
+    const roomId = payload.roomId || existingPresence?.primaryRoomId
+
+    get().applySessionPresenceStateChange({
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      username: payload.username,
+      roomId: roomId || undefined,
+      state: existingPresence?.state || PresenceState.IDLE,
+      changedAt,
+      ghost: payload.ghostMode || false,
+    })
+  },
+
   handleSessionRoomTransitionApplied: (event) => {
     const payload = event.payload as {
       previousState: SessionState | null
@@ -467,6 +494,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             level: existingPresence?.level,
             characterStats: existingPresence?.characterStats,
             presenceState: payload.targetState,
+            ghost: existingPresence?.ghost,
             joinedAt: event.timestamp,
           }
         }),

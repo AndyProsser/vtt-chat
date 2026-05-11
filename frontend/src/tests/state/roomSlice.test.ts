@@ -330,6 +330,26 @@ describe('roomSlice', () => {
       useStore.getState().handlePresenceStateChanged(event)
       expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.state).toBe('IDLE')
     })
+
+    it('updates ghost projection in sessionPresence', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      const joinEvent = makeEvent('ROOM:USER_JOINED', SESSION_A, {
+        roomId: ROOM_ID_1,
+        userId: USER_ID_1,
+        username: 'alice',
+      })
+      useStore.getState().handleUserJoined(joinEvent)
+
+      const event = makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED', SESSION_A, {
+        roomId: ROOM_ID_1,
+        userId: USER_ID_1,
+        username: 'alice',
+        ghostMode: true,
+      })
+
+      useStore.getState().handlePresenceGhostModeChanged(event)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
+    })
   })
 
   describe('handleSessionRoomTransitionApplied', () => {

@@ -91,7 +91,7 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { sessionId } = req.params
-  const { state, roomId, privateRoomId } = req.body || {}
+  const { state, roomId, privateRoomId, ghostMode } = req.body || {}
 
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -109,6 +109,10 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
 
   if (privateRoomId !== undefined && privateRoomId !== null && !isValidUUID(privateRoomId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid privateRoomId' })
+  }
+
+  if (ghostMode !== undefined && typeof ghostMode !== 'boolean') {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid ghostMode' })
   }
 
   try {
@@ -140,6 +144,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       userId: user.userId as UUID,
       username: user.username,
       state,
+      ghost: ghostMode as boolean | undefined,
       primaryRoomId: roomId as UUID | undefined,
       privateRoomId: privateRoomId as UUID | undefined,
     })
@@ -167,6 +172,27 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       }
 
       wsManager.broadcastEventToSession(sessionId as UUID, event)
+
+      if ((previous?.ghost || false) !== (updated.ghost || false)) {
+        wsManager.broadcastEventToSession(sessionId as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:USER_GHOST_MODE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: updated.primaryRoomId || null,
+          timestamp: updated.lastSeenAt,
+          payload: {
+            userId: updated.userId,
+            username: updated.username,
+            roomId: updated.primaryRoomId || null,
+            ghostMode: updated.ghost || false,
+            changedAt: updated.lastSeenAt,
+          },
+        })
+      }
+
       await broadcastSessionStatsSnapshot({
         wsManager,
         sessionId: sessionId as UUID,
