@@ -1433,6 +1433,8 @@ describe('RoomSelector', () => {
   })
 
   it('disables end-whisper button while pending whisper moves exist', async () => {
+    useStore.getState().reset()
+
     let resolveMoveParticipant: ((value: Response) => void) | null = null
     const moveParticipantPromise = new Promise<Response>((resolve) => {
       resolveMoveParticipant = resolve
@@ -1451,7 +1453,7 @@ describe('RoomSelector', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    const { rerender } = render(
+    render(
       <RoomSelector
         apiUrl="http://localhost:3000"
         token="jwt-token"
@@ -1513,6 +1515,17 @@ describe('RoomSelector', () => {
     // Wait for the move to be pending and end-whisper button to become disabled
     await waitFor(() => {
       expect(endWhisperButton.hasAttribute('disabled')).toBe(true)
+    })
+
+    resolveMoveParticipant?.(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    await waitFor(() => {
+      expect(endWhisperButton.hasAttribute('disabled')).toBe(false)
     })
   })
 

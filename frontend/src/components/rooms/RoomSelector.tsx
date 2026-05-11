@@ -405,6 +405,18 @@ export function RoomSelector({
     return next
   }, [allRooms, visibleParticipants, pendingRoomMoves, dmUserId, isGreenroom])
 
+  const clearPendingRoomMove = (userId: UUID) => {
+    setPendingRoomMoves((state) => {
+      if (!state[userId]) {
+        return state
+      }
+
+      const next = { ...state }
+      delete next[userId]
+      return next
+    })
+  }
+
   const moveParticipantToRoom = async (
     userId: UUID,
     toRoomId: UUID,
@@ -474,13 +486,15 @@ export function RoomSelector({
         onSelectRoom(toRoomId)
       }
 
+      // A successful move response means the server accepted the move.
+      // Clear the local pending guard immediately so whisper cannot get stuck
+      // behind a delayed WS/store refresh, then reconcile topology in the background.
+      clearPendingRoomMove(userId)
+      void syncSessionTopologyFromServer().catch(() => undefined)
+
       return true
     } catch (error) {
-      setPendingRoomMoves((state) => {
-        const next = { ...state }
-        delete next[userId]
-        return next
-      })
+      clearPendingRoomMove(userId)
       throw error instanceof Error ? error : new Error('Failed to move participant')
     }
   }
