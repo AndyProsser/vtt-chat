@@ -67,6 +67,7 @@ interface RoomSelectorProps {
   canManageRooms: boolean
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
+  dmAutoTargetOnFirstPlayerJoin: boolean
   rooms: RoomSelectorRoomWithParticipants[]
   selectedRoomId?: UUID | ''
   onSelectRoom: (roomId: UUID) => void
@@ -113,6 +114,7 @@ export function RoomSelector({
   canManageRooms,
   broadcastModeEnabled,
   onToggleBroadcastMode,
+  dmAutoTargetOnFirstPlayerJoin,
   rooms,
   selectedRoomId,
   onSelectRoom,
@@ -395,6 +397,13 @@ export function RoomSelector({
         (participant) => participant.userId === userId
       )
       const movedFromRoomId = movedParticipant?.roomId
+      const targetPlayerCountBefore = (targetRoom?.participants || []).filter(
+        (participant) => participant.userId !== dmUserId
+      ).length
+      const shouldAutoTargetOnFirstPlayerJoin =
+        targetRoom?.type === RoomType.GROUP &&
+        targetPlayerCountBefore === 0 &&
+        dmAutoTargetOnFirstPlayerJoin
 
       if (
         whisperModeLocked &&
@@ -442,6 +451,8 @@ export function RoomSelector({
         if (broadcastModeEnabled) {
           await onToggleBroadcastMode(false)
         }
+        onSelectRoom(toRoomId)
+      } else if (shouldAutoTargetOnFirstPlayerJoin) {
         onSelectRoom(toRoomId)
       }
     } catch (error) {
@@ -1016,6 +1027,9 @@ export function RoomSelector({
           const isEmptyGroup =
             participants.length === 0 && room.type !== RoomType.MAIN && !isGreenRoomName(room.name)
           const isWhisperGroup = isWhisperRoom(room)
+          const isEmptyTargetableGroup =
+            room.type === RoomType.GROUP &&
+            participants.filter((participant) => participant.userId !== dmUserId).length === 0
           const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperGroup
           const isCompactGroup = isEmptyGroup || isWhisperGroup || collapseForDrag
           const memberListClassName = [
@@ -1066,6 +1080,10 @@ export function RoomSelector({
               }}
               onClick={(event) => {
                 if (!canManageRooms || isGreenroom || isWhisperGroup) {
+                  return
+                }
+
+                if (isEmptyTargetableGroup) {
                   return
                 }
 
@@ -1173,6 +1191,7 @@ export function RoomSelector({
                                 aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
                                 disabled={
                                   isGreenroom ||
+                                  isEmptyTargetableGroup ||
                                   (whisperModeLocked && whisperRoom
                                     ? room.id !== whisperRoom.id
                                     : false)
@@ -1190,9 +1209,11 @@ export function RoomSelector({
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              {whisperModeLocked && whisperRoom && room.id !== whisperRoom.id
-                                ? 'DM voice target is locked to whisper while whisper is active'
-                                : `Set DM voice to ${getDisplayRoomName(room)}`}
+                              {isEmptyTargetableGroup
+                                ? 'Cannot target an empty group'
+                                : whisperModeLocked && whisperRoom && room.id !== whisperRoom.id
+                                  ? 'DM voice target is locked to whisper while whisper is active'
+                                  : `Set DM voice to ${getDisplayRoomName(room)}`}
                             </TooltipContent>
                           </Tooltip>
                         ) : null}
@@ -1550,6 +1571,18 @@ export function RoomSelector({
       return
     }
 
+    const targetRoom = allRooms.find((room) => room.id === roomId)
+    if (targetRoom?.type === RoomType.GROUP) {
+      const targetPlayers = (targetRoom.participants || []).filter(
+        (participant) => participant.userId !== dmUserId
+      )
+
+      if (targetPlayers.length === 0) {
+        setMoveError('Cannot set DM voice target to an empty group')
+        return
+      }
+    }
+
     previousDmVoiceRoomIdRef.current = roomId
 
     if (broadcastModeEnabled) {
@@ -1574,6 +1607,31 @@ export function RoomSelector({
 
     void handleEndWhisper()
   }, [canManageRooms, whisperModeLocked, whisperParticipantCount, whisperRoom])
+
+  useEffect(() => {
+    if (!canManageRooms || !selectedRoomId) {
+      return
+    }
+
+    const targetedRoom = allRooms.find((room) => room.id === selectedRoomId)
+    if (!targetedRoom || targetedRoom.type !== RoomType.GROUP) {
+      return
+    }
+
+    const targetedPlayers = (targetedRoom.participants || []).filter(
+      (participant) => participant.userId !== dmUserId
+    )
+    if (targetedPlayers.length > 0) {
+      return
+    }
+
+    const mainRoom = allRooms.find((room) => room.type === RoomType.MAIN)
+    if (!mainRoom || mainRoom.id === targetedRoom.id) {
+      return
+    }
+
+    onSelectRoom(mainRoom.id)
+  }, [allRooms, canManageRooms, dmUserId, onSelectRoom, selectedRoomId])
 
   return (
     <TooltipProvider delayDuration={140}>

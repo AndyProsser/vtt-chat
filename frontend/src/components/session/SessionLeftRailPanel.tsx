@@ -27,6 +27,7 @@ interface SessionLeftRailPanelProps {
   onSelectRoom: (roomId: UUID) => void
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
+  dmAutoTargetOnFirstPlayerJoin: boolean
   dmOverrides: Map<UUID, AudioDMOverride>
   currentConditionName?: string
   roomEnvironmentNames?: Record<UUID, string>
@@ -52,6 +53,7 @@ export function SessionLeftRailPanel({
   onSelectRoom,
   broadcastModeEnabled,
   onToggleBroadcastMode,
+  dmAutoTargetOnFirstPlayerJoin,
   dmOverrides,
   currentConditionName,
   roomEnvironmentNames,
@@ -121,6 +123,7 @@ export function SessionLeftRailPanel({
           canManageRooms={role === 'DM'}
           broadcastModeEnabled={broadcastModeEnabled}
           onToggleBroadcastMode={onToggleBroadcastMode}
+          dmAutoTargetOnFirstPlayerJoin={dmAutoTargetOnFirstPlayerJoin}
           rooms={visibleRooms.map((room) => ({
             id: room.id,
             name: room.name,

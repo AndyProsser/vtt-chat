@@ -100,35 +100,36 @@ model User {
 }
 
 model Campaign {
-  id                          String                 @id @default(uuid()) @db.Uuid
-  name                        String
-  description                 String?
-  posterUrl                   String?                @db.Text
-  inviteCode                  String                 @unique
-  inviteActive                Boolean                @default(true)
-  spectatorInviteCode         String?                @unique
-  spectatorInviteActive       Boolean                @default(false)
-  spectatorPolicy             SpectatorPolicy        @default(NONE)
-  lateJoinPolicy              LateJoinPolicy         @default(OPEN)
-  lateJoinGraceMinutes        Int                    @default(30)
-  spectatorMax                Int?
-  spectatorWaitlistEnabled    Boolean                @default(false)
-  spectatorReconnectGraceSecs Int                    @default(60)
-  postSessionChatEnabled      Boolean                @default(true)
-  postSessionChatDurationMs   Int                    @default(300000)
-  discoverable                Boolean                @default(false)
-  extensionSyncPolicy         ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
-  currentDmId                 String                 @db.Uuid
-  currentDm                   User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
-  members                     CampaignMembership[]
-  characters                  Character[]
-  externalLinks               CampaignExternalLink[]
-  spectatorWaitlist           SpectatorWaitlist[]
-  sessions                    Session[]
-  recordings                  RecordingMetadata[]
-  portabilityArtifacts        ImportExportArtifact[]
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
+  id                            String                 @id @default(uuid()) @db.Uuid
+  name                          String
+  description                   String?
+  posterUrl                     String?                @db.Text
+  inviteCode                    String                 @unique
+  inviteActive                  Boolean                @default(true)
+  spectatorInviteCode           String?                @unique
+  spectatorInviteActive         Boolean                @default(false)
+  spectatorPolicy               SpectatorPolicy        @default(NONE)
+  lateJoinPolicy                LateJoinPolicy         @default(OPEN)
+  lateJoinGraceMinutes          Int                    @default(30)
+  spectatorMax                  Int?
+  spectatorWaitlistEnabled      Boolean                @default(false)
+  spectatorReconnectGraceSecs   Int                    @default(60)
+  dmAutoTargetOnFirstPlayerJoin Boolean                @default(true)
+  postSessionChatEnabled        Boolean                @default(true)
+  postSessionChatDurationMs     Int                    @default(300000)
+  discoverable                  Boolean                @default(false)
+  extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
+  currentDmId                   String                 @db.Uuid
+  currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
+  members                       CampaignMembership[]
+  characters                    Character[]
+  externalLinks                 CampaignExternalLink[]
+  spectatorWaitlist             SpectatorWaitlist[]
+  sessions                      Session[]
+  recordings                    RecordingMetadata[]
+  portabilityArtifacts          ImportExportArtifact[]
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
 
   @@index([currentDmId])
   @@index([discoverable])

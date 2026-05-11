@@ -421,6 +421,7 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       spectatorMax: membership.campaign.spectatorMax,
       spectatorWaitlistEnabled: membership.campaign.spectatorWaitlistEnabled,
       spectatorReconnectGraceSecs: membership.campaign.spectatorReconnectGraceSecs,
+      dmAutoTargetOnFirstPlayerJoin: membership.campaign.dmAutoTargetOnFirstPlayerJoin,
       postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
       postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
       extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
@@ -446,6 +447,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     spectatorMax,
     spectatorWaitlistEnabled,
     spectatorReconnectGraceSecs,
+    dmAutoTargetOnFirstPlayerJoin,
     postSessionChatEnabled,
     postSessionChatDurationMs,
     extensionSyncPolicy,
@@ -621,6 +623,21 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
+  const normalizedDmAutoTargetOnFirstPlayerJoin =
+    typeof dmAutoTargetOnFirstPlayerJoin === 'boolean'
+      ? dmAutoTargetOnFirstPlayerJoin
+      : dmAutoTargetOnFirstPlayerJoin == null
+        ? campaign.dmAutoTargetOnFirstPlayerJoin
+        : null
+
+  if (normalizedDmAutoTargetOnFirstPlayerJoin == null) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'dmAutoTargetOnFirstPlayerJoin must be a boolean',
+      field: 'dmAutoTargetOnFirstPlayerJoin',
+    })
+  }
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
@@ -636,6 +653,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       spectatorMax: spectatorsEnabled ? Math.round(parsedSpectatorMax) : null,
       spectatorWaitlistEnabled: normalizedSpectatorWaitlistEnabled,
       spectatorReconnectGraceSecs: Math.round(parsedReconnectGraceSecs),
+      dmAutoTargetOnFirstPlayerJoin: normalizedDmAutoTargetOnFirstPlayerJoin,
       postSessionChatEnabled: normalizedPostSessionChatEnabled,
       postSessionChatDurationMs: Math.round(parsedPostSessionChatDurationMs),
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
@@ -652,6 +670,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       spectatorMax: true,
       spectatorWaitlistEnabled: true,
       spectatorReconnectGraceSecs: true,
+      dmAutoTargetOnFirstPlayerJoin: true,
       postSessionChatEnabled: true,
       postSessionChatDurationMs: true,
       extensionSyncPolicy: true,
@@ -666,6 +685,92 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
 
   return res.status(200).json({ campaign: updated })
 })
+
+router.get(
+  '/:campaignId/settings/dm-voice-targeting',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const user = (req as any).user
+    const { campaignId } = req.params
+
+    if (!isValidUUID(campaignId)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+    }
+
+    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res
+        .status(403)
+        .json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Only campaign DM can manage campaign settings',
+        })
+    }
+
+    return res.status(200).json({
+      campaignId: campaign.id,
+      dmAutoTargetOnFirstPlayerJoin: campaign.dmAutoTargetOnFirstPlayerJoin,
+    })
+  }
+)
+
+router.patch(
+  '/:campaignId/settings/dm-voice-targeting',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const user = (req as any).user
+    const { campaignId } = req.params
+    const { dmAutoTargetOnFirstPlayerJoin } = req.body || {}
+
+    if (!isValidUUID(campaignId)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Invalid campaignId',
+        field: 'campaignId',
+      })
+    }
+
+    if (typeof dmAutoTargetOnFirstPlayerJoin !== 'boolean') {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'dmAutoTargetOnFirstPlayerJoin must be a boolean',
+        field: 'dmAutoTargetOnFirstPlayerJoin',
+      })
+    }
+
+    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only campaign DM can manage campaign settings',
+      })
+    }
+
+    const updated = await prisma.campaign.update({
+      where: { id: campaignId as UUID },
+      data: { dmAutoTargetOnFirstPlayerJoin },
+      select: {
+        id: true,
+        dmAutoTargetOnFirstPlayerJoin: true,
+      },
+    })
+
+    return res.status(200).json({
+      campaignId: updated.id,
+      dmAutoTargetOnFirstPlayerJoin: updated.dmAutoTargetOnFirstPlayerJoin,
+    })
+  }
+)
 
 router.post('/:campaignId/invites/reissue', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user

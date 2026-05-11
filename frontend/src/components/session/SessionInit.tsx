@@ -219,6 +219,7 @@ type CampaignSettingsPayload = {
   spectatorInviteActive: boolean
   postSessionChatEnabled: boolean
   postSessionChatDurationMs: number
+  dmAutoTargetOnFirstPlayerJoin: boolean
 }
 
 function formatTransitionNotice(params: {
@@ -465,6 +466,10 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const [settingsPostSessionChatEnabled, setSettingsPostSessionChatEnabled] = useState(true)
   const [settingsPostSessionChatDurationMinutes, setSettingsPostSessionChatDurationMinutes] =
     useState(5)
+  const [settingsDmAutoTargetOnFirstPlayerJoin, setSettingsDmAutoTargetOnFirstPlayerJoin] =
+    useState(true)
+  const [isDmVoiceTargetingSettingLoading, setIsDmVoiceTargetingSettingLoading] = useState(false)
+  const [isDmVoiceTargetingSettingSaving, setIsDmVoiceTargetingSettingSaving] = useState(false)
   const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<
     'OPEN' | 'SCREENED' | 'BLOCKED'
   >('OPEN')
@@ -1050,6 +1055,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         setSettingsPostSessionChatDurationMinutes(
           toValidPostSessionDurationMinutes(payload.campaign.postSessionChatDurationMs / 60000)
         )
+        setSettingsDmAutoTargetOnFirstPlayerJoin(
+          payload.campaign.dmAutoTargetOnFirstPlayerJoin ?? true
+        )
         setSettingsExtensionSyncPolicy(
           payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
             ? 'ALLOW'
@@ -1069,6 +1077,92 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     },
     [apiUrl, token]
   )
+
+  const loadDmVoiceTargetingSetting = useCallback(
+    async (campaignId: UUID): Promise<boolean | null> => {
+      setIsDmVoiceTargetingSettingLoading(true)
+
+      try {
+        const response = await fetch(
+          `${apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          return null
+        }
+
+        const payload = (await response.json()) as {
+          campaignId: UUID
+          dmAutoTargetOnFirstPlayerJoin: boolean
+        }
+
+        const enabled = payload.dmAutoTargetOnFirstPlayerJoin !== false
+        setSettingsDmAutoTargetOnFirstPlayerJoin(enabled)
+        return enabled
+      } catch {
+        return null
+      } finally {
+        setIsDmVoiceTargetingSettingLoading(false)
+      }
+    },
+    [apiUrl, token]
+  )
+
+  const saveDmVoiceTargetingSetting = useCallback(
+    async (campaignId: UUID) => {
+      setIsDmVoiceTargetingSettingSaving(true)
+      setError(null)
+
+      try {
+        const response = await fetch(
+          `${apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
+            }),
+          }
+        )
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || 'Failed to save DM targeting setting')
+        }
+
+        const payload = (await response.json()) as {
+          campaignId: UUID
+          dmAutoTargetOnFirstPlayerJoin: boolean
+        }
+
+        const enabled = payload.dmAutoTargetOnFirstPlayerJoin !== false
+        setSettingsDmAutoTargetOnFirstPlayerJoin(enabled)
+        setLobbyNotice('DM voice targeting preference saved.')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to save DM targeting setting'
+        setError(message)
+      } finally {
+        setIsDmVoiceTargetingSettingSaving(false)
+      }
+    },
+    [apiUrl, settingsDmAutoTargetOnFirstPlayerJoin, token]
+  )
+
+  useEffect(() => {
+    if (!selectedCampaignId || !currentSession) {
+      return
+    }
+
+    void loadDmVoiceTargetingSetting(selectedCampaignId)
+  }, [currentSession, loadDmVoiceTargetingSetting, selectedCampaignId])
 
   const fetchCampaignSessions = useCallback(
     async (campaignId: UUID): Promise<SessionRecord[]> => {
@@ -1955,6 +2049,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       postSessionChatEnabled: Boolean(settingsPostSessionChatEnabled),
       postSessionChatDurationMs:
         toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000,
+      dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
       lateJoinPolicy: settingsLateJoinPolicy,
       lateJoinGraceMinutes: settingsLateJoinPolicy === 'OPEN' ? 30 : settingsLateJoinGraceMinutes,
     }
@@ -1991,6 +2086,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setSettingsPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
       setSettingsPostSessionChatDurationMinutes(
         toValidPostSessionDurationMinutes(payload.campaign.postSessionChatDurationMs / 60000)
+      )
+      setSettingsDmAutoTargetOnFirstPlayerJoin(
+        payload.campaign.dmAutoTargetOnFirstPlayerJoin ?? true
       )
       setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
       setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
@@ -3029,6 +3127,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     onSelectRoom={setSelectedRoomIdOverride}
                     broadcastModeEnabled={broadcastModeEnabled}
                     onToggleBroadcastMode={handleToggleBroadcastMode}
+                    dmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
                     dmOverrides={dmOverrides}
                     currentConditionName={currentConditionName}
                     roomEnvironmentNames={roomEnvironmentNames}
@@ -3179,14 +3278,57 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                 }
 
                 if (tab === 'settings') {
-                  return renderCampaignScaffoldPanel(
-                    'Campaign Settings',
-                    'Locked while in a campaign. Use home screen settings to update campaign metadata and policy.',
-                    [
-                      'In-session settings are view-only',
-                      'Campaign metadata and invite policy (home screen only)',
-                      'Profile and personal preferences',
-                    ]
+                  if (effectiveSessionRole !== 'DM') {
+                    return (
+                      <div className="session-settings-panel" aria-label="Campaign settings">
+                        <h3 className="session-inline-form-title">Campaign Settings</h3>
+                        <p className="session-card-subtitle">
+                          Only the DM can update campaign voice targeting preferences.
+                        </p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="session-settings-panel" aria-label="Campaign settings">
+                      <h3 className="session-inline-form-title">Campaign Settings</h3>
+                      <p className="session-card-subtitle">
+                        Choose whether DM voice target should auto-switch to a group when the first
+                        player is dragged into it.
+                      </p>
+
+                      <label className="session-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={settingsDmAutoTargetOnFirstPlayerJoin}
+                          onChange={(event) =>
+                            setSettingsDmAutoTargetOnFirstPlayerJoin(event.target.checked)
+                          }
+                          disabled={
+                            isDmVoiceTargetingSettingLoading || isDmVoiceTargetingSettingSaving
+                          }
+                        />
+                        <span>Auto-target first player join</span>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="session-button"
+                        disabled={
+                          !selectedCampaignId ||
+                          isDmVoiceTargetingSettingLoading ||
+                          isDmVoiceTargetingSettingSaving
+                        }
+                        onClick={() => {
+                          if (!selectedCampaignId) {
+                            return
+                          }
+                          void saveDmVoiceTargetingSetting(selectedCampaignId)
+                        }}
+                      >
+                        {isDmVoiceTargetingSettingSaving ? 'Saving...' : 'Save voice targeting'}
+                      </button>
+                    </div>
                   )
                 }
 
