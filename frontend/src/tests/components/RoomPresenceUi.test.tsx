@@ -1432,6 +1432,161 @@ describe('RoomSelector', () => {
     })
   })
 
+  it('allows moving a whisper participant out while another whisper participant remains', async () => {
+    useStore.getState().reset()
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-3'),
+                username: 'Zara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-private')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Main Table' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    expect(screen.queryByText('End whisper to move the last player out of whisper')).toBeNull()
+  })
+
+  it('blocks moving the last whisper participant out without ending whisper', async () => {
+    useStore.getState().reset()
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-private')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Main Table' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('End whisper to move the last player out of whisper')).toBeTruthy()
+    })
+
+    const moveCalls = fetchMock.mock.calls.filter(
+      ([url, options]) =>
+        String(url).endsWith('/api/v1/rooms/room-main/members/move') &&
+        (options as RequestInit | undefined)?.method === 'POST'
+    )
+    expect(moveCalls.length).toBe(0)
+  })
+
   it('disables end-whisper button while pending whisper moves exist', async () => {
     useStore.getState().reset()
 

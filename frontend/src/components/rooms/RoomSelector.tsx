@@ -405,6 +405,12 @@ export function RoomSelector({
     return next
   }, [allRooms, visibleParticipants, pendingRoomMoves, dmUserId, isGreenroom])
 
+  const whisperDisplayedPlayerCount = whisperRoom
+    ? (displayedParticipantsByRoom[whisperRoom.id] || []).filter(
+        (participant) => participant.userId !== dmUserId
+      ).length
+    : 0
+
   const clearPendingRoomMove = (userId: UUID) => {
     setPendingRoomMoves((state) => {
       if (!state[userId]) {
@@ -435,14 +441,14 @@ export function RoomSelector({
         targetRoom?.type === RoomType.GROUP &&
         targetPlayerCountBefore === 0 &&
         dmAutoTargetOnFirstPlayerJoin
+      const movingLastWhisperPlayer =
+        Boolean(whisperRoom) &&
+        movedFromRoomId === whisperRoom?.id &&
+        toRoomId !== whisperRoom?.id &&
+        whisperDisplayedPlayerCount <= 1
 
-      if (
-        whisperModeLocked &&
-        whisperRoom &&
-        movedFromRoomId === whisperRoom.id &&
-        toRoomId !== whisperRoom.id
-      ) {
-        throw new Error('Whisper participants can only leave via End Whisper')
+      if (movingLastWhisperPlayer) {
+        throw new Error('End whisper to move the last player out of whisper')
       }
 
       setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
