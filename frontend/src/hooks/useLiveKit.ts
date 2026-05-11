@@ -104,8 +104,10 @@ export function useLiveKit(
   const localVideoRef = useRef<LocalVideoTrack | null>(null)
   const isMountedRef = useRef(true)
   const isConnectingRef = useRef(false)
+  const connectingTargetRef = useRef<string | null>(null)
   const connectionAttemptRef = useRef(0)
   const connectionKeyRef = useRef<string | null>(null)
+  const hasLocalPublicationRef = useRef(false)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
@@ -113,9 +115,18 @@ export function useLiveKit(
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
   const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
-  const sharedLiveKitState = useStore((state) => state.livekitConnections[connectionKey])
-  const localInputTrack = useStore((state) => state.livekitLocalInputTracks[connectionKey] ?? null)
+  const sharedLiveKitState = useStore((state) => state.livekitConnections?.[connectionKey] ?? null)
+  const localInputTrack = useStore(
+    (state) => state.livekitLocalInputTracks?.[connectionKey] ?? null
+  )
   const device = useStore((state) => state.device)
+  const selectedMicDeviceId = device?.selectedMicDeviceId ?? 'default'
+  const noiseFilterLevel = device?.noiseFilterLevel ?? 'medium'
+  const autoGainEnabled = device?.autoGainEnabled ?? true
+
+  useEffect(() => {
+    hasLocalPublicationRef.current = Boolean(sharedLiveKitState?.hasLocalPublication)
+  }, [sharedLiveKitState?.hasLocalPublication])
 
   const getHasLocalPublication = useCallback((targetRoom?: Room | null): boolean => {
     const roomToCheck = targetRoom ?? roomRef.current
@@ -140,7 +151,10 @@ export function useLiveKit(
         return
       }
 
-      const previous = useStore.getState().livekitConnections[connectionKey]
+      const previousHasLocalPublication = hasLocalPublicationRef.current
+      const nextHasLocalPublication =
+        params.hasLocalPublication ?? previousHasLocalPublication ?? false
+      hasLocalPublicationRef.current = nextHasLocalPublication
 
       upsertLiveKitConnection(connectionKey, {
         sessionId,
@@ -149,7 +163,7 @@ export function useLiveKit(
         connectionState: params.connectionState,
         isConnected: params.isConnected,
         isConnecting: params.isConnecting,
-        hasLocalPublication: params.hasLocalPublication ?? previous?.hasLocalPublication ?? false,
+        hasLocalPublication: nextHasLocalPublication,
         error: params.error,
       })
     },
@@ -198,7 +212,9 @@ export function useLiveKit(
         void activeRoom.disconnect()
       }
 
-      setLiveKitLocalInputTrack(connectionKey, null)
+      if (typeof setLiveKitLocalInputTrack === 'function') {
+        setLiveKitLocalInputTrack(connectionKey, null)
+      }
 
       isMountedRef.current = false
     }
@@ -218,20 +234,20 @@ export function useLiveKit(
   }, [])
 
   const getLocalAudioConstraints = useCallback((): MediaTrackConstraints => {
-    const noiseSuppression = device.noiseFilterLevel !== 'low'
-    const echoCancellation = device.noiseFilterLevel !== 'low'
+    const noiseSuppression = noiseFilterLevel !== 'low'
+    const echoCancellation = noiseFilterLevel !== 'low'
 
     return {
       deviceId:
-        device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
-          ? { exact: device.selectedMicDeviceId }
+        selectedMicDeviceId && selectedMicDeviceId !== 'default'
+          ? { exact: selectedMicDeviceId }
           : undefined,
       channelCount: 1,
       echoCancellation,
       noiseSuppression,
-      autoGainControl: device.autoGainEnabled,
+      autoGainControl: autoGainEnabled,
     }
-  }, [device.autoGainEnabled, device.noiseFilterLevel, device.selectedMicDeviceId])
+  }, [autoGainEnabled, noiseFilterLevel, selectedMicDeviceId])
 
   /**
    * Fetch a room-scoped LiveKit token from the backend.
@@ -294,6 +310,7 @@ export function useLiveKit(
     const attemptId = connectionAttemptRef.current + 1
     connectionAttemptRef.current = attemptId
     isConnectingRef.current = true
+    connectingTargetRef.current = targetConnectionKey
 
     if (isMountedRef.current) {
       setConnectionState(ConnectionState.Connecting)
@@ -316,7 +333,17 @@ export function useLiveKit(
         throw new Error('Failed to fetch LiveKit token')
       }
 
+      if (connectionAttemptRef.current !== attemptId) {
+        return
+      }
+
       nextRoom = new Room()
+
+      if (connectionAttemptRef.current !== attemptId) {
+        await nextRoom.disconnect()
+        return
+      }
+
       roomRef.current = nextRoom
       setRoomState(nextRoom)
 
@@ -332,6 +359,7 @@ export function useLiveKit(
           setIsConnecting(false)
         }
         isConnectingRef.current = false
+        connectingTargetRef.current = null
       })
 
       const syncConnectionFlags = () => {
@@ -348,6 +376,9 @@ export function useLiveKit(
           roomState === ConnectionState.SignalReconnecting
 
         isConnectingRef.current = nextIsConnecting
+        if (!nextIsConnecting) {
+          connectingTargetRef.current = null
+        }
         if (isMountedRef.current) {
           setConnectionState(roomState)
           setIsConnected(nextIsConnected)
@@ -374,6 +405,7 @@ export function useLiveKit(
 
         logger.info('useLiveKit', `Disconnected from room ${roomId}`)
         isConnectingRef.current = false
+        connectingTargetRef.current = null
         if (isMountedRef.current) {
           setConnectionState(ConnectionState.Disconnected)
           setIsConnected(false)
@@ -529,6 +561,7 @@ export function useLiveKit(
         error: null,
       })
       isConnectingRef.current = false
+      connectingTargetRef.current = null
       connectionKeyRef.current = targetConnectionKey
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
@@ -553,6 +586,7 @@ export function useLiveKit(
         logger.error('useLiveKit', `Connection failed: ${errorMsg}`)
       }
       isConnectingRef.current = false
+      connectingTargetRef.current = null
       if (connectionKeyRef.current === targetConnectionKey) {
         connectionKeyRef.current = null
       }
@@ -617,7 +651,9 @@ export function useLiveKit(
       })
 
       setLocalAudioTrackState(audioTrack)
-      setLiveKitLocalInputTrack(connectionKey, inputTrack)
+      if (typeof setLiveKitLocalInputTrack === 'function') {
+        setLiveKitLocalInputTrack(connectionKey, inputTrack)
+      }
       publishConnectionSnapshot({
         connectionState: activeRoom.state,
         isConnected: activeRoom.state === ConnectionState.Connected,
@@ -657,7 +693,9 @@ export function useLiveKit(
       await activeRoom.localParticipant.unpublishTrack(activeAudioTrack)
       activeAudioTrack.stop()
       setLocalAudioTrackState(null)
-      setLiveKitLocalInputTrack(connectionKey, null)
+      if (typeof setLiveKitLocalInputTrack === 'function') {
+        setLiveKitLocalInputTrack(connectionKey, null)
+      }
       publishConnectionSnapshot({
         connectionState: activeRoom.state,
         isConnected: activeRoom.state === ConnectionState.Connected,
@@ -682,8 +720,17 @@ export function useLiveKit(
    * Disconnect from the current room and clear local state.
    */
   const disconnect = useCallback(async () => {
+    const hasActiveRoom = Boolean(roomRef.current)
+    const hasInFlightConnection = isConnectingRef.current
+    const hasActiveAudioTrack = Boolean(localAudioRef.current)
+
+    if (!hasActiveRoom && !hasInFlightConnection && !hasActiveAudioTrack) {
+      return
+    }
+
     connectionAttemptRef.current += 1
     isConnectingRef.current = false
+    connectingTargetRef.current = null
 
     const activeRoom = roomRef.current
     const activeAudioTrack = localAudioRef.current
@@ -698,7 +745,9 @@ export function useLiveKit(
 
     setRoomState(null)
     setLocalAudioTrackState(null)
-    setLiveKitLocalInputTrack(connectionKey, null)
+    if (typeof setLiveKitLocalInputTrack === 'function') {
+      setLiveKitLocalInputTrack(connectionKey, null)
+    }
     setLocalVideoTrackState(null)
     trackSubscriptionsRef.current = []
     clearRemoteAudioElements()
@@ -734,7 +783,9 @@ export function useLiveKit(
    */
   useEffect(() => {
     if (!sessionId || !roomId) {
-      void disconnect()
+      if (roomRef.current || isConnectingRef.current || localAudioRef.current) {
+        void disconnect()
+      }
       return
     }
 
@@ -748,7 +799,12 @@ export function useLiveKit(
       }
 
       // If room target changed, disconnect stale or in-flight room before connecting.
-      if (roomRef.current && connectionKeyRef.current !== targetConnectionKey) {
+      const hasStaleConnectedRoom =
+        Boolean(roomRef.current) && connectionKeyRef.current !== targetConnectionKey
+      const hasStaleInFlightRoom =
+        isConnectingRef.current && connectingTargetRef.current !== targetConnectionKey
+
+      if (hasStaleConnectedRoom || hasStaleInFlightRoom) {
         await disconnect()
       }
 
@@ -770,7 +826,9 @@ export function useLiveKit(
     }
 
     return () => {
-      clearLiveKitConnection(connectionKey)
+      if (typeof clearLiveKitConnection === 'function') {
+        clearLiveKitConnection(connectionKey)
+      }
     }
   }, [clearLiveKitConnection, connectionKey, roomId, sessionId])
 

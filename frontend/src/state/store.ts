@@ -6,6 +6,7 @@
 
 import { create } from 'zustand'
 import { logger } from '@/utils/logger'
+import { bumpLoopCounter, isLoopDiagnosticsEnabled } from '@/utils/loopDiagnostics'
 import type { SessionSlice } from './sessionSlice'
 import type { ChatSlice } from './chatSlice'
 import type { NotesSlice } from './notesSlice'
@@ -25,6 +26,12 @@ import { createPresenceSlice } from './presenceSlice'
 import { createMetadataSlice } from './metadataSlice'
 import { createLiveKitSlice } from './livekitSlice'
 import { createUISlice } from './uiSlice'
+
+declare global {
+  interface Window {
+    __VTT_DEBUG_STORE__?: boolean
+  }
+}
 
 /**
  * Combined store type.
@@ -56,24 +63,41 @@ export const useStore = create<Store>()((...args) => ({
 }))
 
 if (typeof window !== 'undefined') {
-  let prevState = useStore.getState()
+  const runtimeDebugEnabled =
+    typeof window !== 'undefined' &&
+    (window as Window & { __VTT_DEBUG_STORE__?: boolean }).__VTT_DEBUG_STORE__ === true
+  const envDebugEnabled = import.meta.env.VITE_DEBUG_STORE_UPDATES === '1'
+  const loopDiagEnabled = isLoopDiagnosticsEnabled()
 
-  useStore.subscribe((nextState) => {
-    const keys = new Set([...Object.keys(prevState), ...Object.keys(nextState)])
-    const changedKeys: string[] = []
+  if (runtimeDebugEnabled || envDebugEnabled || loopDiagEnabled) {
+    let prevState = useStore.getState()
 
-    for (const key of keys) {
-      if (!Object.is((prevState as any)[key], (nextState as any)[key])) {
-        changedKeys.push(key)
+    useStore.subscribe((nextState) => {
+      const keys = new Set([...Object.keys(prevState), ...Object.keys(nextState)])
+      const changedKeys: string[] = []
+
+      for (const key of keys) {
+        if (!Object.is((prevState as any)[key], (nextState as any)[key])) {
+          changedKeys.push(key)
+        }
       }
-    }
 
-    if (changedKeys.length > 0) {
-      logger.debug('store', 'State updated', {
-        changedKeys,
-      })
-    }
+      if (loopDiagEnabled && changedKeys.length > 0) {
+        bumpLoopCounter('store.update.total')
+        bumpLoopCounter(`store.update.count.${String(changedKeys.length)}`)
 
-    prevState = nextState
-  })
+        for (const key of changedKeys) {
+          bumpLoopCounter(`store.update.key.${key}`)
+        }
+      }
+
+      if ((runtimeDebugEnabled || envDebugEnabled) && changedKeys.length > 0) {
+        logger.debug('store', 'State updated', {
+          changedKeys,
+        })
+      }
+
+      prevState = nextState
+    })
+  }
 }

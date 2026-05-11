@@ -69,7 +69,7 @@ function getEnvLevelDefault(): LogLevel | null {
 }
 
 function getSafeFallbackLevel(): LogLevel {
-  return import.meta.env.DEV ? 'DEBUG' : 'INFO'
+  return 'INFO'
 }
 
 class Logger {

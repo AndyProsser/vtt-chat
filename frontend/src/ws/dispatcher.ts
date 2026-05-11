@@ -6,6 +6,7 @@
 
 import type { EventEnvelope } from '@shared'
 import { logger } from '../utils/logger'
+import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { EventHandler } from '@/types/ws'
 
 export type { EventHandler } from '@/types/ws'
@@ -50,9 +51,12 @@ export class EventDispatcher {
    * Validates the event envelope first.
    */
   dispatch(event: EventEnvelope): void {
+    bumpLoopCounter(`ws.dispatch.event.${event.type}`)
+
     // Validate event envelope
     const validation = this.validateEvent(event)
     if (!validation.valid) {
+      bumpLoopCounter('ws.dispatch.validation-failed')
       logger.warn('ws.dispatcher', 'Event validation failed', validation.errors)
       return
     }
@@ -89,8 +93,10 @@ export class EventDispatcher {
     // Invoke handlers
     for (const handler of handlersToInvoke) {
       try {
+        bumpLoopCounter(`ws.dispatch.handler.${event.type}`)
         handler(event)
       } catch (error) {
+        bumpLoopCounter(`ws.dispatch.handler-error.${event.type}`)
         logger.error('ws.dispatcher', `Handler error for event ${event.type}`, error)
       }
     }

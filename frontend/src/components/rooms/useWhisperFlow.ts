@@ -77,6 +77,10 @@ export function useWhisperFlow({
     previousDmVoiceRoomIdRef.current = roomId
   }, [])
 
+  const getRememberedDmVoiceRoom = useCallback((): UUID | '' => {
+    return previousDmVoiceRoomIdRef.current
+  }, [])
+
   const noteWhisperEntry = useCallback(
     (userId: UUID, fromRoomId: UUID) => {
       if (!whisperContextRef.current) {
@@ -259,5 +263,6 @@ export function useWhisperFlow({
     noteWhisperEntry,
     handleEndWhisper,
     rememberDmVoiceRoom,
+    getRememberedDmVoiceRoom,
   }
 }

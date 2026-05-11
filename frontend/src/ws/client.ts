@@ -7,6 +7,7 @@
 import type { EventEnvelope, UUID } from '@shared'
 import { isValidUUID } from '@shared'
 import { logger } from '../utils/logger'
+import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { ConnectionState, ConnectionOptions } from '@/types/ws'
 
 export type { ConnectionState, ConnectionOptions } from '@/types/ws'
@@ -200,7 +201,10 @@ export class WebSocketClient {
    * Events are queued if disconnected; they will be sent on reconnect.
    */
   send(event: EventEnvelope): void {
+    bumpLoopCounter(`ws.outgoing.attempt.${event.type}`)
+
     if (!isValidUUID(event.id)) {
+      bumpLoopCounter('ws.outgoing.invalid-id')
       const error = new Error(`Invalid event ID: ${event.id}`)
       this.callbacks.onError?.(error)
       return
@@ -208,12 +212,14 @@ export class WebSocketClient {
 
     if (this.state === 'connected' && this.socket) {
       try {
+        bumpLoopCounter(`ws.outgoing.sent.${event.type}`)
         logger.debug('ws.client', `Sending event ${event.type}`, {
           eventId: event.id,
           sessionId: event.sessionId,
         })
         this.socket.send(JSON.stringify(event))
       } catch (error) {
+        bumpLoopCounter(`ws.outgoing.send-error.${event.type}`)
         const err = error instanceof Error ? error : new Error(String(error))
         logger.error('ws.client', 'Failed to send event', err)
         this.callbacks.onError?.(err)
@@ -222,6 +228,7 @@ export class WebSocketClient {
       }
     } else {
       // Queue if not connected
+      bumpLoopCounter(`ws.outgoing.queued.${event.type}`)
       this.eventQueue.push(event)
       logger.debug('ws.client', `Queued event ${event.type}`, {
         eventId: event.id,
@@ -256,20 +263,26 @@ export class WebSocketClient {
   private setState(newState: ConnectionState): void {
     if (this.state !== newState) {
       this.state = newState
+      bumpLoopCounter(`ws.state.${newState}`)
       this.callbacks.onStateChange?.(newState)
     }
   }
 
   private handleMessage(data: string): void {
     try {
+      bumpLoopCounter('ws.incoming.raw')
       const incoming = JSON.parse(data) as IncomingWsMessage
 
       if ((incoming as any).type === 'WS:EVENT' && (incoming as any).event) {
+        const wsEvent = (incoming as any).event as EventEnvelope
+        bumpLoopCounter('ws.incoming.type.WS:EVENT')
+        bumpLoopCounter(`ws.incoming.event.${wsEvent.type}`)
         this.callbacks.onEvent?.((incoming as any).event)
         return
       }
 
       if ((incoming as any).type === 'WS:CONNECTED') {
+        bumpLoopCounter('ws.incoming.type.WS:CONNECTED')
         const msg = incoming as {
           type: 'WS:CONNECTED'
           connectionId: string
@@ -307,19 +320,24 @@ export class WebSocketClient {
       }
 
       if ((incoming as any).type === 'WS:ACK') {
+        bumpLoopCounter('ws.incoming.type.WS:ACK')
         logger.debug('ws.client', 'Received server ACK', incoming)
         return
       }
 
       if ((incoming as any).type === 'WS:ERROR') {
+        bumpLoopCounter('ws.incoming.type.WS:ERROR')
         const msg = incoming as { type: 'WS:ERROR'; message: string }
         this.callbacks.onError?.(new Error(msg.message || 'WebSocket server error'))
         return
       }
 
       // Backward compatibility: raw event envelope payload
+      bumpLoopCounter('ws.incoming.type.raw-envelope')
+      bumpLoopCounter(`ws.incoming.event.${(incoming as EventEnvelope).type}`)
       this.callbacks.onEvent?.(incoming as EventEnvelope)
     } catch (error) {
+      bumpLoopCounter('ws.incoming.parse-error')
       const err = error instanceof Error ? error : new Error(String(error))
       logger.error('ws.client', 'Failed to parse message', err)
       this.callbacks.onError?.(err)

@@ -584,6 +584,12 @@ export function RoomSelector({
     try {
       if (broadcastModeEnabled) {
         await onToggleBroadcastMode(false)
+
+        const previousRoomId = whisperFlow.getRememberedDmVoiceRoom()
+        if (previousRoomId && allRooms.some((room) => room.id === previousRoomId)) {
+          onSelectRoom(previousRoomId)
+        }
+
         return
       }
 
@@ -595,7 +601,14 @@ export function RoomSelector({
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to toggle broadcast mode')
     }
-  }, [broadcastModeEnabled, onToggleBroadcastMode, selectedRoomId, whisperFlow])
+  }, [
+    allRooms,
+    broadcastModeEnabled,
+    onSelectRoom,
+    onToggleBroadcastMode,
+    selectedRoomId,
+    whisperFlow,
+  ])
 
   const handleSetDmVoiceRoom = useCallback(
     async (roomId: UUID) => {
@@ -740,12 +753,14 @@ export function RoomSelector({
             createdAt: Date.now(),
             createdBy: dmUserId,
           })
+
+          onSelectRoom(payload.room.id)
         }
       } finally {
         setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
       }
     },
-    [apiUrl, createRoom, dmUserId, isGreenroom, sessionId, token]
+    [apiUrl, createRoom, dmUserId, isGreenroom, onSelectRoom, sessionId, token]
   )
 
   const clearPendingRoomDelete = useCallback(
