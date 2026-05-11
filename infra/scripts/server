@@ -10,6 +10,8 @@ REPO_ARCHIVE_URL="${REPO_ARCHIVE_URL:-https://codeload.github.com/${REPO_NAME}/t
 # Mode: DEV or PROD (default: PROD)
 MODE="${MODE:-PROD}"
 DEV_MODE=false
+FORCE_OVERWRITE=false
+PROMPT_OVERWRITE=false
 
 function show_help() {
   cat <<HELP
@@ -17,13 +19,17 @@ Usage: $0 [--dev] <command>
 
 Options:
   --dev     Use DEV environment (default: PROD)
+  --force   Overwrite existing generated config files without prompting
+  --prompt-overwrite
+            Prompt before overwriting existing generated config files
 
 Commands:
-  build     Generate config files and build the Docker stack
+  build     Validate mode files, prepare env files, and build the Docker stack
   start     Start the Docker stack
   restart   Restart the Docker stack and rebuild if needed
   stop      Stop the Docker stack
   update    Refresh the install from the repository and rebuild
+  doctor    Check config integrity for the selected mode
   status    Show Docker Compose service status
   help      Show this help message
 
@@ -36,6 +42,70 @@ Before running build, edit $CONFIG_FILE with your desired ports and credentials.
 
 ⚠️  WARNING: Do not run PROD and DEV instances simultaneously. They use common ports and may conflict.
 HELP
+}
+
+function is_interactive_shell() {
+  [[ -t 0 && -t 1 ]]
+}
+
+function backup_file() {
+  local file_path="$1"
+  local timestamp
+  timestamp=$(date +%Y%m%d%H%M%S)
+  cp "$file_path" "${file_path}.bak.${timestamp}"
+}
+
+function should_overwrite_file() {
+  local file_path="$1"
+  local label="$2"
+
+  if [[ ! -f "$file_path" ]]; then
+    return 0
+  fi
+
+  if [[ "$FORCE_OVERWRITE" == "true" ]]; then
+    return 0
+  fi
+
+  if [[ "$PROMPT_OVERWRITE" == "true" ]]; then
+    if is_interactive_shell && prompt_user "$label exists at $file_path. Overwrite it?"; then
+      return 0
+    fi
+  fi
+
+  echo "Skipping existing $label at $file_path (use --force or --prompt-overwrite to replace it)."
+  return 1
+}
+
+function write_file_guarded() {
+  local file_path="$1"
+  local label="$2"
+  local content="$3"
+
+  mkdir -p "$(dirname "$file_path")"
+
+  if should_overwrite_file "$file_path" "$label"; then
+    if [[ -f "$file_path" ]]; then
+      backup_file "$file_path"
+    fi
+    printf '%s\n' "$content" >"$file_path"
+  fi
+}
+
+function ensure_env_key_value() {
+  local file_path="$1"
+  local key="$2"
+  local value="$3"
+
+  mkdir -p "$(dirname "$file_path")"
+  touch "$file_path"
+
+  if grep -qE "^${key}=" "$file_path"; then
+    return
+  fi
+
+  printf '%s=%s\n' "$key" "$value" >>"$file_path"
+  echo "Added missing $key to $file_path"
 }
 
 function get_compose_file() {
@@ -201,17 +271,18 @@ function generate_secrets() {
 }
 
 function generate_root_env_file() {
-  cat <<EOF >"$INSTALL_DIR/.env"
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-REDIS_PASSWORD=${REDIS_PASSWORD}
-EOF
+  local env_file="$INSTALL_DIR/.env"
+  ensure_env_key_value "$env_file" "POSTGRES_PASSWORD" "$POSTGRES_PASSWORD"
+  ensure_env_key_value "$env_file" "REDIS_PASSWORD" "$REDIS_PASSWORD"
+  ensure_env_key_value "$env_file" "LIVEKIT_API_KEY" "$LIVEKIT_API_KEY"
+  ensure_env_key_value "$env_file" "LIVEKIT_API_SECRET" "$LIVEKIT_API_SECRET"
 }
 
 function generate_env_files() {
-  mkdir -p "$INSTALL_DIR/backend"
-  mkdir -p "$INSTALL_DIR/frontend"
+  local backend_env
+  local frontend_env
 
-  cat <<EOF >"$INSTALL_DIR/backend/.env"
+  backend_env=$(cat <<EOF
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 JWT_SECRET=${JWT_SECRET}
@@ -219,158 +290,230 @@ LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
 LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
 FRONTEND_URL=https://127.0.0.1:${HTTPS_PORT}
 EOF
+)
 
-  cat <<EOF >"$INSTALL_DIR/frontend/.env"
+  frontend_env=$(cat <<EOF
 VITE_API_URL=/api
 VITE_LIVEKIT_URL=/livekit
 VITE_ENV=production
 EOF
+)
+
+  write_file_guarded "$INSTALL_DIR/backend/.env" "backend env file" "$backend_env"
+  write_file_guarded "$INSTALL_DIR/frontend/.env" "frontend env file" "$frontend_env"
+}
+
+function ensure_mode_standard_files() {
+  local compose_file
+  local caddy_file
+  local livekit_file
+
+  if [[ "$DEV_MODE" == "true" ]]; then
+    compose_file="$INSTALL_DIR/docker-compose.dev.yml"
+    caddy_file="$INSTALL_DIR/infra/caddy/Caddyfile.dev"
+    livekit_file="$INSTALL_DIR/infra/livekit/livekit.dev.yaml"
+  else
+    compose_file="$INSTALL_DIR/docker-compose.yml"
+    caddy_file="$INSTALL_DIR/infra/caddy/Caddyfile"
+    livekit_file="$INSTALL_DIR/infra/livekit/livekit.yaml"
+  fi
+
+  if [[ ! -f "$compose_file" ]]; then
+    echo "Error: missing required compose file for selected mode: $compose_file"
+    exit 1
+  fi
+  if [[ ! -f "$caddy_file" ]]; then
+    echo "Error: missing required Caddy config for selected mode: $caddy_file"
+    exit 1
+  fi
+  if [[ ! -f "$livekit_file" ]]; then
+    echo "Error: missing required LiveKit config for selected mode: $livekit_file"
+    exit 1
+  fi
+}
+
+function get_mode_file_relpaths() {
+  if [[ "$DEV_MODE" == "true" ]]; then
+    echo "docker-compose.dev.yml"
+    echo "infra/caddy/Caddyfile.dev"
+    echo "infra/livekit/livekit.dev.yaml"
+  else
+    echo "docker-compose.yml"
+    echo "infra/caddy/Caddyfile"
+    echo "infra/livekit/livekit.yaml"
+  fi
+}
+
+function resolve_install_path() {
+  local rel_path="$1"
+  echo "$INSTALL_DIR/$rel_path"
+}
+
+function write_repo_baseline_file() {
+  local rel_path="$1"
+  local label="$2"
+  local target_path
+  local content
+
+  target_path=$(resolve_install_path "$rel_path")
+
+  if ! git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Skipping baseline restore for $label ($target_path): install is not a git checkout."
+    return
+  fi
+
+  if ! git -C "$INSTALL_DIR" ls-files --error-unmatch "$rel_path" >/dev/null 2>&1; then
+    echo "Skipping baseline restore for $label ($target_path): file is not tracked in repo baseline."
+    return
+  fi
+
+  content=$(git -C "$INSTALL_DIR" show "HEAD:$rel_path")
+  write_file_guarded "$target_path" "$label" "$content"
+}
+
+function print_doctor_result() {
+  local ok="$1"
+  local message="$2"
+  local GREEN='\033[0;32m'
+  local RED='\033[0;31m'
+  local NC='\033[0m'
+  if [[ "$ok" == "true" ]]; then
+    echo -e "  [${GREEN}OK${NC}] $message"
+  else
+    echo -e "  [${RED}FAIL${NC}] $message"
+  fi
+}
+
+function env_file_has_key() {
+  local file_path="$1"
+  local key="$2"
+  [[ -f "$file_path" ]] && grep -qE "^${key}=" "$file_path"
+}
+
+function doctor_check_mode_files() {
+  local issues=0
+  local rel_path
+
+  echo "[1/3] Mode files"
+  while IFS= read -r rel_path; do
+    local full_path
+    full_path=$(resolve_install_path "$rel_path")
+    if [[ -f "$full_path" ]]; then
+      print_doctor_result "true" "Found $rel_path"
+    else
+      print_doctor_result "false" "Missing $rel_path"
+      issues=1
+    fi
+  done < <(get_mode_file_relpaths)
+
+  return $issues
+}
+
+function doctor_check_env_keys_for_file() {
+  local rel_path="$1"
+  shift
+  local file_path
+  local issues=0
+  local key
+
+  file_path=$(resolve_install_path "$rel_path")
+
+  if [[ ! -f "$file_path" ]]; then
+    print_doctor_result "false" "Missing $rel_path"
+    return 1
+  fi
+
+  print_doctor_result "true" "Found $rel_path"
+  for key in "$@"; do
+    if env_file_has_key "$file_path" "$key"; then
+      print_doctor_result "true" "$rel_path has $key"
+    else
+      print_doctor_result "false" "$rel_path missing $key"
+      issues=1
+    fi
+  done
+
+  return $issues
+}
+
+function doctor_check_env_keys() {
+  local issues=0
+
+  echo "[2/3] Required .env keys"
+  doctor_check_env_keys_for_file ".env" \
+    "POSTGRES_PASSWORD" \
+    "REDIS_PASSWORD" \
+    "LIVEKIT_API_KEY" \
+    "LIVEKIT_API_SECRET" || issues=1
+
+  doctor_check_env_keys_for_file "backend/.env" \
+    "POSTGRES_PASSWORD" \
+    "REDIS_PASSWORD" \
+    "JWT_SECRET" \
+    "LIVEKIT_API_KEY" \
+    "LIVEKIT_API_SECRET" \
+    "FRONTEND_URL" || issues=1
+
+  doctor_check_env_keys_for_file "frontend/.env" \
+    "VITE_API_URL" \
+    "VITE_LIVEKIT_URL" \
+    "VITE_ENV" || issues=1
+
+  return $issues
+}
+
+function doctor_check_repo_baseline_diff() {
+  local issues=0
+  local rel_path
+
+  echo "[3/3] Mode file drift vs repo baseline"
+
+  if ! git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    print_doctor_result "false" "Cannot compare with repo baseline (not a git checkout in $INSTALL_DIR)"
+    return 1
+  fi
+
+  while IFS= read -r rel_path; do
+    local full_path
+    full_path=$(resolve_install_path "$rel_path")
+
+    if [[ ! -f "$full_path" ]]; then
+      print_doctor_result "false" "$rel_path missing locally"
+      issues=1
+      continue
+    fi
+
+    if ! git -C "$INSTALL_DIR" ls-files --error-unmatch "$rel_path" >/dev/null 2>&1; then
+      print_doctor_result "false" "$rel_path is not tracked in repo baseline"
+      issues=1
+      continue
+    fi
+
+    if git -C "$INSTALL_DIR" diff --quiet -- "$rel_path" && git -C "$INSTALL_DIR" diff --cached --quiet -- "$rel_path"; then
+      print_doctor_result "true" "$rel_path matches repo baseline"
+    else
+      print_doctor_result "false" "$rel_path differs from repo baseline"
+      issues=1
+    fi
+  done < <(get_mode_file_relpaths)
+
+  return $issues
 }
 
 function generate_caddyfile() {
-  mkdir -p "$INSTALL_DIR/caddy/certs"
-  mkdir -p "$INSTALL_DIR/infra/caddy"
-
-  if [[ -z "$DOMAIN" ]]; then
-    if [[ "$USE_SELF_SIGNED" == "true" ]]; then
-      echo "Generating self-signed TLS certificates..."
-      openssl req -x509 -nodes -days 365 \
-        -newkey rsa:2048 \
-        -keyout "$INSTALL_DIR/caddy/certs/selfsigned.key" \
-        -out "$INSTALL_DIR/caddy/certs/selfsigned.crt" \
-        -subj "/CN=vtt-chat"
-    fi
-
-    cat <<EOF >"$INSTALL_DIR/infra/caddy/Caddyfile"
-https://:${HTTPS_PORT} {
-  tls /certs/selfsigned.crt /certs/selfsigned.key
-  encode gzip
-
-  handle_path /api* {
-    reverse_proxy backend:${BACKEND_PORT}
-  }
-
-  handle_path /livekit* {
-    reverse_proxy livekit:${LIVEKIT_PORT}
-  }
-
-  handle {
-    reverse_proxy frontend:${FRONTEND_PORT}
-    try_files {path} /index.html
-  }
-}
-EOF
+  if [[ "$DEV_MODE" == "true" ]]; then
+    write_repo_baseline_file "infra/caddy/Caddyfile.dev" "dev caddy config"
   else
-    cat <<EOF >"$INSTALL_DIR/infra/caddy/Caddyfile"
-https://${DOMAIN}:${HTTPS_PORT} {
-  tls {
-    dns ${DNS_PROVIDER}
-  }
-  encode gzip
-
-  handle_path /api* {
-    reverse_proxy backend:${BACKEND_PORT}
-  }
-
-  handle_path /livekit* {
-    reverse_proxy livekit:${LIVEKIT_PORT}
-  }
-
-  handle {
-    reverse_proxy frontend:${FRONTEND_PORT}
-    try_files {path} /index.html
-  }
-}
-EOF
+    write_repo_baseline_file "infra/caddy/Caddyfile" "prod caddy config"
   fi
 }
 
 function generate_docker_compose() {
-  cat <<EOF >"$INSTALL_DIR/docker-compose.yml"
-version: "3.9"
-
-services:
-  backend:
-    build: ./backend
-    container_name: vttchat-backend
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    environment:
-      DATABASE_URL: "postgres://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/vttchat"
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
-      LIVEKIT_URL: "http://livekit:${LIVEKIT_PORT}"
-    depends_on:
-      - postgres
-      - redis
-      - livekit
-    networks:
-      - vttnet
-
-  frontend:
-    build: ./frontend
-    container_name: vttchat-frontend
-    restart: unless-stopped
-    networks:
-      - vttnet
-
-  postgres:
-    image: postgres:17-alpine
-    container_name: vttchat-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: vttchat
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - vttnet
-
-  redis:
-    image: redis:8-alpine
-    container_name: vttchat-redis
-    restart: unless-stopped
-    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
-    networks:
-      - vttnet
-
-  livekit:
-    image: livekit/livekit-server:latest
-    container_name: vttchat-livekit
-    restart: unless-stopped
-    command: >
-      --dev --bind 0.0.0.0 --port ${LIVEKIT_PORT} --node-ip livekit --api-key ${LIVEKIT_API_KEY} --api-secret ${LIVEKIT_API_SECRET}
-    ports:
-      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
-      - "${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}:${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
-    networks:
-      - vttnet
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: vttchat-caddy
-    restart: unless-stopped
-    ports:
-      - "${HTTPS_PORT}:${HTTPS_PORT}"
-    volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/certs:/certs
-    depends_on:
-      - backend
-      - frontend
-      - livekit
-    networks:
-      - vttnet
-
-volumes:
-  postgres_data:
-
-
-networks:
-  vttnet:
-    driver: bridge
-EOF
+  if [[ "$DEV_MODE" == "true" ]]; then
+    write_repo_baseline_file "docker-compose.dev.yml" "dev compose file"
+  else
+    write_repo_baseline_file "docker-compose.yml" "prod compose file"
+  fi
 }
 
 function configure_ufw() {
@@ -385,15 +528,16 @@ function configure_ufw() {
 function build() {
   load_config
   generate_secrets
+  ensure_mode_standard_files
   generate_env_files
   generate_root_env_file
-  generate_caddyfile
-  generate_docker_compose
   configure_ufw
   cd "$INSTALL_DIR"
+  local compose_file
+  compose_file="$(get_compose_file)"
   echo "Building Docker images..."
-  docker compose pull || true
-  docker compose build --pull
+  docker compose -f "$compose_file" pull || true
+  docker compose -f "$compose_file" build --pull
   echo "Build complete. Run '$0 start' to start the server."
 }
 
@@ -595,6 +739,33 @@ function status() {
   echo ""
 }
 
+function doctor() {
+  local stack_name
+  local issues=0
+  local GREEN='\033[0;32m'
+  local RED='\033[0;31m'
+  local NC='\033[0m'
+
+  stack_name=$(get_stack_name)
+  echo "Running doctor for ${stack_name} mode"
+  echo ""
+
+  doctor_check_mode_files || issues=1
+  echo ""
+  doctor_check_env_keys || issues=1
+  echo ""
+  doctor_check_repo_baseline_diff || issues=1
+  echo ""
+
+  if [[ $issues -eq 0 ]]; then
+    echo -e "Doctor result: ${GREEN}PASS${NC}"
+    return 0
+  fi
+
+  echo -e "Doctor result: ${RED}FAIL${NC}"
+  return 1
+}
+
 function update() {
   cd "$INSTALL_DIR"
   if [[ -d .git ]]; then
@@ -627,6 +798,10 @@ COMMAND=""
 for arg in "$@"; do
   if [[ "$arg" == "--dev" ]]; then
     DEV_MODE=true
+  elif [[ "$arg" == "--force" ]]; then
+    FORCE_OVERWRITE=true
+  elif [[ "$arg" == "--prompt-overwrite" ]]; then
+    PROMPT_OVERWRITE=true
   elif [[ -z "$COMMAND" && "$arg" != -* ]]; then
     COMMAND="$arg"
   fi
@@ -650,6 +825,9 @@ case "$COMMAND" in
     ;;
   update)
     update
+    ;;
+  doctor)
+    doctor
     ;;
   status)
     status

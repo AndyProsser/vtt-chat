@@ -510,8 +510,36 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const wsRetryWindowStartRef = useRef<number | null>(null)
   const wsRetryToastTimerRef = useRef<number | null>(null)
   const wsErrorMessageRef = useRef<string | null>(null)
+  const authFailureHandledRef = useRef(false)
   const [wsRetryWindowExpired, setWsRetryWindowExpired] = useState(false)
   const [wsRetrySecondsRemaining, setWsRetrySecondsRemaining] = useState<number | null>(null)
+
+  const forceLogoutToAuthScreen = useCallback(() => {
+    if (authFailureHandledRef.current) {
+      return
+    }
+    authFailureHandledRef.current = true
+    sessionStorage.removeItem('authToken')
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    window.location.assign('/')
+  }, [])
+
+  const fetchWithAuthGuard = useCallback(
+    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const response = await window.fetch(input, init)
+      if (response.status === 401 || response.status === 403) {
+        forceLogoutToAuthScreen()
+        throw new Error(`Authentication failed (${response.status})`)
+      }
+      return response
+    },
+    [forceLogoutToAuthScreen]
+  )
+
+  const handleWebSocketAuthFailure = useCallback(() => {
+    forceLogoutToAuthScreen()
+  }, [forceLogoutToAuthScreen])
 
   // WebSocket connection
   const {
@@ -522,6 +550,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     url: wsUrl,
     token,
     enabled: !!token,
+    onAuthFailure: handleWebSocketAuthFailure,
   })
 
   // Store
@@ -715,7 +744,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       const historyByRoom = await Promise.all(
         targetRoomIds.map(async (roomId) => {
           try {
-            const response = await fetch(
+            const response = await fetchWithAuthGuard(
               `${apiUrl}/api/chat/messages/${sessionId}?roomId=${roomId}`,
               {
                 headers: {
@@ -885,11 +914,14 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setError(null)
 
       try {
-        const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/settings`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/campaigns/${campaignId}/settings`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}))
@@ -938,7 +970,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setIsDmVoiceTargetingSettingLoading(true)
 
       try {
-        const response = await fetch(
+        const response = await fetchWithAuthGuard(
           `${apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
           {
             headers: {
@@ -974,7 +1006,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setError(null)
 
       try {
-        const response = await fetch(
+        const response = await fetchWithAuthGuard(
           `${apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
           {
             method: 'PATCH',
@@ -1021,7 +1053,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const fetchCampaignSessions = useCallback(
     async (campaignId: UUID): Promise<SessionRecord[]> => {
-      const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/sessions`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1082,12 +1114,15 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {
       try {
-        const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/members/join`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/v1/session/${sessionId}/members/join`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
         if (!response.ok && response.status !== 409) {
           return
@@ -1105,7 +1140,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const response = await fetch(`${apiUrl}/api/v1/audio/broadcast/state`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/audio/broadcast/state`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1176,7 +1211,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setError(null)
 
       try {
-        const response = await fetch(`${apiUrl}/api/campaigns`, {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -1260,9 +1295,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setSettingsReferenceNotesError(null)
 
       try {
-        const response = await fetch(`${apiUrl}/api/notes/${settingsReferenceSessionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/notes/${settingsReferenceSessionId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
@@ -1364,17 +1402,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     const loadPresenceAndRooms = async () => {
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/v1/rooms/session/${currentSession.id}`, {
+          fetchWithAuthGuard(`${apiUrl}/api/v1/rooms/session/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch(`${apiUrl}/api/v1/presence/${currentSession.id}`, {
+          fetchWithAuthGuard(`${apiUrl}/api/v1/presence/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch(`${apiUrl}/api/v1/audio/sessions/${currentSession.id}/state`, {
+          fetchWithAuthGuard(`${apiUrl}/api/v1/audio/sessions/${currentSession.id}/state`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -1498,7 +1536,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
         // Fire-and-forget: trigger server-side presence snapshot recovery.
         // Result is informational only; WS events remain authoritative.
-        fetch(`${apiUrl}/api/v1/presence/${currentSession.id}/recover`, {
+        fetchWithAuthGuard(`${apiUrl}/api/v1/presence/${currentSession.id}/recover`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {
@@ -1601,7 +1639,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setIsCreatingCampaign(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/campaigns`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1650,7 +1688,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         throw new Error('Invite code or join link is required')
       }
 
-      const validateResponse = await fetch(
+      const validateResponse = await fetchWithAuthGuard(
         `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
       )
 
@@ -1669,7 +1707,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         throw new Error('Invalid or expired invite code')
       }
 
-      const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/join`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1683,7 +1721,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         throw new Error(errorData.message || 'Failed to join campaign')
       }
 
-      const campaignsResponse = await fetch(`${apiUrl}/api/campaigns`, {
+      const campaignsResponse = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1772,16 +1810,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: buildDefaultChapterName(targetSessions),
-          }),
-        })
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              name: buildDefaultChapterName(targetSessions),
+            }),
+          }
+        )
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -1910,14 +1951,17 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     try {
-      const response = await fetch(`${apiUrl}/api/campaigns/${settingsCampaignId}/settings`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(normalizedPayload),
-      })
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/campaigns/${settingsCampaignId}/settings`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(normalizedPayload),
+        }
+      )
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
@@ -2066,7 +2110,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setIsInviteReissuing(true)
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuthGuard(
         `${apiUrl}/api/campaigns/${settingsCampaignId}/invites/reissue`,
         {
           method: 'POST',
@@ -2106,7 +2150,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
   const handleLogoff = () => {
     if (currentSession && currentSession.dmId !== user.id) {
-      void fetch(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
+      void fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -2126,16 +2170,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       options?: { autoActivate?: boolean; carryFromSessionId?: UUID }
     ): Promise<UUID | null> => {
       try {
-        const response = await fetch(`${apiUrl}/api/campaigns/${campaignId}/sessions/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: buildDefaultChapterName(existingSessions),
-          }),
-        })
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/campaigns/${campaignId}/sessions/start`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              name: buildDefaultChapterName(existingSessions),
+            }),
+          }
+        )
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -2152,7 +2199,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         onSessionCreated?.(payload.session.id)
 
         if (options?.autoActivate) {
-          const transitionResponse = await fetch(
+          const transitionResponse = await fetchWithAuthGuard(
             `${apiUrl}/api/v1/session/${payload.session.id}/state`,
             {
               method: 'PUT',
@@ -2253,7 +2300,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setError(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/state`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${sessionId}/state`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2284,7 +2331,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const returnToCampaignSelector = async () => {
     if (currentSession && currentSession.dmId !== user.id) {
       try {
-        await fetch(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
+        await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -2301,10 +2348,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   }
 
   const logoutToAuthScreen = () => {
-    sessionStorage.removeItem('authToken')
-    sessionStorage.removeItem('user')
-    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    window.location.assign('/')
+    forceLogoutToAuthScreen()
   }
 
   const handleExitToCampaignSelector = () => {
@@ -2333,7 +2377,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setExitUpgradeLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/upgrade`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/auth/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

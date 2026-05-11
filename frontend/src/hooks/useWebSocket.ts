@@ -17,6 +17,7 @@ export interface UseWebSocketOptions {
   url: string
   token: string
   enabled?: boolean
+  onAuthFailure?: (reason: string) => void
 }
 
 export interface UseWebSocketReturn {
@@ -33,7 +34,7 @@ export interface UseWebSocketReturn {
  * Registers event handlers with the store.
  */
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
-  const { url, token, enabled = true } = options
+  const { url, token, enabled = true, onAuthFailure } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
   const [error, setError] = useState<Error | null>(null)
@@ -62,6 +63,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         }
       },
       onError: setError,
+      onAuthFailure,
       onEvent: (event) => {
         if (dispatcherRef.current) {
           dispatcherRef.current.dispatch(event)
@@ -226,7 +228,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [enabled, token, url])
+  }, [enabled, onAuthFailure, token, url])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {

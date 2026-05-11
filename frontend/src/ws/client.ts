@@ -60,6 +60,7 @@ export class WebSocketClient {
     onStateChange?: (state: ConnectionState) => void
     onEvent?: (event: EventEnvelope) => void
     onError?: (error: Error) => void
+    onAuthFailure?: (reason: string) => void
   }
 
   constructor(options: ConnectionOptions) {
@@ -69,6 +70,7 @@ export class WebSocketClient {
       onStateChange: options.onStateChange,
       onEvent: options.onEvent,
       onError: options.onError,
+      onAuthFailure: options.onAuthFailure,
     }
 
     if (options.maxReconnectAttempts !== undefined) {
@@ -160,6 +162,24 @@ export class WebSocketClient {
             return
           }
 
+          if (this.isAuthFailureClose(closeCode, closeReason)) {
+            const reason = closeReason || 'Authentication rejected by WebSocket server'
+            logger.warn('ws.client', 'Auth failure while connecting websocket', {
+              code: closeCode,
+              reason,
+            })
+            this.clearReconnectTimeout()
+            this.callbacks.onAuthFailure?.(reason)
+            const authError = new Error(`WebSocket auth failure (code ${closeCode}): ${reason}`)
+            this.callbacks.onError?.(authError)
+
+            if (!settled) {
+              settled = true
+              reject(authError)
+            }
+            return
+          }
+
           logger.debug('ws.client', 'Socket closed; scheduling reconnect', {
             reconnectAttempts: this.reconnectAttempts,
             code: closeCode,
@@ -170,7 +190,8 @@ export class WebSocketClient {
 
           if (!settled) {
             settled = true
-            reject(new Error(`WebSocket closed before ready (code ${closeCode})`))
+            const reasonSuffix = closeReason ? `, reason: ${closeReason}` : ''
+            reject(new Error(`WebSocket closed before ready (code ${closeCode}${reasonSuffix})`))
           }
         }
       } catch (error) {
@@ -371,6 +392,32 @@ export class WebSocketClient {
       clearTimeout(this.reconnectTimeoutId)
       this.reconnectTimeoutId = null
     }
+  }
+
+  private isAuthFailureClose(code: number, reason: string): boolean {
+    if (code === 4401 || code === 4403) {
+      return true
+    }
+
+    if (code !== 1008) {
+      return false
+    }
+
+    const normalizedReason = reason.toLowerCase().trim()
+    if (!normalizedReason) {
+      return false
+    }
+
+    // Treat only explicit token/auth invalidation reasons as deauth.
+    // Protocol-order issues like "Authenticate first using WS:AUTH" should not force logout.
+    return (
+      normalizedReason.includes('invalid or expired token') ||
+      normalizedReason.includes('invalid token') ||
+      normalizedReason.includes('expired token') ||
+      normalizedReason.includes('unauthorized') ||
+      normalizedReason.includes('forbidden') ||
+      normalizedReason.includes('token invalidated')
+    )
   }
 
   private flushEventQueue(): void {

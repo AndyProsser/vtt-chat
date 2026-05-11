@@ -13,6 +13,8 @@ export interface ConnectionOptions {
   onEvent?: (event: EventEnvelope) => void
   /** Callback when connection error occurs */
   onError?: (error: Error) => void
+  /** Callback when the backend rejects auth for this socket/token */
+  onAuthFailure?: (reason: string) => void
   /** Max reconnection attempts before giving up */
   maxReconnectAttempts?: number
   /** Initial reconnection delay in ms */
