@@ -27,6 +27,7 @@ Current implementation priority alignment:
 - Right-panel screen completion and usability hardening are active W0 priorities.
 - Global settings must be usable both in-session and out-of-session.
 - User profile information belongs within the global settings surface.
+- Campaign UI documentation now treats the topbar timer, topbar Settings panel, chat lifecycle bookends, chat message visibility, chat message creation, and the rightbar Notes/Journal tabs as one connected surface.
 
 ### Viewport Mode Model (2026-05-07)
 
@@ -77,6 +78,22 @@ Connection status presentation rules:
 - Outside campaign, it maps to Core WS state only.
 - Inside campaign, it maps to aggregate Core WS + LiveKit state.
 - LiveKit/audio status should be visually subtle, escalating the primary icon only for degraded audio or error conditions.
+
+Campaign timer presentation rules:
+
+- `INACTIVE`: show elapsed readiness time since first DM/player joined greenroom membership for the next session; timer popper is disabled.
+- `ACTIVE`: timer resets to `00:00` on session start and shows active elapsed time.
+- `PAUSED`: primary timer switches to paused elapsed duration with paused color treatment; active elapsed continues in the timer popper.
+- `ENDED`: timer shows cooldown countdown to zero.
+- Timer values are server-anchor driven and must be consistent across clients after refresh/reconnect.
+
+Theme adaptation contract:
+
+- Dark and light mode must apply to all UI elements with no partial coverage.
+- No user-visible element may retain fixed styling from the opposite theme after a mode switch.
+- Known high-risk surfaces requiring explicit checks include chat bubbles, note cards, banner/poster backgrounds, popovers, dialogs, toasts, and icon-only controls.
+- Theme styling must be token-driven; hard-coded light-only or dark-only colors are not allowed in shared UI surfaces.
+- Theme switch behavior is not considered complete until all impacted surfaces are verified in both modes.
 
 ---
 
@@ -170,6 +187,8 @@ Shows:
 - Chat is default
 - Notes replaces chat when selected
 - Notes are also accessible via Information > Notes
+- Chat visibility follows persona and room membership rules, while the message composer remains the canonical chat creation surface when allowed.
+- Session lifecycle markers (`[Session Started]`, `[Session Ended]`, `[Session Paused]`, `[Session Resumed]`) render as system-authored chat bookends in the visible chat stream.
 
 ### Notes in Chat
 
@@ -211,7 +230,19 @@ The right panel contains **secondary tools**.
 Topbar-driven panel groups:
 
 - Settings: `SYSTEM | CAMPAIGN | PROFILE`
-- Information: `CAMPAIGN | SEARCH | NOTES | JOURNAL | HISTORY`
+- Information: `CAMPAIGN | NOTES | JOURNAL | HISTORY`
+- Notes and Journal are the primary campaign-UI destinations in the Information surface.
+- Search panel is removed; search is integrated per-tab in Notes, Journal, and History.
+
+Tabbed UI contract:
+
+- All user-facing campaign/session tabbed panel/dialog screens must use Radix UI Tabs.
+- This is mandatory for Information tabs and the main/home campaign settings dialog tabs.
+- Custom tab implementations are not allowed unless explicitly approved in a design exception.
+
+Admin note:
+
+- Admin UI uses MUI; admin tabbed screens should use MUI Tabs (or approved MUI-equivalent tab primitives).
 
 Journal behavior:
 
@@ -223,6 +254,10 @@ Journal behavior:
 2. Campaign settings are DM-editable.
 3. Players and spectators can view campaign settings read-only by default.
 4. DM can hide campaign settings from non-DM users.
+
+Boundary rule:
+
+- Campaign metadata (name, description, banner/poster image, and read-only campaign stats) is owned by Information > Campaign, not the rightbar campaign settings surface.
 
 System settings expectations:
 
@@ -240,14 +275,60 @@ System settings expectations:
 - DM can edit.
 - Players and spectators can view read-only.
 - Timer override can exceed campaign default with warning-only UX.
+- Session duration source for timer projections is `session override` when present, else campaign default.
+
+Migration note:
+
+- Legacy session cog popover remains transitional; canonical editing location is the rightbar campaign/session settings panel.
+
+### Session Timer Popper
+
+- Triggered from the campaign timer display in `ACTIVE`, `PAUSED`, and `ENDED`.
+- Disabled in `INACTIVE`.
+- Shows a simple live-updating list:
+  - Session state
+  - Start time timestamp
+  - Cumulative paused time
+  - Pause count
+  - Expected end time (rounded to nearest 15 minutes)
+  - Time left in session
+  - End time timestamp (in `ENDED`)
+- In `PAUSED`, topbar shows paused elapsed while popper still exposes active elapsed context.
+- In `ENDED`, popper remains visible until cooldown completes/cancels, then disables after transition back to `INACTIVE`.
 
 ### Information Panel Behavior
 
-- Campaign tab: campaign name, description, and banner.
-- Search tab: full-text query over session/chat data, visible notes, and summary data only when `summaryProcessingInstalled=true`.
-- Notes tab: read-focused list with text filter; DM can edit and hand out notes.
-- History tab: reverse-chronological sessions; opening one shows session chat log (summary first only when `summaryProcessingInstalled=true` and campaign summary toggles are enabled).
-- If `summaryProcessingInstalled=false`, summary controls/content remain unavailable and UI shows: "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- Campaign tab: campaign name, description, banner/poster image, plus read-only stats for session count and total session duration. DM can edit metadata fields (not stats).
+- Notes tab: searchable notes/handouts list. DM can add/edit/delete/share notes and change sharing targets at any time.
+- Journal tab: reverse-chronological session journals with text and hashtag search; no images; DM edits completed past sessions only.
+- History tab: read-only searchable full chat history, grouped by session bookends, starts at bottom, dynamically loads older content one session at a time.
+
+Notes details:
+
+- Notes content is markdown with a simple rich-text helper toolbar for non-markdown users.
+- Notes can include attached images rendered below markdown content and scaled to fit available panel space.
+- Notes list supports favorites for players and DM; favorites bubble to top.
+- Notes panel can expand into a wider overlay for list + detail workflows while preserving the overall 900px target shell behavior.
+- Open note view must include a clear `X` close action.
+
+Home settings access rule:
+
+- For DM, Notes and Journal are also available in the main/home campaign settings dialog as dedicated tabs.
+- Campaign-specific rightbar settings are mirrored in that same DM home settings dialog.
+
+Component composition contract:
+
+- Avoid monolithic UI files for tabbed screens and rightbar/info panel implementations.
+- Split into focused subcomponents (for example tab shell, list pane, detail pane, editor toolbar, share controls).
+- Keep transport/orchestration concerns out of presentational components.
+
+History privacy rule:
+
+- History must respect existing chat privacy visibility constraints for all hydrated messages.
+
+Theme validation rule:
+
+- Any UI change touching color, background, border, elevation, icon contrast, or semantic status colors must be validated in both dark and light mode before sign-off.
 
 ### Slide‑In Panels
 
@@ -360,9 +441,8 @@ DM warning on Minimalist Mobile:
 
 - `<RightTabBar />`
 - `<SlideInPanels />`
-- `<RoomsPanel />`
+- `<GroupsPanel />` (legacy alias: `<RoomsPanel />`)
 - `<AudioPanel />`
-- `<SearchPanel />`
 - `<NotesPanel />`
 - `<JournalPanel />`
 - `<HistoryPanel />`

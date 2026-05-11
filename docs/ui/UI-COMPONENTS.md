@@ -24,6 +24,18 @@ UI → Event → Reducer → Store → UI
 
 No component mutates state directly.
 
+Implementation contracts:
+
+- Any user-facing campaign/session tabbed panel or tabbed dialog must use Radix UI Tabs.
+- This is mandatory for Information tabs and the main campaign settings dialog tabs.
+- Admin UI uses MUI and should use MUI Tabs (or approved MUI-equivalent tab primitives).
+- UI implementations must avoid monolithic files; split by responsibility.
+- Prefer container + presentational composition and feature-scoped subcomponents over single large files.
+- New components should target focused ownership and keep complexity local to their feature area.
+- Dark and light theme modes must apply to all component states and sub-elements with no partial adaptation.
+- Known high-risk surfaces that require explicit checks: chat bubbles, note cards, poster/banner backgrounds, dialogs, popovers, and icon-only controls.
+- Components are not considered valid until visual verification passes in both dark and light mode.
+
 ---
 
 ## 2. Layout Components
@@ -70,9 +82,46 @@ All personas.
 - Session number
 - Session timer
 
+**Timer behavior:**
+
+- `INACTIVE`: elapsed readiness time since first DM/player joined greenroom membership.
+- `ACTIVE`: elapsed time since current session start.
+- `PAUSED`: primary timer switches to paused elapsed duration (active elapsed still tracked).
+- `ENDED`: cooldown countdown.
+
 **Also hosts:**
 
 - System toasts (stacked, dismissable)
+
+---
+
+### **2.2a `<SessionTimerPopover />`**
+
+**Purpose:**
+Details timing metadata behind the topbar session timer.
+
+**Visible to:**
+All personas when enabled by session state.
+
+**Availability:**
+
+- Enabled in `ACTIVE`, `PAUSED`, `ENDED`.
+- Hidden/disabled in `INACTIVE`.
+
+**Shows:**
+
+- Session state (`ACTIVE | PAUSED | ENDED | INACTIVE`)
+- Session start timestamp
+- Cumulative paused duration
+- Pause count
+- Expected end timestamp (rounded to nearest 15 minutes)
+- Time left in session
+- Session end timestamp and cooldown remaining (when `ENDED`)
+
+**Notes:**
+
+- Values update live while popover is open.
+- Anchors come from backend session timestamps so all clients remain synchronized.
 
 ---
 
@@ -129,7 +178,7 @@ Core interaction surface (chat + notes).
 
 **Contains:**
 
-- `<RoomHeader />`
+- `<GroupHeader />` (legacy alias: `<RoomHeader />`)
 - `<ChatNotesToggle />`
 - `<ChatWindow />` or Notes list
 - `<MessageComposer />` (except spectator)
@@ -246,7 +295,7 @@ DM‑only audio and condition controls.
 
 ---
 
-### **4.1 `<RoomHeader />`**
+### **4.1 `<GroupHeader />` (legacy alias: `<RoomHeader />`)**
 
 **Purpose:**
 Displays current group and whisper target.
@@ -374,7 +423,7 @@ Horizontal bar for DM audio routing.
 
 ---
 
-### **6.2 `<RoomsPanel />`**
+### **6.2 `<GroupsPanel />` (legacy alias: `<RoomsPanel />`)**
 
 **Purpose:**
 Group management.
@@ -408,127 +457,210 @@ Single topbar-opened panel that hosts informational tabs.
 **Default tab order:**
 
 1. Campaign
-2. Search
-3. Notes
-4. Journal
-5. History
+2. Notes
+3. Journal
+4. History
 
 **Notes:**
 
 - Journal is a FUTURE feature and is feature-flagged off by default.
 - Information content is simple, read-focused, and low-friction.
+- Search tab is removed; search is owned within Notes, Journal, and History tabs.
+- DM home campaign settings dialog also exposes Notes and Journal as dedicated tabs, alongside campaign settings.
 
 ---
 
 ### **7.2 `<CampaignInfoPanel />`**
 
 **Purpose:**
-Campaign name, description, and banner display for all personas.
+Campaign metadata and campaign stats surface for all personas.
+
+**Shows:**
+
+- Campaign name
+- Campaign description
+- Campaign banner/poster image
+- Sessions played by current player (read-only stat)
+- Total session duration for current player (read-only stat)
 
 **Persona rules:**
 
-- DM: can edit and control extension sync policy.
+- DM: can edit campaign name, description, and banner/poster image.
+- Player: read-only.
+- Spectator: read-only.
+
+**Notes:**
+
+- Campaign stats are read-only for all personas.
+- Campaign metadata editing is owned here and is not duplicated in rightbar settings.
+
+---
+
+### **7.3 `<NotesPanel />` (Information Tab Variant)**
+
+**Purpose:**
+Text-searchable notes/handouts list designed for fast find and fast create.
+
+**Notes rules:**
+
+- DM can `ADD | DELETE | EDIT | SHARE` notes.
+- Handout permission model: `PRIVATE | PARTY | SELECTED`.
+- Sharing targets can be changed by DM at any time.
+- Notes include hashtags for grouping and search.
+- Notes use markdown storage with a simple rich-text helper toolbar.
+- Notes support attached images rendered below note text.
+- Images are scaled to fit available UI space.
+- Players and DM can favorite notes; favorites bubble to top.
+
+**Layout notes:**
+
+- Panel may expand to a wider overlay for list-and-detail workflows while preserving the overall 900px target shell.
+- Open note view has a clear `X` close action.
+
+---
+
+### **7.4 `<JournalPanel />`**
+
+**Purpose:**
+Reverse-chronological session journal list.
+
+**Shows:**
+
+- Session name
+- Session start timestamp
+- Markdown journal contents
+- Hashtags
+
+**Rules:**
+
+- Text and hashtag searchable.
+- Same markdown editing experience as Notes.
+- No images allowed.
+- DM can edit only completed past session journals.
+- Full-system mode can auto-populate from transcription/summary, with DM manual fallback.
+
+**Persona rules:**
+
+- DM: edit completed past sessions only.
 - Player: read-only.
 - Spectator: read-only.
 
 ---
 
-### **7.3 `<SearchPanel />`**
+### **7.5 `<HistoryPanel />`**
 
 **Purpose:**
-Full-text search across session/chat data and visible notes, with summary data included only when `summaryProcessingInstalled=true`.
-
-**Persona rules:**
-
-- DM: full
-- Player: full
-- Spectator: read‑only
-
----
-
-### **7.4 `<NotesPanel />` (Information Tab Variant)**
-
-**Purpose:**
-Read-focused notes list with text filter.
-
-**Notes rules:**
-
-- Default mode is read-only list browsing.
-- DM has edit controls and handout permission controls.
-- Handout permission model: `PRIVATE | PARTY | SELECTED`.
-
----
-
-### **7.5 `<JournalPanel />`**
-
-**Purpose:**
-FUTURE panel for DM/player thought capture and session reflection.
-
-**Persona rules:**
-
-- DM: planned write access (future)
-- Player: planned write access (future)
-- Spectator: read‑only
-
----
-
-### **7.6 `<HistoryPanel />`**
-
-**Purpose:**
-Reverse-chronological session list; opening a session shows that session's chat log.
+Read-only full chat history across past sessions, divided by session bookends.
 
 **Notes:**
 
-- If `summaryProcessingInstalled=true` and summaries are enabled at campaign level, summary content appears first.
-- If `summaryProcessingInstalled=false`, summary content and controls are disabled and the canonical explanatory message is shown.
-- Includes top-level filter over session name, chat data, and summary text (when installed).
+- Starts at bottom of the log.
+- Scroll-up loading is dynamic with max load window of one session at a time.
+- Searchable by DM and players.
+- Must respect existing chat privacy visibility rules.
+- Read-only for all personas.
 
 **Persona rules:**
 
-- DM: full
-- Player: read‑only
-- Spectator: read‑only
+- DM: read-only
+- Player: read-only
+- Spectator: read-only
 
 ---
 
-### **7.7 `<SettingsPanel />`**
+### **7.7 `<SettingsPanel />` (Topbar)**
 
 **Purpose:**
-Topbar-opened settings surface with System and Campaign sections.
+Topbar-opened settings surface for user-account and system-level defaults.
 
 **Sections:**
 
-- System settings: defaults for new campaigns only (does not mutate existing campaigns).
-- Campaign settings: per-campaign toggles and limits.
-- User profile: available to all users.
+1. **User Profile** (always available):
+   - User name
+   - Profile avatar
+   - (Outside campaign) Email, password reset, other account settings
+
+2. **System Defaults** (editable only outside campaigns):
+   - Default campaign settings templates (match campaign settings in rightbar)
+   - DM can pre-configure defaults for new campaigns
+   - Never mutates existing campaigns
 
 **Persona rules:**
 
-- DM: can edit campaign settings.
-- Player: read-only campaign view by default; DM can hide entire campaign settings panel.
-- Spectator: read-only campaign view by default; DM can hide entire campaign settings panel.
+- All personas: can edit own user profile settings.
+- All personas: can set system defaults only when outside any campaign.
+- DM: manages system default templates.
+- Player/Spectator: system defaults are reference-only.
 
 ---
 
-### **7.8 `<SessionSettingsPopover />`**
+### **7.7a `<CampaignRightbarSettings />` (Rightbar)**
 
 **Purpose:**
+Rightbar slide-in panel for campaign, session, and player character settings.
+
+**Availability:**
+
+- Visible when user is inside a campaign context.
+- Accessible via rightbar tab icon.
+
+**Sections:**
+
+1. **Campaign Settings** (DM only):
+   - Default session duration (hours:minutes)
+   - Group audio auto-target on/off (auto-target DM voice when first player joins a group)
+
+   Note: campaign metadata (name, description, banner/poster) is owned by `<CampaignInfoPanel />`.
+
+2. **Session Settings** (DM only; editable during `INACTIVE|ACTIVE|PAUSED` only):
+   - Session name
+   - Planned session duration (hours:minutes)
+   - Editability state: enabled during `INACTIVE|ACTIVE|PAUSED`; disabled during `ENDED` and other states
+   - Values apply to next session and persist across sessions
+   - Players can see but not edit session duration
+
+3. **Character Settings** (Players):
+   - Character name (default: user name)
+   - Race (default: Human; editable)
+   - Class (default: Fighter; editable)
+   - Level (default: 1; editable)
+   - Stats (STR, CON, DEX, INT, WIS, CHA; default: 8 for all; editable)
+   - Character avatar (default: user avatar)
+   - Display applied environmental and conditional effects (read-only)
+   - Other campaign-specific character fields as added
+
+**Persona rules:**
+
+- DM: can edit campaign and session settings (with timing gates).
+- Players: can edit character information; can view but not edit campaign/session settings.
+- Spectators: view-only access to character info and effects.
+
+**Notes:**
+
+- Character values supersede user values; if character field is blank, use user default.
+- Character stats default to Fighter/Human/Level 1/8 across all stats if not configured.
+- Session values persist in backend and are restored for next session.
+
+---
+
+### **7.8 `<SessionSettingsPopover />` (Legacy)**
+
+**Deprecated:** Use `<CampaignRightbarSettings />` session section instead.
+
+**Legacy behavior:**
+
 Mini popover opened from session header cog for session-scoped overrides.
 
 **Contains:**
 
 - Session name
-- Session markdown description
-- Session timer limit override
+- Session planned duration
+- Editable only during `INACTIVE|ACTIVE|PAUSED`
 
 **Persona rules:**
 
 - DM can edit.
 - Player and Spectator can view read-only.
-
-**Notes:**
-
-- Timer can exceed campaign default, with warning-only UX.
 
 ---
 
@@ -563,21 +695,31 @@ Right‑side slide‑in (180ms, primary easing).
 
 ## 9. Persona Visibility Matrix
 
-| Component              | DM   | Player  | Spectator |
-| ---------------------- | ---- | ------- | --------- |
-| Toolbar                | ✔    | ✔       | ✔         |
-| CampaignInfo           | ✔    | ✔       | ✔         |
-| SystemToasts           | ✔    | ✔       | ✔         |
-| DMVoiceBar             | ✔    | ✖       | ✖         |
-| PlayerOverrides        | ✔    | ✖       | ✖         |
-| MessageComposer        | ✔    | ✔       | ✖         |
-| NotesPanel             | Full | Partial | RO        |
-| NotePopout             | Full | Partial | RO        |
-| InformationPanel       | ✔    | ✔       | ✔         |
-| SessionSettingsPopover | Edit | RO      | RO        |
-| RoomsPanel             | ✔    | ✖       | ✖         |
-| AudioPanel             | ✔    | ✖       | ✖         |
-| SettingsPanel          | ✔    | ✔       | ✔         |
+| Component                    | DM                 | Player        | Spectator   |
+| ---------------------------- | ------------------ | ------------- | ----------- |
+| Toolbar                      | ✔                  | ✔             | ✔           |
+| CampaignInfo                 | ✔                  | ✔             | ✔           |
+| SystemToasts                 | ✔                  | ✔             | ✔           |
+| DMVoiceBar                   | ✔                  | ✖             | ✖           |
+| PlayerOverrides              | ✔                  | ✖             | ✖           |
+| MessageComposer              | ✔                  | ✔             | ✖           |
+| NotesPanel                   | Full               | Partial       | RO          |
+| NotePopout                   | Full               | Partial       | RO          |
+| InformationPanel             | ✔                  | ✔             | ✔           |
+| CampaignInfoPanel            | Edit metadata only | RO            | RO          |
+| NotesPanel (Info Tab)        | Full               | Shared        | RO          |
+| JournalPanel                 | Edit past complete | RO            | RO          |
+| HistoryPanel                 | RO                 | RO            | RO          |
+| SettingsPanel (Topbar)       | ✔                  | ✔             | ✔           |
+| CampaignRightbarSettings     | DM settings + view | Character own | RO          |
+| SessionSettingsPopover (Leg) | Edit               | RO            | RO          |
+| SessionTimerPopover          | State-gated        | State-gated   | State-gated |
+| GroupsPanel                  | ✔                  | ✖             | ✖           |
+| AudioPanel                   | ✔                  | ✖             | ✖           |
+
+`CampaignRightbarSettings` shows: campaign/session settings (DM only), character settings (players edit own, spectators view only).
+
+`SessionTimerPopover` is state-gated and only available during `ACTIVE`, `PAUSED`, and `ENDED`.
 
 ---
 

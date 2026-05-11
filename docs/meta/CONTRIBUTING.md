@@ -131,6 +131,41 @@ Components must:
 - Avoid inline logic that belongs in reducers
 - Follow the Component Interface docs
 
+### **3.5 Tabbed UI Standard (Required)**
+
+User-facing campaign/session tabbed panels or dialogs must use Radix UI Tabs.
+
+Mandatory targets:
+
+- Information panel tab navigation
+- Main/home campaign settings dialog tabs
+
+Admin UI rule:
+
+- Admin app uses MUI; tabbed admin/settings surfaces must use MUI Tabs (or approved MUI-equivalent tab primitives).
+
+### **3.6 Component Decomposition Standard (Required)**
+
+Avoid large monolithic UI implementation files.
+
+Rules:
+
+- Split by responsibility (shell, list, detail, editor, controls).
+- Keep orchestration/network timing in managers/services, not presentational components.
+- Prefer small feature-focused component boundaries over one-file implementations.
+- If a component grows beyond a single clear concern, refactor before adding new behavior.
+
+### **3.7 Naming Convention Policy**
+
+Follow [NAMING-CONVENTIONS.md](NAMING-CONVENTIONS.md).
+
+Key rules:
+
+- Use Group for product/UI terminology (legacy Room aliases only where required).
+- Do not use Slice in new file/module names unless it is an actual Zustand slice.
+- Hard rule: any existing non-Zustand \*Slice file must be renamed in the next refactor cycle where it is in scope.
+- Prefer Manager/Service/System/Engine naming for orchestration/runtime modules.
+
 ---
 
 ## 4. Documentation Standards
@@ -236,6 +271,22 @@ Animations must:
 - Be purposeful
 - Reinforce state changes
 
+### **6.4 Theme Adaptation Standard (Required)**
+
+Dark and light theme support must be complete and adaptive across all UI elements.
+
+Rules:
+
+- All user-facing components must render correctly in both dark and light mode.
+- Theme switching must update all visual surfaces, including nested and overlay components.
+- Known fragile surfaces that must be explicitly tested: chat bubbles, message cards, campaign poster/banner backgrounds, dialogs, popovers, and icon-only button states.
+- Token-driven theming is required for shared UI surfaces; hard-coded one-mode colors are not allowed.
+
+Validation gate:
+
+- A UI change does not pass review until screenshots or validation notes confirm both dark and light mode correctness.
+- Any non-adaptive element is a blocking issue for merge.
+
 ---
 
 ## 7. Extension Contribution Standards
@@ -266,6 +317,14 @@ When test harness is added:
 - Reducers must have unit tests
 - Event validation must have tests
 - UI selectors must have tests
+
+### **8.3 Theme Validation (Required)**
+
+Every UI PR must include:
+
+- Theme verification in both dark and light mode for changed surfaces.
+- Contrast and readability checks for text, iconography, and status badges in both themes.
+- Verification that chat bubbles and campaign poster/banner backgrounds adapt correctly when switching themes.
 
 ---
 

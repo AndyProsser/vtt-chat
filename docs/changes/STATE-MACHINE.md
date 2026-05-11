@@ -40,6 +40,14 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 - **Session:**
   - `session.state ∈ { INACTIVE, ACTIVE, PAUSED, CLEANUP }`
   - `session.hasEnded: boolean` (optional helper)
+  - `session.inactiveAnchorAt: ISO8601 | null` (first DM/player greenroom join for next-session readiness timer)
+  - `session.startedAt: ISO8601 | null` (active timer anchor)
+  - `session.endedAt: ISO8601 | null` (end/cooldown anchor)
+  - `session.pauseCount: number`
+  - `session.totalPausedMs: number`
+  - `session.currentPauseStartedAt: ISO8601 | null`
+  - `session.cooldownDurationMs: number` (default 60000, configurable 1-60 minutes)
+  - `session.cooldownEndsAt: ISO8601 | null`
   - On session `ACTIVE` → `PAUSED` or `ENDED`: per-session audio effects/conditions persisted in backend snapshot for restore on resume or cleanup.
 - **Users (players, DM, spectators):**
   - `user.role ∈ { DM, PLAYER, SPECTATOR }`
@@ -172,8 +180,13 @@ Per user (PLAYER/DM/SPECTATOR):
 - Intentional or network disconnect:
   - Session membership dropped.
   - They can rejoin (spectator limits apply).
-- On session `INACTIVE`, `PAUSED`, or `STOPPED`:
+- Spectators do not count toward player/DM cleanup timers.
+- Spectators may join only after at least one DM/player has established the campaign as active for a playable cycle (not cold-empty INACTIVE).
+- On session `INACTIVE` or `PAUSED`:
   - Spectators see a **wait screen**.
+- During `ENDED` cooldown:
+  - Spectators can participate only while cooldown is running.
+  - On cooldown expiry/cancel, spectators are disconnected and returned to waiting flow.
 - Audio steering and device settings:
   - Local-only, reset on refresh or disconnect.
 
@@ -391,13 +404,14 @@ Per user (PLAYER/DM/SPECTATOR):
   - Summary and close-out processing begins.
   - A new session cannot be started until the session leaves `ENDED` and becomes `INACTIVE`.
 - **Post-session spectator chat:** DM-controlled and optional.
-  - Default: enabled with a 5 minute window.
+  - Default: enabled with a 1 minute window.
   - Minimum: 1 minute.
   - Maximum: 60 minutes.
-  - Step sizes: decrease in 1 minute steps, increase in 5 minute steps.
-  - UI control: slider with a disable toggle.
+  - UI control: duration selector + disable toggle.
   - DM can extend the timer while the window is active.
+  - Extension semantics: add one additional block equal to configured cooldown duration.
   - DM can end it early.
+  - If DM disconnects during cooldown, connected players gain extend/cancel controls.
 - **When disabled:**
   - `ENDED` still triggers stop-recording and summary-processing work.
   - No wait-for-chat behavior is required; the phase may advance to `INACTIVE` as soon as the required tasks are triggered.
@@ -405,5 +419,27 @@ Per user (PLAYER/DM/SPECTATOR):
 - **During enabled window:**
   - Spectators can interact with players and DM according to campaign policy.
   - The interaction is off-the-record and is not persisted in session history.
-  - Once the window ends, spectators are disconnected and the session can transition to `INACTIVE`.
-- **Storage:** Per-campaign setting in Prisma, for example `Campaign.postSessionChatEnabled` and `Campaign.postSessionChatDurationMs` (default 300000 ms).
+  - Once the window ends or is canceled, spectators are disconnected and the session transitions to `INACTIVE`.
+- **Storage:** Per-campaign setting in Prisma, for example `Campaign.postSessionChatEnabled` and `Campaign.postSessionChatDurationMs` (default `60000` ms).
+
+### 5.4 Topbar timer and timer-popper contract
+
+The topbar timer always represents elapsed/remaining time for the current lifecycle state.
+
+- `INACTIVE`: show elapsed time since first DM/player joined greenroom membership for next-session readiness; no popper.
+- `ACTIVE`: reset to `00:00` at start and show active elapsed time.
+- `PAUSED`: topbar primary timer shows paused elapsed duration in paused color; active elapsed continues in background.
+- `ENDED`: topbar timer shows cooldown countdown to zero.
+
+Timer popper behavior:
+
+- Available in `ACTIVE`, `PAUSED`, and `ENDED` only.
+- Live-updating values while open.
+- Shows: state, start timestamp, cumulative paused duration, pause count, expected end timestamp, time left, and (in `ENDED`) end timestamp plus cooldown remaining.
+- Expected end timestamp is computed from session duration source (`session override` else campaign default) and then rounded to nearest 15 minutes.
+
+Consistency and recovery:
+
+- Timer anchors and timestamps are backend-authoritative.
+- All clients derive display from shared anchors, so timers are synchronized across users.
+- On refresh/reconnect, client must rehydrate timer anchors from backend snapshot before rendering local timer state.
