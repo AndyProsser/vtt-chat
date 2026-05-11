@@ -48,6 +48,10 @@ function isGreenRoomName(value: string): boolean {
   return normalized === 'green room' || normalized === 'green-room'
 }
 
+function getBoundaryRoomIds(mainRoomId: UUID, greenRoomId: UUID): UUID[] {
+  return Array.from(new Set([mainRoomId, greenRoomId]))
+}
+
 export class SessionDisconnectCascadeService {
   private ghostTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private ttlTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -129,7 +133,7 @@ export class SessionDisconnectCascadeService {
     )
 
     if (!context.isSessionConnected(context.sessionId)) {
-      this.scheduleEveryoneLeavesAutoStop(context)
+      await this.scheduleNoConnectionsLifecycleAction(context)
     }
 
     await broadcastSessionStatsSnapshot({
@@ -244,8 +248,24 @@ export class SessionDisconnectCascadeService {
     })
 
     if (!context.isSessionConnected(context.sessionId)) {
-      this.scheduleEveryoneLeavesAutoStop(context)
+      await this.scheduleNoConnectionsLifecycleAction(context)
     }
+  }
+
+  private async scheduleNoConnectionsLifecycleAction(context: DisconnectContext): Promise<void> {
+    const session = await getSession(context.sessionId)
+    if (!session) {
+      this.clearEveryoneLeavesTimer(context.sessionId)
+      this.clearCleanupTimer(context.sessionId)
+      return
+    }
+
+    if (session.state === SessionState.ACTIVE || session.state === SessionState.PAUSED) {
+      this.scheduleEveryoneLeavesAutoStop(context)
+      return
+    }
+
+    this.scheduleCleanupTrigger(context)
   }
 
   private scheduleEveryoneLeavesAutoStop(context: DisconnectContext): void {
@@ -376,7 +396,7 @@ export class SessionDisconnectCascadeService {
 
     await emitSessionBoundarySystemMessage({
       sessionId: session.id,
-      roomId: transition.mainRoomId,
+      roomIds: getBoundaryRoomIds(transition.mainRoomId, transition.greenRoomId),
       sessionName: session.name,
       boundaryType: 'SESSION_ENDED',
       dmId: previousSession.dmId,
@@ -426,10 +446,12 @@ export class SessionDisconnectCascadeService {
       return
     }
 
-    if (session.state !== SessionState.ENDED && session.state !== SessionState.IDLE) {
+    if (session.state !== SessionState.ENDED && session.state !== 'INACTIVE') {
       this.clearCleanupTimer(context.sessionId)
       return
     }
+
+    await updateSessionState(context.sessionId, SessionState.CLEANUP, session.dmId)
 
     const rooms = await getRooms(context.sessionId)
     const greenRoom = rooms.find((room) => room.type === 'GROUP' && isGreenRoomName(room.name))
@@ -451,6 +473,8 @@ export class SessionDisconnectCascadeService {
         },
       })
     }
+
+    await updateSessionState(context.sessionId, 'INACTIVE', session.dmId)
 
     this.clearCleanupTimer(context.sessionId)
   }

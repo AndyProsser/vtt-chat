@@ -29,6 +29,7 @@ var SessionState
   SessionState['ACTIVE'] = 'ACTIVE'
   SessionState['PAUSED'] = 'PAUSED'
   SessionState['ENDED'] = 'ENDED'
+  SessionState['CLEANUP'] = 'CLEANUP'
 })(SessionState || (exports.SessionState = SessionState = {}))
 var RoomType
 ;(function (RoomType) {

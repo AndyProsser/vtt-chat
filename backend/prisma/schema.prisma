@@ -469,6 +469,7 @@ enum SessionState {
   ACTIVE
   PAUSED
   ENDED
+  CLEANUP
 }
 
 enum NoteVisibility {

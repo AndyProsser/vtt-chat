@@ -45,4 +45,5 @@ __exportStar(require('./events'), exports)
 __exportStar(require('./permissions'), exports)
 __exportStar(require('./errors'), exports)
 __exportStar(require('./validators'), exports)
+__exportStar(require('./utils'), exports)
 //# sourceMappingURL=index.js.map

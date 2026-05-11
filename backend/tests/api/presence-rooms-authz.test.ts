@@ -232,6 +232,11 @@ describe('presence/rooms authz', () => {
       username: 'alice',
       movedBy: OTHER_ID,
     })
+
+    const emittedTypes = wsCalls.map(([, event]) => event.type)
+    expect(emittedTypes.indexOf('ROOM:USER_LEFT')).toBeLessThan(
+      emittedTypes.indexOf('ROOM:USER_JOINED')
+    )
   })
 
   it('allows DM to move a whisper participant out of whisper', async () => {

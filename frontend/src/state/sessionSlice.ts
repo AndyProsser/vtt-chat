@@ -5,7 +5,7 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { UUID, SessionState } from '@shared'
+import type { UUID, SessionLifecycleState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { Session } from '@/types/session'
@@ -140,7 +140,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           id: payload.id,
           name: payload.name,
           dmId: payload.dmId,
-          state: 'IDLE' as SessionState,
+          state: 'INACTIVE' as SessionLifecycleState,
           description: payload.description,
           createdAt: event.timestamp,
         },
@@ -150,7 +150,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   },
 
   handleSessionStateChanged: (event) => {
-    const payload = event.payload as { state: SessionState }
+    const payload = event.payload as { state: SessionLifecycleState }
     set((state) => {
       const nextSessions = {
         ...state.sessions,

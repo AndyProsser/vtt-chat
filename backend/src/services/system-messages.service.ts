@@ -1,8 +1,10 @@
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
+import type { SessionBoundaryType } from '@/types/session-boundary.types'
 import type { WebSocketManager } from '@/ws'
 import { sendMessage } from './chat.service'
+
 const boundaryTemplates: Record<SessionBoundaryType, (sessionName: string) => string> = {
   SESSION_STARTED: (sessionName) => `[Session Started] ${sessionName}`,
   SESSION_PAUSED: (sessionName) => `[Session Paused] ${sessionName}`,
@@ -16,7 +18,6 @@ function buildSessionBoundaryMessage(
 ): string {
   return boundaryTemplates[boundaryType](sessionName)
 }
-import type { SessionBoundaryType } from '@/types/session-boundary.types'
 
 function buildSystemChatEvent(message: {
   id: UUID
@@ -53,24 +54,33 @@ function buildSystemChatEvent(message: {
 export async function emitSessionBoundarySystemMessage(params: {
   sessionId: UUID
   roomId?: UUID
+  roomIds?: UUID[]
   sessionName: string
   boundaryType: SessionBoundaryType
   dmId: UUID
   dmUsername: string
   wsManager?: WebSocketManager
 }): Promise<void> {
-  const stored = await sendMessage({
-    sessionId: params.sessionId,
-    roomId: params.roomId,
-    authorId: params.dmId,
-    authorUsername: params.dmUsername,
-    dmId: params.dmId,
-    content: buildSessionBoundaryMessage(params.boundaryType, params.sessionName),
-    type: MessageType.SYSTEM,
-  })
+  const resolvedRoomIds = Array.from(
+    new Set((params.roomIds?.length ? params.roomIds : [params.roomId]).filter(Boolean))
+  ) as UUID[]
 
-  if (params.wsManager) {
-    const event = buildSystemChatEvent(stored)
-    params.wsManager.broadcastEventToSession(params.sessionId, event)
+  const roomIds = resolvedRoomIds.length ? resolvedRoomIds : [undefined]
+
+  for (const roomId of roomIds) {
+    const stored = await sendMessage({
+      sessionId: params.sessionId,
+      roomId,
+      authorId: params.dmId,
+      authorUsername: params.dmUsername,
+      dmId: params.dmId,
+      content: buildSessionBoundaryMessage(params.boundaryType, params.sessionName),
+      type: MessageType.SYSTEM,
+    })
+
+    if (params.wsManager) {
+      const event = buildSystemChatEvent(stored)
+      params.wsManager.broadcastEventToSession(params.sessionId, event)
+    }
   }
 }

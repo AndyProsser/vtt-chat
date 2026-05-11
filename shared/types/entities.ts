@@ -4,7 +4,7 @@ import type {
   PresenceState,
   Role,
   RoomType,
-  SessionState,
+  SessionLifecycleState,
   UUID,
 } from './index'
 
@@ -27,7 +27,7 @@ export interface SessionEntity {
   id: UUID
   name: string
   dmId: UUID
-  state: SessionState
+  state: SessionLifecycleState
   description?: string
   createdAt: number
   startedAt?: number

@@ -206,4 +206,45 @@ describe('session disconnect cascade service', () => {
     expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'ENDED', DM_ID)
     expect(mocks.applySessionStateRoomTransition).toHaveBeenCalled()
   })
+
+  it('enters backend-only cleanup and restores inactive after greenroom purge', async () => {
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'INACTIVE',
+      createdAt: Date.now(),
+    })
+    mocks.updateSessionState
+      .mockResolvedValueOnce({
+        id: SESSION_ID,
+        name: 'Session 1',
+        dmId: DM_ID,
+        state: 'INACTIVE',
+        createdAt: Date.now(),
+      })
+      .mockResolvedValueOnce({
+        id: SESSION_ID,
+        name: 'Session 1',
+        dmId: DM_ID,
+        state: 'INACTIVE',
+        createdAt: Date.now(),
+      })
+
+    await service.handleUserDisconnected({
+      sessionId: SESSION_ID,
+      userId: USER_ID,
+      username: 'alice',
+      userRole: Role.PLAYER,
+      wsManager,
+      isUserConnected: () => false,
+      isSessionConnected: () => false,
+    })
+
+    await vi.advanceTimersByTimeAsync(21 * 60_000 + 5_000)
+
+    expect(mocks.updateSessionState).toHaveBeenNthCalledWith(1, SESSION_ID, 'CLEANUP', DM_ID)
+    expect(mocks.clearRoomMessages).toHaveBeenCalledWith(SESSION_ID, ROOM_ID)
+    expect(mocks.updateSessionState).toHaveBeenNthCalledWith(2, SESSION_ID, 'INACTIVE', DM_ID)
+  })
 })

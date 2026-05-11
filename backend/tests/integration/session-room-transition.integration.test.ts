@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   mockEmitSessionBoundarySystemMessage: vi.fn(),
   mockLogSessionStateChange: vi.fn(),
   mockLogSessionLeave: vi.fn(),
+  mockBroadcastSessionStatsSnapshot: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -53,6 +54,10 @@ vi.mock('@/services/chat.service', () => ({
 
 vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
+}))
+
+vi.mock('@/services/session-stats.service', () => ({
+  broadcastSessionStatsSnapshot: mocks.mockBroadcastSessionStatsSnapshot,
 }))
 
 vi.mock('@/services/session-logs.service', () => ({
@@ -174,6 +179,7 @@ describe('session state room orchestration', () => {
       expect.objectContaining({
         sessionId: SESSION_ID,
         boundaryType: 'SESSION_STARTED',
+        roomIds: ['44444444-4444-4444-8444-444444444444', '55555555-5555-4555-8555-555555555555'],
       })
     )
   })
@@ -213,7 +219,7 @@ describe('session state room orchestration', () => {
       expect.objectContaining({
         sessionId: SESSION_ID,
         boundaryType: 'SESSION_ENDED',
-        roomId: MAIN_ROOM_ID,
+        roomIds: [MAIN_ROOM_ID, GREEN_ROOM_ID],
       })
     )
   })
@@ -374,7 +380,7 @@ describe('session state room orchestration', () => {
     ])
   })
 
-  it('resets overrides and clears Green Room environment on IDLE transition', async () => {
+  it('accepts INACTIVE as the canonical alias for greenroom transition', async () => {
     const app = buildApp()
     const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
 
@@ -382,7 +388,7 @@ describe('session state room orchestration', () => {
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
-      state: 'IDLE',
+      state: 'INACTIVE',
       createdAt: Date.now(),
     })
 
@@ -400,9 +406,10 @@ describe('session state room orchestration', () => {
     const response = await request(app)
       .put(`/api/session/${SESSION_ID}/state`)
       .set('Authorization', 'Bearer token')
-      .send({ state: 'IDLE' })
+      .send({ state: 'INACTIVE' })
 
     expect(response.status).toBe(200)
+    expect(mocks.mockUpdateSessionState).toHaveBeenCalledWith(SESSION_ID, 'IDLE', DM_ID)
     expect(mocks.mockClearSessionDMOverrideState).toHaveBeenCalledWith(SESSION_ID)
     expect(mocks.mockClearRoomEnvironmentState).toHaveBeenCalledWith({
       sessionId: SESSION_ID,

@@ -7,7 +7,7 @@
  * Both are role-filtered for visibility.
  */
 
-import type { UUID, PresenceState } from '../types'
+import type { UUID, PresenceState, SessionLifecycleState } from '../types'
 import type { EventEnvelope } from './base'
 
 export type RoomEventType =
@@ -88,8 +88,8 @@ export type RoomDeletedEvent = EventEnvelope<RoomDeleted>
  * Server-originated event emitted after bulk session room transition orchestration.
  */
 export interface RoomSessionTransitionApplied {
-  previousState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
-  nextState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+  previousState: SessionLifecycleState | null
+  nextState: SessionLifecycleState
   movedUsers: number
   targetState: PresenceState
   mainRoom: {

@@ -5,6 +5,7 @@ export {
   isGreenroomSessionState,
   prettySessionState,
   normalizeSessionState,
+  toPublicSessionState,
   sessionStatusClass,
   type CampaignDisplayState,
   type SessionLifecycleState,

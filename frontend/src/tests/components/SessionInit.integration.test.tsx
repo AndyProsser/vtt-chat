@@ -2371,7 +2371,20 @@ describe('SessionInit integration', () => {
       ) {
         return {
           ok: true,
-          json: async () => ({ messages: [] }),
+          json: async () => ({
+            messages: [
+              {
+                id: asUuid('f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2'),
+                roomId: ROOM_TWO_ID,
+                authorId: asUuid('00000000-0000-4000-8000-000000000000'),
+                authorUsername: 'SYSTEM',
+                content: '[Session Started] Session Beta',
+                type: MessageType.SYSTEM,
+                isDmOnly: false,
+                createdAt: 1_715_200_700_001,
+              },
+            ],
+          }),
         }
       }
 

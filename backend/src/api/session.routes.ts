@@ -16,7 +16,12 @@ import {
   getSessionUsers,
 } from '@/services/session.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { isValidSessionName, isValidUUID } from '@shared'
+import {
+  isValidSessionName,
+  isValidUUID,
+  normalizeSessionState,
+  toPublicSessionState,
+} from '@shared'
 import { ErrorCode, PresenceState, Role, RoomType } from '@shared'
 import type { UUID, SessionState } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
@@ -94,6 +99,18 @@ function internalErrorResponse(res: Response) {
 
 function normalizeRoomName(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function getBoundaryRoomIds(params: {
+  boundaryType: 'SESSION_STARTED' | 'SESSION_PAUSED' | 'SESSION_RESUMED' | 'SESSION_ENDED'
+  mainRoomId: UUID
+  greenRoomId: UUID
+}): UUID[] {
+  if (params.boundaryType === 'SESSION_STARTED' || params.boundaryType === 'SESSION_ENDED') {
+    return Array.from(new Set([params.mainRoomId, params.greenRoomId]))
+  }
+
+  return [params.mainRoomId]
 }
 
 async function ensureJoinedMemberPresence(params: {
@@ -721,7 +738,9 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
-  if (!state || !['IDLE', 'ACTIVE', 'PAUSED', 'ENDED'].includes(state)) {
+  const requestedState = normalizeSessionState(state)
+
+  if (!requestedState || requestedState === 'CLEANUP') {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'Invalid state',
@@ -731,7 +750,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 
   try {
     const previousSession = await getSession(id as UUID)
-    const session = await updateSessionState(id as UUID, state as SessionState, user.userId)
+    const session = await updateSessionState(id as UUID, requestedState, user.userId)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
@@ -743,7 +762,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const transition = await applySessionStateRoomTransition({
       sessionId: session.id,
       dmId: session.dmId,
-      nextState: state as SessionState,
+      nextState: requestedState,
       users: users.map((member) => ({
         id: member.id,
         username: member.username,
@@ -756,21 +775,23 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     // Only clear environment for the neutral room (main or greenroom), not other groups.
     // ACTIVE + PAUSED are both staged in Main Room.
     const neutralRoomId =
-      state === 'ACTIVE' || state === 'PAUSED' ? transition.mainRoomId : transition.greenRoomId
+      requestedState === 'ACTIVE' || requestedState === 'PAUSED'
+        ? transition.mainRoomId
+        : transition.greenRoomId
 
     await clearRoomEnvironmentState({
       sessionId: session.id,
       roomId: neutralRoomId,
     })
 
-    if (state === 'ENDED') {
+    if (requestedState === 'ENDED') {
       await deletePrivateRoomsForEndedSession(session.id)
     }
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
     const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
-    const shouldClearGreenRoomContext = movedToGreenRoom && state === 'ENDED'
+    const shouldClearGreenRoomContext = movedToGreenRoom && requestedState === 'ENDED'
 
     if (shouldClearGreenRoomContext) {
       await clearRoomMessages(session.id, transition.greenRoomId)
@@ -788,7 +809,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         timestamp: Date.now(),
         payload: {
           previousState: previousSession?.state || null,
-          nextState: state,
+          nextState: session.state,
           movedUsers: transition.movedUsers,
           targetState: transition.targetState,
           mainRoom: {
@@ -874,20 +895,24 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     }
 
     const boundaryType =
-      state === 'ACTIVE'
+      requestedState === 'ACTIVE'
         ? previousSession?.state === 'PAUSED'
           ? 'SESSION_RESUMED'
           : 'SESSION_STARTED'
-        : state === 'PAUSED'
+        : requestedState === 'PAUSED'
           ? 'SESSION_PAUSED'
-          : state === 'ENDED'
+          : requestedState === 'ENDED'
             ? 'SESSION_ENDED'
             : null
 
     if (boundaryType) {
       await emitSessionBoundarySystemMessage({
         sessionId: session.id,
-        roomId: transition.mainRoomId,
+        roomIds: getBoundaryRoomIds({
+          boundaryType,
+          mainRoomId: transition.mainRoomId,
+          greenRoomId: transition.greenRoomId,
+        }),
         sessionName: session.name,
         boundaryType,
         dmId: user.userId as UUID,
@@ -901,7 +926,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         user.userId as UUID,
         user.username,
         previousSession?.state || 'UNKNOWN',
-        state
+        toPublicSessionState(requestedState) ?? requestedState
       )
     }
 

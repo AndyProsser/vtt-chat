@@ -17,7 +17,10 @@ export enum SessionState {
   ACTIVE = 'ACTIVE',
   PAUSED = 'PAUSED',
   ENDED = 'ENDED',
+  CLEANUP = 'CLEANUP',
 }
+
+export type SessionLifecycleState = SessionState | 'INACTIVE'
 
 export enum RoomType {
   MAIN = 'MAIN',
@@ -100,7 +103,7 @@ export interface Session {
   id: UUID
   name: string
   dmId: UUID
-  state: SessionState
+  state: SessionLifecycleState
   createdAt: number
   startedAt?: number
   endedAt?: number

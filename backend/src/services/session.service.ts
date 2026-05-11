@@ -4,10 +4,10 @@
  * All operations are deterministic and validated against contracts.
  */
 
-import type { UUID, Session, SessionState, User } from '@shared'
+import type { UUID, Session, SessionLifecycleState, SessionState, User } from '@shared'
 import { randomUUID } from 'crypto'
 import { SessionState as SessionStateEnum } from '@shared'
-import { createError, ErrorCode } from '@shared'
+import { createError, ErrorCode, normalizeSessionState, toPublicSessionState } from '@shared'
 import {
   createSessionRecord,
   deleteSessionRecord,
@@ -27,6 +27,39 @@ import { getSessionEventHistory } from '@/services/session-logs.service'
  */
 function generateUUID(): UUID {
   return randomUUID() as UUID
+}
+
+function toStoredSessionState(state: SessionLifecycleState): SessionState {
+  const normalized = normalizeSessionState(state)
+
+  if (!normalized) {
+    throw createError(ErrorCode.INVALID_INPUT, {
+      message: 'Invalid session state',
+      field: 'state',
+    })
+  }
+
+  return normalized
+}
+
+function mapSessionRecord(session: {
+  id: string
+  name: string
+  dmId: string
+  state: SessionState
+  createdAt: Date
+  startedAt?: Date | null
+  endedAt?: Date | null
+}): Session {
+  return {
+    id: session.id as UUID,
+    name: session.name,
+    dmId: session.dmId as UUID,
+    state: toPublicSessionState(session.state) ?? session.state,
+    createdAt: session.createdAt.getTime(),
+    startedAt: session.startedAt?.getTime(),
+    endedAt: session.endedAt?.getTime(),
+  }
 }
 
 /**
@@ -53,7 +86,7 @@ export function createSession(
     id: sessionId,
     name,
     dmId,
-    state: SessionStateEnum.IDLE,
+    state: 'INACTIVE',
     createdAt: now,
   }))
 }
@@ -65,15 +98,7 @@ export async function getSession(sessionId: UUID): Promise<Session | null> {
   const session = await findSessionById(sessionId)
   if (!session) return null
 
-  return {
-    id: session.id as UUID,
-    name: session.name,
-    dmId: session.dmId as UUID,
-    state: session.state as SessionState,
-    createdAt: session.createdAt.getTime(),
-    startedAt: session.startedAt?.getTime(),
-    endedAt: session.endedAt?.getTime(),
-  }
+  return mapSessionRecord(session as any)
 }
 
 /**
@@ -81,15 +106,7 @@ export async function getSession(sessionId: UUID): Promise<Session | null> {
  */
 export async function getAllSessions(): Promise<Session[]> {
   const sessions = await listSessions()
-  return sessions.map((session) => ({
-    id: session.id as UUID,
-    name: session.name,
-    dmId: session.dmId as UUID,
-    state: session.state as SessionState,
-    createdAt: session.createdAt.getTime(),
-    startedAt: session.startedAt?.getTime(),
-    endedAt: session.endedAt?.getTime(),
-  }))
+  return sessions.map((session) => mapSessionRecord(session as any))
 }
 
 /**
@@ -97,11 +114,14 @@ export async function getAllSessions(): Promise<Session[]> {
  */
 export function updateSessionState(
   sessionId: UUID,
-  newState: SessionState,
+  newState: SessionLifecycleState,
   dmId: UUID
 ): Promise<Session | null> {
   return findSessionById(sessionId).then(async (session) => {
     if (!session) return null
+
+    const requestedState = toStoredSessionState(newState)
+    const currentState = session.state as SessionState
 
     // DM-only check
     if (session.dmId !== dmId) {
@@ -112,18 +132,19 @@ export function updateSessionState(
 
     // Validate state transition
     const validTransitions: Record<SessionState, SessionState[]> = {
-      [SessionStateEnum.IDLE]: [SessionStateEnum.ACTIVE],
+      [SessionStateEnum.IDLE]: [SessionStateEnum.ACTIVE, SessionStateEnum.CLEANUP],
       [SessionStateEnum.ACTIVE]: [SessionStateEnum.PAUSED, SessionStateEnum.ENDED],
       [SessionStateEnum.PAUSED]: [SessionStateEnum.ACTIVE, SessionStateEnum.ENDED],
-      [SessionStateEnum.ENDED]: [], // No transitions from ENDED
+      [SessionStateEnum.ENDED]: [SessionStateEnum.IDLE, SessionStateEnum.CLEANUP],
+      [SessionStateEnum.CLEANUP]: [SessionStateEnum.IDLE],
     }
 
-    const allowedTransitions = validTransitions[session.state as SessionState]
-    if (!allowedTransitions.includes(newState)) {
+    const allowedTransitions = validTransitions[currentState]
+    if (!allowedTransitions.includes(requestedState)) {
       throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
         context: {
-          currentState: session.state,
-          requestedState: newState,
+          currentState: toPublicSessionState(currentState) ?? currentState,
+          requestedState: toPublicSessionState(requestedState) ?? requestedState,
           allowedTransitions,
         },
       })
@@ -131,15 +152,15 @@ export function updateSessionState(
 
     const now = Date.now()
     const startedAt =
-      newState === SessionStateEnum.ACTIVE && !session.startedAt
+      requestedState === SessionStateEnum.ACTIVE && !session.startedAt
         ? new Date(now)
         : session.startedAt || undefined
     const endedAt =
-      newState === SessionStateEnum.ENDED ? new Date(now) : session.endedAt || undefined
+      requestedState === SessionStateEnum.ENDED ? new Date(now) : session.endedAt || undefined
 
     await updateSessionStateRecord({
       sessionId,
-      newState,
+      newState: requestedState,
       startedAt,
       endedAt,
     })
@@ -147,15 +168,7 @@ export function updateSessionState(
     const updated = await findSessionById(sessionId)
     if (!updated) return null
 
-    return {
-      id: updated.id as UUID,
-      name: updated.name,
-      dmId: updated.dmId as UUID,
-      state: updated.state as SessionState,
-      createdAt: updated.createdAt.getTime(),
-      startedAt: updated.startedAt?.getTime(),
-      endedAt: updated.endedAt?.getTime(),
-    }
+    return mapSessionRecord(updated as any)
   })
 }
 

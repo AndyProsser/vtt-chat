@@ -1,4 +1,10 @@
-import type { PresenceEntity, PresenceState, RoomEntity, SessionState, UUID } from '@shared'
+import type {
+  PresenceEntity,
+  PresenceState,
+  RoomEntity,
+  SessionLifecycleState,
+  UUID,
+} from '@shared'
 
 export type Room = RoomEntity
 
@@ -24,8 +30,8 @@ export type SessionPresence = PresenceEntity
 export interface SessionTransitionNotice {
   eventId: string
   sessionId: UUID
-  previousState: SessionState | null
-  nextState: SessionState
+  previousState: SessionLifecycleState | null
+  nextState: SessionLifecycleState
   movedUsers: number
   targetState: PresenceState
   targetRoomId: UUID

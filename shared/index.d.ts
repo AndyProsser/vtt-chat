@@ -11,8 +11,9 @@
  * - errors/: Error codes, catalog, and error factory functions
  * - validators/: Input validation and event validation functions (pure, side-effect-free)
  */
-export * from './types';
-export * from './events';
-export * from './permissions';
-export * from './errors';
-export * from './validators';
+export * from './types'
+export * from './events'
+export * from './permissions'
+export * from './errors'
+export * from './validators'
+export * from './utils'

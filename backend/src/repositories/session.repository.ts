@@ -22,7 +22,7 @@ export async function createSessionRecord(params: {
   name: string
   description?: string
   dmId: string
-  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   createdAt: Date
 }): Promise<void> {
   await prisma.session.create({
@@ -45,7 +45,7 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     name: string
     description: string | null
     dmId: string
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
     startedAt: Date | null
     endedAt: Date | null
@@ -75,7 +75,7 @@ export async function listSessions(): Promise<
     name: string
     description: string | null
     dmId: string
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
     startedAt: Date | null
     endedAt: Date | null
@@ -103,7 +103,7 @@ export async function findSessionById(sessionId: string): Promise<{
   name: string
   description: string | null
   dmId: string
-  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   createdAt: Date
   startedAt: Date | null
   endedAt: Date | null
@@ -129,12 +129,12 @@ export async function findSessionById(sessionId: string): Promise<{
 
 export async function updateSessionStateRecord(params: {
   sessionId: string
-  newState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+  newState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   startedAt?: Date
   endedAt?: Date
 }): Promise<void> {
   const data: {
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     startedAt?: Date
     endedAt?: Date
   } = {

@@ -136,7 +136,6 @@ const ACTIVE_SESSION_CONTEXT_STORAGE_KEY = 'vtt-chat:active-session-context'
 const MAX_POSTER_WIDTH_PX = 1024
 const MAX_POSTER_DATA_URL_CHARS = 350_000
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
-const SYSTEM_MESSAGE_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SESSION_SUMMARY_TAG = 'session-summary'
 const SESSION_SUMMARY_TITLE = 'Session Summary'
 const WS_ERROR_TOAST_ID = 'session-init:ws-error'
@@ -163,11 +162,6 @@ const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
   dungeon: { reverbSend: 0.54, lowpassFreq: 3600, roomGain: -2.5 },
   night: { reverbSend: 0.24, lowpassFreq: 9000, roomGain: -1.2 },
   storm: { reverbSend: 0.48, lowpassFreq: 5200, roomGain: -1.8 },
-}
-
-type PendingSessionBookend = {
-  content: string
-  timestamp: number
 }
 
 type ActiveSessionContext = {
@@ -505,7 +499,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const lastHydratedSessionFingerprintRef = useRef<string | null>(null)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
-  const pendingSessionBookendsBySessionIdRef = useRef<Map<UUID, PendingSessionBookend[]>>(new Map())
   const greenroomCleanupTimerRef = useRef<number | null>(null)
   const wsRetryWindowStartRef = useRef<number | null>(null)
   const wsRetryToastTimerRef = useRef<number | null>(null)
@@ -694,150 +687,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     setEnvironment,
   ])
 
-  const getSessionBookendRoomIds = useCallback(
-    (sessionId: UUID, content: string): UUID[] => {
-      const sessionRooms = Object.values(typedRoomsBySession[sessionId] || {})
-      const sourceRooms =
-        sessionRooms.length > 0
-          ? sessionRooms
-          : currentSession?.id === sessionId
-            ? currentRooms
-            : []
-
-      if (!sourceRooms.length) {
-        return []
-      }
-
-      const targetIds = new Set<UUID>()
-
-      const isStartOrEndBookend =
-        content.startsWith('[Session Started]') ||
-        content.startsWith('[Session Ended]') ||
-        content.startsWith('Session Start:') ||
-        content.startsWith('Session End:')
-
-      for (const room of sourceRooms) {
-        if (room.type === RoomType.MAIN) {
-          targetIds.add(room.id)
-          continue
-        }
-
-        // Pause/resume remain runtime-only. Start/end can be reflected in
-        // Greenroom timeline for chapter chronology.
-        if (isStartOrEndBookend && isGreenRoomName(room.name)) {
-          targetIds.add(room.id)
-        }
-      }
-
-      return Array.from(targetIds)
-    },
-    [currentRooms, currentSession, typedRoomsBySession]
-  )
-
-  const writeSessionBookendMessages = useCallback(
-    (sessionId: UUID, content: string, timestamp: number): boolean => {
-      const roomIds = getSessionBookendRoomIds(sessionId, content)
-      if (!roomIds.length) {
-        return false
-      }
-
-      const existingSessionMessages = Object.values(
-        (useStore.getState().messages as Record<UUID, Record<UUID, Message>>)[sessionId] || {}
-      )
-
-      for (const roomId of roomIds) {
-        const hasExistingBookend = existingSessionMessages.some(
-          (message) =>
-            message.roomId === roomId &&
-            message.type === MessageType.SYSTEM &&
-            message.content === content &&
-            Math.abs(message.createdAt - timestamp) <= SESSION_BOOKEND_DEDUPE_WINDOW_MS
-        )
-
-        if (hasExistingBookend) {
-          continue
-        }
-
-        addMessage(sessionId, {
-          id: crypto.randomUUID() as UUID,
-          roomId,
-          authorId: SYSTEM_MESSAGE_AUTHOR_ID,
-          authorUsername: 'SYSTEM',
-          content,
-          type: MessageType.SYSTEM,
-          isDmOnly: false,
-          createdAt: timestamp,
-        })
-      }
-
-      return true
-    },
-    [addMessage, getSessionBookendRoomIds]
-  )
-
-  const appendSessionBookendMessages = useCallback(
-    (sessionId: UUID, nextState: SessionState, previousState?: SessionState | 'ENDED' | null) => {
-      if (
-        nextState !== SessionState.ACTIVE &&
-        nextState !== SessionState.PAUSED &&
-        nextState !== SessionState.ENDED
-      ) {
-        return
-      }
-
-      const sessionName =
-        (currentSession?.id === sessionId ? currentSession.name : typedSessions[sessionId]?.name) ||
-        'Session'
-
-      const content =
-        nextState === SessionState.ACTIVE
-          ? previousState === SessionState.PAUSED
-            ? `[Session Resumed] ${sessionName}`
-            : `[Session Started] ${sessionName}`
-          : nextState === SessionState.PAUSED
-            ? `[Session Paused] ${sessionName}`
-            : `[Session Ended] ${sessionName}`
-
-      const timestamp = Date.now()
-      const didWrite = writeSessionBookendMessages(sessionId, content, timestamp)
-
-      if (didWrite) {
-        return
-      }
-
-      const pending = pendingSessionBookendsBySessionIdRef.current.get(sessionId) || []
-      pendingSessionBookendsBySessionIdRef.current.set(sessionId, [
-        ...pending,
-        { content, timestamp },
-      ])
-    },
-    [currentSession, typedSessions, writeSessionBookendMessages]
-  )
-
-  useEffect(() => {
-    if (!pendingSessionBookendsBySessionIdRef.current.size) {
-      return
-    }
-
-    for (const [sessionId, entries] of Array.from(pendingSessionBookendsBySessionIdRef.current)) {
-      const remaining: PendingSessionBookend[] = []
-
-      for (const entry of entries) {
-        const didWrite = writeSessionBookendMessages(sessionId, entry.content, entry.timestamp)
-
-        if (!didWrite) {
-          remaining.push(entry)
-        }
-      }
-
-      if (remaining.length) {
-        pendingSessionBookendsBySessionIdRef.current.set(sessionId, remaining)
-      } else {
-        pendingSessionBookendsBySessionIdRef.current.delete(sessionId)
-      }
-    }
-  }, [currentSession, currentRooms, typedRoomsBySession, writeSessionBookendMessages])
-
   const scheduleGreenroomCarry = useCallback((fromSessionId: UUID, toSessionId: UUID) => {
     if (fromSessionId === toSessionId) {
       return
@@ -849,7 +698,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const restoreSessionBookendsFromHistory = useCallback(
     async (sessionId: UUID, rooms: Array<Pick<RoomRecord, 'id' | 'type' | 'name'>>) => {
       const targetRoomIds = rooms
-        .filter((room) => room.type === RoomType.MAIN)
+        .filter((room) => room.type === RoomType.MAIN || isGreenRoom(room))
         .map((room) => room.id)
 
       if (!targetRoomIds.length) {
@@ -939,10 +788,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
         return
       }
 
-      const sessionMessages =
-        Object.values(
-          (useStore.getState().messages as Record<UUID, Record<UUID, Message>>)[sessionId] || {}
-        ) || []
+      const sessionMessages = Object.values(
+        (useStore.getState().messages as Record<UUID, Record<UUID, Message>>)[sessionId] || {}
+      )
 
       const existingSignatures = new Set(
         sessionMessages
@@ -952,28 +800,22 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           )
       )
 
-      const uniqueBookends = new Map<string, Message>()
       for (const message of recoveredBookends) {
-        const signature = `${message.authorId}:${message.type}:${message.content}`
-        if (!uniqueBookends.has(signature)) {
-          uniqueBookends.set(signature, message)
+        const roomId = message.roomId
+        if (!roomId || !targetRoomIds.includes(roomId)) {
+          continue
         }
-      }
 
-      for (const message of uniqueBookends.values()) {
-        for (const roomId of targetRoomIds) {
-          const roomSignature = `${roomId}:${message.authorId}:${message.type}:${message.content}`
-          if (existingSignatures.has(roomSignature)) {
-            continue
-          }
-
-          addMessage(sessionId, {
-            ...message,
-            id: crypto.randomUUID() as UUID,
-            roomId,
-          })
-          existingSignatures.add(roomSignature)
+        const roomSignature = `${roomId}:${message.authorId}:${message.type}:${message.content}`
+        if (existingSignatures.has(roomSignature)) {
+          continue
         }
+
+        addMessage(sessionId, {
+          ...message,
+          id: crypto.randomUUID() as UUID,
+        })
+        existingSignatures.add(roomSignature)
       }
     },
     [addMessage, apiUrl, token]
@@ -2322,11 +2164,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
           const activeSession = await transitionResponse.json()
           updateSession(payload.session.id, activeSession)
-          appendSessionBookendMessages(
-            payload.session.id,
-            SessionState.ACTIVE,
-            payload.session.state
-          )
         }
 
         return payload.session.id
@@ -2345,7 +2182,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       setCurrentSession,
       token,
       updateSession,
-      appendSessionBookendMessages,
     ]
   )
 
@@ -2409,10 +2245,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const handleTransitionSession = async (sessionId: UUID, state: SessionState) => {
     setError(null)
 
-    const previousState =
-      (currentSession?.id === sessionId ? currentSession.state : typedSessions[sessionId]?.state) ||
-      null
-
     try {
       const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/state`, {
         method: 'PUT',
@@ -2430,8 +2262,6 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
       const updatedSession = await response.json()
       updateSession(sessionId, updatedSession)
-
-      appendSessionBookendMessages(sessionId, state, previousState)
       if (isGreenroomSessionState(state)) {
         setSelectedRoomIdOverride('')
         resetToolbarActionsState()
