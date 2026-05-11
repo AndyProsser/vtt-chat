@@ -15,9 +15,12 @@
   margin: 0 auto;
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   padding: 0.22rem;
   border-radius: var(--radius-lg);
   background: transparent;
+  overflow: hidden;
 }
 
 .command-center-surface {
@@ -55,18 +58,16 @@
 .command-center-rails {
   --command-center-rails-bottom-gap: 2px;
   --command-center-rails-desktop-offset: 7.65rem;
+  --command-center-rails-height: calc(
+    100dvh - var(--command-center-rails-desktop-offset) - var(--command-center-rails-bottom-gap)
+  );
   display: grid;
   gap: 0.72rem;
   align-items: stretch;
   min-height: 0;
-  min-height: max(
-    489px,
-    calc(
-      100dvh - var(--command-center-rails-desktop-offset) - var(--command-center-rails-bottom-gap)
-    )
-  );
-  height: 100%;
-  overflow: visible;
+  height: var(--command-center-rails-height);
+  max-height: var(--command-center-rails-height);
+  overflow: hidden;
   grid-template-columns: minmax(304px, 336px) minmax(0, 1fr) 2.15rem;
 }
 

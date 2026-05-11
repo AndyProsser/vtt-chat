@@ -497,51 +497,6 @@ export async function listMockPlayers(): Promise<MockPlayerDef[]> {
 }
 
 export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<MockPlayerDef[]> {
-  const existingSessionMocks = await prisma.sessionMember.findMany({
-    where: {
-      sessionId,
-      username: { startsWith: DEV_MOCK_PREFIX },
-    },
-    orderBy: {
-      username: 'asc',
-    },
-    select: {
-      userId: true,
-      username: true,
-    },
-  })
-
-  const retainedSessionMocks = existingSessionMocks.slice(0, MAX_DEV_MOCK_PLAYERS)
-  const overflowSessionMocks = existingSessionMocks.slice(MAX_DEV_MOCK_PLAYERS)
-
-  if (overflowSessionMocks.length > 0) {
-    await removeMockMembersFromSession(
-      sessionId,
-      overflowSessionMocks.map((member) => ({
-        userId: member.userId as UUID,
-        username: member.username,
-      }))
-    )
-    logger.warn(
-      'dev-mock-players',
-      `Trimmed ${overflowSessionMocks.length} excess DEV mock players from session ${sessionId}`
-    )
-  }
-
-  if (retainedSessionMocks.length > 0) {
-    const existingUsers = await prisma.user.findMany({
-      where: { id: { in: retainedSessionMocks.map((entry) => entry.userId) } },
-      select: { id: true, username: true, displayName: true, email: true },
-    })
-
-    return existingUsers.map((user) => ({
-      id: user.id as UUID,
-      username: user.username,
-      displayName: user.displayName,
-      email: user.email,
-    }))
-  }
-
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     select: { id: true, campaignId: true, state: true },
@@ -567,6 +522,41 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
   selectedArchetypes = selectedArchetypes.slice(0, MAX_DEV_MOCK_PLAYERS)
   const levels = pickLevels(selectedArchetypes.length)
   const selectedUsers: MockPlayerDef[] = []
+  const desiredUsernames = new Set(
+    selectedArchetypes.map((archetype) => `${DEV_MOCK_PREFIX}${archetype.slug}`)
+  )
+
+  const existingSessionMocks = await prisma.sessionMember.findMany({
+    where: {
+      sessionId,
+      username: { startsWith: DEV_MOCK_PREFIX },
+    },
+    orderBy: {
+      username: 'asc',
+    },
+    select: {
+      userId: true,
+      username: true,
+    },
+  })
+
+  const staleSessionMocks = existingSessionMocks.filter(
+    (member) => !desiredUsernames.has(member.username)
+  )
+
+  if (staleSessionMocks.length > 0) {
+    await removeMockMembersFromSession(
+      sessionId,
+      staleSessionMocks.map((member) => ({
+        userId: member.userId as UUID,
+        username: member.username,
+      }))
+    )
+    logger.warn(
+      'dev-mock-players',
+      `Pruned ${staleSessionMocks.length} stale DEV mock players from session ${sessionId}`
+    )
+  }
 
   for (let i = 0; i < selectedArchetypes.length; i += 1) {
     const archetype = selectedArchetypes[i]

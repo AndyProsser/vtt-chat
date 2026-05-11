@@ -1062,6 +1062,7 @@
   gap: 0.4rem;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .session-left-rail-card {
@@ -1079,7 +1080,7 @@
 
 .session-left-rail-card--channels {
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .session-left-rail-card--audio {

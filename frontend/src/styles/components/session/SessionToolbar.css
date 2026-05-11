@@ -221,7 +221,7 @@
 .session-toolbar__timer-pill strong {
   color: var(--color-text-primary);
   letter-spacing: 0.03em;
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   min-width: 6ch;
   text-align: center;

@@ -10,10 +10,9 @@
   display: grid;
   gap: 0.12rem;
   animation: toast-slide-in var(--duration-fast) var(--ease-out);
-  border-top-width: 2px;
-  border-top-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-style: solid;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--radius-2);
 }
 
 .vtt-reconnect-banner__countdown {
