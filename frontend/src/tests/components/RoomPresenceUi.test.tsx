@@ -1432,6 +1432,90 @@ describe('RoomSelector', () => {
     })
   })
 
+  it('disables end-whisper button while pending whisper moves exist', async () => {
+    let resolveMoveParticipant: ((value: Response) => void) | null = null
+    const moveParticipantPromise = new Promise<Response>((resolve) => {
+      resolveMoveParticipant = resolve
+    })
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-private/members/move') && options?.method === 'POST') {
+        return moveParticipantPromise
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { rerender } = render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-3'),
+                username: 'Zara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    // Verify end-whisper button exists and is enabled initially
+    const endWhisperButton = screen.getByRole('button', { name: 'End whisper' })
+    expect(endWhisperButton.hasAttribute('disabled')).toBe(false)
+
+    // Open context menu and move Zara to the whisper room
+    fireEvent.contextMenu(getDragUserButton('Zara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+
+    // Wait for the move to be pending and end-whisper button to become disabled
+    await waitFor(() => {
+      expect(endWhisperButton.hasAttribute('disabled')).toBe(true)
+    })
+  })
+
   it('does not show breakout labels and renders metadata row in the panel', () => {
     render(
       <RoomSelector
