@@ -1,32 +1,197 @@
-# DM Campaign Settings: Features & Permissions
+# Campaign & Character Settings: Three-Layer Architecture
 
-**Status**: Design/Planning — Updated 2026-05-07
-**Related**: W0 Frontend Surface Completion, Voice Group Panel (UI-COMPONENT-CHANNELS.md)
+**Status**: Design/Planning — Updated 2026-05-11
+**Related**: W0 Frontend Surface Completion, [UI-COMPONENTS.md](UI-COMPONENTS.md#77-settingspanel-topbar), [SESSION-LIFECYCLE.md](../architecture/SESSION-LIFECYCLE.md)
 
 ---
 
 ## Overview
 
-DM Campaign Settings provide per-campaign controls for features, permissions, and runtime behavior. These settings are scoped to the campaign level and managed by the DM (campaign owner).
+VTT-Chat settings are organized in three distinct layers, each with specific accessibility, editability rules, and persistence scope:
+
+1. **Topbar Layer** (`<SettingsPanel />`) — User account and system defaults
+2. **Rightbar Layer** (`<CampaignRightbarSettings />`) — Campaign, session, and character settings
+3. **Feature Toggles** — Per-campaign feature flags (separate from user/campaign data)
+
+This document covers all three layers plus feature toggle definitions.
+
+UI implementation contract:
+
+- Any tabbed panel/dialog in this settings surface must use Radix UI Tabs.
+- This is especially required for the main/home campaign settings dialog where multiple settings sections coexist.
+- Implementations must be componentized (tab shell, section forms, editors, list/detail panes) and avoid monolithic files.
 
 Terminology note: this document uses **Group** as the user-facing label. Existing implementation identifiers may still use `Room`/`room` naming until migration is complete.
 
 ---
 
-## 1) Settings Categories
+## Layer 1: Topbar Settings (`<SettingsPanel />`)
 
-### 1.1 Voice & Audio
+**Scope**: User-scoped, outside campaign context
+**Accessibility**: All personas
+**Editability**: User (own profile only), DM (system defaults only)
+**Persistence**: User account database
+
+### 1.1 User Profile
+
+**Editable by**: Self only
+**Always visible**: Inside and outside campaigns
+**Fields**:
+
+- User name
+- Profile avatar
+- Email address (outside campaigns only)
+- Password reset (outside campaigns only)
+- Other account-level settings (TBD)
+
+**Notes**:
+
+- Serves as fallback defaults for character fields if character values are blank.
+- Character-scoped settings inherit user profile values unless explicitly overridden.
+
+### 1.2 System Defaults (Templates)
+
+**Editable by**: DM only
+**Visible**: All personas (reference-only)
+**Editability gate**: Only accessible when outside any campaign
+**Fields**:
+
+- Default campaign name
+- Default campaign description
+- Default session duration (hours:minutes)
+- Default group audio auto-target toggle state
+- Default character race (default: Human)
+- Default character class (default: Fighter)
+- Default character level (default: 1)
+- Default character stats (default: 8 across STR, CON, DEX, INT, WIS, CHA)
+
+**Effect**:
+
+- System defaults are templates for new campaigns only.
+- Never mutate existing campaigns or characters.
+- DM can pre-configure defaults to speed up new campaign creation.
+
+**Notes**:
+
+- Character defaults are overridable by campaign-level defaults or player-specific values.
+- System defaults serve as the fallback-of-last-resort if no campaign or character defaults exist.
+
+---
+
+## Layer 2: Rightbar Settings (`<CampaignRightbarSettings />`)
+
+**Scope**: Campaign or session-scoped
+**Accessibility**: Inside campaign context only
+**Editability**: Role-gated and time-gated
+**Persistence**: Backend (PostgreSQL for campaign/session/character; Redis for per-session effects)
+
+### 2.1 Campaign Settings
+
+**Editable by**: DM only
+**Editability scope**: Anytime (inside or outside active session)
+**Fields**:
+
+- Default session duration (hours:minutes)
+- Group audio auto-target toggle (boolean; affects all groups in campaign)
+
+**Ownership boundary**:
+
+- Campaign metadata fields (name, description, banner/poster image) are edited in Information > Campaign panel.
+- Campaign stats (session count, total session duration) are read-only and shown in Information > Campaign panel.
+
+**Effect**:
+
+- Campaign values override system defaults for all sessions in this campaign.
+- Session values may further override campaign defaults (e.g., extend session duration for special event).
+
+**Persistence**:
+
+- Stored in `Campaign` table.
+- Restored on every session start.
+
+---
+
+### 2.2 Session Settings
+
+**Editable by**: DM only
+**Editability gate**: Editable only during `INACTIVE`, `ACTIVE`, or `PAUSED` session states
+**Editability scope**: Locked during `ENDED` state (includes cooldown phase)
+**Fields**:
+
+- Session name
+- Planned session duration (hours:minutes)
+- Session description (TBD)
+
+**Effect**:
+
+- Session values apply to the current session and all subsequent sessions in the same campaign (unless explicitly overridden).
+- Players can view but not edit session duration.
+- Changing planned duration during `ACTIVE` session does NOT affect timer calculations; only affects next-session display.
+
+**Persistence**:
+
+- Stored in `Session` table.
+- Values persist and are restored for next session in the same campaign.
+
+**Notes**:
+
+- Session name is distinct from session display name (which may include date/timestamp).
+- Planned duration is used for display and cooldown calculations; actual elapsed time is backend-authoritative.
+
+---
+
+### 2.3 Character Settings
+
+**Editable by**: Players (own character only); DM (view/override capabilities TBD)
+**Editability gate**: Anytime
+**Visible to**: Player (full edit), DM/other players (view with current effects), Spectators (view-only with effects)
+**Fields**:
+
+- Character name (default: user name)
+- Race (default: Human)
+- Class (default: Fighter)
+- Level (default: 1)
+- Stats (STR, CON, DEX, INT, WIS, CHA; default: 8 for each)
+- Character avatar (default: user profile avatar)
+- Applied conditions/effects (read-only live display)
+
+**Effect**:
+
+- Character values override user profile defaults when present.
+- Character stats default to Fighter/Human/Level 1/8 (all stats) if left blank by player.
+- DM can view and possibly override (implementation TBD).
+
+**Persistence**:
+
+- Stored per character per session (player data).
+- Character data is re-created at session start or restored from previous session if player re-joins.
+
+**Notes**:
+
+- Character is a per-session projection; player can have different character profiles across campaigns.
+- Stats and profile are primarily for narrative/community display; no mechanical enforcement in Phase W0.
+
+---
+
+## Layer 3: Feature Toggle Definitions
+
+**Scope**: Per-campaign feature flags
+**Accessibility**: Campaign-level; typically not exposed in user-facing UI (yet)
+**Editability**: Backend only (API call or admin interface)
+**Persistence**: `CampaignSettings` table in PostgreSQL
+
+### 3.1 Voice & Audio
 
 **Broadcast Mode**
 
 - **Setting**: `allowBroadcastMode` (boolean, default: `true`)
 - **Effect**: If disabled, DM cannot route voice to individual groups; DM voice broadcasts to all connected players.
-- **UI**: Toggle in campaign settings panel.
+- **UI**: (Deferred; may be added to rightbar settings in future phase)
 - **Notes**: Useful for smaller campaigns or strict narrative control.
 
 ---
 
-### 1.2 Player Conditions (NEW)
+### 3.2 Player Conditions
 
 **Allow Conditions**
 
@@ -36,7 +201,7 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
   - Condition badges still display for visual reference (read-only).
   - DM cannot apply/remove conditions via UI.
   - Backend may ignore condition mutations from frontend.
-- **UI**: Toggle in campaign settings panel.
+- **UI**: (Deferred; may be added to rightbar settings in future phase)
 - **Notes**: DM may disable this to keep focus on story/roleplay without mechanical clutter.
 
 **Condition Pool** (planned enhancement)
@@ -44,35 +209,36 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 - **Setting**: `allowedConditions` (array of condition names, default: all)
 - **Effect**: Restricts available conditions to a curated list.
 - **Example**: `["Poisoned", "Bleeding", "Asleep"]` — only these can be applied.
-- **UI**: Multi-select picker in campaign settings.
+- **UI**: (Future phase; multi-select picker in campaign settings)
 
 ---
 
-### 1.3 Group Management
+### 3.3 Group Management
 
 **Allow Group Creation by Players** (planned)
 
 - **Setting**: `allowPlayerRoomCreation` (boolean, default: `false`)
 - **Effect**: If enabled, players can create their own breakout groups.
-- **UI**: Toggle in campaign settings panel.
+- **UI**: (Future phase; toggle in rightbar settings)
 
 **Group Visibility** (planned)
 
 - **Setting**: `roomVisibility` (enum: `public`, `dm-controlled`, `players-hidden`)
 - **Effect**: Controls whether players see all groups or only groups they're in.
 - **Default**: `public` (all groups visible).
+- **UI**: (Future phase)
 
 **Main Group Audio Monitoring** (future W0 tail feature)
 
 - **Setting**: `allowSecondaryGroupMainListen` (boolean, default: `false`)
 - **Effect**: If enabled, DM can mark selected secondary groups (for example "In Jail") as listen-only monitors of Main group audio.
 - **Behavior**: One-way audio only by default (secondary group hears Main; Main does not hear secondary group).
-- **UI**: Toggle in Voice & Audio settings plus per-group checkbox in group controls.
+- **UI**: (Future phase; toggle in Voice & Audio settings plus per-group checkbox in group controls)
 - **Scope**: Deferred until after W0 Phase 5 hardening.
 
 ---
 
-### 1.4 Optional Summary Processing Module (Install-Time Gate)
+### 3.4 Optional Summary Processing Module (Install-Time Gate)
 
 This feature bundle includes:
 
@@ -100,67 +266,82 @@ UI behavior when not installed:
 
 ---
 
-## 2) UI Location & Hierarchy
+## 4) UI Location & Hierarchy
 
-### Current (Pre-W0)
+### Pre-W0
 
 - Settings accessible from main campaign dashboard.
 - Likely under a "Campaign Settings" or "Admin" tab.
 
 ### W0 Integration
 
-- DM Campaign Settings panel should include a subsection for voice/conditions settings.
-- Quick toggle for "Allow Conditions" in a settings/gear icon.
-- Full settings panel opens from a dedicated "Settings" button.
+**Layer 1 - Topbar SettingsPanel**:
 
-**Proposed Layout**:
+- Accessible from topbar gear icon.
+- User Profile section: always editable.
+- System Defaults section: DM only, editable outside campaigns.
 
-```text
-Campaign Dashboard
-├─ Campaign Info (name, description, members)
-├─ Session Controls (Start, Pause, End)
-└─ Settings (gear icon)
-    ├─ Voice & Audio
-    │   └─ Allow Broadcast Mode [toggle]
-    ├─ Player Mechanics
-    │   ├─ Allow Conditions [toggle]
-    │   └─ Allowed Conditions [multi-select] (if enabled)
-    ├─ Group Management
-    │   ├─ Allow Player Group Creation [toggle]
-    │   └─ Group Visibility [dropdown]
-    └─ Notifications & Privacy
-        ├─ Notify on Late Join [toggle]
-        └─ Privacy Mode (hide player counts) [toggle]
-```
+**Layer 2 - Rightbar CampaignRightbarSettings**:
+
+- Accessible from rightbar tab icon (visible when inside campaign).
+- Campaign Settings section: DM editable anytime (non-metadata campaign fields only).
+- Session Settings section: DM editable during `INACTIVE|ACTIVE|PAUSED`; locked during `ENDED`.
+- Character Settings section: Player editable (own character), full visibility with effects.
+
+**Information Panel - Campaign Tab**:
+
+- DM edits campaign metadata: name, description, banner/poster image.
+- All personas see read-only campaign stats: session count and total duration.
+
+**Feature Toggle Access**:
+
+- Not exposed in W0 user-facing UI; managed via backend API.
+- May be added to admin/DM advanced settings in future phase.
 
 ---
 
-## 3) Implementation Roadmap
+## 5) Implementation Roadmap
 
 ### Phase 1 (W0, Critical)
 
-- [ ] Create `CampaignSettings` table in Prisma schema.
-  - `id` (UUID)
-  - `campaignId` (UUID, FK)
-  - `allowBroadcastMode` (boolean, default: `true`)
-  - `allowPlayerConditions` (boolean, default: `true`)
-  - `createdAt`, `updatedAt`
-- [ ] Add backend API endpoints:
-  - `GET /api/v1/campaigns/{id}/settings` — Fetch campaign settings.
-  - `PATCH /api/v1/campaigns/{id}/settings` — Update settings (DM only).
-- [ ] Create `CampaignSettingsPanel` component in frontend.
-- [ ] Wire toggle for "Allow Conditions" in campaign settings.
-- [ ] Pass `allowPlayerConditions` flag to RoomSelector via props.
-- [ ] Hide Condition option in radial menu if disabled.
-- [ ] Read platform capabilities and gate summary-processing controls with `summaryProcessingInstalled`.
-- [ ] Render canonical disabled-state message when capability is false.
+**Topbar SettingsPanel**:
+
+- [ ] Create User Profile section (name, avatar).
+- [ ] Create System Defaults templates section (editable outside campaigns only).
+- [ ] Wire user profile edits to backend.
+- [ ] Gate System Defaults edits to outside-campaign context.
+
+**Rightbar CampaignRightbarSettings**:
+
+- [ ] Create Campaign Settings section (default duration, auto-target toggle).
+- [ ] Create Session Settings section (name, planned duration) with state gates.
+- [ ] Create Character Settings section (name, race, class, level, stats, avatar) with defaults.
+- [ ] Wire all edits to backend APIs.
+- [ ] Persist session values and restore on next session.
+
+**Information Campaign Tab**:
+
+- [ ] Add campaign metadata editor (name, description, banner/poster) for DM.
+- [ ] Add read-only campaign stats cards (session count, total session duration).
+
+**Backend**:
+
+- [ ] Add campaign-level fields: `defaultSessionDurationMinutes`, `autoTargetGroupAudio`.
+- [ ] Add session-level fields: `name`, `plannedDurationMinutes`.
+- [ ] Create character profile model (per user per campaign).
+- [ ] Add backend APIs for all Layer 1 and Layer 2 CRUD operations.
+
+**Feature Toggles**:
+
+- [ ] Create `CampaignSettings` table (see section 4 data model below).
+- [ ] Wire `allowPlayerConditions` to radial menu condition visibility.
+- [ ] Wire `allowBroadcastMode` to broadcast controls (TBD if visible in W0).
 
 ### Phase 2 (Post-W0, Nice-to-Have)
 
-- [ ] Add `allowedConditions` array field.
-- [ ] Create condition picker/multi-select in settings panel.
+- [ ] Add `allowedConditions` array field and condition pool picker.
 - [ ] Implement server-side validation of condition mutations.
-- [ ] Add condition filtering on frontend based on pool.
+- [ ] Expose feature toggle toggles in admin/DM advanced settings UI.
 - [ ] Add DM-managed one-way Main group audio monitoring for selected secondary groups.
 
 ### Phase 3 (Future)
@@ -172,30 +353,88 @@ Campaign Dashboard
 
 ---
 
-## 4) Data Model (Prisma)
+## 6) Data Model (Prisma)
+
+### Campaign Extension
+
+```prisma
+model Campaign {
+  // ... existing fields
+  defaultSessionDurationMinutes    Int      @default(120) // 2 hours
+  autoTargetGroupAudio             Boolean  @default(true)
+  campaignSettings                 CampaignSettings?
+  // ... rest of model
+}
+```
+
+### Session Extension
+
+```prisma
+model Session {
+  // ... existing fields
+  name                   String   @default("Session")
+  plannedDurationMinutes Int      @default(120) // Inherits from campaign if not set
+  // ... rest of model
+}
+```
+
+### Character Profile
+
+```prisma
+model CharacterProfile {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId        String
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  name              String   @default("")
+  race              String   @default("Human")
+  class             String   @default("Fighter")
+  level             Int      @default(1)
+
+  // Stats: each defaults to 8
+  strengthStat      Int      @default(8)
+  constitutionStat  Int      @default(8)
+  dexterityStat     Int      @default(8)
+  intelligenceStat  Int      @default(8)
+  wisdomStat        Int      @default(8)
+  charismastat      Int      @default(8)
+
+  avatarUrl         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, campaignId])
+  @@index([campaignId])
+}
+```
+
+### Feature Toggles (CampaignSettings)
 
 ```prisma
 model CampaignSettings {
-  id                      String   @id @default(cuid())
-  campaignId              String
-  campaign                Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id                           String   @id @default(cuid())
+  campaignId                   String
+  campaign                     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   // Voice & Audio
-  allowBroadcastMode      Boolean  @default(true)
+  allowBroadcastMode           Boolean  @default(true)
 
   // Player Mechanics
-  allowPlayerConditions   Boolean  @default(true)
-  allowedConditionNames   String[] @default([]) // Empty = all allowed
+  allowPlayerConditions        Boolean  @default(true)
+  allowedConditionNames        String[] @default([]) // Empty = all allowed
 
   // Group Management
-  allowPlayerRoomCreation Boolean  @default(false)
-  roomVisibility          String   @default("public") // public | dm-controlled | players-hidden
+  allowPlayerRoomCreation      Boolean  @default(false)
+  roomVisibility               String   @default("public") // public | dm-controlled | players-hidden
 
   // Future W0 tail feature
   allowSecondaryGroupMainListen Boolean @default(false)
 
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   @@unique([campaignId])
   @@index([campaignId])
@@ -204,7 +443,7 @@ model CampaignSettings {
 
 ---
 
-## 5) Backend API Specification
+## 7) Backend API Specification
 
 ### GET `/api/platform/capabilities`
 

@@ -131,7 +131,7 @@ Out of scope:
 
 Known readiness gap classes:
 
-- Multi-client reconnect and soak hardening (presence/rooms/audio)
+- Multi-client reconnect and soak hardening (presence/groups-audio topology; runtime rooms)
 - Telemetry durability and restart-survival operational checks
 - Telemetry signal definition clarity (what is tracked, why it matters, and how it is consumed)
 - Admin console operations UX review against best-practice operator workflows
@@ -183,7 +183,7 @@ Known readiness gap classes:
 | **Boundary markers**         | Backend-authoritative only. Created as SYSTEM chat on state transition, persisted to DB, broadcast via WS. Frontend must not create markers (eliminates duplicates on refresh).                                                               |
 | **Reconnect authority**      | Optimistic frontend: holds intent during session; trusts backend snapshot on reconnect (replaces, not merges).                                                                                                                                |
 | **Mute enforcement**         | Defense-in-depth: client-side UI + audio mute; server-side validation before audio packet accept.                                                                                                                                             |
-| **Previous group tracking**  | One-level only (previousGroupId = last non-greenroom group). Restored on private room exit or populated on each non-greenroom join.                                                                                                           |
+| **Previous group tracking**  | One-level only (previousGroupId = last non-greenroom group). Restored on private group exit (runtime private room exit) or populated on each non-greenroom join.                                                                              |
 | **Post-session chat**        | Part of ENDED state, not separate CLEANUP. Default enabled, 5 mins, slider min 1 min max 60 mins. DM can disable, extend, or end early. When disabled, ENDED only triggers processing and then advances.                                      |
 
 **Exit Criteria:**
@@ -225,10 +225,10 @@ Recent runtime follow-through (2026-05-08):
 - Greenroom/session chat carry-over and lifecycle markers were hardened for repeated `Greenroom -> Session -> Greenroom -> Session Restart` cycles.
 - Fixed a frontend chat-state bug where a restarted session could miss its immediate `Session Start` marker until the next start/stop cycle because the marker was emitted before the new session topology had hydrated into Zustand state.
 - Frontend integration coverage now includes repeated restart chronology assertions and start-transition topology re-hydration coverage.
-- Runtime hardening priority remains room/session lifecycle determinism: room CRUD sync, greenroom-only rendering out of session, greenroom default-effect lock, deterministic transition routing, and reconnect-safe presence/status state.
+- Runtime hardening priority remains group/session lifecycle determinism: group CRUD sync (runtime room CRUD), greenroom-only rendering out of session, greenroom default-effect lock, deterministic transition routing, and reconnect-safe presence/status state.
 - Deferred UI debt for follow-up: Create Group popover styling has intermittent selector/specificity fragility in-session; short-term guard styles are acceptable for now, and a proper shared popover/panel styling pass is queued for post-hardening review.
 
-**Scope**: Enhance RoomSelector/left-rail voice group UI with modern UX patterns: permission-aware player context menu, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
+**Scope**: Enhance Group selector/left-rail voice group UI with modern UX patterns (legacy component alias: `RoomSelector`): permission-aware player context menu, mobile-responsive collapse/expand, enhanced drag-n-drop feedback, environment icons, create group CTA, and full accessibility support.
 
 Player context-menu spec alignment (2026-05-10):
 
@@ -244,6 +244,7 @@ Terminology note for this stage:
 
 - User-facing term is **Group** (for example, Main, Scouts, In Jail).
 - Existing technical component/API naming may still use `Room`/`rooms` during migration.
+- Audio transport mapping reminder: a Group in product UX maps to a LiveKit Room for audio subscription/routing.
 
 **Implementation Phases**:
 
@@ -264,11 +265,16 @@ Terminology note for this stage:
 - Minimalist Mobile: compact left column (group icons + avatars + mute/meter), expandable full-width left overlay, bottom-docked right-panel icons
 - Minimalist Mobile DM warning: one-time dismissible banner for non-optimal DM command experience
 - Topbar popout model: Settings and Information are primary panel entry points
-- Settings sections: `System | Campaign | Profile` (`System` sets defaults for new campaigns only)
-- Campaign settings access: DM edits; player/spectator read-only by default; DM can hide campaign settings from non-DM users
-- Session settings popover: opened from session-header cog; DM edits name/markdown description/timer override; players read-only
+- Settings sections: `System | Profile` in topbar, with campaign/session/character settings in rightbar
+- Campaign settings access: DM edits duration/auto-target in rightbar; players/spectators read-only by default
+- Campaign metadata (name/description/banner) is edited in Information > Campaign
+- Session settings popover: legacy path from session-header cog; canonical path is rightbar campaign/session settings
 - Session timer override: may exceed campaign default with warning-only UX
-- Information tabs: `Campaign | Search | Notes | Journal | History` (Journal feature-flagged off by default)
+- Information tabs: `Campaign | Notes | Journal | History` (Journal feature-flagged off by default)
+- Search panel removed; search is built into Notes, Journal, and History tabs
+- Tabbed panel/dialog contract: user-facing campaign/session screens use Radix UI Tabs (especially main/home campaign settings dialog)
+- Admin tab contract: admin UI uses MUI Tabs (or approved MUI-equivalent tabs)
+- UI decomposition contract: avoid monolithic component files; split tabbed screens into focused subcomponents
 - Notes handout permissions: `PRIVATE | PARTY | SELECTED` (selected players may be offline)
 - Campaign panel extension sync: enabled by default; DM can disable external updates
 - Full drag-n-drop feedback: highlight zones + dim invalid + ghost preview
@@ -283,13 +289,21 @@ Terminology note for this stage:
 - Screen reader support priority (full ARIA labels)
 - Greenroom policy: no additional groups can be created while session state is `IDLE`
 - Greenroom rendering: DM appears in the same participant list as other users (no separate DM widget)
-- Greenroom routing: treat greenroom as the only out-of-session room in the panel; it cannot be closed or moved into "Other Groups"
+- Greenroom routing: treat greenroom as the only out-of-session group in the panel; it cannot be closed or moved into "Other Groups"
 - Greenroom audio: neutral-only (no environment modifier, no DM condition/mute/broadcast overrides)
 - Group close behavior (interim safety mode 2026-05-11): first close on a non-empty non-main group migrates remaining members to `MAIN` without deleting; a second close when empty deletes the group.
 
+Naming conventions contract (2026-05-11):
+
+- Product/UI naming is Group-first; Room remains legacy compatibility naming where runtime contracts still require it.
+- New non-store modules should use Manager/Service/System/Engine naming by responsibility.
+- New module/file naming should not use Slice unless the file is a direct Zustand slice implementation.
+- Hard rule: any existing non-Zustand `*Slice` file must be renamed in the next refactor cycle when in scope.
+- See [docs/meta/NAMING-CONVENTIONS.md](docs/meta/NAMING-CONVENTIONS.md).
+
 Interim issue note and follow-up tasks (2026-05-11):
 
-- Issue observed: delete-while-members-move sequencing in `RoomSelector` can produce race-prone UX under real multi-client timing.
+- Issue observed: delete-while-members-move sequencing in the group selector flow (`RoomSelector` legacy component) can produce race-prone UX under real multi-client timing.
 - Temporary product behavior: two-step close for non-main groups (evacuate first, delete when empty) to protect player topology consistency.
 - Follow-up task: replace local UI sequencing with a server-authoritative close-group contract + explicit WS reconciliation event for all clients.
 - Follow-up task: add integration coverage for cross-client close-group reconciliation (initiator + observer clients) including retry/failure branches.
@@ -312,7 +326,7 @@ Interim issue note and follow-up tasks (2026-05-11):
 
 **Frontend Components** (existing + new):
 
-- ✅ RoomSelector.tsx (enhanced — Phase 1–3 complete: env icons, broadcast, create, radial menu, drag-n-drop, mobile collapse)
+- ✅ RoomSelector.tsx (group selector; enhanced — Phase 1–3 complete: env icons, broadcast, create, radial menu, drag-n-drop, mobile collapse)
 - ✅ AvatarOverlay.tsx (exists, reuse for DM + players)
 - ✅ Tooltip infrastructure (exists, enhanced for env icons)
 - ✅ ConditionPopover.tsx (implemented via RadialMenu condition mode)
@@ -355,21 +369,72 @@ Current implementation boundary (2026-05-08 first pass):
 
 - Non-Journal/History surfaces are being reset to campaign-scoped placeholder scaffolds to reduce UI noise while final information architecture is built.
 - Session context is intentionally restricted to Journal/History (and the small DM session popover for name/timer controls).
+- Campaign UI surfaces currently tracked in this workstream are the topbar timer, topbar Settings panel, chat start/stop and pause/resume bookends, chat message visibility, chat message creation, and the rightbar Notes/Journal panels.
 
 **Delivery checklist**:
 
-- [ ] Topbar Settings panel entry is available and consistent across eligible personas.
-- [ ] Topbar Information panel entry is available and consistent across eligible personas.
-- [ ] Settings sections support `System | Campaign | Profile`.
-- [ ] Campaign settings are DM-editable; non-DM users are read-only by default.
-- [ ] DM can hide campaign settings for non-DM users.
-- [ ] Session settings cog popover supports session name, markdown description, and timer override.
-- [ ] Session timer override supports warning-only exceedance over campaign default.
-- [ ] Information tab order is canonical: `Campaign | Search | Notes | Journal | History`.
+- [ ] Topbar timer is visible and state-accurate (`INACTIVE`, `ACTIVE`, `PAUSED`, `ENDED`).
+- [ ] `INACTIVE` timer starts from first DM/player greenroom join for next-session readiness and has no timer popper.
+- [ ] `ACTIVE` timer resets to zero on session start and remains synchronized across reconnect/refresh.
+- [ ] `PAUSED` switches primary timer to paused elapsed (distinct color) while active elapsed remains available in timer popper.
+- [ ] `ENDED` shows cooldown countdown and supports extend/cancel controls (player fallback rights if DM disconnects).
+- [ ] Timer popper (enabled in `ACTIVE|PAUSED|ENDED`) shows start time, cumulative pause time, pause count, expected end (rounded to nearest 15 mins), and time left.
+- [ ] **Topbar Layer** (`<SettingsPanel />` and `<UserProfile />`):
+  - [ ] User profile settings (name, avatar, email/password) editable outside campaigns.
+  - [ ] System defaults templates editable only outside campaigns (never mutate existing campaigns).
+  - [ ] All personas can edit own user profile settings.
+- [ ] **Rightbar Layer** (`<CampaignRightbarSettings />`):
+  - [ ] Campaign settings (default session duration, audio auto-target toggle) DM-editable.
+  - [ ] Session settings (name, planned duration) DM-editable only during `INACTIVE|ACTIVE|PAUSED` states.
+  - [ ] Session values persist in backend and restore for next session.
+  - [ ] Players can view but not edit session planned duration.
+  - [ ] Character settings (name, race, class, level, stats, avatar) player-editable in rightbar.
+  - [ ] Character defaults fallback to Human/Fighter/Level 1/8 (all stats) if blank.
+  - [ ] Character values supersede user profile defaults when present.
+- [ ] Information Campaign tab owns campaign metadata editing (name, description, banner/poster image) for DM.
+- [ ] Information Campaign tab shows read-only campaign stats (session count, total session duration) for all personas.
+- [ ] Chat lifecycle bookends render for `Session Started`, `Session Ended`, `Session Paused`, and `Session Resumed` transitions.
+- [ ] Chat message visibility matches persona and group membership rules (runtime room membership).
+- [ ] Chat message creation uses the canonical composer surface.
+- [ ] Information tab order is canonical: `Campaign | Notes | Journal | History`.
+- [ ] Search panel is removed; per-tab search exists in Notes, Journal, and History.
 - [ ] Journal is feature-flagged off by default.
+- [ ] Notes panel supports `ADD | DELETE | EDIT | SHARE`, hashtag grouping/search, favorites-to-top, and markdown + helper toolbar.
 - [ ] Notes handout permissions enforce `PRIVATE | PARTY | SELECTED` with offline roster targeting support.
+- [ ] Notes support attached images rendered below note text and scaled to fit UI.
+- [ ] Notes detail view has a clear `X` close action and can expand to support list + note view while preserving 900px target shell behavior.
+- [ ] Journal supports reverse chronology, text/hashtag search, markdown content, no images, and DM edits only for completed past sessions.
+- [ ] History is read-only, searchable, starts from bottom, and dynamically loads one session at a time while preserving privacy rules.
+- [ ] Rightbar Notes panel remains available from the Information surface.
+- [ ] Rightbar Journal panel remains available from the Information surface.
+- [ ] DM home campaign settings dialog includes Notes and Journal in dedicated tabs.
+- [ ] Campaign-specific rightbar settings are mirrored in DM home campaign settings dialog.
+- [ ] User-facing campaign/session tabbed panel/dialog screens use Radix UI Tabs (main campaign settings dialog is mandatory).
+- [ ] Admin tabbed screens use MUI Tabs (or approved MUI-equivalent tabs).
+- [ ] Tabbed screens and info/rightbar implementations are split into focused components (no monolithic files).
+- [ ] Naming migrations follow Group-first UI terminology and Manager/Service/System/Engine module naming guidance.
+- [ ] Any non-Zustand `*Slice` file in refactor scope is renamed in that cycle.
 
 **Definition of done**:
+
+- All checklist items marked complete.
+- All contract documents updated and validated.
+- Frontend component stubs created and wired to state.
+- Backend API endpoints implemented and tested.
+- Integration tests cover session transitions and persona visibility.
+
+**Documentation References**:
+
+- [SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md) — Session state machine and timer contract
+- [STATE-MACHINE.md](docs/changes/STATE-MACHINE.md) — Backend field definitions and spectator rules
+- [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md) — Component visibility matrix and behavior specs
+- [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md) — Topbar/rightbar layout and timer display rules
+- [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md) — Three-layer settings architecture (topbar/rightbar/toggles)
+- [SESSION-SUMMARY-BOOKENDS.md](docs/ui/SESSION-SUMMARY-BOOKENDS.md) — Chat lifecycle bookends and persistence
+- [CHAT-MESSAGE-VISIBILITY.md](docs/ui/CHAT-MESSAGE-VISIBILITY.md) — Message visibility matrix by persona/group/state (runtime room mapping)
+- [CHAT-MESSAGE-COMPOSITION.md](docs/ui/CHAT-MESSAGE-COMPOSITION.md) — Composer rules and ephemeral chat (whisper/cooldown)
+
+---
 
 - UX behavior matches W0 key decisions.
 - Access control rules are enforced in UI behavior and API contract usage.
@@ -516,7 +581,7 @@ Status: Completed baseline. Remaining items are tracked in active workstreams so
 
 Delivered baseline:
 
-1. Standardized frontend shared runtime state on canonical Zustand slices/selectors for session, presence, room, audio, and UI concerns.
+1. Standardized frontend shared runtime state on canonical Zustand store/selectors for session, presence, group (runtime room), audio, and UI concerns.
 2. Refactored oversized frontend audio surfaces into focused component/module boundaries.
 3. Aligned frontend and backend naming with canonical v1 API paths while retaining intentional compatibility aliases.
 4. Added migration-safe compatibility tests and v1 mount contract coverage for active route families.
@@ -527,7 +592,7 @@ Follow-up tracking (moved from this stage):
 2. W2: continue refactor-sensitive coverage expansion (selectors, integration hooks, migration behavior).
 3. W3: finalize legacy-path deprecation policy and sunset execution via runbook + telemetry gate.
 4. Consolidate reusable constants and shared common logic into `shared/` where cross-frontend/backend reuse is intended, with migration checklist coverage to preserve behavioral parity.
-5. Break oversized session/voice components into task-focused sub-components with explicit ownership boundaries (for example, `RoomSelector` split into list rendering, group actions, delete/close flow controller, and move/reconcile controller).
+5. Break oversized session/voice components into task-focused sub-components with explicit ownership boundaries (for example, group selector flow (`RoomSelector` legacy component) split into list rendering, group actions, delete/close flow controller, and move/reconcile controller).
 6. Introduce a small orchestration layer for close/delete/move async flows so UI components do not own transport timing/retry logic directly.
 7. Add component-map complexity caps (max file length/concern count) and enforce with refactor checklists in PR reviews.
 
@@ -592,7 +657,7 @@ Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed +
 - Randomized levels are constrained to a tight party band (within 2 levels) so encounter testing feels coherent.
 - Mock roster is campaign-stable across session stop/start cycles and rerolled on browser refresh (or explicit reset endpoint).
 - Mock players use a dedicated DEV avatar marker so they are immediately distinguishable from real players.
-- Player-room safety contract: no user may end up homeless. Missing/closed/invalid room targets must fail back to `MAIN`.
+- Player-group safety contract: no user may end up homeless. Missing/closed/invalid group targets (runtime room targets) must fail back to `MAIN`.
 
 **Implementation checklist**:
 

@@ -4,6 +4,8 @@
 
 This document defines the Journal summary workflow and session lifecycle bookend messages in chat.
 
+These bookends are the visible record of session start, stop, pause, and resume transitions in the chat stream, not manual composer-authored messages.
+
 ## Journal Summary Data
 
 Each session summary stores three key fields:

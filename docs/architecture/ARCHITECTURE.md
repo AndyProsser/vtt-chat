@@ -21,6 +21,12 @@ It describes the major subsystems, their responsibilities, and how they interact
 This file serves as the **entry point** for developers.
 Each subsystem has its own dedicated document linked below.
 
+Terminology mapping:
+
+- Product/UI term: Group
+- Runtime/backend contract term: Room (legacy-compatible and still canonical in some transport/persistence layers)
+- LiveKit mapping: one Group maps to one LiveKit Room for audio transport/subscription
+
 ---
 
 ## Core System Components
@@ -31,7 +37,7 @@ The backend exposes a modular API surface:
 
 - **Auth & Identity**
 - **Campaigns & Sessions**
-- **Rooms & Presence**
+- **Groups (runtime rooms) & Presence**
 - **Chat & Notes**
 - **Recordings & Journals**
 - **Audio Presets & DM Controls**
@@ -49,7 +55,7 @@ All APIs are stateless and authenticated via JWT or API keys.
 The relational schema supports:
 
 - Users, characters, campaigns
-- Sessions, rooms, presence snapshots
+- Sessions, groups (runtime rooms), presence snapshots
 - Chat messages, notes, flags, shares
 - Recordings, transcripts, journals
 - Audio presets, DM overrides
@@ -65,8 +71,8 @@ The relational schema supports:
 Redis is the **source of truth for live state**, including:
 
 - User presence
-- Room membership
-- Private rooms
+- Group membership (runtime room membership)
+- Private groups (runtime private rooms)
 - DM/assistant DM roles
 - Audio override state
 - Shout flags
@@ -91,7 +97,7 @@ Events include:
 
 - Presence
 - Session lifecycle
-- Room changes
+- Group changes (runtime room events)
 - Chat & whispers
 - Notes published to chat
 - Audio presets & DM overrides
@@ -118,6 +124,8 @@ LiveKit handles:
 - DM broadcast
 - Room‑level audio separation
 
+Mapping note: in product docs these are Group subscriptions and Group-level separation, implemented via LiveKit Rooms.
+
 A custom integration layer manages:
 
 - RoomManager
@@ -139,7 +147,7 @@ The audio engine provides:
 - Condition effects (silenced, underwater, drunk, etc.)
 - DM voice presets (demon, narrator, whisper, etc.)
 - Player IC presets (DM‑only monitor)
-- Private room clean mode
+- Private group clean mode (runtime private room clean mode)
 - DM push‑to‑talk override
 - Clear‑all effects
 
@@ -155,7 +163,7 @@ All presets are defined in a shared JSON library.
 The client uses a modular state architecture:
 
 - `usePresenceStore`
-- `useRoomStore`
+- `useRoomStore` (group store in product-facing terminology)
 - `useAudioStore`
 - `useChatStore`
 - `useRoleStore`
@@ -172,9 +180,9 @@ The WebSocket event reducer updates these stores deterministically.
 
 Features include:
 
-- Room chat
+- Group chat
 - Whispers
-- Green room ephemeral chat
+- Greenroom ephemeral chat
 - Hashtags
 - Metagame notes
 - Notes with visibility rules
@@ -187,15 +195,15 @@ Features include:
 
 ---
 
-### **9. Sessions & Green Room**
+### **9. Sessions & Greenroom**
 
 Session lifecycle:
 
-- Players gather in green room
+- Players gather in greenroom
 - DM starts session → recap shown
-- Private rooms, group rooms, whispers
-- Session ends → return to green room
-- Green room messages restored
+- Private groups, group channels, whispers
+- Session ends → return to greenroom
+- Greenroom messages restored
 - Cleanup when last user leaves
 
 **See:** `SESSIONS.md`
@@ -272,25 +280,25 @@ Horizontal scaling is supported via:
 
 ## Document Index
 
-| Document                      | Description                           |
-| ----------------------------- | ------------------------------------- |
-| **ARCHITECTURE.md**           | High‑level overview (this file)       |
-| **API-SPEC.md**               | REST API endpoints                    |
-| **DATA-MODEL.md**             | Prisma schema + relationships         |
-| **PRESENCE-STATE-MACHINE.md** | Redis presence model                  |
-| **WEBSOCKETS.md**             | WebSocket event contract              |
-| **EVENT-REDUCER.md**          | Client event reducer                  |
-| **STATE-STORES.md**           | Zustand store architecture            |
-| **LIVEKIT-INTEGRATION.md**    | Room manager, track router, publisher |
-| **AUDIO-ENGINE.md**           | WebAudio graph + effects              |
-| **PRESET-LIBRARY.md**         | JSON preset definitions               |
-| **CHAT-SYSTEM.md**            | Chat, whispers, green room            |
-| **NOTES-SYSTEM.md**           | Notes, flags, visibility              |
-| **SESSIONS.md**               | Session lifecycle                     |
-| **EXTENSION-INTEGRATION.md**  | DDB/Roll20/FVTT hooks                 |
-| **DM-TOOLS.md**               | DM controls & UI                      |
-| **PERMISSIONS-MATRIX.md**     | Capability access control             |
-| **ADMIN-ARCHITECTURE.md**     | Admin roles, permissions, workflows   |
-| **TELEMETRY.md**              | Analytics & logging                   |
-| **BACKUP-RESTORE.md**         | Admin workflows                       |
-| **DEPLOYMENT.md**             | Docker & scaling                      |
+| Document                      | Description                                 |
+| ----------------------------- | ------------------------------------------- |
+| **ARCHITECTURE.md**           | High‑level overview (this file)             |
+| **API-SPEC.md**               | REST API endpoints                          |
+| **DATA-MODEL.md**             | Prisma schema + relationships               |
+| **PRESENCE-STATE-MACHINE.md** | Redis presence model                        |
+| **WEBSOCKETS.md**             | WebSocket event contract                    |
+| **EVENT-REDUCER.md**          | Client event reducer                        |
+| **STATE-STORES.md**           | Zustand store architecture                  |
+| **LIVEKIT-INTEGRATION.md**    | Group/room manager, track router, publisher |
+| **AUDIO-ENGINE.md**           | WebAudio graph + effects                    |
+| **PRESET-LIBRARY.md**         | JSON preset definitions                     |
+| **CHAT-SYSTEM.md**            | Chat, whispers, Greenroom                   |
+| **NOTES-SYSTEM.md**           | Notes, flags, visibility                    |
+| **SESSIONS.md**               | Session lifecycle                           |
+| **EXTENSION-INTEGRATION.md**  | DDB/Roll20/FVTT hooks                       |
+| **DM-TOOLS.md**               | DM controls & UI                            |
+| **PERMISSIONS-MATRIX.md**     | Capability access control                   |
+| **ADMIN-ARCHITECTURE.md**     | Admin roles, permissions, workflows         |
+| **TELEMETRY.md**              | Analytics & logging                         |
+| **BACKUP-RESTORE.md**         | Admin workflows                             |
+| **DEPLOYMENT.md**             | Docker & scaling                            |

@@ -60,14 +60,16 @@ stateDiagram-v2
     ended --> [*]
 ```
 
-### **2.1 idle**
+### **2.1 inactive (idle in current codebase)**
 
-The table exists but no session is running.
+The table is in greenroom mode and no live session is running.
 
-- Players may chat
-- Notes may be created
-- Audio may be triggered
-- No session‑specific timers or mechanics are active
+- The INACTIVE timer starts at `00:00` when the first DM/player joins greenroom membership.
+- This timer represents readiness time for the next session, not time since the previous session ended.
+- No timer popper is shown in this state.
+- Players may chat.
+- Notes may be created.
+- Audio may be triggered.
 
 ---
 
@@ -75,10 +77,13 @@ The table exists but no session is running.
 
 A session is currently running.
 
-- Presence indicators are active
-- Audio effects may be synchronized
-- Session‑specific UI is enabled
-- DM tools are fully available
+- On `INACTIVE -> ACTIVE`, the active session timer resets to `00:00`.
+- Active elapsed time is backend-authoritative and shared across all clients.
+- Active elapsed time must survive disconnects and page refreshes.
+- Presence indicators are active.
+- Audio effects may be synchronized.
+- Session‑specific UI is enabled.
+- DM tools are fully available.
 
 ---
 
@@ -86,11 +91,13 @@ A session is currently running.
 
 The session is temporarily halted.
 
-- Audio may be muted or frozen
-- Presence indicators remain active
-- UI displays a paused banner
-- Players cannot trigger session‑critical actions
-- Pause runtime content is off-the-record (no persisted pause chat/voice transcript)
+- The topbar primary timer switches to paused elapsed duration and uses a paused-specific color.
+- Active elapsed timer continues in the background and remains visible in the timer popper.
+- Pause totals are cumulative (`totalPausedDuration` + `pauseCount`).
+- Presence indicators remain active.
+- UI displays a paused banner.
+- Players cannot trigger session‑critical actions.
+- Pause runtime content is off-the-record (no persisted pause chat/voice transcript).
 
 The pause reason is **DM‑private**.
 
@@ -98,13 +105,15 @@ The pause reason is **DM‑private**.
 
 ### **2.4 ended**
 
-The session has concluded.
+The live session has concluded and cooldown is active.
 
-- Session‑specific UI is disabled
-- Audio resets
-- Notes remain accessible
-- Chat remains open
-- A new session may be started
+- Topbar timer becomes a cooldown countdown (`remainingCooldown -> 00:00`).
+- Default cooldown is 1 minute; configurable range is 1 to 60 minutes.
+- Timer popper remains available and shows details from the just-closed session.
+- DM can extend cooldown (adds one more configured cooldown block) or cancel it early.
+- If DM disconnects during cooldown, connected players gain extend/cancel control.
+- While cooldown is active, spectator post-session interaction policy applies.
+- When cooldown reaches zero or is canceled, state transitions to `INACTIVE` and timer context resets for the next session.
 
 ---
 
@@ -160,29 +169,53 @@ Key points:
 
 ## 5. UI Behaviour by State
 
-### **idle**
+### **inactive**
 
-- “Start Session” button visible to DM
-- Session timer hidden
-- Session controls disabled
+- “Start Session” button visible to DM.
+- Topbar timer visible and counting elapsed time since first DM/player joined greenroom membership.
+- Timer popper is hidden/disabled in this state.
+- Session controls are otherwise idle.
 
 ### **active**
 
-- Session timer visible
-- DM tools enabled
-- Player UI fully interactive
+- Topbar timer shows active elapsed session time.
+- Timer popper is available and live-updating while open.
+- DM tools enabled.
+- Player UI fully interactive.
 
 ### **paused**
 
-- Paused banner visible
-- Timer frozen
-- Player actions restricted
+- Paused banner visible.
+- Topbar primary timer switches to paused elapsed time (distinct paused color).
+- Active elapsed timer continues and is visible in popper details.
+- Player actions restricted.
 
 ### **ended**
 
-- Session summary (future)
-- Controls reset
-- “Start New Session” visible to DM
+- Topbar timer shows cooldown countdown.
+- Timer popper remains available and shows final session timing summary (start, end, pause totals).
+- DM can extend/cancel cooldown; players can extend/cancel only if DM disconnects.
+- When cooldown completes or is canceled, transition to `INACTIVE` and reset timer context.
+
+### **5.1 Timer popper contract**
+
+The timer popper is available in `ACTIVE`, `PAUSED`, and `ENDED`, and disabled in `INACTIVE`.
+
+When open, values update live and include:
+
+- Session state (`ACTIVE | PAUSED | ENDED | INACTIVE`).
+- Session start timestamp.
+- Cumulative paused duration (if greater than zero).
+- Pause count.
+- Expected end time, computed from session duration source (`session override` if present, else campaign default) and then rounded to nearest 15 minutes.
+- Time left in session relative to expected end.
+- For `ENDED`, include session end timestamp and cooldown remaining.
+
+Authority rules:
+
+- Backend is authoritative for timer anchors and state timestamps.
+- Clients render synchronized timers from server-provided anchors so all users see the same values.
+- Refresh/reconnect must restore timer state from backend snapshot before trusting local cache.
 
 ---
 
@@ -279,10 +312,10 @@ This ensures:
 Boundary markers are server-authoritative and must survive refresh/reconnect.
 
 - Persist and broadcast these system markers on transition:
-    - `[Session Started]`
-    - `[Session Paused]`
-    - `[Session Resumed]`
-    - `[Session Ended]`
+  - `[Session Started]`
+  - `[Session Paused]`
+  - `[Session Resumed]`
+  - `[Session Ended]`
 - Clients must rehydrate these markers from chat history APIs.
 - Clients must de-duplicate markers when local fallback and WS/server markers overlap.
 - For paused-session refresh, client must rehydrate paused state + paused boundary markers from backend before trusting local cache.
