@@ -135,6 +135,7 @@ export function RoomSelector({
   const longPressTimerRef = useRef<number | null>(null)
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const draggedUserIdRef = useRef<UUID | null>(null)
+  const endWhisperInFlightRef = useRef(false)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
   const whisperContextRef = useRef<WhisperContextSnapshot | null>(null)
@@ -205,6 +206,7 @@ export function RoomSelector({
   )
   const whisperParticipantCount = whisperRoom?.participants.length || 0
   const whisperActive = whisperParticipantCount > 0
+  const whisperModeLocked = whisperActive || Boolean(whisperContextRef.current)
   const isDenseRoomLayout =
     canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
 
@@ -387,14 +389,24 @@ export function RoomSelector({
 
   const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
     setMoveError(null)
-    setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
-
     try {
       const targetRoom = allRooms.find((room) => room.id === toRoomId)
       const movedParticipant = visibleParticipants.find(
         (participant) => participant.userId === userId
       )
       const movedFromRoomId = movedParticipant?.roomId
+
+      if (
+        whisperModeLocked &&
+        whisperRoom &&
+        movedFromRoomId === whisperRoom.id &&
+        toRoomId !== whisperRoom.id
+      ) {
+        setMoveError('Whisper participants can only leave via End Whisper')
+        return
+      }
+
+      setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
 
       if (
         targetRoom?.type === RoomType.PRIVATE &&
@@ -569,6 +581,12 @@ export function RoomSelector({
       return
     }
 
+    if (endWhisperInFlightRef.current) {
+      return
+    }
+
+    endWhisperInFlightRef.current = true
+
     setMoveError(null)
 
     try {
@@ -600,6 +618,8 @@ export function RoomSelector({
       }
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to end whisper')
+    } finally {
+      endWhisperInFlightRef.current = false
     }
   }
 
@@ -691,10 +711,6 @@ export function RoomSelector({
         })
 
         setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
-
-        // Keep DM voice target aligned to the newly created persisted room.
-        previousDmVoiceRoomIdRef.current = payload.room.id
-        onSelectRoom(payload.room.id)
       }
     } catch (error) {
       setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
@@ -1048,6 +1064,26 @@ export function RoomSelector({
                 setDraggedUserId(null)
                 draggedUserIdRef.current = null
               }}
+              onClick={(event) => {
+                if (!canManageRooms || isGreenroom || isWhisperGroup) {
+                  return
+                }
+
+                const target = event.target
+                if (!(target instanceof Element)) {
+                  return
+                }
+
+                if (
+                  target.closest('button, [role="button"], a, input, select, textarea, label') ||
+                  target.closest('.room-selector-member') ||
+                  target.closest('.room-selector-item__env-picker')
+                ) {
+                  return
+                }
+
+                void handleSetDmVoiceRoom(room.id)
+              }}
             >
               <div className="room-selector-item__header">
                 <span className="room-selector-item-heading-row">
@@ -1057,15 +1093,11 @@ export function RoomSelector({
                     aria-label={`Select group ${room.name}`}
                     aria-pressed={selected}
                     onClick={() => {
-                      if (
-                        whisperActive &&
-                        whisperRoom &&
-                        canManageRooms &&
-                        room.id !== whisperRoom.id
-                      ) {
-                        setMoveError('DM voice target is locked to whisper while whisper is active')
+                      if (canManageRooms) {
+                        void handleSetDmVoiceRoom(room.id)
                         return
                       }
+
                       onSelectRoom(room.id)
                     }}
                   >
@@ -1073,6 +1105,10 @@ export function RoomSelector({
                       {isWhisperGroup ? (
                         <span className="material-symbols-outlined" aria-hidden="true">
                           lock
+                        </span>
+                      ) : room.type === RoomType.GROUP ? (
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          groups
                         </span>
                       ) : (
                         <Icon name="voice" />
@@ -1120,53 +1156,70 @@ export function RoomSelector({
                     ) : null}
 
                     {canManageRooms ? (
-                      isCompactGroup ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="room-selector-item__icon-action room-selector-item__close-inline"
-                              aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
-                              disabled={Boolean(pendingRoomDeletes[room.id])}
-                              onClick={() => {
-                                void handleDeleteGroup(room)
-                              }}
-                            >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                {isWhisperGroup ? 'exit_to_app' : 'close'}
-                              </span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {isWhisperGroup ? 'End whisper' : 'Delete group'}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`room-selector-item__icon-action room-selector-item__voice-icon ${
-                            broadcastModeEnabled
-                              ? 'is-broadcast'
-                              : selectedRoomId === room.id
-                                ? 'active'
-                                : ''
-                          }`}
-                          aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
-                          title={`Set DM voice to ${getDisplayRoomName(room)}`}
-                          aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
-                          disabled={isGreenroom}
-                          onClick={() => {
-                            if (isGreenroom) {
-                              return
-                            }
-                            void handleSetDmVoiceRoom(room.id)
-                          }}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            record_voice_over
-                          </span>
-                        </button>
-                      )
+                      <>
+                        {!isWhisperGroup ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className={`room-selector-item__icon-action room-selector-item__voice-icon ${
+                                  broadcastModeEnabled && !whisperModeLocked
+                                    ? 'is-broadcast'
+                                    : selectedRoomId === room.id
+                                      ? 'active'
+                                      : ''
+                                }`}
+                                aria-label={`Set DM voice to ${getDisplayRoomName(room)}`}
+                                aria-pressed={broadcastModeEnabled || selectedRoomId === room.id}
+                                disabled={
+                                  isGreenroom ||
+                                  (whisperModeLocked && whisperRoom
+                                    ? room.id !== whisperRoom.id
+                                    : false)
+                                }
+                                onClick={() => {
+                                  if (isGreenroom) {
+                                    return
+                                  }
+                                  void handleSetDmVoiceRoom(room.id)
+                                }}
+                              >
+                                <span className="material-symbols-outlined" aria-hidden="true">
+                                  record_voice_over
+                                </span>
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              {whisperModeLocked && whisperRoom && room.id !== whisperRoom.id
+                                ? 'DM voice target is locked to whisper while whisper is active'
+                                : `Set DM voice to ${getDisplayRoomName(room)}`}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+
+                        {room.type !== RoomType.MAIN && !isGreenRoomName(room.name) ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="room-selector-item__icon-action room-selector-item__close-inline"
+                                aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
+                                disabled={Boolean(pendingRoomDeletes[room.id])}
+                                onClick={() => {
+                                  void handleDeleteGroup(room)
+                                }}
+                              >
+                                <span className="material-symbols-outlined" aria-hidden="true">
+                                  {isWhisperGroup ? 'exit_to_app' : 'close'}
+                                </span>
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              {isWhisperGroup ? 'End whisper' : 'Delete group'}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+                      </>
                     ) : null}
                   </span>
                 </span>
@@ -1412,35 +1465,6 @@ export function RoomSelector({
                       )
                     })}
               </div>
-
-              {canManageRooms &&
-              room.type !== RoomType.MAIN &&
-              !isGreenRoomName(room.name) &&
-              !isCompactGroup ? (
-                <footer className="room-selector-item__footer">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="room-selector-item__close-btn"
-                        aria-label={`${isWhisperGroup ? 'End whisper' : 'Close group'} ${room.name}`}
-                        onClick={() => {
-                          void handleDeleteGroup(room)
-                        }}
-                        disabled={Boolean(pendingRoomDeletes[room.id])}
-                      >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          {isWhisperGroup ? 'exit_to_app' : 'close'}
-                        </span>
-                        Close
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {isWhisperGroup ? 'End whisper' : 'Close group'}
-                    </TooltipContent>
-                  </Tooltip>
-                </footer>
-              ) : null}
             </section>
           )
         })}
@@ -1494,7 +1518,7 @@ export function RoomSelector({
   }
 
   const handleBroadcastToggleClick = async () => {
-    if (whisperActive) {
+    if (whisperModeLocked) {
       setMoveError('Broadcast is locked while whisper is active')
       return
     }
@@ -1521,7 +1545,7 @@ export function RoomSelector({
   }
 
   const handleSetDmVoiceRoom = async (roomId: UUID) => {
-    if (whisperActive && whisperRoom && roomId !== whisperRoom.id) {
+    if (whisperModeLocked && whisperRoom && roomId !== whisperRoom.id) {
       setMoveError('DM voice target is locked to whisper while whisper is active')
       return
     }
@@ -1539,6 +1563,18 @@ export function RoomSelector({
     onSelectRoom(roomId)
   }
 
+  useEffect(() => {
+    if (!canManageRooms || !whisperRoom) {
+      return
+    }
+
+    if (!whisperModeLocked || whisperParticipantCount > 0) {
+      return
+    }
+
+    void handleEndWhisper()
+  }, [canManageRooms, whisperModeLocked, whisperParticipantCount, whisperRoom])
+
   return (
     <TooltipProvider delayDuration={140}>
       <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
@@ -1554,12 +1590,12 @@ export function RoomSelector({
                   <button
                     type="button"
                     className={`room-selector-header__broadcast-icon ${
-                      broadcastModeEnabled ? 'active' : ''
+                      broadcastModeEnabled && !whisperModeLocked ? 'active' : ''
                     }`}
                     aria-label={
                       broadcastModeEnabled ? 'Disable broadcast mode' : 'Enable broadcast mode'
                     }
-                    disabled={whisperActive}
+                    disabled={whisperModeLocked}
                     onClick={() => {
                       void handleBroadcastToggleClick()
                     }}
@@ -1570,7 +1606,7 @@ export function RoomSelector({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  {whisperActive
+                  {whisperModeLocked
                     ? 'Broadcast locked while whisper is active'
                     : broadcastModeEnabled
                       ? 'Broadcast enabled (global)'
@@ -1631,7 +1667,7 @@ export function RoomSelector({
                 ) : null}
               </div>
             ) : null}
-            {canManageRooms && whisperActive ? (
+            {canManageRooms && whisperModeLocked ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -1640,15 +1676,15 @@ export function RoomSelector({
                     onClick={() => {
                       void handleEndWhisper()
                     }}
-                    aria-label="Return"
-                    title="Return"
+                    aria-label="End whisper"
+                    title="End whisper"
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">
                       exit_to_app
                     </span>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Return</TooltipContent>
+                <TooltipContent side="top">End whisper</TooltipContent>
               </Tooltip>
             ) : null}
           </div>
@@ -1753,7 +1789,7 @@ export function RoomSelector({
                   })}
                   {otherRooms.length > 0
                     ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
-                        dividerOnly: true,
+                        hideHeader: true,
                       })
                     : null}
                 </>

@@ -567,6 +567,13 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
     const movedOutOfWhisper =
       previousRoom?.type === RoomType.PRIVATE && room.type !== RoomType.PRIVATE
 
+    if (movedOutOfWhisper) {
+      return res.status(409).json({
+        code: ErrorCode.CONFLICT,
+        message: 'Whisper participants can only leave via End Whisper',
+      })
+    }
+
     if (movedIntoWhisper || movedOutOfWhisper) {
       await updatePresenceState({
         sessionId: sessionId as UUID,
