@@ -473,6 +473,15 @@
   opacity: 0.92;
 }
 
+.room-selector-item--deleting {
+  opacity: 0.84;
+  pointer-events: none;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out),
+    filter 180ms var(--ease-out);
+}
+
 .room-selector-item--selected-focus {
   scroll-margin-block: 0.75rem;
 }
@@ -938,8 +947,43 @@
   background: color-mix(in srgb, var(--color-danger, #ef4444) 14%, var(--color-surface));
   border-radius: 0.42rem;
   padding: 0.2rem 0.34rem;
-  pointer-events: none;
+  pointer-events: auto;
   box-shadow: 0 6px 16px rgba(2, 6, 23, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.34rem;
+}
+
+.room-selector-error p {
+  margin: 0;
+  flex: 1;
+}
+
+.room-selector-error-dismiss {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.24rem;
+  transition: background-color 0.15s ease;
+}
+
+.room-selector-error-dismiss:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+
+.room-selector-error-dismiss:active {
+  background-color: rgba(239, 68, 68, 0.18);
 }
 
 .room-selector-empty {

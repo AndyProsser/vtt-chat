@@ -240,4 +240,54 @@ describe('useWebSocket', () => {
     )
     expect(store.clearEnvironment).toHaveBeenCalledTimes(1)
   })
+
+  it('routes ROOM:USER_LEFT and ROOM:USER_JOINED before ROOM:DELETED reconciliation', async () => {
+    const { useWebSocket } = await import('../../hooks/useWebSocket')
+    const store = mockUseStore()
+
+    const eventOrder: string[] = []
+    store.handleUserLeft.mockImplementation(() => eventOrder.push('ROOM:USER_LEFT'))
+    store.handleUserJoined.mockImplementation(() => eventOrder.push('ROOM:USER_JOINED'))
+    store.deleteRoom.mockImplementation(() => eventOrder.push('ROOM:DELETED'))
+
+    renderHook(() =>
+      useWebSocket({
+        url: 'ws://localhost:3000/ws',
+        token: 'jwt-token',
+        enabled: true,
+      })
+    )
+
+    await waitFor(() => {
+      expect(clientInstances).toHaveLength(1)
+    })
+
+    const inbound = clientInstances[0].options.onEvent
+
+    act(() => {
+      inbound?.({
+        ...makeEvent('ROOM:USER_LEFT'),
+        payload: {
+          roomId: '77777777-7777-4777-8777-777777777777',
+          userId: '88888888-8888-4888-8888-888888888888',
+        },
+      })
+      inbound?.({
+        ...makeEvent('ROOM:USER_JOINED'),
+        payload: {
+          roomId: '99999999-9999-4999-8999-999999999999',
+          userId: '88888888-8888-4888-8888-888888888888',
+          username: 'alice',
+        },
+      })
+      inbound?.({
+        ...makeEvent('ROOM:DELETED'),
+        payload: {
+          roomId: '77777777-7777-4777-8777-777777777777',
+        },
+      })
+    })
+
+    expect(eventOrder).toEqual(['ROOM:USER_LEFT', 'ROOM:USER_JOINED', 'ROOM:DELETED'])
+  })
 })

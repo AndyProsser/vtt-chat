@@ -8,6 +8,7 @@ const SESSION_A = '11111111-1111-4111-8111-111111111111' as UUID
 const SESSION_B = '22222222-2222-4222-8222-222222222222' as UUID
 const ROOM_ID_1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
 const ROOM_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID
+const MAIN_ROOM_ID = '99999999-9999-4999-8999-999999999999' as UUID
 const USER_ID_1 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' as UUID
 const USER_ID_2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' as UUID
 const DM_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' as UUID
@@ -77,6 +78,84 @@ describe('roomSlice', () => {
       useStore.getState().deleteRoom(SESSION_A, ROOM_ID_1)
       expect(useStore.getState().rooms[SESSION_A]![ROOM_ID_1]).toBeUndefined()
       expect(useStore.getState().roomMembers[ROOM_ID_1]).toBeUndefined()
+    })
+
+    it('keeps moved members visible in Main after ROOM:DELETED reconciliation sequence', () => {
+      const mainRoom: Room = {
+        id: MAIN_ROOM_ID,
+        sessionId: SESSION_A,
+        name: 'Main',
+        type: 'MAIN' as any,
+        createdAt: NOW,
+        createdBy: DM_ID,
+      }
+      const groupRoom: Room = {
+        id: ROOM_ID_1,
+        sessionId: SESSION_A,
+        name: 'Side Group',
+        type: 'GROUP' as any,
+        createdAt: NOW,
+        createdBy: DM_ID,
+      }
+
+      useStore.getState().createRoom(SESSION_A, mainRoom)
+      useStore.getState().createRoom(SESSION_A, groupRoom)
+
+      // Seed group membership as if users are currently inside the soon-to-be-deleted room.
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_2,
+          username: 'bob',
+        })
+      )
+
+      // Reconcile move events broadcast by backend during delete flow.
+      useStore.getState().handleUserLeft(
+        makeEvent('ROOM:USER_LEFT', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+        })
+      )
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: MAIN_ROOM_ID,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+      useStore.getState().handleUserLeft(
+        makeEvent('ROOM:USER_LEFT', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_2,
+        })
+      )
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: MAIN_ROOM_ID,
+          userId: USER_ID_2,
+          username: 'bob',
+        })
+      )
+
+      // Final ROOM:DELETED handler path removes only the deleted room slice.
+      useStore.getState().deleteRoom(SESSION_A, ROOM_ID_1)
+
+      const state = useStore.getState()
+      expect(state.rooms[SESSION_A]![ROOM_ID_1]).toBeUndefined()
+      expect(state.roomMembers[ROOM_ID_1]).toBeUndefined()
+      expect((state.roomMembers[MAIN_ROOM_ID] || []).map((member) => member.userId).sort()).toEqual(
+        [USER_ID_1, USER_ID_2].sort()
+      )
+      expect(state.sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(MAIN_ROOM_ID)
+      expect(state.sessionPresence[SESSION_A]![USER_ID_2]!.primaryRoomId).toBe(MAIN_ROOM_ID)
     })
   })
 

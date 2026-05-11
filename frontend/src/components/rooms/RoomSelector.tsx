@@ -149,7 +149,6 @@ export function RoomSelector({
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
   const whisperContextRef = useRef<WhisperContextSnapshot | null>(null)
   const createRoom = useStore((state) => state.createRoom)
-  const deleteRoom = useStore((state) => state.deleteRoom)
   const clearRoomEnvironmentName = useStore((state) => state.clearRoomEnvironmentName)
   const clearEnvironment = useStore((state) => state.clearEnvironment)
   const setRoomEnvironmentName = useStore((state) => state.setRoomEnvironmentName)
@@ -185,8 +184,8 @@ export function RoomSelector({
       }
     }
 
-    return [...byId.values()].filter((room) => !pendingRoomDeletes[room.id])
-  }, [rooms, optimisticRooms, pendingRoomDeletes, confirmedRoomIds])
+    return [...byId.values()]
+  }, [rooms, optimisticRooms, confirmedRoomIds])
 
   const baseParticipants = useMemo(
     () =>
@@ -396,8 +395,11 @@ export function RoomSelector({
     return next
   }, [allRooms, visibleParticipants, pendingRoomMoves, dmUserId, isGreenroom])
 
-  const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
-    setMoveError(null)
+  const moveParticipantToRoom = async (
+    userId: UUID,
+    toRoomId: UUID,
+    options?: { suppressSelection?: boolean }
+  ) => {
     try {
       const targetRoom = allRooms.find((room) => room.id === toRoomId)
       const movedParticipant = visibleParticipants.find(
@@ -418,8 +420,7 @@ export function RoomSelector({
         movedFromRoomId === whisperRoom.id &&
         toRoomId !== whisperRoom.id
       ) {
-        setMoveError('Whisper participants can only leave via End Whisper')
-        return
+        throw new Error('Whisper participants can only leave via End Whisper')
       }
 
       setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
@@ -454,20 +455,32 @@ export function RoomSelector({
         throw new Error(payload.message || 'Failed to move participant')
       }
 
-      if (targetRoom?.type === RoomType.PRIVATE) {
+      if (!options?.suppressSelection && targetRoom?.type === RoomType.PRIVATE) {
         if (broadcastModeEnabled) {
           await onToggleBroadcastMode(false)
         }
         onSelectRoom(toRoomId)
-      } else if (shouldAutoTargetOnFirstPlayerJoin) {
+      } else if (!options?.suppressSelection && shouldAutoTargetOnFirstPlayerJoin) {
         onSelectRoom(toRoomId)
       }
+
+      return true
     } catch (error) {
       setPendingRoomMoves((state) => {
         const next = { ...state }
         delete next[userId]
         return next
       })
+      throw error instanceof Error ? error : new Error('Failed to move participant')
+    }
+  }
+
+  const handleMoveParticipant = async (userId: UUID, toRoomId: UUID) => {
+    setMoveError(null)
+
+    try {
+      await moveParticipantToRoom(userId, toRoomId)
+    } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to move participant')
     }
   }
@@ -513,7 +526,7 @@ export function RoomSelector({
 
     const timeout = window.setTimeout(() => {
       setMoveError(null)
-    }, 1500)
+    }, 5000)
 
     return () => {
       window.clearTimeout(timeout)
@@ -592,6 +605,49 @@ export function RoomSelector({
     if (presencePayload.stats) {
       replaceSessionStatsSnapshot(sessionId, presencePayload.stats)
     }
+  }
+
+  const waitForRoomDeleteReconciled = async (deletedRoomId: UUID, maxWaitMs = 5000) => {
+    const startedAt = Date.now()
+    const pollIntervalMs = 150
+
+    while (Date.now() - startedAt < maxWaitMs) {
+      await syncSessionTopologyFromServer()
+
+      const storeState = useStore.getState()
+      const typedRoomsBySession = storeState.rooms as Record<UUID, Record<UUID, { id: UUID }>>
+      const typedPresenceBySession = storeState.sessionPresence as Record<
+        UUID,
+        Record<UUID, { primaryRoomId?: UUID }>
+      >
+
+      const sessionRooms = typedRoomsBySession[sessionId] || {}
+      const roomStillExists = Boolean(sessionRooms[deletedRoomId])
+
+      if (!roomStillExists) {
+        const sessionPresence = typedPresenceBySession[sessionId] || {}
+        const anyUserStillPointingToDeletedRoom = Object.values(sessionPresence).some(
+          (entry) => entry?.primaryRoomId === deletedRoomId
+        )
+
+        if (!anyUserStillPointingToDeletedRoom) {
+          return
+        }
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs))
+    }
+
+    throw new Error('Group deletion is still reconciling. Please retry in a moment.')
+  }
+
+  const clearPendingRoomDelete = (roomId: UUID) => {
+    setPendingRoomDeletes((state) => {
+      const next = { ...state }
+      delete next[roomId]
+      return next
+    })
+    clearRoomEnvironmentName(roomId)
   }
 
   const handleEndWhisper = async () => {
@@ -762,11 +818,7 @@ export function RoomSelector({
 
         await syncSessionTopologyFromServer()
 
-        setPendingRoomDeletes((state) => {
-          const next = { ...state }
-          delete next[room.id]
-          return next
-        })
+        clearPendingRoomDelete(room.id)
         return
       }
 
@@ -795,17 +847,11 @@ export function RoomSelector({
         clearEnvironment()
       }
 
-      deleteRoom(sessionId, room.id)
-      clearRoomEnvironmentName(room.id)
-      // Sync topology from server so displaced members appear in Main immediately,
-      // rather than waiting for WS USER_JOINED events to be processed.
-      await syncSessionTopologyFromServer()
+      await waitForRoomDeleteReconciled(room.id)
+
+      clearPendingRoomDelete(room.id)
     } catch (error) {
-      setPendingRoomDeletes((state) => {
-        const next = { ...state }
-        delete next[room.id]
-        return next
-      })
+      clearPendingRoomDelete(room.id)
       setMoveError(error instanceof Error ? error.message : 'Failed to close group')
     }
   }
@@ -1062,7 +1108,7 @@ export function RoomSelector({
               key={room.id}
               className={`room-selector-item ${selected ? 'selected' : ''} ${
                 isPrivateDividerStart ? 'room-selector-item--private-divider' : ''
-              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''} ${isEmptyWhisperGroup ? 'room-selector-item--whisper-empty' : ''} ${collapseForDrag ? 'room-selector-item--drag-collapsed' : ''} ${selected && isDenseRoomLayout ? 'room-selector-item--selected-focus' : ''}`}
+              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''} ${isEmptyWhisperGroup ? 'room-selector-item--whisper-empty' : ''} ${collapseForDrag ? 'room-selector-item--drag-collapsed' : ''} ${selected && isDenseRoomLayout ? 'room-selector-item--selected-focus' : ''} ${pendingRoomDeletes[room.id] ? 'room-selector-item--deleting' : ''}`}
               aria-label={`Group ${room.name}`}
               ref={(node) => {
                 if (node) {
@@ -1918,7 +1964,19 @@ export function RoomSelector({
           </div>
         </div>
 
-        {moveError ? <p className="room-selector-error">{moveError}</p> : null}
+        {moveError ? (
+          <div className="room-selector-error">
+            <p>{moveError}</p>
+            <button
+              type="button"
+              className="room-selector-error-dismiss"
+              onClick={() => setMoveError(null)}
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
 
         {radialMenuState ? (
           <RadialMenu
