@@ -353,6 +353,33 @@ describe('presence routes', () => {
       expect(event.payload.newState).toBe('ONLINE') // from mock return
     })
 
+    it('includes previousGroupId in PRESENCE:STATE_CHANGED payload when present', async () => {
+      mocks.mockUpdatePresenceState.mockResolvedValue({
+        sessionId: SESSION_ID,
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        ghost: false,
+        primaryRoomId: ROOM_ID,
+        previousGroupId: PRIVATE_ROOM_ID,
+        lastSeenAt: 1700000001000,
+      })
+
+      const app = buildAppWithWS()
+      const res = await request(app)
+        .put(`/api/presence/${SESSION_ID}/state`)
+        .set('Authorization', 'Bearer token')
+        .send({ state: 'ONLINE' })
+
+      expect(res.status).toBe(200)
+      const wsManager = app.locals.wsManager
+      const stateChangedCall = wsManager.broadcastEventToSession.mock.calls.find(
+        (call: any[]) => call[1]?.type === 'PRESENCE:STATE_CHANGED'
+      )
+      expect(stateChangedCall).toBeDefined()
+      expect(stateChangedCall[1].payload.previousGroupId).toBe(PRIVATE_ROOM_ID)
+    })
+
     it('broadcasts PRESENCE:USER_GHOST_MODE_CHANGED when ghost mode flips', async () => {
       mocks.mockGetSessionPresence.mockResolvedValue([
         {

@@ -2,7 +2,7 @@
 
 **Purpose:** Map contract concepts from [STATE-MACHINE.md](STATE-MACHINE.md) to codebase locations and implementation status.
 
-**Status:** W0 Planning document. This guides Stage 1+ implementation.
+**Status:** W0 implementation tracking document. Update checklist items as contract work lands.
 
 ---
 
@@ -47,12 +47,12 @@
 
 **Action Items:**
 
-- [ ] Add `ghost: boolean` to Redis presence hash
-- [ ] Implement 5s backend timer: on disconnect, set ghost=false → true after 5s
-- [ ] Implement 60s backend timer: on WS failure, remove user from session after 60s (or cancel on reconnect)
-- [ ] Add `PRESENCE:USER_GHOST_MODE_CHANGED` WS event handler in frontend
-- [ ] Update presenceSlice to handle ghost-mode sync
-- [ ] Add CSS `.ghost-mode` styling to player cards
+- [x] Add `ghost: boolean` to Redis presence hash
+- [x] Implement 5s backend timer: on disconnect, set ghost=false → true after 5s
+- [x] Implement 60s backend timer: on WS failure, remove user from session after 60s (or cancel on reconnect)
+- [x] Add `PRESENCE:USER_GHOST_MODE_CHANGED` WS event handler in frontend
+- [x] Update presenceSlice to handle ghost-mode sync
+- [x] Add ghost-mode styling to player cards
 
 ---
 
@@ -70,11 +70,11 @@
 
 **Action Items:**
 
-- [ ] Add `previousGroupId` to Redis presence hash
-- [ ] On room join: if new room is not GREEN_ROOM, set `previousGroupId` = old non-greenroom group ID
-- [ ] On room join: if new room is GREEN_ROOM, set `previousGroupId` = null
-- [ ] On private room exit: restore user to `previousGroupId` (or MAIN if null/invalid)
-- [ ] Sync `previousGroupId` via `PRESENCE:USER_GROUP_CHANGED` WS event
+- [x] Add `previousGroupId` to Redis presence hash
+- [x] On room join: if new room is not GREEN_ROOM, set `previousGroupId` for the current non-greenroom group
+- [x] On room join: if new room is GREEN_ROOM, set `previousGroupId` = null
+- [x] On private room exit: restore user to `previousGroupId` (or MAIN if null/invalid)
+- [x] Sync `previousGroupId` via presence WS payload propagation
 
 ---
 
@@ -301,14 +301,14 @@
 ### Unit Tests (Per Service)
 
 - [ ] `session.service.test.ts` — All state transitions, timer logic
-- [ ] `room.service.test.ts` — Group deletion with member migration, previousGroupId tracking
-- [ ] `presence.service.test.ts` — Ghost-mode timers, disconnect cascade
+- [x] `room.service` integration coverage — previousGroupId tracking
+- [x] `session-disconnect-cascade.service.test.ts` — Ghost-mode timers, disconnect cascade
 - [ ] `audio.service.test.ts` — Voice modes, mute enforcement
 - [ ] `chat.service.test.ts` — Boundary markers, off-the-record flagging
 
 ### Integration Tests (End-to-End)
 
-- [ ] Disconnect cascade: player/DM intentional → network → reconnect scenarios
+- [x] Disconnect cascade: player/DM intentional → network → reconnect scenarios (focused backend coverage)
 - [ ] Session boundary markers: [Session Started] → [Session Paused] → [Session Resumed] → [Session Ended] persisted and appear in history
 - [ ] Whisper content not persisted: create private room → chat → refresh → no whisper chat in history
 - [ ] Pause content not persisted: pause → chat during pause → resume → no pause chat in history
@@ -317,7 +317,7 @@
 
 ### Frontend Tests
 
-- [ ] Ghost-mode visual rendering on player cards
+- [x] Ghost-mode store hydration and player-card rendering inputs
 - [ ] Boundary markers rendered in chat timeline
 - [ ] Reconnect: local Zustand cache replaced with backend snapshot (no merge)
 - [ ] DM voice mode selector (TARGET_GROUP / BROADCAST) + background volume slider
@@ -365,7 +365,7 @@
 
 ## 8. Codebase Entry Points
 
-**Quick Reference for Developers**
+### Quick Reference for Developers
 
 | Feature                   | Key Files                                                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |

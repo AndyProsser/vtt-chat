@@ -350,6 +350,29 @@ describe('roomSlice', () => {
       useStore.getState().handlePresenceGhostModeChanged(event)
       expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
     })
+
+    it('hydrates previousGroupId from presence payloads', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      const joinEvent = makeEvent('ROOM:USER_JOINED', SESSION_A, {
+        roomId: ROOM_ID_1,
+        userId: USER_ID_1,
+        username: 'alice',
+      })
+      useStore.getState().handleUserJoined(joinEvent)
+
+      const event = makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+        roomId: ROOM_ID_1,
+        userId: USER_ID_1,
+        username: 'alice',
+        newState: 'ONLINE',
+        previousGroupId: ROOM_ID_2,
+      })
+
+      useStore.getState().handlePresenceStateChanged(event)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.previousGroupId).toBe(
+        ROOM_ID_2
+      )
+    })
   })
 
   describe('handleSessionRoomTransitionApplied', () => {

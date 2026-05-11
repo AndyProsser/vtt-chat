@@ -96,6 +96,7 @@ import {
   ensurePresenceRecoveredFromSnapshots,
   getRoomMemberIds,
   getSessionPresence,
+  joinRoom,
   updatePresenceState,
 } from '@/services/room.service'
 
@@ -299,5 +300,121 @@ describe('room service recovery integration', () => {
     const presence = await getSessionPresence(SESSION_ID as any)
     expect(presence[0]?.primaryRoomId).toBe(MAIN_ROOM_ID)
     expect(presence[0]?.privateRoomId).toBeUndefined()
+  })
+
+  it('never stores whisper/private as previousGroupId across group to whisper to main sequences', async () => {
+    seedRoom({
+      id: MAIN_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main Room',
+      type: 'MAIN',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: GROUP_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Scouts',
+      type: 'GROUP',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: WHISPER_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Whisper',
+      type: 'PRIVATE',
+      createdBy: DM_ID,
+    })
+
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: GROUP_ROOM_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+    })
+
+    let presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(GROUP_ROOM_ID)
+    expect(presence[0]?.previousGroupId).toBe(GROUP_ROOM_ID)
+
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: WHISPER_ROOM_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+    })
+
+    presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(WHISPER_ROOM_ID)
+    expect(presence[0]?.previousGroupId).toBe(GROUP_ROOM_ID)
+    expect(presence[0]?.previousGroupId).not.toBe(WHISPER_ROOM_ID)
+
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: MAIN_ROOM_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+    })
+
+    presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(MAIN_ROOM_ID)
+    expect(presence[0]?.previousGroupId).toBe(MAIN_ROOM_ID)
+    expect(presence[0]?.previousGroupId).not.toBe(WHISPER_ROOM_ID)
+
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: WHISPER_ROOM_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+    })
+
+    presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(WHISPER_ROOM_ID)
+    expect(presence[0]?.previousGroupId).toBe(MAIN_ROOM_ID)
+    expect(presence[0]?.previousGroupId).not.toBe(WHISPER_ROOM_ID)
+    expect(presence[0]?.privateRoomId).toBeUndefined()
+  })
+
+  it('clears previousGroupId when a session transition moves users into green room', async () => {
+    seedRoom({
+      id: MAIN_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main Room',
+      type: 'MAIN',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: GROUP_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Scouts',
+      type: 'GROUP',
+      createdBy: DM_ID,
+    })
+
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: GROUP_ROOM_ID as any,
+      userId: USER_B as any,
+      username: 'bob',
+      state: 'ONLINE' as any,
+    })
+
+    let presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.previousGroupId).toBe(GROUP_ROOM_ID)
+
+    const transition = await applySessionStateRoomTransition({
+      sessionId: SESSION_ID as any,
+      dmId: DM_ID as any,
+      nextState: 'ENDED' as any,
+      users: [{ id: USER_B as any, username: 'bob' }],
+    })
+
+    presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(transition.greenRoomId)
+    expect(presence[0]?.previousGroupId).toBeUndefined()
+    expect(presence[0]?.primaryRoomId).not.toBe(GROUP_ROOM_ID)
   })
 })
