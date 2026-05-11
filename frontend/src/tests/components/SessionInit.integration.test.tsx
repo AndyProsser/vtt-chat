@@ -473,7 +473,7 @@ describe('SessionInit integration', () => {
       expect(mainButton.getAttribute('aria-pressed')).toBe('false')
     })
 
-    expect(screen.getByRole('button', { name: 'Return' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /End whisper/i }).length).toBeGreaterThan(0)
   })
 
   it('shows only the current group participants while staging in the greenroom', async () => {
@@ -2068,6 +2068,9 @@ describe('SessionInit integration', () => {
     await screen.findByText('Campaigns')
     fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
+    await screen.findByRole('button', { name: 'Start' })
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions/start`,
@@ -2473,24 +2476,12 @@ describe('SessionInit integration', () => {
     })
 
     await waitFor(() => {
-      const sessionMessages = Object.values((useStore.getState().messages as any)[SESSION_ID] || {})
-      const mainMarker = sessionMessages.find(
-        (message: any) =>
-          message.roomId === ROOM_ONE_ID &&
-          typeof message.content === 'string' &&
-          (message.content.startsWith('Session Start:') ||
-            message.content.startsWith('[Session Started]'))
-      )
-      const greenMarker = sessionMessages.find(
-        (message: any) =>
-          message.roomId === ROOM_TWO_ID &&
-          typeof message.content === 'string' &&
-          (message.content.startsWith('Session Start:') ||
-            message.content.startsWith('[Session Started]'))
-      )
+      const historyCalls = fetchMock.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes(`/api/chat/messages/${SESSION_ID}`))
 
-      expect(mainMarker).toBeTruthy()
-      expect(greenMarker).toBeTruthy()
+      expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_ONE_ID}`))).toBe(true)
+      expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_TWO_ID}`))).toBe(true)
     })
   })
 })

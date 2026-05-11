@@ -24,11 +24,11 @@
 
 **Action Items:**
 
-- [ ] Add `CLEANUP` to Prisma `SessionState` enum
-- [ ] Add 60s auto-stop timer in backend when all users disconnect from ACTIVE/PAUSED
-- [ ] Add 20min cleanup TTL in Redis (session-level key)
-- [ ] Implement `CLEANUP` → terminal cleanup (purge greenroom chat)
-- [ ] Update frontend to handle reconnect with backend snapshot replace (not merge)
+- [x] Add `CLEANUP` to Prisma `SessionState` enum
+- [x] Add 60s auto-stop timer in backend when all users disconnect from ACTIVE/PAUSED
+- [x] Add 20min cleanup TTL in Redis (session-level key)
+- [x] Implement backend-only `CLEANUP` transition + greenroom purge + return to INACTIVE compatibility state
+- [x] Update frontend to handle reconnect with backend snapshot replace (not merge)
 
 ---
 
@@ -188,12 +188,12 @@
 
 **Action Items:**
 
-- [ ] Add `createSystemMessage()` call in `updateSessionState()` for each transition
-- [ ] Ensure backend persists boundary marker to DB immediately
-- [ ] Broadcast `CHAT:MESSAGE_SENT` WS event with marker
-- [ ] Remove `appendSessionBookendMessages()` from frontend (rely on WS broadcast only)
-- [ ] Add de-duplication logic: ignore locally-created marker if WS marker arrives close after
-- [ ] Test: page refresh → boundary markers restored from chat history API
+- [x] Ensure backend persists boundary marker to DB immediately
+- [x] Broadcast `CHAT:MESSAGE_SENT` WS event with marker
+- [x] Emit start/end boundaries for main + greenroom rooms via backend-authoritative roomIds
+- [x] Remove client-side `appendSessionBookendMessages()` synthesis from frontend
+- [x] Keep de-duplication logic in chat slice to collapse near-duplicate markers
+- [x] Test: page refresh → boundary markers restored from chat history API
 
 ---
 

@@ -161,9 +161,9 @@ Known readiness gap classes:
 
 **Purpose:** Define and finalize the canonical state machine contract before Stage 1+ implementation. This ensures all subsystems (session lifecycle, presence, audio, group management) operate with consistent state authority, transition rules, and error recovery.
 
-**Status:** Lock-in approved; implementation in progress
+**Status:** Lock-in approved; backend/state-authority implementation mostly complete
 
-**Current focus:** Ghost-mode WS contract path and disconnect timer cascade wiring have landed; CLEANUP rollout/state rename follow-up remains in progress.
+**Current focus:** Post-session chat timer window + frontend bookend integration test alignment.
 
 **Deliverables:**
 
@@ -193,18 +193,18 @@ Known readiness gap classes:
 
 - [x] Contract reviewed and approved by team
 - [x] Codebase entry points documented in implementation map
-- [ ] No ambiguities in state authority or transition rules
+- [x] No ambiguities in state authority or transition rules
 - [x] Testing charter defined (unit + integration coverage per subsystem)
-- [ ] Blocking items resolved before Stage 1 implementation begins
+- [ ] Blocking items resolved before Stage 1 implementation begins (post-session chat timer window still open)
 
 **Blockers for Stage 1+:**
 
 - ✅ Contract finalized
-- ⬜ Codebase updates to add CLEANUP state, rename IDLE → INACTIVE, implement timers
+- ✅ Codebase updates for CLEANUP state + INACTIVE compatibility alias + timer cascade (full DB rename IDLE→INACTIVE deferred behind compatibility)
 - ✅ Disconnect timer implementation (5s ghost, 60s TTL, auto-stop, 20min cleanup)
 - ✅ Ghost-mode WS event handlers
 - ✅ Previous group ID tracking
-- ⬜ Backend-authoritative boundary marker creation
+- ✅ Backend-authoritative boundary marker creation (persisted + WS-broadcast, frontend local synthesis removed)
 - ⬜ Post-session chat timer logic and ENDED processing window
 
 **Related Docs:**

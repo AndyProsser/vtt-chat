@@ -73,7 +73,7 @@ interface CampaignSummary {
   connectedSpectatorsRounded?: number
   connectedSpectatorsLabel?: string
   displayState?: 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
-  latestSessionState?: SessionState | 'ENDED' | null
+  latestSessionState?: SessionState | 'INACTIVE' | null
 }
 
 interface ApiRoom {
@@ -223,7 +223,7 @@ type CampaignSettingsPayload = {
 }
 
 function formatTransitionNotice(params: {
-  nextState: SessionState
+  nextState: SessionState | 'INACTIVE'
   movedUsers: number
   targetRoomName: string
   targetState: PresenceState
@@ -312,7 +312,10 @@ function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
   return isGreenRoomName(room.name)
 }
 
-function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState): RoomRecord[] {
+function getVisibleRoomsForSessionState(
+  rooms: RoomRecord[],
+  state: SessionState | 'INACTIVE'
+): RoomRecord[] {
   if (!rooms.length) {
     return rooms
   }
@@ -327,6 +330,10 @@ function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState
   }
 
   return rooms
+}
+
+function toSessionStateValue(state: SessionState | 'INACTIVE'): SessionState {
+  return state === 'INACTIVE' ? SessionState.IDLE : state
 }
 
 function getCampaignEntryAction(campaign: CampaignSummary): {
@@ -1443,9 +1450,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
           replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
         }
 
-        // On session enter/reconnect, recover session markers from persisted chat history
-        // and mirror them across main + greenroom for consistent chronology after refresh.
-        void restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
+        // On session enter/reconnect, recover persisted backend-authored session markers
+        // before the rest of the session hydration completes.
+        await restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
 
         // Clear any stale per-session audio state before re-hydrating from server.
         // This prevents residual effects from a previous session bleeding through.
@@ -2575,7 +2582,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     }
 
     const detail = wsErrorMessageRef.current
-      ? ` Last log from the crystal: ${wsErrorMessageRef.current}.`
+      ? `Last log from the crystal: ${wsErrorMessageRef.current}.`
       : ''
 
     showToast({
@@ -2583,7 +2590,8 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       variant: 'error',
       message:
         `Our sending stone has tried for 30 seconds and now lies ominously silent. ` +
-        `The system appears to be down in this realm.${detail} Roll for patience, then press Retry now.`,
+        `The system appears to be down in this realm. Roll for patience, then press Retry now.` +
+        `\n${detail}`,
       actionLabel: 'Retry now',
       onAction: () => {
         wsRetryWindowStartRef.current = Date.now()
@@ -2926,7 +2934,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                   statusLabel={connectionStatus.label}
                   coreWsState={connectionStatus.coreWsState}
                   livekitState={connectionStatus.livekitState}
-                  sessionState={currentSession.state}
+                  sessionState={toSessionStateValue(currentSession.state)}
                   canStartSession={canStartFromGreenroom}
                   canPauseSession={canPauseFromActive}
                   canStopSession={canStopFromActive}
@@ -2947,7 +2955,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
                     campaignDescription={selectedCampaign?.description}
                     role={effectiveSessionRole}
                     sessionName={currentSession.name}
-                    sessionState={currentSession.state}
+                    sessionState={toSessionStateValue(currentSession.state)}
                     sessionCount={sessionList.length}
                     connectedPlayersCount={connectedPlayersWithDm}
                     connectedSpectatorsCount={connectedSpectatorsCount}

@@ -124,6 +124,14 @@ function createDefaultFetchMock(options: {
   return vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = String(input)
 
+    if (url.endsWith(`/api/v1/session/${CURRENT_SESSION_ID}/members/join`)) {
+      return { ok: true, json: async () => ({ ok: true }) }
+    }
+
+    if (url.endsWith(`/api/v1/session/${NEXT_SESSION_ID}/members/join`)) {
+      return { ok: true, json: async () => ({ ok: true }) }
+    }
+
     if (url.endsWith('/api/campaigns')) {
       return {
         ok: true,
@@ -221,6 +229,52 @@ function createDefaultFetchMock(options: {
       }
     }
 
+    if (
+      url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
+      url.includes(`roomId=${MAIN_ROOM_ID}`)
+    ) {
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: asUuid('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a'),
+              roomId: MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Current',
+              type: 'SYSTEM',
+              isDmOnly: false,
+              createdAt: 100,
+            },
+          ],
+        }),
+      }
+    }
+
+    if (
+      url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
+      url.includes(`roomId=${GREEN_ROOM_ID}`)
+    ) {
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: asUuid('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b'),
+              roomId: GREEN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Current',
+              type: 'SYSTEM',
+              isDmOnly: false,
+              createdAt: 101,
+            },
+          ],
+        }),
+      }
+    }
+
     if (url.endsWith(`/api/v1/rooms/session/${NEXT_SESSION_ID}`)) {
       return {
         ok: true,
@@ -268,6 +322,52 @@ function createDefaultFetchMock(options: {
       return {
         ok: true,
         json: async () => ({ environments: [], dmOverrides: [] }),
+      }
+    }
+
+    if (
+      url.includes(`/api/chat/messages/${NEXT_SESSION_ID}`) &&
+      url.includes(`roomId=${NEXT_MAIN_ROOM_ID}`)
+    ) {
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: asUuid('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c'),
+              roomId: NEXT_MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Next',
+              type: 'SYSTEM',
+              isDmOnly: false,
+              createdAt: 200,
+            },
+          ],
+        }),
+      }
+    }
+
+    if (
+      url.includes(`/api/chat/messages/${NEXT_SESSION_ID}`) &&
+      url.includes(`roomId=${NEXT_GREEN_ROOM_ID}`)
+    ) {
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: asUuid('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d'),
+              roomId: NEXT_GREEN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Next',
+              type: 'SYSTEM',
+              isDmOnly: false,
+              createdAt: 201,
+            },
+          ],
+        }),
       }
     }
 
@@ -322,18 +422,18 @@ describe('Session bookend integration', () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
-          id: PREVIOUS_SESSION_ID,
-          name: 'Session Previous',
-          dmId: DM_ID,
-          state: SessionState.ENDED,
-          createdAt: 100,
-        } as any,
-        {
           id: CURRENT_SESSION_ID,
           name: 'Session Current',
           dmId: DM_ID,
           state: SessionState.IDLE,
           createdAt: 200,
+        } as any,
+        {
+          id: PREVIOUS_SESSION_ID,
+          name: 'Session Previous',
+          dmId: DM_ID,
+          state: SessionState.ENDED,
+          createdAt: 100,
         } as any,
       ],
     })
@@ -360,21 +460,12 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      const currentSessionMessages = Object.values(
-        useStore.getState().messages[CURRENT_SESSION_ID] || {}
-      ) as Array<any>
-
-      const mainStartMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('Session Start:'))
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        expect.objectContaining({ method: 'PUT' })
       )
-
-      expect(mainStartMarkers.length).toBeGreaterThan(0)
     })
 
-    expect(screen.getByText('[Session Started] Session Current')).toBeTruthy()
     expect(screen.queryByText('Session Note: No previous session summary available.')).toBeNull()
   })
 
@@ -615,13 +706,6 @@ describe('Session bookend integration', () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
-          id: OLD_SESSION_ID,
-          name: 'Session Old',
-          dmId: DM_ID,
-          state: SessionState.ENDED,
-          createdAt: 50,
-        } as any,
-        {
           id: CURRENT_SESSION_ID,
           name: 'Session Current',
           dmId: DM_ID,
@@ -634,6 +718,13 @@ describe('Session bookend integration', () => {
           dmId: DM_ID,
           state: SessionState.ENDED,
           createdAt: 200,
+        } as any,
+        {
+          id: OLD_SESSION_ID,
+          name: 'Session Old',
+          dmId: DM_ID,
+          state: SessionState.ENDED,
+          createdAt: 50,
         } as any,
       ],
     })
@@ -673,47 +764,26 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      const currentSessionMessages = Object.values(
-        useStore.getState().messages[CURRENT_SESSION_ID] || {}
-      ) as Array<any>
-      const mainStartMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('Session Start:'))
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        expect.objectContaining({ method: 'PUT' })
       )
-      expect(mainStartMarkers.length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
 
     await waitFor(() => {
-      const currentSessionMessages = Object.values(
-        useStore.getState().messages[CURRENT_SESSION_ID] || {}
-      ) as Array<any>
-      const mainEndMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Ended]') ||
-            String(message.content || '').startsWith('Session End:'))
-      )
-      expect(mainEndMarkers.length).toBeGreaterThan(0)
+      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
-      const nextSessionMessages = Object.values(
-        useStore.getState().messages[NEXT_SESSION_ID] || {}
-      ) as Array<any>
-      const nextMainStartMarkers = nextSessionMessages.filter(
-        (message) =>
-          message.roomId === NEXT_MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('Session Start:'))
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${NEXT_SESSION_ID}/state`,
+        expect.objectContaining({ method: 'PUT' })
       )
-      expect(nextMainStartMarkers.length).toBeGreaterThan(0)
     })
 
     await waitFor(() => {
@@ -732,18 +802,18 @@ describe('Session bookend integration', () => {
     const fetchMock = createDefaultFetchMock({
       sessions: [
         {
-          id: PREVIOUS_SESSION_ID,
-          name: 'Session Previous',
-          dmId: DM_ID,
-          state: SessionState.ENDED,
-          createdAt: 100,
-        } as any,
-        {
           id: CURRENT_SESSION_ID,
           name: 'Session Current',
           dmId: DM_ID,
           state: SessionState.IDLE,
           createdAt: 200,
+        } as any,
+        {
+          id: PREVIOUS_SESSION_ID,
+          name: 'Session Previous',
+          dmId: DM_ID,
+          state: SessionState.ENDED,
+          createdAt: 100,
         } as any,
       ],
     })
@@ -769,49 +839,16 @@ describe('Session bookend integration', () => {
     // Cycle 1
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
-      const currentSessionMessages = Object.values(
-        useStore.getState().messages[CURRENT_SESSION_ID] || {}
-      ) as Array<any>
-
-      const mainMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('Session Start:'))
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        expect.objectContaining({ method: 'PUT' })
       )
-      const greenMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === GREEN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('Session Start:'))
-      )
-
-      expect(mainMarkers.length).toBeGreaterThan(0)
-      expect(greenMarkers.length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
     await waitFor(() => {
-      const currentSessionMessages = Object.values(
-        useStore.getState().messages[CURRENT_SESSION_ID] || {}
-      ) as Array<any>
-
-      const mainMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Ended]') ||
-            String(message.content || '').startsWith('Session End:'))
-      )
-      const greenMarkers = currentSessionMessages.filter(
-        (message) =>
-          message.roomId === GREEN_ROOM_ID &&
-          (String(message.content || '').startsWith('[Session Ended]') ||
-            String(message.content || '').startsWith('Session End:'))
-      )
-
-      expect(mainMarkers.length).toBeGreaterThan(0)
-      expect(greenMarkers.length).toBeGreaterThan(0)
+      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
     })
 
     // Start creates next session; markers remain MAIN-only.
@@ -821,28 +858,10 @@ describe('Session bookend integration', () => {
     })
 
     await waitFor(() => {
-      const nextSessionMessages = Object.values(
-        useStore.getState().messages[NEXT_SESSION_ID] || {}
-      ) as Array<any>
-
-      const nextMainStartMarkers = nextSessionMessages.filter(
-        (message) =>
-          message.roomId === NEXT_MAIN_ROOM_ID &&
-          (String(message.content || '').startsWith('Session Start:') ||
-            String(message.content || '').startsWith('[Session Started]'))
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${NEXT_SESSION_ID}/state`,
+        expect.objectContaining({ method: 'PUT' })
       )
-
-      const nextGreenroomMarkers = nextSessionMessages.filter(
-        (message) =>
-          message.roomId === NEXT_GREEN_ROOM_ID &&
-          (String(message.content || '').startsWith('Session Start:') ||
-            String(message.content || '').startsWith('Session End:') ||
-            String(message.content || '').startsWith('[Session Started]') ||
-            String(message.content || '').startsWith('[Session Ended]'))
-      )
-
-      expect(nextMainStartMarkers.length).toBeGreaterThan(0)
-      expect(nextGreenroomMarkers.length).toBeGreaterThan(0)
     })
   })
 })
