@@ -92,6 +92,7 @@ vi.mock('@/repositories/room.repository', () => ({
 
 import {
   applySessionStateRoomTransition,
+  endWhisperBubbleForSession,
   ensurePresenceRecoveredFromSnapshots,
   getRoomMemberIds,
   getSessionPresence,
@@ -102,6 +103,24 @@ const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const DM_ID = '22222222-2222-4222-8222-222222222222'
 const USER_A = '33333333-3333-4333-8333-333333333333'
 const USER_B = '44444444-4444-4444-8444-444444444444'
+const MAIN_ROOM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+const GROUP_ROOM_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+const WHISPER_ROOM_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+
+function seedRoom(params: {
+  id: string
+  sessionId: string
+  name: string
+  type: 'MAIN' | 'GROUP' | 'PRIVATE'
+  createdBy: string
+}): void {
+  const now = new Date()
+  roomRows.set(params.id, {
+    ...params,
+    createdAt: now,
+    updatedAt: now,
+  })
+}
 
 describe('room service recovery integration', () => {
   beforeEach(() => {
@@ -183,5 +202,102 @@ describe('room service recovery integration', () => {
 
     expect(mainRoomMembers.sort()).toEqual([USER_A, USER_B].sort())
     expect(greenRoomMembers).toEqual([])
+  })
+
+  it('restores whisper participants to stored privateRoomId when it is still valid', async () => {
+    seedRoom({
+      id: MAIN_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main Room',
+      type: 'MAIN',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: GROUP_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Scouts',
+      type: 'GROUP',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: WHISPER_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Whisper',
+      type: 'PRIVATE',
+      createdBy: DM_ID,
+    })
+
+    await updatePresenceState({
+      sessionId: SESSION_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+      primaryRoomId: WHISPER_ROOM_ID as any,
+      privateRoomId: GROUP_ROOM_ID as any,
+    })
+
+    const moved = await endWhisperBubbleForSession({
+      sessionId: SESSION_ID as any,
+      whisperRoomId: WHISPER_ROOM_ID as any,
+      fallbackRoomId: MAIN_ROOM_ID as any,
+    })
+
+    expect(moved).toEqual([
+      {
+        userId: USER_A,
+        username: 'alice',
+        fromRoomId: WHISPER_ROOM_ID,
+        toRoomId: GROUP_ROOM_ID,
+      },
+    ])
+
+    const presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(GROUP_ROOM_ID)
+    expect(presence[0]?.privateRoomId).toBeUndefined()
+  })
+
+  it('falls back to MAIN when stored privateRoomId is no longer valid', async () => {
+    seedRoom({
+      id: MAIN_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main Room',
+      type: 'MAIN',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: WHISPER_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Whisper',
+      type: 'PRIVATE',
+      createdBy: DM_ID,
+    })
+
+    await updatePresenceState({
+      sessionId: SESSION_ID as any,
+      userId: USER_B as any,
+      username: 'bob',
+      state: 'ONLINE' as any,
+      primaryRoomId: WHISPER_ROOM_ID as any,
+      privateRoomId: GROUP_ROOM_ID as any,
+    })
+
+    const moved = await endWhisperBubbleForSession({
+      sessionId: SESSION_ID as any,
+      whisperRoomId: WHISPER_ROOM_ID as any,
+      fallbackRoomId: MAIN_ROOM_ID as any,
+    })
+
+    expect(moved).toEqual([
+      {
+        userId: USER_B,
+        username: 'bob',
+        fromRoomId: WHISPER_ROOM_ID,
+        toRoomId: MAIN_ROOM_ID,
+      },
+    ])
+
+    const presence = await getSessionPresence(SESSION_ID as any)
+    expect(presence[0]?.primaryRoomId).toBe(MAIN_ROOM_ID)
+    expect(presence[0]?.privateRoomId).toBeUndefined()
   })
 })

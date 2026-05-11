@@ -1,4 +1,4 @@
-import { PresenceState, Role, SessionState } from '@shared'
+import { DISCONNECT_CASCADE_TIMERS_MS, PresenceState, Role, SessionState } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { clearRoomMessages } from '@/services/chat.service'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
@@ -20,10 +20,10 @@ import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
 import { logSessionStateChange } from '@/services/session-logs.service'
 
 const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000000' as UUID
-const GHOST_ENTRY_DELAY_MS = 5_000
-const PRESENCE_TTL_REMOVAL_DELAY_MS = 60_000
-const EVERYONE_LEAVES_AUTOSTOP_DELAY_MS = 60_000
-const CLEANUP_TRIGGER_DELAY_MS = 20 * 60_000
+const GHOST_ENTRY_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.ghostEntryDelay
+const PRESENCE_TTL_REMOVAL_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.presenceTtlRemoval
+const EVERYONE_LEAVES_AUTOSTOP_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.everyoneLeavesAutoStop
+const CLEANUP_TRIGGER_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.cleanupTriggerDelay
 
 interface CascadeWsAdapter {
   broadcastEventToSession: (sessionId: UUID, event: EventEnvelope, visibleTo?: UUID[]) => void

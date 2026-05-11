@@ -9,3 +9,7 @@ export {
   type CampaignDisplayState,
   type SessionLifecycleState,
 } from './session-state'
+export {
+  DISCONNECT_CASCADE_TIMERS_MS,
+  type DisconnectCascadeTimerKey,
+} from './session-lifecycle-timers'

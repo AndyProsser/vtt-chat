@@ -167,4 +167,24 @@ describe('websocket disconnect/reconnect sequencing (same user multi-tab)', () =
 
     await manager.close()
   })
+
+  it('tab churn does not emit false disconnect cascade while one tab stays connected', async () => {
+    const { WebSocketManager } = await import('@/ws/index')
+    const manager = new WebSocketManager(new HTTPServer())
+
+    const tabA = createSocket()
+    const tabB = createSocket()
+
+    ;(manager as any).authenticateConnection(tabA, 'token')
+    ;(manager as any).authenticateConnection(tabB, 'token')
+    ;(manager as any).handleDisconnection(tabA)
+
+    const tabC = createSocket()
+    ;(manager as any).authenticateConnection(tabC, 'token')
+
+    expect(mocks.mockHandleUserDisconnected).not.toHaveBeenCalled()
+    expect(mocks.mockHandleUserConnected).toHaveBeenCalledTimes(3)
+
+    await manager.close()
+  })
 })

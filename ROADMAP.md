@@ -203,7 +203,7 @@ Known readiness gap classes:
 - ⬜ Codebase updates to add CLEANUP state, rename IDLE → INACTIVE, implement timers
 - ✅ Disconnect timer implementation (5s ghost, 60s TTL, auto-stop, 20min cleanup)
 - ✅ Ghost-mode WS event handlers
-- ⬜ Previous group ID tracking
+- ⬜ Previous group ID tracking (whisper return currently covered via `privateRoomId`; canonical `previousGroupId` contract still pending)
 - ⬜ Backend-authoritative boundary marker creation
 - ⬜ Post-session chat timer logic and ENDED processing window
 
