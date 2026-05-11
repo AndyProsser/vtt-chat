@@ -8,7 +8,6 @@ export {
   toPublicSessionState,
   sessionStatusClass,
   type CampaignDisplayState,
-  type SessionLifecycleState,
 } from './session-state'
 export {
   DISCONNECT_CASCADE_TIMERS_MS,

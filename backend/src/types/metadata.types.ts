@@ -1,4 +1,4 @@
-import type { SessionEntity, SessionState } from '@shared'
+import type { SessionEntity, SessionLifecycleState } from '@shared'
 
 type MetadataSessionCore = Pick<SessionEntity, 'name' | 'state'> & {
   id: string
@@ -17,7 +17,7 @@ export type SessionMetadataSnapshot = {
   sessionId: string
   title: string
   description: string | null
-  state: SessionState
+  state: SessionLifecycleState
   dmId: string
   campaign: {
     id: string

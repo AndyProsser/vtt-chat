@@ -35,7 +35,7 @@ function toStoredSessionState(state: SessionLifecycleState): SessionState {
   if (!normalized) {
     throw createError(ErrorCode.INVALID_INPUT, {
       message: 'Invalid session state',
-      field: 'state',
+      context: { field: 'state' },
     })
   }
 
