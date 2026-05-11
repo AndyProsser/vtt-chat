@@ -53,6 +53,7 @@ interface SessionInitProps {
   token: string
   user: { id: UUID; username: string; role: Role; authType?: 'FULL' | 'GUEST' }
   onSessionCreated?: (sessionId: UUID) => void
+  onReady?: () => void
 }
 
 interface CampaignSummary {
@@ -418,7 +419,14 @@ function toValidPostSessionDurationMinutes(value: unknown, fallback = 5): number
   return Math.max(1, Math.min(60, Math.round(parsed)))
 }
 
-export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: SessionInitProps) {
+export function SessionInit({
+  apiUrl,
+  wsUrl,
+  token,
+  user,
+  onSessionCreated,
+  onReady,
+}: SessionInitProps) {
   const showToast = useToast()
 
   const detectThemeMode = (): FrontendThemeMode => {
@@ -511,8 +519,25 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const wsRetryToastTimerRef = useRef<number | null>(null)
   const wsErrorMessageRef = useRef<string | null>(null)
   const authFailureHandledRef = useRef(false)
+  const hasSignaledReadyRef = useRef(false)
+  const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    const sessionContext = window.sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    const localContext = window.localStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    const pendingAutoEnter = window.sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
+
+    return Boolean(sessionContext || localContext || pendingAutoEnter)
+  })
   const [wsRetryWindowExpired, setWsRetryWindowExpired] = useState(false)
   const [wsRetrySecondsRemaining, setWsRetrySecondsRemaining] = useState<number | null>(null)
+
+  const clearPersistedActiveSessionContext = useCallback(() => {
+    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    window.localStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+  }, [])
 
   const forceLogoutToAuthScreen = useCallback(() => {
     if (authFailureHandledRef.current) {
@@ -521,9 +546,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     authFailureHandledRef.current = true
     sessionStorage.removeItem('authToken')
     sessionStorage.removeItem('user')
-    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    clearPersistedActiveSessionContext()
     window.location.assign('/')
-  }, [])
+  }, [clearPersistedActiveSessionContext])
 
   const fetchWithAuthGuard = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -591,7 +616,25 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
   const updateSession = useStore((state) => state.updateSession)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
-  const currentSession = currentSessionId ? sessions[currentSessionId] : null
+  const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
+
+  useEffect(() => {
+    const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
+    const hasLobbySurface = !currentSessionId
+
+    if (
+      hasSignaledReadyRef.current ||
+      isLoadingCampaigns ||
+      isCampaignRestorePending ||
+      (!hasSessionSurface && !hasLobbySurface)
+    ) {
+      return
+    }
+
+    hasSignaledReadyRef.current = true
+    onReady?.()
+  }, [currentSession, currentSessionId, isCampaignRestorePending, isLoadingCampaigns, onReady])
+
   const typedRoomsBySession = rooms as Record<UUID, Record<UUID, RoomRecord>>
   const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
   const typedSessionStatsBySession = sessionStatsBySessionId as Record<UUID, ApiSessionStats>
@@ -1858,8 +1901,12 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       return
     }
 
+    setIsCampaignRestorePending(true)
+
     const pendingAutoEnterCampaignId = sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
-    const rawActiveSessionContext = sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    const rawActiveSessionContext =
+      sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY) ||
+      window.localStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
 
     let activeSessionContext: ActiveSessionContext | null = null
     if (rawActiveSessionContext) {
@@ -1870,15 +1917,19 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
             campaignId: parsed.campaignId,
             sessionId: parsed.sessionId,
           }
+
+          // Keep session storage warm after hard refresh if local storage carried context.
+          sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, rawActiveSessionContext)
         }
       } catch {
-        sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+        clearPersistedActiveSessionContext()
       }
     }
 
     const restoreCampaignId =
       activeSessionContext?.campaignId || (pendingAutoEnterCampaignId as UUID | null)
     if (!restoreCampaignId) {
+      setIsCampaignRestorePending(false)
       return
     }
 
@@ -1887,19 +1938,26 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
     sessionStorage.removeItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
 
     if (!pendingCampaign) {
-      sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+      clearPersistedActiveSessionContext()
+      setIsCampaignRestorePending(false)
       return
     }
 
     lobbyAutoEnterTriggeredRef.current = true
-    const timeoutId = window.setTimeout(() => {
-      void handleEnterCampaign(pendingCampaign.id, activeSessionContext?.sessionId)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [campaigns, currentSessionId, handleEnterCampaign, isLoadingCampaigns])
+    void (async () => {
+      try {
+        await handleEnterCampaign(pendingCampaign.id, activeSessionContext?.sessionId)
+      } finally {
+        setIsCampaignRestorePending(false)
+      }
+    })()
+  }, [
+    campaigns,
+    clearPersistedActiveSessionContext,
+    currentSessionId,
+    handleEnterCampaign,
+    isLoadingCampaigns,
+  ])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1915,7 +1973,9 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
       sessionId: currentSession.id,
     }
 
-    window.sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, JSON.stringify(context))
+    const serializedContext = JSON.stringify(context)
+    window.sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
+    window.localStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
   const handleSaveCampaignSettings = async (e: React.FormEvent) => {
@@ -2344,7 +2404,7 @@ export function SessionInit({ apiUrl, wsUrl, token, user, onSessionCreated }: Se
 
     setCurrentSession(null)
     setSelectedRoomIdOverride('')
-    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    clearPersistedActiveSessionContext()
   }
 
   const logoutToAuthScreen = () => {

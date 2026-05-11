@@ -69,10 +69,15 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         },
         {} as Record<UUID, Session>
       )
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const nextCurrentSessionId =
+        state.currentSessionId && nextSessions[state.currentSessionId]
+          ? state.currentSessionId
+          : null
+      const currentSession = nextCurrentSessionId ? nextSessions[nextCurrentSessionId] : null
 
       return {
         sessions: nextSessions,
+        currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
       }
     }),

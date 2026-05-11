@@ -297,6 +297,133 @@
   color: var(--color-text-secondary);
 }
 
+.splash-line {
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    text-shadow 220ms ease;
+  will-change: opacity, transform;
+}
+
+.splash-line.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  animation: splash-line-arcane-pulse 2.5s ease-in-out infinite;
+}
+
+.splash-line.is-hidden {
+  opacity: 0;
+  transform: translateY(2px);
+  animation: none;
+}
+
+.app-splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2.25rem 1.25rem;
+  isolation: isolate;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 1000ms ease;
+  background:
+    radial-gradient(
+      1200px 700px at 22% 14%,
+      color-mix(in srgb, var(--color-brand, #0ea5e9) 8%, transparent),
+      transparent 62%
+    ),
+    color-mix(in srgb, var(--color-surface, #0f172a) 94%, #000 6%);
+}
+
+@supports (height: 100dvh) {
+  .app-splash-overlay {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+.app-splash-overlay.is-fading-out {
+  opacity: 0;
+}
+
+.app-splash-card {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+  padding: 2.1rem 2rem;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-border, #334155) 85%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-alt, var(--color-surface, #111827)) 84%,
+    transparent
+  );
+  box-shadow:
+    0 18px 50px color-mix(in srgb, #000 26%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 7%, transparent) inset;
+  backdrop-filter: blur(8px);
+}
+
+.app-splash-logo {
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  user-select: none;
+  margin: 0 0 1.1rem;
+}
+
+.app-splash-kicker {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.app-splash-title {
+  margin: 0.7rem 0 0.75rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--color-text-primary, #e2e8f0);
+}
+
+.app-splash-line {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #cbd5e1);
+}
+
+@keyframes splash-line-arcane-pulse {
+  0% {
+    text-shadow: 0 0 0 color-mix(in srgb, var(--color-brand) 0%, transparent);
+  }
+
+  50% {
+    text-shadow:
+      0 0 10px color-mix(in srgb, var(--color-brand) 22%, transparent),
+      0 0 22px color-mix(in srgb, var(--color-brand) 12%, transparent);
+  }
+
+  100% {
+    text-shadow: 0 0 0 color-mix(in srgb, var(--color-brand) 0%, transparent);
+  }
+}
+
 .auth-tool-list {
   margin-top: 14px;
 }
