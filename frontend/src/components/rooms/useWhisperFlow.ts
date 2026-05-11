@@ -81,6 +81,23 @@ export function useWhisperFlow({
     return previousDmVoiceRoomIdRef.current
   }, [])
 
+  const setWhisperExitVoiceRoom = useCallback(
+    (roomId: UUID) => {
+      if (!whisperContextRef.current) {
+        whisperContextRef.current = {
+          previousDmVoiceRoomId: roomId,
+          previousBroadcastEnabled: broadcastModeEnabled,
+          memberPreviousRoomIds: {},
+        }
+        setHasWhisperContext(true)
+        return
+      }
+
+      whisperContextRef.current.previousDmVoiceRoomId = roomId
+    },
+    [broadcastModeEnabled]
+  )
+
   const noteWhisperEntry = useCallback(
     (userId: UUID, fromRoomId: UUID) => {
       if (!whisperContextRef.current) {
@@ -264,5 +281,6 @@ export function useWhisperFlow({
     handleEndWhisper,
     rememberDmVoiceRoom,
     getRememberedDmVoiceRoom,
+    setWhisperExitVoiceRoom,
   }
 }

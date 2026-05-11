@@ -46,7 +46,7 @@ export interface RoomSelectorProps {
   canManageRooms: boolean
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
-  dmAutoTargetOnFirstPlayerJoin: boolean
+  dmAutoTargetOnFirstPlayerJoin?: boolean
   rooms: RoomSelectorRoomWithParticipants[]
   selectedRoomId?: UUID | ''
   onSelectRoom: (roomId: UUID) => void

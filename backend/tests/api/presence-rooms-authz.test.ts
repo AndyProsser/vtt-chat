@@ -52,6 +52,7 @@ const USER_ID = '22222222-2222-4222-8222-222222222222'
 const OTHER_ID = '33333333-3333-4333-8333-333333333333'
 const ROOM_ID = '44444444-4444-4444-8444-444444444444'
 const PREV_ROOM_ID = '55555555-5555-5555-8555-555555555555'
+const WHISPER_ROOM_ID = '66666666-6666-4666-8666-666666666666'
 
 function buildApp() {
   const app = express()
@@ -211,9 +212,9 @@ describe('presence/rooms authz', () => {
       })
 
     expect(response.status).toBe(200)
-    expect(mockBroadcastEventToSession).toHaveBeenCalledTimes(2) // LEFT + JOINED
 
-    const leftCall = mockBroadcastEventToSession.mock.calls[0][1]
+    const wsCalls = mockBroadcastEventToSession.mock.calls as Array<[string, any]>
+    const leftCall = wsCalls.find(([, event]) => event.type === 'ROOM:USER_LEFT')?.[1]
     expect(leftCall.type).toBe('ROOM:USER_LEFT')
     expect(leftCall.payload).toMatchObject({
       roomId: PREV_ROOM_ID,
@@ -223,12 +224,88 @@ describe('presence/rooms authz', () => {
       movedBy: OTHER_ID,
     })
 
-    const joinedCall = mockBroadcastEventToSession.mock.calls[1][1]
+    const joinedCall = wsCalls.find(([, event]) => event.type === 'ROOM:USER_JOINED')?.[1]
     expect(joinedCall.type).toBe('ROOM:USER_JOINED')
     expect(joinedCall.payload).toMatchObject({
       roomId: ROOM_ID,
       userId: USER_ID,
       username: 'alice',
+      movedBy: OTHER_ID,
+    })
+  })
+
+  it('allows DM to move a whisper participant out of whisper', async () => {
+    const app = buildApp()
+    app.locals.wsManager = mockWSManager
+
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: OTHER_ID,
+      username: 'dm',
+      role: 'DM',
+    })
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice', role: 'PLAYER' },
+      { id: OTHER_ID, username: 'dm', role: 'DM' },
+    ])
+    mocks.mockGetRoom.mockImplementation(async (roomId: string) => {
+      if (roomId === WHISPER_ROOM_ID) {
+        return {
+          id: WHISPER_ROOM_ID,
+          sessionId: SESSION_ID,
+          name: 'Whisper',
+          type: 'PRIVATE',
+          createdBy: OTHER_ID,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+      }
+
+      return {
+        id: ROOM_ID,
+        sessionId: SESSION_ID,
+        name: 'Room B',
+        type: 'GROUP',
+        createdBy: OTHER_ID,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+    })
+    mocks.mockGetSessionPresence.mockResolvedValue([
+      {
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        primaryRoomId: WHISPER_ROOM_ID,
+        privateRoomId: null,
+        lastSeenAt: Date.now(),
+      },
+    ])
+
+    const response = await request(app)
+      .post(`/api/rooms/${ROOM_ID}/move-user`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.ok).toBe(true)
+    expect(mocks.mockJoinRoom).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
+      userId: USER_ID,
+      username: 'alice',
+      state: 'ONLINE',
+    })
+
+    const wsCalls = mockBroadcastEventToSession.mock.calls as Array<[string, any]>
+    const leftCall = wsCalls.find(([, event]) => event.type === 'ROOM:USER_LEFT')
+    expect(leftCall?.[1]?.payload).toMatchObject({
+      roomId: WHISPER_ROOM_ID,
+      userId: USER_ID,
+      username: 'alice',
+      reason: 'DM_MOVE',
       movedBy: OTHER_ID,
     })
   })

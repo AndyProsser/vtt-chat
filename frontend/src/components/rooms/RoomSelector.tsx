@@ -50,7 +50,7 @@ export function RoomSelector({
   canManageRooms,
   broadcastModeEnabled,
   onToggleBroadcastMode,
-  dmAutoTargetOnFirstPlayerJoin,
+  dmAutoTargetOnFirstPlayerJoin = false,
   rooms,
   selectedRoomId,
   onSelectRoom,
@@ -234,6 +234,9 @@ export function RoomSelector({
   )
 
   const whisperEntryRef = useRef<(userId: UUID, fromRoomId: UUID) => void>(() => undefined)
+  const lastWhisperPlayerMovedOutRef = useRef<(mainRoomId: UUID) => Promise<void>>(
+    async () => undefined
+  )
 
   const roomMoves = useRoomMoves({
     apiUrl,
@@ -251,6 +254,8 @@ export function RoomSelector({
     onWhisperEntry: (userId, fromRoomId) => {
       whisperEntryRef.current(userId, fromRoomId)
     },
+    onLastWhisperPlayerMovedOut: async (mainRoomId) =>
+      lastWhisperPlayerMovedOutRef.current(mainRoomId),
     syncSessionTopologyFromServer,
   })
 
@@ -275,6 +280,13 @@ export function RoomSelector({
   useEffect(() => {
     whisperEntryRef.current = whisperFlow.noteWhisperEntry
   }, [whisperFlow.noteWhisperEntry])
+
+  useEffect(() => {
+    lastWhisperPlayerMovedOutRef.current = async (mainRoomId: UUID) => {
+      whisperFlow.setWhisperExitVoiceRoom(mainRoomId)
+      await whisperFlow.handleEndWhisper()
+    }
+  }, [whisperFlow])
 
   const getResolvedPresenceState = useCallback((presenceState: PresenceState) => {
     if (presenceState === PresenceState.IDLE) {
@@ -622,21 +634,18 @@ export function RoomSelector({
       }
 
       const targetRoom = allRooms.find((room) => room.id === roomId)
-      if (targetRoom?.type === RoomType.GROUP) {
-        const locallyDetectedPlayers = (roomMoves.displayedParticipantsByRoom[roomId] || []).filter(
-          (participant) => participant.userId !== dmUserId
-        )
+      const localParticipantCount = Math.max(
+        targetRoom?.participants.length || 0,
+        roomMoves.displayedParticipantsByRoom[roomId]?.length || 0
+      )
 
-        if (locallyDetectedPlayers.length === 0) {
-          const serverMemberIds = await getRoomMemberIdsFromServer(roomId)
-          const serverPlayerCount = (serverMemberIds || []).filter(
-            (userId) => userId !== dmUserId
-          ).length
+      if (targetRoom && localParticipantCount === 0) {
+        const serverMemberIds = await getRoomMemberIdsFromServer(roomId)
+        const serverParticipantCount = (serverMemberIds || []).length
 
-          if (serverPlayerCount === 0) {
-            setMoveError('Cannot set DM voice target to an empty group')
-            return
-          }
+        if (serverParticipantCount === 0) {
+          setMoveError('Cannot set DM voice target to an empty room or group')
+          return
         }
       }
 

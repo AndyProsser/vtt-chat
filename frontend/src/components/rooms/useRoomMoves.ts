@@ -20,6 +20,7 @@ interface UseRoomMovesOptions {
   whisperRoomId?: UUID
   whisperDisplayedPlayerCount: number
   onWhisperEntry: (userId: UUID, fromRoomId: UUID) => void
+  onLastWhisperPlayerMovedOut: (mainRoomId: UUID) => Promise<void>
   syncSessionTopologyFromServer: () => Promise<void>
 }
 
@@ -37,6 +38,7 @@ export function useRoomMoves({
   whisperRoomId,
   whisperDisplayedPlayerCount,
   onWhisperEntry,
+  onLastWhisperPlayerMovedOut,
   syncSessionTopologyFromServer,
 }: UseRoomMovesOptions) {
   const [pendingRoomMoves, setPendingRoomMoves] = useState<Record<UUID, UUID>>({})
@@ -113,15 +115,12 @@ export function useRoomMoves({
         targetRoom?.type === RoomType.GROUP &&
         targetPlayerCountBefore === 0 &&
         dmAutoTargetOnFirstPlayerJoin
+      const mainRoomId = allRooms.find((room) => room.type === RoomType.MAIN)?.id
       const movingLastWhisperPlayer =
         Boolean(whisperRoomId) &&
         movedFromRoomId === whisperRoomId &&
         toRoomId !== whisperRoomId &&
         whisperDisplayedPlayerCount <= 1
-
-      if (movingLastWhisperPlayer) {
-        throw new Error('End whisper to move the last player out of whisper')
-      }
 
       setPendingRoomMoves((state) => ({ ...state, [userId]: toRoomId }))
 
@@ -157,8 +156,17 @@ export function useRoomMoves({
           onSelectRoom(toRoomId)
         }
 
+        try {
+          await syncSessionTopologyFromServer()
+        } catch {
+          // Keep move success resilient even if topology refresh is temporarily unavailable.
+        }
+
+        if (movingLastWhisperPlayer && mainRoomId) {
+          await onLastWhisperPlayerMovedOut(mainRoomId)
+        }
+
         clearPendingRoomMove(userId)
-        void syncSessionTopologyFromServer().catch(() => undefined)
         return true
       } catch (error) {
         clearPendingRoomMove(userId)
@@ -174,6 +182,7 @@ export function useRoomMoves({
       dmAutoTargetOnFirstPlayerJoin,
       dmUserId,
       onSelectRoom,
+      onLastWhisperPlayerMovedOut,
       onToggleBroadcastMode,
       onWhisperEntry,
       sessionId,

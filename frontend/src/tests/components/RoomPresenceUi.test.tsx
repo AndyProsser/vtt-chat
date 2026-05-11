@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -117,8 +117,8 @@ describe('RoomSelector', () => {
     expect(screen.getByText('Tara')).toBeTruthy()
     expect(screen.getByText('Rogue | Level 5 | Halfling')).toBeTruthy()
 
-    fireEvent.click(getSelectGroupButton('Whisper Booth'))
-    expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-2'))
+    fireEvent.click(getSelectGroupButton('Tavern'))
+    expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-1'))
   })
 
   it('renders empty states when there are no rooms or participants', () => {
@@ -278,7 +278,7 @@ describe('RoomSelector', () => {
 
   it('shows optimistic group immediately while create request is pending', async () => {
     const onSelectRoom = vi.fn()
-    let resolveFetch: ((value: Response) => void) | null = null
+    let resolveFetch: (value: Response) => void = () => undefined
     const fetchMock = vi.fn(
       () =>
         new Promise<Response>((resolve) => {
@@ -327,7 +327,7 @@ describe('RoomSelector', () => {
       expect(getSelectGroupButton('In Jail')).toBeTruthy()
     })
 
-    resolveFetch?.(
+    resolveFetch(
       new Response(
         JSON.stringify({
           room: {
@@ -734,7 +734,7 @@ describe('RoomSelector', () => {
     const mainRoomId = asUuid('room-main')
     const groupRoomId = asUuid('room-group')
 
-    let resolveDelete: ((value: Response) => void) | null = null
+    let resolveDelete: (value: Response) => void = () => undefined
     let deleteResolved = false
 
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
@@ -882,7 +882,7 @@ describe('RoomSelector', () => {
       'room-selector-item--deleting'
     )
 
-    resolveDelete?.(
+    resolveDelete(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -912,7 +912,7 @@ describe('RoomSelector', () => {
     const groupRoomId = asUuid('room-group')
 
     let deleteCallCount = 0
-    let resolveFirstDelete: ((value: Response) => void) | null = null
+    let resolveFirstDelete: (value: Response) => void = () => undefined
 
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
       if (url.endsWith('/api/v1/rooms/room-group') && options?.method === 'DELETE') {
@@ -992,7 +992,7 @@ describe('RoomSelector', () => {
       )
     })
 
-    resolveFirstDelete?.(
+    resolveFirstDelete(
       new Response(JSON.stringify({ message: 'Failed to close group' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -1241,7 +1241,76 @@ describe('RoomSelector', () => {
         expect.any(Object)
       )
       expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-group'))
-      expect(screen.queryByText('Cannot set DM voice target to an empty group')).toBeNull()
+      expect(screen.queryByText('Cannot set DM voice target to an empty room or group')).toBeNull()
+    })
+  })
+
+  it('blocks targeting an empty whisper room as DM voice', async () => {
+    useStore.getState().reset()
+
+    const onSelectRoom = vi.fn()
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return new Response(JSON.stringify({ presence: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={onSelectRoom}
+      />
+    )
+
+    fireEvent.click(getSelectGroupButton('Whisper Booth'))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/presence/session-1',
+        expect.any(Object)
+      )
+      expect(screen.getByText('Cannot set DM voice target to an empty room or group')).toBeTruthy()
+      expect(onSelectRoom).not.toHaveBeenCalledWith(asUuid('room-private'))
     })
   })
 
@@ -1515,10 +1584,40 @@ describe('RoomSelector', () => {
     expect(screen.queryByText('End whisper to move the last player out of whisper')).toBeNull()
   })
 
-  it('blocks moving the last whisper participant out without ending whisper', async () => {
+  it('auto-ends whisper and returns DM voice to Main when dragging last whisper player out', async () => {
     useStore.getState().reset()
 
-    const fetchMock = vi.fn(async () => {
+    const onSelectRoom = vi.fn()
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+        return new Response(JSON.stringify({ rooms: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return new Response(JSON.stringify({ presence: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       return new Response(JSON.stringify({ message: 'Unexpected request' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -1567,7 +1666,7 @@ describe('RoomSelector', () => {
           },
         ]}
         selectedRoomId={asUuid('room-private')}
-        onSelectRoom={vi.fn()}
+        onSelectRoom={onSelectRoom}
       />
     )
 
@@ -1576,21 +1675,30 @@ describe('RoomSelector', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Main Table' }))
 
     await waitFor(() => {
-      expect(screen.getByText('End whisper to move the last player out of whisper')).toBeTruthy()
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
     })
 
-    const moveCalls = fetchMock.mock.calls.filter(
-      ([url, options]) =>
-        String(url).endsWith('/api/v1/rooms/room-main/members/move') &&
-        (options as RequestInit | undefined)?.method === 'POST'
-    )
-    expect(moveCalls.length).toBe(0)
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    await waitFor(() => {
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-main'))
+    })
+
+    expect(screen.queryByText('End whisper to move the last player out of whisper')).toBeNull()
   })
 
   it('disables end-whisper button while pending whisper moves exist', async () => {
     useStore.getState().reset()
 
-    let resolveMoveParticipant: ((value: Response) => void) | null = null
+    let resolveMoveParticipant: (value: Response) => void = () => undefined
     const moveParticipantPromise = new Promise<Response>((resolve) => {
       resolveMoveParticipant = resolve
     })
@@ -1672,7 +1780,7 @@ describe('RoomSelector', () => {
       expect(endWhisperButton.hasAttribute('disabled')).toBe(true)
     })
 
-    resolveMoveParticipant?.(
+    resolveMoveParticipant(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -1681,6 +1789,124 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(endWhisperButton.hasAttribute('disabled')).toBe(false)
+    })
+  })
+
+  it('does not auto-end whisper while a move into whisper is still reconciling topology', async () => {
+    useStore.getState().reset()
+
+    let endWhisperCalls = 0
+    let resolveRoomsSync: ((value: Response) => void) | null = null
+    let resolvePresenceSync: ((value: Response) => void) | null = null
+    const roomsSyncPromise = new Promise<Response>((resolve) => {
+      resolveRoomsSync = resolve
+    })
+    const presenceSyncPromise = new Promise<Response>((resolve) => {
+      resolvePresenceSync = resolve
+    })
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/rooms/room-private/members/move') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+        return roomsSyncPromise
+      }
+
+      if (url.endsWith('/api/v1/presence/session-1')) {
+        return presenceSyncPromise
+      }
+
+      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+        endWhisperCalls += 1
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-3'),
+                username: 'Zara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+          {
+            id: asUuid('room-private'),
+            name: 'Whisper Booth',
+            type: RoomType.PRIVATE,
+            memberCount: 0,
+            participants: [],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Zara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Whisper Booth' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/rooms/room-private/members/move',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+    expect(endWhisperCalls).toBe(0)
+
+    await act(async () => {
+      resolveRoomsSync?.(
+        new Response(JSON.stringify({ rooms: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      resolvePresenceSync?.(
+        new Response(JSON.stringify({ presence: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
     })
   })
 
@@ -2047,7 +2273,7 @@ describe('RoomSelector', () => {
       return
     }
 
-    let resolveReset: ((response: Response) => void) | null = null
+    let resolveReset: (response: Response) => void = () => undefined
     const fetchMock = vi.fn((input: string | URL) => {
       const url = String(input)
 
@@ -2167,7 +2393,7 @@ describe('RoomSelector', () => {
 
     expect(shuffleButton.hasAttribute('disabled')).toBe(true)
 
-    resolveReset?.(
+    resolveReset(
       new Response(JSON.stringify({ ok: true, rerolledCount: 4 }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
