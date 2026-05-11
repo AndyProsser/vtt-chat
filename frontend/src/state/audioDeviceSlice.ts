@@ -12,6 +12,7 @@ export const initialAudioDeviceState: AudioDeviceState = {
   microphoneOn: false,
   micGain: 80,
   volumeLevel: 75,
+  backgroundAudioLevel: 20,
   isSpeaking: false,
   pttEnabled: false,
   autoGainEnabled: true,

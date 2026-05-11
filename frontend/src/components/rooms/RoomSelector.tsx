@@ -73,6 +73,12 @@ interface RoomSelectorProps {
   onSelectRoom: (roomId: UUID) => void
 }
 
+interface RoomSectionRenderOptions {
+  dividerOnly?: boolean
+  hideHeader?: boolean
+  className?: string
+}
+
 function isWhisperRoom(room: RoomSelectorRoom): boolean {
   return room.type === RoomType.PRIVATE
 }
@@ -132,6 +138,7 @@ export function RoomSelector({
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
   const [isDevResettingMocks, setIsDevResettingMocks] = useState(false)
   const createGroupWrapRef = useRef<HTMLDivElement | null>(null)
+  const roomListRef = useRef<HTMLDivElement | null>(null)
   const environmentPickerLayerRef = useRef<HTMLDivElement | null>(null)
   const roomSectionRefs = useRef(new Map<UUID, HTMLElement>())
   const longPressTimerRef = useRef<number | null>(null)
@@ -995,14 +1002,17 @@ export function RoomSelector({
   const renderRoomSection = (
     sectionLabel: string,
     sectionRooms: RoomSelectorRoomWithParticipants[],
-    options?: { dividerOnly?: boolean; hideHeader?: boolean }
+    options?: RoomSectionRenderOptions
   ) => {
     if (sectionRooms.length === 0) {
       return null
     }
 
     return (
-      <section className="room-selector-group-section" aria-label={sectionLabel}>
+      <section
+        className={`room-selector-group-section ${options?.className || ''}`.trim()}
+        aria-label={sectionLabel}
+      >
         {options?.hideHeader ? null : (
           <header
             className={`room-selector-group-section__header ${options?.dividerOnly ? 'room-selector-group-section__header--divider-only' : ''}`}
@@ -1027,6 +1037,10 @@ export function RoomSelector({
           const isEmptyGroup =
             participants.length === 0 && room.type !== RoomType.MAIN && !isGreenRoomName(room.name)
           const isWhisperGroup = isWhisperRoom(room)
+          const whisperRoomParticipantCount = participants.filter(
+            (participant) => participant.userId !== dmUserId
+          ).length
+          const isEmptyWhisperGroup = isWhisperGroup && whisperRoomParticipantCount === 0
           const isEmptyTargetableGroup =
             room.type === RoomType.GROUP &&
             participants.filter((participant) => participant.userId !== dmUserId).length === 0
@@ -1045,7 +1059,7 @@ export function RoomSelector({
               key={room.id}
               className={`room-selector-item ${selected ? 'selected' : ''} ${
                 isPrivateDividerStart ? 'room-selector-item--private-divider' : ''
-              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''} ${collapseForDrag ? 'room-selector-item--drag-collapsed' : ''} ${selected && isDenseRoomLayout ? 'room-selector-item--selected-focus' : ''}`}
+              } ${isCompactGroup ? 'room-selector-item--collapsed' : ''} ${isEmptyWhisperGroup ? 'room-selector-item--whisper-empty' : ''} ${collapseForDrag ? 'room-selector-item--drag-collapsed' : ''} ${selected && isDenseRoomLayout ? 'room-selector-item--selected-focus' : ''}`}
               aria-label={`Group ${room.name}`}
               ref={(node) => {
                 if (node) {
@@ -1218,7 +1232,9 @@ export function RoomSelector({
                           </Tooltip>
                         ) : null}
 
-                        {room.type !== RoomType.MAIN && !isGreenRoomName(room.name) ? (
+                        {room.type !== RoomType.MAIN &&
+                        !isGreenRoomName(room.name) &&
+                        (!isWhisperGroup || !isEmptyWhisperGroup) ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -1633,6 +1649,39 @@ export function RoomSelector({
     onSelectRoom(mainRoom.id)
   }, [allRooms, canManageRooms, dmUserId, onSelectRoom, selectedRoomId])
 
+  useEffect(() => {
+    if (!environmentPickerRoomId) {
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const listElement = roomListRef.current
+      const pickerElement = environmentPickerLayerRef.current
+
+      if (!listElement || !pickerElement) {
+        return
+      }
+
+      const listRect = listElement.getBoundingClientRect()
+      const pickerRect = pickerElement.getBoundingClientRect()
+
+      const bottomOverflow = pickerRect.bottom - (listRect.bottom - 8)
+      if (bottomOverflow > 0) {
+        listElement.scrollBy({ top: bottomOverflow + 12, behavior: 'smooth' })
+        return
+      }
+
+      const topOverflow = listRect.top + 8 - pickerRect.top
+      if (topOverflow > 0) {
+        listElement.scrollBy({ top: -(topOverflow + 12), behavior: 'smooth' })
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [environmentPickerRoomId])
+
   return (
     <TooltipProvider delayDuration={140}>
       <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
@@ -1725,7 +1774,7 @@ export function RoomSelector({
                 ) : null}
               </div>
             ) : null}
-            {canManageRooms && whisperModeLocked ? (
+            {canManageRooms && whisperActive ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -1837,6 +1886,7 @@ export function RoomSelector({
               className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
               role="list"
               aria-label="Session groups"
+              ref={roomListRef}
             >
               {allRooms.length === 0 ? (
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
@@ -1848,6 +1898,7 @@ export function RoomSelector({
                   {otherRooms.length > 0
                     ? renderRoomSection(ROOM_PRESENCE_COPY.otherGroups, otherRooms, {
                         hideHeader: true,
+                        className: 'room-selector-group-section--after-main',
                       })
                     : null}
                 </>

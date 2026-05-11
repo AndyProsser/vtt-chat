@@ -17,6 +17,7 @@ import type { UUID } from '@shared'
 interface ParticipantAudioNode {
   sourceNode: MediaStreamAudioSourceNode | undefined
   trackGainNode: GainNode
+  mixGainNode: GainNode
   distanceFilterNode: BiquadFilterNode
   effectsSendNode: GainNode
   roomBusGainNode: GainNode
@@ -50,6 +51,7 @@ export interface UseAudioEngineReturn {
   }) => void
   applyCondition: (effects: Record<string, any>) => void
   applyDMOverride: (trackId: string, override: { gain?: number; muted?: boolean }) => void
+  setTrackMixGain: (trackId: string, gain: number) => void
   setPTT: (active: boolean) => void
   setPrivateRoomCleanMode: (enabled: boolean) => void
   dispose: () => void
@@ -141,6 +143,9 @@ export function useAudioEngine(): UseAudioEngineReturn {
       const trackGain = graph.audioContext.createGain()
       trackGain.gain.value = 1.0
 
+      const mixGain = graph.audioContext.createGain()
+      mixGain.gain.value = 1.0
+
       const distanceFilter = graph.audioContext.createBiquadFilter()
       distanceFilter.type = 'lowpass'
       distanceFilter.frequency.value = 8000
@@ -153,7 +158,8 @@ export function useAudioEngine(): UseAudioEngineReturn {
 
       // Connect participant chain
       sourceNode.connect(trackGain)
-      trackGain.connect(distanceFilter)
+      trackGain.connect(mixGain)
+      mixGain.connect(distanceFilter)
       distanceFilter.connect(effectsSend)
       distanceFilter.connect(roomBusGain)
       effectsSend.connect(graph.reverbBusNode)
@@ -163,6 +169,7 @@ export function useAudioEngine(): UseAudioEngineReturn {
       graph.participantNodes.set(trackId, {
         sourceNode,
         trackGainNode: trackGain,
+        mixGainNode: mixGain,
         distanceFilterNode: distanceFilter,
         effectsSendNode: effectsSend,
         roomBusGainNode: roomBusGain,
@@ -359,6 +366,20 @@ export function useAudioEngine(): UseAudioEngineReturn {
     }
   }
 
+  const setTrackMixGain = (trackId: string, gain: number): void => {
+    try {
+      const node = graphRef.current.participantNodes.get(trackId)
+      if (!node) {
+        return
+      }
+
+      node.mixGainNode.gain.value = Math.max(0, Math.min(1, gain))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(`Failed to set track mix gain: ${message}`)
+    }
+  }
+
   const setPTT = (): void => {
     // Update reapplies effects via effect stack
     graphRef.current.participantNodes.forEach((_, trackId) => {
@@ -444,6 +465,7 @@ export function useAudioEngine(): UseAudioEngineReturn {
     applyDistance,
     applyCondition,
     applyDMOverride,
+    setTrackMixGain,
     setPTT,
     setPrivateRoomCleanMode,
     dispose,

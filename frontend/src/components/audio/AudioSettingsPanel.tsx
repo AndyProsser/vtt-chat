@@ -15,6 +15,8 @@ interface MediaDeviceOption {
 interface AudioSettingsPanelProps {
   device: AudioDeviceState
   localMicLevel: number
+  isDm: boolean
+  isWhisperMode: boolean
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void
   onClose: () => void
 }
@@ -29,6 +31,8 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
 export function AudioSettingsPanel({
   device,
   localMicLevel,
+  isDm,
+  isWhisperMode,
   onDeviceChange,
   onClose,
 }: AudioSettingsPanelProps) {
@@ -211,6 +215,36 @@ export function AudioSettingsPanel({
             ))}
           </div>
         </section>
+
+        {/* DM Background Audio Level */}
+        {isDm ? (
+          <section className="audio-settings-panel__section">
+            <label className="audio-settings-panel__label">
+              <span className="audio-settings-panel__label-text">
+                {AUDIO_SETTINGS_COPY.backgroundAudioLevel}
+              </span>
+              <div className="audio-settings-panel__slider-row">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={device.backgroundAudioLevel}
+                  onChange={(e) => onDeviceChange({ backgroundAudioLevel: Number(e.target.value) })}
+                  className="audio-settings-panel__slider"
+                  aria-label={AUDIO_SETTINGS_COPY.backgroundAudioLevelAria}
+                />
+                <span className="audio-settings-panel__slider-value">
+                  {device.backgroundAudioLevel}
+                </span>
+              </div>
+              {isWhisperMode ? (
+                <span className="audio-settings-panel__hint">
+                  {AUDIO_SETTINGS_COPY.backgroundAudioLevelWhisperHint}
+                </span>
+              ) : null}
+            </label>
+          </section>
+        ) : null}
 
         {/* Master Volume */}
         <section className="audio-settings-panel__section">

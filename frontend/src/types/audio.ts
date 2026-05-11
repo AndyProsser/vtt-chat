@@ -11,6 +11,8 @@ export interface AudioDeviceState {
   micGain: number
   /** Master volume (0–100) */
   volumeLevel: number
+  /** DM background room audio level (0–100, device-local) */
+  backgroundAudioLevel: number
   /** Currently speaking (VAD detection) */
   isSpeaking: boolean
   selectedMicDeviceId?: string

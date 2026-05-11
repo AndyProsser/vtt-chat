@@ -143,6 +143,18 @@ The UI must support:
 - Screen readers
 - High‑contrast mode (future)
 
+### **3.5 Intuit Next Actions**
+
+The interface should proactively reveal what the user is likely to do next, especially for DM workflows.
+
+- Keep the next actionable control visible when a panel opens.
+- If a just-opened control would render outside a scroll container, auto-scroll it into view.
+- Reduce visual and interaction weight for inactive states so active next steps stand out.
+
+Example:
+
+- In Voice Groups, opening a group's environment chooser should automatically scroll the group list so the full "Choose environment" panel is visible without extra manual scrolling.
+
 ---
 
 ## 4. Role‑Based UX
@@ -398,6 +410,7 @@ Every DM action must be completable in ≤ 2 clicks or 1 drag.
 If it takes more, the design has failed.
 
 Examples:
+
 - Drag a player to a new group: 1 drag
 - Apply a condition: right-click → pick condition
 - Change a group environment: click icon → pick environment
@@ -534,6 +547,7 @@ No effect is silent. No effect is invisible.
 ### **18.2 Effect Order Is Predictable**
 
 Effects display in this order:
+
 1. PTT state (push-to-talk)
 2. Environment (room ambiance)
 3. Distance (proximity modifier)
@@ -544,6 +558,7 @@ Effects display in this order:
 ### **18.3 Effects Clear Completely on Session End**
 
 When a session ends or transitions to greenroom:
+
 - All per-session conditions are cleared
 - All voice presets are cleared
 - All distance modifiers are cleared
@@ -554,4 +569,3 @@ Campaign-persistent environments (stored in `roomEnvironmentNames`) are preserve
 ### **18.4 Effects Restore Correctly on Reconnect**
 
 On page refresh or reconnect, the server is the authoritative source. Audio state is re-hydrated from the audio state API before the local store is populated.
-

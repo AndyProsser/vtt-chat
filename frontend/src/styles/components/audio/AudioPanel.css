@@ -599,6 +599,12 @@
   text-align: right;
 }
 
+.audio-settings-panel__hint {
+  font-size: 0.64rem;
+  color: var(--color-text-muted);
+  line-height: 1.25;
+}
+
 .audio-settings-panel__segment {
   display: flex;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));

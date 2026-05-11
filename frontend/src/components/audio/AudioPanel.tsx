@@ -10,9 +10,10 @@
  *    into the audio engine automatically (handled inside useAudioEngine).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { Role } from '@shared'
+import { Role, RoomType } from '@shared'
+import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
@@ -36,17 +37,22 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
+  const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
 
   const handleTrackSubscribed = useCallback(
-    (trackSid: string, mediaStream: MediaStream) => {
-      audioEngine.addTrack(`room:${trackSid}`, mediaStream)
+    (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
+      const trackId = `room:${trackSid}`
+      trackParticipantByTrackIdRef.current.set(trackId, meta.participantIdentity as UUID)
+      audioEngine.addTrack(trackId, mediaStream)
     },
     [audioEngine]
   )
 
   const handleTrackUnsubscribed = useCallback(
     (trackSid: string) => {
-      audioEngine.removeTrack(`room:${trackSid}`)
+      const trackId = `room:${trackSid}`
+      trackParticipantByTrackIdRef.current.delete(trackId)
+      audioEngine.removeTrack(trackId)
     },
     [audioEngine]
   )
@@ -72,6 +78,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   })
 
   const device = useStore((state) => state.device)
+  const sessionPresenceByUser = useStore((state) => state.sessionPresence[sessionId] || {})
+  const selectedRoom = useStore((state) => state.rooms[sessionId]?.[roomId])
   const pttActive = useStore((state) => state.pttActive)
   const activeEffects = useStore((state) => state.activeEffects)
   const dmOverrides = useStore((state) => state.dmOverrides)
@@ -90,6 +98,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
   )
   const effectiveRole = role ?? currentUser?.role ?? Role.PLAYER
+  const isWhisperMode = selectedRoom?.type === RoomType.PRIVATE
 
   const broadcastRoomId = broadcastRoomIdFromState || `dm-broadcast:${sessionId}`
 
@@ -321,6 +330,43 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     audioEngine.setLocalGain(device.volumeLevel / 100)
   }, [audioEngine, device.volumeLevel])
 
+  useEffect(() => {
+    const trackEntries = Array.from(trackParticipantByTrackIdRef.current.entries())
+    if (trackEntries.length === 0) {
+      return
+    }
+
+    if (effectiveRole !== Role.DM) {
+      for (const [trackId] of trackEntries) {
+        audioEngine.setTrackMixGain(trackId, 1)
+      }
+      return
+    }
+
+    const configuredBackgroundGain = Math.max(0, Math.min(1, device.backgroundAudioLevel / 100))
+    const effectiveBackgroundGain = isWhisperMode
+      ? Math.min(0.2, configuredBackgroundGain)
+      : configuredBackgroundGain
+
+    for (const [trackId, participantUserId] of trackEntries) {
+      const participantPresence = sessionPresenceByUser[participantUserId]
+      if (!participantPresence?.primaryRoomId || !roomId) {
+        audioEngine.setTrackMixGain(trackId, 1)
+        continue
+      }
+
+      const isInTargetRoom = participantPresence.primaryRoomId === roomId
+      audioEngine.setTrackMixGain(trackId, isInTargetRoom ? 1 : effectiveBackgroundGain)
+    }
+  }, [
+    audioEngine,
+    device.backgroundAudioLevel,
+    effectiveRole,
+    isWhisperMode,
+    roomId,
+    sessionPresenceByUser,
+  ])
+
   const effectItems = useMemo(() => {
     const items: Array<{ kind: string; name: string; description: string }> = []
 
@@ -455,6 +501,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           <AudioSettingsPanel
             device={device}
             localMicLevel={localTransmitLevel}
+            isDm={effectiveRole === Role.DM}
+            isWhisperMode={isWhisperMode}
             onDeviceChange={setDevice}
             onClose={() => setSettingsOpen(false)}
           />

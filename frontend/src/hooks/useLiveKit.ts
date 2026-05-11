@@ -39,7 +39,11 @@ export interface UseLiveKitReturn {
 
 export interface UseLiveKitOptions {
   /** Called when a remote audio MediaStream is subscribed */
-  onTrackSubscribed?: (trackSid: string, mediaStream: MediaStream) => void
+  onTrackSubscribed?: (
+    trackSid: string,
+    mediaStream: MediaStream,
+    meta: { participantIdentity: string }
+  ) => void
   /** Called when a remote audio track is unsubscribed */
   onTrackUnsubscribed?: (trackSid: string) => void
   /** Token channel requested from backend. */
@@ -462,7 +466,9 @@ export function useLiveKit(
           // Hand off to audio engine for DSP processing if consumer provided a callback,
           // otherwise fall back to direct DOM attachment for passthrough playback.
           if (onTrackSubscribedRef.current) {
-            onTrackSubscribedRef.current(publication.trackSid, mediaStream)
+            onTrackSubscribedRef.current(publication.trackSid, mediaStream, {
+              participantIdentity: participant.identity,
+            })
           } else {
             const audioElement = track.attach()
             audioElement.autoplay = true
