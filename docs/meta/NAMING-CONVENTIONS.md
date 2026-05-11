@@ -68,6 +68,13 @@ Migration is compatibility-first.
 3. Move imports to canonical names.
 4. Remove aliases after coverage and telemetry confidence.
 
+Radix UI replacement policy for migration subtasks:
+
+- Do not treat Radix adoption as blanket mandatory for every feature component.
+- For each audited component, explicitly decide: Replace, Hybridize, or Retain.
+- Toolbars and command-shell surfaces are special-usecase components; prefer Hybridize unless full replacement is behavior-safe.
+- If replacement risks breaking role-gating, shortcut/focus choreography, live status semantics, or responsive overflow behavior, retain shell logic and migrate only safe internal primitives.
+
 ## 5. PR Requirements
 
 For naming migrations:

@@ -102,13 +102,16 @@ This section defines the code changes Copilot must apply to align the implementa
 
 ### **2.1 Component-Level Changes**
 
-- Replace all custom dialogs with Radix `<Dialog>` wrappers
-- Replace all custom popovers with Radix `<Popover>` wrappers
-- Replace all custom dropdowns with Radix `<DropdownMenu>` wrappers
-- Replace all custom tooltips with Radix `<Tooltip>` wrappers
-- Replace any custom tab system with Radix `<Tabs>`
-- Replace any custom accordions with Radix `<Accordion>`
-- Replace any custom switches/sliders with Radix equivalents
+- Evaluate each component with a required decision: **Replace**, **Hybridize**, or **Retain**.
+- Default preference is Radix wrappers for interaction primitives, but avoid blanket replacement when behavior contracts are at risk.
+- Replace custom dialogs with Radix `<Dialog>` wrappers when parity is confirmed.
+- Replace custom popovers with Radix `<Popover>` wrappers when parity is confirmed.
+- Replace custom dropdowns with Radix `<DropdownMenu>` wrappers when parity is confirmed.
+- Replace custom tooltips with Radix `<Tooltip>` wrappers when parity is confirmed.
+- Replace custom tab systems with Radix `<Tabs>` for user-facing campaign/session tabbed dialogs and panels.
+- Replace custom accordions with Radix `<Accordion>` where semantics align.
+- Replace custom switches/sliders with Radix equivalents where semantics align.
+- For toolbars and other orchestration-heavy shells, prefer **Hybridize**: keep feature shell behavior and migrate only safe internal primitives.
 
 ### **2.2 File-Level Changes**
 
@@ -159,10 +162,17 @@ Search for:
 
 For each legacy component:
 
-- Replace with Radix primitive
+- Decide and record: **Replace**, **Hybridize**, or **Retain**
+- If Replace/Hybridize, replace eligible parts with Radix primitive(s)
 - Wrap in project‑specific component
 - Apply Tailwind + tokens
 - Remove legacy implementation only after the replacement has been verified
+
+Toolbar and special-usecase rule:
+
+- If a toolbar (or equivalent command shell) has role-aware controls, hotkeys, focus choreography, live status indicators, or timing-sensitive behaviors, do not force full replacement.
+- Use Hybridize by default and prove parity before any full swap.
+- Required parity checks include: role-gated visibility, keyboard shortcuts, focus order/trap behavior, responsive overflow/collapse, and reconnect/status updates.
 
 #### **Before**
 

@@ -451,6 +451,16 @@ Current implementation boundary (2026-05-08 first pass):
 
 **Scope**: Audit existing custom and legacy UI components; establish a standardized Radix UI-first component library to improve accessibility, consistency, and maintainability across the codebase.
 
+**Replacement decision policy (required before migration)**:
+
+- Radix adoption is **default-preferred**, not blanket-mandatory for every feature component.
+- For each audited component, explicitly classify as one of:
+  - **Replace**: move fully to Radix wrapper(s).
+  - **Hybridize**: keep feature shell logic but replace eligible interaction primitives (tooltip/menu/popover/dialog) with Radix wrappers.
+  - **Retain**: keep existing implementation when replacement would break behavior, role-gating, timing semantics, or complex interaction contracts.
+- Each decision must be documented in the migration PR summary with rationale and regression checks.
+- High-risk surfaces (especially toolbars) require a behavior parity checklist before any replacement begins.
+
 **Rationale**:
 
 - Current UI is a mix of custom components, Radix primitives, and Material UI (admin only). Consolidation on Radix for frontend UX surfaces reduces maintenance burden and improves accessibility/WCAG compliance.
@@ -458,6 +468,13 @@ Current implementation boundary (2026-05-08 first pass):
 - Component inventory audit enables roadmap prioritization and prevents ad-hoc reimplementation of existing functionality.
 
 **Phase 1: Component Inventory & Assessment** (2026-05-12)
+
+**Toolbar caution (special-usecase exception)**:
+
+- Toolbars often coordinate persona-aware controls, live connection indicators, keyboard shortcuts, focus choreography, and DM/spectator gating.
+- Do **not** force a full toolbar primitive swap if it risks regressions.
+- Prefer **Hybridize** for toolbars: retain orchestration/container logic and migrate only safe internal primitives to Radix wrappers.
+- Full toolbar replacement is allowed only after parity is verified for role visibility, state transitions, shortcut behavior, and responsive collapse/overflow behavior.
 
 **Current core-ui exports**:
 
@@ -508,11 +525,12 @@ Current implementation boundary (2026-05-08 first pass):
 
 **Definition of done (per migration)**:
 
-- Component replaced with Radix equivalent in core-ui.
+- Component has explicit decision outcome: Replace, Hybridize, or Retain (with rationale).
+- If Replace/Hybridize: adopted interaction primitives use Radix equivalents via core-ui wrappers.
 - All usages updated to new component interface.
 - Tests updated for new accessibility role attributes and keyboard behavior.
 - Theme/token validation confirmed.
-- Legacy custom component is marked deprecated or removed (depending on usage extent).
+- Legacy custom component is marked deprecated or removed (depending on usage extent) when Replace is selected.
 - PR includes migration summary and any breaking changes to component API.
 
 **Latest Delivered (Phase 1, 2026-05-12)**:
