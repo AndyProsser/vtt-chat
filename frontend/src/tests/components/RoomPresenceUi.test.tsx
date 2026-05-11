@@ -17,7 +17,10 @@ const getSelectGroupButton = (groupName: string) =>
 
 const getEndWhisperButton = (groupName: string) =>
   screen.getByRole('button', {
-    name: new RegExp(`(End whisper|Delete group|Close group) ${groupName}`, 'i'),
+    name: new RegExp(
+      `(End whisper|Delete group|Close group|Returns players to Main) ${groupName}`,
+      'i'
+    ),
   })
 
 const getDmVoiceButton = (groupName: string) =>
@@ -853,7 +856,7 @@ describe('RoomSelector', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /Delete group Scouts|Close group Scouts|End whisper Scouts/i,
+        name: /Delete group Scouts|Close group Scouts|End whisper Scouts|Returns players to Main Scouts/i,
       })
     )
 
@@ -1119,7 +1122,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Delete group Scouts/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Returns players to Main Scouts/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

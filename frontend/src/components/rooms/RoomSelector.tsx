@@ -626,9 +626,7 @@ export function RoomSelector({
     }
 
     const presence = payload.presence || []
-    return presence
-      .filter((entry) => entry.primaryRoomId === roomId)
-      .map((entry) => entry.userId)
+    return presence.filter((entry) => entry.primaryRoomId === roomId).map((entry) => entry.userId)
   }
 
   const waitForRoomDeleteReconciled = async (deletedRoomId: UUID, maxWaitMs = 5000) => {
@@ -851,7 +849,9 @@ export function RoomSelector({
       // should evacuate members or delete the group.
       const serverMemberIds = await getRoomMemberIdsFromServer(room.id)
       const fallbackMemberIds = room.participants.map((participant) => participant.userId)
-      const memberIds = (serverMemberIds || fallbackMemberIds).filter((userId) => userId !== dmUserId)
+      const memberIds = [...fallbackMemberIds, ...(serverMemberIds || [])].filter(
+        (userId) => userId !== dmUserId
+      )
       const membersToEvacuate = [...new Set(memberIds)]
 
       if (membersToEvacuate.length > 0) {
@@ -1143,6 +1143,9 @@ export function RoomSelector({
             (participant) => participant.userId !== dmUserId
           ).length
           const isEmptyWhisperGroup = isWhisperGroup && whisperRoomParticipantCount === 0
+          const hasDetectedPlayers =
+            room.type === RoomType.GROUP &&
+            participants.some((participant) => participant.userId !== dmUserId)
           const isEmptyTargetableGroup =
             room.type === RoomType.GROUP &&
             participants.filter((participant) => participant.userId !== dmUserId).length === 0
@@ -1342,19 +1345,33 @@ export function RoomSelector({
                               <button
                                 type="button"
                                 className="room-selector-item__icon-action room-selector-item__close-inline"
-                                aria-label={`${isWhisperGroup ? 'End whisper' : 'Delete group'} ${getDisplayRoomName(room)}`}
+                                aria-label={`${
+                                  isWhisperGroup
+                                    ? 'End whisper'
+                                    : hasDetectedPlayers
+                                      ? 'Returns players to Main'
+                                      : 'Delete group'
+                                } ${getDisplayRoomName(room)}`}
                                 disabled={Boolean(pendingRoomDeletes[room.id])}
                                 onClick={() => {
                                   void handleDeleteGroup(room)
                                 }}
                               >
                                 <span className="material-symbols-outlined" aria-hidden="true">
-                                  {isWhisperGroup ? 'exit_to_app' : 'close'}
+                                  {isWhisperGroup
+                                    ? 'exit_to_app'
+                                    : hasDetectedPlayers
+                                      ? 'reply'
+                                      : 'delete'}
                                 </span>
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              {isWhisperGroup ? 'End whisper' : 'Delete group'}
+                              {isWhisperGroup
+                                ? 'End whisper'
+                                : hasDetectedPlayers
+                                  ? 'Returns players to Main'
+                                  : 'Actually deletes the group with the 500ms fade.'}
                             </TooltipContent>
                           </Tooltip>
                         ) : null}
