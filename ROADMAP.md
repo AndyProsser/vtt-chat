@@ -355,6 +355,7 @@ Interim issue note and follow-up tasks (2026-05-11):
 - [ ] All ARIA labels + keyboard navigation functional
 - [ ] Cross-browser tested (Chrome, Firefox, Safari, Edge)
 - [ ] Performance: <200ms re-render on drag, animations smooth 60fps
+- [ ] Theme QA pass completed in both dark and light mode for changed surfaces (including chat bubbles, overlays, and banner/poster backgrounds).
 
 ---
 
@@ -414,6 +415,9 @@ Current implementation boundary (2026-05-08 first pass):
 - [ ] Tabbed screens and info/rightbar implementations are split into focused components (no monolithic files).
 - [ ] Naming migrations follow Group-first UI terminology and Manager/Service/System/Engine module naming guidance.
 - [ ] Any non-Zustand `*Slice` file in refactor scope is renamed in that cycle.
+- [ ] Dark and light themes adapt correctly across all UI elements, including chat bubbles and campaign poster/banner backgrounds.
+- [ ] Theme switch validation is completed for all touched surfaces before sign-off.
+- [ ] No hard-coded one-mode colors remain in shared user-facing UI surfaces.
 
 **Definition of done**:
 

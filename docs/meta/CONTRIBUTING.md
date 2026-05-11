@@ -271,6 +271,22 @@ Animations must:
 - Be purposeful
 - Reinforce state changes
 
+### **6.4 Theme Adaptation Standard (Required)**
+
+Dark and light theme support must be complete and adaptive across all UI elements.
+
+Rules:
+
+- All user-facing components must render correctly in both dark and light mode.
+- Theme switching must update all visual surfaces, including nested and overlay components.
+- Known fragile surfaces that must be explicitly tested: chat bubbles, message cards, campaign poster/banner backgrounds, dialogs, popovers, and icon-only button states.
+- Token-driven theming is required for shared UI surfaces; hard-coded one-mode colors are not allowed.
+
+Validation gate:
+
+- A UI change does not pass review until screenshots or validation notes confirm both dark and light mode correctness.
+- Any non-adaptive element is a blocking issue for merge.
+
 ---
 
 ## 7. Extension Contribution Standards
@@ -301,6 +317,14 @@ When test harness is added:
 - Reducers must have unit tests
 - Event validation must have tests
 - UI selectors must have tests
+
+### **8.3 Theme Validation (Required)**
+
+Every UI PR must include:
+
+- Theme verification in both dark and light mode for changed surfaces.
+- Contrast and readability checks for text, iconography, and status badges in both themes.
+- Verification that chat bubbles and campaign poster/banner backgrounds adapt correctly when switching themes.
 
 ---
 

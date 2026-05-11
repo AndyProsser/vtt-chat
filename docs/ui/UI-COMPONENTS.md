@@ -32,6 +32,9 @@ Implementation contracts:
 - UI implementations must avoid monolithic files; split by responsibility.
 - Prefer container + presentational composition and feature-scoped subcomponents over single large files.
 - New components should target focused ownership and keep complexity local to their feature area.
+- Dark and light theme modes must apply to all component states and sub-elements with no partial adaptation.
+- Known high-risk surfaces that require explicit checks: chat bubbles, note cards, poster/banner backgrounds, dialogs, popovers, and icon-only controls.
+- Components are not considered valid until visual verification passes in both dark and light mode.
 
 ---
 
