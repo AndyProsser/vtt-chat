@@ -35,8 +35,6 @@ import {
   getSessionAudioState,
 } from '@/services/audio-state.service'
 import { clearRoomMessages } from '@/services/chat.service'
-import { resetDevMockRoster } from '@/services/dev-mock-players.service'
-import { config } from '@/infra/config'
 import {
   logSessionJoin,
   logSessionLeave,
@@ -267,20 +265,6 @@ async function joinSessionHandler(req: Request, res: Response) {
     const currentUsers = await getSessionUsers(id as UUID)
     const alreadyMember = currentUsers.some((u) => u.id === user.userId)
 
-    const maybeEnsureDevMockRoster = async () => {
-      if (!config.isDevelopment) {
-        return null
-      }
-
-      // DEV ergonomics: when the DM joins, auto-populate realistic mock players.
-      if ((user.userId as UUID) !== session.dmId) {
-        return null
-      }
-
-      // On DM refresh/rejoin in DEV, force a complete mock roster recycle.
-      return resetDevMockRoster({ sessionId: id as UUID })
-    }
-
     if (alreadyMember) {
       const ensured = await ensureJoinedMemberPresence({
         session,
@@ -288,54 +272,7 @@ async function joinSessionHandler(req: Request, res: Response) {
         username: user.username,
       })
 
-      const devMockResetResult = await maybeEnsureDevMockRoster()
-
       const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-      if (wsManager && devMockResetResult?.sessionId) {
-        const sid = devMockResetResult.sessionId
-        const now = Date.now()
-
-        for (const removed of devMockResetResult.removedUsers) {
-          if (!removed.primaryRoomId) continue
-          wsManager.broadcastEventToSession(sid, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_LEFT',
-            version: 1,
-            userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: sid,
-            roomId: removed.primaryRoomId,
-            timestamp: now,
-            payload: {
-              roomId: removed.primaryRoomId,
-              userId: removed.userId,
-              username: removed.username,
-              leftAt: now,
-              reason: 'dev_mock_reroll',
-            },
-          })
-        }
-
-        for (const added of devMockResetResult.addedUsers) {
-          if (!added.roomId) continue
-          wsManager.broadcastEventToSession(sid, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_JOINED',
-            version: 1,
-            userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: sid,
-            roomId: added.roomId,
-            timestamp: now,
-            payload: {
-              roomId: added.roomId,
-              userId: added.userId,
-              username: added.username,
-              joinedAt: now,
-            },
-          })
-        }
-      }
 
       if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
@@ -435,56 +372,8 @@ async function joinSessionHandler(req: Request, res: Response) {
       username: user.username,
     })
 
-    const devMockResetResult = await maybeEnsureDevMockRoster()
-
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
-      if (devMockResetResult?.sessionId) {
-        const sid = devMockResetResult.sessionId
-        const now = Date.now()
-
-        for (const removed of devMockResetResult.removedUsers) {
-          if (!removed.primaryRoomId) continue
-          wsManager.broadcastEventToSession(sid, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_LEFT',
-            version: 1,
-            userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: sid,
-            roomId: removed.primaryRoomId,
-            timestamp: now,
-            payload: {
-              roomId: removed.primaryRoomId,
-              userId: removed.userId,
-              username: removed.username,
-              leftAt: now,
-              reason: 'dev_mock_reroll',
-            },
-          })
-        }
-
-        for (const added of devMockResetResult.addedUsers) {
-          if (!added.roomId) continue
-          wsManager.broadcastEventToSession(sid, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_JOINED',
-            version: 1,
-            userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: sid,
-            roomId: added.roomId,
-            timestamp: now,
-            payload: {
-              roomId: added.roomId,
-              userId: added.userId,
-              username: added.username,
-              joinedAt: now,
-            },
-          })
-        }
-      }
-
       if (ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
         wsManager.broadcastEventToSession(id as UUID, {

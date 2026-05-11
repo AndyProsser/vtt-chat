@@ -70,11 +70,14 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     }
 
     const presence = await getSessionPresence(sessionId as UUID)
+    const sessionUsers = await getSessionUsers(sessionId as UUID)
+    const sessionUserIds = new Set(sessionUsers.map((entry) => entry.id as UUID))
+    const scopedPresence = presence.filter((entry) => sessionUserIds.has(entry.userId))
     const profiles = await getSessionParticipantProfiles(sessionId as UUID)
     const stats = await getSessionStatsSnapshot(sessionId as UUID)
 
     return res.status(200).json({
-      presence: presence.map((entry) => ({
+      presence: scopedPresence.map((entry) => ({
         ...entry,
         ...(profiles[entry.userId] || {}),
       })),

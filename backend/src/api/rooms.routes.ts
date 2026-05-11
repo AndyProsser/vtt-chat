@@ -10,8 +10,9 @@ import {
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession, getSessionUsers } from '@/services/session.service'
+import { addUserToSession, getSession, getSessionUsers } from '@/services/session.service'
 import { clearRoomMessages } from '@/services/chat.service'
+import { config } from '@/infra/config'
 import {
   createRoom,
   deleteRoom,
@@ -482,7 +483,27 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
     })
 
     const sessionUsers = await getSessionUsers(sessionId as UUID)
-    const targetUser = sessionUsers.find((entry) => entry.id === (targetUserId as UUID))
+    let targetUser = sessionUsers.find((entry) => entry.id === (targetUserId as UUID))
+
+    if (!targetUser && config.isDevelopment) {
+      const presence = await getSessionPresence(sessionId as UUID)
+      const orphanedMock = presence.find(
+        (entry) => entry.userId === (targetUserId as UUID) && entry.username.startsWith('dev_mock_')
+      )
+
+      if (orphanedMock) {
+        await addUserToSession(sessionId as UUID, {
+          id: orphanedMock.userId,
+          username: orphanedMock.username,
+          role: Role.PLAYER,
+          createdAt: Date.now(),
+        })
+
+        const refreshedUsers = await getSessionUsers(sessionId as UUID)
+        targetUser = refreshedUsers.find((entry) => entry.id === (targetUserId as UUID))
+      }
+    }
+
     if (!targetUser) {
       return res
         .status(404)

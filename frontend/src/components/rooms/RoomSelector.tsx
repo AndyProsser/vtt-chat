@@ -476,6 +476,94 @@ export function RoomSelector({
     selectedRoomNode.scrollIntoView({ block: 'nearest' })
   }, [selectedRoomId])
 
+  useEffect(() => {
+    if (!moveError) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setMoveError(null)
+    }, 1500)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [moveError])
+
+  const syncSessionTopologyFromServer = async () => {
+    const [roomsResponse, presenceResponse] = await Promise.all([
+      fetch(`${apiUrl}/api/v1/rooms/session/${sessionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+      fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    ])
+
+    if (!roomsResponse.ok || !presenceResponse.ok) {
+      return
+    }
+
+    const roomsPayload = (await roomsResponse.json()) as {
+      rooms?: Array<{
+        id: UUID
+        sessionId: UUID
+        name: string
+        type: RoomType
+        createdBy: UUID
+        createdAt: number
+      }>
+    }
+
+    const presencePayload = (await presenceResponse.json()) as {
+      presence?: Array<{
+        sessionId: UUID
+        userId: UUID
+        username: string
+        playerName?: string
+        avatarUrl?: string | null
+        characterName?: string | null
+        characterClass?: string | null
+        characterSubclass?: string | null
+        characterRace?: string | null
+        level?: number | null
+        characterStats?: Record<string, unknown> | null
+        primaryRoomId?: UUID
+        privateRoomId?: UUID
+        state: PresenceState
+        lastSeenAt: number
+      }>
+      stats?: {
+        connectedPlayersWithDm: number
+        connectedPlayers: number
+        connectedSpectators: number
+        connectedTotal: number
+        updatedAt: number
+      }
+    }
+
+    replaceSessionTopology(
+      sessionId,
+      (roomsPayload.rooms || []).map((room) => ({
+        id: room.id,
+        sessionId: room.sessionId,
+        name: room.name,
+        type: room.type,
+        createdAt: room.createdAt,
+        createdBy: room.createdBy,
+      })),
+      presencePayload.presence || []
+    )
+
+    if (presencePayload.stats) {
+      replaceSessionStatsSnapshot(sessionId, presencePayload.stats)
+    }
+  }
+
   const handleEndWhisper = async () => {
     if (!whisperRoom) {
       return
@@ -497,6 +585,8 @@ export function RoomSelector({
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.message || 'Failed to end whisper')
       }
+
+      await syncSessionTopologyFromServer()
 
       const snapshot = whisperContextRef.current
       whisperContextRef.current = null
@@ -537,75 +627,7 @@ export function RoomSelector({
       }
 
       // Ensure immediate UI consistency even if WS delivery is delayed.
-      const [roomsResponse, presenceResponse] = await Promise.all([
-        fetch(`${apiUrl}/api/v1/rooms/session/${sessionId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-      ])
-
-      if (roomsResponse.ok && presenceResponse.ok) {
-        const roomsPayload = (await roomsResponse.json()) as {
-          rooms?: Array<{
-            id: UUID
-            sessionId: UUID
-            name: string
-            type: RoomType
-            createdBy: UUID
-            createdAt: number
-          }>
-        }
-
-        const presencePayload = (await presenceResponse.json()) as {
-          presence?: Array<{
-            sessionId: UUID
-            userId: UUID
-            username: string
-            playerName?: string
-            avatarUrl?: string | null
-            characterName?: string | null
-            characterClass?: string | null
-            characterSubclass?: string | null
-            characterRace?: string | null
-            level?: number | null
-            characterStats?: Record<string, unknown> | null
-            primaryRoomId?: UUID
-            privateRoomId?: UUID
-            state: PresenceState
-            lastSeenAt: number
-          }>
-          stats?: {
-            connectedPlayersWithDm: number
-            connectedPlayers: number
-            connectedSpectators: number
-            connectedTotal: number
-            updatedAt: number
-          }
-        }
-
-        replaceSessionTopology(
-          sessionId,
-          (roomsPayload.rooms || []).map((room) => ({
-            id: room.id,
-            sessionId: room.sessionId,
-            name: room.name,
-            type: room.type,
-            createdAt: room.createdAt,
-            createdBy: room.createdBy,
-          })),
-          presencePayload.presence || []
-        )
-
-        if (presencePayload.stats) {
-          replaceSessionStatsSnapshot(sessionId, presencePayload.stats)
-        }
-      }
+      await syncSessionTopologyFromServer()
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : 'Failed to reroll mock players')
     } finally {
@@ -703,6 +725,8 @@ export function RoomSelector({
           const payload = await whisperResponse.json().catch(() => ({}))
           throw new Error(payload.message || 'Failed to end whisper')
         }
+
+        await syncSessionTopologyFromServer()
 
         setPendingRoomDeletes((state) => {
           const next = { ...state }
@@ -1186,7 +1210,6 @@ export function RoomSelector({
                   ? null
                   : participants.map((member) => {
                       const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
-                      const pendingTargetRoomId = pendingRoomMoves[member.userId]
                       const isMuted = Boolean(member.isMuted)
                       const shownPresenceState = getResolvedPresenceState(member.presenceState)
 
@@ -1278,9 +1301,6 @@ export function RoomSelector({
                                 isMuted={isMuted}
                                 isSpeaking={member.isSpeaking}
                               />
-                              {pendingTargetRoomId === room.id ? (
-                                <span className="room-selector-member__pending">Moving…</span>
-                              ) : null}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="right" className="room-selector-profile-tooltip">
