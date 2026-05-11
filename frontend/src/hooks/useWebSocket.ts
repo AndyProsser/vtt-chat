@@ -201,14 +201,25 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     clientRef.current = client
     dispatcherRef.current = dispatcher
 
-    // Connect
-    client.connect().catch((err) => {
-      logger.error('ws.hook', 'Failed to connect', err)
-      setError(err)
-    })
+    // Delay connect by one tick so StrictMode mount/unmount churn can cancel
+    // before transport starts, reducing noisy refresh-time browser WS warnings.
+    let cancelled = false
+    const connectTimeoutId = setTimeout(() => {
+      if (cancelled) {
+        return
+      }
+
+      client.connect().catch((err) => {
+        logger.error('ws.hook', 'Failed to connect', err)
+        setError(err)
+      })
+    }, 0)
 
     // Cleanup
     return () => {
+      cancelled = true
+      clearTimeout(connectTimeoutId)
+
       if (clientRef.current) {
         clientRef.current.disconnect()
         clientRef.current = null

@@ -91,7 +91,7 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { sessionId } = req.params
-  const { state, roomId, privateRoomId, ghostMode } = req.body || {}
+  const { state, roomId, privateRoomId, previousGroupId, ghostMode } = req.body || {}
 
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -109,6 +109,12 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
 
   if (privateRoomId !== undefined && privateRoomId !== null && !isValidUUID(privateRoomId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid privateRoomId' })
+  }
+
+  if (previousGroupId !== undefined && previousGroupId !== null && !isValidUUID(previousGroupId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid previousGroupId' })
   }
 
   if (ghostMode !== undefined && typeof ghostMode !== 'boolean') {
@@ -146,6 +152,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       state,
       ghost: ghostMode as boolean | undefined,
       primaryRoomId: roomId as UUID | undefined,
+      previousGroupId: previousGroupId as UUID | undefined,
       privateRoomId: privateRoomId as UUID | undefined,
     })
 
@@ -168,6 +175,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
           previousState: previous?.state || PresenceState.OFFLINE,
           newState: updated.state,
           changedAt: updated.lastSeenAt,
+          previousGroupId: updated.previousGroupId || null,
         },
       }
 
@@ -189,6 +197,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
             roomId: updated.primaryRoomId || null,
             ghostMode: updated.ghost || false,
             changedAt: updated.lastSeenAt,
+            previousGroupId: updated.previousGroupId || null,
           },
         })
       }

@@ -124,6 +124,7 @@ export interface PresenceStateChanged {
   previousState: PresenceState
   newState: PresenceState
   changedAt: number
+  previousGroupId?: UUID | null
 }
 
 export type PresenceStateChangedEvent = EventEnvelope<PresenceStateChanged>
@@ -139,6 +140,7 @@ export interface PresenceUserGhostModeChanged {
   roomId: UUID | null
   ghostMode: boolean
   changedAt: number
+  previousGroupId?: UUID | null
 }
 
 export type PresenceUserGhostModeChangedEvent = EventEnvelope<PresenceUserGhostModeChanged>

@@ -56,6 +56,7 @@ function presenceToRoomMember(entry: SessionPresence): RoomUser {
     characterStats: entry.characterStats,
     presenceState: entry.state,
     ghost: entry.ghost,
+    previousGroupId: entry.previousGroupId,
     joinedAt: entry.lastSeenAt,
   }
 }
@@ -325,6 +326,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       characterStats: existingPresence?.characterStats,
       presenceState: PresenceState.ONLINE,
       ghost: existingPresence?.ghost,
+      previousGroupId: existingPresence?.previousGroupId,
       joinedAt,
     }
 
@@ -377,6 +379,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       presence?: PresenceState
       newState?: PresenceState
       changedAt?: number
+      previousGroupId?: UUID | null
     }
 
     const nextPresence = payload.newState || payload.presence || PresenceState.IDLE
@@ -404,6 +407,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId: roomId || undefined,
       state: nextPresence,
       changedAt,
+      previousGroupId: payload.previousGroupId || undefined,
     })
   },
 
@@ -414,6 +418,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId?: UUID | null
       ghostMode?: boolean
       changedAt?: number
+      previousGroupId?: UUID | null
     }
 
     const changedAt = payload.changedAt || event.timestamp
@@ -428,6 +433,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       state: existingPresence?.state || PresenceState.IDLE,
       changedAt,
       ghost: payload.ghostMode || false,
+      previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
     })
   },
 
@@ -495,6 +501,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             characterStats: existingPresence?.characterStats,
             presenceState: payload.targetState,
             ghost: existingPresence?.ghost,
+            previousGroupId: existingPresence?.previousGroupId,
             joinedAt: event.timestamp,
           }
         }),

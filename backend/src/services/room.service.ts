@@ -216,6 +216,27 @@ export async function joinRoom(params: {
   const existingRaw = await redis.hGet(key, params.userId)
   const existing = existingRaw ? parsePresence(existingRaw) : null
 
+  let previousGroupId = existing?.previousGroupId
+  const targetIsGreenRoom = room.type === RoomType.GROUP && isGreenRoomStored({ name: room.name })
+
+  if (targetIsGreenRoom) {
+    previousGroupId = undefined
+  } else if (room.type === RoomType.PRIVATE) {
+    if (existing?.primaryRoomId && existing.primaryRoomId !== params.roomId) {
+      const previousRoom = await findRoomById(existing.primaryRoomId)
+      if (
+        previousRoom &&
+        previousRoom.type !== RoomType.PRIVATE &&
+        !(previousRoom.type === RoomType.GROUP && isGreenRoomStored({ name: previousRoom.name }))
+      ) {
+        previousGroupId = existing.primaryRoomId
+      }
+    }
+  } else {
+    // Current non-greenroom group is the restorable target for the next whisper hop.
+    previousGroupId = params.roomId
+  }
+
   if (existing?.primaryRoomId && existing.primaryRoomId !== params.roomId) {
     await redis.sRem(roomMembersKey(params.sessionId, existing.primaryRoomId), params.userId)
   }
@@ -228,6 +249,7 @@ export async function joinRoom(params: {
     userId: params.userId,
     username: params.username,
     primaryRoomId: params.roomId,
+    previousGroupId,
     privateRoomId: existing?.privateRoomId,
     ghost: existing?.ghost || false,
     state: params.state || existing?.state || PresenceState.ONLINE,
@@ -263,6 +285,7 @@ export async function leaveRoom(params: {
   const next: RealtimePresence = {
     ...existing,
     primaryRoomId: existing.primaryRoomId === params.roomId ? undefined : existing.primaryRoomId,
+    previousGroupId: existing.previousGroupId,
     ghost: existing.ghost || false,
     state: params.state || existing.state,
     lastSeenAt: Date.now(),
@@ -279,6 +302,7 @@ export async function updatePresenceState(params: {
   state: PresenceState
   ghost?: boolean
   primaryRoomId?: UUID
+  previousGroupId?: UUID | null
   privateRoomId?: UUID | null
   campaignId?: UUID
 }): Promise<RealtimePresence> {
@@ -296,6 +320,10 @@ export async function updatePresenceState(params: {
     username: params.username,
     primaryRoomId:
       params.primaryRoomId !== undefined ? params.primaryRoomId : (existing?.primaryRoomId as UUID),
+    previousGroupId:
+      params.previousGroupId !== undefined
+        ? params.previousGroupId || undefined
+        : (existing?.previousGroupId as UUID),
     privateRoomId:
       params.privateRoomId !== undefined
         ? params.privateRoomId || undefined

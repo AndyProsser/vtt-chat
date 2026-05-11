@@ -15,6 +15,7 @@ export interface RoomUser {
   characterStats?: Record<string, unknown> | null
   presenceState: PresenceState
   ghost?: boolean
+  previousGroupId?: UUID
   joinedAt: number
 }
 

@@ -91,6 +91,7 @@ export interface PresenceEntity {
   state: PresenceState
   ghost?: boolean
   primaryRoomId?: UUID
+  previousGroupId?: UUID
   privateRoomId?: UUID
   lastSeenAt: number
 }

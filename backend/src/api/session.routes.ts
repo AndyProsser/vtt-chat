@@ -100,7 +100,7 @@ async function ensureJoinedMemberPresence(params: {
   session: Awaited<ReturnType<typeof getSession>>
   userId: UUID
   username: string
-}): Promise<{ changed: boolean; roomId?: UUID; state?: PresenceState }> {
+}): Promise<{ changed: boolean; roomId?: UUID; state?: PresenceState; previousGroupId?: UUID }> {
   if (!params.session) {
     return { changed: false }
   }
@@ -143,6 +143,7 @@ async function ensureJoinedMemberPresence(params: {
         changed: false,
         roomId: currentPresence.primaryRoomId,
         state: targetState,
+        previousGroupId: currentPresence.previousGroupId,
       }
     }
 
@@ -162,6 +163,7 @@ async function ensureJoinedMemberPresence(params: {
       changed: true,
       roomId: preservedPresence.primaryRoomId,
       state: preservedPresence.state,
+      previousGroupId: preservedPresence.previousGroupId,
     }
   }
 
@@ -176,6 +178,7 @@ async function ensureJoinedMemberPresence(params: {
       changed: false,
       roomId: targetRoom.id,
       state: targetState,
+      previousGroupId: currentPresence.previousGroupId,
     }
   }
 
@@ -195,6 +198,7 @@ async function ensureJoinedMemberPresence(params: {
     changed: true,
     roomId: targetRoom.id,
     state: targetState,
+    previousGroupId: nextPresence.previousGroupId,
   }
 }
 
@@ -308,6 +312,7 @@ async function joinSessionHandler(req: Request, res: Response) {
             username: user.username,
             newState: ensured.state,
             changedAt: timestamp,
+            previousGroupId: ensured.previousGroupId || null,
           },
         })
 
@@ -408,6 +413,7 @@ async function joinSessionHandler(req: Request, res: Response) {
             username: user.username,
             newState: ensured.state,
             changedAt: timestamp,
+            previousGroupId: ensured.previousGroupId || null,
           },
         })
       }

@@ -96,6 +96,7 @@ export class SessionDisconnectCascadeService {
         previousState: previous?.state || PresenceState.ONLINE,
         newState: updated.state,
         changedAt: updated.lastSeenAt,
+        previousGroupId: updated.previousGroupId || null,
       },
     })
 
@@ -115,6 +116,7 @@ export class SessionDisconnectCascadeService {
           roomId: updated.primaryRoomId || null,
           ghostMode: false,
           changedAt: updated.lastSeenAt,
+          previousGroupId: updated.previousGroupId || null,
         },
       })
     }
@@ -181,6 +183,7 @@ export class SessionDisconnectCascadeService {
         roomId: updated.primaryRoomId || null,
         ghostMode: true,
         changedAt: updated.lastSeenAt,
+        previousGroupId: updated.previousGroupId || null,
       },
     })
 
