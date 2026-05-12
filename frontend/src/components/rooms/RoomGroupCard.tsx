@@ -6,14 +6,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import { Icon } from '../ui/Icon'
 import { resolveEnvironmentGlyph } from '../../constants/voiceGroup.constants'
-import { RoomMemberList } from './RoomMemberList'
+import { GroupMemberList } from './GroupMemberList'
 import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from './groupPanel.types'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from './groupPanel.types'
 
-interface RoomGroupCardProps {
+export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants
   selected: boolean
   participants: GroupParticipantWithGroupId[]
@@ -63,6 +63,8 @@ interface RoomGroupCardProps {
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
 }
 
+export type RoomGroupCardProps = GroupCardProps
+
 export function RoomGroupCard({
   room,
   selected,
@@ -103,7 +105,7 @@ export function RoomGroupCard({
   getResolvedPresenceState,
   getPresenceDotState,
   getStatEntries,
-}: RoomGroupCardProps) {
+}: GroupCardProps) {
   const isWhisperRoomGroup = isWhisperGroup(room)
   const whisperRoomParticipantCount = participants.filter(
     (participant) => participant.userId !== dmUserId
@@ -347,7 +349,7 @@ export function RoomGroupCard({
       </div>
 
       <div className={memberListClassName}>
-        <RoomMemberList
+        <GroupMemberList
           room={room}
           participants={participants}
           canManageRooms={canManageRooms}

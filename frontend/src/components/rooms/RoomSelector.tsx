@@ -15,7 +15,7 @@ import { useStore } from '../../hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
-import { RoomGroupCard } from './RoomGroupCard'
+import { GroupCard } from './GroupCard'
 import { RoomHeaderActions } from './RoomHeaderActions'
 import { WhisperDock } from './WhisperDock'
 import {
@@ -1031,7 +1031,7 @@ export function RoomSelector({
   ])
 
   const renderRoomCard = (room: GroupPanelGroupWithParticipants) => (
-    <RoomGroupCard
+    <GroupCard
       key={room.id}
       room={room}
       selected={room.id === selectedRoomId}
