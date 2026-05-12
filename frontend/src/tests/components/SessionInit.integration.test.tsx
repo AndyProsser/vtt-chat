@@ -1568,8 +1568,9 @@ describe('SessionInit integration', () => {
     await screen.findByTestId('session-toolbar')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
+    await screen.findByText('Your active character profile for this campaign.')
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aria Prime' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save character settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save character' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

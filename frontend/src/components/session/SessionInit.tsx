@@ -393,6 +393,43 @@ function getPrivacyCounterLabel(label: string | undefined, rounded: number | und
   return `~${rounded}`
 }
 
+function normalizeTimestamp(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric)) {
+      return numeric
+    }
+
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return undefined
+}
+
+function normalizeSessionRecord(raw: SessionRecord): SessionRecord {
+  const createdAt = normalizeTimestamp((raw as SessionRecord & { createdAt?: unknown }).createdAt)
+  const startedAt = normalizeTimestamp((raw as SessionRecord & { startedAt?: unknown }).startedAt)
+  const pausedAt = normalizeTimestamp((raw as SessionRecord & { pausedAt?: unknown }).pausedAt)
+  const endedAt = normalizeTimestamp((raw as SessionRecord & { endedAt?: unknown }).endedAt)
+  const updatedAt = normalizeTimestamp((raw as SessionRecord & { updatedAt?: unknown }).updatedAt)
+
+  return {
+    ...raw,
+    createdAt: createdAt ?? Date.now(),
+    startedAt,
+    pausedAt,
+    endedAt,
+    updatedAt,
+  }
+}
+
 function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
   if (room.type !== RoomType.GROUP) {
     return false
@@ -1421,7 +1458,7 @@ export function SessionInit({
       }
 
       const data = (await response.json()) as { sessions?: SessionRecord[] }
-      return Array.isArray(data.sessions) ? data.sessions : []
+      return Array.isArray(data.sessions) ? data.sessions.map(normalizeSessionRecord) : []
     },
     [apiUrl, token]
   )
@@ -2868,7 +2905,7 @@ export function SessionInit({
   const canEditCharacterSettings =
     effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER
   const canEditSessionSettings =
-    currentSession?.state === SessionState.INACTIVE ||
+    currentSession?.state === 'INACTIVE' ||
     currentSession?.state === SessionState.ACTIVE ||
     currentSession?.state === SessionState.PAUSED
 
