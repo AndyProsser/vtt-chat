@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AvatarOverlay } from '../../components/rooms/AvatarOverlay'
 import { RoomSelector } from '../../components/rooms/RoomSelector'
 import { useStore } from '../../hooks/useStore'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 
 const asUuid = (value: string) => value as UUID
 
@@ -2327,7 +2328,9 @@ describe('RoomSelector', () => {
       )
     })
 
-    expect(useStore.getState().dmOverrides.get(asUuid('user-2'))?.overrideType).toBe('MUTE')
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, asUuid('user-2'), 'MUTE')?.overrideType
+    ).toBe('MUTE')
   })
 
   it('removes mute from the player context menu', async () => {
@@ -2401,7 +2404,54 @@ describe('RoomSelector', () => {
       )
     })
 
-    expect(useStore.getState().dmOverrides.get(asUuid('user-2'))).toBeUndefined()
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, asUuid('user-2'), 'MUTE')
+    ).toBeUndefined()
+  })
+
+  it('disables the player context menu in greenroom', () => {
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        isGreenroom={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Greenroom',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Tara' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'Mute' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: 'Distance' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: 'Condition' })).toBeNull()
   })
 
   it('calls DEV mock reset endpoint with session payload and shows disabled state while loading', async () => {

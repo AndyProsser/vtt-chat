@@ -17,6 +17,7 @@ import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
+import { flattenAudioDMOverrides } from '@/utils/audioOverrides'
 import {
   AUDIO_EFFECT_COPY,
   getAudioOverrideDescription,
@@ -441,7 +442,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   ])
 
   const activeEffectsCount = effectItems.length
-  const dmOverridesCount = dmOverrides.size
+  const flattenedDmOverrides = useMemo(() => flattenAudioDMOverrides(dmOverrides), [dmOverrides])
+  const dmOverridesCount = flattenedDmOverrides.length
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
   const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
 
@@ -479,7 +481,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   }, [settingsOpen])
 
   const overrideItems = useMemo(() => {
-    return Array.from(dmOverrides.values()).map((override) => {
+    return flattenedDmOverrides.map((override) => {
       const shortUser = override.userId?.slice(0, 8) ?? 'unknown'
       return {
         kind: override.overrideType.toLowerCase(),
@@ -490,7 +492,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         }),
       }
     })
-  }, [dmOverrides])
+  }, [flattenedDmOverrides])
 
   return (
     <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">

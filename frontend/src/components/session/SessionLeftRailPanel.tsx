@@ -1,9 +1,9 @@
 import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
-import type { AudioDMOverride } from '@/types/audio'
 import type { RoomUser } from '@/types/room'
 import { useStore } from '@/state/store'
+import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '../../constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
 import { RoomSelector } from '../rooms/RoomSelector'
@@ -29,7 +29,7 @@ interface SessionLeftRailPanelProps {
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: Map<UUID, AudioDMOverride>
+  dmOverrides: AudioDMOverridesByUser
   currentConditionName?: string
   roomEnvironmentNames?: Record<UUID, string>
 }
@@ -132,12 +132,22 @@ export function SessionLeftRailPanel({
             memberCount: (roomMembersByRoomId[room.id] || []).length,
             environmentName: roomEnvironmentNames?.[room.id],
             participants: (roomMembersByRoomId[room.id] || []).map((member) => {
-              const dmOverride = dmOverrides.get(member.userId)
-              const overrideMuted = !isGreenroom && dmOverride?.overrideType === 'MUTE'
               const isSelf = member.userId === currentUserId
+              const muteOverride = getUserDMOverride(dmOverrides, member.userId, 'MUTE')
+              const distanceOverride = getUserDMOverride(dmOverrides, member.userId, 'DISTANCE')
+              const conditionOverride =
+                getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
+                getUserDMOverride(dmOverrides, member.userId, 'FILTER')
+              const overrideMuted = !isGreenroom && Boolean(muteOverride)
               const overrideCondition =
-                dmOverride?.overrideType === 'CONDITION'
-                  ? String(dmOverride.parameters?.conditionName || '')
+                typeof conditionOverride?.parameters?.conditionName === 'string'
+                  ? String(conditionOverride.parameters.conditionName)
+                  : typeof conditionOverride?.parameters?.presetName === 'string'
+                    ? String(conditionOverride.parameters.presetName)
+                    : undefined
+              const overrideDistance =
+                typeof distanceOverride?.parameters?.presetName === 'string'
+                  ? String(distanceOverride.parameters.presetName)
                   : undefined
 
               return {
@@ -159,6 +169,7 @@ export function SessionLeftRailPanel({
                   room.type === RoomType.PRIVATE
                     ? false
                     : member.presenceState === PresenceState.SPEAKING,
+                distanceLabel: isGreenroom ? undefined : overrideDistance,
                 condition: isGreenroom
                   ? undefined
                   : overrideCondition ||

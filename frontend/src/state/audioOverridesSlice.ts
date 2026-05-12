@@ -2,11 +2,18 @@ import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { StateCreator } from 'zustand'
 import type { AudioDMOverride } from '@/types/audio'
+import {
+  removeAudioDMOverride,
+  replaceAudioDMOverrides,
+  type AudioDMOverrideKey,
+  type AudioDMOverridesByUser,
+  upsertAudioDMOverride,
+} from '@/utils/audioOverrides'
 
 export interface AudioOverridesSlice {
   pttActive: boolean
   privateRoomCleanMode: boolean
-  dmOverrides: Map<UUID, AudioDMOverride>
+  dmOverrides: AudioDMOverridesByUser
   broadcastModeEnabled: boolean
   broadcastRoomId?: string
   broadcastDmId?: UUID
@@ -15,8 +22,11 @@ export interface AudioOverridesSlice {
   togglePTT: (active: boolean) => void
   setPrivateRoomCleanMode: (enabled: boolean) => void
   setDMOverride: (userId: UUID, override: AudioDMOverride | null) => void
+  removeDMOverride: (userId: UUID, overrideKey: AudioDMOverrideKey) => void
   /** Bulk-replace all DM overrides from an API recovery response. */
-  replaceDMOverrides: (overrides: AudioDMOverride[]) => void
+  replaceDMOverrides: (
+    overrides: Array<AudioDMOverride | (AudioDMOverride & { targetUserId?: UUID })>
+  ) => void
   setBroadcastState: (params: {
     enabled: boolean
     broadcastRoomId?: string
@@ -32,7 +42,7 @@ export interface AudioOverridesSlice {
 export const initialAudioOverridesState = {
   pttActive: false,
   privateRoomCleanMode: false,
-  dmOverrides: new Map<UUID, AudioDMOverride>(),
+  dmOverrides: new Map<UUID, Map<AudioDMOverrideKey, AudioDMOverride>>(),
   broadcastModeEnabled: false,
   broadcastRoomId: undefined,
   broadcastDmId: undefined,
@@ -59,22 +69,34 @@ export const createAudioOverridesSlice: StateCreator<
 
   setDMOverride: (userId, override) =>
     set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      if (override) {
-        newOverrides.set(userId, override)
-      } else {
-        newOverrides.delete(userId)
+      if (!override) {
+        const next = new Map(state.dmOverrides)
+        next.delete(userId)
+        return { dmOverrides: next }
       }
-      return { dmOverrides: newOverrides }
+
+      if (override.userId !== userId) {
+        return { dmOverrides: state.dmOverrides }
+      }
+
+      return { dmOverrides: upsertAudioDMOverride(state.dmOverrides, override) }
     }),
+
+  removeDMOverride: (userId, overrideKey) =>
+    set((state) => ({
+      dmOverrides: removeAudioDMOverride(state.dmOverrides, userId, overrideKey),
+    })),
 
   replaceDMOverrides: (overrides) =>
     set(() => {
-      const next = new Map<UUID, AudioDMOverride>()
-      for (const override of overrides) {
-        next.set(override.userId, override)
-      }
-      return { dmOverrides: next }
+      const normalizedOverrides: AudioDMOverride[] = overrides.map((override) => ({
+        userId: override.userId || override.targetUserId,
+        overrideType: override.overrideType,
+        parameters: override.parameters,
+        appliedAt: override.appliedAt,
+      }))
+
+      return { dmOverrides: replaceAudioDMOverrides(normalizedOverrides) }
     }),
 
   setBroadcastState: (params) =>
@@ -89,7 +111,16 @@ export const createAudioOverridesSlice: StateCreator<
     const payload = event.payload as {
       targetUserId: UUID
       dmId: UUID
-      overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'CONDITION' | 'VOICE_OF_GOD'
+      overrideType:
+        | 'MUTE'
+        | 'UNMUTE'
+        | 'GAIN'
+        | 'GATE'
+        | 'FILTER'
+        | 'DISTANCE'
+        | 'CONDITION'
+        | 'VOICE'
+        | 'VOICE_OF_GOD'
       parameters?: Record<string, any>
       appliedAt: number
     }
@@ -102,9 +133,7 @@ export const createAudioOverridesSlice: StateCreator<
     }
 
     set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      newOverrides.set(payload.targetUserId, override)
-      return { dmOverrides: newOverrides }
+      return { dmOverrides: upsertAudioDMOverride(state.dmOverrides, override) }
     })
   },
 
@@ -117,9 +146,13 @@ export const createAudioOverridesSlice: StateCreator<
     }
 
     set((state) => {
-      const newOverrides = new Map(state.dmOverrides)
-      newOverrides.delete(payload.targetUserId)
-      return { dmOverrides: newOverrides }
+      return {
+        dmOverrides: removeAudioDMOverride(
+          state.dmOverrides,
+          payload.targetUserId,
+          payload.overrideType as AudioDMOverrideKey
+        ),
+      }
     })
   },
 

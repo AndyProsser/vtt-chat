@@ -39,7 +39,9 @@ interface RoomGroupCardProps {
   onDeleteGroup: (room: RoomSelectorRoomWithParticipants) => void
   onRoomDragOver: (event: React.DragEvent<HTMLElement>, disabled: boolean) => void
   onRoomDrop: (event: React.DragEvent<HTMLElement>, roomId: UUID, disabled: boolean) => void
+  distanceTargets: string[]
   conditionTargets: string[]
+  onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
@@ -87,7 +89,9 @@ export function RoomGroupCard({
   onDeleteGroup,
   onRoomDragOver,
   onRoomDrop,
+  distanceTargets,
   conditionTargets,
+  onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
   onClearMemberEffects,
@@ -355,7 +359,9 @@ export function RoomGroupCard({
           getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
           getResolvedEnvironmentName={getResolvedEnvironmentName}
+          distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
+          onApplyDistanceOverride={onApplyDistanceOverride}
           onApplyConditionOverride={onApplyConditionOverride}
           onApplyMuteOverride={onApplyMuteOverride}
           onClearMemberEffects={onClearMemberEffects}

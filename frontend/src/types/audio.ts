@@ -65,7 +65,16 @@ export interface ICPreset {
 
 export interface AudioDMOverride {
   userId: UUID
-  overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'CONDITION' | 'VOICE_OF_GOD'
+  overrideType:
+    | 'MUTE'
+    | 'UNMUTE'
+    | 'GAIN'
+    | 'GATE'
+    | 'FILTER'
+    | 'DISTANCE'
+    | 'CONDITION'
+    | 'VOICE'
+    | 'VOICE_OF_GOD'
   parameters?: Record<string, unknown>
   appliedAt: number
 }

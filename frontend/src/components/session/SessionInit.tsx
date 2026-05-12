@@ -151,6 +151,30 @@ const SESSION_BOOKEND_PREFIXES = [
   '[Session Resumed]',
 ] as const
 
+function safeLocalStorageGetItem(key: string): string | null {
+  if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
+    return null
+  }
+
+  return window.localStorage.getItem(key)
+}
+
+function safeLocalStorageSetItem(key: string, value: string): void {
+  if (typeof window === 'undefined' || typeof window.localStorage?.setItem !== 'function') {
+    return
+  }
+
+  window.localStorage.setItem(key, value)
+}
+
+function safeLocalStorageRemoveItem(key: string): void {
+  if (typeof window === 'undefined' || typeof window.localStorage?.removeItem !== 'function') {
+    return
+  }
+
+  window.localStorage.removeItem(key)
+}
+
 const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
   string,
   { reverbSend: number; lowpassFreq: number; roomGain: number }
@@ -526,7 +550,7 @@ export function SessionInit({
     }
 
     const sessionContext = window.sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    const localContext = window.localStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    const localContext = safeLocalStorageGetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
     const pendingAutoEnter = window.sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
 
     return Boolean(sessionContext || localContext || pendingAutoEnter)
@@ -536,7 +560,7 @@ export function SessionInit({
 
   const clearPersistedActiveSessionContext = useCallback(() => {
     sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    window.localStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+    safeLocalStorageRemoveItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
   }, [])
 
   const forceLogoutToAuthScreen = useCallback(() => {
@@ -1906,7 +1930,7 @@ export function SessionInit({
     const pendingAutoEnterCampaignId = sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
     const rawActiveSessionContext =
       sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY) ||
-      window.localStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
+      safeLocalStorageGetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
 
     let activeSessionContext: ActiveSessionContext | null = null
     if (rawActiveSessionContext) {
@@ -1975,7 +1999,7 @@ export function SessionInit({
 
     const serializedContext = JSON.stringify(context)
     window.sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
-    window.localStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
+    safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
   const handleSaveCampaignSettings = async (e: React.FormEvent) => {
@@ -2204,7 +2228,7 @@ export function SessionInit({
       FRONTEND_THEME_CLASSES.dark
     )
     document.documentElement.classList.add(FRONTEND_THEME_CLASSES[nextTheme])
-    window.localStorage.setItem('vtt-theme-mode', nextTheme)
+    safeLocalStorageSetItem('vtt-theme-mode', nextTheme)
     setThemeMode(nextTheme)
   }
 

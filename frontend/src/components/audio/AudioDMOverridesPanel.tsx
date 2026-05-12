@@ -1,10 +1,11 @@
 import type { UUID } from '@shared'
 import type { AudioDMOverride } from '@/types/audio'
 import { AUDIO_CONTROL_COPY } from '../../constants/audioUi.constants'
+import { flattenAudioDMOverrides, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 
 interface AudioDMOverridesPanelProps {
   isDm: boolean
-  dmOverrides: Map<UUID, AudioDMOverride>
+  dmOverrides: AudioDMOverridesByUser
 }
 
 export function AudioDMOverridesPanel({ isDm, dmOverrides }: AudioDMOverridesPanelProps) {
@@ -12,7 +13,7 @@ export function AudioDMOverridesPanel({ isDm, dmOverrides }: AudioDMOverridesPan
     return null
   }
 
-  const overrides = Array.from(dmOverrides.values())
+  const overrides = flattenAudioDMOverrides(dmOverrides)
 
   return (
     <section className="audio-panel__section" aria-label={AUDIO_CONTROL_COPY.dmAudioOverrides}>
@@ -22,7 +23,7 @@ export function AudioDMOverridesPanel({ isDm, dmOverrides }: AudioDMOverridesPan
       ) : (
         <ul className="audio-panel__chips">
           {overrides.slice(0, 4).map((override) => (
-            <li key={override.userId} className="audio-panel__chip">
+            <li key={`${override.userId}-${override.overrideType}`} className="audio-panel__chip">
               {override.overrideType}
             </li>
           ))}

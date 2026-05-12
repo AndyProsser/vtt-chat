@@ -4,6 +4,7 @@ import { PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { DMAudioControls } from '../../components/session/DMAudioControls'
 import { useStore } from '../../state/store'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
 const DM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
@@ -169,7 +170,9 @@ describe('DMAudioControls', () => {
       )
     })
 
-    expect(useStore.getState().dmOverrides.get(PLAYER_ID)?.overrideType).toBe('MUTE')
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, PLAYER_ID, 'MUTE')?.overrideType
+    ).toBe('MUTE')
     expect(screen.getByText('Pending sync: waiting for websocket reconciliation.')).toBeTruthy()
 
     act(() => {

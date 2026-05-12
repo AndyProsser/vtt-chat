@@ -6,6 +6,7 @@ import { DMPlayerOverridesSection } from '../audio/DMPlayerOverridesSection'
 import { DMRoomMovementSection } from '../audio/DMRoomMovementSection'
 import { DMVoicePresetSection } from '../audio/DMVoicePresetSection'
 import { useStore } from '../../hooks/useStore'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 import { telemetryClient } from '../../utils/telemetry'
 
 interface AudioRoomOption {
@@ -81,6 +82,7 @@ export function DMAudioControls({
 }: DMAudioControlsProps) {
   const dmOverrides = useStore((state) => state.dmOverrides)
   const setDMOverride = useStore((state) => state.setDMOverride)
+  const removeDMOverride = useStore((state) => state.removeDMOverride)
 
   const [presetOptions, setPresetOptions] = useState<AudioPreset[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<UUID | ''>('')
@@ -247,7 +249,15 @@ export function DMAudioControls({
   }
 
   const applyOverride = async (
-    overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER',
+    overrideType:
+      | 'MUTE'
+      | 'UNMUTE'
+      | 'GAIN'
+      | 'GATE'
+      | 'FILTER'
+      | 'DISTANCE'
+      | 'CONDITION'
+      | 'VOICE',
     parameters?: Record<string, unknown>,
     targetUserId?: UUID
   ) => {
@@ -306,7 +316,9 @@ export function DMAudioControls({
     }
   }
 
-  const removeOverride = async (overrideType: string) => {
+  const removeOverride = async (
+    overrideType: 'MUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'DISTANCE' | 'CONDITION' | 'VOICE'
+  ) => {
     if (!selectedTargetUserId) {
       setError('Select a participant first.')
       return
@@ -330,7 +342,7 @@ export function DMAudioControls({
         role,
       })
 
-      setDMOverride(selectedTargetUserId, null)
+      removeDMOverride(selectedTargetUserId, overrideType)
       setSuccess(`${overrideType} override removed.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove override')
@@ -408,7 +420,7 @@ export function DMAudioControls({
       const next: Record<UUID, PendingOverride> = { ...state }
 
       for (const [userId, pending] of Object.entries(state) as Array<[UUID, PendingOverride]>) {
-        const live = dmOverrides.get(userId)
+        const live = getUserDMOverride(dmOverrides, userId, pending.overrideType)
         if (
           live &&
           live.overrideType === pending.overrideType &&
@@ -489,7 +501,19 @@ export function DMAudioControls({
     return <p className="m-0 text-sm text-ui-secondary">Audio controls are DM-only.</p>
   }
 
-  const activeOverride = selectedTargetUserId ? dmOverrides.get(selectedTargetUserId) : undefined
+  const activeOverride = selectedTargetUserId
+    ? [
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'MUTE'),
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'GAIN'),
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'DISTANCE'),
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'CONDITION'),
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'FILTER'),
+        getUserDMOverride(dmOverrides, selectedTargetUserId, 'VOICE'),
+      ]
+        .filter(Boolean)
+        .map((override) => override?.overrideType)
+        .join(', ')
+    : undefined
   const selectedFilterPreset =
     FILTER_PRESETS.find((preset) => preset.id === selectedFilterPresetId) || FILTER_PRESETS[0]
 
@@ -543,7 +567,7 @@ export function DMAudioControls({
         filterPresets={FILTER_PRESETS}
         selectedFilterPresetId={selectedFilterPresetId}
         onFilterPresetChange={setSelectedFilterPresetId}
-        activeOverrideType={activeOverride?.overrideType}
+        activeOverrideType={activeOverride}
         hasPendingOverride={Boolean(selectedTargetUserId && pendingOverrides[selectedTargetUserId])}
         isSubmitting={isSubmitting}
         onMute={() => applyOverride('MUTE')}
@@ -551,16 +575,17 @@ export function DMAudioControls({
         onApplyGain={() => applyOverride('GAIN', { gain: gainPercent / 100 })}
         onClearGain={() => removeOverride('GAIN')}
         onApplyDistance={() =>
-          applyOverride('FILTER', {
+          applyOverride('DISTANCE', {
             presetCategory: 'DISTANCE',
             presetName: selectedDistancePresetName,
           })
         }
         onClearDistance={() => removeOverride('DISTANCE')}
         onApplyCondition={() =>
-          applyOverride('FILTER', {
+          applyOverride('CONDITION', {
             presetCategory: 'CONDITION',
             presetName: selectedConditionPresetName,
+            conditionName: selectedConditionPresetName,
           })
         }
         onClearCondition={() => removeOverride('CONDITION')}

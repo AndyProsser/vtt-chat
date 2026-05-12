@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionInit } from '../../components/session/SessionInit'
 import { buildLiveKitConnectionKey } from '../../hooks/useLiveKit'
 import { useStore } from '../../state/store'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 
 const asUuid = (value: string) => value as UUID
 
@@ -1639,19 +1640,30 @@ describe('SessionInit integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Join Campaign' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/campaigns/invite/ABCD12/validate'
-      )
+      expect(
+        fetchMock.mock.calls.some(
+          ([calledUrl]) =>
+            String(calledUrl) === 'http://localhost:3000/api/campaigns/invite/ABCD12/validate'
+        )
+      ).toBe(true)
     })
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/join`,
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ inviteCode: 'ABCD12' }),
-        })
+      const joinCalls = fetchMock.mock.calls.filter(
+        ([calledUrl]) =>
+          String(calledUrl) ===
+          `http://localhost:3000/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/join`
       )
+
+      expect(joinCalls).toEqual([
+        [
+          `http://localhost:3000/api/campaigns/${JOIN_TARGET_CAMPAIGN_ID}/join`,
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ inviteCode: 'ABCD12' }),
+          }),
+        ],
+      ])
     })
   })
 
@@ -2257,7 +2269,9 @@ describe('SessionInit integration', () => {
     await waitFor(() => {
       const storeState = useStore.getState()
       expect(storeState.currentEnvironment?.name).toBe('Tavern')
-      expect(storeState.dmOverrides.get(OVERRIDE_USER_ID)?.overrideType).toBe('MUTE')
+      expect(
+        getUserDMOverride(storeState.dmOverrides, OVERRIDE_USER_ID, 'MUTE')?.overrideType
+      ).toBe('MUTE')
     })
 
     fireEvent.click(screen.getByRole('button', { name: /Select group Scout Team/i }))

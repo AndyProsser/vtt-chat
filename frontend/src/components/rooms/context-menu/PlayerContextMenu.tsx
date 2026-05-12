@@ -6,13 +6,14 @@ interface PlayerContextMenuProps {
   enabled: boolean
   canManageRooms: boolean
   memberIsMuted: boolean
+  distanceTargets: string[]
   conditionTargets: string[]
+  onDistanceSelect?: (distanceName: string) => void
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
   onKick?: () => void
   onBan?: () => void
-  onToggleDmPrivilege?: () => void
   children: ReactNode
 }
 
@@ -20,13 +21,14 @@ export function PlayerContextMenu({
   enabled,
   canManageRooms,
   memberIsMuted,
+  distanceTargets,
   conditionTargets,
+  onDistanceSelect,
   onToggleMute,
   onClearEffects,
   onConditionSelect,
   onKick,
   onBan,
-  onToggleDmPrivilege,
   children,
 }: PlayerContextMenuProps) {
   if (!enabled) {
@@ -39,13 +41,14 @@ export function PlayerContextMenu({
       <PlayerContextMenuContent
         canManageRooms={canManageRooms}
         memberIsMuted={memberIsMuted}
+        distanceTargets={distanceTargets}
         conditionTargets={conditionTargets}
+        onDistanceSelect={onDistanceSelect}
         onToggleMute={onToggleMute}
         onClearEffects={onClearEffects}
         onConditionSelect={onConditionSelect}
         onKick={onKick}
         onBan={onBan}
-        onToggleDmPrivilege={onToggleDmPrivilege}
       />
     </ContextMenu.Root>
   )

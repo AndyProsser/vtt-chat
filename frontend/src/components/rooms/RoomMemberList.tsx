@@ -26,7 +26,9 @@ interface RoomMemberListProps {
   ) => 'online' | 'offline'
   getStatEntries: (member: RoomParticipantWithRoomId) => Array<[string, unknown]>
   getResolvedEnvironmentName: (room: RoomSelectorRoomWithParticipants) => string
+  distanceTargets: string[]
   conditionTargets: string[]
+  onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
@@ -50,7 +52,9 @@ export function RoomMemberList({
   getPresenceDotState,
   getStatEntries,
   getResolvedEnvironmentName,
+  distanceTargets,
   conditionTargets,
+  onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
   onClearMemberEffects,
@@ -170,10 +174,14 @@ export function RoomMemberList({
           <Tooltip key={member.userId}>
             <TooltipTrigger asChild>
               <PlayerContextMenu
-                enabled={isPlayerTarget}
+                enabled={isPlayerTarget && !isGreenroom}
                 canManageRooms={canManageRooms}
                 memberIsMuted={isMuted}
+                distanceTargets={distanceTargets}
                 conditionTargets={conditionTargets}
+                onDistanceSelect={(distanceName) =>
+                  onApplyDistanceOverride(member.userId, distanceName)
+                }
                 onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
                 onClearEffects={() => onClearMemberEffects(member.userId)}
                 onConditionSelect={(conditionName) =>

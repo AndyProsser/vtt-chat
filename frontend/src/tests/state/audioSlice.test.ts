@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { UUID } from '@shared'
 import { useStore } from '../../state/store'
 import type { DistancePreset, ConditionPreset, AudioDMOverride } from '@/types/audio'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 
 const TEST_USER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
 const TEST_PRESET_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID
@@ -69,7 +70,9 @@ describe('audioSlice', () => {
     }
 
     store.setDMOverride(TEST_USER_ID, muteOverride)
-    expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.overrideType).toBe('MUTE')
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'MUTE')?.overrideType
+    ).toBe('MUTE')
 
     const filterOverride: AudioDMOverride = {
       userId: TEST_USER_ID,
@@ -79,8 +82,12 @@ describe('audioSlice', () => {
     }
 
     store.setDMOverride(TEST_USER_ID, filterOverride)
-    expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.overrideType).toBe('FILTER')
-    expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.parameters).toEqual({
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'FILTER')?.overrideType
+    ).toBe('FILTER')
+    expect(
+      getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'FILTER')?.parameters
+    ).toEqual({
       type: 'highpass',
       frequency: 1000,
     })
@@ -121,7 +128,7 @@ describe('audioSlice', () => {
 
     const after = useStore.getState().dmOverrides
     expect(after.has(TEST_USER_ID)).toBe(false)
-    expect(after.get(user2)?.overrideType).toBe('GAIN')
+    expect(getUserDMOverride(after, user2, 'GAIN')?.overrideType).toBe('GAIN')
   })
 
   it('resetSessionAudioState clears presets but preserves roomEnvironmentNames', () => {
@@ -230,7 +237,9 @@ describe('audioSlice', () => {
 
     it('adds a DM override to the map', () => {
       useStore.getState().handleDMOverrideApplied(makeOverrideEvent(TEST_USER_ID, 'MUTE'))
-      expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.overrideType).toBe('MUTE')
+      expect(
+        getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'MUTE')?.overrideType
+      ).toBe('MUTE')
     })
 
     it('stores parameters when present', () => {
@@ -238,13 +247,20 @@ describe('audioSlice', () => {
       useStore
         .getState()
         .handleDMOverrideApplied(makeOverrideEvent(TEST_USER_ID, 'CONDITION', params))
-      expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.parameters).toEqual(params)
+      expect(
+        getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'CONDITION')?.parameters
+      ).toEqual(params)
     })
 
-    it('overwrites an existing override for the same user', () => {
+    it('keeps multiple override types for the same user', () => {
       useStore.getState().handleDMOverrideApplied(makeOverrideEvent(TEST_USER_ID, 'MUTE'))
       useStore.getState().handleDMOverrideApplied(makeOverrideEvent(TEST_USER_ID, 'FILTER'))
-      expect(useStore.getState().dmOverrides.get(TEST_USER_ID)?.overrideType).toBe('FILTER')
+      expect(
+        getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'MUTE')?.overrideType
+      ).toBe('MUTE')
+      expect(
+        getUserDMOverride(useStore.getState().dmOverrides, TEST_USER_ID, 'FILTER')?.overrideType
+      ).toBe('FILTER')
     })
   })
 

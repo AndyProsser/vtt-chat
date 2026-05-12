@@ -3,27 +3,27 @@ import * as ContextMenu from '@radix-ui/react-context-menu'
 interface PlayerContextMenuContentProps {
   canManageRooms: boolean
   memberIsMuted: boolean
+  distanceTargets: string[]
   conditionTargets: string[]
+  onDistanceSelect?: (distanceName: string) => void
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
   onKick?: () => void
   onBan?: () => void
-  onToggleDmPrivilege?: () => void
 }
-
-const DISTANCE_OPTIONS = ['Default', 'Nearby', 'Visible', 'Far']
 
 export function PlayerContextMenuContent({
   canManageRooms,
   memberIsMuted,
+  distanceTargets,
   conditionTargets,
+  onDistanceSelect,
   onToggleMute,
   onClearEffects,
   onConditionSelect,
   onKick,
   onBan,
-  onToggleDmPrivilege,
 }: PlayerContextMenuContentProps) {
   return (
     <ContextMenu.Portal>
@@ -53,11 +53,12 @@ export function PlayerContextMenuContent({
               </ContextMenu.SubTrigger>
               <ContextMenu.Portal>
                 <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                  {DISTANCE_OPTIONS.map((distanceOption) => (
+                  {distanceTargets.map((distanceOption) => (
                     <ContextMenu.Item
                       key={distanceOption}
                       className="room-context-menu__item"
-                      disabled
+                      disabled={!onDistanceSelect}
+                      onSelect={() => onDistanceSelect?.(distanceOption)}
                     >
                       {distanceOption}
                     </ContextMenu.Item>
@@ -100,15 +101,6 @@ export function PlayerContextMenuContent({
               onSelect={onBan}
             >
               Ban
-            </ContextMenu.Item>
-
-            <ContextMenu.Separator className="room-context-menu__separator" />
-            <ContextMenu.Item
-              className="room-context-menu__item"
-              disabled={!onToggleDmPrivilege}
-              onSelect={onToggleDmPrivilege}
-            >
-              Grant/Revoke DM Priv.
             </ContextMenu.Item>
           </>
         ) : null}

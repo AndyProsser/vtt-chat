@@ -8,6 +8,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useStore } from './useStore'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 import type { UUID } from '@shared'
 
 // ============================================================================
@@ -233,15 +234,18 @@ export function useAudioEngine(): UseAudioEngineReturn {
       }
 
       // Priority 3: DM Override (gain/mute)
-      const dmOverride = dmOverrides?.get(trackId as UUID)
-      if (dmOverride) {
-        if (dmOverride.overrideType === 'MUTE') {
-          node.trackGainNode.gain.value = 0
-          return
-        }
-        if (dmOverride.overrideType === 'GAIN' && dmOverride.parameters?.gain) {
-          node.trackGainNode.gain.value = dmOverride.parameters.gain as number
-        }
+      const muteOverride = dmOverrides
+        ? getUserDMOverride(dmOverrides, trackId as UUID, 'MUTE')
+        : undefined
+      const gainOverride = dmOverrides
+        ? getUserDMOverride(dmOverrides, trackId as UUID, 'GAIN')
+        : undefined
+      if (muteOverride) {
+        node.trackGainNode.gain.value = 0
+        return
+      }
+      if (gainOverride?.parameters?.gain) {
+        node.trackGainNode.gain.value = gainOverride.parameters.gain as number
       }
 
       // Priority 4: Condition Preset (overrides distance)
