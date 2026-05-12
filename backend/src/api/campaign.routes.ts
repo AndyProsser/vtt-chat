@@ -13,6 +13,7 @@ import {
   isUserInCampaign,
   joinCampaignForUser,
   listCampaignsForUser,
+  updateCharacterForCampaignMember,
 } from '@/repositories/campaign.repository'
 import {
   browseSpectatorCampaignsForUser,
@@ -705,12 +706,10 @@ router.get(
     }
 
     if (campaign.currentDmId !== (user.userId as UUID)) {
-      return res
-        .status(403)
-        .json({
-          code: ErrorCode.FORBIDDEN,
-          message: 'Only campaign DM can manage campaign settings',
-        })
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only campaign DM can manage campaign settings',
+      })
     }
 
     return res.status(200).json({
@@ -1086,6 +1085,109 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
 
   return res.status(201).json({ character })
 })
+
+router.patch(
+  '/:campaignId/characters/:characterId',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const user = (req as any).user
+    const { campaignId, characterId } = req.params
+    const {
+      name,
+      race,
+      class: characterClass,
+      subclass,
+      avatarUrl,
+      metadata,
+      isActive,
+    } = req.body || {}
+
+    if (!isValidUUID(campaignId)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Invalid campaignId',
+        field: 'campaignId',
+      })
+    }
+
+    if (!isValidUUID(characterId)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Invalid characterId',
+        field: 'characterId',
+      })
+    }
+
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Character name must be a non-empty string',
+        field: 'name',
+      })
+    }
+
+    if (metadata !== undefined && metadata !== null && typeof metadata !== 'object') {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'metadata must be an object or null',
+        field: 'metadata',
+      })
+    }
+
+    if (isActive !== undefined && typeof isActive !== 'boolean') {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'isActive must be a boolean',
+        field: 'isActive',
+      })
+    }
+
+    const member = await isUserInCampaign({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!member) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+    }
+
+    const character = await updateCharacterForCampaignMember({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+      characterId: characterId as UUID,
+      name: typeof name === 'string' ? name.trim() : undefined,
+      race: race === null ? null : typeof race === 'string' ? race.trim() || null : undefined,
+      class:
+        characterClass === null
+          ? null
+          : typeof characterClass === 'string'
+            ? characterClass.trim() || null
+            : undefined,
+      subclass:
+        subclass === null
+          ? null
+          : typeof subclass === 'string'
+            ? subclass.trim() || null
+            : undefined,
+      avatarUrl:
+        avatarUrl === null
+          ? null
+          : typeof avatarUrl === 'string'
+            ? avatarUrl.trim() || null
+            : undefined,
+      metadata: metadata === undefined ? undefined : (metadata as Record<string, unknown> | null),
+      isActive: typeof isActive === 'boolean' ? isActive : undefined,
+    })
+
+    if (!character) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.NOT_FOUND, message: 'Character not found for this user' })
+    }
+
+    return res.status(200).json({ character })
+  }
+)
 
 router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user

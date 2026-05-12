@@ -154,6 +154,20 @@ export async function updateSessionStateRecord(params: {
   })
 }
 
+export async function updateSessionMetadataRecord(params: {
+  sessionId: string
+  name?: string
+  description?: string | null
+}): Promise<void> {
+  await prisma.session.update({
+    where: { id: params.sessionId },
+    data: {
+      ...(params.name !== undefined ? { name: params.name } : {}),
+      ...(params.description !== undefined ? { description: params.description } : {}),
+    },
+  })
+}
+
 export async function deleteSessionRecord(sessionId: string): Promise<void> {
   await prisma.session.delete({
     where: { id: sessionId },

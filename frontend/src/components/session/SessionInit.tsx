@@ -31,7 +31,8 @@ import { NotesRailPanel } from './NotesRailPanel'
 import { SearchPanel } from './SearchPanel'
 import { JournalPanel } from './JournalPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { CampaignRightbarSettings } from './CampaignRightbarSettings'
+import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
+import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
@@ -247,6 +248,66 @@ type CampaignSettingsPayload = {
   postSessionChatEnabled: boolean
   postSessionChatDurationMs: number
   dmAutoTargetOnFirstPlayerJoin: boolean
+}
+
+type UserCharacterRecord = {
+  id: UUID
+  campaignId: UUID
+  userId: UUID
+  name: string
+  race: string | null
+  class: string | null
+  subclass: string | null
+  avatarUrl: string | null
+  metadata: Record<string, unknown> | null
+  isActive: boolean
+}
+
+const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
+  name: '',
+  race: 'Human',
+  className: 'Fighter',
+  subclass: '',
+  avatarUrl: '',
+  level: 1,
+  strength: 8,
+  dexterity: 8,
+  constitution: 8,
+  intelligence: 8,
+  wisdom: 8,
+  charisma: 8,
+}
+
+function toValidStat(value: unknown, fallback = 8): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.max(1, Math.min(30, Math.round(parsed)))
+}
+
+function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSettingsDraft {
+  if (!character) {
+    return { ...DEFAULT_CHARACTER_SETTINGS }
+  }
+
+  const metadata = character.metadata || {}
+
+  return {
+    name: character.name || '',
+    race: character.race || 'Human',
+    className: character.class || 'Fighter',
+    subclass: character.subclass || '',
+    avatarUrl: character.avatarUrl || '',
+    level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
+    strength: toValidStat(metadata.strength),
+    dexterity: toValidStat(metadata.dexterity),
+    constitution: toValidStat(metadata.constitution),
+    intelligence: toValidStat(metadata.intelligence),
+    wisdom: toValidStat(metadata.wisdom),
+    charisma: toValidStat(metadata.charisma),
+  }
 }
 
 function formatTransitionNotice(params: {
@@ -511,6 +572,16 @@ export function SessionInit({
     useState(true)
   const [isDmVoiceTargetingSettingLoading, setIsDmVoiceTargetingSettingLoading] = useState(false)
   const [isDmVoiceTargetingSettingSaving, setIsDmVoiceTargetingSettingSaving] = useState(false)
+  const [sessionSettingsName, setSessionSettingsName] = useState('')
+  const [sessionSettingsDescription, setSessionSettingsDescription] = useState('')
+  const [isSessionSettingsSaving, setIsSessionSettingsSaving] = useState(false)
+  const [userCharacters, setUserCharacters] = useState<UserCharacterRecord[]>([])
+  const [selectedCharacterId, setSelectedCharacterId] = useState<UUID | ''>('')
+  const [characterSettingsDraft, setCharacterSettingsDraft] = useState<CharacterSettingsDraft>(
+    DEFAULT_CHARACTER_SETTINGS
+  )
+  const [isCharacterSettingsLoading, setIsCharacterSettingsLoading] = useState(false)
+  const [isCharacterSettingsSaving, setIsCharacterSettingsSaving] = useState(false)
   const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<
     'OPEN' | 'SCREENED' | 'BLOCKED'
   >('OPEN')
@@ -651,6 +722,29 @@ export function SessionInit({
         pauseStartedAt: undefined,
       })
     : { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
+  const selectedCharacter = useMemo(
+    () =>
+      userCharacters.find((character) => character.id === selectedCharacterId) ||
+      userCharacters.find((character) => character.isActive) ||
+      userCharacters[0] ||
+      null,
+    [selectedCharacterId, userCharacters]
+  )
+
+  useEffect(() => {
+    setSessionSettingsName(currentSession?.name || '')
+    setSessionSettingsDescription(currentSession?.description || '')
+  }, [currentSession?.description, currentSession?.id, currentSession?.name])
+
+  useEffect(() => {
+    if (!selectedCharacter) {
+      setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
+      return
+    }
+
+    setSelectedCharacterId(selectedCharacter.id)
+    setCharacterSettingsDraft(buildCharacterDraft(selectedCharacter))
+  }, [selectedCharacter])
 
   useEffect(() => {
     const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
@@ -1119,6 +1213,169 @@ export function SessionInit({
     },
     [apiUrl, settingsDmAutoTargetOnFirstPlayerJoin, token]
   )
+
+  const saveSessionSettings = useCallback(async () => {
+    if (!currentSession) {
+      return
+    }
+
+    setIsSessionSettingsSaving(true)
+    setError(null)
+
+    try {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: sessionSettingsName,
+          description: sessionSettingsDescription,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to save session settings')
+      }
+
+      const payload = (await response.json()) as { session: SessionRecord }
+      if (payload.session) {
+        updateSession(payload.session.id, payload.session)
+      }
+      setLobbyNotice('Session settings saved.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save session settings'
+      setError(message)
+    } finally {
+      setIsSessionSettingsSaving(false)
+    }
+  }, [
+    apiUrl,
+    currentSession,
+    fetchWithAuthGuard,
+    sessionSettingsDescription,
+    sessionSettingsName,
+    token,
+    updateSession,
+  ])
+
+  const loadUserCharacters = useCallback(async () => {
+    if (!selectedCampaignId) {
+      setUserCharacters([])
+      setSelectedCharacterId('')
+      setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
+      return
+    }
+
+    setIsCharacterSettingsLoading(true)
+    try {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/users/me/characters`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load character settings')
+      }
+
+      const payload = (await response.json()) as { characters?: UserCharacterRecord[] }
+      const characters = Array.isArray(payload.characters)
+        ? payload.characters.filter((character) => character.campaignId === selectedCampaignId)
+        : []
+
+      setUserCharacters(characters)
+      const preferred = characters.find((character) => character.isActive) || characters[0]
+      setSelectedCharacterId(preferred?.id || '')
+      setCharacterSettingsDraft(buildCharacterDraft(preferred || null))
+    } catch {
+      setUserCharacters([])
+      setSelectedCharacterId('')
+      setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
+    } finally {
+      setIsCharacterSettingsLoading(false)
+    }
+  }, [apiUrl, fetchWithAuthGuard, selectedCampaignId, token])
+
+  const saveCharacterSettings = useCallback(async () => {
+    if (!selectedCampaignId) {
+      return
+    }
+
+    setIsCharacterSettingsSaving(true)
+    setError(null)
+
+    const metadata = {
+      level: Math.max(1, Math.min(20, Math.round(characterSettingsDraft.level))),
+      strength: toValidStat(characterSettingsDraft.strength),
+      dexterity: toValidStat(characterSettingsDraft.dexterity),
+      constitution: toValidStat(characterSettingsDraft.constitution),
+      intelligence: toValidStat(characterSettingsDraft.intelligence),
+      wisdom: toValidStat(characterSettingsDraft.wisdom),
+      charisma: toValidStat(characterSettingsDraft.charisma),
+    }
+
+    try {
+      const endpoint = selectedCharacter
+        ? `${apiUrl}/api/campaigns/${selectedCampaignId}/characters/${selectedCharacter.id}`
+        : `${apiUrl}/api/campaigns/${selectedCampaignId}/characters`
+      const method = selectedCharacter ? 'PATCH' : 'POST'
+
+      const response = await fetchWithAuthGuard(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: characterSettingsDraft.name.trim() || 'Adventurer',
+          race: characterSettingsDraft.race.trim() || 'Human',
+          class: characterSettingsDraft.className.trim() || 'Fighter',
+          subclass: characterSettingsDraft.subclass.trim() || null,
+          avatarUrl: characterSettingsDraft.avatarUrl.trim() || null,
+          metadata,
+          isActive: true,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to save character settings')
+      }
+
+      setLobbyNotice('Character settings saved.')
+      await loadUserCharacters()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save character settings'
+      setError(message)
+    } finally {
+      setIsCharacterSettingsSaving(false)
+    }
+  }, [
+    apiUrl,
+    characterSettingsDraft,
+    fetchWithAuthGuard,
+    loadUserCharacters,
+    selectedCampaignId,
+    selectedCharacter,
+    token,
+  ])
+
+  const handleCharacterFieldChange = useCallback(
+    (field: keyof CharacterSettingsDraft, value: string | number) => {
+      setCharacterSettingsDraft((prev) => ({
+        ...prev,
+        [field]: typeof value === 'number' ? (Number.isFinite(value) ? value : prev[field]) : value,
+      }))
+    },
+    []
+  )
+
+  useEffect(() => {
+    void loadUserCharacters()
+  }, [loadUserCharacters])
 
   useEffect(() => {
     if (!selectedCampaignId || !currentSession) {
@@ -2530,6 +2787,17 @@ export function SessionInit({
     settingsReferenceSummaryEntry?.title === SESSION_SUMMARY_TITLE
       ? 'Not provided'
       : settingsReferenceSummaryEntry?.title || 'Not provided'
+  const settingsCampaignTotalDurationMs = useMemo(
+    () =>
+      settingsCampaignSessions.reduce((total, session) => {
+        if (!session.startedAt || !session.endedAt) {
+          return total
+        }
+
+        return total + Math.max(0, session.endedAt - session.startedAt)
+      }, 0),
+    [settingsCampaignSessions]
+  )
   const connectedSpectatorsCount =
     currentSessionStats?.connectedSpectators ?? selectedCampaign?.connectedSpectatorsRounded ?? 0
   const liveConnectedPresenceCount = currentPresence.filter(
@@ -3172,14 +3440,16 @@ export function SessionInit({
               )}
               renderRightRailTab={(tab) => {
                 if (tab === 'information') {
-                  return renderCampaignScaffoldPanel(
-                    'Campaign Information',
-                    'Read-only during live sessions. Edit campaign metadata from the home screen settings modal only.',
-                    [
-                      'Campaign overview and metadata (read-only)',
-                      'Campaign notes and references',
-                      'Policy and visibility guidance',
-                    ]
+                  return (
+                    <CampaignInformationPanel
+                      campaign={selectedCampaign ?? null}
+                      sessionCount={settingsCampaignSessions.length}
+                      totalSessionDurationMs={settingsCampaignTotalDurationMs}
+                      canEdit={Boolean(
+                        selectedCampaign && selectedCampaign.currentDmId === user.id
+                      )}
+                      onEditCampaign={openCampaignSettingsModal}
+                    />
                   )
                 }
 
@@ -3275,6 +3545,15 @@ export function SessionInit({
                             : 'SPECTATOR'
                       }
                       campaignId={selectedCampaignId || null}
+                      sessionName={sessionSettingsName}
+                      sessionDescription={sessionSettingsDescription}
+                      sessionStateLabel={currentSession.state}
+                      onSessionNameChange={setSessionSettingsName}
+                      onSessionDescriptionChange={setSessionSettingsDescription}
+                      onSaveSessionSettings={() => {
+                        void saveSessionSettings()
+                      }}
+                      isSessionSaving={isSessionSettingsSaving}
                       dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
                       onDmAutoTargetChange={setSettingsDmAutoTargetOnFirstPlayerJoin}
                       onSaveDmAutoTarget={() => {
@@ -3282,6 +3561,13 @@ export function SessionInit({
                       }}
                       isSaving={isDmVoiceTargetingSettingSaving}
                       isLoading={isDmVoiceTargetingSettingLoading}
+                      characterDraft={characterSettingsDraft}
+                      onCharacterFieldChange={handleCharacterFieldChange}
+                      onSaveCharacterSettings={() => {
+                        void saveCharacterSettings()
+                      }}
+                      isCharacterLoading={isCharacterSettingsLoading}
+                      isCharacterSaving={isCharacterSettingsSaving}
                     />
                   )
                 }

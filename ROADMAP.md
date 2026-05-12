@@ -359,7 +359,7 @@ Interim issue note and follow-up tasks (deferred to W10, 2026-05-11):
 
 ### W0 Subtask: Topbar Settings and Information Panels
 
-**Status**: First-pass scaffold reset in progress (icons simplified, panels de-cluttered)
+**Status**: First-pass scaffold reset in progress (timer, user settings, campaign information panel, and DM campaign settings scaffold landed)
 **Related Docs**: [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [UI-FLOWS.md](docs/ui/UI-FLOWS.md), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [UI-COMPONENT-PROPS.md](docs/ui/UI-COMPONENT-PROPS.md), [UI-COMPONENT-INTERFACES.md](docs/ui/UI-COMPONENT-INTERFACES.md)
 
 **Scope**: Implement and harden the topbar-driven popout panel model with Settings as primary entry points.
@@ -372,26 +372,26 @@ Current implementation boundary (2026-05-08 first pass):
 
 **Delivery checklist**:
 
-- [ ] Topbar timer is visible and state-accurate (`INACTIVE`, `ACTIVE`, `PAUSED`, `ENDED`).
-- [ ] `INACTIVE` timer starts from first DM/player greenroom join for next-session readiness and has no timer popper.
-- [ ] `ACTIVE` timer resets to zero on session start and remains synchronized across reconnect/refresh.
-- [ ] `PAUSED` switches primary timer to paused elapsed (distinct color) while active elapsed remains available in timer popper.
-- [ ] `ENDED` shows cooldown countdown and supports extend/cancel controls (player fallback rights if DM disconnects).
-- [ ] Timer popper (enabled in `ACTIVE|PAUSED|ENDED`) shows start time, cumulative pause time, pause count, expected end (rounded to nearest 15 mins), and time left.
+- [x] Topbar timer is visible and state-accurate (`INACTIVE`, `ACTIVE`, `PAUSED`, `ENDED`).
+- [x] `INACTIVE` timer starts from first DM/player greenroom join for next-session readiness and has no timer popper.
+- [x] `ACTIVE` timer resets to zero on session start and remains synchronized across reconnect/refresh.
+- [x] `PAUSED` switches primary timer to paused elapsed (distinct color) while active elapsed remains available in timer popper.
+- [x] `ENDED` shows cooldown countdown and supports extend/cancel controls (player fallback rights if DM disconnects).
+- [x] Timer popper (enabled in `ACTIVE|PAUSED|ENDED`) shows start time, cumulative pause time, pause count, expected end (rounded to nearest 15 mins), and time left.
 - [ ] **Topbar Layer** (`<SettingsPanel />` and `<UserProfile />`):
-  - [ ] User profile settings (name, avatar, email/password) editable outside campaigns.
+  - [x] User profile settings (name, avatar, email/password) editable outside campaigns.
   - [ ] System defaults templates editable only outside campaigns (never mutate existing campaigns).
-  - [ ] All personas can edit own user profile settings.
+  - [x] All personas can edit own user profile settings.
 - [ ] **Rightbar Layer** (`<CampaignRightbarSettings />`):
-  - [ ] Campaign settings (default session duration, audio auto-target toggle) DM-editable.
+  - [x] Campaign settings (default session duration, audio auto-target toggle) DM-editable.
   - [ ] Session settings (name, planned duration) DM-editable only during `INACTIVE|ACTIVE|PAUSED` states.
   - [ ] Session values persist in backend and restore for next session.
   - [ ] Players can view but not edit session planned duration.
-  - [ ] Character settings (name, race, class, level, stats, avatar) player-editable in rightbar.
-  - [ ] Character defaults fallback to Human/Fighter/Level 1/8 (all stats) if blank.
-  - [ ] Character values supersede user profile defaults when present.
+  - [x] Character settings (name, race, class, level, stats, avatar) player-editable in rightbar.
+  - [x] Character defaults fallback to Human/Fighter/Level 1/8 (all stats) if blank.
+  - [x] Character values supersede user profile defaults when present.
 - [ ] Information Campaign tab owns campaign metadata editing (name, description, banner/poster image) for DM.
-- [ ] Information Campaign tab shows read-only campaign stats (session count, total session duration) for all personas.
+- [x] Information Campaign tab shows read-only campaign stats (session count, total session duration) for all personas.
 - [ ] Chat lifecycle bookends render for `Session Started`, `Session Ended`, `Session Paused`, and `Session Resumed` transitions.
 - [ ] Chat message visibility matches persona and group membership rules (runtime room membership).
 - [ ] Chat message creation uses the canonical composer surface.
@@ -416,6 +416,13 @@ Current implementation boundary (2026-05-08 first pass):
 - [ ] Dark and light themes adapt correctly across all UI elements, including chat bubbles and campaign poster/banner backgrounds.
 - [ ] Theme switch validation is completed for all touched surfaces before sign-off.
 - [ ] No hard-coded one-mode colors remain in shared user-facing UI surfaces.
+
+Recent delivery notes:
+
+- Topbar timer and user settings modal are now live and server-synced.
+- Topbar Information now shows a real campaign panel with stats and a DM edit entry point into campaign settings.
+- Rightbar campaign settings now has a dedicated component for DM auto-target, session name/description editing, and character settings editing.
+- Session settings persistence is now wired for name/description via backend `PATCH /api/v1/session/:id`; planned duration remains pending backend field support.
 
 **Definition of done**:
 

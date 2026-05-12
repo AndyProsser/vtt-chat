@@ -15,6 +15,7 @@ import {
   listSessionMembers,
   listSessions,
   removeSessionMember,
+  updateSessionMetadataRecord,
   updateSessionStateRecord,
   upsertSessionMember,
 } from '@/repositories/session.repository'
@@ -46,6 +47,7 @@ function mapSessionRecord(session: {
   id: string
   name: string
   dmId: string
+  description: string | null
   state: SessionState
   createdAt: Date
   startedAt?: Date | null
@@ -54,12 +56,44 @@ function mapSessionRecord(session: {
   return {
     id: session.id as UUID,
     name: session.name,
+    description: session.description ?? undefined,
     dmId: session.dmId as UUID,
     state: toPublicSessionState(session.state) ?? session.state,
     createdAt: session.createdAt.getTime(),
     startedAt: session.startedAt?.getTime(),
     endedAt: session.endedAt?.getTime(),
   }
+}
+
+export function updateSessionMetadata(
+  sessionId: UUID,
+  params: { name?: string; description?: string | null },
+  dmId: UUID
+): Promise<Session | null> {
+  return findSessionById(sessionId).then(async (session) => {
+    if (!session) {
+      return null
+    }
+
+    if (session.dmId !== dmId) {
+      throw createError(ErrorCode.FORBIDDEN, {
+        message: 'Only DM can update session metadata',
+      })
+    }
+
+    await updateSessionMetadataRecord({
+      sessionId,
+      name: params.name,
+      description: params.description,
+    })
+
+    const updated = await findSessionById(sessionId)
+    if (!updated) {
+      return null
+    }
+
+    return mapSessionRecord(updated as any)
+  })
 }
 
 /**

@@ -477,6 +477,94 @@ export async function listCharactersForUser(userId: string): Promise<
   }))
 }
 
+export async function updateCharacterForCampaignMember(params: {
+  campaignId: string
+  userId: string
+  characterId: string
+  name?: string
+  race?: string | null
+  class?: string | null
+  subclass?: string | null
+  avatarUrl?: string | null
+  metadata?: Record<string, unknown> | null
+  isActive?: boolean
+}): Promise<{
+  id: string
+  campaignId: string
+  userId: string
+  name: string
+  status: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
+  race: string | null
+  class: string | null
+  subclass: string | null
+  avatarUrl: string | null
+  metadata: Prisma.JsonValue | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+} | null> {
+  const existing = await prisma.character.findFirst({
+    where: {
+      id: params.characterId,
+      campaignId: params.campaignId,
+      userId: params.userId,
+    },
+  })
+
+  if (!existing) {
+    return null
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (params.isActive) {
+      await tx.character.updateMany({
+        where: {
+          campaignId: params.campaignId,
+          userId: params.userId,
+          id: { not: params.characterId },
+        },
+        data: { isActive: false },
+      })
+    }
+
+    const updated = await tx.character.update({
+      where: { id: params.characterId },
+      data: {
+        ...(params.name !== undefined ? { name: params.name } : {}),
+        ...(params.race !== undefined ? { race: params.race } : {}),
+        ...(params.class !== undefined ? { class: params.class } : {}),
+        ...(params.subclass !== undefined ? { subclass: params.subclass } : {}),
+        ...(params.avatarUrl !== undefined ? { avatarUrl: params.avatarUrl } : {}),
+        ...(params.metadata !== undefined
+          ? {
+              metadata:
+                params.metadata === null
+                  ? Prisma.JsonNull
+                  : (params.metadata as Prisma.InputJsonValue),
+            }
+          : {}),
+        ...(params.isActive !== undefined ? { isActive: params.isActive } : {}),
+      },
+    })
+
+    return {
+      id: updated.id,
+      campaignId: updated.campaignId,
+      userId: updated.userId,
+      name: updated.name,
+      status: updated.status,
+      race: updated.race,
+      class: updated.class,
+      subclass: updated.subclass,
+      avatarUrl: updated.avatarUrl,
+      metadata: updated.metadata,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    }
+  })
+}
+
 export async function isUserInCampaign(params: {
   userId: string
   campaignId: string

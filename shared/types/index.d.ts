@@ -83,6 +83,7 @@ export interface User {
 export interface Session {
   id: UUID
   name: string
+  description?: string
   dmId: UUID
   state: SessionLifecycleState
   createdAt: number

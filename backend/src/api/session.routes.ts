@@ -9,6 +9,7 @@ import {
   createSession,
   getSession,
   getAllSessions,
+  updateSessionMetadata,
   updateSessionState,
   deleteSession,
   addUserToSession,
@@ -938,6 +939,70 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
     }
+    return internalErrorResponse(res)
+  }
+})
+
+router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+  const { name, description } = req.body || {}
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  if (name !== undefined && !isValidSessionName(name)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid session name',
+      field: 'name',
+    })
+  }
+
+  if (description !== undefined && description !== null && typeof description !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'description must be a string or null',
+      field: 'description',
+    })
+  }
+
+  try {
+    const session = await updateSessionMetadata(
+      id as UUID,
+      {
+        name: typeof name === 'string' ? name.trim() : undefined,
+        description:
+          description === null
+            ? null
+            : typeof description === 'string'
+              ? description.trim() || null
+              : undefined,
+      },
+      user.userId as UUID
+    )
+
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    return res.status(200).json({ session })
+  } catch (error) {
+    if ((error as { code?: string }).code === ErrorCode.FORBIDDEN) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only DM can update session metadata',
+      })
+    }
+
     return internalErrorResponse(res)
   }
 })
