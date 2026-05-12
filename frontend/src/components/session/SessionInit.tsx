@@ -138,6 +138,7 @@ const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaig
 const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
 const ACTIVE_SESSION_CONTEXT_STORAGE_KEY = 'vtt-chat:active-session-context'
 const MAX_POSTER_WIDTH_PX = 1024
+const DEFAULT_PLANNED_DURATION_MINUTES = 180
 const MAX_POSTER_DATA_URL_CHARS = 350_000
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
 const SESSION_SUMMARY_TAG = 'session-summary'
@@ -574,6 +575,8 @@ export function SessionInit({
   const [isDmVoiceTargetingSettingSaving, setIsDmVoiceTargetingSettingSaving] = useState(false)
   const [sessionSettingsName, setSessionSettingsName] = useState('')
   const [sessionSettingsDescription, setSessionSettingsDescription] = useState('')
+  const [sessionSettingsPlannedDurationMinutes, setSessionSettingsPlannedDurationMinutes] =
+    useState(DEFAULT_PLANNED_DURATION_MINUTES)
   const [isSessionSettingsSaving, setIsSessionSettingsSaving] = useState(false)
   const [userCharacters, setUserCharacters] = useState<UserCharacterRecord[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState<UUID | ''>('')
@@ -734,7 +737,24 @@ export function SessionInit({
   useEffect(() => {
     setSessionSettingsName(currentSession?.name || '')
     setSessionSettingsDescription(currentSession?.description || '')
-  }, [currentSession?.description, currentSession?.id, currentSession?.name])
+    setSessionSettingsPlannedDurationMinutes(
+      currentSession?.plannedDurationMinutes || DEFAULT_PLANNED_DURATION_MINUTES
+    )
+  }, [
+    currentSession?.description,
+    currentSession?.id,
+    currentSession?.name,
+    currentSession?.plannedDurationMinutes,
+  ])
+
+  const handlePlannedDurationMinutesChange = useCallback((nextValue: number) => {
+    if (!Number.isFinite(nextValue)) {
+      return
+    }
+
+    const clamped = Math.max(15, Math.min(720, Math.round(nextValue)))
+    setSessionSettingsPlannedDurationMinutes(clamped)
+  }, [])
 
   useEffect(() => {
     if (!selectedCharacter) {
@@ -1232,6 +1252,7 @@ export function SessionInit({
         body: JSON.stringify({
           name: sessionSettingsName,
           description: sessionSettingsDescription,
+          plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
         }),
       })
 
@@ -1257,6 +1278,7 @@ export function SessionInit({
     fetchWithAuthGuard,
     sessionSettingsDescription,
     sessionSettingsName,
+    sessionSettingsPlannedDurationMinutes,
     token,
     updateSession,
   ])
@@ -2843,6 +2865,12 @@ export function SessionInit({
   const canStopFromActive =
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
+  const canEditCharacterSettings =
+    effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER
+  const canEditSessionSettings =
+    currentSession?.state === SessionState.INACTIVE ||
+    currentSession?.state === SessionState.ACTIVE ||
+    currentSession?.state === SessionState.PAUSED
 
   const renderCampaignScaffoldPanel = (title: string, subtitle: string, sections: string[]) => (
     <section className="session-campaign-scaffold" aria-label={title}>
@@ -3547,9 +3575,12 @@ export function SessionInit({
                       campaignId={selectedCampaignId || null}
                       sessionName={sessionSettingsName}
                       sessionDescription={sessionSettingsDescription}
+                      plannedDurationMinutes={sessionSettingsPlannedDurationMinutes}
                       sessionStateLabel={currentSession.state}
+                      canEditSessionSettings={canEditSessionSettings}
                       onSessionNameChange={setSessionSettingsName}
                       onSessionDescriptionChange={setSessionSettingsDescription}
+                      onPlannedDurationMinutesChange={handlePlannedDurationMinutesChange}
                       onSaveSessionSettings={() => {
                         void saveSessionSettings()
                       }}
@@ -3981,6 +4012,128 @@ export function SessionInit({
                         </button>
                       </div>
                     </div>
+                  </section>
+
+                  <section
+                    className="session-campaign-settings-panel"
+                    aria-label="Character settings mirror"
+                  >
+                    <h5 className="session-inline-form-title">Character Settings</h5>
+                    <p className="session-card-subtitle">
+                      Mirrors the rightbar character settings for campaign-scoped character
+                      defaults.
+                    </p>
+
+                    <div className="crbs-character-grid">
+                      <label className="crbs-field" htmlFor="campaign-character-name">
+                        <span className="crbs-field-label">Name</span>
+                        <input
+                          id="campaign-character-name"
+                          type="text"
+                          className="crbs-input"
+                          value={characterSettingsDraft.name}
+                          onChange={(event) =>
+                            handleCharacterFieldChange('name', event.target.value)
+                          }
+                          disabled={
+                            !canEditCharacterSettings ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                        />
+                      </label>
+                      <label className="crbs-field" htmlFor="campaign-character-race">
+                        <span className="crbs-field-label">Race</span>
+                        <input
+                          id="campaign-character-race"
+                          type="text"
+                          className="crbs-input"
+                          value={characterSettingsDraft.race}
+                          onChange={(event) =>
+                            handleCharacterFieldChange('race', event.target.value)
+                          }
+                          disabled={
+                            !canEditCharacterSettings ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                        />
+                      </label>
+                      <label className="crbs-field" htmlFor="campaign-character-class">
+                        <span className="crbs-field-label">Class</span>
+                        <input
+                          id="campaign-character-class"
+                          type="text"
+                          className="crbs-input"
+                          value={characterSettingsDraft.className}
+                          onChange={(event) =>
+                            handleCharacterFieldChange('className', event.target.value)
+                          }
+                          disabled={
+                            !canEditCharacterSettings ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                        />
+                      </label>
+                      <label className="crbs-field" htmlFor="campaign-character-subclass">
+                        <span className="crbs-field-label">Subclass</span>
+                        <input
+                          id="campaign-character-subclass"
+                          type="text"
+                          className="crbs-input"
+                          value={characterSettingsDraft.subclass}
+                          onChange={(event) =>
+                            handleCharacterFieldChange('subclass', event.target.value)
+                          }
+                          disabled={
+                            !canEditCharacterSettings ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                        />
+                      </label>
+                      <label className="crbs-field" htmlFor="campaign-character-level">
+                        <span className="crbs-field-label">Level</span>
+                        <input
+                          id="campaign-character-level"
+                          type="number"
+                          min={1}
+                          max={20}
+                          className="crbs-input"
+                          value={characterSettingsDraft.level}
+                          onChange={(event) =>
+                            handleCharacterFieldChange('level', Number(event.target.value))
+                          }
+                          disabled={
+                            !canEditCharacterSettings ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    {canEditCharacterSettings ? (
+                      <div className="crbs-actions">
+                        <button
+                          type="button"
+                          className="session-button"
+                          disabled={
+                            !selectedCampaignId ||
+                            isCharacterSettingsLoading ||
+                            isCharacterSettingsSaving
+                          }
+                          onClick={() => {
+                            void saveCharacterSettings()
+                          }}
+                        >
+                          {isCharacterSettingsSaving ? 'Saving…' : 'Save character settings'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="crbs-muted">Character settings are read-only for spectators.</p>
+                    )}
                   </section>
                 </div>
 

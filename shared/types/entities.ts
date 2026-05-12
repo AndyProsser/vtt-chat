@@ -29,6 +29,7 @@ export interface SessionEntity {
   dmId: UUID
   state: SessionLifecycleState
   description?: string
+  plannedDurationMinutes?: number
   createdAt: number
   startedAt?: number
   pausedAt?: number

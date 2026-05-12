@@ -103,6 +103,7 @@ export interface Session {
   id: UUID
   name: string
   description?: string
+  plannedDurationMinutes?: number
   dmId: UUID
   state: SessionLifecycleState
   createdAt: number

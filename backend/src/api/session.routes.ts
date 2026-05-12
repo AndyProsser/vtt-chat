@@ -946,7 +946,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { id } = req.params
-  const { name, description } = req.body || {}
+  const { name, description, plannedDurationMinutes } = req.body || {}
 
   if (!isValidUUID(id)) {
     return res.status(400).json({
@@ -972,6 +972,20 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
+  if (
+    plannedDurationMinutes !== undefined &&
+    plannedDurationMinutes !== null &&
+    (!Number.isInteger(plannedDurationMinutes) ||
+      plannedDurationMinutes < 15 ||
+      plannedDurationMinutes > 720)
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'plannedDurationMinutes must be an integer between 15 and 720',
+      field: 'plannedDurationMinutes',
+    })
+  }
+
   try {
     const session = await updateSessionMetadata(
       id as UUID,
@@ -982,6 +996,12 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
             ? null
             : typeof description === 'string'
               ? description.trim() || null
+              : undefined,
+        plannedDurationMinutes:
+          plannedDurationMinutes === null
+            ? null
+            : Number.isInteger(plannedDurationMinutes)
+              ? plannedDurationMinutes
               : undefined,
       },
       user.userId as UUID

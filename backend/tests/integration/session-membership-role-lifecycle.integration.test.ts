@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   verifyToken: vi.fn(),
   getSession: vi.fn(),
   getSessionUsers: vi.fn(),
+  updateSessionMetadata: vi.fn(),
   addUserToSession: vi.fn(),
   removeUserFromSession: vi.fn(),
   getRoom: vi.fn(),
@@ -77,6 +78,7 @@ vi.mock('@/services/session.service', () => ({
   createSession: vi.fn(),
   getSession: mocks.getSession,
   getAllSessions: vi.fn(async () => []),
+  updateSessionMetadata: mocks.updateSessionMetadata,
   updateSessionState: vi.fn(),
   deleteSession: vi.fn(),
   addUserToSession: mocks.addUserToSession,
@@ -227,6 +229,16 @@ describe('session membership lifecycle authz', () => {
       primaryRoomId: ROOM_ID,
       state: 'ONLINE',
       lastSeenAt: Date.now(),
+    })
+
+    mocks.updateSessionMetadata.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      description: 'Current description',
+      plannedDurationMinutes: 180,
+      dmId: DM_ID,
+      state: SessionState.ACTIVE,
+      createdAt: Date.now(),
     })
 
     mocks.sendMessage.mockResolvedValue({
@@ -398,5 +410,66 @@ describe('session membership lifecycle authz', () => {
 
     expect(leaveRes.status).toBe(200)
     expect(leaveRes.body.users.some((user: { id: string }) => user.id === PLAYER_ID)).toBe(false)
+  })
+
+  it('allows DMs to patch session metadata including planned duration', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({ userId: DM_ID, username: 'dm-user', role: 'DM' })
+    mocks.updateSessionMetadata.mockResolvedValue({
+      id: SESSION_ID,
+      name: '  Session Renamed  '.trim(),
+      description: 'A tactical pause'.trim(),
+      plannedDurationMinutes: 240,
+      dmId: DM_ID,
+      state: SessionState.ACTIVE,
+      createdAt: Date.now(),
+    })
+
+    const response = await request(app)
+      .patch(`/api/v1/session/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        name: '  Session Renamed  ',
+        description: 'A tactical pause',
+        plannedDurationMinutes: 240,
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.session.plannedDurationMinutes).toBe(240)
+    expect(mocks.updateSessionMetadata).toHaveBeenCalledWith(
+      SESSION_ID,
+      {
+        name: 'Session Renamed',
+        description: 'A tactical pause',
+        plannedDurationMinutes: 240,
+      },
+      DM_ID
+    )
+  })
+
+  it('rejects non-DM session metadata patch attempts', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({ userId: PLAYER_ID, username: 'player', role: 'PLAYER' })
+    mocks.updateSessionMetadata.mockRejectedValue({ code: 'FORBIDDEN' })
+
+    const response = await request(app)
+      .patch(`/api/v1/session/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Nope' })
+
+    expect(response.status).toBe(403)
+  })
+
+  it('validates planned duration bounds on session metadata patch', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .patch(`/api/v1/session/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({ plannedDurationMinutes: 5 })
+
+    expect(response.status).toBe(400)
+    expect(response.body.field).toBe('plannedDurationMinutes')
+    expect(mocks.updateSessionMetadata).not.toHaveBeenCalled()
   })
 })

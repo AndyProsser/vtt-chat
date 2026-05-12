@@ -48,6 +48,7 @@ function mapSessionRecord(session: {
   name: string
   dmId: string
   description: string | null
+  plannedDurationMinutes: number | null
   state: SessionState
   createdAt: Date
   startedAt?: Date | null
@@ -57,6 +58,7 @@ function mapSessionRecord(session: {
     id: session.id as UUID,
     name: session.name,
     description: session.description ?? undefined,
+    plannedDurationMinutes: session.plannedDurationMinutes ?? undefined,
     dmId: session.dmId as UUID,
     state: toPublicSessionState(session.state) ?? session.state,
     createdAt: session.createdAt.getTime(),
@@ -67,7 +69,7 @@ function mapSessionRecord(session: {
 
 export function updateSessionMetadata(
   sessionId: UUID,
-  params: { name?: string; description?: string | null },
+  params: { name?: string; description?: string | null; plannedDurationMinutes?: number | null },
   dmId: UUID
 ): Promise<Session | null> {
   return findSessionById(sessionId).then(async (session) => {
@@ -85,6 +87,7 @@ export function updateSessionMetadata(
       sessionId,
       name: params.name,
       description: params.description,
+      plannedDurationMinutes: params.plannedDurationMinutes,
     })
 
     const updated = await findSessionById(sessionId)

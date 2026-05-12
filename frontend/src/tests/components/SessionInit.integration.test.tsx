@@ -1323,6 +1323,262 @@ describe('SessionInit integration', () => {
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
   })
 
+  it('saves DM session settings including planned duration from rightbar settings', async () => {
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                memberRole: 'DM',
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                description: 'Old description',
+                plannedDurationMinutes: 120,
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/users/me/characters`)) {
+        return { ok: true, json: async () => ({ characters: [] }) }
+      }
+
+      if (url.endsWith(`/api/v1/session/${SESSION_ID}`) && init?.method === 'PATCH') {
+        const payload = JSON.parse(String(init.body || '{}')) as {
+          name: string
+          description: string
+          plannedDurationMinutes: number
+        }
+
+        return {
+          ok: true,
+          json: async () => ({
+            session: {
+              id: SESSION_ID,
+              name: payload.name,
+              description: payload.description,
+              plannedDurationMinutes: payload.plannedDurationMinutes,
+              dmId: DM_ID,
+              state: SessionState.ACTIVE,
+              createdAt: 1,
+            },
+          }),
+        }
+      }
+
+      return { ok: true, json: async () => ({}) }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: DM_ID,
+          username: 'Morgan',
+          role: Role.DM,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    await screen.findByTestId('session-toolbar')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
+
+    fireEvent.change(screen.getByLabelText('Session name'), { target: { value: 'Session Omega' } })
+    fireEvent.change(screen.getByLabelText('Session description'), {
+      target: { value: 'Finale prep' },
+    })
+    fireEvent.change(screen.getByLabelText('Planned duration (minutes)'), {
+      target: { value: '240' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save session settings' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/v1/session/${SESSION_ID}`,
+        expect.objectContaining({
+          method: 'PATCH',
+        })
+      )
+    })
+
+    const patchCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith(`/api/v1/session/${SESSION_ID}`) &&
+        (init as RequestInit | undefined)?.method === 'PATCH'
+    )
+    expect(patchCall).toBeTruthy()
+
+    const body = JSON.parse(String((patchCall?.[1] as RequestInit | undefined)?.body || '{}')) as {
+      plannedDurationMinutes?: number
+      name?: string
+      description?: string
+    }
+    expect(body.name).toBe('Session Omega')
+    expect(body.description).toBe('Finale prep')
+    expect(body.plannedDurationMinutes).toBe(240)
+  })
+
+  it('saves player character settings from rightbar settings', async () => {
+    const CHARACTER_ID = asUuid('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/campaigns')) {
+        return {
+          ok: true,
+          json: async () => ({
+            campaigns: [
+              {
+                id: CAMPAIGN_ID,
+                name: 'Iron Keep',
+                currentDmId: DM_ID,
+                memberRole: 'PLAYER',
+                inviteCode: 'KEEP-01',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'Session Alpha',
+                dmId: DM_ID,
+                state: SessionState.ACTIVE,
+                createdAt: 1,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/users/me/characters')) {
+        return {
+          ok: true,
+          json: async () => ({
+            characters: [
+              {
+                id: CHARACTER_ID,
+                campaignId: CAMPAIGN_ID,
+                userId: PLAYER_ID,
+                name: 'Aria',
+                race: 'Elf',
+                class: 'Wizard',
+                subclass: 'Bladesinger',
+                avatarUrl: null,
+                metadata: {
+                  level: 5,
+                  stats: {
+                    strength: 10,
+                    dexterity: 15,
+                    constitution: 12,
+                    intelligence: 18,
+                    wisdom: 11,
+                    charisma: 13,
+                  },
+                },
+                isActive: true,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (
+        url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/characters/${CHARACTER_ID}`) &&
+        init?.method === 'PATCH'
+      ) {
+        return {
+          ok: true,
+          json: async () => ({
+            character: {
+              id: CHARACTER_ID,
+              campaignId: CAMPAIGN_ID,
+              userId: PLAYER_ID,
+              name: 'Aria Prime',
+              race: 'Elf',
+              class: 'Wizard',
+              subclass: 'Bladesinger',
+              avatarUrl: null,
+              metadata: { level: 6 },
+              isActive: true,
+            },
+          }),
+        }
+      }
+
+      return { ok: true, json: async () => ({}) }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SessionInit
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        token="token"
+        user={{
+          id: PLAYER_ID,
+          username: 'Tara',
+          role: Role.PLAYER,
+        }}
+      />
+    )
+
+    await screen.findByText('Campaigns')
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    await screen.findByTestId('session-toolbar')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aria Prime' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save character settings' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/characters/${CHARACTER_ID}`,
+        expect.objectContaining({ method: 'PATCH' })
+      )
+    })
+  })
+
   it('auto-applies default journal and history presets after switching rail tabs', async () => {
     const localStorageState = new Map<string, string>()
     const userScope = String(PLAYER_ID)

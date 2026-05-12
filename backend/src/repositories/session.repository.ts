@@ -21,6 +21,7 @@ export async function createSessionRecord(params: {
   campaignId?: string
   name: string
   description?: string
+  plannedDurationMinutes?: number
   dmId: string
   state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   createdAt: Date
@@ -31,6 +32,7 @@ export async function createSessionRecord(params: {
       campaignId: params.campaignId,
       name: params.name,
       description: params.description,
+      plannedDurationMinutes: params.plannedDurationMinutes,
       dmId: params.dmId,
       state: params.state,
       createdAt: params.createdAt,
@@ -44,6 +46,7 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     campaignId: string | null
     name: string
     description: string | null
+    plannedDurationMinutes: number | null
     dmId: string
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
@@ -61,6 +64,7 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     campaignId: row.campaignId,
     name: row.name,
     description: row.description,
+    plannedDurationMinutes: row.plannedDurationMinutes,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -74,6 +78,7 @@ export async function listSessions(): Promise<
     id: string
     name: string
     description: string | null
+    plannedDurationMinutes: number | null
     dmId: string
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
@@ -89,6 +94,7 @@ export async function listSessions(): Promise<
     id: row.id,
     name: row.name,
     description: row.description,
+    plannedDurationMinutes: row.plannedDurationMinutes,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -102,6 +108,7 @@ export async function findSessionById(sessionId: string): Promise<{
   campaignId: string | null
   name: string
   description: string | null
+  plannedDurationMinutes: number | null
   dmId: string
   state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   createdAt: Date
@@ -119,6 +126,7 @@ export async function findSessionById(sessionId: string): Promise<{
     campaignId: row.campaignId,
     name: row.name,
     description: row.description,
+    plannedDurationMinutes: row.plannedDurationMinutes,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -158,12 +166,16 @@ export async function updateSessionMetadataRecord(params: {
   sessionId: string
   name?: string
   description?: string | null
+  plannedDurationMinutes?: number | null
 }): Promise<void> {
   await prisma.session.update({
     where: { id: params.sessionId },
     data: {
       ...(params.name !== undefined ? { name: params.name } : {}),
       ...(params.description !== undefined ? { description: params.description } : {}),
+      ...(params.plannedDurationMinutes !== undefined
+        ? { plannedDurationMinutes: params.plannedDurationMinutes }
+        : {}),
     },
   })
 }

@@ -384,9 +384,9 @@ Current implementation boundary (2026-05-08 first pass):
   - [x] All personas can edit own user profile settings.
 - [ ] **Rightbar Layer** (`<CampaignRightbarSettings />`):
   - [x] Campaign settings (default session duration, audio auto-target toggle) DM-editable.
-  - [ ] Session settings (name, planned duration) DM-editable only during `INACTIVE|ACTIVE|PAUSED` states.
-  - [ ] Session values persist in backend and restore for next session.
-  - [ ] Players can view but not edit session planned duration.
+  - [x] Session settings (name, planned duration) DM-editable only during `INACTIVE|ACTIVE|PAUSED` states.
+  - [x] Session values persist in backend and restore for next session.
+  - [x] Players can view but not edit session planned duration.
   - [x] Character settings (name, race, class, level, stats, avatar) player-editable in rightbar.
   - [x] Character defaults fallback to Human/Fighter/Level 1/8 (all stats) if blank.
   - [x] Character values supersede user profile defaults when present.
@@ -407,7 +407,7 @@ Current implementation boundary (2026-05-08 first pass):
 - [ ] Rightbar Notes panel remains available from the Information surface.
 - [ ] Rightbar Journal panel remains available from the Information surface.
 - [ ] DM home campaign settings dialog includes Notes and Journal in dedicated tabs.
-- [ ] Campaign-specific rightbar settings are mirrored in DM home campaign settings dialog.
+- [x] Campaign-specific rightbar settings are mirrored in DM home campaign settings dialog.
 - [ ] User-facing campaign/session tabbed panel/dialog screens use Radix UI Tabs (main campaign settings dialog is mandatory).
 - [ ] Admin tabbed screens use MUI Tabs (or approved MUI-equivalent tabs).
 - [ ] Tabbed screens and info/rightbar implementations are split into focused components (no monolithic files).
@@ -421,8 +421,9 @@ Recent delivery notes:
 
 - Topbar timer and user settings modal are now live and server-synced.
 - Topbar Information now shows a real campaign panel with stats and a DM edit entry point into campaign settings.
-- Rightbar campaign settings now has a dedicated component for DM auto-target, session name/description editing, and character settings editing.
-- Session settings persistence is now wired for name/description via backend `PATCH /api/v1/session/:id`; planned duration remains pending backend field support.
+- Rightbar campaign settings now has a dedicated component for DM auto-target, session name/description/planned-duration editing, and character settings editing.
+- Session metadata persistence is wired via backend `PATCH /api/v1/session/:id` for name, description, and planned duration.
+- Campaign home settings dialog now mirrors rightbar character settings for DM workflow parity.
 
 **Definition of done**:
 

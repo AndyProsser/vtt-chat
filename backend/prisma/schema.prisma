@@ -7,26 +7,27 @@ datasource db {
 }
 
 model Session {
-  id               String              @id @default(uuid()) @db.Uuid
-  campaignId       String?             @db.Uuid
-  campaign         Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  name             String
-  description      String?
-  dmId             String              @db.Uuid
-  state            SessionState        @default(IDLE)
-  members          SessionMember[]
-  rooms            Room[]
-  presence         PresenceSnapshot[]
-  messages         ChatMessage[]
-  notes            Note[]
-  logs             SessionLog[]
-  recordings       RecordingMetadata[]
-  audioRoomStates  AudioRoomState[]
-  audioDMOverrides AudioDMOverride[]
-  createdAt        DateTime            @default(now())
-  startedAt        DateTime?
-  endedAt          DateTime?
-  updatedAt        DateTime            @updatedAt
+  id                     String              @id @default(uuid()) @db.Uuid
+  campaignId             String?             @db.Uuid
+  campaign               Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  name                   String
+  description            String?
+  plannedDurationMinutes Int?
+  dmId                   String              @db.Uuid
+  state                  SessionState        @default(IDLE)
+  members                SessionMember[]
+  rooms                  Room[]
+  presence               PresenceSnapshot[]
+  messages               ChatMessage[]
+  notes                  Note[]
+  logs                   SessionLog[]
+  recordings             RecordingMetadata[]
+  audioRoomStates        AudioRoomState[]
+  audioDMOverrides       AudioDMOverride[]
+  createdAt              DateTime            @default(now())
+  startedAt              DateTime?
+  endedAt                DateTime?
+  updatedAt              DateTime            @updatedAt
 
   @@index([dmId])
   @@index([campaignId])

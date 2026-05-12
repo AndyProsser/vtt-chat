@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockJoinCampaignForUser: vi.fn(),
   mockIsUserInCampaign: vi.fn(),
   mockCreateCharacterForCampaign: vi.fn(),
+  mockUpdateCharacterForCampaignMember: vi.fn(),
   mockGetUserProfileById: vi.fn(),
   mockListCharactersForUser: vi.fn(),
   mockCreateSession: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   joinCampaignForUser: mocks.mockJoinCampaignForUser,
   isUserInCampaign: mocks.mockIsUserInCampaign,
   createCharacterForCampaign: mocks.mockCreateCharacterForCampaign,
+  updateCharacterForCampaignMember: mocks.mockUpdateCharacterForCampaignMember,
   getUserProfileById: mocks.mockGetUserProfileById,
   listCharactersForUser: mocks.mockListCharactersForUser,
 }))
@@ -318,6 +320,63 @@ describe('campaign routes', () => {
 
     expect(response.status).toBe(400)
     expect(response.body.field).toBe('status')
+  })
+
+  it('updates a campaign character through PATCH', async () => {
+    const app = buildAppForCampaigns()
+    const CHARACTER_ID = '55555555-5555-4555-8555-555555555555'
+    mocks.mockIsUserInCampaign.mockResolvedValue(true)
+    mocks.mockUpdateCharacterForCampaignMember.mockResolvedValue({
+      id: CHARACTER_ID,
+      campaignId: CAMPAIGN_ID,
+      userId: USER_ID,
+      name: 'Aria Updated',
+      race: 'Elf',
+      class: 'Wizard',
+      subclass: 'Chronurgy',
+      avatarUrl: null,
+      metadata: { level: 7 },
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const response = await request(app)
+      .patch(`/api/campaigns/${CAMPAIGN_ID}/characters/${CHARACTER_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({
+        name: 'Aria Updated',
+        class: 'Wizard',
+        subclass: 'Chronurgy',
+        metadata: { level: 7 },
+        isActive: true,
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.character.name).toBe('Aria Updated')
+    expect(mocks.mockUpdateCharacterForCampaignMember).toHaveBeenCalledWith(
+      expect.objectContaining({
+        campaignId: CAMPAIGN_ID,
+        userId: USER_ID,
+        characterId: CHARACTER_ID,
+        name: 'Aria Updated',
+        class: 'Wizard',
+        subclass: 'Chronurgy',
+        isActive: true,
+      })
+    )
+  })
+
+  it('validates campaign character PATCH payload', async () => {
+    const app = buildAppForCampaigns()
+    const response = await request(app)
+      .patch(`/api/campaigns/${CAMPAIGN_ID}/characters/invalid-id`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: '' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.field).toBe('characterId')
+    expect(mocks.mockUpdateCharacterForCampaignMember).not.toHaveBeenCalled()
   })
 })
 

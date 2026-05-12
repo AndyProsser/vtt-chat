@@ -20,9 +20,12 @@ export interface CampaignRightbarSettingsProps {
   campaignId: string | null
   sessionName: string
   sessionDescription: string
+  plannedDurationMinutes: number
   sessionStateLabel: string
+  canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
   onSessionDescriptionChange: (value: string) => void
+  onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSaving: boolean
   /** DM auto-target toggle value */
@@ -43,9 +46,12 @@ export function CampaignRightbarSettings({
   campaignId,
   sessionName,
   sessionDescription,
+  plannedDurationMinutes,
   sessionStateLabel,
+  canEditSessionSettings,
   onSessionNameChange,
   onSessionDescriptionChange,
+  onPlannedDurationMinutesChange,
   onSaveSessionSettings,
   isSessionSaving,
   dmAutoTarget,
@@ -78,7 +84,7 @@ export function CampaignRightbarSettings({
             className="crbs-input"
             value={sessionName}
             onChange={(event) => onSessionNameChange(event.target.value)}
-            disabled={!isDm || isSessionSaving}
+            disabled={!isDm || !canEditSessionSettings || isSessionSaving}
           />
         </label>
 
@@ -89,18 +95,31 @@ export function CampaignRightbarSettings({
             className="crbs-textarea"
             value={sessionDescription}
             onChange={(event) => onSessionDescriptionChange(event.target.value)}
-            disabled={!isDm || isSessionSaving}
+            disabled={!isDm || !canEditSessionSettings || isSessionSaving}
           />
         </label>
 
-        <p className="crbs-muted">Planned duration persistence is not wired yet.</p>
+        <label className="crbs-field" htmlFor="crbs-session-duration">
+          <span className="crbs-field-label">Planned duration (minutes)</span>
+          <input
+            id="crbs-session-duration"
+            type="number"
+            min={15}
+            max={720}
+            step={15}
+            className="crbs-input"
+            value={plannedDurationMinutes}
+            onChange={(event) => onPlannedDurationMinutesChange(Number(event.target.value))}
+            disabled={!isDm || !canEditSessionSettings || isSessionSaving}
+          />
+        </label>
 
         {isDm ? (
           <div className="crbs-actions">
             <button
               type="button"
               className="session-button"
-              disabled={!campaignId || isSessionSaving}
+              disabled={!campaignId || !canEditSessionSettings || isSessionSaving}
               onClick={onSaveSessionSettings}
             >
               {isSessionSaving ? 'Saving…' : 'Save session settings'}
@@ -109,6 +128,11 @@ export function CampaignRightbarSettings({
         ) : (
           <p className="crbs-muted">Only the DM can edit session settings.</p>
         )}
+        {isDm && !canEditSessionSettings ? (
+          <p className="crbs-muted">
+            Session settings are editable only while inactive, active, or paused.
+          </p>
+        ) : null}
       </section>
 
       <section className="crbs-section">
