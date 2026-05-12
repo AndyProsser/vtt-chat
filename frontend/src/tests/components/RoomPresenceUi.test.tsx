@@ -3,7 +3,7 @@ import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AvatarOverlay } from '../../components/rooms/AvatarOverlay'
-import { RoomSelector } from '../../components/rooms/RoomSelector'
+import { GroupsPanel as RoomSelector } from '../../components/rooms/GroupsPanel'
 import { useStore } from '../../hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 

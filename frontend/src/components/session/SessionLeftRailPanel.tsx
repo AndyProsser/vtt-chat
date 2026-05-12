@@ -6,7 +6,7 @@ import { useStore } from '@/state/store'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '../../constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
-import { RoomSelector } from '../rooms/RoomSelector'
+import { GroupsPanel } from '../rooms/GroupsPanel'
 
 interface SessionLeftRailPanelProps {
   apiUrl: string
@@ -114,7 +114,7 @@ export function SessionLeftRailPanel({
         className="session-left-rail-card session-left-rail-card--channels"
         aria-label="Voice groups"
       >
-        <RoomSelector
+        <GroupsPanel
           apiUrl={apiUrl}
           token={token}
           sessionId={sessionId}

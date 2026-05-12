@@ -2,17 +2,17 @@ import { useCallback, useMemo, useState } from 'react'
 import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import type {
-  RoomParticipantWithRoomId,
-  RoomSelectorRoomWithParticipants,
-} from './roomSelector.types'
+  GroupPanelGroupWithParticipants,
+  GroupParticipantWithGroupId,
+} from './groupPanel.types'
 
 interface UseRoomMovesOptions {
   apiUrl: string
   token: string
   sessionId: UUID
   dmUserId: UUID
-  allRooms: RoomSelectorRoomWithParticipants[]
-  visibleParticipants: RoomParticipantWithRoomId[]
+  allRooms: GroupPanelGroupWithParticipants[]
+  visibleParticipants: GroupParticipantWithGroupId[]
   dmAutoTargetOnFirstPlayerJoin: boolean
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: (enabled: boolean) => Promise<void>
@@ -57,7 +57,7 @@ export function useRoomMoves({
   }, [pendingRoomMoves, visibleParticipants])
 
   const displayedParticipantsByRoom = useMemo(() => {
-    const next: Record<string, RoomParticipantWithRoomId[]> = {}
+    const next: Record<string, GroupParticipantWithGroupId[]> = {}
 
     for (const room of allRooms) {
       next[room.id] = []

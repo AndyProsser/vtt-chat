@@ -19,24 +19,32 @@ import { RoomGroupCard } from './RoomGroupCard'
 import { RoomHeaderActions } from './RoomHeaderActions'
 import { WhisperDock } from './WhisperDock'
 import {
-  getDisplayRoomName,
-  getParticipantMetaLine,
-  getResolvedEnvironmentName,
-  getStatEntries,
-  waitForRoomDeleteReconciled,
-} from './roomSelector.helpers'
+  getDisplayGroupName,
+  getGroupParticipantMetaLine,
+  getResolvedGroupEnvironmentName,
+  getGroupStatEntries,
+  waitForGroupDeleteReconciled,
+} from './groupsPanel.helpers'
 import {
-  isWhisperRoom,
-  type RoomParticipantStatus,
-  type RoomParticipantWithRoomId,
-  type RoomSelectorProps,
-  type RoomSelectorRoomWithParticipants,
-} from './roomSelector.types'
+  isWhisperGroup,
+  type GroupPanelGroup,
+  type GroupPanelGroupWithParticipants,
+  type GroupParticipantStatus,
+  type GroupParticipantWithGroupId,
+  type GroupsPanelProps,
+} from './groupPanel.types'
 import { useRoomMoves } from './useRoomMoves'
 import { useWhisperFlow } from './useWhisperFlow'
 import '../../styles/components/rooms/RoomSelector.css'
 
-export type { RoomParticipantStatus, RoomSelectorRoom } from './roomSelector.types'
+export type {
+  GroupPanelGroup,
+  GroupPanelGroupWithParticipants,
+  GroupParticipantStatus,
+  GroupsPanelProps,
+  RoomParticipantStatus,
+  RoomSelectorRoom,
+} from './groupPanel.types'
 
 const DISTANCE_PRESETS = ['Default', 'Nearby', 'Visible', 'Far'] as const
 
@@ -54,11 +62,11 @@ export function RoomSelector({
   rooms,
   selectedRoomId,
   onSelectRoom,
-}: RoomSelectorProps) {
+}: GroupsPanelProps) {
   const [isMobileExpanded] = useState(true)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
-  const [optimisticRooms, setOptimisticRooms] = useState<RoomSelectorRoomWithParticipants[]>([])
+  const [optimisticRooms, setOptimisticRooms] = useState<GroupPanelGroupWithParticipants[]>([])
   const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
   const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
@@ -89,7 +97,7 @@ export function RoomSelector({
   const confirmedRoomIds = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms])
 
   const allRooms = useMemo(() => {
-    const byId = new Map<UUID, RoomSelectorRoomWithParticipants>()
+    const byId = new Map<UUID, GroupPanelGroupWithParticipants>()
 
     for (const room of rooms) {
       byId.set(room.id, room)
@@ -104,7 +112,7 @@ export function RoomSelector({
     return [...byId.values()]
   }, [confirmedRoomIds, optimisticRooms, rooms])
 
-  const baseParticipants = useMemo<RoomParticipantWithRoomId[]>(
+  const baseParticipants = useMemo<GroupParticipantWithGroupId[]>(
     () =>
       allRooms.flatMap((room) =>
         room.participants.map((participant) => ({
@@ -304,8 +312,8 @@ export function RoomSelector({
   )
 
   const getParticipantMetaLineForRoom = useCallback(
-    (member: RoomParticipantWithRoomId | RoomParticipantStatus) =>
-      getParticipantMetaLine(member, dmFlavorLine),
+    (member: GroupParticipantWithGroupId | GroupParticipantStatus) =>
+      getGroupParticipantMetaLine(member, dmFlavorLine),
     [dmFlavorLine]
   )
 
@@ -441,7 +449,7 @@ export function RoomSelector({
       allRooms
         .filter(
           (room) =>
-            room.type !== RoomType.MAIN && !isGreenRoomName(room.name) && !isWhisperRoom(room)
+            room.type !== RoomType.MAIN && !isGreenRoomName(room.name) && !isWhisperGroup(room)
         )
         .sort((left, right) => left.name.localeCompare(right.name)),
     [allRooms]
@@ -882,7 +890,7 @@ export function RoomSelector({
   )
 
   const handleDeleteGroup = useCallback(
-    async (room: RoomSelectorRoomWithParticipants) => {
+    async (room: GroupPanelGroupWithParticipants) => {
       if (room.type === RoomType.MAIN || isGreenRoomName(room.name)) {
         return
       }
@@ -891,7 +899,7 @@ export function RoomSelector({
       setPendingRoomDeletes((state) => ({ ...state, [room.id]: true }))
 
       try {
-        if (isWhisperRoom(room)) {
+        if (isWhisperGroup(room)) {
           await whisperFlow.handleEndWhisper()
           clearPendingRoomDelete(room.id)
           return
@@ -951,7 +959,7 @@ export function RoomSelector({
           clearEnvironment()
         }
 
-        await waitForRoomDeleteReconciled({
+        await waitForGroupDeleteReconciled({
           deletedRoomId: room.id,
           sessionId,
           syncSessionTopologyFromServer,
@@ -1022,7 +1030,7 @@ export function RoomSelector({
     selectedRoomId,
   ])
 
-  const renderRoomCard = (room: RoomSelectorRoomWithParticipants) => (
+  const renderRoomCard = (room: GroupPanelGroupWithParticipants) => (
     <RoomGroupCard
       key={room.id}
       room={room}
@@ -1074,12 +1082,12 @@ export function RoomSelector({
       }}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
-      getDisplayRoomName={getDisplayRoomName}
-      getResolvedEnvironmentName={getResolvedEnvironmentName}
+      getDisplayRoomName={getDisplayGroupName}
+      getResolvedEnvironmentName={getResolvedGroupEnvironmentName}
       getParticipantMetaLine={getParticipantMetaLineForRoom}
       getResolvedPresenceState={getResolvedPresenceState}
       getPresenceDotState={getPresenceDotState}
-      getStatEntries={getStatEntries}
+      getStatEntries={getGroupStatEntries}
     />
   )
 

@@ -7,16 +7,16 @@ import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import { Icon } from '../ui/Icon'
 import { resolveEnvironmentGlyph } from '../../constants/voiceGroup.constants'
 import { RoomMemberList } from './RoomMemberList'
-import { ENVIRONMENT_OPTIONS, isWhisperRoom } from './roomSelector.types'
+import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from './groupPanel.types'
 import type {
-  RoomParticipantWithRoomId,
-  RoomSelectorRoomWithParticipants,
-} from './roomSelector.types'
+  GroupPanelGroupWithParticipants,
+  GroupParticipantWithGroupId,
+} from './groupPanel.types'
 
 interface RoomGroupCardProps {
-  room: RoomSelectorRoomWithParticipants
+  room: GroupPanelGroupWithParticipants
   selected: boolean
-  participants: RoomParticipantWithRoomId[]
+  participants: GroupParticipantWithGroupId[]
   canManageRooms: boolean
   isGreenroom: boolean
   isDenseRoomLayout: boolean
@@ -36,7 +36,7 @@ interface RoomGroupCardProps {
   onToggleEnvironmentPicker: (roomId: UUID) => void
   onSelectRoom: (roomId: UUID) => void
   onSetDmVoiceRoom: (roomId: UUID) => void
-  onDeleteGroup: (room: RoomSelectorRoomWithParticipants) => void
+  onDeleteGroup: (room: GroupPanelGroupWithParticipants) => void
   onRoomDragOver: (event: React.DragEvent<HTMLElement>, disabled: boolean) => void
   onRoomDrop: (event: React.DragEvent<HTMLElement>, roomId: UUID, disabled: boolean) => void
   distanceTargets: string[]
@@ -51,16 +51,16 @@ interface RoomGroupCardProps {
     canDrag: boolean
   ) => void
   onMemberDragEnd: () => void
-  getDisplayRoomName: (room: RoomSelectorRoomWithParticipants) => string
-  getResolvedEnvironmentName: (room: RoomSelectorRoomWithParticipants) => string
-  getParticipantMetaLine: (member: RoomParticipantWithRoomId) => string
+  getDisplayRoomName: (room: GroupPanelGroupWithParticipants) => string
+  getResolvedEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
+  getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getResolvedPresenceState: (
-    presenceState: RoomParticipantWithRoomId['presenceState']
-  ) => RoomParticipantWithRoomId['presenceState']
+    presenceState: GroupParticipantWithGroupId['presenceState']
+  ) => GroupParticipantWithGroupId['presenceState']
   getPresenceDotState: (
-    presenceState: RoomParticipantWithRoomId['presenceState']
+    presenceState: GroupParticipantWithGroupId['presenceState']
   ) => 'online' | 'offline'
-  getStatEntries: (member: RoomParticipantWithRoomId) => Array<[string, unknown]>
+  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
 }
 
 export function RoomGroupCard({
@@ -104,23 +104,23 @@ export function RoomGroupCard({
   getPresenceDotState,
   getStatEntries,
 }: RoomGroupCardProps) {
-  const isWhisperGroup = isWhisperRoom(room)
+  const isWhisperRoomGroup = isWhisperGroup(room)
   const whisperRoomParticipantCount = participants.filter(
     (participant) => participant.userId !== dmUserId
   ).length
-  const isEmptyWhisperGroup = isWhisperGroup && whisperRoomParticipantCount === 0
+  const isEmptyWhisperGroup = isWhisperRoomGroup && whisperRoomParticipantCount === 0
   const isEmptyGroup =
     participants.length === 0 &&
     room.type !== RoomType.MAIN &&
-    !isWhisperGroup &&
+    !isWhisperRoomGroup &&
     !isGreenRoomName(room.name)
 
   const computedHasDetectedPlayers = participants.some(
     (participant) => participant.userId !== dmUserId
   )
   const isEmptyTargetableGroup = room.type === RoomType.GROUP && !computedHasDetectedPlayers
-  const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperGroup
-  const isCompactGroup = isEmptyGroup || isWhisperGroup || collapseForDrag
+  const collapseForDrag = Boolean(draggedUserId) && !selected && !isWhisperRoomGroup
+  const isCompactGroup = isEmptyGroup || isWhisperRoomGroup || collapseForDrag
   const memberListClassName = useMemo(
     () =>
       [
@@ -141,7 +141,7 @@ export function RoomGroupCard({
       onDragOver={(event) => onRoomDragOver(event, !canManageRooms || isGreenroom)}
       onDrop={(event) => onRoomDrop(event, room.id, !canManageRooms || isGreenroom)}
       onClick={(event) => {
-        if (!canManageRooms || isGreenroom || isWhisperGroup || isEmptyTargetableGroup) {
+        if (!canManageRooms || isGreenroom || isWhisperRoomGroup || isEmptyTargetableGroup) {
           return
         }
 
@@ -178,7 +178,7 @@ export function RoomGroupCard({
             }}
           >
             <span className="room-selector-item-name">
-              {isWhisperGroup ? (
+              {isWhisperRoomGroup ? (
                 <span className="material-symbols-outlined" aria-hidden="true">
                   lock
                 </span>
@@ -194,7 +194,7 @@ export function RoomGroupCard({
           </button>
 
           <span className="room-selector-item-actions">
-            {!isWhisperGroup ? (
+            {!isWhisperRoomGroup ? (
               <div className="room-selector-item__env-wrap">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -225,7 +225,7 @@ export function RoomGroupCard({
 
             {canManageRooms ? (
               <>
-                {!isWhisperGroup ? (
+                {!isWhisperRoomGroup ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -265,32 +265,32 @@ export function RoomGroupCard({
                   </Tooltip>
                 ) : null}
 
-                {room.type !== RoomType.MAIN && (!isWhisperGroup || !isEmptyWhisperGroup) ? (
+                {room.type !== RoomType.MAIN && (!isWhisperRoomGroup || !isEmptyWhisperGroup) ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
                         className={`room-selector-item__icon-action room-selector-item__close-inline ${
-                          !isWhisperGroup && computedHasDetectedPlayers
+                          !isWhisperRoomGroup && computedHasDetectedPlayers
                             ? 'room-selector-item__close-inline--return'
                             : 'room-selector-item__close-inline--delete'
                         }`}
                         aria-label={`${
-                          isWhisperGroup
+                          isWhisperRoomGroup
                             ? 'End whisper'
                             : computedHasDetectedPlayers
                               ? 'Returns players to Main'
                               : 'Delete group'
                         } ${getDisplayRoomName(room)}`}
                         disabled={
-                          pendingDelete || (isWhisperGroup && whisperEndBlockedByPendingMoves)
+                          pendingDelete || (isWhisperRoomGroup && whisperEndBlockedByPendingMoves)
                         }
                         onClick={() => {
                           void onDeleteGroup(room)
                         }}
                       >
                         <span className="material-symbols-outlined" aria-hidden="true">
-                          {isWhisperGroup
+                          {isWhisperRoomGroup
                             ? 'exit_to_app'
                             : computedHasDetectedPlayers
                               ? 'reply'
@@ -299,7 +299,7 @@ export function RoomGroupCard({
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">
-                      {isWhisperGroup
+                      {isWhisperRoomGroup
                         ? whisperEndBlockedByPendingMoves
                           ? 'Waiting for whisper moves to finish'
                           : 'End whisper'
@@ -314,7 +314,7 @@ export function RoomGroupCard({
           </span>
         </span>
 
-        {!isWhisperGroup && environmentPickerRoomId === room.id ? (
+        {!isWhisperRoomGroup && environmentPickerRoomId === room.id ? (
           <div
             className="room-selector-item__env-picker"
             role="dialog"
@@ -323,7 +323,7 @@ export function RoomGroupCard({
           >
             <p className="room-selector-item__env-picker-title">Choose environment</p>
             <div className="room-selector-item__env-picker-list">
-              {ENVIRONMENT_OPTIONS.map((option) => {
+              {GROUP_ENVIRONMENT_OPTIONS.map((option) => {
                 const isSelected =
                   getResolvedEnvironmentName(room).toLowerCase() === option.toLowerCase()
                 return (
@@ -358,7 +358,7 @@ export function RoomGroupCard({
           getResolvedPresenceState={getResolvedPresenceState}
           getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
-          getResolvedEnvironmentName={getResolvedEnvironmentName}
+          getResolvedGroupEnvironmentName={getResolvedEnvironmentName}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
           onApplyDistanceOverride={onApplyDistanceOverride}

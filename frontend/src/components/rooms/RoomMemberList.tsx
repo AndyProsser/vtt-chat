@@ -6,26 +6,26 @@ import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGrou
 import { AvatarOverlay } from './AvatarOverlay'
 import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
-  RoomParticipantWithRoomId,
-  RoomSelectorRoomWithParticipants,
-} from './roomSelector.types'
+  GroupPanelGroupWithParticipants,
+  GroupParticipantWithGroupId,
+} from './groupPanel.types'
 
 interface RoomMemberListProps {
-  room: RoomSelectorRoomWithParticipants
-  participants: RoomParticipantWithRoomId[]
+  room: GroupPanelGroupWithParticipants
+  participants: GroupParticipantWithGroupId[]
   canManageRooms: boolean
   isGreenroom: boolean
   touchFeedbackUserId: UUID | null
   setTouchFeedbackUserId: (userId: UUID | null) => void
-  getParticipantMetaLine: (member: RoomParticipantWithRoomId) => string
+  getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getResolvedPresenceState: (
-    presenceState: RoomParticipantWithRoomId['presenceState']
-  ) => RoomParticipantWithRoomId['presenceState']
+    presenceState: GroupParticipantWithGroupId['presenceState']
+  ) => GroupParticipantWithGroupId['presenceState']
   getPresenceDotState: (
-    presenceState: RoomParticipantWithRoomId['presenceState']
+    presenceState: GroupParticipantWithGroupId['presenceState']
   ) => 'online' | 'offline'
-  getStatEntries: (member: RoomParticipantWithRoomId) => Array<[string, unknown]>
-  getResolvedEnvironmentName: (room: RoomSelectorRoomWithParticipants) => string
+  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   distanceTargets: string[]
   conditionTargets: string[]
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
@@ -51,7 +51,7 @@ export function RoomMemberList({
   getResolvedPresenceState,
   getPresenceDotState,
   getStatEntries,
-  getResolvedEnvironmentName,
+  getResolvedGroupEnvironmentName,
   distanceTargets,
   conditionTargets,
   onApplyDistanceOverride,
@@ -246,7 +246,7 @@ export function RoomMemberList({
                       <span className="material-symbols-outlined" aria-hidden="true">
                         {STATUS_PILL_ICONS.environment}
                       </span>
-                      Env: {getResolvedEnvironmentName(room)}
+                      Env: {getResolvedGroupEnvironmentName(room)}
                     </span>
                     <span className="room-selector-status-pill distance">
                       <span className="material-symbols-outlined" aria-hidden="true">

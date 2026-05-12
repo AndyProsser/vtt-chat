@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import type {
-  RoomParticipantWithRoomId,
-  RoomSelectorRoomWithParticipants,
-  WhisperContextSnapshot,
-} from './roomSelector.types'
-import { isWhisperRoom } from './roomSelector.types'
+  GroupPanelGroupWithParticipants,
+  GroupParticipantWithGroupId,
+  WhisperGroupContextSnapshot,
+} from './groupPanel.types'
+import { isWhisperGroup } from './groupPanel.types'
 
 interface UseWhisperFlowOptions {
   apiUrl: string
   token: string
   sessionId: UUID
   dmUserId: UUID
-  allRooms: RoomSelectorRoomWithParticipants[]
-  displayedParticipantsByRoom: Record<string, RoomParticipantWithRoomId[]>
+  allRooms: GroupPanelGroupWithParticipants[]
+  displayedParticipantsByRoom: Record<string, GroupParticipantWithGroupId[]>
   pendingRoomMoves: Record<UUID, UUID>
   selectedRoomId?: UUID | ''
   broadcastModeEnabled: boolean
@@ -43,15 +43,15 @@ export function useWhisperFlow({
   getRoomMemberIdsFromServer,
 }: UseWhisperFlowOptions) {
   const [hasWhisperContext, setHasWhisperContext] = useState(false)
-  const whisperContextRef = useRef<WhisperContextSnapshot | null>(null)
+  const whisperContextRef = useRef<WhisperGroupContextSnapshot | null>(null)
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
   const endWhisperInFlightRef = useRef(false)
 
-  const whisperRoom = useMemo(() => allRooms.find((room) => isWhisperRoom(room)), [allRooms])
+  const whisperRoom = useMemo(() => allRooms.find((room) => isWhisperGroup(room)), [allRooms])
   const whisperRooms = useMemo(
     () =>
       allRooms
-        .filter((room) => isWhisperRoom(room))
+        .filter((room) => isWhisperGroup(room))
         .sort((left, right) => left.name.localeCompare(right.name)),
     [allRooms]
   )
