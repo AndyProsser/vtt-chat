@@ -16,7 +16,7 @@ import { getUserDMOverride } from '@/utils/audioOverrides'
 import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupCard } from './GroupCard'
-import { RoomHeaderActions } from './RoomHeaderActions'
+import { GroupsHeaderActions } from './GroupsHeaderActions'
 import { WhisperDock } from './WhisperDock'
 import {
   getDisplayGroupName,
@@ -1098,7 +1098,7 @@ export function RoomSelector({
           <h4>
             <Icon name="rooms" /> Voice Groups
           </h4>
-          <RoomHeaderActions
+          <GroupsHeaderActions
             headerModeCopy={headerModeCopy}
             canManageRooms={canManageRooms}
             isGreenroom={isGreenroom}

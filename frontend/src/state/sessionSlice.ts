@@ -12,12 +12,19 @@ import type { Session } from '@/types/session'
 
 export type { Session } from '@/types/session'
 
+export interface SessionPauseStats {
+  cumulativePauseMs: number
+  pauseCount: number
+  pauseStartedAt: number | undefined
+}
+
 export interface SessionSlice {
   // State
   sessions: Record<UUID, Session>
   currentSessionId: UUID | null
   isGreenroom: boolean
   isLoading: boolean
+  pauseStats: Record<UUID, SessionPauseStats>
 
   // Actions
   createSession: (session: Session) => void
@@ -27,6 +34,7 @@ export interface SessionSlice {
   setCurrentSession: (sessionId: UUID | null) => void
   setIsGreenroom: (value: boolean) => void
   clearSessions: () => void
+  clearPauseStats: (sessionId: UUID) => void
 
   // Event handlers
   handleSessionCreated: (event: EventEnvelope) => void
@@ -44,6 +52,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   currentSessionId: null,
   isGreenroom: true,
   isLoading: false,
+  pauseStats: {},
 
   // Actions
   createSession: (session) =>
@@ -135,6 +144,13 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       isGreenroom: true,
     }),
 
+  clearPauseStats: (sessionId) =>
+    set((state) => {
+      const next = { ...state.pauseStats }
+      delete next[sessionId]
+      return { pauseStats: next }
+    }),
+
   // Event handlers
   handleSessionCreated: (event) => {
     const payload = event.payload as { id: UUID; name: string; dmId: UUID; description?: string }
@@ -176,9 +192,34 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       }
       const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
 
+      // Accumulate pause stats client-side for server-synchronized timer
+      const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
+        cumulativePauseMs: 0,
+        pauseCount: 0,
+        pauseStartedAt: undefined,
+      }
+      let nextStats = prevStats
+
+      if (payload.state === 'PAUSED') {
+        // Record when this pause began
+        nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
+      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
+        // Resuming from pause — accumulate the pause segment
+        const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
+        nextStats = {
+          cumulativePauseMs: prevStats.cumulativePauseMs + pauseSegmentMs,
+          pauseCount: prevStats.pauseCount + 1,
+          pauseStartedAt: undefined,
+        }
+      } else if (payload.state === 'INACTIVE' || payload.state === 'ENDED') {
+        // Session ended or reset — keep stats until explicit clear
+        nextStats = { ...prevStats, pauseStartedAt: undefined }
+      }
+
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        pauseStats: { ...state.pauseStats, [event.sessionId]: nextStats },
       }
     })
   },

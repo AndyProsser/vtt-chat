@@ -638,9 +638,17 @@ export function SessionInit({
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
+  const pauseStats = useStore((state) => state.pauseStats)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
+  const currentPauseStats = currentSessionId
+    ? (pauseStats[currentSessionId] ?? {
+        cumulativePauseMs: 0,
+        pauseCount: 0,
+        pauseStartedAt: undefined,
+      })
+    : { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
 
   useEffect(() => {
     const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
@@ -3063,6 +3071,11 @@ export function SessionInit({
                   coreWsState={connectionStatus.coreWsState}
                   livekitState={connectionStatus.livekitState}
                   sessionState={toSessionStateValue(currentSession.state)}
+                  sessionStartedAt={currentSession.startedAt}
+                  sessionPausedAt={currentSession.pausedAt}
+                  sessionEndedAt={currentSession.endedAt}
+                  cumulativePauseMs={currentPauseStats.cumulativePauseMs}
+                  pauseCount={currentPauseStats.pauseCount}
                   canStartSession={canStartFromGreenroom}
                   canPauseSession={canPauseFromActive}
                   canStopSession={canStopFromActive}

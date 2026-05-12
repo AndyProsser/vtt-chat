@@ -1,6 +1,6 @@
-import type { RefObject } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
-import { CreateGroupModal } from './CreateGroupModal'
+// Legacy compatibility shim — canonical file is GroupsHeaderActions.tsx
+export { GroupsHeaderActions as RoomHeaderActions } from './GroupsHeaderActions'
+export type { GroupsHeaderActionsProps as RoomHeaderActionsProps } from './GroupsHeaderActions'
 
 interface RoomHeaderActionsProps {
   headerModeCopy?: string
