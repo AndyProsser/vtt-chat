@@ -29,7 +29,6 @@ import {
   type RoomParticipantStatus,
   type RoomParticipantWithRoomId,
   type RoomSelectorProps,
-  type RoomSelectorRoom,
   type RoomSelectorRoomWithParticipants,
 } from './roomSelector.types'
 import { useRoomMoves } from './useRoomMoves'
@@ -70,6 +69,7 @@ export function RoomSelector({
   const setRoomEnvironmentName = useStore((state) => state.setRoomEnvironmentName)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
+  const setDMOverride = useStore((state) => state.setDMOverride)
 
   const dmFlavorLine = useMemo(() => {
     const seed = `${dmUserId}:${sessionId}`
@@ -481,6 +481,19 @@ export function RoomSelector({
     async (targetUserId: UUID, muted: boolean) => {
       setMoveError(null)
 
+      const previousOverride = useStore.getState().dmOverrides.get(targetUserId) || null
+
+      setDMOverride(
+        targetUserId,
+        muted
+          ? {
+              userId: targetUserId,
+              overrideType: 'MUTE',
+              appliedAt: Date.now(),
+            }
+          : null
+      )
+
       try {
         const response = await fetch(
           `${apiUrl}/api/v1/audio/dm-override/${muted ? 'apply' : 'remove'}`,
@@ -512,10 +525,11 @@ export function RoomSelector({
           throw new Error(payload.message || `Failed to ${muted ? 'mute' : 'unmute'} participant`)
         }
       } catch (error) {
+        setDMOverride(targetUserId, previousOverride)
         setMoveError(error instanceof Error ? error.message : 'Failed to update mute override')
       }
     },
-    [apiUrl, sessionId, token]
+    [apiUrl, sessionId, setDMOverride, token]
   )
 
   const handleApplyConditionOverride = useCallback(
@@ -637,37 +651,12 @@ export function RoomSelector({
     [
       allRooms,
       broadcastModeEnabled,
-      dmUserId,
       getRoomMemberIdsFromServer,
       onSelectRoom,
       onToggleBroadcastMode,
       roomMoves.displayedParticipantsByRoom,
       whisperFlow,
     ]
-  )
-
-  const handleMoveParticipant = useCallback(
-    async (userId: UUID, toRoomId: UUID) => {
-      setMoveError(null)
-
-      try {
-        await roomMoves.handleMoveParticipant(userId, toRoomId)
-      } catch (error) {
-        setMoveError(error instanceof Error ? error.message : 'Failed to move participant')
-      }
-    },
-    [roomMoves]
-  )
-
-  const getMoveTargets = useCallback(
-    (memberRoomId: UUID) =>
-      allRooms
-        .filter((room) => room.id !== memberRoomId)
-        .map((room) => ({
-          id: room.id,
-          label: room.name,
-        })),
-    [allRooms]
   )
 
   const handleClearMemberEffects = useCallback(
@@ -681,10 +670,6 @@ export function RoomSelector({
     },
     [handleApplyConditionOverride, handleApplyMuteOverride]
   )
-
-  const notifyNotYetImplemented = useCallback((featureName: string) => {
-    setMoveError(`${featureName} is not wired yet`)
-  }, [])
 
   const handleDevResetMocks = useCallback(async () => {
     if (!import.meta.env.DEV) {
@@ -961,11 +946,7 @@ export function RoomSelector({
       onDeleteGroup={handleDeleteGroup}
       onRoomDragOver={roomMoves.handleRoomDragOver}
       onRoomDrop={roomMoves.handleRoomDrop}
-      getMoveTargets={getMoveTargets}
       conditionTargets={[...CONDITION_PRESETS, RADIAL_MENU_COPY.none]}
-      onMoveParticipant={(userId, toRoomId) => {
-        void handleMoveParticipant(userId, toRoomId)
-      }}
       onApplyConditionOverride={(userId, conditionName) => {
         void handleApplyConditionOverride(userId, conditionName)
       }}
@@ -975,8 +956,6 @@ export function RoomSelector({
       onClearMemberEffects={(userId) => {
         void handleClearMemberEffects(userId)
       }}
-      onSendPrivateMessage={() => notifyNotYetImplemented('Private messaging')}
-      onViewProfile={() => notifyNotYetImplemented('Profile view')}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
       getDisplayRoomName={getDisplayRoomName}

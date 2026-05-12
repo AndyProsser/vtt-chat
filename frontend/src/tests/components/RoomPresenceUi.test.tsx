@@ -29,6 +29,22 @@ const getDmVoiceButton = (groupName: string) =>
 const getDragUserButton = (username: string) =>
   screen.getByRole('button', { name: new RegExp(`^Drag ${username}$`, 'i') })
 
+const moveUserByDragAndDrop = (username: string, groupName: string) => {
+  const dragButton = getDragUserButton(username)
+  const dropTarget = getSelectGroupButton(groupName).closest('section') as HTMLElement
+  const dragData: Record<string, string> = {}
+  const dataTransfer = {
+    setData: vi.fn((type: string, value: string) => {
+      dragData[type] = value
+    }),
+    getData: vi.fn((type: string) => dragData[type] || ''),
+  }
+
+  fireEvent.dragStart(dragButton, { dataTransfer })
+  fireEvent.dragOver(dropTarget, { dataTransfer })
+  fireEvent.drop(dropTarget, { dataTransfer })
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -1570,9 +1586,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.contextMenu(getDragUserButton('Tara'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Main Table' }))
+    moveUserByDragAndDrop('Tara', 'Main Table')
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1670,9 +1684,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.contextMenu(getDragUserButton('Tara'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Main Table' }))
+    moveUserByDragAndDrop('Tara', 'Main Table')
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1770,10 +1782,7 @@ describe('RoomSelector', () => {
     const endWhisperButton = screen.getByRole('button', { name: 'End whisper' })
     expect(endWhisperButton.hasAttribute('disabled')).toBe(false)
 
-    // Open context menu and move Zara to the whisper room
-    fireEvent.contextMenu(getDragUserButton('Zara'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
+    moveUserByDragAndDrop('Zara', 'Whisper Booth')
 
     // Wait for the move to be pending and end-whisper button to become disabled
     await waitFor(() => {
@@ -1880,9 +1889,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.contextMenu(getDragUserButton('Zara'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
+    moveUserByDragAndDrop('Zara', 'Whisper Booth')
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2114,7 +2121,7 @@ describe('RoomSelector', () => {
     })
   })
 
-  it('opens radial menu and moves a participant to another room', async () => {
+  it('moves a participant to another room with drag-and-drop', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url.endsWith('/api/v1/rooms/room-target/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
@@ -2174,9 +2181,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.contextMenu(getDragUserButton('Tara'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Move' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Whisper Booth' }))
+    moveUserByDragAndDrop('Tara', 'Whisper Booth')
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2246,19 +2251,7 @@ describe('RoomSelector', () => {
       />
     )
 
-    const dragButton = getDragUserButton('Tara')
-    const dropTarget = getSelectGroupButton('Scouts').closest('section') as HTMLElement
-    const dragData: Record<string, string> = {}
-    const dataTransfer = {
-      setData: vi.fn((type: string, value: string) => {
-        dragData[type] = value
-      }),
-      getData: vi.fn((type: string) => dragData[type] || ''),
-    }
-
-    fireEvent.dragStart(dragButton, { dataTransfer })
-    fireEvent.dragOver(dropTarget, { dataTransfer })
-    fireEvent.drop(dropTarget, { dataTransfer })
+    moveUserByDragAndDrop('Tara', 'Scouts')
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2266,6 +2259,149 @@ describe('RoomSelector', () => {
         expect.objectContaining({ method: 'POST' })
       )
     })
+  })
+
+  it('applies mute from the player context menu', async () => {
+    useStore.getState().reset()
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/audio/dm-override/apply') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+                isMuted: false,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mute' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/dm-override/apply',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    expect(useStore.getState().dmOverrides.get(asUuid('user-2'))?.overrideType).toBe('MUTE')
+  })
+
+  it('removes mute from the player context menu', async () => {
+    useStore.getState().reset()
+    useStore.getState().setDMOverride(asUuid('user-2'), {
+      userId: asUuid('user-2'),
+      overrideType: 'MUTE',
+      appliedAt: Date.now(),
+    })
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/audio/dm-override/remove') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ message: 'Unexpected request' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+                isMuted: true,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unmute' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/dm-override/remove',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    expect(useStore.getState().dmOverrides.get(asUuid('user-2'))).toBeUndefined()
   })
 
   it('calls DEV mock reset endpoint with session payload and shows disabled state while loading', async () => {

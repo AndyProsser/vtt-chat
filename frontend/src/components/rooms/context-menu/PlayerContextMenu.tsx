@@ -1,17 +1,12 @@
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import type { ReactNode } from 'react'
-import type { UUID } from '@shared'
 import { PlayerContextMenuContent } from './PlayerContextMenuContent'
 
 interface PlayerContextMenuProps {
   enabled: boolean
   canManageRooms: boolean
   memberIsMuted: boolean
-  moveTargets: Array<{ id: UUID; label: string }>
   conditionTargets: string[]
-  onSendPrivateMessage?: () => void
-  onViewProfile?: () => void
-  onMoveSelect?: (roomId: UUID) => void
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
@@ -25,11 +20,7 @@ export function PlayerContextMenu({
   enabled,
   canManageRooms,
   memberIsMuted,
-  moveTargets,
   conditionTargets,
-  onSendPrivateMessage,
-  onViewProfile,
-  onMoveSelect,
   onToggleMute,
   onClearEffects,
   onConditionSelect,
@@ -48,11 +39,7 @@ export function PlayerContextMenu({
       <PlayerContextMenuContent
         canManageRooms={canManageRooms}
         memberIsMuted={memberIsMuted}
-        moveTargets={moveTargets}
         conditionTargets={conditionTargets}
-        onSendPrivateMessage={onSendPrivateMessage}
-        onViewProfile={onViewProfile}
-        onMoveSelect={onMoveSelect}
         onToggleMute={onToggleMute}
         onClearEffects={onClearEffects}
         onConditionSelect={onConditionSelect}

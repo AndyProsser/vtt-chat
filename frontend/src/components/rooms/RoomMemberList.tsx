@@ -26,14 +26,10 @@ interface RoomMemberListProps {
   ) => 'online' | 'offline'
   getStatEntries: (member: RoomParticipantWithRoomId) => Array<[string, unknown]>
   getResolvedEnvironmentName: (room: RoomSelectorRoomWithParticipants) => string
-  getMoveTargets: (memberRoomId: UUID) => Array<{ id: UUID; label: string }>
   conditionTargets: string[]
-  onMoveParticipant: (userId: UUID, toRoomId: UUID) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
-  onSendPrivateMessage: (userId: UUID) => void
-  onViewProfile: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -54,14 +50,10 @@ export function RoomMemberList({
   getPresenceDotState,
   getStatEntries,
   getResolvedEnvironmentName,
-  getMoveTargets,
   conditionTargets,
-  onMoveParticipant,
   onApplyConditionOverride,
   onApplyMuteOverride,
   onClearMemberEffects,
-  onSendPrivateMessage,
-  onViewProfile,
   onMemberDragStart,
   onMemberDragEnd,
 }: RoomMemberListProps) {
@@ -181,11 +173,7 @@ export function RoomMemberList({
                 enabled={isPlayerTarget}
                 canManageRooms={canManageRooms}
                 memberIsMuted={isMuted}
-                moveTargets={getMoveTargets(room.id)}
                 conditionTargets={conditionTargets}
-                onSendPrivateMessage={() => onSendPrivateMessage(member.userId)}
-                onViewProfile={() => onViewProfile(member.userId)}
-                onMoveSelect={(targetRoomId) => onMoveParticipant(member.userId, targetRoomId)}
                 onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
                 onClearEffects={() => onClearMemberEffects(member.userId)}
                 onConditionSelect={(conditionName) =>
