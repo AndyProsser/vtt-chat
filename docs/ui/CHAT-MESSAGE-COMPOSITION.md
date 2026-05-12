@@ -1,9 +1,3 @@
-Below is a **full, implementation‑ready chat UI layout specification** for your VTT‑Chat system. It is structured for GitHub Copilot, deterministic, and aligned with your minimalistic, modern, theme‑aware UI preferences. It builds directly on your message‑flow rules and persona‑based UI architecture.
-
-I’ve included **inline images** where they genuinely help visualise layout patterns.
-
----
-
 # **VTT‑Chat UI Layout Specification (Chat Panel)**
 
 ## **1. High‑Level Layout**

@@ -192,7 +192,7 @@ For each message `m` in the current session:
 - **Spectators:** see IC, OOC, and global system only; never see whispers, greenroom, or whisper group.
 - **Players:** use the algorithm below, where `user.sessionGroupHistory` is the set of all groups they've been in this session.
 
-```
+```text
 if m.type == 'IC':
   show iff (m.groupId in user.sessionGroupHistory)
 
