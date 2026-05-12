@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
   SessionState,
   Role,
@@ -30,6 +31,7 @@ import { NotesRailPanel } from './NotesRailPanel'
 import { SearchPanel } from './SearchPanel'
 import { JournalPanel } from './JournalPanel'
 import { HistoryPanel } from './HistoryPanel'
+import { CampaignRightbarSettings } from './CampaignRightbarSettings'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
@@ -3263,57 +3265,24 @@ export function SessionInit({
                 }
 
                 if (tab === 'settings') {
-                  if (effectiveSessionRole !== 'DM') {
-                    return (
-                      <div className="session-settings-panel" aria-label="Campaign settings">
-                        <h3 className="session-inline-form-title">Campaign Settings</h3>
-                        <p className="session-card-subtitle">
-                          Only the DM can update campaign voice targeting preferences.
-                        </p>
-                      </div>
-                    )
-                  }
-
                   return (
-                    <div className="session-settings-panel" aria-label="Campaign settings">
-                      <h3 className="session-inline-form-title">Campaign Settings</h3>
-                      <p className="session-card-subtitle">
-                        Choose whether DM voice target should auto-switch to a group when the first
-                        player is dragged into it.
-                      </p>
-
-                      <label className="session-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={settingsDmAutoTargetOnFirstPlayerJoin}
-                          onChange={(event) =>
-                            setSettingsDmAutoTargetOnFirstPlayerJoin(event.target.checked)
-                          }
-                          disabled={
-                            isDmVoiceTargetingSettingLoading || isDmVoiceTargetingSettingSaving
-                          }
-                        />
-                        <span>Auto-target first player join</span>
-                      </label>
-
-                      <button
-                        type="button"
-                        className="session-button"
-                        disabled={
-                          !selectedCampaignId ||
-                          isDmVoiceTargetingSettingLoading ||
-                          isDmVoiceTargetingSettingSaving
-                        }
-                        onClick={() => {
-                          if (!selectedCampaignId) {
-                            return
-                          }
-                          void saveDmVoiceTargetingSetting(selectedCampaignId)
-                        }}
-                      >
-                        {isDmVoiceTargetingSettingSaving ? 'Saving...' : 'Save voice targeting'}
-                      </button>
-                    </div>
+                    <CampaignRightbarSettings
+                      role={
+                        effectiveSessionRole === 'DM'
+                          ? 'DM'
+                          : effectiveSessionRole === 'PLAYER'
+                            ? 'PLAYER'
+                            : 'SPECTATOR'
+                      }
+                      campaignId={selectedCampaignId || null}
+                      dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
+                      onDmAutoTargetChange={setSettingsDmAutoTargetOnFirstPlayerJoin}
+                      onSaveDmAutoTarget={() => {
+                        if (selectedCampaignId) void saveDmVoiceTargetingSetting(selectedCampaignId)
+                      }}
+                      isSaving={isDmVoiceTargetingSettingSaving}
+                      isLoading={isDmVoiceTargetingSettingLoading}
+                    />
                   )
                 }
 
@@ -3991,31 +3960,32 @@ export function SessionInit({
         </div>
       )}
 
-      {showUserSettingsModal && (
-        <div className="session-modal-backdrop" role="presentation">
-          <div
-            className="session-modal session-user-settings-modal"
-            role="dialog"
-            aria-modal="true"
+      <DialogPrimitive.Root open={showUserSettingsModal} onOpenChange={setShowUserSettingsModal}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
+          <DialogPrimitive.Content
+            className="session-modal session-user-settings-modal session-modal--floating"
             aria-label="User settings"
           >
             <h4 className="session-inline-form-title">User Settings</h4>
             <SessionUserSettingsPanel
               messageGroupingWindowMs={messageGroupingWindowMs}
               onMessageGroupingWindowChange={setMessageGroupingWindowMs}
+              apiUrl={apiUrl}
+              token={token}
+              userId={user.id}
+              username={user.username}
             />
             <div className="session-action-row">
-              <button
-                type="button"
-                className="session-button session-button-neutral"
-                onClick={() => setShowUserSettingsModal(false)}
-              >
-                Close
-              </button>
+              <DialogPrimitive.Close asChild>
+                <button type="button" className="session-button session-button-neutral">
+                  Close
+                </button>
+              </DialogPrimitive.Close>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {showExitSessionModal && (
         <div className="session-modal-backdrop" role="presentation">

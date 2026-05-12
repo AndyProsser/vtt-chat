@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode } from '@shared'
+import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getUserProfileById, listCharactersForUser } from '@/repositories/campaign.repository'
 import { validateUserAuthState } from '@/services/auth-user-context.service'
@@ -71,6 +72,87 @@ router.get('/me/characters', requireAuth, async (req: Request, res: Response) =>
   const user = (req as any).user
   const characters = await listCharactersForUser(user.userId)
   return res.status(200).json({ characters })
+})
+
+router.patch('/me', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { displayName, avatarUrl } = req.body || {}
+
+  if (displayName !== undefined) {
+    if (typeof displayName !== 'string') {
+      return res
+        .status(400)
+        .json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'displayName must be a string',
+          field: 'displayName',
+        })
+    }
+    if (displayName.trim().length > 64) {
+      return res
+        .status(400)
+        .json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'displayName must be 64 characters or fewer',
+          field: 'displayName',
+        })
+    }
+  }
+
+  if (avatarUrl !== undefined && avatarUrl !== null) {
+    if (typeof avatarUrl !== 'string') {
+      return res
+        .status(400)
+        .json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'avatarUrl must be a string or null',
+          field: 'avatarUrl',
+        })
+    }
+    if (avatarUrl.trim().length > 2_000_000) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'avatarUrl too long', field: 'avatarUrl' })
+    }
+  }
+
+  const prisma = getPrismaClient()
+  const updateData: Record<string, string | null | undefined> = {}
+
+  if (displayName !== undefined) {
+    updateData.displayName =
+      typeof displayName === 'string' && displayName.trim().length > 0 ? displayName.trim() : null
+  }
+
+  if (avatarUrl !== undefined) {
+    updateData.avatarUrl =
+      typeof avatarUrl === 'string' && avatarUrl.trim().length > 0 ? avatarUrl.trim() : null
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: user.userId },
+    data: updateData,
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      role: true,
+      createdAt: true,
+    },
+  })
+
+  return res.status(200).json({
+    user: {
+      id: updated.id,
+      username: updated.username,
+      displayName: updated.displayName,
+      avatarUrl: updated.avatarUrl,
+      role: updated.role,
+      authType: user.authType || 'FULL',
+      createdAt: updated.createdAt,
+    },
+  })
 })
 
 export default router

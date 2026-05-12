@@ -410,6 +410,22 @@
   padding: 1rem;
 }
 
+/* Radix Dialog variants — overlay is pure backdrop, content is self-centered */
+.session-modal-backdrop--overlay {
+  display: block;
+  padding: 0;
+}
+
+.session-modal--floating {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
 .session-campaign-settings-header {
   display: flex;
   align-items: flex-start;

@@ -1,0 +1,61 @@
+.crbs-panel {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.crbs-heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.crbs-muted {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.crbs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.crbs-section-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.crbs-description {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.crbs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.83rem;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.crbs-toggle input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.crbs-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.2rem;
+}

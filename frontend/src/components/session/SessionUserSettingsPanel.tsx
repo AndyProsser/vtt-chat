@@ -1,8 +1,14 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import * as TabsPrimitive from '@radix-ui/react-tabs'
+import '../../styles/components/session/SessionUserSettingsPanel.css'
 
-interface SessionUserSettingsPanelProps {
+export interface SessionUserSettingsPanelProps {
   messageGroupingWindowMs: number
   onMessageGroupingWindowChange: (value: number) => void
+  apiUrl: string
+  token: string
+  userId: string
+  username: string
 }
 
 const GROUPING_OPTIONS: Array<{ label: string; value: number; description: string }> = [
@@ -25,6 +31,13 @@ const AUDIO_INPUT_VOLUME_KEY = 'vtt-audio-input-volume'
 const AUDIO_OUTPUT_VOLUME_KEY = 'vtt-audio-output-volume'
 const AUDIO_PUSH_TO_TALK_KEY = 'vtt-audio-push-to-talk'
 const AUDIO_NOISE_SUPPRESSION_KEY = 'vtt-audio-noise-suppression'
+
+interface ProfileState {
+  displayName: string
+  avatarUrl: string
+}
+
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error'
 
 function readStoredNumber(key: string, fallback: number): number {
   if (typeof window === 'undefined') {
@@ -52,7 +65,69 @@ function readStoredBoolean(key: string, fallback: boolean): boolean {
 export function SessionUserSettingsPanel({
   messageGroupingWindowMs,
   onMessageGroupingWindowChange,
+  apiUrl,
+  token,
+  userId,
+  username,
 }: SessionUserSettingsPanelProps) {
+  const [profile, setProfile] = useState<ProfileState>({ displayName: '', avatarUrl: '' })
+  const [profileLoaded, setProfileLoaded] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch(`${apiUrl}/api/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (data: { user?: { displayName?: string | null; avatarUrl?: string | null } } | null) => {
+          if (cancelled || !data?.user) return
+          setProfile({
+            displayName: data.user.displayName ?? '',
+            avatarUrl: data.user.avatarUrl ?? '',
+          })
+          setProfileLoaded(true)
+        }
+      )
+      .catch(() => {
+        if (!cancelled) setProfileLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl, token, userId])
+
+  const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSaveStatus('saving')
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    try {
+      const res = await fetch(`${apiUrl}/api/users/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          displayName: profile.displayName.trim() || null,
+          avatarUrl: profile.avatarUrl.trim() || null,
+        }),
+      })
+      setSaveStatus(res.ok ? 'success' : 'error')
+    } catch {
+      setSaveStatus('error')
+    }
+    saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
   const [masterVolume, setMasterVolume] = useState<number>(() =>
     readStoredNumber(AUDIO_MASTER_VOLUME_KEY, 80)
   )
@@ -98,104 +173,197 @@ export function SessionUserSettingsPanel({
   }, [noiseSuppressionEnabled])
 
   return (
-    <section className="session-settings-panel" aria-label="User settings">
-      <h4 className="session-settings-panel__title">User Settings</h4>
-      <p className="session-settings-panel__subtitle">
-        Personalize your chat and command center behavior.
-      </p>
+    <section aria-label="User settings">
+      <TabsPrimitive.Root defaultValue="profile">
+        <TabsPrimitive.List className="susp-tabs-list" aria-label="Settings sections">
+          <TabsPrimitive.Trigger value="profile" className="susp-tab-trigger">
+            Profile
+          </TabsPrimitive.Trigger>
+          <TabsPrimitive.Trigger value="preferences" className="susp-tab-trigger">
+            Preferences
+          </TabsPrimitive.Trigger>
+        </TabsPrimitive.List>
 
-      <div className="session-settings-item">
-        <label htmlFor="message-grouping-window" className="session-settings-item__label">
-          Message grouping window
-        </label>
-        <p className="session-settings-item__description">
-          Consecutive messages by the same author are grouped within this time window.
-        </p>
-        <select
-          id="message-grouping-window"
-          className="session-select session-settings-item__select"
-          value={String(selectedOption.value)}
-          onChange={handleGroupingWindowChange}
-        >
-          {GROUPING_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <p className="session-settings-item__hint">{selectedOption.description}</p>
-      </div>
+        {/* ── Profile tab ─────────────────────────────────── */}
+        <TabsPrimitive.Content value="profile" className="susp-tab-content">
+          <form onSubmit={(e) => void handleProfileSave(e)} noValidate>
+            <div className="susp-avatar-row" style={{ marginBottom: '1rem' }}>
+              {profile.avatarUrl ? (
+                <img
+                  className="susp-avatar"
+                  src={profile.avatarUrl}
+                  alt={profile.displayName || username}
+                />
+              ) : (
+                <div className="susp-avatar-placeholder" aria-hidden="true">
+                  {(profile.displayName || username).charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="susp-avatar-meta">
+                <p className="susp-avatar-username">@{username}</p>
+              </div>
+            </div>
 
-      <div className="session-settings-item">
-        <h5 className="session-settings-item__heading">Audio Preferences</h5>
-        <p className="session-settings-item__description">
-          Tune your default voice settings before joining a campaign session.
-        </p>
+            <div className="susp-field" style={{ marginBottom: '0.75rem' }}>
+              <label htmlFor="susp-display-name" className="susp-field__label">
+                Display name
+              </label>
+              <input
+                id="susp-display-name"
+                type="text"
+                className="susp-field__input"
+                placeholder={username}
+                maxLength={64}
+                value={profile.displayName}
+                disabled={!profileLoaded || saveStatus === 'saving'}
+                onChange={(e) => setProfile((prev) => ({ ...prev, displayName: e.target.value }))}
+              />
+              <p className="susp-field__hint">
+                Shown to other players. Leave blank to use your username.
+              </p>
+            </div>
 
-        <label className="session-settings-item__label" htmlFor="audio-master-volume">
-          Master volume: {masterVolume}%
-        </label>
-        <input
-          id="audio-master-volume"
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={masterVolume}
-          onChange={(event) => setMasterVolume(Number(event.target.value))}
-          className="session-settings-item__range"
-        />
+            <div className="susp-field" style={{ marginBottom: '0.75rem' }}>
+              <label htmlFor="susp-avatar-url" className="susp-field__label">
+                Avatar URL
+              </label>
+              <input
+                id="susp-avatar-url"
+                type="url"
+                className="susp-field__input"
+                placeholder="https://…"
+                value={profile.avatarUrl}
+                disabled={!profileLoaded || saveStatus === 'saving'}
+                onChange={(e) => setProfile((prev) => ({ ...prev, avatarUrl: e.target.value }))}
+              />
+              <p className="susp-field__hint">Direct link to an image (PNG, JPEG, WebP).</p>
+            </div>
 
-        <label className="session-settings-item__label" htmlFor="audio-input-volume">
-          Microphone input level: {inputVolume}%
-        </label>
-        <input
-          id="audio-input-volume"
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={inputVolume}
-          onChange={(event) => setInputVolume(Number(event.target.value))}
-          className="session-settings-item__range"
-        />
+            <div className="susp-profile-actions">
+              <button
+                type="submit"
+                className="session-button"
+                disabled={!profileLoaded || saveStatus === 'saving'}
+              >
+                {saveStatus === 'saving' ? 'Saving…' : 'Save profile'}
+              </button>
+              {saveStatus === 'success' && (
+                <span className="susp-save-status is-success">Saved</span>
+              )}
+              {saveStatus === 'error' && (
+                <span className="susp-save-status is-error">Save failed</span>
+              )}
+            </div>
+          </form>
+        </TabsPrimitive.Content>
 
-        <label className="session-settings-item__label" htmlFor="audio-output-volume">
-          Voice output level: {outputVolume}%
-        </label>
-        <input
-          id="audio-output-volume"
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={outputVolume}
-          onChange={(event) => setOutputVolume(Number(event.target.value))}
-          className="session-settings-item__range"
-        />
+        {/* ── Preferences tab ─────────────────────────────── */}
+        <TabsPrimitive.Content value="preferences" className="susp-tab-content">
+          <div>
+            <p className="susp-section-heading">Chat</p>
+            <label htmlFor="susp-grouping-window" className="susp-field__label">
+              Message grouping window
+            </label>
+            <select
+              id="susp-grouping-window"
+              className="susp-select"
+              value={String(selectedOption.value)}
+              onChange={handleGroupingWindowChange}
+              style={{ marginTop: '0.3rem' }}
+            >
+              {GROUPING_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="susp-hint">{selectedOption.description}</p>
+          </div>
 
-        <div className="session-settings-item__toggle-row">
-          <label className="session-settings-item__toggle" htmlFor="audio-push-to-talk">
-            <input
-              id="audio-push-to-talk"
-              type="checkbox"
-              checked={pushToTalkEnabled}
-              onChange={(event) => setPushToTalkEnabled(event.target.checked)}
-            />
-            <span>Push to talk</span>
-          </label>
+          <div>
+            <p className="susp-section-heading">Audio</p>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.6rem',
+                marginTop: '0.1rem',
+              }}
+            >
+              <div className="susp-range-row">
+                <span className="susp-range-label">
+                  <span>Master volume</span>
+                  <span>{masterVolume}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={masterVolume}
+                  onChange={(event) => setMasterVolume(Number(event.target.value))}
+                  className="susp-range"
+                  aria-label="Master volume"
+                />
+              </div>
 
-          <label className="session-settings-item__toggle" htmlFor="audio-noise-suppression">
-            <input
-              id="audio-noise-suppression"
-              type="checkbox"
-              checked={noiseSuppressionEnabled}
-              onChange={(event) => setNoiseSuppressionEnabled(event.target.checked)}
-            />
-            <span>Noise suppression</span>
-          </label>
-        </div>
-      </div>
+              <div className="susp-range-row">
+                <span className="susp-range-label">
+                  <span>Microphone level</span>
+                  <span>{inputVolume}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={inputVolume}
+                  onChange={(event) => setInputVolume(Number(event.target.value))}
+                  className="susp-range"
+                  aria-label="Microphone level"
+                />
+              </div>
+              <div className="susp-range-row">
+                <span className="susp-range-label">
+                  <span>Voice output level</span>
+                  <span>{outputVolume}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={outputVolume}
+                  onChange={(event) => setOutputVolume(Number(event.target.value))}
+                  className="susp-range"
+                  aria-label="Voice output level"
+                />
+              </div>
+
+              <div className="susp-toggle-row">
+                <label className="susp-toggle" htmlFor="susp-push-to-talk">
+                  <input
+                    id="susp-push-to-talk"
+                    type="checkbox"
+                    checked={pushToTalkEnabled}
+                    onChange={(event) => setPushToTalkEnabled(event.target.checked)}
+                  />
+                  <span>Push to talk</span>
+                </label>
+                <label className="susp-toggle" htmlFor="susp-noise-suppression">
+                  <input
+                    id="susp-noise-suppression"
+                    type="checkbox"
+                    checked={noiseSuppressionEnabled}
+                    onChange={(event) => setNoiseSuppressionEnabled(event.target.checked)}
+                  />
+                  <span>Noise suppression</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </TabsPrimitive.Content>
+      </TabsPrimitive.Root>
     </section>
   )
 }
