@@ -100,6 +100,22 @@ Recording behavior is privacy-critical and must follow these rules:
 
 Note: if runtime recording controls are not wired yet, this remains a required contract and must be implemented before enabling recording capture in-session.
 
+### Chat Message Persistence Model
+
+**Experience Persistence Principle:** Players retain all messages they have witnessed in a session, regardless of group movement. Messages are never "trapped" as players move between contexts.
+
+**Message Type Persistence:**
+
+- **IC, OOC, System messages:** Always persisted to campaign history. Players always retain these.
+- **Whisper messages (player-to-player):** Always persisted to campaign history for sender and all targets.
+- **DM Whisper messages:** Always visible to target player regardless of group movement (except in Whisper Group context).
+- **Greenroom messages:** Ephemeral by default (purged at cleanup); marked for staging/privacy.
+- **Whisper Group messages:** Off-the-record by default (deleted on exit). DM can toggle persistence per campaign.
+
+**Key Rule:** No message is "lost" or "trapped" as players move groups. The session group history (`sessionGroupHistory` in Zustand) tracks all contexts a player visits; all messages from those contexts remain visible.
+
+**Spectator Message Model:** Spectators are ephemeral-only. They see current session messages only (IC, OOC, global system) and do NOT have campaign history access. Spectator messages are never persisted to campaign archive.
+
 ### Audio Effects Are Contextual and Visible
 
 Players must ALWAYS know WHY their audio sounds different. The AudioPanel (`<AudioPanel />`) shows a live list of active effects with icons:

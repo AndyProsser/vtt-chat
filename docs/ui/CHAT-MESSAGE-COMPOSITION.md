@@ -1,280 +1,307 @@
-# Chat Message Composition & Creation Rules
+Below is a **full, implementation‑ready chat UI layout specification** for your VTT‑Chat system. It is structured for GitHub Copilot, deterministic, and aligned with your minimalistic, modern, theme‑aware UI preferences. It builds directly on your message‑flow rules and persona‑based UI architecture.
 
-**Status**: W0 Frontend Surface Completion
-**Related**: [UI-COMPONENTS.md](UI-COMPONENTS.md), [CHAT-MESSAGE-VISIBILITY.md](CHAT-MESSAGE-VISIBILITY.md)
-
----
-
-## Overview
-
-Chat message composition in VTT-Chat is context-aware: the composer availability, target group selection, and send permissions depend on **session state**, **persona role**, and **current room membership**. This document defines who can compose and send messages in each context.
+I’ve included **inline images** where they genuinely help visualise layout patterns.
 
 ---
 
-## Composer Availability Matrix
+# **VTT‑Chat UI Layout Specification (Chat Panel)**
 
-| Context                    | DM                       | Players                    | Spectators        | Notes                                        |
-| -------------------------- | ------------------------ | -------------------------- | ----------------- | -------------------------------------------- |
-| **ACTIVE MAIN**            | ✔ (always target MAIN)   | ✔ (target current group)   | ✖                 | Composer visible and enabled                 |
-| **ACTIVE Secondary**       | ✔ (target current group) | ✔ (target current group)   | ✖                 | Composer visible and enabled                 |
-| **Greenroom**              | ✔                        | ✔                          | ✖                 | Open hangout; everyone composes to Greenroom |
-| **PAUSED**                 | ✔ (MAIN only)            | ✖\* (MAIN only if present) | ✖                 | Stage prep; no secondary group compose       |
-| **Whisper**                | ✔                        | ✔ (if member)              | ✖                 | Private huddle; ephemeral/off-record         |
-| **ENDED (cooldown)**       | ✔ (MAIN)                 | ✔ (MAIN only)              | ✔ (MAIN only)\*\* | Post-show thanks; ephemeral only             |
-| **ENDED (after cooldown)** | ✖                        | ✖                          | ✖                 | Composer disabled; session closed            |
+## **1. High‑Level Layout**
 
----
+The Chat UI is a **three‑zone vertical layout** inside the main VTT‑Chat interface:
 
-## Detailed Rules
+1. **Header Bar** — session/history context, unified stream controls, filters, session indicator
+2. **Message Stream** — unified chronological flow of all messages the user has experienced
+3. **Composer Area** — message input, type selector, whisper controls
 
-### ACTIVE Session — MAIN Group Compose
+**Key principle:** Players see **all messages they have experienced in the current session**, in one unified chronological stream. No messages are "trapped" as they move between groups.
 
-**Who can compose**:
+This layout must adapt to:
 
-- **DM**: Always able to compose and send to MAIN.
-- **Players in MAIN**: Can compose and send to MAIN.
-- **Players in Secondary Groups**: Cannot compose to MAIN; composition target is locked to their current group.
-- **Spectators**: Cannot compose.
-
-**Composer state**:
-
-- Visible and enabled for DM and players in MAIN.
-- Disabled/hidden for players in secondary groups (they compose to their group instead).
-- Hidden entirely for spectators.
-
-**Message target**:
-
-- All messages go to MAIN room.
-- No cross-group composition in Phase W0.
+- Player (current session)
+- Player (history panel)
+- DM (current session)
+- Spectator (current session only)
+- Whisper Group (temporary overlay mode)
+- Greenroom (temporary overlay mode)
 
 ---
 
-### ACTIVE Session — Secondary Group Compose
+## **2. Header Bar**
 
-**Who can compose**:
+### **2.1 Session & History Selector**
 
-- **DM**: Can compose to any secondary group they have selected/open.
-- **Players in Secondary Group**: Can compose and send only to their own secondary group.
-- **Players in Other Secondary Groups**: Cannot compose to a group they're not in.
-- **Players in MAIN**: Cannot compose to secondary groups; if they join a secondary group, composer target updates to that group.
-- **Spectators**: Cannot compose.
+- **Session Indicator**
+  - Shows current session (e.g., "2026-05-12 Evening Game — Active").
+  - Color-coded by session state (Active = green, Paused = yellow, Ended = gray).
+  - Click to access History panel.
 
-**Composer state**:
+- **History Panel Access** (Non-spectators only)
+  - Button/icon to open campaign history sidebar.
+  - Shows prior sessions with timestamps and player count.
+  - Clicking a prior session switches to read-only history view.
+  - History messages show with visual "archived" indicator.
 
-- Visible and enabled for DM and players in the secondary group.
-- Disabled/hidden for non-members.
+### **2.2 Message Filtering Controls**
 
-**Message target**:
+- **Filter Chips** (UX convenience, does not override privacy)
+  - All (default)
+  - IC only
+  - OOC only
+  - Whispers (if user has any)
+  - System only
+  - By group (dropdown: "Party A", "Party B", etc.)
 
-- All messages go to the specific secondary room.
-- Changing rooms updates the composer target automatically.
+- **Search Box**
+  - Full-text search across visible messages
+  - Search by sender, message content, group
 
----
+### **2.3 Context Status**
 
-### Greenroom (INACTIVE/Between Sessions)
+- **Current Group Badge**
+  - Shows current group (e.g., "Party A", "Greenroom", "Whisper Group").
+  - Color-coded by type.
+  - DM sees a dropdown to switch contexts (view as if in that group).
 
-**Who can compose**:
+- **Whisper Group Indicator** (when active)
+  - "Whisper Sanctuary Active" badge with pulse animation.
+  - Shows participant count.
+  - Exit button (DM only).
 
-- **DM**: Can compose and send to Greenroom.
-- **Players**: Can compose and send to Greenroom.
-- **Spectators**: Cannot enter Greenroom; no composer access.
+### **2.4 DM Tools** (DM only)
 
-**Composer state**:
-
-- Visible and enabled for DM and players.
-- Disabled/hidden for spectators.
-
-**Message target**:
-
-- All messages go to Greenroom room.
-- Single composition target; no group selection needed.
-
-**Notes**:
-
-- Greenroom is a warm-up hangout; all composition is open and shared.
-
----
-
-### PAUSED Session — Stage Prep
-
-**Who can compose**:
-
-- **DM**: Can compose and send to MAIN only (stage prep).
-- **Players in MAIN**: Can compose and send to MAIN.
-- **Players NOT in MAIN**: Cannot compose during pause.
-- **Spectators**: Cannot compose (curtain down).
-
-**Composer state**:
-
-- Visible and enabled for DM and players in MAIN.
-- Disabled/hidden for everyone else.
-- Composition target is locked to MAIN; no secondary group composition during pause.
-
-**Message target**:
-
-- All messages go to MAIN only.
-- No secondary group chat during pause.
-
-**Notes**:
-
-- Pause is an intermission (curtain down); chat is limited to stage prep in MAIN.
-- Runtime chat during pause must NOT be recorded or persisted (off-the-record per contract).
+- Campaign settings shortcuts
+  - Toggle **Global OOC**
+  - Toggle **Player–player Whispers**
+  - Toggle **Whisper Group Persistence**
+  - Toggle **Suppress Other Streams in Whisper Group**
 
 ---
 
-### Whisper Group (PRIVATE)
+## **3. Message Stream**
 
-**Who can compose**:
+### **3.1 Core Principles**
 
-- **DM**: Can compose and send to Whisper.
-- **Players in Whisper**: Can compose and send to Whisper.
-- **Players NOT in Whisper**: Cannot compose to Whisper.
-- **Spectators**: Cannot compose or see Whisper content.
+- **Unified chronological stream** — all messages the user has experienced appear in one stream, in temporal order
+- **No trapped messages** — once a player visits a group, all IC/OOC/System from that group remain visible even if they move to another group
+- **Inline whispers** — whispers appear in chronological order inline with group messages
+- **Contextual grouping (optional)** — players can view messages grouped by group/context if preferred (separate UI mode)
+- **Ephemeral fade animations** — Greenroom and Whisper Group messages fade when context ends, reinforcing their staging/private nature
+- **Minimal clutter** — clear type indicators and visibility icons help players understand message scope
+- **Session awareness** — when in History view, messages show "archived" and cannot be interacted with
 
-**Composer state**:
+### **3.2 Default Behavior: Unified Stream**
 
-- Visible and enabled for DM and Whisper members.
-- Whisper has a separate composer interface (may be inline or popout).
-- Hidden for non-members.
+On login or session join, players see **all messages from the current session in one unified chronological stream**. This is the default view. Players:
 
-**Message target**:
+- See IC/OOC/Whisper/System messages from all groups they've ever been in during this session
+- See Whispers they're party to (inline)
+- Can scroll freely through the entire session history
+- Do **not** see messages from groups they've never visited
+- Can apply filters (By Type, By Group, By Sender, Search) as UI enhancements
 
-- All messages go to Whisper room (PRIVATE).
+### **3.2 Message Cell Structure**
 
-**Persistence & Recording**:
+Each message cell contains:
 
-- **Whisper chat is NEVER recorded or persisted** to session history (off-the-record contract).
-- After Whisper ends, message state is cleared locally.
-- No history API includes Whisper chat.
-- Message timestamps and content remain in memory only while Whisper is active.
+| Element             | Description                                    |
+| ------------------- | ---------------------------------------------- |
+| **Avatar**          | Sender avatar or DM icon                       |
+| **Sender Name**     | Styled by role (Player, DM, System)            |
+| **Type Tag**        | IC / OOC / Whisper / System / Greenroom        |
+| **Group Tag**       | Group context (always shown for IC/OOC)        |
+| **Timestamp**       | Small, subtle (hover shows full timestamp)     |
+| **Message Body**    | Markdown‑safe, styled per type                 |
+| **Visibility Icon** | Lock (whisper), group icon, globe (global OOC) |
+| **Archive Badge**   | _Only in history view:_ "Archived" label       |
 
-**Notes**:
+### **3.3 Group Tag Display**
 
-- Whisper is a single, system-managed private bubble created when session starts.
-- DM controls entry/exit; players cannot initiate private groups in Phase W0.
-
----
-
-### ENDED Session — Cooldown Phase
-
-**Who can compose**:
-
-- **DM**: Can compose and send to MAIN.
-- **Players in MAIN**: Can compose and send to MAIN.
-- **Spectators**: Can compose and send to MAIN\* (post-show finale window).
-- **Players NOT in MAIN**: Cannot compose.
-
-**Composer state**:
-
-- Visible and enabled for DM, players in MAIN, and connected spectators.
-- Disabled/hidden for others.
-- Composition target is locked to MAIN; no secondary groups.
-
-**Message target**:
-
-- All messages go to MAIN only.
-
-**Persistence & Recording**:
-
-- **Cooldown chat is ephemeral and NOT persisted** to session history (off-the-record per contract).
-- Cooldown messages remain in local chat stream during cooldown window only.
-- After cooldown expires or is cancelled, all cooldown messages are purged from local state.
-- No history API includes cooldown messages; they never survive refresh/reconnect.
-- Backend may log cooldown interactions for audit, but does not persist them in session history.
-
-**Notes**:
-
-- Cooldown is a post-show thanks/goodbye phase; spectators can participate.
-- After cooldown ends (via expiry or cancel), session disconnects all users.
+- **IC messages:** always show group name (e.g., "Party A", "Tavern")
+- **OOC messages (local):** show group name; if global OOC, show globe icon instead
+- **Whispers:** show "Whisper" with target name(s) inline
+- **System (group-bound):** show group name; if global, show no group tag
+- **Greenroom:** show "Greenroom" tag (teal)
+- **Whisper Group:** show "Whisper" with participant indicators
 
 ---
 
-### ENDED Session — After Cooldown
+## **4. Message Styling**
 
-**Who can compose**:
+### **4.1 Style Tokens**
 
-- **Everyone**: No one. Session is closed; composer disabled.
+| Type              | Color               | Icon        | Notes          |
+| ----------------- | ------------------- | ----------- | -------------- |
+| **IC**            | Warm parchment tint | Quill       | Serif font     |
+| **OOC**           | Neutral grey        | Chat bubble | Sans-serif     |
+| **Whisper**       | Soft purple         | Lock        | Slight glow    |
+| **System**        | Gold/blue           | Cog or star | Italic         |
+| **Greenroom**     | Teal translucent    | Leaf        | Soft blur      |
+| **Whisper Group** | Deep purple         | Mask        | Ephemeral fade |
 
-**Composer state**:
+### **4.2 Ephemeral Fade**
 
-- Disabled and hidden for all personas.
-- Session chat is read-only (history-only).
+When leaving Whisper Group or Greenroom:
 
----
+- Messages fade to 30% opacity
+- Then slide down and collapse
+- Then removed from DOM
 
-## Composer UI Behavior
-
-### Auto-Target Switching
-
-When a player joins a new room:
-
-1. Composer target auto-updates to the new room.
-2. Placeholder text updates to indicate target: "Message MAIN", "Message Tavern", "Message Whisper", etc.
-3. No manual room-selection dropdown required (auto-tracking per Copilot instructions: "simplicity").
-
-### Multi-Message Queuing
-
-If network is unstable:
-
-- Messages may be queued locally in `queued` state.
-- Zustand store tracks: `sending`, `queued`, `failed`, `sent` per message.
-- Failed messages show resend option; user can retry or delete.
-- Queue persists only for the current session (not across refresh).
-
-### Mention & Link Parsing (Future)
-
-Phase W0 does not include mentions or rich links; plain text only.
+This reinforces privacy and avoids jarring jumps.
 
 ---
 
-## Message Composition Access Control
+## **5. Composer Area**
 
-| Action                        | DM          | Player (in group) | Player (not in group) | Spectator         |
-| ----------------------------- | ----------- | ----------------- | --------------------- | ----------------- |
-| **Compose to MAIN**           | ✔           | ✔                 | ✖                     | ✖ (✔ in cooldown) |
-| **Compose to Secondary**      | ✔ (current) | ✔ (current)       | ✖                     | ✖                 |
-| **Compose to Greenroom**      | ✔           | ✔                 | ✔                     | ✖                 |
-| **Compose to Whisper**        | ✔           | ✔ (if member)     | ✖                     | ✖                 |
-| **Compose in PAUSED**         | ✔ (MAIN)    | ✔ (if in MAIN)    | ✖                     | ✖                 |
-| **Compose in ENDED cooldown** | ✔           | ✔ (if in MAIN)    | ✔                     | ✖                 |
+### **5.1 Components**
+
+- **Message Input Box**
+  - Multi-line, markdown-safe, auto-expands
+  - Disabled in history view and spectator mode
+  - Placeholder text reflects context ("Message your group...", "Whisper...", etc.)
+
+- **Message Type Selector** (Context-dependent)
+  - **Normal group:** IC / OOC / Whisper (with send-to indicators)
+  - **Greenroom:** OOC only
+  - **Whisper Group:** Whisper Group messages only
+  - Disabled types greyed out (e.g., whispers if disabled by DM)
+
+- **Whisper Target Selector** (appears when Whisper type selected)
+  - Multi-select dropdown of available recipients
+  - Shows players in current group + DM
+  - Displays target avatars/names inline
+
+- **Send Button**
+  - Shows icon based on message type (quill for IC, chat bubble for OOC, lock for Whisper)
+  - Keyboard shortcut: Enter = send, Shift+Enter = newline
+  - Disabled in read-only modes (history, spectator)
+
+### **5.2 Composer Behavior by Context**
+
+**In Normal Group (Session Active):**
+
+- Full IC/OOC/Whisper options
+- Message sends to current group
+
+**In Greenroom (Session Paused or Pre-Session):**
+
+- OOC only
+- Message marked as Greenroom context
+- Cannot send IC or Whispers
+
+**In Whisper Group (DM Active Sanctuary):**
+
+- Whisper Group message type only
+- Send targets Whisper Group occupants
+- If "Suppress other streams" enabled: cannot see/send to other groups
+
+**In History View (Archived Session):**
+
+- Composer hidden (read-only)
+- Message display shows "Archived" badge
+
+**Spectator Mode (Session Active):**
+
+- Composer hidden (no write access)
+- Read-only display only
 
 ---
 
-## Recording & Persistence Summary
+## **6. User-Type Views**
 
-| Context                 | Persisted? | Recorded? | Recoverable on Refresh? | Notes                             |
-| ----------------------- | ---------- | --------- | ----------------------- | --------------------------------- |
-| **ACTIVE chat**         | ✔          | ✔         | ✔                       | Standard session content          |
-| **Greenroom chat**      | ✔          | ✔         | ✔                       | Open to all players/DM            |
-| **Whisper chat**        | ✖          | ✖         | ✖                       | **OFF-THE-RECORD** (contract)     |
-| **PAUSED runtime chat** | ✖          | ✖         | ✖                       | **OFF-THE-RECORD** (contract)     |
-| **ENDED cooldown chat** | ✖          | ✖         | ✖                       | **EPHEMERAL** (post-show only)    |
-| **Bookends**            | ✔          | ✔         | ✔                       | System messages; always persisted |
+### **6.1 Player in Current Session**
+
+**Unified Stream (Default):**
+
+- Sees **all IC/OOC/Whisper/System messages from groups they've ever visited this session**
+- Sees whispers they're party to (inline, chronologically ordered)
+- Messages appear in unified chronological order
+- Can apply filters (By Type, By Group, By Sender, Search)
+- Can send IC/OOC/Whisper (if allowed)
+
+**When in Greenroom:**
+
+- Stream temporarily shows Greenroom messages + system bookends only
+- Composer allows Greenroom OOC only
+- On exit: Greenroom messages fade out visually but remain in session history
+
+**When in Whisper Group:**
+
+- Stream temporarily shows Whisper Group messages only
+- Composer allows Whisper Group messages only
+- Other players may be suppressed from chat if DM enabled "Suppress other streams"
+- On exit: Whisper Group messages deleted immediately (unless persistence enabled)
+
+### **6.2 Player in History View**
+
+- Switching to a prior session shows **read-only archived messages** from that session
+- Messages display with "Archived" badge
+- Full search/filter capabilities available
+- No composer (read-only mode)
+- Clicking a message may show metadata (group, context at time of send)
+
+### **6.3 DM**
+
+- Sees all message types in a unified stream
+- Can switch between groups/contexts via Header dropdown to see as-if in that group
+- Full history access; can review prior sessions
+- Can trigger cleanup/archival actions
+
+### **6.4 Spectator**
+
+- **Session-only view:** sees current session only, no history access
+- **Limited message types:** sees IC, OOC, and global system only
+- **No persistent storage:** session messages not archived to spectator records
+- **No composer:** read-only mode always
+- **On disconnect:** view cleared; rejoining later shows only the new session
+
+- Sees IC/OOC/System only
+- No composer
+- No whisper visibility
+
+### **6.5 DM**
+
+- Sees everything
+- Can switch groups
+- Can override visibility settings
 
 ---
 
-## Implementation Checklist
+## **7. Layout Responsiveness**
 
-- [ ] Composer hidden/disabled for spectators in ACTIVE and PAUSED.
-- [ ] Composer auto-targets secondary group when player joins group.
-- [ ] DM composer target follows DM's current selected group.
-- [ ] Whisper composer has separate interface or clear affordance.
-- [ ] Whisper messages are purged on session end (not persisted).
-- [ ] PAUSED runtime chat is not persisted (off-the-record enforcement).
-- [ ] Cooldown chat is ephemeral (purged after cooldown ends).
-- [ ] Multi-message queue tracks state per message (queued, sending, failed, sent).
-- [ ] Failed messages show resend/delete options.
-- [ ] Composer state gates are enforced on backend (no sending to unauthorized rooms).
-- [ ] Message access control is verified on backend (no leaking via API).
+### **7.1 Desktop**
+
+- Full three‑zone layout
+- Message stream takes majority of vertical space
+- Composer anchored at bottom
+
+### **7.2 Tablet**
+
+- Header collapses into two rows
+- Filter chips become dropdown
+
+### **7.3 Mobile**
+
+- Composer collapses into a single row
+- Message type selector becomes a modal
+- Whisper target selector becomes a modal
 
 ---
 
-## Notes on DM Simplicity
+## **8. Interaction Patterns**
 
-Per VTT-Chat design principles, composer behavior must be intuitive for the DM:
+### **8.1 Hover States**
 
-- ✔ Auto-target handles group changes automatically (no manual selection).
-- ✔ Composer is always available and obvious (no hidden panels).
-- ✔ Message send is a single action (no confirmation dialogs).
-- ✖ No multi-group broadcast composition (use broadcast voice instead).
-- ✖ No message editing or deletion (one-shot posts only in Phase W0).
+- Show message metadata (group, visibility, message ID)
+- Whisper messages show “Visible only to X”
+
+### **8.2 Long‑Press (Mobile)**
+
+- Copy text
+- Report message (DM only)
+- Whisper reply (if allowed)
+
+### **8.3 System Message Anchors**
+
+- System messages can act as timeline markers
+- Clicking them opens related context (conditions, environment, etc.)
