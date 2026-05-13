@@ -11,17 +11,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ConnectionState } from 'livekit-client'
+import { ConnectionState, RoomEvent } from 'livekit-client'
 import { Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '../../hooks/useLiveKit'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useStore } from '../../hooks/useStore'
-import { flattenAudioDMOverrides } from '@/utils/audioOverrides'
+import { getUserDMOverrides } from '@/utils/audioOverrides'
 import {
   AUDIO_EFFECT_COPY,
-  getAudioOverrideDescription,
-  getAudioOverrideName,
   getPushToTalkEffectDescription,
 } from '../../constants/audioUi.constants'
 import { AudioDevicePanel } from './AudioDevicePanel'
@@ -95,6 +93,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const initializeAudio = useStore((state) => state.initializeAudio)
   const togglePTT = useStore((state) => state.togglePTT)
   const currentUser = useStore((state) => state.currentUser)
+  const setLiveKitSpeakingUsers = useStore((state) => state.setLiveKitSpeakingUsers)
   const sharedLiveKitState = useStore(
     (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
   )
@@ -133,6 +132,31 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     await unpublishBroadcastAudio().catch(() => undefined)
     setDevice({ microphoneOn: false })
   }
+
+  useEffect(() => {
+    const activeRoom = livekit.room
+
+    if (!activeRoom) {
+      setLiveKitSpeakingUsers(sessionId, [])
+      return
+    }
+
+    const syncActiveSpeakers = () => {
+      const speakingUsers = activeRoom.activeSpeakers
+        .map((participant) => participant.identity as UUID)
+        .filter((identity) => Boolean(identity))
+
+      setLiveKitSpeakingUsers(sessionId, speakingUsers)
+    }
+
+    syncActiveSpeakers()
+    activeRoom.on(RoomEvent.ActiveSpeakersChanged, syncActiveSpeakers)
+
+    return () => {
+      activeRoom.off(RoomEvent.ActiveSpeakersChanged, syncActiveSpeakers)
+      setLiveKitSpeakingUsers(sessionId, [])
+    }
+  }, [livekit.room, sessionId, setLiveKitSpeakingUsers])
 
   useEffect(() => {
     if (effectiveRole !== Role.DM) {
@@ -370,6 +394,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const effectItems = useMemo(() => {
     const items: Array<{ kind: string; name: string; description: string }> = []
+    const currentUserId = currentUser?.id as UUID | undefined
+    const currentUserOverrides = currentUserId ? getUserDMOverrides(dmOverrides, currentUserId) : []
 
     if (device.pttEnabled) {
       items.push({
@@ -429,6 +455,42 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         })
       })
 
+    for (const override of currentUserOverrides) {
+      if (override.overrideType === 'MUTE' || override.overrideType === 'UNMUTE') {
+        continue
+      }
+
+      if (override.overrideType === 'VOICE_OF_GOD') {
+        continue
+      }
+
+      const presetName =
+        typeof override.parameters?.presetName === 'string' ? override.parameters.presetName : null
+
+      const kind = override.overrideType.toLowerCase()
+      const name =
+        presetName ||
+        (override.overrideType === 'CONDITION'
+          ? 'Condition'
+          : override.overrideType === 'DISTANCE'
+            ? 'Distance'
+            : override.overrideType === 'VOICE'
+              ? 'Voice Preset'
+              : override.overrideType === 'FILTER'
+                ? 'Audio Filter'
+                : override.overrideType === 'GAIN'
+                  ? 'Volume'
+                  : override.overrideType === 'GATE'
+                    ? 'Voice Gate'
+                    : override.overrideType)
+
+      items.push({
+        kind,
+        name,
+        description: 'Applied by the DM for this scene.',
+      })
+    }
+
     return items
   }, [
     activeEffects,
@@ -437,13 +499,13 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     currentEnvironment,
     currentICPreset,
     currentVoicePreset,
+    currentUser?.id,
+    dmOverrides,
     device.pttEnabled,
     pttActive,
   ])
 
   const activeEffectsCount = effectItems.length
-  const flattenedDmOverrides = useMemo(() => flattenAudioDMOverrides(dmOverrides), [dmOverrides])
-  const dmOverridesCount = flattenedDmOverrides.length
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
   const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
 
@@ -480,20 +542,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [settingsOpen])
 
-  const overrideItems = useMemo(() => {
-    return flattenedDmOverrides.map((override) => {
-      const shortUser = override.userId?.slice(0, 8) ?? 'unknown'
-      return {
-        kind: override.overrideType.toLowerCase(),
-        name: getAudioOverrideName(override.overrideType, shortUser),
-        description: getAudioOverrideDescription({
-          overrideType: override.overrideType,
-          gain: typeof override.parameters?.gain === 'number' ? override.parameters.gain : null,
-        }),
-      }
-    })
-  }, [flattenedDmOverrides])
-
   return (
     <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">
       {liveKitError && <p className="audio-panel__error">⚠ {liveKitError}</p>}
@@ -515,13 +563,10 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           isVoiceConnected={isVoiceConnected}
           liveKitConnectionKey={liveKitConnectionKey}
           hasLocalPublication={hasLocalPublication}
-          isDm={effectiveRole === Role.DM}
           pttActive={pttActive}
           activeEffectsCount={activeEffectsCount}
-          dmOverridesCount={dmOverridesCount}
           transmittedMicLevel={transmittedMicLevel}
           effectItems={effectItems}
-          overrideItems={overrideItems}
           settingsOpen={settingsOpen}
           onGoLive={handleGoLive}
           onMute={handleMute}

@@ -12,7 +12,6 @@ import {
 import { CONDITION_PRESETS, DM_FLAVOR_LINES } from '../../constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
 import { useStore } from '../../hooks/useStore'
-import { getUserDMOverride } from '@/utils/audioOverrides'
 import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupCard } from './GroupCard'
@@ -80,8 +79,7 @@ export function RoomSelector({
   const setRoomEnvironmentName = useStore((state) => state.setRoomEnvironmentName)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
-  const setDMOverride = useStore((state) => state.setDMOverride)
-  const removeDMOverride = useStore((state) => state.removeDMOverride)
+  const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
 
   const dmFlavorLine = useMemo(() => {
     const seed = `${dmUserId}:${sessionId}`
@@ -241,6 +239,49 @@ export function RoomSelector({
     },
     [apiUrl, sessionId, token]
   )
+
+  const syncAudioOverridesFromServer = useCallback(async () => {
+    const response = await fetch(`${apiUrl}/api/v1/audio/sessions/${sessionId}/state`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      return
+    }
+
+    const payload = (await response.json()) as {
+      dmOverrides?: Array<{
+        userId?: UUID
+        targetUserId?: UUID
+        overrideType:
+          | 'MUTE'
+          | 'UNMUTE'
+          | 'GAIN'
+          | 'GATE'
+          | 'FILTER'
+          | 'DISTANCE'
+          | 'CONDITION'
+          | 'VOICE'
+          | 'VOICE_OF_GOD'
+        parameters?: Record<string, unknown>
+        appliedAt: number
+      }>
+    }
+
+    const normalizedOverrides = (payload.dmOverrides || [])
+      .filter((override): override is typeof override & { userId: UUID } =>
+        Boolean(override.userId || override.targetUserId)
+      )
+      .map((override) => ({
+        userId: (override.userId || override.targetUserId) as UUID,
+        targetUserId: override.targetUserId,
+        overrideType: override.overrideType,
+        parameters: override.parameters,
+        appliedAt: override.appliedAt,
+      }))
+
+    replaceDMOverrides(normalizedOverrides)
+  }, [apiUrl, replaceDMOverrides, sessionId, token])
 
   const whisperEntryRef = useRef<(userId: UUID, fromRoomId: UUID) => void>(() => undefined)
   const lastWhisperPlayerMovedOutRef = useRef<(mainRoomId: UUID) => Promise<void>>(
@@ -493,22 +534,6 @@ export function RoomSelector({
     async (targetUserId: UUID, muted: boolean) => {
       setMoveError(null)
 
-      const previousOverride = getUserDMOverride(
-        useStore.getState().dmOverrides,
-        targetUserId,
-        'MUTE'
-      )
-
-      if (muted) {
-        setDMOverride(targetUserId, {
-          userId: targetUserId,
-          overrideType: 'MUTE',
-          appliedAt: Date.now(),
-        })
-      } else {
-        removeDMOverride(targetUserId, 'MUTE')
-      }
-
       try {
         const response = await fetch(
           `${apiUrl}/api/v1/audio/dm-override/${muted ? 'apply' : 'remove'}`,
@@ -539,42 +564,19 @@ export function RoomSelector({
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.message || `Failed to ${muted ? 'mute' : 'unmute'} participant`)
         }
+
+        await syncAudioOverridesFromServer()
       } catch (error) {
-        if (previousOverride) {
-          setDMOverride(targetUserId, previousOverride)
-        } else {
-          removeDMOverride(targetUserId, 'MUTE')
-        }
         setMoveError(error instanceof Error ? error.message : 'Failed to update mute override')
       }
     },
-    [apiUrl, removeDMOverride, sessionId, setDMOverride, token]
+    [apiUrl, sessionId, syncAudioOverridesFromServer, token]
   )
 
   const handleApplyDistanceOverride = useCallback(
     async (targetUserId: UUID, distanceName: string) => {
       setMoveError(null)
-
-      const previousOverride = getUserDMOverride(
-        useStore.getState().dmOverrides,
-        targetUserId,
-        'DISTANCE'
-      )
       const removing = distanceName === 'Default'
-
-      if (removing) {
-        removeDMOverride(targetUserId, 'DISTANCE')
-      } else {
-        setDMOverride(targetUserId, {
-          userId: targetUserId,
-          overrideType: 'DISTANCE',
-          parameters: {
-            presetCategory: 'DISTANCE',
-            presetName: distanceName,
-          },
-          appliedAt: Date.now(),
-        })
-      }
 
       try {
         const response = await fetch(
@@ -609,45 +611,21 @@ export function RoomSelector({
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.message || 'Failed to update distance')
         }
+
+        await syncAudioOverridesFromServer()
       } catch (error) {
-        if (previousOverride) {
-          setDMOverride(targetUserId, previousOverride)
-        } else {
-          removeDMOverride(targetUserId, 'DISTANCE')
-        }
         setMoveError(error instanceof Error ? error.message : 'Failed to update distance')
       }
     },
-    [apiUrl, removeDMOverride, sessionId, setDMOverride, token]
+    [apiUrl, sessionId, syncAudioOverridesFromServer, token]
   )
 
   const handleApplyConditionOverride = useCallback(
     async (targetUserId: UUID, conditionName: string) => {
       setMoveError(null)
 
-      const previousOverride = getUserDMOverride(
-        useStore.getState().dmOverrides,
-        targetUserId,
-        'CONDITION'
-      )
-
       try {
         const removing = conditionName === RADIAL_MENU_COPY.none
-        if (removing) {
-          removeDMOverride(targetUserId, 'CONDITION')
-        } else {
-          setDMOverride(targetUserId, {
-            userId: targetUserId,
-            overrideType: 'CONDITION',
-            parameters: {
-              presetCategory: 'CONDITION',
-              presetName: conditionName,
-              conditionName,
-            },
-            appliedAt: Date.now(),
-          })
-        }
-
         const response = await fetch(
           `${apiUrl}/api/v1/audio/dm-override/${removing ? 'remove' : 'apply'}`,
           {
@@ -681,16 +659,13 @@ export function RoomSelector({
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.message || 'Failed to update condition')
         }
+
+        await syncAudioOverridesFromServer()
       } catch (error) {
-        if (previousOverride) {
-          setDMOverride(targetUserId, previousOverride)
-        } else {
-          removeDMOverride(targetUserId, 'CONDITION')
-        }
         setMoveError(error instanceof Error ? error.message : 'Failed to update condition')
       }
     },
-    [apiUrl, removeDMOverride, sessionId, setDMOverride, token]
+    [apiUrl, sessionId, syncAudioOverridesFromServer, token]
   )
 
   const handleBroadcastToggleClick = useCallback(async () => {

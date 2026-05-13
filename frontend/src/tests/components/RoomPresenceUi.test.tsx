@@ -2273,6 +2273,25 @@ describe('RoomSelector', () => {
         })
       }
 
+      if (url.endsWith('/api/v1/audio/sessions/session-1/state') && !options?.method) {
+        return new Response(
+          JSON.stringify({
+            dmOverrides: [
+              {
+                targetUserId: asUuid('user-2'),
+                overrideType: 'MUTE',
+                parameters: {},
+                appliedAt: Date.now(),
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
       return new Response(JSON.stringify({ message: 'Unexpected request' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -2328,6 +2347,13 @@ describe('RoomSelector', () => {
       )
     })
 
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/sessions/session-1/state',
+        expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } })
+      )
+    })
+
     expect(
       getUserDMOverride(useStore.getState().dmOverrides, asUuid('user-2'), 'MUTE')?.overrideType
     ).toBe('MUTE')
@@ -2344,6 +2370,13 @@ describe('RoomSelector', () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url.endsWith('/api/v1/audio/dm-override/remove') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.endsWith('/api/v1/audio/sessions/session-1/state') && !options?.method) {
+        return new Response(JSON.stringify({ dmOverrides: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -2404,12 +2437,19 @@ describe('RoomSelector', () => {
       )
     })
 
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/audio/sessions/session-1/state',
+        expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } })
+      )
+    })
+
     expect(
       getUserDMOverride(useStore.getState().dmOverrides, asUuid('user-2'), 'MUTE')
     ).toBeUndefined()
   })
 
-  it('disables the player context menu in greenroom', () => {
+  it('keeps mute available and hides distance/condition in greenroom', () => {
     render(
       <RoomSelector
         apiUrl="http://localhost:3000"
@@ -2449,7 +2489,7 @@ describe('RoomSelector', () => {
 
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Tara' }))
 
-    expect(screen.queryByRole('menuitem', { name: 'Mute' })).toBeNull()
+    expect(screen.getByRole('menuitem', { name: 'Mute' })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: 'Distance' })).toBeNull()
     expect(screen.queryByRole('menuitem', { name: 'Condition' })).toBeNull()
   })

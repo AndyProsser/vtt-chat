@@ -17,12 +17,14 @@ export interface LiveKitConnectionSnapshot {
 export interface LiveKitSlice {
   livekitConnections: Record<string, LiveKitConnectionSnapshot>
   livekitLocalInputTracks: Record<string, MediaStreamTrack | null>
+  livekitSpeakingBySession: Record<string, Record<string, true>>
 
   upsertLiveKitConnection: (
     key: string,
     snapshot: Omit<LiveKitConnectionSnapshot, 'key' | 'updatedAt'>
   ) => void
   setLiveKitLocalInputTrack: (key: string, track: MediaStreamTrack | null) => void
+  setLiveKitSpeakingUsers: (sessionId: string, userIds: string[]) => void
   clearLiveKitConnection: (key: string) => void
   clearLiveKitConnectionsForSession: (sessionId?: string) => void
 }
@@ -30,6 +32,7 @@ export interface LiveKitSlice {
 export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
   livekitConnections: {},
   livekitLocalInputTracks: {},
+  livekitSpeakingBySession: {},
 
   upsertLiveKitConnection: (key, snapshot) =>
     set((state) => ({
@@ -48,6 +51,17 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
       livekitLocalInputTracks: {
         ...state.livekitLocalInputTracks,
         [key]: track,
+      },
+    })),
+
+  setLiveKitSpeakingUsers: (sessionId, userIds) =>
+    set((state) => ({
+      livekitSpeakingBySession: {
+        ...state.livekitSpeakingBySession,
+        [sessionId]: userIds.reduce<Record<string, true>>((accumulator, userId) => {
+          accumulator[userId] = true
+          return accumulator
+        }, {}),
       },
     })),
 
@@ -75,6 +89,7 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
         return {
           livekitConnections: {},
           livekitLocalInputTracks: {},
+          livekitSpeakingBySession: {},
         }
       }
 
@@ -91,9 +106,13 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
         })
       ) as Record<string, MediaStreamTrack | null>
 
+      const nextSpeakingBySession = { ...state.livekitSpeakingBySession }
+      delete nextSpeakingBySession[sessionId]
+
       return {
         livekitConnections: next,
         livekitLocalInputTracks: nextTracks,
+        livekitSpeakingBySession: nextSpeakingBySession,
       }
     }),
 })

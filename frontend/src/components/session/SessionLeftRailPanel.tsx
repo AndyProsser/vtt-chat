@@ -61,6 +61,7 @@ export function SessionLeftRailPanel({
 }: SessionLeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
+  const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId] || {})
 
   const isGreenroom = isGreenroomSessionState(sessionState)
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
@@ -168,7 +169,8 @@ export function SessionLeftRailPanel({
                 isSpeaking:
                   room.type === RoomType.PRIVATE
                     ? false
-                    : member.presenceState === PresenceState.SPEAKING,
+                    : Boolean(liveKitSpeakingUsers[member.userId]) ||
+                      member.presenceState === PresenceState.SPEAKING,
                 distanceLabel: isGreenroom ? undefined : overrideDistance,
                 condition: isGreenroom
                   ? undefined

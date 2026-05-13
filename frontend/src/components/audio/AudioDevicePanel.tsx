@@ -9,8 +9,6 @@ import {
   getAudioModeLabel,
   getAudioQuickPanelAriaLabel,
   getAudioQuickPanelCountLabel,
-  getDmOverridesAriaLabel,
-  getDmOverridesCountLabel,
   getLiveKitBadgeLabel,
   getMicrophoneControlLabel,
 } from '../../constants/audioUi.constants'
@@ -27,13 +25,10 @@ interface AudioDevicePanelProps {
   isVoiceConnected: boolean
   liveKitConnectionKey: string
   hasLocalPublication: boolean
-  isDm: boolean
   pttActive: boolean
   activeEffectsCount: number
-  dmOverridesCount: number
   transmittedMicLevel: number
   effectItems: AudioDetailItem[]
-  overrideItems: AudioDetailItem[]
   settingsOpen: boolean
   onGoLive: () => void
   onMute: () => void
@@ -47,13 +42,10 @@ export function AudioDevicePanel({
   isVoiceConnected,
   liveKitConnectionKey,
   hasLocalPublication,
-  isDm,
   pttActive,
   activeEffectsCount,
-  dmOverridesCount,
   transmittedMicLevel,
   effectItems,
-  overrideItems,
   settingsOpen,
   onGoLive,
   onMute,
@@ -61,7 +53,6 @@ export function AudioDevicePanel({
   onToggleSettings,
 }: AudioDevicePanelProps) {
   const [effectsHovered, setEffectsHovered] = useState(false)
-  const [overridesHovered, setOverridesHovered] = useState(false)
 
   const micTitle = getMicrophoneControlLabel({
     microphoneOn: device.microphoneOn,
@@ -72,7 +63,6 @@ export function AudioDevicePanel({
   const mutedLabel = getAudioModeLabel(isMuted)
 
   const effectsOpen = effectsHovered
-  const overridesOpen = overridesHovered
   const lkBadgeState =
     statusState === 'disconnected'
       ? 'disconnected'
@@ -263,56 +253,6 @@ export function AudioDevicePanel({
           </div>
         )}
       </div>
-
-      {/* DM overrides indicator — DM only */}
-      {isDm && (
-        <div
-          className="audio-panel__control-group"
-          onMouseEnter={() => setOverridesHovered(true)}
-          onMouseLeave={() => setOverridesHovered(false)}
-        >
-          <button
-            className={`audio-panel__control audio-panel__control--icon ${dmOverridesCount > 0 ? 'is-active' : ''}`}
-            title={getDmOverridesCountLabel(dmOverridesCount)}
-            aria-label={getDmOverridesAriaLabel(dmOverridesCount)}
-            aria-expanded={overridesOpen}
-            type="button"
-          >
-            <Icon name="overrides" />
-            {dmOverridesCount > 0 ? (
-              <span className="audio-panel__pip" aria-hidden="true">
-                {dmOverridesCount}
-              </span>
-            ) : null}
-          </button>
-          {overridesOpen && (
-            <div
-              className="audio-panel__quick-panel"
-              role="dialog"
-              aria-label={AUDIO_CONTROL_COPY.dmAudioOverrides}
-            >
-              <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.dmAudioOverridesTitle}</p>
-              {overrideItems.length === 0 ? (
-                <p className="audio-panel__quick-empty">
-                  {AUDIO_CONTROL_COPY.noActiveDmAudioOverrides}
-                </p>
-              ) : (
-                <ul className="audio-panel__quick-list">
-                  {overrideItems.map((item) => (
-                    <li key={`${item.kind}-${item.name}`} className="audio-panel__quick-item">
-                      {renderItemIcon(item.kind)}
-                      <span className="audio-panel__quick-main">
-                        <span className="audio-panel__quick-name">{item.name}</span>
-                        <span className="audio-panel__quick-desc">{item.description}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Audio settings */}
       <button
