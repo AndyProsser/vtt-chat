@@ -1,20 +1,5 @@
 import '../../styles/components/session/CampaignRightbarSettings.css'
 
-export interface CharacterSettingsDraft {
-  name: string
-  race: string
-  className: string
-  subclass: string
-  avatarUrl: string
-  level: number
-  strength: number
-  dexterity: number
-  constitution: number
-  intelligence: number
-  wisdom: number
-  charisma: number
-}
-
 export interface CampaignRightbarSettingsProps {
   role: 'DM' | 'PLAYER' | 'SPECTATOR'
   campaignId: string | null
@@ -34,11 +19,6 @@ export interface CampaignRightbarSettingsProps {
   onSaveDmAutoTarget: () => void
   isSaving: boolean
   isLoading: boolean
-  characterDraft: CharacterSettingsDraft
-  onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
-  onSaveCharacterSettings: () => void
-  isCharacterLoading: boolean
-  isCharacterSaving: boolean
 }
 
 export function CampaignRightbarSettings({
@@ -59,14 +39,8 @@ export function CampaignRightbarSettings({
   onSaveDmAutoTarget,
   isSaving,
   isLoading,
-  characterDraft,
-  onCharacterFieldChange,
-  onSaveCharacterSettings,
-  isCharacterLoading,
-  isCharacterSaving,
 }: CampaignRightbarSettingsProps) {
   const isDm = role === 'DM'
-  const canEditCharacter = role === 'DM' || role === 'PLAYER'
 
   return (
     <div className="crbs-panel" aria-label="Campaign settings">
@@ -160,132 +134,6 @@ export function CampaignRightbarSettings({
                 {isSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
-          </section>
-        </>
-      )}
-
-      {role !== 'DM' && (
-        <>
-          <h3 className="crbs-heading">Character</h3>
-
-          <section className="crbs-section">
-            <h4 className="crbs-section-heading">Character Profile</h4>
-            <p className="crbs-description">Your active character profile for this campaign.</p>
-
-            <div className="crbs-character-grid">
-              <label className="crbs-field" htmlFor="crbs-character-name">
-                <span className="crbs-field-label">Name</span>
-                <input
-                  id="crbs-character-name"
-                  type="text"
-                  className="crbs-input"
-                  value={characterDraft.name}
-                  onChange={(event) => onCharacterFieldChange('name', event.target.value)}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-              <label className="crbs-field" htmlFor="crbs-character-race">
-                <span className="crbs-field-label">Race</span>
-                <input
-                  id="crbs-character-race"
-                  type="text"
-                  className="crbs-input"
-                  value={characterDraft.race}
-                  onChange={(event) => onCharacterFieldChange('race', event.target.value)}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-              <label className="crbs-field" htmlFor="crbs-character-class">
-                <span className="crbs-field-label">Class</span>
-                <input
-                  id="crbs-character-class"
-                  type="text"
-                  className="crbs-input"
-                  value={characterDraft.className}
-                  onChange={(event) => onCharacterFieldChange('className', event.target.value)}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-              <label className="crbs-field" htmlFor="crbs-character-subclass">
-                <span className="crbs-field-label">Subclass</span>
-                <input
-                  id="crbs-character-subclass"
-                  type="text"
-                  className="crbs-input"
-                  value={characterDraft.subclass}
-                  onChange={(event) => onCharacterFieldChange('subclass', event.target.value)}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-              <label className="crbs-field" htmlFor="crbs-character-avatar">
-                <span className="crbs-field-label">Avatar URL</span>
-                <input
-                  id="crbs-character-avatar"
-                  type="url"
-                  className="crbs-input"
-                  value={characterDraft.avatarUrl}
-                  onChange={(event) => onCharacterFieldChange('avatarUrl', event.target.value)}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-              <label className="crbs-field" htmlFor="crbs-character-level">
-                <span className="crbs-field-label">Level</span>
-                <input
-                  id="crbs-character-level"
-                  type="number"
-                  min={1}
-                  max={20}
-                  className="crbs-input"
-                  value={characterDraft.level}
-                  onChange={(event) => onCharacterFieldChange('level', Number(event.target.value))}
-                  disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                />
-              </label>
-            </div>
-
-            <div className="crbs-stats-grid">
-              {[
-                ['strength', 'STR'],
-                ['dexterity', 'DEX'],
-                ['constitution', 'CON'],
-                ['intelligence', 'INT'],
-                ['wisdom', 'WIS'],
-                ['charisma', 'CHA'],
-              ].map(([field, label]) => (
-                <label key={field} className="crbs-field crbs-field--stat">
-                  <span className="crbs-field-label">{label}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={30}
-                    className="crbs-input"
-                    value={characterDraft[field as keyof CharacterSettingsDraft] as number}
-                    onChange={(event) =>
-                      onCharacterFieldChange(
-                        field as keyof CharacterSettingsDraft,
-                        Number(event.target.value)
-                      )
-                    }
-                    disabled={!canEditCharacter || isCharacterLoading || isCharacterSaving}
-                  />
-                </label>
-              ))}
-            </div>
-
-            {canEditCharacter ? (
-              <div className="crbs-actions">
-                <button
-                  type="button"
-                  className="session-button"
-                  disabled={!campaignId || isCharacterLoading || isCharacterSaving}
-                  onClick={onSaveCharacterSettings}
-                >
-                  {isCharacterSaving ? 'Saving…' : 'Save character'}
-                </button>
-              </div>
-            ) : (
-              <p className="crbs-muted">Character settings are read-only for spectators.</p>
-            )}
           </section>
         </>
       )}

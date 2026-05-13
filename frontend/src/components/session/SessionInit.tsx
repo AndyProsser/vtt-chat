@@ -31,7 +31,7 @@ import { NotesRailPanel } from './NotesRailPanel'
 import { JournalPanel } from './JournalPanel'
 import { HistoryPanel } from './HistoryPanel'
 import { SessionRightRailContent } from './SessionRightRailContent'
-import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
+import { CampaignRightbarSettings } from './CampaignRightbarSettings'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
@@ -3615,13 +3615,6 @@ export function SessionInit({
                         }}
                         isSaving={isDmVoiceTargetingSettingSaving}
                         isLoading={isDmVoiceTargetingSettingLoading}
-                        characterDraft={characterSettingsDraft}
-                        onCharacterFieldChange={handleCharacterFieldChange}
-                        onSaveCharacterSettings={() => {
-                          void saveCharacterSettings()
-                        }}
-                        isCharacterLoading={isCharacterSettingsLoading}
-                        isCharacterSaving={isCharacterSettingsSaving}
                       />
                     }
                   />
