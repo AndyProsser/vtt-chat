@@ -87,6 +87,8 @@ export function SessionLeftRailPanel({
   const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
   const previousMockSpeakingKeyRef = useRef<string>('')
 
+  const isGreenroom = isGreenroomSessionState(sessionState)
+
   const mockUserIds = useMemo(() => {
     const ids = new Set<UUID>()
 
@@ -149,7 +151,6 @@ export function SessionLeftRailPanel({
     }
   }, [dmOverrides, isGreenroom, mockUserIds, sessionId, setLiveKitSpeakingUsers, userMuteState])
 
-  const isGreenroom = isGreenroomSessionState(sessionState)
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
   const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
