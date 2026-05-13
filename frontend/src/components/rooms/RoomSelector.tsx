@@ -26,7 +26,6 @@ import {
 } from './groupsPanel.helpers'
 import {
   isWhisperGroup,
-  type GroupPanelGroup,
   type GroupPanelGroupWithParticipants,
   type GroupParticipantStatus,
   type GroupParticipantWithGroupId,
@@ -80,6 +79,9 @@ export function RoomSelector({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
+  const currentUser = useStore((state) => state.currentUser)
+  const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
+  const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
 
   const dmFlavorLine = useMemo(() => {
     const seed = `${dmUserId}:${sessionId}`
@@ -282,6 +284,90 @@ export function RoomSelector({
 
     replaceDMOverrides(normalizedOverrides)
   }, [apiUrl, replaceDMOverrides, sessionId, token])
+
+  const syncMockTakeoverStatus = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/v1/dev/mock-players/takeover/status/${sessionId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      if (!response.ok) {
+        return
+      }
+
+      const payload = (await response.json()) as {
+        active?: boolean
+        assumedUserId?: UUID | null
+      }
+
+      setMockTakeoverUserId(sessionId, payload.active ? payload.assumedUserId || null : null)
+    } catch {
+      // Best-effort DEV endpoint; ignore when unavailable.
+    }
+  }, [apiUrl, sessionId, setMockTakeoverUserId, token])
+
+  const handleTakeOverPlayer = useCallback(
+    async (targetUserId: UUID) => {
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/takeover/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            targetUserId,
+          }),
+        })
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { error?: string }
+          setMoveError(payload.error || 'Unable to enter takeover mode')
+          return
+        }
+
+        setMockTakeoverUserId(sessionId, targetUserId)
+      } catch {
+        setMoveError('Unable to enter takeover mode')
+      }
+    },
+    [apiUrl, sessionId, setMockTakeoverUserId, token]
+  )
+
+  const handleReturnToMyUser = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/takeover/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string }
+        setMoveError(payload.error || 'Unable to leave takeover mode')
+        return
+      }
+
+      setMockTakeoverUserId(sessionId, null)
+    } catch {
+      setMoveError('Unable to leave takeover mode')
+    }
+  }, [apiUrl, sessionId, setMockTakeoverUserId, token])
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !currentUser?.id) {
+      return
+    }
+
+    void syncMockTakeoverStatus()
+  }, [currentUser?.id, syncMockTakeoverStatus])
 
   const whisperEntryRef = useRef<(userId: UUID, fromRoomId: UUID) => void>(() => undefined)
   const lastWhisperPlayerMovedOutRef = useRef<(mainRoomId: UUID) => Promise<void>>(
@@ -1043,6 +1129,7 @@ export function RoomSelector({
       onRoomDrop={roomMoves.handleRoomDrop}
       distanceTargets={[...DISTANCE_PRESETS]}
       conditionTargets={[...CONDITION_PRESETS, RADIAL_MENU_COPY.none]}
+      activeTakeoverUserId={activeTakeoverUserId || null}
       onApplyDistanceOverride={(userId, distanceName) => {
         void handleApplyDistanceOverride(userId, distanceName)
       }}
@@ -1054,6 +1141,9 @@ export function RoomSelector({
       }}
       onClearMemberEffects={(userId) => {
         void handleClearMemberEffects(userId)
+      }}
+      onTakeOverPlayer={(userId) => {
+        void handleTakeOverPlayer(userId)
       }}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
@@ -1089,12 +1179,14 @@ export function RoomSelector({
             apiUrl={apiUrl}
             token={token}
             sessionId={sessionId}
+            activeTakeoverUserId={activeTakeoverUserId || null}
             onBroadcastToggle={() => {
               void handleBroadcastToggleClick()
             }}
             onDevReset={() => {
               void handleDevResetMocks()
             }}
+            onReturnToUser={handleReturnToMyUser}
             onToggleCreateGroupModal={() => {
               setEnvironmentPickerRoomId(null)
               setShowCreateGroupModal((current) => !current)
@@ -1150,7 +1242,9 @@ export function RoomSelector({
                       <div className="room-selector-profile__title-row">
                         <span className="room-selector-profile__name-wrap">
                           <strong>{dmParticipant.characterName || dmParticipant.username}</strong>
-                          <span className="room-selector-status-pill role compact">
+                          <span
+                            className={`room-selector-status-pill role compact ${activeTakeoverUserId === dmParticipant.userId ? 'takeover-active' : ''}`}
+                          >
                             <span className="material-symbols-outlined" aria-hidden="true">
                               {STATUS_PILL_ICONS.role}
                             </span>

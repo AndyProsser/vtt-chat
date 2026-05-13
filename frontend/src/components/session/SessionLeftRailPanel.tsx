@@ -92,7 +92,7 @@ export function SessionLeftRailPanel({
   const previousMockSpeakingKeyRef = useRef<string>('')
 
   const isGreenroom = isGreenroomSessionState(sessionState)
-  const [cooldownTick, setCooldownTick] = useState(0)
+  const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now())
 
   useEffect(() => {
     if (sessionState !== 'ENDED') {
@@ -100,7 +100,7 @@ export function SessionLeftRailPanel({
     }
 
     const intervalId = window.setInterval(() => {
-      setCooldownTick((value) => value + 1)
+      setCooldownNowMs(Date.now())
     }, 1000)
 
     return () => {
@@ -119,8 +119,8 @@ export function SessionLeftRailPanel({
       return true
     }
 
-    return Date.now() < endedAtMs + cooldownWindowMs
-  }, [cooldownTick, cooldownWindowMs, sessionEndedAt, sessionState])
+    return cooldownNowMs < endedAtMs + cooldownWindowMs
+  }, [cooldownNowMs, cooldownWindowMs, sessionEndedAt, sessionState])
 
   const mockUserIds = useMemo(() => {
     const ids = new Set<UUID>()
@@ -192,7 +192,7 @@ export function SessionLeftRailPanel({
   // LiveKit's activeSpeakers might not include the local participant (publisher),
   // so we need to detect this locally based on whether the user has their mic on
   // and has active voice activity
-  const isCurrentUserSpeaking = !localUserMuted
+  const isCurrentUserSpeaking = !localUserMuted && device.isSpeaking
 
   const liveKitSpeakingUsersWithLocal = useMemo(() => {
     if (!liveKitSpeakingUsers) return {}

@@ -922,6 +922,12 @@
   background: color-mix(in srgb, var(--color-brand) 12%, transparent);
 }
 
+.room-selector-status-pill.role.takeover-active {
+  border-color: color-mix(in srgb, #ea580c 42%, var(--color-border-soft));
+  color: color-mix(in srgb, #ea580c 80%, var(--color-text-primary));
+  background: color-mix(in srgb, #ea580c 16%, transparent);
+}
+
 .room-selector-status-pill.presence.online {
   border-color: color-mix(in srgb, var(--color-success, #22c55e) 38%, var(--color-border-soft));
   color: color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-text-primary));

@@ -13,6 +13,9 @@ interface PlayerContextMenuProps {
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
+  canTakeOver?: boolean
+  isTakeoverActive?: boolean
+  onTakeOver?: () => void
   onKick?: () => void
   onBan?: () => void
   children: ReactNode
@@ -29,11 +32,14 @@ export function PlayerContextMenu({
   onToggleMute,
   onClearEffects,
   onConditionSelect,
+  canTakeOver = false,
+  isTakeoverActive = false,
+  onTakeOver,
   onKick,
   onBan,
   children,
 }: PlayerContextMenuProps) {
-  if (!enabled) {
+  if (!enabled || (!canManageRooms && !canTakeOver)) {
     return <>{children}</>
   }
 
@@ -50,6 +56,9 @@ export function PlayerContextMenu({
         onToggleMute={onToggleMute}
         onClearEffects={onClearEffects}
         onConditionSelect={onConditionSelect}
+        canTakeOver={canTakeOver}
+        isTakeoverActive={isTakeoverActive}
+        onTakeOver={onTakeOver}
         onKick={onKick}
         onBan={onBan}
       />

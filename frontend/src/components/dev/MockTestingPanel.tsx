@@ -22,10 +22,18 @@ interface MockTestingPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
+  activeTakeoverUserId?: UUID | null
+  onReturnToUser?: () => Promise<void>
   onClose?: () => void
 }
 
-export function MockTestingPanel({ apiUrl, token, sessionId }: MockTestingPanelProps) {
+export function MockTestingPanel({
+  apiUrl,
+  token,
+  sessionId,
+  activeTakeoverUserId,
+  onReturnToUser,
+}: MockTestingPanelProps) {
   const [playerCount, setPlayerCount] = useState(8)
   const [config, setConfig] = useState<MockSimulationConfig>({
     speakingSimulatorEnabled: true,
@@ -305,6 +313,21 @@ export function MockTestingPanel({ apiUrl, token, sessionId }: MockTestingPanelP
           </span>
           Remove All
         </button>
+
+        {activeTakeoverUserId ? (
+          <button
+            className="mock-testing-panel__action-button"
+            onClick={() => {
+              void onReturnToUser?.()
+            }}
+            disabled={isLoading || !onReturnToUser}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              undo
+            </span>
+            Return to My User
+          </button>
+        ) : null}
 
         {/* Status Display */}
         <div className="mock-testing-panel__status">Status: {statusText}</div>

@@ -10,6 +10,9 @@ interface PlayerContextMenuContentProps {
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
+  canTakeOver?: boolean
+  isTakeoverActive?: boolean
+  onTakeOver?: () => void
   onKick?: () => void
   onBan?: () => void
 }
@@ -24,12 +27,30 @@ export function PlayerContextMenuContent({
   onToggleMute,
   onClearEffects,
   onConditionSelect,
+  canTakeOver = false,
+  isTakeoverActive = false,
+  onTakeOver,
   onKick,
   onBan,
 }: PlayerContextMenuContentProps) {
   return (
     <ContextMenu.Portal>
       <ContextMenu.Content className="room-context-menu" collisionPadding={8}>
+        {canTakeOver ? (
+          <>
+            <ContextMenu.Item
+              className="room-context-menu__item"
+              disabled={!onTakeOver || isTakeoverActive}
+              onSelect={() => onTakeOver?.()}
+            >
+              {isTakeoverActive ? 'Take Over Player (Active)' : 'Take Over Player'}
+            </ContextMenu.Item>
+            {canManageRooms ? (
+              <ContextMenu.Separator className="room-context-menu__separator" />
+            ) : null}
+          </>
+        ) : null}
+
         {canManageRooms ? (
           <>
             <ContextMenu.Item

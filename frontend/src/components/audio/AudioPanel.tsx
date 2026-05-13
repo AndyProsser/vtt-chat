@@ -37,6 +37,12 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
+  const localSpeakingRef = useRef(false)
+  const localSpeakingHoldUntilRef = useRef(0)
+
+  const LOCAL_SPEAKING_TRIGGER_LEVEL = 0.162
+  const LOCAL_SPEAKING_RELEASE_LEVEL = 0.092
+  const LOCAL_SPEAKING_HOLD_MS = 320
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -89,8 +95,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const currentCondition = useStore((state) => state.currentCondition)
   const currentVoicePreset = useStore((state) => state.currentVoicePreset)
   const currentICPreset = useStore((state) => state.currentICPreset)
-  const apiUrl = useStore((state) => state.apiUrl)
-  const token = useStore((state) => state.token)
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const togglePTT = useStore((state) => state.togglePTT)
@@ -552,6 +556,55 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const activeEffectsCount = effectItems.length
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
   const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
+
+  useEffect(() => {
+    const setSpeakingIfChanged = (nextValue: boolean) => {
+      if (localSpeakingRef.current === nextValue) {
+        return
+      }
+
+      localSpeakingRef.current = nextValue
+      setDevice({ isSpeaking: nextValue })
+    }
+
+    if (!isTransmittingNow) {
+      localSpeakingHoldUntilRef.current = 0
+      setSpeakingIfChanged(false)
+      return
+    }
+
+    const now = performance.now()
+
+    // Use transmitted level with a start threshold + release hold window to avoid
+    // false positives from clicks/typing and preserve natural speech gaps.
+    if (transmittedMicLevel >= LOCAL_SPEAKING_TRIGGER_LEVEL) {
+      localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
+      setSpeakingIfChanged(true)
+      return
+    }
+
+    if (!localSpeakingRef.current) {
+      return
+    }
+
+    if (transmittedMicLevel >= LOCAL_SPEAKING_RELEASE_LEVEL) {
+      localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
+      return
+    }
+
+    if (now > localSpeakingHoldUntilRef.current) {
+      setSpeakingIfChanged(false)
+    }
+  }, [isTransmittingNow, setDevice, transmittedMicLevel])
+
+  useEffect(
+    () => () => {
+      localSpeakingRef.current = false
+      localSpeakingHoldUntilRef.current = 0
+      setDevice({ isSpeaking: false })
+    },
+    [setDevice]
+  )
 
   useEffect(() => {
     if (!settingsOpen) {

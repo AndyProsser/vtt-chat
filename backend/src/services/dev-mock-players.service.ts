@@ -755,3 +755,45 @@ export async function getMockPlayerTokens(
     }
   })
 }
+
+export async function getSessionMockPlayerById(
+  sessionId: UUID,
+  userId: UUID
+): Promise<MockPlayerDef | null> {
+  const member = await prisma.sessionMember.findFirst({
+    where: {
+      sessionId,
+      userId,
+      username: { startsWith: DEV_MOCK_PREFIX },
+    },
+    select: {
+      userId: true,
+      username: true,
+    },
+  })
+
+  if (!member) {
+    return null
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: member.userId },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      email: true,
+    },
+  })
+
+  if (!user || !isMockUsername(user.username)) {
+    return null
+  }
+
+  return {
+    id: user.id as UUID,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
+  }
+}

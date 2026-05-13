@@ -41,10 +41,12 @@ export interface GroupCardProps {
   onRoomDrop: (event: React.DragEvent<HTMLElement>, roomId: UUID, disabled: boolean) => void
   distanceTargets: string[]
   conditionTargets: string[]
+  activeTakeoverUserId?: UUID | null
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
+  onTakeOverPlayer?: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -93,10 +95,12 @@ export function RoomGroupCard({
   onRoomDrop,
   distanceTargets,
   conditionTargets,
+  activeTakeoverUserId,
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
   onClearMemberEffects,
+  onTakeOverPlayer,
   onMemberDragStart,
   onMemberDragEnd,
   getDisplayRoomName,
@@ -364,10 +368,12 @@ export function RoomGroupCard({
           getResolvedGroupEnvironmentName={getResolvedEnvironmentName}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
+          activeTakeoverUserId={activeTakeoverUserId}
           onApplyDistanceOverride={onApplyDistanceOverride}
           onApplyConditionOverride={onApplyConditionOverride}
           onApplyMuteOverride={onApplyMuteOverride}
           onClearMemberEffects={onClearMemberEffects}
+          onTakeOverPlayer={onTakeOverPlayer}
           onMemberDragStart={onMemberDragStart}
           onMemberDragEnd={onMemberDragEnd}
         />

@@ -21,8 +21,10 @@ export interface GroupsHeaderActionsProps {
   apiUrl?: string
   token?: string
   sessionId?: UUID
+  activeTakeoverUserId?: UUID | null
   onBroadcastToggle: () => void
   onDevReset: () => void
+  onReturnToUser: () => Promise<void>
   onToggleCreateGroupModal: () => void
   onCloseCreateGroupModal: () => void
   onCreateGroup: (name: string, type: import('@shared').RoomType) => Promise<void>
@@ -45,8 +47,10 @@ export function GroupsHeaderActions({
   apiUrl,
   token,
   sessionId,
+  activeTakeoverUserId,
   onBroadcastToggle,
   onDevReset,
+  onReturnToUser,
   onToggleCreateGroupModal,
   onCloseCreateGroupModal,
   onCreateGroup,
@@ -109,6 +113,8 @@ export function GroupsHeaderActions({
               apiUrl={apiUrl}
               token={token}
               sessionId={sessionId}
+              activeTakeoverUserId={activeTakeoverUserId}
+              onReturnToUser={onReturnToUser}
               onClose={() => setShowMockPanel(false)}
             />
           ) : null}

@@ -13,21 +13,47 @@
  *   POST /dev/mock-players/reset      — reroll current mock roster for campaign/session
  */
 
-import { Router, Request, Response } from 'express'
-import { isValidUUID, Role } from '@shared'
+import { Router, Request, Response, NextFunction } from 'express'
+import { ErrorCode, isValidUUID, Role } from '@shared'
 import {
   listMockPlayers,
   joinMockPlayersToSession,
   removeMockPlayersFromSession,
   getMockPlayerTokens,
   resetDevMockRoster,
+  getSessionMockPlayerById,
 } from '@/services/dev-mock-players.service'
+import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
+import {
+  getMockTakeover,
+  startMockTakeover,
+  stopMockTakeover,
+} from '@/services/dev-mock-takeover.service'
 import type { WebSocketManager } from '@/ws'
 import type { UUID } from '@shared'
 
 const router = Router()
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const token = extractTokenFromHeader(req.headers.authorization)
+  if (!token) {
+    return res
+      .status(401)
+      .json({ code: ErrorCode.UNAUTHORIZED, message: 'Missing Authorization header' })
+  }
+
+  const user = verifyToken(token)
+  if (!user) {
+    return res
+      .status(401)
+      .json({ code: ErrorCode.UNAUTHORIZED, message: 'Authentication required' })
+  }
+
+  ;(req as any).user = user
+  next()
+}
 
 /**
  * GET /dev/mock-players?sessionId=<uuid>
@@ -204,6 +230,91 @@ router.post('/reset', async (req: Request, res: Response) => {
     rerolledCount: result.count,
     sessionId: result.sessionId,
     campaignId: result.campaignId,
+  })
+})
+
+router.get('/takeover/status/:sessionId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { sessionId } = req.params
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'Invalid sessionId' })
+  }
+
+  const session = await getSession(sessionId as UUID)
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' })
+  }
+
+  const takeover = getMockTakeover({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+  })
+
+  return res.json({
+    sessionId,
+    active: Boolean(takeover),
+    assumedUserId: takeover?.assumedUserId || null,
+    startedAt: takeover?.startedAt || null,
+  })
+})
+
+router.post('/takeover/start', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { sessionId, targetUserId } = req.body || {}
+
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  if (!targetUserId || !isValidUUID(targetUserId)) {
+    return res.status(400).json({ error: 'targetUserId is required and must be a valid UUID' })
+  }
+
+  const session = await getSession(sessionId as UUID)
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' })
+  }
+
+  const mockPlayer = await getSessionMockPlayerById(sessionId as UUID, targetUserId as UUID)
+  if (!mockPlayer) {
+    return res.status(400).json({ error: 'Target user is not an eligible mock player' })
+  }
+
+  const takeover = startMockTakeover({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    assumedUserId: targetUserId as UUID,
+  })
+
+  return res.json({
+    ok: true,
+    sessionId,
+    actorUserId: user.userId,
+    assumedUserId: takeover.assumedUserId,
+    startedAt: takeover.startedAt,
+    assumedDisplayName: mockPlayer.displayName,
+  })
+})
+
+router.post('/takeover/stop', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { sessionId } = req.body || {}
+
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  const removed = stopMockTakeover({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+  })
+
+  return res.json({
+    ok: true,
+    sessionId,
+    actorUserId: user.userId,
+    cleared: removed,
   })
 })
 

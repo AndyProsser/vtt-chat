@@ -28,10 +28,12 @@ export interface GroupMemberListProps {
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   distanceTargets: string[]
   conditionTargets: string[]
+  activeTakeoverUserId?: UUID | null
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
+  onTakeOverPlayer?: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -54,10 +56,12 @@ export function GroupMemberList({
   getResolvedGroupEnvironmentName,
   distanceTargets,
   conditionTargets,
+  activeTakeoverUserId,
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
   onClearMemberEffects,
+  onTakeOverPlayer,
   onMemberDragStart,
   onMemberDragEnd,
 }: GroupMemberListProps) {
@@ -138,6 +142,8 @@ export function GroupMemberList({
         const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
         const isMuted = Boolean(member.isMuted)
         const isPlayerTarget = member.roleLabel !== 'DM'
+        const isTakeoverEligible = member.roleLabel === 'PLAYER'
+        const isTakeoverActive = activeTakeoverUserId === member.userId
         const shownPresenceState = getResolvedPresenceState(member.presenceState)
 
         const memberButton = (
@@ -188,6 +194,9 @@ export function GroupMemberList({
                 onConditionSelect={(conditionName) =>
                   onApplyConditionOverride(member.userId, conditionName)
                 }
+                canTakeOver={isTakeoverEligible}
+                isTakeoverActive={isTakeoverActive}
+                onTakeOver={() => onTakeOverPlayer?.(member.userId)}
               >
                 {memberButton}
               </PlayerContextMenu>
@@ -212,7 +221,9 @@ export function GroupMemberList({
                   <div className="room-selector-profile__title-row">
                     <span className="room-selector-profile__name-wrap">
                       <strong>{member.characterName || member.username}</strong>
-                      <span className="room-selector-status-pill role compact">
+                      <span
+                        className={`room-selector-status-pill role compact ${isTakeoverActive ? 'takeover-active' : ''}`}
+                      >
                         <span className="material-symbols-outlined" aria-hidden="true">
                           {STATUS_PILL_ICONS.role}
                         </span>
