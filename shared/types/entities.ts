@@ -94,6 +94,7 @@ export interface PresenceEntity {
   characterStats?: Record<string, unknown> | null
   state: PresenceState
   ghost?: boolean
+  userMuted?: boolean
   primaryRoomId?: UUID
   previousGroupId?: UUID
   privateRoomId?: UUID

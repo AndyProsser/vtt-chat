@@ -8,6 +8,7 @@ import {
   removeDMOverrideState,
   setBroadcastState,
   setRoomEnvironmentState,
+  setUserMuteState,
 } from '@/services/audio-state.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
@@ -491,6 +492,76 @@ router.post('/broadcast/state', requireAuth, async (req: Request, res: Response)
 
 router.post('/voice-of-god', requireAuth, async (req: Request, res: Response) => {
   return handleSetBroadcastState(req, res)
+})
+
+async function handleSetUserMute(req: Request, res: Response) {
+  const user = getAuthUser(req)
+  const { sessionId, muted } = req.body
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid sessionId',
+      field: 'sessionId',
+    })
+  }
+
+  if (typeof muted !== 'boolean') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'muted must be a boolean',
+      field: 'muted',
+    })
+  }
+
+  const authz = await validateSessionAccess(sessionId as UUID, user)
+  if (!authz.ok) {
+    return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  const mutedAt = Date.now()
+  const state = await setUserMuteState({
+    sessionId: sessionId as UUID,
+    userId: user.userId as UUID,
+    muted,
+    mutedAt,
+  })
+
+  const eventType = muted ? 'AUDIO:USER_MUTED' : 'AUDIO:USER_UNMUTED'
+  const event = createEvent({
+    type: eventType as any,
+    user,
+    userRole: authz.role,
+    sessionId: sessionId as UUID,
+    roomId: null,
+    payload: {
+      userId: state.userId,
+      userMuted: state.userMuted,
+      mutedAt: state.mutedAt,
+    },
+  })
+
+  eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  logger.info('audio', `User ${muted ? 'muted' : 'unmuted'} themselves`, {
+    sessionId,
+    userId: user.userId,
+    muted,
+  })
+
+  return res.status(200).json({
+    ok: true,
+    userMuted: state.userMuted,
+    eventId: event.id,
+  })
+}
+
+router.post('/mute', requireAuth, async (req: Request, res: Response) => {
+  return handleSetUserMute(req, res)
+})
+
+router.post('/unmute', requireAuth, async (req: Request, res: Response) => {
+  return handleSetUserMute(req, res)
 })
 
 export default router

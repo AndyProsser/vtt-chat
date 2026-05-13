@@ -77,7 +77,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   })
 
   const device = useStore((state) => state.device)
-  const sessionPresenceByUser = useStore((state) => state.sessionPresence[sessionId] || {})
+  const sessionPresenceByUser = useStore((state) => state.sessionPresence[sessionId])
   const selectedRoom = useStore((state) => state.rooms[sessionId]?.[roomId])
   const pttActive = useStore((state) => state.pttActive)
   const activeEffects = useStore((state) => state.activeEffects)
@@ -125,12 +125,54 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       }
     }
     setDevice({ microphoneOn: true })
+
+    // Notify backend that user unmuted themselves
+    try {
+      const token = sessionStorage.getItem('authToken')
+      if (token) {
+        await fetch('/api/v1/audio/unmute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            muted: false,
+          }),
+        })
+      }
+    } catch (error) {
+      // Log but don't fail the unmute action if backend call fails
+      console.error('Failed to sync unmute state to backend:', error)
+    }
   }
 
   const handleMute = async () => {
     await livekit.unpublishAudio()
     await unpublishBroadcastAudio().catch(() => undefined)
     setDevice({ microphoneOn: false })
+
+    // Notify backend that user muted themselves
+    try {
+      const token = sessionStorage.getItem('authToken')
+      if (token) {
+        await fetch('/api/v1/audio/mute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            muted: true,
+          }),
+        })
+      }
+    } catch (error) {
+      // Log but don't fail the mute action if backend call fails
+      console.error('Failed to sync mute state to backend:', error)
+    }
   }
 
   useEffect(() => {
@@ -374,7 +416,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       : configuredBackgroundGain
 
     for (const [trackId, participantUserId] of trackEntries) {
-      const participantPresence = sessionPresenceByUser[participantUserId]
+      const participantPresence = sessionPresenceByUser?.[participantUserId]
       if (!participantPresence?.primaryRoomId || !roomId) {
         audioEngine.setTrackMixGain(trackId, 1)
         continue

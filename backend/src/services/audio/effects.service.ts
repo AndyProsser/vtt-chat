@@ -1,5 +1,6 @@
 import type { UUID } from '@shared'
 import type { AudioBroadcastState, AudioDMOverrideState } from '@/types/audio.types'
+import { getRedisClient } from '@/infra/redis'
 import {
   removeAudioDMOverridesBySession,
   removeAudioDMOverrideRecord,
@@ -91,3 +92,47 @@ export async function setBroadcastState(params: {
 
 /** @deprecated Use setBroadcastState */
 export const setVoiceOfGodState = setBroadcastState
+
+/**
+ * Set user's own mute state in presence (Redis-first).
+ * When user mutes/unmutes themselves, this updates their presence record.
+ */
+export async function setUserMuteState(params: {
+  sessionId: UUID
+  userId: UUID
+  muted: boolean
+  mutedAt?: number
+}): Promise<{ userId: UUID; sessionId: UUID; userMuted: boolean; mutedAt: number }> {
+  const redis = await getRedisClient()
+  const presenceHashKey = `presence:session:${params.sessionId}`
+  const userMuted = params.muted
+  const mutedAt = params.mutedAt ?? Date.now()
+
+  // Get current presence record from Redis
+  const presenceJson = await redis.hGet(presenceHashKey, params.userId)
+  if (!presenceJson) {
+    // User doesn't have a presence record yet; create minimal one with mute state
+    const minimalPresence = {
+      userId: params.userId,
+      sessionId: params.sessionId,
+      username: params.userId,
+      state: 'ONLINE',
+      userMuted,
+      lastSeenAt: mutedAt,
+    }
+    await redis.hSet(presenceHashKey, params.userId, JSON.stringify(minimalPresence))
+  } else {
+    // Update existing presence record with new mute state
+    const presence = JSON.parse(presenceJson) as any
+    presence.userMuted = userMuted
+    presence.lastSeenAt = mutedAt
+    await redis.hSet(presenceHashKey, params.userId, JSON.stringify(presence))
+  }
+
+  return {
+    userId: params.userId,
+    sessionId: params.sessionId,
+    userMuted,
+    mutedAt,
+  }
+}

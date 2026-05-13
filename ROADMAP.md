@@ -131,6 +131,7 @@ Out of scope:
 
 Known readiness gap classes:
 
+- Redis-first runtime-state consistency and session-audit coverage across websocket-visible mutations
 - Multi-client reconnect and soak hardening (presence/groups-audio topology; runtime rooms)
 - Telemetry durability and restart-survival operational checks
 - Telemetry signal definition clarity (what is tracked, why it matters, and how it is consumed)
@@ -141,19 +142,20 @@ Known readiness gap classes:
 
 ## 3) Workstreams
 
-| ID  | Workstream                  | Status      | Scope                                                                                                                       |
-| --- | --------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
-| W0  | Frontend Surface Completion | In Progress | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX  |
-| W1  | Hardening and Reliability   | In Progress | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                       |
-| W2  | Testing Program and Gates   | In Progress | Cross-package test gates, regression matrix, perf/security checks                                                           |
-| W3  | Operatisation and Runbooks  | Planned     | Telemetry durability checks, backup/restore drills, migration parity checks                                                 |
-| W4  | UI Modernization Completion | In Progress | Regression hardening, accessibility and visual consistency follow-through                                                   |
-| W5  | User Documentation          | Planned     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                            |
-| W6  | Refactor and Simplification | Completed   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                            |
-| W7  | Admin Operations UX Review  | Planned     | Best-practice operations review for admin information architecture and workflows                                            |
-| W8  | Localization Foundation     | Planned     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                     |
-| W9  | DEV Mock Players            | In Progress | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players     |
-| W10 | Voice Group Panel Follow-up | Planned     | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel |
+| ID  | Workstream                       | Status                  | Scope                                                                                                                              |
+| --- | -------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion      | In Progress             | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX         |
+| W11 | Runtime State and Audit Contract | Planned (High Priority) | Redis-first runtime-state adoption, websocket mutation persistence policy, and session-audit trail enforcement across domain flows |
+| W1  | Hardening and Reliability        | In Progress             | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                              |
+| W2  | Testing Program and Gates        | In Progress             | Cross-package test gates, regression matrix, perf/security checks                                                                  |
+| W3  | Operatisation and Runbooks       | Planned                 | Telemetry durability checks, backup/restore drills, migration parity checks                                                        |
+| W4  | UI Modernization Completion      | In Progress             | Regression hardening, accessibility and visual consistency follow-through                                                          |
+| W5  | User Documentation               | Planned                 | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                                   |
+| W6  | Refactor and Simplification      | Completed               | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                                   |
+| W7  | Admin Operations UX Review       | Planned                 | Best-practice operations review for admin information architecture and workflows                                                   |
+| W8  | Localization Foundation          | Planned                 | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                            |
+| W9  | DEV Mock Players                 | In Progress             | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players            |
+| W10 | Voice Group Panel Follow-up      | Planned                 | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel        |
 
 ---
 
@@ -620,6 +622,25 @@ Definition of done:
 - Session settings popover behavior is complete and persona-permission tested.
 - Main status icon behavior matches the defined outside-campaign and inside-campaign matrix.
 - Audio/LiveKit indicator remains subtle while still escalating the main status icon on true audio-connection failure.
+
+### W11: Runtime State and Audit Contract (High Priority)
+
+1. Adopt [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md) as the implementation checklist baseline.
+2. Classify websocket-visible backend route families and event families into Class A/B/C and mark delivery status in the matrix.
+3. Enforce Redis-first mutation order for domain actions: validate -> Redis update -> audit append -> websocket publish -> required Postgres durability.
+4. Define per-family Redis key contracts (key naming, TTL policy, invalidation, cleanup ownership).
+5. Define per-family durability mode (`inline` vs `bounded flush`) and retry/idempotency semantics.
+6. Define and enforce a session-audit action taxonomy for room, presence, audio, chat, notes/journal/history, and session lifecycle actions.
+7. Add integration tests for all in-scope families asserting Redis state, websocket fanout, durable persistence (where required), and audit append behavior.
+8. Validate reconnect behavior against backend-authoritative recovery (Redis runtime + durable fallback) and eliminate client-local drift assumptions.
+
+Definition of done:
+
+- Route/event family matrix is complete with no unknown storage class assignments for websocket-visible domain flows.
+- Redis-first mutation flow is implemented and tested for all high-traffic runtime families.
+- Session audit coverage includes all meaningful control-plane actions (join/leave, move, mute/unmute, lifecycle boundaries, message and note mutations).
+- Privacy constraints remain enforced (off-the-record content is not leaked into durable transcript/history while control-plane audit remains available).
+- Operability checks exist for flush failures, dead-letter/retry paths, and restart recovery.
 
 ### W1: Hardening and Reliability
 

@@ -23,6 +23,11 @@ This document is the implementation contract for Stage 0 and currently matches `
 Some subsystem and UI docs include richer product terminology that is planned or conceptual.
 Where names differ, treat this file as canonical for current runtime behavior.
 
+Runtime persistence and audit addendum:
+
+- Redis-first runtime state and session audit requirements are defined in [architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md).
+- Use this addendum when designing websocket-visible mutation flows that need explicit Redis + Postgres + audit responsibilities.
+
 ### Room Presence Safety Contract
 
 Players must never be left without a valid room assignment.

@@ -1,11 +1,12 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { SessionState } from '@shared'
+import { SessionState, type UUID } from '@shared'
 import { createSession, updateSessionState } from '@/services/session.service'
 
-const DM_ID = '22222222-2222-4222-8222-222222222222'
+const asUuid = (value: string) => value as UUID
+const DM_ID = asUuid('22222222-2222-4222-8222-222222222222')
 
 describe('Session Pause Stats Persistence', () => {
-  let sessionId: string
+  let sessionId: UUID
 
   beforeEach(async () => {
     // Create a fresh session for each test
@@ -15,7 +16,7 @@ describe('Session Pause Stats Persistence', () => {
 
   it('should track pause count and cumulative pause time across transitions', async () => {
     // Start session
-    let updated = await updateSessionState(sessionId, 'ACTIVE', DM_ID)
+    let updated = await updateSessionState(sessionId, SessionState.ACTIVE, DM_ID)
     expect(updated).not.toBeNull()
     expect(updated?.state).toBe('ACTIVE')
     expect(updated?.pauseCount).toBe(0)
@@ -23,19 +24,19 @@ describe('Session Pause Stats Persistence', () => {
 
     // Pause session
     await new Promise((resolve) => setTimeout(resolve, 50))
-    updated = await updateSessionState(sessionId, 'PAUSED', DM_ID)
+    updated = await updateSessionState(sessionId, SessionState.PAUSED, DM_ID)
     expect(updated).not.toBeNull()
     expect(updated?.state).toBe('PAUSED')
     expect(updated?.pauseCount).toBe(1)
     expect(updated?.cumulativePauseMs).toBe(0)
-    const firstPausedAt = updated?.pauseStartedAt?.getTime()
+    const firstPausedAt = updated?.pauseStartedAt
     expect(firstPausedAt).toBeDefined()
 
     // Wait a bit to accumulate pause time
     await new Promise((resolve) => setTimeout(resolve, 50))
 
     // Resume session
-    updated = await updateSessionState(sessionId, 'ACTIVE', DM_ID)
+    updated = await updateSessionState(sessionId, SessionState.ACTIVE, DM_ID)
     expect(updated).not.toBeNull()
     expect(updated?.state).toBe('ACTIVE')
     expect(updated?.pauseCount).toBe(1)
@@ -47,7 +48,7 @@ describe('Session Pause Stats Persistence', () => {
 
     // Pause again
     await new Promise((resolve) => setTimeout(resolve, 30))
-    updated = await updateSessionState(sessionId, 'PAUSED', DM_ID)
+    updated = await updateSessionState(sessionId, SessionState.PAUSED, DM_ID)
     expect(updated?.state).toBe('PAUSED')
     expect(updated?.pauseCount).toBe(2)
     expect(updated?.cumulativePauseMs).toBe(firstPauseDuration) // Should not change until resume
@@ -56,7 +57,7 @@ describe('Session Pause Stats Persistence', () => {
     await new Promise((resolve) => setTimeout(resolve, 40))
 
     // Resume again
-    updated = await updateSessionState(sessionId, 'ACTIVE', DM_ID)
+    updated = await updateSessionState(sessionId, SessionState.ACTIVE, DM_ID)
     expect(updated?.state).toBe('ACTIVE')
     expect(updated?.pauseCount).toBe(2)
     // Should now have accumulated more time from second pause
@@ -66,13 +67,13 @@ describe('Session Pause Stats Persistence', () => {
 
   it('should finalize pause time when ending from PAUSED state', async () => {
     // Start -> Pause -> End
-    await updateSessionState(sessionId, 'ACTIVE', DM_ID)
+    await updateSessionState(sessionId, SessionState.ACTIVE, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 30))
 
-    await updateSessionState(sessionId, 'PAUSED', DM_ID)
+    await updateSessionState(sessionId, SessionState.PAUSED, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const ended = await updateSessionState(sessionId, 'ENDED', DM_ID)
+    const ended = await updateSessionState(sessionId, SessionState.ENDED, DM_ID)
     expect(ended?.state).toBe('ENDED')
     expect(ended?.pauseCount).toBe(1)
     expect(ended?.cumulativePauseMs).toBeGreaterThanOrEqual(40)
@@ -82,17 +83,15 @@ describe('Session Pause Stats Persistence', () => {
   it('should persist pause stats in database', async () => {
     // Create a session flow
     const sess1 = await createSession('Persist Test', DM_ID)
-    await updateSessionState(sess1.id, 'ACTIVE', DM_ID)
+    await updateSessionState(sess1.id, SessionState.ACTIVE, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 30))
-    await updateSessionState(sess1.id, 'PAUSED', DM_ID)
+    await updateSessionState(sess1.id, SessionState.PAUSED, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 50))
-    const updated = await updateSessionState(sess1.id, 'ACTIVE', DM_ID)
+    const updated = await updateSessionState(sess1.id, SessionState.ACTIVE, DM_ID)
 
     const pauseCountBeforeRefresh = updated?.pauseCount ?? 0
     const cumulativePauseMsBeforeRefresh = updated?.cumulativePauseMs ?? 0
 
-    // Simulate "refresh" by fetching the session again
-    const sess2 = await createSession('Placeholder', DM_ID) // Different session to avoid confusion
     // Note: We'd need a getSessionById function to truly test persistence
     // For now, we verify the stats were correctly calculated and returned
 

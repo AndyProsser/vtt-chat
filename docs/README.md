@@ -48,6 +48,7 @@ When UI implementation docs diverge from these migration docs, update the implem
 
 - [ARCHITECTURE-DIAGRAM.md](architecture/ARCHITECTURE-DIAGRAM.md)
 - [EVENT-BUS.md](architecture/EVENT-BUS.md)
+- [RUNTIME-STATE-AND-AUDIT-CONTRACT.md](architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
 - [STATE-RECOVERY.md](architecture/STATE-RECOVERY.md)
 - [SESSION-LIFECYCLE.md](architecture/SESSION-LIFECYCLE.md)
 - [ERROR-MODEL.md](architecture/ERROR-MODEL.md)
@@ -181,6 +182,7 @@ These documents give you the **core mental model** of the platform.
 
 - [ARCHITECTURE-DIAGRAM.md](architecture/ARCHITECTURE-DIAGRAM.md)
 - [EVENT-BUS.md](architecture/EVENT-BUS.md)
+- [RUNTIME-STATE-AND-AUDIT-CONTRACT.md](architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
 - [STATE-RECOVERY.md](architecture/STATE-RECOVERY.md)
 - [SESSION-LIFECYCLE.md](architecture/SESSION-LIFECYCLE.md)
 - [ERROR-MODEL.md](architecture/ERROR-MODEL.md)

@@ -197,6 +197,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('AUDIO:VOICE_OF_GOD_CHANGED', (event) => {
       useStore.getState().handleBroadcastStateChanged(event)
     })
+    dispatcher.register('AUDIO:USER_MUTED', (event) => {
+      useStore.getState().handleUserMuted(event)
+    })
+    dispatcher.register('AUDIO:USER_UNMUTED', (event) => {
+      useStore.getState().handleUserUnmuted(event)
+    })
 
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {

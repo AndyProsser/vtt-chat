@@ -61,7 +61,8 @@ export function SessionLeftRailPanel({
 }: SessionLeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId] || {})
+  const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId])
+  const userMuteState = useStore((state) => state.userMuteState[sessionId] || {})
 
   const isGreenroom = isGreenroomSessionState(sessionState)
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
@@ -151,6 +152,19 @@ export function SessionLeftRailPanel({
                   ? String(distanceOverride.parameters.presetName)
                   : undefined
 
+              // Combine mute states: user can be muted by themselves OR by the DM
+              const userOwnMuted = userMuteState[member.userId] ?? false
+              const dmMuted = overrideMuted
+              const isMutedCombined = userOwnMuted || dmMuted
+
+              // Speaking indicator: only show as speaking if NOT muted, AND (LiveKit says speaking OR presence says speaking)
+              const isActivelySpeaking =
+                room.type === RoomType.PRIVATE
+                  ? false
+                  : (Boolean(liveKitSpeakingUsers?.[member.userId]) ||
+                      member.presenceState === PresenceState.SPEAKING) &&
+                    !isMutedCombined
+
               return {
                 userId: member.userId,
                 username: member.username || member.userId,
@@ -165,12 +179,8 @@ export function SessionLeftRailPanel({
                 roleLabel:
                   member.userId === dmUserId ? ROOM_ROLE_LABELS.dm : ROOM_ROLE_LABELS.player,
                 presenceState: member.presenceState,
-                isMuted: isSelf ? localUserMuted || overrideMuted : overrideMuted,
-                isSpeaking:
-                  room.type === RoomType.PRIVATE
-                    ? false
-                    : Boolean(liveKitSpeakingUsers[member.userId]) ||
-                      member.presenceState === PresenceState.SPEAKING,
+                isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
+                isSpeaking: isActivelySpeaking,
                 distanceLabel: isGreenroom ? undefined : overrideDistance,
                 condition: isGreenroom
                   ? undefined

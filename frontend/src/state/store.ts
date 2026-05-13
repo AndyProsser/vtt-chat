@@ -16,6 +16,7 @@ import type { PresenceSlice } from './presenceSlice'
 import type { MetadataSlice } from './metadataSlice'
 import type { LiveKitSlice } from './livekitSlice'
 import type { UISlice } from './uiSlice'
+import type { UserMuteSlice } from './userMuteSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
@@ -26,6 +27,7 @@ import { createPresenceSlice } from './presenceSlice'
 import { createMetadataSlice } from './metadataSlice'
 import { createLiveKitSlice } from './livekitSlice'
 import { createUISlice } from './uiSlice'
+import { createUserMuteSlice } from './userMuteSlice'
 
 declare global {
   interface Window {
@@ -44,7 +46,8 @@ export type Store = SessionSlice &
   RoomSlice &
   MetadataSlice &
   UISlice &
-  LiveKitSlice
+  LiveKitSlice &
+  UserMuteSlice
 
 /**
  * Root Zustand store.
@@ -60,6 +63,7 @@ export const useStore = create<Store>()((...args) => ({
   ...createMetadataSlice(...args),
   ...createUISlice(...args),
   ...createLiveKitSlice(...args),
+  ...createUserMuteSlice(...args),
 }))
 
 if (typeof window !== 'undefined') {
