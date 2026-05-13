@@ -22,7 +22,7 @@ export interface GroupParticipantStatus {
   characterStats?: Record<string, unknown> | null
   presenceState: PresenceState
   ghost?: boolean
-  roleLabel?: 'DM' | 'PLAYER'
+  roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   isMuted?: boolean
   isSpeaking?: boolean
   condition?: string

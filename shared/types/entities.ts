@@ -84,6 +84,7 @@ export interface NoteEntity {
 export interface PresenceEntity {
   userId: UUID
   username: string
+  role?: Role
   playerName?: string
   avatarUrl?: string | null
   characterName?: string | null

@@ -1,6 +1,7 @@
 import type {
   PresenceEntity,
   PresenceState,
+  Role,
   RoomEntity,
   SessionLifecycleState,
   UUID,
@@ -11,6 +12,7 @@ export type Room = RoomEntity
 export interface RoomUser {
   userId: UUID
   username: string
+  role?: Role
   playerName?: string
   avatarUrl?: string | null
   characterName?: string | null

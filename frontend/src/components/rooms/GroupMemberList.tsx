@@ -137,7 +137,7 @@ export function GroupMemberList({
       {participants.map((member) => {
         const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
         const isMuted = Boolean(member.isMuted)
-        const isPlayerTarget = member.roleLabel === 'PLAYER'
+        const isPlayerTarget = member.roleLabel !== 'DM'
         const shownPresenceState = getResolvedPresenceState(member.presenceState)
 
         const memberButton = (

@@ -93,6 +93,7 @@ interface ApiPresence {
   sessionId: UUID
   userId: UUID
   username: string
+  role?: Role
   playerName?: string
   avatarUrl?: string | null
   characterName?: string | null
@@ -1859,6 +1860,7 @@ export function SessionInit({
         const nextPresence = (presencePayload.presence || []).map((entry) => ({
           userId: entry.userId,
           username: entry.username,
+          role: entry.role,
           playerName: entry.playerName,
           avatarUrl: entry.avatarUrl,
           characterName: entry.characterName,
@@ -3540,6 +3542,8 @@ export function SessionInit({
                       type: room.type,
                     }))}
                     roomMembersByRoomId={typedRoomMembers}
+                    sessionEndedAt={currentSession.endedAt}
+                    cooldownDurationMs={configuredCooldownDurationMs}
                     selectedRoomId={selectedRoomId}
                     onSelectRoom={setSelectedRoomIdOverride}
                     broadcastModeEnabled={broadcastModeEnabled}

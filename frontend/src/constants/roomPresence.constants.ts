@@ -8,6 +8,7 @@ export const ROOM_NAMES = {
 export const ROOM_ROLE_LABELS = {
   dm: 'DM',
   player: 'PLAYER',
+  spectator: 'SPECTATOR',
 } as const
 
 export const DEFAULT_AVATAR_META_LINES = {

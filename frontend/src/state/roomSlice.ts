@@ -46,6 +46,7 @@ function presenceToRoomMember(entry: SessionPresence): RoomUser {
   return {
     userId: entry.userId,
     username: entry.username,
+    role: entry.role,
     playerName: entry.playerName,
     avatarUrl: entry.avatarUrl,
     characterName: entry.characterName,
@@ -316,6 +317,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const nextMember: RoomUser = {
       userId: payload.userId,
       username: payload.username,
+      role: existingPresence?.role,
       playerName: existingPresence?.playerName,
       avatarUrl: existingPresence?.avatarUrl,
       characterName: existingPresence?.characterName,
@@ -491,6 +493,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           return {
             userId: user.userId,
             username: user.username,
+            role: existingPresence?.role,
             playerName: existingPresence?.playerName,
             avatarUrl: existingPresence?.avatarUrl,
             characterName: existingPresence?.characterName,
