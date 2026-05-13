@@ -1,6 +1,5 @@
 import { Request, Response, Router } from 'express'
-import authRoutes from './auth.routes'
-import authV1Routes from './auth-v1.routes'
+import authJoinRoutes from './auth-join.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
 import adminRoutes from './admin.routes'
@@ -36,23 +35,14 @@ router.get('/health', (_req: Request, res: Response) => {
  * Implemented routes
  */
 
-/**
- * v1 API routes (normalized naming conventions)
- * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
- */
-router.use('/v1/auth', authV1Routes)
-router.use('/v1/session', sessionRoutes)
-router.use('/v1/presence', presenceRoutes)
-router.use('/v1/rooms', roomsRoutes)
-router.use('/v1/audio', audioRoutes)
-router.use('/v1/livekit', liveKitRoutes)
-router.use('/v1/integrations', integrationsRoutes)
+router.use('/auth', authJoinRoutes)
+router.use('/session', sessionRoutes)
+router.use('/presence', presenceRoutes)
+router.use('/rooms', roomsRoutes)
+router.use('/audio', audioRoutes)
+router.use('/livekit', liveKitRoutes)
+router.use('/integrations', integrationsRoutes)
 
-/**
- * Legacy routes (maintained for backward compatibility)
- * Extension auth compatibility is intentionally preserved.
- */
-router.use('/auth', authRoutes)
 router.use('/platform', platformRoutes)
 router.use('/chat', chatRoutes)
 router.use('/admin', adminRoutes)

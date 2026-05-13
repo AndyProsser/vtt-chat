@@ -192,7 +192,7 @@ export function SpectatorInvitePage({
     setErrorCode(null)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/join/guest/spectator`, {
+      const response = await fetch(`${apiUrl}/api/auth/join/guest/spectator`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -894,8 +894,8 @@ Terminology note: this spec uses **Group** as the user-facing label. Existing co
 
 **APIs already available**:
 
-- `POST /api/v1/rooms/{roomId}/members/move` - Move participant to group
-- `POST /api/v1/rooms` - Create group (likely exists)
+- `POST /api/rooms/{roomId}/members/move` - Move participant to group
+- `POST /api/rooms` - Create group (likely exists)
 - Condition application (likely via session/character API)
 
 **Endpoints needed** (W0 scope verification):

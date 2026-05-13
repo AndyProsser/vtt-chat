@@ -73,15 +73,15 @@ HSET presence:session:{sessionId} user:{userId}:dm_muted 1
 
 **Scope:** Session-specific. Cleared on session end.
 
-**Recovery:** On browser refresh or reconnect, `GET /api/v1/audio/state/:sessionId` restores full mute map.
+**Recovery:** On browser refresh or reconnect, `GET /api/audio/state/:sessionId` restores full mute map.
 
 ### User Mute Persistence
 
 User mute persists across **pause/resume** within the same session:
 
-1. Player mutes → `POST /api/v1/audio/mute` → stored in Redis
+1. Player mutes → `POST /api/audio/mute` → stored in Redis
 2. Session pauses
-3. Session resumes → `GET /api/v1/audio/state/:sessionId` → mute state restored
+3. Session resumes → `GET /api/audio/state/:sessionId` → mute state restored
 4. Player sees their mute badge; others see it too
 
 ### DM Override Persistence
@@ -134,7 +134,7 @@ DM override mute persists across **pause/resume** within the same session:
 ### Setting Room Environments
 
 ```http
-POST /api/v1/audio/environments/apply
+POST /api/audio/environments/apply
 Content-Type: application/json
 
 {
@@ -189,7 +189,7 @@ store.setDMOverride(userId, {
 1. **Check group membership:**
 
    ```http
-   GET /api/v1/sessions/:sessionId/rooms
+   GET /api/sessions/:sessionId/rooms
    ```
 
    Verify players are joined to the correct room.
@@ -197,7 +197,7 @@ store.setDMOverride(userId, {
 2. **Check environment state:**
 
    ```http
-   GET /api/v1/audio/state/:sessionId
+   GET /api/audio/state/:sessionId
    ```
 
    Look for `roomEnvironmentNames[roomId]`. If "muffled" or "underwater", audio may be intentionally filtered.
@@ -241,7 +241,7 @@ store.setDMOverride(userId, {
 2. **Check audio state API response:**
 
    ```http
-   GET /api/v1/audio/state/:sessionId
+   GET /api/audio/state/:sessionId
    ```
 
    Should include `userMuteState` object with session users.

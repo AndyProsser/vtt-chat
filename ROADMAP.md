@@ -327,7 +327,7 @@ Interim issue note and follow-up tasks (deferred to W10, 2026-05-11):
 - Confirm condition apply/remove API endpoints exist
 - Confirm DM broadcast mode toggle endpoint exists
 - Create `CampaignSettings` table for allow/disallow features
-- Add `GET/PATCH /api/v1/campaigns/{id}/settings` endpoints
+- Add `GET/PATCH /api/campaigns/{id}/settings` endpoints
 
 **Frontend Components** (existing + new):
 
@@ -424,7 +424,7 @@ Recent delivery notes:
 - Topbar timer and user settings modal are now live and server-synced.
 - Topbar Information now shows a real campaign panel with stats and a DM edit entry point into campaign settings.
 - Rightbar campaign settings now has a dedicated component for DM auto-target, session name/description/planned-duration editing, and character settings editing.
-- Session metadata persistence is wired via backend `PATCH /api/v1/session/:id` for name, description, and planned duration.
+- Session metadata persistence is wired via backend `PATCH /api/session/:id` for name, description, and planned duration.
 - Campaign home settings dialog now mirrors rightbar character settings for DM workflow parity.
 - SearchPanel component removed from UI (search now integrated into Notes/Journal/History tabs).
 - Right-rail panel now dismisses on click-outside (backdrop click closes the panel).
@@ -595,12 +595,12 @@ Recent delivery notes:
 
 ### Latest Delivered (W6)
 
-- Added versioned API mounts for auth/session/presence/rooms/audio/livekit/integrations under `/api/v1/*` while retaining compatibility mounts for legacy paths.
+- Added versioned API mounts for auth/session/presence/rooms/audio/livekit/integrations under `/api/*` while retaining compatibility mounts for legacy paths.
 - Added normalized member-style aliases for session and room operations, plus normalized aliases for audio operations.
 - Split guest auth flow into role-oriented backend services (`guest-auth.extension`, `guest-auth.player`, `guest-auth.spectator`, `guest-auth.account-upgrade`) behind the `guest-auth.service.ts` facade.
-- Migrated frontend LiveKit token requests to `/api/v1/livekit/token`.
-- Migrated admin integrations operations to `/admin/api/v1/integrations/*` and added backend admin alias support.
-- Added centralized API-index v1 mount contract tests to validate mount consistency in one suite.
+- Migrated frontend LiveKit token requests to `/api/livekit/token`.
+- Migrated admin integrations operations to `/admin/api/integrations/*` and added backend admin alias support.
+- Added centralized API-index mount contract tests to validate canonical route consistency in one suite.
 
 ## 4) Detailed Backlog
 
@@ -732,8 +732,8 @@ Delivered baseline:
 
 1. Standardized frontend shared runtime state on canonical Zustand store/selectors for session, presence, group (runtime room), audio, and UI concerns.
 2. Refactored oversized frontend audio surfaces into focused component/module boundaries.
-3. Aligned frontend and backend naming with canonical v1 API paths while retaining intentional compatibility aliases.
-4. Added migration-safe compatibility tests and v1 mount contract coverage for active route families.
+3. Aligned frontend and backend naming with canonical non-versioned API paths while retaining intentional compatibility aliases.
+4. Added migration-safe compatibility tests and route-mount contract coverage for active route families.
 
 Follow-up tracking (moved from this stage):
 
@@ -750,7 +750,7 @@ Definition of done:
 - Cross-component runtime state uses canonical store selectors for shared concerns.
 - Targeted frontend/backend modules are renamed and reorganized without behavior regressions.
 - Refactor-related tests pass and coverage trend improves on changed modules.
-- API route inventory is documented, canonical v1 mapping is complete, and legacy compatibility paths are explicitly tracked with deprecation notes/tests pending planned sunset in W3.
+- API route inventory is documented, canonical path mapping is complete, and legacy compatibility paths are explicitly tracked with deprecation notes/tests pending planned sunset in W3.
 - Reusable cross-app constants/common logic are centralized in `shared/` and consumed consistently by frontend and backend where applicable.
 
 ### W7: Admin Operations UX Review

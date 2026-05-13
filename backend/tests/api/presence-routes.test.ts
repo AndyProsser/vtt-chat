@@ -67,7 +67,7 @@ function buildApp() {
   const app = express()
   app.use(express.json())
   app.use('/api/presence', presenceRoutes)
-  app.use('/api/v1/presence', presenceRoutes)
+  app.use('/api/presence', presenceRoutes)
   return app
 }
 
@@ -229,7 +229,7 @@ describe('presence routes', () => {
       expect(res.body.presence[0].displayName).toBe('Alice')
     })
 
-    it('serves the same presence data through the v1 mount', async () => {
+    it('serves the same presence data through the canonical mount', async () => {
       mocks.mockGetSessionPresence.mockResolvedValue([
         {
           userId: USER_ID,
@@ -242,7 +242,7 @@ describe('presence routes', () => {
 
       const app = buildApp()
       const res = await request(app)
-        .get(`/api/v1/presence/${SESSION_ID}`)
+        .get(`/api/presence/${SESSION_ID}`)
         .set('Authorization', 'Bearer token')
 
       expect(res.status).toBe(200)
@@ -561,10 +561,10 @@ describe('presence routes', () => {
       expect(res.body.presence).toHaveLength(0)
     })
 
-    it('supports recovery through the v1 mount', async () => {
+    it('supports recovery through the canonical mount', async () => {
       const app = buildApp()
       const res = await request(app)
-        .post(`/api/v1/presence/${SESSION_ID}/recover`)
+        .post(`/api/presence/${SESSION_ID}/recover`)
         .set('Authorization', 'Bearer token')
 
       expect(res.status).toBe(200)

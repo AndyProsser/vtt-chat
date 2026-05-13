@@ -72,7 +72,7 @@ Asked 10 targeted questions covering:
 - **UI integration**: Settings panel hierarchy
 - **Implementation roadmap**: Phase 1 (W0 critical) through Phase 3 (future)
 - **Prisma schema**: `CampaignSettings` table design
-- **Backend API**: `GET/PATCH /api/v1/campaigns/{id}/settings` spec
+- **Backend API**: `GET/PATCH /api/campaigns/{id}/settings` spec
 - **Frontend props**: How RoomSelector receives settings
 - **Testing strategy**: Unit, integration, E2E coverage
 

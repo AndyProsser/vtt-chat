@@ -104,7 +104,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
       try {
         setIsLoading(true)
         setError(null)
-        const response = await fetch(`${apiUrl}/api/v1/session/${sessionId}/logs`, {
+        const response = await fetch(`${apiUrl}/api/session/${sessionId}/logs`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

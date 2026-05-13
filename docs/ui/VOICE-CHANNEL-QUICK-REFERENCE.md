@@ -215,27 +215,27 @@ transition: 0.01s;
 ### Campaign Settings
 
 ```
-GET  /api/v1/campaigns/{id}/settings
-PATCH /api/v1/campaigns/{id}/settings
+GET  /api/campaigns/{id}/settings
+PATCH /api/campaigns/{id}/settings
 ```
 
 ### Conditions (Verify Exist)
 
 ```
-POST /api/v1/sessions/{id}/members/{userId}/conditions
-DELETE /api/v1/sessions/{id}/members/{userId}/conditions/{conditionName}
+POST /api/sessions/{id}/members/{userId}/conditions
+DELETE /api/sessions/{id}/members/{userId}/conditions/{conditionName}
 ```
 
 ### Broadcast Mode (Verify Exist)
 
 ```
-POST /api/v1/rooms/{id}/broadcast-toggle
+POST /api/rooms/{id}/broadcast-toggle
 ```
 
 ### Existing (Reuse)
 
 ```
-POST /api/v1/rooms/{roomId}/members/move
+POST /api/rooms/{roomId}/members/move
 ```
 
 ---

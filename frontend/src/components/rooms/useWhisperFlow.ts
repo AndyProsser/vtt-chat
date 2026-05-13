@@ -166,7 +166,7 @@ export function useWhisperFlow({
       }
 
       const endWhisperOnce = async () => {
-        const response = await fetch(`${apiUrl}/api/v1/rooms/${whisperRoomId}/end-whisper`, {
+        const response = await fetch(`${apiUrl}/api/rooms/${whisperRoomId}/end-whisper`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

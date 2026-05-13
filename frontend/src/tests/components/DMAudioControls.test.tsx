@@ -74,7 +74,7 @@ describe('DMAudioControls', () => {
     )
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/v1/audio/catalog/presets', {
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/catalog/presets', {
         headers: { Authorization: 'Bearer token' },
       })
     })
@@ -83,7 +83,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/environments/apply',
+        'http://localhost:3000/api/audio/environments/apply',
         {
           method: 'POST',
           headers: {
@@ -153,7 +153,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/overrides/dm/apply',
+        'http://localhost:3000/api/audio/overrides/dm/apply',
         {
           method: 'POST',
           headers: {
@@ -263,7 +263,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/overrides/dm/apply',
+        'http://localhost:3000/api/audio/overrides/dm/apply',
         expect.objectContaining({
           method: 'POST',
           headers: {
@@ -275,7 +275,7 @@ describe('DMAudioControls', () => {
     })
 
     const calls = fetchMock.mock.calls
-      .filter((entry) => entry[0] === 'http://localhost:3000/api/v1/audio/overrides/dm/apply')
+      .filter((entry) => entry[0] === 'http://localhost:3000/api/audio/overrides/dm/apply')
       .map((entry) => JSON.parse(entry[1].body as string))
 
     expect(calls.some((body) => body.parameters?.presetCategory === 'DISTANCE')).toBe(true)
@@ -344,7 +344,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/rooms/${ROOM_B}/members/move`,
+        `http://localhost:3000/api/rooms/${ROOM_B}/members/move`,
         {
           method: 'POST',
           headers: {
@@ -545,7 +545,7 @@ describe('DMAudioControls', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/rooms/${ROOM_B}/members/move`,
+        `http://localhost:3000/api/rooms/${ROOM_B}/members/move`,
         {
           method: 'POST',
           headers: {

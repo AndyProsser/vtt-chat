@@ -29,7 +29,7 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
 
   const syncSuggestedUsername = async (nextName: string, nextUsername: string) => {
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/register/username-suggestion`, {
+      const response = await fetch(`${apiUrl}/api/auth/register/username-suggestion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,7 +78,7 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/register`, {
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

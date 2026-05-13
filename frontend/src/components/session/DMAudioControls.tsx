@@ -160,7 +160,7 @@ export function DMAudioControls({
     const loadPresets = async () => {
       setError(null)
       try {
-        const response = await fetch(`${apiUrl}/api/v1/audio/catalog/presets`, {
+        const response = await fetch(`${apiUrl}/api/audio/catalog/presets`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -229,7 +229,7 @@ export function DMAudioControls({
     setSuccess(null)
 
     try {
-      await postJson('/api/v1/audio/environments/apply', {
+      await postJson('/api/audio/environments/apply', {
         sessionId,
         roomId: selectedRoomId,
         environmentName: selectedEnvironmentName,
@@ -283,7 +283,7 @@ export function DMAudioControls({
     }))
 
     try {
-      await postJson('/api/v1/audio/overrides/dm/apply', {
+      await postJson('/api/audio/overrides/dm/apply', {
         sessionId,
         targetUserId: resolvedTargetUserId,
         overrideType,
@@ -329,7 +329,7 @@ export function DMAudioControls({
     setSuccess(null)
 
     try {
-      await postJson('/api/v1/audio/overrides/dm/remove', {
+      await postJson('/api/audio/overrides/dm/remove', {
         sessionId,
         targetUserId: selectedTargetUserId,
         overrideType,
@@ -378,7 +378,7 @@ export function DMAudioControls({
     setSuccess(`Moving ${participant.username} to selected room...`)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/rooms/${toRoomId}/members/move`, {
+      const response = await fetch(`${apiUrl}/api/rooms/${toRoomId}/members/move`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

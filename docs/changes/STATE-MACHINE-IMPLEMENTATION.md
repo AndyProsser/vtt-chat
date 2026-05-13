@@ -20,7 +20,7 @@
 | **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED) | Add CLEANUP transition logic, 60s timer, 20min timer        |
 | **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                             | Update allowed transitions, add timer enforcement           |
 | **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                       | Add cleanup state handling, mark for hydration on reconnect |
-| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/v1/session/:id/state`                                    | No change (endpoint stays same)                             |
+| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                    | No change (endpoint stays same)                             |
 
 **Action Items:**
 

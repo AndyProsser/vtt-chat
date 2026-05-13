@@ -280,13 +280,13 @@ Recovery runs when either of these conditions occurs:
 
 The client recovery loader requests three snapshots in parallel:
 
-1. `GET /api/v1/rooms/session/:sessionId`
-2. `GET /api/v1/presence/:sessionId`
-3. `GET /api/v1/audio/sessions/:sessionId/state`
+1. `GET /api/rooms/session/:sessionId`
+2. `GET /api/presence/:sessionId`
+3. `GET /api/audio/sessions/:sessionId/state`
 
 Then it triggers a non-blocking snapshot reconciliation request:
 
-4. `POST /api/v1/presence/:sessionId/recover` (fire-and-forget)
+4. `POST /api/presence/:sessionId/recover` (fire-and-forget)
 
 ### **7.3 Hydration mapping**
 

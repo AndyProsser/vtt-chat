@@ -362,7 +362,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms',
+        'http://localhost:3000/api/rooms',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -451,7 +451,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms',
+        'http://localhost:3000/api/rooms',
         expect.objectContaining({
           body: JSON.stringify({
             sessionId: 'session-1',
@@ -604,7 +604,7 @@ describe('RoomSelector', () => {
 
   it('ends whisper via API for private room action', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/end-whisper') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -667,7 +667,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        'http://localhost:3000/api/rooms/room-private/end-whisper',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -677,7 +677,7 @@ describe('RoomSelector', () => {
 
   it('shows close-group API error and keeps group visible when request fails', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/end-whisper') && options?.method === 'POST') {
         return new Response(JSON.stringify({ message: 'Failed to end whisper' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
@@ -755,7 +755,7 @@ describe('RoomSelector', () => {
     let deleteResolved = false
 
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-group') && options?.method === 'DELETE') {
+      if (url.endsWith('/api/rooms/room-group') && options?.method === 'DELETE') {
         return new Promise<Response>((resolve) => {
           resolveDelete = (response: Response) => {
             deleteResolved = true
@@ -764,7 +764,7 @@ describe('RoomSelector', () => {
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+      if (url.endsWith('/api/rooms/session/session-1')) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -806,7 +806,7 @@ describe('RoomSelector', () => {
         )
       }
 
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -908,7 +908,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-group',
+        'http://localhost:3000/api/rooms/room-group',
         expect.objectContaining({ method: 'DELETE' })
       )
     })
@@ -932,7 +932,7 @@ describe('RoomSelector', () => {
     let resolveFirstDelete: (value: Response) => void = () => undefined
 
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-group') && options?.method === 'DELETE') {
+      if (url.endsWith('/api/rooms/room-group') && options?.method === 'DELETE') {
         deleteCallCount += 1
 
         if (deleteCallCount === 1) {
@@ -1026,7 +1026,7 @@ describe('RoomSelector', () => {
     await waitFor(() => {
       const deleteCalls = fetchMock.mock.calls.filter(
         ([url, options]) =>
-          String(url).endsWith('/api/v1/rooms/room-group') &&
+          String(url).endsWith('/api/rooms/room-group') &&
           (options as RequestInit | undefined)?.method === 'DELETE'
       )
       expect(deleteCalls.length).toBe(2)
@@ -1039,14 +1039,14 @@ describe('RoomSelector', () => {
     const onSelectRoom = vi.fn()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-main/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+      if (url.endsWith('/api/rooms/session/session-1')) {
         return new Response(
           JSON.stringify({
             rooms: [
@@ -1075,7 +1075,7 @@ describe('RoomSelector', () => {
         )
       }
 
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return new Response(
           JSON.stringify({
             presence: [
@@ -1164,14 +1164,14 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        'http://localhost:3000/api/rooms/room-main/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
 
     const deleteCalls = fetchMock.mock.calls.filter(
       ([url, options]) =>
-        String(url).endsWith('/api/v1/rooms/room-group') &&
+        String(url).endsWith('/api/rooms/room-group') &&
         (options as RequestInit | undefined)?.method === 'DELETE'
     )
     expect(deleteCalls.length).toBe(0)
@@ -1184,7 +1184,7 @@ describe('RoomSelector', () => {
 
     const onSelectRoom = vi.fn()
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return new Response(
           JSON.stringify({
             presence: [
@@ -1254,7 +1254,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/presence/session-1',
+        'http://localhost:3000/api/presence/session-1',
         expect.any(Object)
       )
       expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-group'))
@@ -1267,7 +1267,7 @@ describe('RoomSelector', () => {
 
     const onSelectRoom = vi.fn()
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return new Response(JSON.stringify({ presence: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -1323,7 +1323,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/presence/session-1',
+        'http://localhost:3000/api/presence/session-1',
         expect.any(Object)
       )
       expect(screen.getByText('Cannot set DM voice target to an empty room or group')).toBeTruthy()
@@ -1446,7 +1446,7 @@ describe('RoomSelector', () => {
 
   it('allows ending whisper room even when members are present', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/end-whisper') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -1512,7 +1512,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        'http://localhost:3000/api/rooms/room-private/end-whisper',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -1522,7 +1522,7 @@ describe('RoomSelector', () => {
     useStore.getState().reset()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-main/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -1591,7 +1591,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        'http://localhost:3000/api/rooms/room-main/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -1605,28 +1605,28 @@ describe('RoomSelector', () => {
     const onSelectRoom = vi.fn()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-main/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-main/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/end-whisper') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+      if (url.endsWith('/api/rooms/session/session-1')) {
         return new Response(JSON.stringify({ rooms: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return new Response(JSON.stringify({ presence: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -1689,14 +1689,14 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-main/members/move',
+        'http://localhost:3000/api/rooms/room-main/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private/end-whisper',
+        'http://localhost:3000/api/rooms/room-private/end-whisper',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -1717,7 +1717,7 @@ describe('RoomSelector', () => {
     })
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/members/move') && options?.method === 'POST') {
         return moveParticipantPromise
       }
 
@@ -1816,22 +1816,22 @@ describe('RoomSelector', () => {
     })
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-private/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+      if (url.endsWith('/api/rooms/session/session-1')) {
         return roomsSyncPromise
       }
 
-      if (url.endsWith('/api/v1/presence/session-1')) {
+      if (url.endsWith('/api/presence/session-1')) {
         return presenceSyncPromise
       }
 
-      if (url.endsWith('/api/v1/rooms/room-private/end-whisper') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-private/end-whisper') && options?.method === 'POST') {
         endWhisperCalls += 1
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
@@ -1894,7 +1894,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-private/members/move',
+        'http://localhost:3000/api/rooms/room-private/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -2124,7 +2124,7 @@ describe('RoomSelector', () => {
 
   it('moves a participant to another room with drag-and-drop', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-target/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-target/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -2186,7 +2186,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-target/members/move',
+        'http://localhost:3000/api/rooms/room-target/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -2194,7 +2194,7 @@ describe('RoomSelector', () => {
 
   it('moves participant via drag-and-drop onto another group', async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/rooms/room-target/members/move') && options?.method === 'POST') {
+      if (url.endsWith('/api/rooms/room-target/members/move') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -2256,7 +2256,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/rooms/room-target/members/move',
+        'http://localhost:3000/api/rooms/room-target/members/move',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -2266,14 +2266,14 @@ describe('RoomSelector', () => {
     useStore.getState().reset()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/audio/dm-override/apply') && options?.method === 'POST') {
+      if (url.endsWith('/api/audio/dm-override/apply') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/audio/sessions/session-1/state') && !options?.method) {
+      if (url.endsWith('/api/audio/sessions/session-1/state') && !options?.method) {
         return new Response(
           JSON.stringify({
             dmOverrides: [
@@ -2342,14 +2342,14 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/dm-override/apply',
+        'http://localhost:3000/api/audio/dm-override/apply',
         expect.objectContaining({ method: 'POST' })
       )
     })
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/sessions/session-1/state',
+        'http://localhost:3000/api/audio/sessions/session-1/state',
         expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } })
       )
     })
@@ -2368,14 +2368,14 @@ describe('RoomSelector', () => {
     })
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/audio/dm-override/remove') && options?.method === 'POST') {
+      if (url.endsWith('/api/audio/dm-override/remove') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.endsWith('/api/v1/audio/sessions/session-1/state') && !options?.method) {
+      if (url.endsWith('/api/audio/sessions/session-1/state') && !options?.method) {
         return new Response(JSON.stringify({ dmOverrides: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -2432,14 +2432,14 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/dm-override/remove',
+        'http://localhost:3000/api/audio/dm-override/remove',
         expect.objectContaining({ method: 'POST' })
       )
     })
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/audio/sessions/session-1/state',
+        'http://localhost:3000/api/audio/sessions/session-1/state',
         expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } })
       )
     })
@@ -2453,7 +2453,7 @@ describe('RoomSelector', () => {
     useStore.getState().reset()
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (url.endsWith('/api/v1/dev/mock-players/takeover/start') && options?.method === 'POST') {
+      if (url.endsWith('/api/dev/mock-players/takeover/start') && options?.method === 'POST') {
         return new Response(
           JSON.stringify({
             ok: true,
@@ -2470,7 +2470,7 @@ describe('RoomSelector', () => {
         )
       }
 
-      if (url.includes('/api/v1/dev/mock-players/takeover/status/')) {
+      if (url.includes('/api/dev/mock-players/takeover/status/')) {
         return new Response(
           JSON.stringify({
             sessionId: 'session-1',
@@ -2533,7 +2533,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/dev/mock-players/takeover/start',
+        'http://localhost:3000/api/dev/mock-players/takeover/start',
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -2598,13 +2598,13 @@ describe('RoomSelector', () => {
     const fetchMock = vi.fn((input: string | URL) => {
       const url = String(input)
 
-      if (url.endsWith('/api/v1/dev/mock-players/reroll')) {
+      if (url.endsWith('/api/dev/mock-players/reroll')) {
         return new Promise<Response>((resolve) => {
           resolveReroll = resolve
         })
       }
 
-      if (url.endsWith('/api/v1/dev/mock-players/simulation/status/session-1')) {
+      if (url.endsWith('/api/dev/mock-players/simulation/status/session-1')) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -2677,7 +2677,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/dev/mock-players/reroll',
+        'http://localhost:3000/api/dev/mock-players/reroll',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ sessionId: 'session-1', newPlayerCount: 8 }),
@@ -2709,7 +2709,7 @@ describe('RoomSelector', () => {
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (
-        url.endsWith('/api/v1/dev/mock-players/simulation/status/session-1') &&
+        url.endsWith('/api/dev/mock-players/simulation/status/session-1') &&
         !options?.method
       ) {
         return new Response(
@@ -2733,14 +2733,14 @@ describe('RoomSelector', () => {
         )
       }
 
-      if (url.endsWith('/api/v1/dev/mock-players/takeover/stop') && options?.method === 'POST') {
+      if (url.endsWith('/api/dev/mock-players/takeover/stop') && options?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true, cleared: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      if (url.includes('/api/v1/dev/mock-players/takeover/status/')) {
+      if (url.includes('/api/dev/mock-players/takeover/status/')) {
         return new Response(
           JSON.stringify({
             sessionId: 'session-1',
@@ -2797,7 +2797,7 @@ describe('RoomSelector', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/v1/dev/mock-players/takeover/stop',
+        'http://localhost:3000/api/dev/mock-players/takeover/stop',
         expect.objectContaining({ method: 'POST' })
       )
     })

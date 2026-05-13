@@ -715,7 +715,7 @@ DM-level campaign data (name, structure) can only be updated when the push comes
 ### 6.3 Sync Update Endpoint
 
 ```text
-POST /api/v1/integrations/external/sync
+POST /api/integrations/external/sync
 ```
 
 Requires authentication (guest or full token). Validates the caller's campaign membership and role before applying any updates.

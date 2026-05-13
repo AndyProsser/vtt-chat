@@ -408,8 +408,8 @@ interface ChatMessage {
 - [ ] Implement `sessionGroupHistory: Set<string>` in Zustand
 - [ ] Update filtering algorithm in frontend to use `sessionGroupHistory`
 - [ ] Create `CampaignMessageArchive` table in Prisma schema
-- [ ] Implement batch archival endpoint (`POST /api/v1/campaigns/:id/sessions/:sessionId/archive`)
-- [ ] Implement history query endpoint (`GET /api/v1/campaigns/:id/history/sessions`)
+- [ ] Implement batch archival endpoint (`POST /api/campaigns/:id/sessions/:sessionId/archive`)
+- [ ] Implement history query endpoint (`GET /api/campaigns/:id/history/sessions`)
 - [ ] Build History panel UI component
 - [ ] Add session boundary system messages on session state transitions
 - [ ] Implement Greenroom message fade animation

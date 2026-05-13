@@ -177,7 +177,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${SESSION_ID}/members/join`)) {
         expect(init?.method).toBe('POST')
         return {
           ok: true,
@@ -194,7 +194,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -220,7 +220,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -244,7 +244,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({
@@ -263,7 +263,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return {
           ok: true,
           json: async () => ({ recoveredFromSnapshots: true, snapshotCount: 2, presence: [] }),
@@ -289,7 +289,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${SESSION_ID}/members/join`,
+        `http://localhost:3000/api/session/${SESSION_ID}/members/join`,
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -349,7 +349,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${SESSION_ID}/members/join`)) {
         expect(init?.method).toBe('POST')
         return {
           ok: true,
@@ -366,7 +366,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -392,7 +392,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -416,7 +416,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({
@@ -435,7 +435,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return {
           ok: true,
           json: async () => ({ recoveredFromSnapshots: true, snapshotCount: 2, presence: [] }),
@@ -461,7 +461,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${SESSION_ID}/members/join`,
+        `http://localhost:3000/api/session/${SESSION_ID}/members/join`,
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -835,7 +835,7 @@ describe('SessionInit integration', () => {
       }
 
       if (
-        url === `http://localhost:3000/api/v1/session/${SESSION_ID}/state` &&
+        url === `http://localhost:3000/api/session/${SESSION_ID}/state` &&
         init?.method === 'PUT'
       ) {
         transitionedToActive = true
@@ -851,7 +851,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -877,7 +877,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -901,14 +901,14 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({ environments: [], dmOverrides: [] }),
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return {
           ok: true,
           json: async () => ({ ok: true }),
@@ -941,10 +941,10 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       const roomsHydrationCalls = fetchMock.mock.calls.filter(([calledUrl]) =>
-        String(calledUrl).endsWith(`/api/v1/rooms/session/${SESSION_ID}`)
+        String(calledUrl).endsWith(`/api/rooms/session/${SESSION_ID}`)
       )
       const presenceHydrationCalls = fetchMock.mock.calls.filter(([calledUrl]) =>
-        String(calledUrl).endsWith(`/api/v1/presence/${SESSION_ID}`)
+        String(calledUrl).endsWith(`/api/presence/${SESSION_ID}`)
       )
 
       expect(roomsHydrationCalls.length).toBeGreaterThanOrEqual(2)
@@ -1252,7 +1252,7 @@ describe('SessionInit integration', () => {
             }),
           }
         }
-        if (url.includes(`/api/v1/session/${SESSION_ID}/logs`)) {
+        if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
           return {
             ok: true,
             json: async () => ({
@@ -1359,7 +1359,7 @@ describe('SessionInit integration', () => {
         return { ok: true, json: async () => ({ characters: [] }) }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}`) && init?.method === 'PATCH') {
+      if (url.endsWith(`/api/session/${SESSION_ID}`) && init?.method === 'PATCH') {
         const payload = JSON.parse(String(init.body || '{}')) as {
           name: string
           description: string
@@ -1418,7 +1418,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${SESSION_ID}`,
+        `http://localhost:3000/api/session/${SESSION_ID}`,
         expect.objectContaining({
           method: 'PATCH',
         })
@@ -1427,7 +1427,7 @@ describe('SessionInit integration', () => {
 
     const patchCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        String(url).endsWith(`/api/v1/session/${SESSION_ID}`) &&
+        String(url).endsWith(`/api/session/${SESSION_ID}`) &&
         (init as RequestInit | undefined)?.method === 'PATCH'
     )
     expect(patchCall).toBeTruthy()
@@ -1698,7 +1698,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.includes(`/api/v1/session/${SESSION_ID}/logs`)) {
+      if (url.includes(`/api/session/${SESSION_ID}/logs`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2108,7 +2108,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
+      if (url.endsWith(`/api/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
         return {
           ok: true,
           json: async () => ({
@@ -2147,7 +2147,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${SESSION_ID}/state`,
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ state: SessionState.PAUSED }),
@@ -2194,7 +2194,7 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
+      if (url.endsWith(`/api/session/${SESSION_ID}/state`) && init?.method === 'PUT') {
         return {
           ok: true,
           json: async () => ({
@@ -2233,7 +2233,7 @@ describe('SessionInit integration', () => {
 
     expect(await screen.findByRole('dialog', { name: 'End session' })).toBeTruthy()
     expect(fetchMock).not.toHaveBeenCalledWith(
-      `http://localhost:3000/api/v1/session/${SESSION_ID}/state`,
+      `http://localhost:3000/api/session/${SESSION_ID}/state`,
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ state: SessionState.ENDED }),
@@ -2244,7 +2244,7 @@ describe('SessionInit integration', () => {
 
     expect(screen.queryByRole('dialog', { name: 'End session' })).toBeNull()
     expect(fetchMock).not.toHaveBeenCalledWith(
-      `http://localhost:3000/api/v1/session/${SESSION_ID}/state`,
+      `http://localhost:3000/api/session/${SESSION_ID}/state`,
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ state: SessionState.ENDED }),
@@ -2256,7 +2256,7 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${SESSION_ID}/state`,
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ state: SessionState.ENDED }),
@@ -2399,11 +2399,11 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${SESSION_ID}/members/join`)) {
         return { ok: true, json: async () => ({ ok: true }) }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2430,7 +2430,7 @@ describe('SessionInit integration', () => {
       }
 
       if (
-        url.endsWith(`/api/v1/presence/${SESSION_ID}`) &&
+        url.endsWith(`/api/presence/${SESSION_ID}`) &&
         (!init || !init.method || init.method === 'GET')
       ) {
         return {
@@ -2456,14 +2456,14 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return {
           ok: true,
           json: async () => ({ recoveredFromSnapshots: false, snapshotCount: 2, presence: [] }),
         }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2514,15 +2514,15 @@ describe('SessionInit integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/rooms/session/${SESSION_ID}`,
+        `http://localhost:3000/api/rooms/session/${SESSION_ID}`,
         expect.anything()
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/presence/${SESSION_ID}`,
+        `http://localhost:3000/api/presence/${SESSION_ID}`,
         expect.anything()
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/audio/sessions/${SESSION_ID}/state`,
+        `http://localhost:3000/api/audio/sessions/${SESSION_ID}/state`,
         expect.anything()
       )
     })
@@ -2545,7 +2545,7 @@ describe('SessionInit integration', () => {
     // Verify presence recover was triggered (fire-and-forget).
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/presence/${SESSION_ID}/recover`,
+        `http://localhost:3000/api/presence/${SESSION_ID}/recover`,
         expect.objectContaining({ method: 'POST' })
       )
     })
@@ -2591,11 +2591,11 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${SESSION_ID}/members/join`)) {
         return { ok: true, json: async () => ({ ok: true }) }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2668,17 +2668,17 @@ describe('SessionInit integration', () => {
       }
 
       if (
-        url.endsWith(`/api/v1/presence/${SESSION_ID}`) &&
+        url.endsWith(`/api/presence/${SESSION_ID}`) &&
         (!init || !init.method || init.method === 'GET')
       ) {
         return { ok: true, json: async () => ({ presence: [] }) }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return { ok: true, json: async () => ({ recoveredFromSnapshots: false }) }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2745,7 +2745,7 @@ describe('SessionInit integration', () => {
     await waitFor(() => {
       // Recovery calls should have been re-issued after reconnect
       const audioStateCalls = fetchMock.mock.calls.filter(([url]) =>
-        String(url).endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)
+        String(url).endsWith(`/api/audio/sessions/${SESSION_ID}/state`)
       )
       expect(audioStateCalls.length).toBeGreaterThan(1)
       expect(fetchMock.mock.calls.length).toBeGreaterThan(callCountAfterFirstLoad)
@@ -2801,11 +2801,11 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${SESSION_ID}/members/join`)) {
         return { ok: true, json: async () => ({ ok: true }) }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2824,7 +2824,7 @@ describe('SessionInit integration', () => {
       }
 
       if (
-        url.endsWith(`/api/v1/presence/${SESSION_ID}`) &&
+        url.endsWith(`/api/presence/${SESSION_ID}`) &&
         (!init || !init.method || init.method === 'GET')
       ) {
         presenceReadCount += 1
@@ -2864,11 +2864,11 @@ describe('SessionInit integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${SESSION_ID}/recover`)) {
         return { ok: true, json: async () => ({ recoveredFromSnapshots: false }) }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({

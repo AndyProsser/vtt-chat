@@ -103,7 +103,7 @@ Frontend Action: audioSlice.muteUser(sessionId, userId)
     ├─→ localStorage: persist preference (optional)
     │
     ▼
-HTTP Request: POST /api/v1/audio/mute
+HTTP Request: POST /api/audio/mute
     │
     ├─Body: { sessionId, userId }
     │
@@ -391,7 +391,7 @@ interface AudioDMOverrideAppliedEvent {
 ### Mute User
 
 ```http
-POST /api/v1/audio/mute
+POST /api/audio/mute
 Content-Type: application/json
 
 {
@@ -414,7 +414,7 @@ Content-Type: application/json
 ### Unmute User
 
 ```http
-POST /api/v1/audio/unmute
+POST /api/audio/unmute
 Content-Type: application/json
 
 {
@@ -426,7 +426,7 @@ Content-Type: application/json
 ### Get Audio State (Reconnect Recovery)
 
 ```http
-GET /api/v1/audio/state/:sessionId
+GET /api/audio/state/:sessionId
 ```
 
 **Response:**

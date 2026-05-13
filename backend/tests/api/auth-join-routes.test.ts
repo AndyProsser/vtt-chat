@@ -1,14 +1,14 @@
 /**
- * Tests for v1 Authentication Routes
+ * Tests for current Authentication Routes
  *
- * Validates that normalized v1 routes work correctly.
- * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
+ * Validates that normalized current routes work correctly.
+ * Reference: docs/operations/API-PATH-CUTOVER-MAP.md
  */
 
 import express from 'express'
 import request from 'supertest'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import authV1Routes from '@/api/auth-v1.routes'
+import authJoinRoutes from '@/api/auth-join.routes'
 
 // Mock all auth service functions
 const mocks = vi.hoisted(() => ({
@@ -63,11 +63,11 @@ vi.mock('@/services/session-authz.service', () => ({
 // Create a test Express app
 const app = express()
 app.use(express.json())
-app.use('/auth', authV1Routes)
+app.use('/auth', authJoinRoutes)
 
-describe('v1 Auth Routes (Normalized API)', () => {
-  const testUserId = 'u-test-v1-auth'
-  const testUsername = 'test-v1-user'
+describe('current Auth Routes (Normalized API)', () => {
+  const testUserId = 'u-test-current-auth'
+  const testUsername = 'test-current-user'
   const testToken = 'test-jwt-token-xyz'
 
   beforeEach(() => {

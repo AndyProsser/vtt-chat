@@ -46,7 +46,7 @@ export function MockPlayerControlPanel({
     const pollStatus = async () => {
       try {
         const response = await fetch(
-          `${apiUrl}/api/v1/dev/mock-players/simulation/status/${sessionId}`,
+          `${apiUrl}/api/dev/mock-players/simulation/status/${sessionId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -75,7 +75,7 @@ export function MockPlayerControlPanel({
       setIsLoading(true)
 
       try {
-        const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/simulation/settings`, {
+        const response = await fetch(`${apiUrl}/api/dev/mock-players/simulation/settings`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ export function MockPlayerControlPanel({
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/reroll`, {
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/reroll`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export function MockPlayerControlPanel({
   const handleReroll = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/reroll`, {
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/reroll`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ export function MockPlayerControlPanel({
   const handleRemoveAll = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/disconnect-all`, {
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/disconnect-all`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

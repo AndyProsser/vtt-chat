@@ -67,7 +67,8 @@ When a new session starts for the same campaign, non-private groups and their en
 
 - Session recovery hydration now restores both environment presets and DM overrides from audio state snapshots in `SessionInit`, and triggers a non-blocking presence snapshot recovery call after hydration.
 - Frontend session user typing now carries campaign-scoped role context through `campaignMembershipRole` while preserving JWT global role semantics.
-- Planned release version alignment updated to `0.6.1` across workspace packages and backend runtime app-version constant.
+- Canonical API path cleanup completed: removed remaining versioned naming in route wiring/tests, renamed auth route artifacts away from versioned labels, and finalized non-versioned mount usage across runtime/admin callsites.
+- Planned release version alignment updated to `0.6.2` across workspace packages and backend runtime app-version constant.
 
 ### Added
 
@@ -86,6 +87,8 @@ When a new session starts for the same campaign, non-private groups and their en
 
 - Updated W1 planning/status in [ROADMAP.md](ROADMAP.md) to include backend Zod env-validation migration and backend Pino logging migration, with explicit current-state notes.
 - Updated [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md) delivery-log pointers to reflect the new W1 planning additions in the active roadmap.
+- Updated endpoint/path documentation from versioned API examples to canonical non-versioned API families across architecture, guides, extension, and UI docs.
+- Replaced the operations API deprecation map with [docs/operations/API-PATH-CUTOVER-MAP.md](docs/operations/API-PATH-CUTOVER-MAP.md) to reflect the current route contract.
 
 ---
 

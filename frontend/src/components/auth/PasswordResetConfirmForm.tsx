@@ -24,7 +24,7 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/v1/auth/password-reset/verify`, {
+        const response = await fetch(`${apiUrl}/api/auth/password-reset/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
@@ -65,7 +65,7 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/password-reset/complete`, {
+      const response = await fetch(`${apiUrl}/api/auth/password-reset/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),

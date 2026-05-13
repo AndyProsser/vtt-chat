@@ -9,7 +9,7 @@ function makeEmptyRouter() {
 function makeAuthV1Router() {
   const router = Router()
   router.get('/validate', (_req, res) => {
-    res.status(200).json({ scope: 'auth-v1', route: 'validate' })
+    res.status(200).json({ scope: 'auth-current', route: 'validate' })
   })
   return router
 }
@@ -17,7 +17,7 @@ function makeAuthV1Router() {
 function makeSessionRouter() {
   const router = Router()
   router.get('/:id/members', (req, res) => {
-    res.status(200).json({ scope: 'session-v1', sessionId: req.params.id, route: 'members' })
+    res.status(200).json({ scope: 'session-current', sessionId: req.params.id, route: 'members' })
   })
   return router
 }
@@ -26,7 +26,7 @@ function makePresenceRouter() {
   const router = Router()
   router.post('/:sessionId/recover', (req, res) => {
     res.status(200).json({
-      scope: 'presence-v1',
+      scope: 'presence-current',
       sessionId: req.params.sessionId,
       route: 'recover',
     })
@@ -37,7 +37,7 @@ function makePresenceRouter() {
 function makeRoomsRouter() {
   const router = Router()
   router.get('/session/:sessionId', (req, res) => {
-    res.status(200).json({ scope: 'rooms-v1', sessionId: req.params.sessionId, route: 'list' })
+    res.status(200).json({ scope: 'rooms-current', sessionId: req.params.sessionId, route: 'list' })
   })
   return router
 }
@@ -45,7 +45,7 @@ function makeRoomsRouter() {
 function makeAudioRouter() {
   const router = Router()
   router.get('/catalog/presets', (_req, res) => {
-    res.status(200).json({ scope: 'audio-v1', route: 'catalog/presets' })
+    res.status(200).json({ scope: 'audio-current', route: 'catalog/presets' })
   })
   return router
 }
@@ -53,7 +53,7 @@ function makeAudioRouter() {
 function makeLivekitRouter() {
   const router = Router()
   router.post('/token', (_req, res) => {
-    res.status(200).json({ scope: 'livekit-v1', route: 'token' })
+    res.status(200).json({ scope: 'livekit-current', route: 'token' })
   })
   return router
 }
@@ -61,12 +61,12 @@ function makeLivekitRouter() {
 function makeIntegrationsRouter() {
   const router = Router()
   router.post('/external/sync', (_req, res) => {
-    res.status(200).json({ scope: 'integrations-v1', route: 'external/sync' })
+    res.status(200).json({ scope: 'integrations-current', route: 'external/sync' })
   })
   return router
 }
 
-vi.mock('@/api/auth-v1.routes', () => ({ default: makeAuthV1Router() }))
+vi.mock('@/api/auth-join.routes', () => ({ default: makeAuthV1Router() }))
 vi.mock('@/api/session.routes', () => ({ default: makeSessionRouter() }))
 vi.mock('@/api/presence.routes', () => ({ default: makePresenceRouter() }))
 vi.mock('@/api/rooms.routes', () => ({ default: makeRoomsRouter() }))
@@ -93,72 +93,72 @@ function buildApp() {
   return app
 }
 
-describe('api index v1 contracts', () => {
-  it('mounts /api/v1/auth/validate', async () => {
+describe('api index current contracts', () => {
+  it('mounts /api/auth/validate', async () => {
     const app = buildApp()
-    const res = await request(app).get('/api/v1/auth/validate')
+    const res = await request(app).get('/api/auth/validate')
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ scope: 'auth-v1', route: 'validate' })
+    expect(res.body).toEqual({ scope: 'auth-current', route: 'validate' })
   })
 
-  it('mounts /api/v1/session/:id/members', async () => {
+  it('mounts /api/session/:id/members', async () => {
     const app = buildApp()
-    const res = await request(app).get('/api/v1/session/session-123/members')
+    const res = await request(app).get('/api/session/session-123/members')
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual({
-      scope: 'session-v1',
+      scope: 'session-current',
       sessionId: 'session-123',
       route: 'members',
     })
   })
 
-  it('mounts /api/v1/presence/:sessionId/recover', async () => {
+  it('mounts /api/presence/:sessionId/recover', async () => {
     const app = buildApp()
-    const res = await request(app).post('/api/v1/presence/session-123/recover')
+    const res = await request(app).post('/api/presence/session-123/recover')
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual({
-      scope: 'presence-v1',
+      scope: 'presence-current',
       sessionId: 'session-123',
       route: 'recover',
     })
   })
 
-  it('mounts /api/v1/rooms/session/:sessionId', async () => {
+  it('mounts /api/rooms/session/:sessionId', async () => {
     const app = buildApp()
-    const res = await request(app).get('/api/v1/rooms/session/session-123')
+    const res = await request(app).get('/api/rooms/session/session-123')
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual({
-      scope: 'rooms-v1',
+      scope: 'rooms-current',
       sessionId: 'session-123',
       route: 'list',
     })
   })
 
-  it('mounts /api/v1/audio/catalog/presets', async () => {
+  it('mounts /api/audio/catalog/presets', async () => {
     const app = buildApp()
-    const res = await request(app).get('/api/v1/audio/catalog/presets')
+    const res = await request(app).get('/api/audio/catalog/presets')
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ scope: 'audio-v1', route: 'catalog/presets' })
+    expect(res.body).toEqual({ scope: 'audio-current', route: 'catalog/presets' })
   })
 
-  it('mounts /api/v1/livekit/token', async () => {
+  it('mounts /api/livekit/token', async () => {
     const app = buildApp()
-    const res = await request(app).post('/api/v1/livekit/token')
+    const res = await request(app).post('/api/livekit/token')
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ scope: 'livekit-v1', route: 'token' })
+    expect(res.body).toEqual({ scope: 'livekit-current', route: 'token' })
   })
 
-  it('mounts /api/v1/integrations/external/sync', async () => {
+  it('mounts /api/integrations/external/sync', async () => {
     const app = buildApp()
-    const res = await request(app).post('/api/v1/integrations/external/sync')
+    const res = await request(app).post('/api/integrations/external/sync')
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ scope: 'integrations-v1', route: 'external/sync' })
+    expect(res.body).toEqual({ scope: 'integrations-current', route: 'external/sync' })
   })
 })

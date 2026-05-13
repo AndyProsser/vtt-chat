@@ -154,7 +154,7 @@ class Monitor {
 async function connectRoom(userToken, sessionId, roomId, channel = 'room') {
   const body = channel === 'voice_of_god' ? { sessionId, channel } : { sessionId, roomId, channel }
 
-  const tokenResponse = await api('/api/v1/livekit/token', {
+  const tokenResponse = await api('/api/livekit/token', {
     method: 'POST',
     token: userToken,
     body,

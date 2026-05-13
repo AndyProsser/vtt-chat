@@ -109,9 +109,9 @@ DEV-only settings interface for configuring mock behavior in real-time.
 
 See endpoints in [Mute & Speaking Indicator Architecture](guides/dev/mute-speaking-architecture.md#api-endpoints-reference):
 
-- `POST /api/v1/audio/mute`
-- `POST /api/v1/audio/unmute`
-- `GET /api/v1/audio/state/:sessionId`
+- `POST /api/audio/mute`
+- `POST /api/audio/unmute`
+- `GET /api/audio/state/:sessionId`
 - `POST /dev/mock-players/*` (DEV only)
 
 ### For Troubleshooting

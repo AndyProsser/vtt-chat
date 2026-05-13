@@ -36,7 +36,7 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

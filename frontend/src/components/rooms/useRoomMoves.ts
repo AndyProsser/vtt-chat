@@ -133,7 +133,7 @@ export function useRoomMoves({
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/v1/rooms/${toRoomId}/members/move`, {
+        const response = await fetch(`${apiUrl}/api/rooms/${toRoomId}/members/move`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

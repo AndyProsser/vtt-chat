@@ -1,26 +1,26 @@
 /**
- * Authentication Routes - v1 (Normalized)
+ * Authentication Routes - current (Normalized)
  *
  * This module provides normalized API paths for authentication flows.
  * Migrates from mixed patterns (extension/, player/, spectator/) to unified join/* structure.
  *
- * Reference: docs/operations/API-V1-DEPRECATION-MAP.md
+ * Reference: docs/operations/API-PATH-CUTOVER-MAP.md
  *
  * New Route Patterns:
- * POST /api/v1/auth/join/guest/player       - Guest player join flow
- * POST /api/v1/auth/join/guest/spectator    - Guest spectator join flow
- * POST /api/v1/auth/join/full/player        - Full account player join flow
- * POST /api/v1/auth/validate/player         - Precheck player invite status
- * POST /api/v1/auth/login                   - Full account login
- * POST /api/v1/auth/upgrade                 - Guest to full account upgrade
- * POST /api/v1/auth/handoff/admin           - Admin token handoff
- * POST /api/v1/auth/handoff/exchange        - Accept admin handoff
- * GET  /api/v1/auth/validate                - Validate token
- * GET  /api/v1/auth/me                      - Get current user
- * POST /api/v1/auth/refresh                 - Refresh JWT token
+ * POST /api/auth/join/guest/player       - Guest player join flow
+ * POST /api/auth/join/guest/spectator    - Guest spectator join flow
+ * POST /api/auth/join/full/player        - Full account player join flow
+ * POST /api/auth/validate/player         - Precheck player invite status
+ * POST /api/auth/login                   - Full account login
+ * POST /api/auth/upgrade                 - Guest to full account upgrade
+ * POST /api/auth/handoff/admin           - Admin token handoff
+ * POST /api/auth/handoff/exchange        - Accept admin handoff
+ * GET  /api/auth/validate                - Validate token
+ * GET  /api/auth/me                      - Get current user
+ * POST /api/auth/refresh                 - Refresh JWT token
  *
  * Backward Compatibility:
- * Old routes redirect (302) to v1 for all new client code.
+ * Old routes redirect (302) to current for all new client code.
  * Legacy clients (extension) continue to work via old routes.
  */
 
@@ -102,7 +102,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
 }
 
 // ============================================================================
-// POST /api/v1/auth/login - Full Account Login
+// POST /api/auth/login - Full Account Login
 // ============================================================================
 
 router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
@@ -413,7 +413,7 @@ router.post('/password-reset/complete', async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/refresh - Refresh JWT Token
+// POST /api/auth/refresh - Refresh JWT Token
 // ============================================================================
 
 router.post('/refresh', tokenRefreshRateLimit, authMiddleware, (req: Request, res: Response) => {
@@ -431,7 +431,7 @@ router.post('/refresh', tokenRefreshRateLimit, authMiddleware, (req: Request, re
 })
 
 // ============================================================================
-// GET /api/v1/auth/validate - Validate Token
+// GET /api/auth/validate - Validate Token
 // ============================================================================
 
 router.get('/validate', authMiddleware, (req: Request, res: Response) => {
@@ -449,7 +449,7 @@ router.get('/validate', authMiddleware, (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// GET /api/v1/auth/me - Get Current User
+// GET /api/auth/me - Get Current User
 // ============================================================================
 
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
@@ -485,7 +485,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/join/guest/player - Guest Player Join
+// POST /api/auth/join/guest/player - Guest Player Join
 // ============================================================================
 
 router.post('/join/guest/player', async (req: Request, res: Response) => {
@@ -549,7 +549,7 @@ router.post('/join/guest/player', async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/join/guest/spectator - Guest Spectator Join
+// POST /api/auth/join/guest/spectator - Guest Spectator Join
 // ============================================================================
 
 router.post('/join/guest/spectator', async (req: Request, res: Response) => {
@@ -608,7 +608,7 @@ router.post('/join/guest/spectator', async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/join/full/player - Full Account Player Join
+// POST /api/auth/join/full/player - Full Account Player Join
 // ============================================================================
 
 router.post('/join/full/player', async (req: Request, res: Response) => {
@@ -722,7 +722,7 @@ router.post('/join/full/player', async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/validate/player - Precheck Player Invite Status
+// POST /api/auth/validate/player - Precheck Player Invite Status
 // ============================================================================
 
 router.post('/validate/player', async (req: Request, res: Response) => {
@@ -755,7 +755,7 @@ router.post('/validate/player', async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/upgrade - Guest to Full Account Upgrade
+// POST /api/auth/upgrade - Guest to Full Account Upgrade
 // ============================================================================
 
 router.post('/upgrade', authMiddleware, async (req: Request, res: Response) => {
@@ -815,7 +815,7 @@ router.post('/upgrade', authMiddleware, async (req: Request, res: Response) => {
 })
 
 // ============================================================================
-// POST /api/v1/auth/handoff/admin - Admin Token Handoff
+// POST /api/auth/handoff/admin - Admin Token Handoff
 // ============================================================================
 
 router.post('/handoff/admin', authMiddleware, async (req: Request, res: Response) => {
@@ -864,7 +864,7 @@ router.post('/handoff/admin', authMiddleware, async (req: Request, res: Response
 })
 
 // ============================================================================
-// POST /api/v1/auth/handoff/exchange - Accept Admin Handoff
+// POST /api/auth/handoff/exchange - Accept Admin Handoff
 // ============================================================================
 
 router.post('/handoff/exchange', async (req: Request, res: Response) => {

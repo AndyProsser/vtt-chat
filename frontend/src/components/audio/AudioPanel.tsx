@@ -136,7 +136,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     try {
       const token = sessionStorage.getItem('authToken')
       if (token) {
-        await fetch('/api/v1/audio/unmute', {
+        await fetch('/api/audio/unmute', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     try {
       const token = sessionStorage.getItem('authToken')
       if (token) {
-        await fetch('/api/v1/audio/mute', {
+        await fetch('/api/audio/mute', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -124,11 +124,11 @@ function createDefaultFetchMock(options: {
   return vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = String(input)
 
-    if (url.endsWith(`/api/v1/session/${CURRENT_SESSION_ID}/members/join`)) {
+    if (url.endsWith(`/api/session/${CURRENT_SESSION_ID}/members/join`)) {
       return { ok: true, json: async () => ({ ok: true }) }
     }
 
-    if (url.endsWith(`/api/v1/session/${NEXT_SESSION_ID}/members/join`)) {
+    if (url.endsWith(`/api/session/${NEXT_SESSION_ID}/members/join`)) {
       return { ok: true, json: async () => ({ ok: true }) }
     }
 
@@ -156,7 +156,7 @@ function createDefaultFetchMock(options: {
     }
 
     if (
-      url === `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state` &&
+      url === `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/state` &&
       init?.method === 'PUT'
     ) {
       const requestedState = (() => {
@@ -179,7 +179,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/rooms/session/${CURRENT_SESSION_ID}`)) {
+    if (url.endsWith(`/api/rooms/session/${CURRENT_SESSION_ID}`)) {
       return {
         ok: true,
         json: async () => ({
@@ -205,7 +205,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/presence/${CURRENT_SESSION_ID}`)) {
+    if (url.endsWith(`/api/presence/${CURRENT_SESSION_ID}`)) {
       return {
         ok: true,
         json: async () => ({
@@ -222,7 +222,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/audio/sessions/${CURRENT_SESSION_ID}/state`)) {
+    if (url.endsWith(`/api/audio/sessions/${CURRENT_SESSION_ID}/state`)) {
       return {
         ok: true,
         json: async () => ({ environments: [], dmOverrides: [] }),
@@ -275,7 +275,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/rooms/session/${NEXT_SESSION_ID}`)) {
+    if (url.endsWith(`/api/rooms/session/${NEXT_SESSION_ID}`)) {
       return {
         ok: true,
         json: async () => ({
@@ -301,7 +301,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/presence/${NEXT_SESSION_ID}`)) {
+    if (url.endsWith(`/api/presence/${NEXT_SESSION_ID}`)) {
       return {
         ok: true,
         json: async () => ({
@@ -318,7 +318,7 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (url.endsWith(`/api/v1/audio/sessions/${NEXT_SESSION_ID}/state`)) {
+    if (url.endsWith(`/api/audio/sessions/${NEXT_SESSION_ID}/state`)) {
       return {
         ok: true,
         json: async () => ({ environments: [], dmOverrides: [] }),
@@ -390,7 +390,7 @@ function createDefaultFetchMock(options: {
     }
 
     if (
-      url === `http://localhost:3000/api/v1/session/${NEXT_SESSION_ID}/state` &&
+      url === `http://localhost:3000/api/session/${NEXT_SESSION_ID}/state` &&
       init?.method === 'PUT'
     ) {
       return {
@@ -461,7 +461,7 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/state`,
         expect.objectContaining({ method: 'PUT' })
       )
     })
@@ -580,11 +580,11 @@ describe('Session bookend integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/session/${CURRENT_SESSION_ID}/members/join`)) {
+      if (url.endsWith(`/api/session/${CURRENT_SESSION_ID}/members/join`)) {
         return { ok: true, json: async () => ({ ok: true }) }
       }
 
-      if (url.endsWith(`/api/v1/rooms/session/${CURRENT_SESSION_ID}`)) {
+      if (url.endsWith(`/api/rooms/session/${CURRENT_SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -610,7 +610,7 @@ describe('Session bookend integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${CURRENT_SESSION_ID}`)) {
+      if (url.endsWith(`/api/presence/${CURRENT_SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -627,14 +627,14 @@ describe('Session bookend integration', () => {
         }
       }
 
-      if (url.endsWith(`/api/v1/audio/sessions/${CURRENT_SESSION_ID}/state`)) {
+      if (url.endsWith(`/api/audio/sessions/${CURRENT_SESSION_ID}/state`)) {
         return {
           ok: true,
           json: async () => ({ environments: [], dmOverrides: [] }),
         }
       }
 
-      if (url.endsWith(`/api/v1/presence/${CURRENT_SESSION_ID}/recover`)) {
+      if (url.endsWith(`/api/presence/${CURRENT_SESSION_ID}/recover`)) {
         return {
           ok: true,
           json: async () => ({ recoveredFromSnapshots: false }),
@@ -765,7 +765,7 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/state`,
         expect.objectContaining({ method: 'PUT' })
       )
     })
@@ -781,7 +781,7 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${NEXT_SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${NEXT_SESSION_ID}/state`,
         expect.objectContaining({ method: 'PUT' })
       )
     })
@@ -840,7 +840,7 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${CURRENT_SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/state`,
         expect.objectContaining({ method: 'PUT' })
       )
     })
@@ -859,7 +859,7 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `http://localhost:3000/api/v1/session/${NEXT_SESSION_ID}/state`,
+        `http://localhost:3000/api/session/${NEXT_SESSION_ID}/state`,
         expect.objectContaining({ method: 'PUT' })
       )
     })

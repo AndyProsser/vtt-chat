@@ -1633,7 +1633,7 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
   }
 })
 
-router.get('/v1/integrations/systems', adminAuthMiddleware, async (req: Request, res: Response) => {
+router.get('/integrations/systems', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const actor = req.admin
     if (!actor) {
@@ -1657,7 +1657,7 @@ router.get('/v1/integrations/systems', adminAuthMiddleware, async (req: Request,
 })
 
 router.post(
-  '/v1/integrations/systems/:system/authorize',
+  '/integrations/systems/:system/authorize',
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -1704,7 +1704,7 @@ router.post(
 )
 
 router.post(
-  '/v1/integrations/systems/:system/block',
+  '/integrations/systems/:system/block',
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -1751,7 +1751,7 @@ router.post(
 )
 
 router.patch(
-  '/v1/integrations/systems/:system',
+  '/integrations/systems/:system',
   adminAuthMiddleware,
   async (req: Request, res: Response) => {
     try {

@@ -363,8 +363,8 @@ Terminology note: this checklist uses **Group** as the user-facing label. Existi
 - [ ] **Prisma Schema**: Create `CampaignSettings` table (see [DM-CAMPAIGN-SETTINGS.md](DM-CAMPAIGN-SETTINGS.md))
   - [ ] Fields: `allowBroadcastMode`, `allowPlayerConditions`, etc.
 - [ ] **API Endpoints**:
-  - [ ] `GET /api/v1/campaigns/{id}/settings`
-  - [ ] `PATCH /api/v1/campaigns/{id}/settings`
+  - [ ] `GET /api/campaigns/{id}/settings`
+  - [ ] `PATCH /api/campaigns/{id}/settings`
 - [ ] **Validation**: DM-only access for PATCH
 - [ ] **Frontend Integration**:
   - [ ] Fetch settings on campaign load

@@ -40,13 +40,13 @@ Existing DEV mock roster endpoints continue to manage roster/reset operations.
 Recommended additions for takeover mode:
 
 1. Start takeover
-   - Endpoint: POST /api/v1/dev/mock-players/takeover/start
+   - Endpoint: POST /api/dev/mock-players/takeover/start
    - Payload: sessionId, targetActorId
 2. Stop takeover
-   - Endpoint: POST /api/v1/dev/mock-players/takeover/stop
+   - Endpoint: POST /api/dev/mock-players/takeover/stop
    - Payload: sessionId
 3. Get current takeover status
-   - Endpoint: GET /api/v1/dev/mock-players/takeover/status/:sessionId
+   - Endpoint: GET /api/dev/mock-players/takeover/status/:sessionId
 
 ## Authorization Rules
 

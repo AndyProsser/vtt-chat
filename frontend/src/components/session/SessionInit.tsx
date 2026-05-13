@@ -1292,7 +1292,7 @@ export function SessionInit({
     setError(null)
 
     try {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1520,7 +1520,7 @@ export function SessionInit({
     async (sessionId: UUID) => {
       try {
         const response = await fetchWithAuthGuard(
-          `${apiUrl}/api/v1/session/${sessionId}/members/join`,
+          `${apiUrl}/api/session/${sessionId}/members/join`,
           {
             method: 'POST',
             headers: {
@@ -1545,7 +1545,7 @@ export function SessionInit({
         return
       }
 
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/audio/broadcast/state`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/audio/broadcast/state`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1807,17 +1807,17 @@ export function SessionInit({
     const loadPresenceAndRooms = async () => {
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
-          fetchWithAuthGuard(`${apiUrl}/api/v1/rooms/session/${currentSession.id}`, {
+          fetchWithAuthGuard(`${apiUrl}/api/rooms/session/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetchWithAuthGuard(`${apiUrl}/api/v1/presence/${currentSession.id}`, {
+          fetchWithAuthGuard(`${apiUrl}/api/presence/${currentSession.id}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetchWithAuthGuard(`${apiUrl}/api/v1/audio/sessions/${currentSession.id}/state`, {
+          fetchWithAuthGuard(`${apiUrl}/api/audio/sessions/${currentSession.id}/state`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -1951,7 +1951,7 @@ export function SessionInit({
 
         // Fire-and-forget: trigger server-side presence snapshot recovery.
         // Result is informational only; WS events remain authoritative.
-        fetchWithAuthGuard(`${apiUrl}/api/v1/presence/${currentSession.id}/recover`, {
+        fetchWithAuthGuard(`${apiUrl}/api/presence/${currentSession.id}/recover`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {
@@ -2583,7 +2583,7 @@ export function SessionInit({
 
   const handleLogoff = () => {
     if (currentSession && currentSession.dmId !== user.id) {
-      void fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
+      void fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}/members/leave`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -2633,7 +2633,7 @@ export function SessionInit({
 
         if (options?.autoActivate) {
           const transitionResponse = await fetchWithAuthGuard(
-            `${apiUrl}/api/v1/session/${payload.session.id}/state`,
+            `${apiUrl}/api/session/${payload.session.id}/state`,
             {
               method: 'PUT',
               headers: {
@@ -2716,7 +2716,7 @@ export function SessionInit({
 
       try {
         const response = await fetchWithAuthGuard(
-          `${apiUrl}/api/v1/session/${sessionId}/cooldown/extend`,
+          `${apiUrl}/api/session/${sessionId}/cooldown/extend`,
           {
             method: 'POST',
             headers: {
@@ -2777,7 +2777,7 @@ export function SessionInit({
     setError(null)
 
     try {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${sessionId}/state`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${sessionId}/state`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2829,7 +2829,7 @@ export function SessionInit({
   const returnToCampaignSelector = async () => {
     if (currentSession && currentSession.dmId !== user.id) {
       try {
-        await fetchWithAuthGuard(`${apiUrl}/api/v1/session/${currentSession.id}/members/leave`, {
+        await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}/members/leave`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -2875,7 +2875,7 @@ export function SessionInit({
     setExitUpgradeLoading(true)
 
     try {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/v1/auth/upgrade`, {
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/auth/upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

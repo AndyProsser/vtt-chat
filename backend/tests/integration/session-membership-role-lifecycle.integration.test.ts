@@ -131,7 +131,7 @@ function buildApp() {
   }
   app.use('/api/chat', chatRoutes)
   app.use('/api/session', sessionRoutes)
-  app.use('/api/v1/session', sessionRoutes)
+  app.use('/api/session', sessionRoutes)
   return app
 }
 
@@ -381,11 +381,11 @@ describe('session membership lifecycle authz', () => {
     )
   })
 
-  it('returns members through the v1 /members alias', async () => {
+  it('returns members through the canonical /members route', async () => {
     const app = buildApp()
 
     const res = await request(app)
-      .get(`/api/v1/session/${SESSION_ID}/members`)
+      .get(`/api/session/${SESSION_ID}/members`)
       .set('Authorization', 'Bearer token')
 
     expect(res.status).toBe(200)
@@ -393,19 +393,19 @@ describe('session membership lifecycle authz', () => {
     expect(res.body.users[1].id).toBe(PLAYER_ID)
   })
 
-  it('supports join and leave through the v1 /members aliases', async () => {
+  it('supports join and leave through canonical /members routes', async () => {
     state.members = [{ id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() }]
     const app = buildApp()
 
     const joinRes = await request(app)
-      .post(`/api/v1/session/${SESSION_ID}/members/join`)
+      .post(`/api/session/${SESSION_ID}/members/join`)
       .set('Authorization', 'Bearer token')
 
     expect(joinRes.status).toBe(200)
     expect(joinRes.body.users.some((user: { id: string }) => user.id === PLAYER_ID)).toBe(true)
 
     const leaveRes = await request(app)
-      .post(`/api/v1/session/${SESSION_ID}/members/leave`)
+      .post(`/api/session/${SESSION_ID}/members/leave`)
       .set('Authorization', 'Bearer token')
 
     expect(leaveRes.status).toBe(200)
@@ -426,7 +426,7 @@ describe('session membership lifecycle authz', () => {
     })
 
     const response = await request(app)
-      .patch(`/api/v1/session/${SESSION_ID}`)
+      .patch(`/api/session/${SESSION_ID}`)
       .set('Authorization', 'Bearer token')
       .send({
         name: '  Session Renamed  ',
@@ -453,7 +453,7 @@ describe('session membership lifecycle authz', () => {
     mocks.updateSessionMetadata.mockRejectedValue({ code: 'FORBIDDEN' })
 
     const response = await request(app)
-      .patch(`/api/v1/session/${SESSION_ID}`)
+      .patch(`/api/session/${SESSION_ID}`)
       .set('Authorization', 'Bearer token')
       .send({ name: 'Nope' })
 
@@ -464,7 +464,7 @@ describe('session membership lifecycle authz', () => {
     const app = buildApp()
 
     const response = await request(app)
-      .patch(`/api/v1/session/${SESSION_ID}`)
+      .patch(`/api/session/${SESSION_ID}`)
       .set('Authorization', 'Bearer token')
       .send({ plannedDurationMinutes: 5 })
 

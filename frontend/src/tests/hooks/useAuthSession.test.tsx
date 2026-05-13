@@ -90,7 +90,7 @@ describe('useAuthSession', () => {
       const url = String(input)
       const method = init?.method || 'GET'
 
-      if (url.includes('/api/v1/auth/handoff/exchange') && method === 'POST') {
+      if (url.includes('/api/auth/handoff/exchange') && method === 'POST') {
         return jsonResponse({
           token: 'handoff-token',
           user: {
@@ -102,7 +102,7 @@ describe('useAuthSession', () => {
         })
       }
 
-      if (url.includes('/api/v1/auth/me') && method === 'GET') {
+      if (url.includes('/api/auth/me') && method === 'GET') {
         return jsonResponse({
           adminRole: null,
           hasAdminAccess: false,
@@ -171,7 +171,7 @@ describe('useAuthSession', () => {
       const method = init?.method || 'GET'
       const headers = (init?.headers || {}) as Record<string, string>
 
-      if (url.includes('/api/v1/auth/me') && method === 'GET') {
+      if (url.includes('/api/auth/me') && method === 'GET') {
         const fullSession = headers.Authorization === 'Bearer full-token'
         return jsonResponse({
           adminRole: null,
@@ -183,7 +183,7 @@ describe('useAuthSession', () => {
         })
       }
 
-      if (url.includes('/api/v1/auth/upgrade') && method === 'POST') {
+      if (url.includes('/api/auth/upgrade') && method === 'POST') {
         expect(headers.Authorization).toBe('Bearer guest-token')
         expect(JSON.parse(String(init?.body || '{}'))).toMatchObject({
           password: 'VeryStrongPass!123',
@@ -238,7 +238,7 @@ describe('useAuthSession', () => {
       const url = String(input)
       const method = init?.method || 'GET'
 
-      if (url.includes('/api/v1/auth/me') && method === 'GET') {
+      if (url.includes('/api/auth/me') && method === 'GET') {
         return jsonResponse({
           adminRole: null,
           hasAdminAccess: false,
@@ -249,7 +249,7 @@ describe('useAuthSession', () => {
         })
       }
 
-      if (url.includes('/api/v1/auth/handoff/admin') && method === 'POST') {
+      if (url.includes('/api/auth/handoff/admin') && method === 'POST') {
         return jsonResponse({ code: 'GUEST_UPGRADE_REQUIRED' }, false)
       }
 

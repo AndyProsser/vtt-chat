@@ -151,10 +151,10 @@ export function RoomSelector({
 
   const syncSessionTopologyFromServer = useCallback(async () => {
     const [roomsResponse, presenceResponse] = await Promise.all([
-      fetch(`${apiUrl}/api/v1/rooms/session/${sessionId}`, {
+      fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
-      fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
+      fetch(`${apiUrl}/api/presence/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ])
@@ -238,7 +238,7 @@ export function RoomSelector({
 
   const getRoomMemberIdsFromServer = useCallback(
     async (roomId: UUID): Promise<UUID[] | null> => {
-      const response = await fetch(`${apiUrl}/api/v1/presence/${sessionId}`, {
+      const response = await fetch(`${apiUrl}/api/presence/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -261,7 +261,7 @@ export function RoomSelector({
   )
 
   const syncAudioOverridesFromServer = useCallback(async () => {
-    const response = await fetch(`${apiUrl}/api/v1/audio/sessions/${sessionId}/state`, {
+    const response = await fetch(`${apiUrl}/api/audio/sessions/${sessionId}/state`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -306,7 +306,7 @@ export function RoomSelector({
   const syncMockTakeoverStatus = useCallback(async () => {
     try {
       const response = await fetch(
-        `${apiUrl}/api/v1/dev/mock-players/takeover/status/${sessionId}`,
+        `${apiUrl}/api/dev/mock-players/takeover/status/${sessionId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -330,7 +330,7 @@ export function RoomSelector({
   const handleTakeOverPlayer = useCallback(
     async (targetUserId: UUID) => {
       try {
-        const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/takeover/start`, {
+        const response = await fetch(`${apiUrl}/api/dev/mock-players/takeover/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -358,7 +358,7 @@ export function RoomSelector({
 
   const handleReturnToMyUser = useCallback(async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/v1/dev/mock-players/takeover/stop`, {
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/takeover/stop`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -611,7 +611,7 @@ export function RoomSelector({
       }
 
       try {
-        const response = await fetch(`${apiUrl}/api/v1/audio/environments/apply`, {
+        const response = await fetch(`${apiUrl}/api/audio/environments/apply`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -640,7 +640,7 @@ export function RoomSelector({
 
       try {
         const response = await fetch(
-          `${apiUrl}/api/v1/audio/dm-override/${muted ? 'apply' : 'remove'}`,
+          `${apiUrl}/api/audio/dm-override/${muted ? 'apply' : 'remove'}`,
           {
             method: 'POST',
             headers: {
@@ -684,7 +684,7 @@ export function RoomSelector({
 
       try {
         const response = await fetch(
-          `${apiUrl}/api/v1/audio/dm-override/${removing ? 'remove' : 'apply'}`,
+          `${apiUrl}/api/audio/dm-override/${removing ? 'remove' : 'apply'}`,
           {
             method: 'POST',
             headers: {
@@ -731,7 +731,7 @@ export function RoomSelector({
       try {
         const removing = conditionName === RADIAL_MENU_COPY.none
         const response = await fetch(
-          `${apiUrl}/api/v1/audio/dm-override/${removing ? 'remove' : 'apply'}`,
+          `${apiUrl}/api/audio/dm-override/${removing ? 'remove' : 'apply'}`,
           {
             method: 'POST',
             headers: {
@@ -917,7 +917,7 @@ export function RoomSelector({
       ])
 
       try {
-        const response = await fetch(`${apiUrl}/api/v1/rooms`, {
+        const response = await fetch(`${apiUrl}/api/rooms`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1014,7 +1014,7 @@ export function RoomSelector({
           return
         }
 
-        const response = await fetch(`${apiUrl}/api/v1/rooms/${room.id}`, {
+        const response = await fetch(`${apiUrl}/api/rooms/${room.id}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',

@@ -459,7 +459,7 @@ model CampaignSettings {
 
 ---
 
-### GET `/api/v1/campaigns/{id}/settings`
+### GET `/api/campaigns/{id}/settings`
 
 **Description**: Fetch campaign settings (accessible to campaign members).
 
@@ -484,7 +484,7 @@ model CampaignSettings {
 
 ---
 
-### PATCH `/api/v1/campaigns/{id}/settings`
+### PATCH `/api/campaigns/{id}/settings`
 
 **Description**: Update campaign settings (DM only).
 
@@ -556,7 +556,7 @@ if (campaignSettings?.allowPlayerConditions) {
 ```tsx
 function CampaignSettingsPanel({ campaignId, token, apiUrl, currentSettings, onSettingsChange }) {
   // Render toggles, multi-selects, etc.
-  // Call `PATCH /api/v1/campaigns/{id}/settings` on change
+  // Call `PATCH /api/campaigns/{id}/settings` on change
 }
 ```
 

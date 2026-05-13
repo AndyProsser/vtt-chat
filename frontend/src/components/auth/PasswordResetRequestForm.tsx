@@ -18,7 +18,7 @@ export function PasswordResetRequestForm({ apiUrl }: PasswordResetRequestFormPro
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/password-reset/request`, {
+      const response = await fetch(`${apiUrl}/api/auth/password-reset/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier }),

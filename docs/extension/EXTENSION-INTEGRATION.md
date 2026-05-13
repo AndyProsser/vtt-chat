@@ -175,9 +175,9 @@ The extension communicates with the backend via the **background script**.
 | `POST /api/auth/extension/guest-login`     | None          | Guest auth: create or resume guest session      |
 | `POST /api/auth/login`                     | None          | Full account auth (if user has password)        |
 | `POST /api/auth/upgrade`                   | Guest token   | Upgrade guest → full account                    |
-| `POST /api/v1/integrations/external/sync`  | Token         | Push character/campaign updates per sync policy |
+| `POST /api/integrations/external/sync`  | Token         | Push character/campaign updates per sync policy |
 | `POST /api/integrations/logs/ingest`       | Token         | External log ingestion (rolls, attacks, etc.)   |
-| `POST /api/v1/livekit/token`               | Token         | LiveKit room token                              |
+| `POST /api/livekit/token`               | Token         | LiveKit room token                              |
 
 ### Flow
 
