@@ -23,9 +23,10 @@ import {
   isValidUUID,
   normalizeSessionState,
   toPublicSessionState,
+  SessionState as SessionStateEnum,
 } from '@shared'
 import { ErrorCode, PresenceState, Role, RoomType } from '@shared'
-import type { UUID, SessionState } from '@shared'
+import type { UUID } from '@shared'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
 import {
   applySessionStateRoomTransition,
@@ -278,12 +279,24 @@ async function joinSessionHandler(req: Request, res: Response) {
   }
 
   try {
-    const session = await getSession(id as UUID)
+    let session = await getSession(id as UUID)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
         message: 'Session not found',
       })
+    }
+
+    if (session.state === SessionStateEnum.CLEANUP && session.dmId === (user.userId as UUID)) {
+      const restoredSession = await updateSessionState(
+        id as UUID,
+        SessionStateEnum.IDLE,
+        session.dmId
+      )
+
+      if (restoredSession) {
+        session = restoredSession
+      }
     }
 
     const currentUsers = await getSessionUsers(id as UUID)

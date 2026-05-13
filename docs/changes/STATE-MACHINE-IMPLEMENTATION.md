@@ -14,19 +14,19 @@
 
 **Current Codebase:**
 
-| Component           | Location                                          | Current                                                                  | Contract Required                                           |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| **Backend DB**      | `backend/src/db/schema.prisma`                    | `SessionState` enum: IDLE, ACTIVE, PAUSED, ENDED                         | Rename IDLE→INACTIVE, add CLEANUP state                     |
-| **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED) | Add CLEANUP transition logic, 60s timer, 20min timer        |
-| **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                             | Update allowed transitions, add timer enforcement           |
-| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                       | Add cleanup state handling, mark for hydration on reconnect |
-| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                    | No change (endpoint stays same)                             |
+| Component           | Location                                          | Current                                                                                                                       | Contract Required                                             |
+| ------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Backend DB**      | `backend/src/db/schema.prisma`                    | `SessionState` enum still persists IDLE, ACTIVE, PAUSED, ENDED, CLEANUP; shared helpers expose INACTIVE compatibility         | Rename IDLE→INACTIVE at persistence layer, keep CLEANUP state |
+| **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED); CLEANUP can be cleared back to IDLE on DM reconnect | Add CLEANUP transition logic, 60s timer, 20min timer          |
+| **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                                                                                  | Update allowed transitions, add timer enforcement             |
+| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                                                                            | Add cleanup state handling, mark for hydration on reconnect   |
+| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                                                                            | No change (endpoint stays same)                               |
 
 **Action Items:**
 
 - [x] Add `CLEANUP` to Prisma `SessionState` enum
 - [x] Add 60s auto-stop timer in backend when all users disconnect from ACTIVE/PAUSED
-- [x] Add 20min cleanup TTL in Redis (session-level key)
+- [x] Add 20min cleanup sweep for CLEANUP sessions (scheduled job; Redis TTL contract still pending)
 - [x] Implement backend-only `CLEANUP` transition + greenroom purge + return to INACTIVE compatibility state
 - [x] Update frontend to handle reconnect with backend snapshot replace (not merge)
 
@@ -281,11 +281,11 @@
 
 **Current Codebase:**
 
-| Component          | Location                                  | Current                   | Contract Required                                        |
-| ------------------ | ----------------------------------------- | ------------------------- | -------------------------------------------------------- |
-| **Cleanup Job**    | `backend/src/jobs/`                       | Jobs framework exists (?) | Create `cleanupSession` job                              |
-| **Greenroom Chat** | `backend/src/services/chat.service.ts`    | Chat persisted to DB      | Add soft-delete or archive for greenroom chat in CLEANUP |
-| **Session Reset**  | `backend/src/services/session.service.ts` | State updates             | After cleanup, session ready for fresh start             |
+| Component          | Location                                              | Current                                                          | Contract Required                                         |
+| ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------- |
+| **Cleanup Job**    | `backend/src/services/session-cleanup-job.service.ts` | Scheduled sweep job exists; Redis TTL cleanup is not implemented | Create `cleanupSession` job / reconcile with TTL contract |
+| **Greenroom Chat** | `backend/src/services/chat.service.ts`                | Chat persisted to DB                                             | Add soft-delete or archive for greenroom chat in CLEANUP  |
+| **Session Reset**  | `backend/src/services/session.service.ts`             | State updates                                                    | After cleanup, session ready for fresh start              |
 
 **Action Items:**
 

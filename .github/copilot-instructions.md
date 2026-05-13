@@ -191,7 +191,7 @@ Session state semantics:
 
 When the DM sets a group's environment:
 
-1. POST to `/api/v1/audio/environments/apply`
+1. POST to `/api/audio/environments/apply`
 2. Backend broadcasts `AUDIO:ENVIRONMENT_SET` to all session members
 3. Frontend `handleEnvironmentSet` updates `roomEnvironmentNames` in Zustand for ALL clients
 4. `SessionInit` env-sync effect applies the new environment for players currently in that room
@@ -208,7 +208,7 @@ When the DM sets a group's environment:
 setRoomEnvironmentName(roomId, environmentName)
 
 // RIGHT — API call → WS broadcast → all clients update via handleEnvironmentSet
-await fetch('/api/v1/audio/environments/apply', { method: 'POST', body: ... })
+await fetch('/api/audio/environments/apply', { method: 'POST', body: ... })
 // Then handleEnvironmentSet in audioPresetsSlice.ts handles the WS event for all clients
 ```
 

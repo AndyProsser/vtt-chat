@@ -1,6 +1,6 @@
 {
   "name": "vtt-chat-admin",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "description": "Admin dashboard for VTT-Chat platform management",
   "scripts": {

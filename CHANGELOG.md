@@ -68,16 +68,17 @@ When a new session starts for the same campaign, non-private groups and their en
 - Session recovery hydration now restores both environment presets and DM overrides from audio state snapshots in `SessionInit`, and triggers a non-blocking presence snapshot recovery call after hydration.
 - Frontend session user typing now carries campaign-scoped role context through `campaignMembershipRole` while preserving JWT global role semantics.
 - Canonical API path cleanup completed: removed remaining versioned naming in route wiring/tests, renamed auth route artifacts away from versioned labels, and finalized non-versioned mount usage across runtime/admin callsites.
-- Planned release version alignment updated to `0.6.2` across workspace packages and backend runtime app-version constant.
+- Planned release version alignment updated to `0.6.3` across workspace packages and backend runtime app-version constant.
+- Session CLEANUP can now be cleared back to INACTIVE when the DM reconnects, keeping the cleanup sweep from firing on an active recovery path.
 
-### Added
+### Added (Recovery)
 
 - Frontend integration coverage for session recovery behavior:
   - Session-enter hydration of rooms, presence, environment, and DM overrides.
   - Rehydration replay on WebSocket reconnect transitions.
 - Zustand audio overrides bulk replacement action (`replaceDMOverrides`) to support atomic recovery rehydration.
 
-### Fixed
+### Fixed (Harness)
 
 - Backend Phase 6 test harness regressions after auth-state middleware tightening:
   - Restored session-access service behavior used by session access tests/routes.
