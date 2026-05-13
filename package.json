@@ -1,6 +1,7 @@
 {
   "name": "vtt-chat",
   "version": "0.6.3",
+  "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
     "postinstall": "npm --prefix backend install && npm --prefix frontend install && npm --prefix admin install",

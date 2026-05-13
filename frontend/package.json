@@ -1,6 +1,7 @@
 {
   "name": "vtt-chat-frontend",
   "version": "0.6.3",
+  "license": "AGPL-3.0-only",
   "private": true,
   "description": "Frontend SPA for VTT-Chat: a DM-grade, session-aware tabletop voice & chat platform.",
   "scripts": {

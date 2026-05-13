@@ -271,4 +271,14 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ## License
 
-[MIT](LICENSE)
+[GNU AGPL v3.0](LICENSE)
+
+Simple summary:
+
+- You can use, run, and modify this app.
+- You can share original or modified versions.
+- If you distribute this app (or a modified version), you must keep it under AGPL and provide source code.
+- If you run a modified version as a network service (for example, a hosted server others use), you must also make that modified source available to those users.
+- This software is provided "as is" without warranty.
+
+The full license text in [LICENSE](LICENSE) is the legal source of truth.
