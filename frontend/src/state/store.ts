@@ -74,34 +74,25 @@ if (typeof window !== 'undefined') {
   const loopDiagEnabled = isLoopDiagnosticsEnabled()
 
   if (runtimeDebugEnabled || envDebugEnabled || loopDiagEnabled) {
-    let prevState = useStore.getState()
+    // Use a simpler subscription that only tracks specific key changes
+    // to avoid triggering Zustand's internal getSnapshot caching issues
+    let lastUpdateTime = 0
+    const MIN_UPDATE_INTERVAL = 250 // Throttle updates to prevent excessive logging
 
     useStore.subscribe((nextState) => {
-      const keys = new Set([...Object.keys(prevState), ...Object.keys(nextState)])
-      const changedKeys: string[] = []
-
-      for (const key of keys) {
-        if (!Object.is((prevState as any)[key], (nextState as any)[key])) {
-          changedKeys.push(key)
-        }
+      const now = Date.now()
+      if (now - lastUpdateTime < MIN_UPDATE_INTERVAL) {
+        return
       }
+      lastUpdateTime = now
 
-      if (loopDiagEnabled && changedKeys.length > 0) {
+      if (loopDiagEnabled) {
         bumpLoopCounter('store.update.total')
-        bumpLoopCounter(`store.update.count.${String(changedKeys.length)}`)
-
-        for (const key of changedKeys) {
-          bumpLoopCounter(`store.update.key.${key}`)
-        }
       }
 
-      if ((runtimeDebugEnabled || envDebugEnabled) && changedKeys.length > 0) {
-        logger.debug('store', 'State updated', {
-          changedKeys,
-        })
+      if (runtimeDebugEnabled || envDebugEnabled) {
+        logger.debug('store', 'State updated (throttled)')
       }
-
-      prevState = nextState
     })
   }
 }

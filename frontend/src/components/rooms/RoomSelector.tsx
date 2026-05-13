@@ -1071,7 +1071,7 @@ export function RoomSelector({
       <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
         <header className="room-selector-header">
           <h4>
-            <Icon name="rooms" /> Voice Groups
+            <Icon name="rooms" /> Groups
           </h4>
           <GroupsHeaderActions
             headerModeCopy={headerModeCopy}

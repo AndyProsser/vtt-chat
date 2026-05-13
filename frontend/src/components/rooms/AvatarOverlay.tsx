@@ -23,6 +23,7 @@ export function AvatarOverlay({
   avatarUrl,
   roleLabel,
   metaLine,
+  isSpeaking = false,
   isMuted = false,
   isGhost = false,
 }: AvatarOverlayProps) {
@@ -33,8 +34,14 @@ export function AvatarOverlay({
       : DEFAULT_AVATAR_META_LINES.player)
 
   return (
-    <div className="avatar-overlay" data-testid="avatar-overlay">
-      <div className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''}`} aria-hidden="true">
+    <div
+      className={`avatar-overlay ${isSpeaking ? 'avatar-overlay--speaking' : ''}`}
+      data-testid="avatar-overlay"
+    >
+      <div
+        className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''} ${isSpeaking ? 'avatar-glyph--speaking' : ''}`}
+        aria-hidden="true"
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="avatar-glyph__image" />
         ) : (

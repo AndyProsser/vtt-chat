@@ -29,6 +29,38 @@
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, var(--color-brand));
 }
 
+.avatar-overlay--speaking {
+  border-color: color-mix(in srgb, var(--color-brand) 55%, var(--color-border-soft));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-brand) 38%, transparent),
+    0 6px 18px color-mix(in srgb, var(--color-brand) 28%, transparent);
+}
+
+.avatar-glyph--speaking {
+  border-color: color-mix(in srgb, var(--color-brand) 70%, #ffffff 30%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-brand) 42%, transparent),
+    0 0 14px color-mix(in srgb, var(--color-brand) 46%, transparent);
+  animation: avatar-speaking-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes avatar-speaking-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-brand) 42%, transparent),
+      0 0 12px color-mix(in srgb, var(--color-brand) 38%, transparent);
+  }
+
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-brand) 55%, transparent),
+      0 0 22px color-mix(in srgb, var(--color-brand) 56%, transparent);
+  }
+}
+
 .avatar-glyph--ghost {
   filter: saturate(0.3);
   opacity: 0.74;
@@ -136,5 +168,11 @@
 
   .avatar-muted-badge .material-symbols-outlined {
     font-size: 0.88rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-glyph--speaking {
+    animation: none;
   }
 }
