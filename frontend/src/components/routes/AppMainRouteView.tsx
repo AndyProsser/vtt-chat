@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { PasswordResetConfirmForm } from '@/components/auth/PasswordResetConfirmForm'
 import { PasswordResetRequestForm } from '@/components/auth/PasswordResetRequestForm'
@@ -32,19 +32,21 @@ type AppMainRouteViewProps = {
 }
 
 export function AppMainRouteView(props: AppMainRouteViewProps) {
-  const [isSessionSurfaceReady, setIsSessionSurfaceReady] = useState(false)
+  const authSessionKey = useMemo(() => {
+    const token = props.auth.token
+    const userId = props.auth.user?.id
+    return token && userId ? `${userId}:${token}` : null
+  }, [props.auth.token, props.auth.user?.id])
+
+  const [readySessionKey, setReadySessionKey] = useState<string | null>(null)
+
+  const isSessionSurfaceReady = authSessionKey !== null && readySessionKey === authSessionKey
 
   const handleSessionSurfaceReady = useCallback(() => {
-    setIsSessionSurfaceReady(true)
-  }, [])
-
-  useEffect(() => {
-    if (!props.auth.token || !props.auth.user) {
-      return
+    if (authSessionKey) {
+      setReadySessionKey(authSessionKey)
     }
-
-    setIsSessionSurfaceReady(false)
-  }, [props.auth.token, props.auth.user?.id])
+  }, [authSessionKey])
 
   if (!props.auth.token || !props.auth.user) {
     const authSurfaceRoute = resolveAuthSurfaceRoute(window.location.pathname)

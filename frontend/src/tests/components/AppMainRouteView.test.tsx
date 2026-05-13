@@ -1,5 +1,4 @@
 import { act, render, screen } from '@testing-library/react'
-import { useEffect } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,11 +27,14 @@ vi.mock('../../components/auth/auth-surface', () => ({
 
 vi.mock('../../components/session/SessionInit', () => ({
   SessionInit: ({ onReady }: { onReady?: () => void }) => {
-    useEffect(() => {
-      onReady?.()
-    }, [onReady])
-
-    return <div>Mock Session Init</div>
+    return (
+      <div>
+        <div>Mock Session Init</div>
+        <button type="button" onClick={() => onReady?.()}>
+          Trigger Session Ready
+        </button>
+      </div>
+    )
   },
 }))
 
@@ -101,5 +103,59 @@ describe('AppMainRouteView', () => {
 
     expect(clearIntervalSpy).toHaveBeenCalled()
     expect(clearTimeoutSpy).toHaveBeenCalled()
+  })
+
+  it('resets session readiness when auth session key changes', async () => {
+    const userId = asUuid('11111111-1111-4111-8111-111111111111')
+    const getOverlay = () => document.querySelector('.app-splash-overlay') as HTMLDivElement | null
+
+    const { rerender } = render(
+      <AppMainRouteView
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        auth={{
+          token: 'token-a',
+          user: {
+            id: userId,
+            username: 'dm',
+            role: Role.DM,
+            authType: 'FULL',
+          },
+        }}
+        onLoginSuccess={vi.fn()}
+      />
+    )
+
+    const overlay = getOverlay()
+    expect(overlay).toBeTruthy()
+    if (!overlay) {
+      throw new Error('Expected splash overlay to render')
+    }
+    expect(overlay.className.includes('is-fading-out')).toBe(false)
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Trigger Session Ready' }).click()
+    })
+
+    expect(getOverlay()?.className.includes('is-fading-out')).toBe(true)
+
+    rerender(
+      <AppMainRouteView
+        apiUrl="http://localhost:3000"
+        wsUrl="ws://localhost:3000"
+        auth={{
+          token: 'token-b',
+          user: {
+            id: userId,
+            username: 'dm',
+            role: Role.DM,
+            authType: 'FULL',
+          },
+        }}
+        onLoginSuccess={vi.fn()}
+      />
+    )
+
+    expect(getOverlay()?.className.includes('is-fading-out')).toBe(false)
   })
 })
