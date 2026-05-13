@@ -71,20 +71,20 @@ Use DEV mock players to simulate full multi-player behavior where frontend pathw
 
 ### Backend
 
-- [ ] Add takeover state model (actor assumption map)
-- [ ] Add takeover start endpoint
-- [ ] Add takeover stop endpoint
-- [ ] Add authorization checks for takeover eligibility
-- [ ] Route assumed actor actions through canonical pipelines
-- [ ] Add integration tests for takeover enter/exit and persistence
+- [x] Add takeover state model (actor assumption map)
+- [x] Add takeover start endpoint
+- [x] Add takeover stop endpoint
+- [x] Add authorization checks for takeover eligibility
+- [x] Route assumed actor actions through canonical pipelines
+- [x] Add integration tests for takeover enter/exit and persistence
 
 ### Frontend
 
-- [ ] Add context menu takeover action
-- [ ] Add "Return to My User" action in Mock Testing panel
-- [ ] Add selected PLAYER pill color when takeover is active
-- [ ] Keep panel/role behavior unchanged under assumed persona
-- [ ] Add tests for takeover UI and role-gated rendering
+- [x] Add context menu takeover action
+- [x] Add "Return to My User" action in Mock Testing panel
+- [x] Add selected PLAYER pill color when takeover is active
+- [x] Keep panel/role behavior unchanged under assumed persona
+- [x] Add tests for takeover UI and role-gated rendering
 
 ## Risks and Guardrails
 

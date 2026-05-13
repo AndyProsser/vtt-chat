@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   mockGetSessionUsers: vi.fn(),
   mockGetSessionPresence: vi.fn(),
   mockGetSessionParticipantProfiles: vi.fn(),
+  mockGetMockTakeoverSnapshot: vi.fn(),
   mockGetRoom: vi.fn(),
   mockJoinRoom: vi.fn(),
   mockUpdatePresenceState: vi.fn(),
@@ -47,6 +48,10 @@ vi.mock('@/services/room.service', () => ({
 
 vi.mock('@/repositories/session.repository', () => ({
   getSessionParticipantProfiles: mocks.mockGetSessionParticipantProfiles,
+}))
+
+vi.mock('@/services/dev-mock-takeover.service', () => ({
+  getMockTakeoverSnapshot: mocks.mockGetMockTakeoverSnapshot,
 }))
 
 import presenceRoutes from '@/api/presence.routes'
@@ -89,6 +94,15 @@ describe('presence routes', () => {
     ])
     mocks.mockGetSessionPresence.mockResolvedValue([])
     mocks.mockGetSessionParticipantProfiles.mockResolvedValue({})
+    mocks.mockGetMockTakeoverSnapshot.mockResolvedValue({
+      active: false,
+      actorUserId: USER_ID,
+      effectiveUserId: USER_ID,
+      assumedUserId: null,
+      assumedDisplayName: null,
+      startedAt: null,
+      staleRecovered: false,
+    })
   })
 
   // ── GET /:sessionId ──────────────────────────────────────────────────────────
@@ -139,6 +153,58 @@ describe('presence routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.presence).toHaveLength(1)
       expect(res.body.presence[0].userId).toBe(USER_ID)
+      expect(res.body.identity).toMatchObject({
+        active: false,
+        actorUserId: USER_ID,
+        effectiveUserId: USER_ID,
+      })
+    })
+
+    it('projects active assumed identity snapshot when takeover is active', async () => {
+      mocks.mockGetMockTakeoverSnapshot.mockResolvedValue({
+        active: true,
+        actorUserId: USER_ID,
+        effectiveUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        assumedUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        assumedDisplayName: 'Mock Archer',
+        startedAt: 1700000000000,
+        staleRecovered: false,
+      })
+
+      const app = buildApp()
+      const res = await request(app)
+        .get(`/api/presence/${SESSION_ID}`)
+        .set('Authorization', 'Bearer token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.identity).toMatchObject({
+        active: true,
+        assumedUserId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        assumedDisplayName: 'Mock Archer',
+      })
+    })
+
+    it('marks staleRecovered=true when stale takeover has been auto-cleared', async () => {
+      mocks.mockGetMockTakeoverSnapshot.mockResolvedValue({
+        active: false,
+        actorUserId: USER_ID,
+        effectiveUserId: USER_ID,
+        assumedUserId: null,
+        assumedDisplayName: null,
+        startedAt: null,
+        staleRecovered: true,
+      })
+
+      const app = buildApp()
+      const res = await request(app)
+        .get(`/api/presence/${SESSION_ID}`)
+        .set('Authorization', 'Bearer token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.identity).toMatchObject({
+        active: false,
+        staleRecovered: true,
+      })
     })
 
     it('merges participant profiles into presence entries', async () => {

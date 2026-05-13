@@ -12,6 +12,7 @@ import {
   snapshotSessionPresence,
   updatePresenceState,
 } from '@/services/room.service'
+import { getMockTakeoverSnapshot } from '@/services/dev-mock-takeover.service'
 import {
   broadcastSessionStatsSnapshot,
   getSessionStatsSnapshot,
@@ -76,6 +77,10 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     const scopedPresence = presence.filter((entry) => sessionUserIds.has(entry.userId))
     const profiles = await getSessionParticipantProfiles(sessionId as UUID)
     const stats = await getSessionStatsSnapshot(sessionId as UUID)
+    const identity = await getMockTakeoverSnapshot({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+    })
 
     return res.status(200).json({
       presence: scopedPresence.map((entry) => ({
@@ -84,6 +89,7 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
         ...(profiles[entry.userId] || {}),
       })),
       stats,
+      identity,
     })
   } catch {
     return internalErrorResponse(res)

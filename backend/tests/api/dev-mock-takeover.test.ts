@@ -22,8 +22,10 @@ const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
   verifyToken: vi.fn(),
   getSession: vi.fn(),
+  resolveEffectiveSessionRole: vi.fn(),
+  getSessionPresence: vi.fn(),
   getSessionMockPlayerById: vi.fn(),
-  getMockTakeover: vi.fn(),
+  getMockTakeoverSnapshot: vi.fn(),
   startMockTakeover: vi.fn(),
   stopMockTakeover: vi.fn(),
 }))
@@ -37,6 +39,14 @@ vi.mock('@/services/session.service', () => ({
   getSession: mocks.getSession,
 }))
 
+vi.mock('@/services/session-authz.service', () => ({
+  resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
+}))
+
+vi.mock('@/services/room.service', () => ({
+  getSessionPresence: mocks.getSessionPresence,
+}))
+
 vi.mock('@/services/dev-mock-players.service', () => ({
   listMockPlayers: vi.fn().mockResolvedValue([]),
   getMockPlayerTokens: vi.fn().mockResolvedValue([]),
@@ -47,7 +57,7 @@ vi.mock('@/services/dev-mock-players.service', () => ({
 }))
 
 vi.mock('@/services/dev-mock-takeover.service', () => ({
-  getMockTakeover: mocks.getMockTakeover,
+  getMockTakeoverSnapshot: mocks.getMockTakeoverSnapshot,
   startMockTakeover: mocks.startMockTakeover,
   stopMockTakeover: mocks.stopMockTakeover,
   resolveEffectiveActor: vi
@@ -81,19 +91,50 @@ function authOk() {
   })
 }
 
+function authzOk() {
+  mocks.resolveEffectiveSessionRole.mockResolvedValue({ ok: true, role: 'PLAYER' })
+  mocks.getSessionPresence.mockResolvedValue([
+    {
+      sessionId: SESSION_ID,
+      userId: ACTOR_ID,
+      primaryRoomId: 'room-1',
+      username: 'alice',
+      state: 'ONLINE',
+      lastSeenAt: Date.now(),
+    },
+  ])
+}
+
 const SESSION = { id: SESSION_ID, dmId: 'dm-id', state: 'ACTIVE' }
 const MOCK_PLAYER = { id: MOCK_PLAYER_ID, username: 'mock1', displayName: 'Mock One' }
-const TAKEOVER_STATE = { assumedUserId: MOCK_PLAYER_ID, startedAt: 1700000000000 }
+const TAKEOVER_STATE = {
+  active: true,
+  actorUserId: ACTOR_ID,
+  effectiveUserId: MOCK_PLAYER_ID,
+  assumedUserId: MOCK_PLAYER_ID,
+  assumedDisplayName: 'Mock One',
+  startedAt: 1700000000000,
+  staleRecovered: false,
+}
 
 describe('GET /dev/mock-players/takeover/status/:sessionId', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authOk()
+    authzOk()
     mocks.getSession.mockResolvedValue(SESSION)
   })
 
   it('returns active=false when no takeover in progress', async () => {
-    mocks.getMockTakeover.mockReturnValue(null)
+    mocks.getMockTakeoverSnapshot.mockResolvedValue({
+      active: false,
+      actorUserId: ACTOR_ID,
+      effectiveUserId: ACTOR_ID,
+      assumedUserId: null,
+      assumedDisplayName: null,
+      startedAt: null,
+      staleRecovered: false,
+    })
 
     const res = await request(buildApp())
       .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)
@@ -109,8 +150,7 @@ describe('GET /dev/mock-players/takeover/status/:sessionId', () => {
   })
 
   it('returns active=true with assumed player details when takeover is running', async () => {
-    mocks.getMockTakeover.mockReturnValue(TAKEOVER_STATE)
-    mocks.getSessionMockPlayerById.mockResolvedValue(MOCK_PLAYER)
+    mocks.getMockTakeoverSnapshot.mockResolvedValue(TAKEOVER_STATE)
 
     const res = await request(buildApp())
       .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)
@@ -120,6 +160,8 @@ describe('GET /dev/mock-players/takeover/status/:sessionId', () => {
     expect(res.body).toMatchObject({
       sessionId: SESSION_ID,
       active: true,
+      actorUserId: ACTOR_ID,
+      effectiveUserId: MOCK_PLAYER_ID,
       assumedUserId: MOCK_PLAYER_ID,
       assumedDisplayName: 'Mock One',
       startedAt: 1700000000000,
@@ -151,12 +193,47 @@ describe('GET /dev/mock-players/takeover/status/:sessionId', () => {
 
     expect(res.status).toBe(404)
   })
+
+  it('returns 403 for spectators', async () => {
+    mocks.resolveEffectiveSessionRole.mockResolvedValue({ ok: true, role: 'SPECTATOR' })
+
+    const res = await request(buildApp())
+      .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(403)
+    expect(res.body.error).toMatch(/only dm or player/i)
+  })
+
+  it('returns staleRecovered=true and active=false when stale persona is auto-cleared', async () => {
+    mocks.getMockTakeoverSnapshot.mockResolvedValue({
+      active: false,
+      actorUserId: ACTOR_ID,
+      effectiveUserId: ACTOR_ID,
+      assumedUserId: null,
+      assumedDisplayName: null,
+      startedAt: null,
+      staleRecovered: true,
+    })
+
+    const res = await request(buildApp())
+      .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({
+      active: false,
+      staleRecovered: true,
+      effectiveUserId: ACTOR_ID,
+    })
+  })
 })
 
 describe('POST /dev/mock-players/takeover/start', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authOk()
+    authzOk()
     mocks.getSession.mockResolvedValue(SESSION)
     mocks.getSessionMockPlayerById.mockResolvedValue(MOCK_PLAYER)
     mocks.startMockTakeover.mockReturnValue(TAKEOVER_STATE)
@@ -244,12 +321,27 @@ describe('POST /dev/mock-players/takeover/start', () => {
     expect(res.body.error).toMatch(/not an eligible mock player/i)
     expect(mocks.startMockTakeover).not.toHaveBeenCalled()
   })
+
+  it('returns 403 when actor is not currently present in the session', async () => {
+    mocks.getSessionPresence.mockResolvedValue([])
+
+    const res = await request(buildApp())
+      .post('/dev/mock-players/takeover/start')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, targetUserId: MOCK_PLAYER_ID })
+
+    expect(res.status).toBe(403)
+    expect(res.body.error).toMatch(/active session presence/i)
+    expect(mocks.startMockTakeover).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /dev/mock-players/takeover/stop', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authOk()
+    authzOk()
+    mocks.getSession.mockResolvedValue(SESSION)
   })
 
   it('stops active takeover and returns cleared=true', async () => {
@@ -304,17 +396,29 @@ describe('POST /dev/mock-players/takeover/stop', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('returns 404 when session does not exist', async () => {
+    mocks.getSession.mockResolvedValue(null)
+
+    const res = await request(buildApp())
+      .post('/dev/mock-players/takeover/stop')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
+
+    expect(res.status).toBe(404)
+  })
 })
 
 describe('Reconnect hydration: status reflects takeover started in prior request', () => {
   it('status endpoint returns current in-memory takeover after start/stop cycle', async () => {
     authOk()
+    authzOk()
     mocks.getSession.mockResolvedValue(SESSION)
     mocks.getSessionMockPlayerById.mockResolvedValue(MOCK_PLAYER)
 
     // Simulate: start sets state
     mocks.startMockTakeover.mockReturnValue(TAKEOVER_STATE)
-    mocks.getMockTakeover.mockReturnValue(TAKEOVER_STATE)
+    mocks.getMockTakeoverSnapshot.mockResolvedValue(TAKEOVER_STATE)
 
     const statusAfterStart = await request(buildApp())
       .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)
@@ -324,7 +428,15 @@ describe('Reconnect hydration: status reflects takeover started in prior request
     expect(statusAfterStart.body.assumedUserId).toBe(MOCK_PLAYER_ID)
 
     // Simulate: stop clears state
-    mocks.getMockTakeover.mockReturnValue(null)
+    mocks.getMockTakeoverSnapshot.mockResolvedValue({
+      active: false,
+      actorUserId: ACTOR_ID,
+      effectiveUserId: ACTOR_ID,
+      assumedUserId: null,
+      assumedDisplayName: null,
+      startedAt: null,
+      staleRecovered: false,
+    })
 
     const statusAfterStop = await request(buildApp())
       .get(`/dev/mock-players/takeover/status/${SESSION_ID}`)

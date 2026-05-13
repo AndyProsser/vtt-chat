@@ -2449,6 +2449,101 @@ describe('RoomSelector', () => {
     ).toBeUndefined()
   })
 
+  it('starts takeover from the player context menu and marks it active', async () => {
+    useStore.getState().reset()
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/api/v1/dev/mock-players/takeover/start') && options?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            sessionId: 'session-1',
+            actorUserId: 'user-1',
+            assumedUserId: 'user-2',
+            startedAt: Date.now(),
+            assumedDisplayName: 'Tara',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      if (url.includes('/api/v1/dev/mock-players/takeover/status/')) {
+        return new Response(
+          JSON.stringify({
+            sessionId: 'session-1',
+            active: false,
+            assumedUserId: null,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 2,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+              {
+                userId: asUuid('user-2'),
+                username: 'Tara',
+                roleLabel: 'PLAYER',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Take Over Player' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/dev/mock-players/takeover/start',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    expect(useStore.getState().mockTakeoverUserIdBySession['session-1']).toBe('user-2')
+
+    fireEvent.contextMenu(getDragUserButton('Tara'))
+    expect(screen.getByRole('menuitem', { name: 'Take Over Player (Active)' })).toBeTruthy()
+  })
+
   it('keeps mute available and hides distance/condition in greenroom', () => {
     render(
       <RoomSelector
@@ -2494,65 +2589,36 @@ describe('RoomSelector', () => {
     expect(screen.queryByRole('menuitem', { name: 'Condition' })).toBeNull()
   })
 
-  it('calls DEV mock reset endpoint with session payload and shows disabled state while loading', async () => {
+  it('calls DEV mock reroll endpoint from Mock Testing panel and shows disabled state while loading', async () => {
     if (!import.meta.env.DEV) {
       return
     }
 
-    let resolveReset: (response: Response) => void = () => undefined
+    let resolveReroll: (response: Response) => void = () => undefined
     const fetchMock = vi.fn((input: string | URL) => {
       const url = String(input)
 
-      if (url.endsWith('/api/dev/mock-players/reset')) {
+      if (url.endsWith('/api/v1/dev/mock-players/reroll')) {
         return new Promise<Response>((resolve) => {
-          resolveReset = resolve
+          resolveReroll = resolve
         })
       }
 
-      if (url.endsWith('/api/v1/rooms/session/session-1')) {
+      if (url.endsWith('/api/v1/dev/mock-players/simulation/status/session-1')) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              rooms: [
-                {
-                  id: 'room-main',
-                  sessionId: 'session-1',
-                  name: 'Main Table',
-                  type: RoomType.MAIN,
-                  createdBy: 'user-1',
-                  createdAt: 1,
-                },
-              ],
-            }),
-            {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }
-          )
-        )
-      }
-
-      if (url.endsWith('/api/v1/presence/session-1')) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              presence: [
-                {
-                  sessionId: 'session-1',
-                  userId: 'user-1',
-                  username: 'Morgan',
-                  state: PresenceState.ONLINE,
-                  primaryRoomId: 'room-main',
-                  lastSeenAt: 1,
-                },
-              ],
-              stats: {
-                connectedPlayersWithDm: 1,
-                connectedPlayers: 0,
-                connectedSpectators: 0,
-                connectedTotal: 1,
-                updatedAt: 1,
+              sessionId: 'session-1',
+              config: {
+                speakingSimulatorEnabled: true,
+                chatSimulatorEnabled: false,
+                disconnectSimulatorEnabled: false,
+                playerCount: 8,
               },
+              isRunning: true,
+              activeMockCount: 8,
+              speakingNow: [],
+              uptime: 1,
             }),
             {
               status: 200,
@@ -2602,24 +2668,26 @@ describe('RoomSelector', () => {
       />
     )
 
-    const shuffleButton = screen.getByRole('button', { name: 'Reroll DEV mock players' })
+    fireEvent.click(screen.getByRole('button', { name: 'Configure mock testing' }))
+
+    const shuffleButton = await screen.findByRole('button', { name: 'Reroll mock players' })
     expect(shuffleButton.hasAttribute('disabled')).toBe(false)
 
     fireEvent.click(shuffleButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/dev/mock-players/reset',
+        'http://localhost:3000/api/v1/dev/mock-players/reroll',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ sessionId: 'session-1' }),
+          body: JSON.stringify({ sessionId: 'session-1', newPlayerCount: 8 }),
         })
       )
     })
 
     expect(shuffleButton.hasAttribute('disabled')).toBe(true)
 
-    resolveReset(
+    resolveReroll(
       new Response(JSON.stringify({ ok: true, rerolledCount: 4 }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -2629,5 +2697,111 @@ describe('RoomSelector', () => {
     await waitFor(() => {
       expect(shuffleButton.hasAttribute('disabled')).toBe(false)
     })
+  })
+
+  it('returns to real user from Mock Testing panel when takeover is active', async () => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    useStore.getState().reset()
+    useStore.getState().setMockTakeoverUserId(asUuid('session-1'), asUuid('user-2'))
+
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (
+        url.endsWith('/api/v1/dev/mock-players/simulation/status/session-1') &&
+        !options?.method
+      ) {
+        return new Response(
+          JSON.stringify({
+            sessionId: 'session-1',
+            config: {
+              speakingSimulatorEnabled: true,
+              chatSimulatorEnabled: false,
+              disconnectSimulatorEnabled: false,
+              playerCount: 8,
+            },
+            isRunning: true,
+            activeMockCount: 8,
+            speakingNow: [],
+            uptime: 1,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      if (url.endsWith('/api/v1/dev/mock-players/takeover/stop') && options?.method === 'POST') {
+        return new Response(JSON.stringify({ ok: true, cleared: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/api/v1/dev/mock-players/takeover/status/')) {
+        return new Response(
+          JSON.stringify({
+            sessionId: 'session-1',
+            active: true,
+            assumedUserId: 'user-2',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RoomSelector
+        apiUrl="http://localhost:3000"
+        token="jwt-token"
+        sessionId={asUuid('session-1')}
+        dmUserId={asUuid('user-1')}
+        canManageRooms={true}
+        broadcastModeEnabled={false}
+        onToggleBroadcastMode={vi.fn(async () => {})}
+        rooms={[
+          {
+            id: asUuid('room-main'),
+            name: 'Main Table',
+            type: RoomType.MAIN,
+            memberCount: 1,
+            participants: [
+              {
+                userId: asUuid('user-1'),
+                username: 'Morgan',
+                roleLabel: 'DM',
+                presenceState: PresenceState.ONLINE,
+              },
+            ],
+          },
+        ]}
+        selectedRoomId={asUuid('room-main')}
+        onSelectRoom={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure mock testing' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Return to My User' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/v1/dev/mock-players/takeover/stop',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    expect(useStore.getState().mockTakeoverUserIdBySession['session-1']).toBeNull()
   })
 })

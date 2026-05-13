@@ -108,6 +108,16 @@ interface ApiPresence {
   lastSeenAt: number
 }
 
+interface ApiTakeoverIdentitySnapshot {
+  active: boolean
+  actorUserId: UUID
+  effectiveUserId: UUID
+  assumedUserId: UUID | null
+  assumedDisplayName: string | null
+  startedAt: number | null
+  staleRecovered: boolean
+}
+
 interface ApiSessionStats {
   connectedPlayersWithDm: number
   connectedPlayers: number
@@ -747,6 +757,7 @@ export function SessionInit({
   const replaceSessions = useStore((state) => state.replaceSessions)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
+  const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
@@ -1821,6 +1832,7 @@ export function SessionInit({
         const presencePayload = (await presenceResponse.json()) as {
           presence?: ApiPresence[]
           stats?: ApiSessionStats
+          identity?: ApiTakeoverIdentitySnapshot
         }
         const audioStatePayload = (await audioStateResponse.json()) as {
           environment?: {
@@ -1881,6 +1893,14 @@ export function SessionInit({
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
         if (presencePayload.stats) {
           replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
+        }
+
+        if (import.meta.env.DEV) {
+          const identity = presencePayload.identity
+          setMockTakeoverUserId(
+            currentSession.id,
+            identity?.active ? identity.assumedUserId || null : null
+          )
         }
 
         // On session enter/reconnect, recover persisted backend-authored session markers
@@ -1951,6 +1971,7 @@ export function SessionInit({
     wsState,
     replaceSessionTopology,
     replaceSessionStatsSnapshot,
+    setMockTakeoverUserId,
     restoreSessionBookendsFromHistory,
     setBroadcastState,
     setEnvironment,

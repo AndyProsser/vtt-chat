@@ -198,6 +198,10 @@ export function RoomSelector({
         connectedTotal: number
         updatedAt: number
       }
+      identity?: {
+        active: boolean
+        assumedUserId: UUID | null
+      }
     }
 
     replaceSessionTopology(
@@ -216,7 +220,21 @@ export function RoomSelector({
     if (presencePayload.stats) {
       replaceSessionStatsSnapshot(sessionId, presencePayload.stats)
     }
-  }, [apiUrl, replaceSessionStatsSnapshot, replaceSessionTopology, sessionId, token])
+
+    if (import.meta.env.DEV) {
+      setMockTakeoverUserId(
+        sessionId,
+        presencePayload.identity?.active ? presencePayload.identity.assumedUserId || null : null
+      )
+    }
+  }, [
+    apiUrl,
+    replaceSessionStatsSnapshot,
+    replaceSessionTopology,
+    sessionId,
+    setMockTakeoverUserId,
+    token,
+  ])
 
   const getRoomMemberIdsFromServer = useCallback(
     async (roomId: UUID): Promise<UUID[] | null> => {

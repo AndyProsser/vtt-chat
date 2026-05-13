@@ -25,9 +25,11 @@ import {
 } from '@/services/dev-mock-players.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
+import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { getSessionPresence } from '@/services/room.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
 import {
-  getMockTakeover,
+  getMockTakeoverSnapshot,
   startMockTakeover,
   stopMockTakeover,
 } from '@/services/dev-mock-takeover.service'
@@ -53,6 +55,44 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   ;(req as any).user = user
   next()
+}
+
+async function resolveTakeoverActorAuthorization(params: {
+  sessionId: UUID
+  actorUserId: UUID
+}): Promise<{ ok: true; role: Role } | { ok: false; status: number; error: string }> {
+  const authz = await resolveEffectiveSessionRole({
+    sessionId: params.sessionId,
+    userId: params.actorUserId,
+  })
+
+  if (!authz.ok) {
+    return {
+      ok: false,
+      status: authz.code === 'SESSION_NOT_FOUND' ? 404 : 403,
+      error: authz.message,
+    }
+  }
+
+  if (authz.role === 'SPECTATOR') {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Only DM or PLAYER may use mock takeover',
+    }
+  }
+
+  const presence = await getSessionPresence(params.sessionId)
+  const hasPresence = presence.some((entry) => entry.userId === params.actorUserId)
+  if (!hasPresence) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Takeover requires active session presence',
+    }
+  }
+
+  return { ok: true, role: authz.role }
 }
 
 /**
@@ -246,23 +286,28 @@ router.get('/takeover/status/:sessionId', requireAuth, async (req: Request, res:
     return res.status(404).json({ error: 'Session not found' })
   }
 
-  const takeover = getMockTakeover({
+  const actorAuthz = await resolveTakeoverActorAuthorization({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+  })
+  if (!actorAuthz.ok) {
+    return res.status(actorAuthz.status).json({ error: actorAuthz.error })
+  }
+
+  const snapshot = await getMockTakeoverSnapshot({
     sessionId: sessionId as UUID,
     actorUserId: user.userId as UUID,
   })
 
-  let assumedDisplayName: string | null = null
-  if (takeover) {
-    const mockPlayer = await getSessionMockPlayerById(sessionId as UUID, takeover.assumedUserId)
-    assumedDisplayName = mockPlayer?.displayName || mockPlayer?.username || null
-  }
-
   return res.json({
     sessionId,
-    active: Boolean(takeover),
-    assumedUserId: takeover?.assumedUserId || null,
-    assumedDisplayName,
-    startedAt: takeover?.startedAt || null,
+    active: snapshot.active,
+    actorUserId: snapshot.actorUserId,
+    effectiveUserId: snapshot.effectiveUserId,
+    assumedUserId: snapshot.assumedUserId,
+    assumedDisplayName: snapshot.assumedDisplayName,
+    startedAt: snapshot.startedAt,
+    staleRecovered: snapshot.staleRecovered,
   })
 })
 
@@ -281,6 +326,14 @@ router.post('/takeover/start', requireAuth, async (req: Request, res: Response) 
   const session = await getSession(sessionId as UUID)
   if (!session) {
     return res.status(404).json({ error: 'Session not found' })
+  }
+
+  const actorAuthz = await resolveTakeoverActorAuthorization({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+  })
+  if (!actorAuthz.ok) {
+    return res.status(actorAuthz.status).json({ error: actorAuthz.error })
   }
 
   const mockPlayer = await getSessionMockPlayerById(sessionId as UUID, targetUserId as UUID)
@@ -310,6 +363,19 @@ router.post('/takeover/stop', requireAuth, async (req: Request, res: Response) =
 
   if (!sessionId || !isValidUUID(sessionId)) {
     return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  const session = await getSession(sessionId as UUID)
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' })
+  }
+
+  const actorAuthz = await resolveTakeoverActorAuthorization({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+  })
+  if (!actorAuthz.ok) {
+    return res.status(actorAuthz.status).json({ error: actorAuthz.error })
   }
 
   const removed = stopMockTakeover({
