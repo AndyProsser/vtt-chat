@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
@@ -45,6 +45,8 @@ interface SessionLeftRailPanelProps {
   currentUserId: UUID
   rooms: Array<{ id: UUID; name: string; type: RoomType }>
   roomMembersByRoomId: Record<UUID, RoomUser[]>
+  sessionEndedAt?: number
+  cooldownDurationMs?: number
   selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
   broadcastModeEnabled: boolean
@@ -71,6 +73,8 @@ export function SessionLeftRailPanel({
   currentUserId,
   rooms,
   roomMembersByRoomId,
+  sessionEndedAt,
+  cooldownDurationMs,
   selectedRoomId,
   onSelectRoom,
   broadcastModeEnabled,
@@ -88,6 +92,35 @@ export function SessionLeftRailPanel({
   const previousMockSpeakingKeyRef = useRef<string>('')
 
   const isGreenroom = isGreenroomSessionState(sessionState)
+  const [cooldownTick, setCooldownTick] = useState(0)
+
+  useEffect(() => {
+    if (sessionState !== 'ENDED') {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCooldownTick((value) => value + 1)
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [sessionState])
+
+  const cooldownWindowMs = Number.isFinite(cooldownDurationMs) ? Number(cooldownDurationMs) : 0
+  const isEndedCooldownActive = useMemo(() => {
+    if (sessionState !== 'ENDED') {
+      return false
+    }
+
+    const endedAtMs = Number.isFinite(sessionEndedAt) ? Number(sessionEndedAt) : NaN
+    if (!Number.isFinite(endedAtMs) || cooldownWindowMs <= 0) {
+      return true
+    }
+
+    return Date.now() < endedAtMs + cooldownWindowMs
+  }, [cooldownTick, cooldownWindowMs, sessionEndedAt, sessionState])
 
   const mockUserIds = useMemo(() => {
     const ids = new Set<UUID>()
@@ -241,63 +274,79 @@ export function SessionLeftRailPanel({
             type: room.type,
             memberCount: (roomMembersByRoomId[room.id] || []).length,
             environmentName: roomEnvironmentNames?.[room.id],
-            participants: (roomMembersByRoomId[room.id] || []).map((member) => {
-              const isSelf = member.userId === currentUserId
-              const muteOverride = getUserDMOverride(dmOverrides, member.userId, 'MUTE')
-              const distanceOverride = getUserDMOverride(dmOverrides, member.userId, 'DISTANCE')
-              const conditionOverride =
-                getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
-                getUserDMOverride(dmOverrides, member.userId, 'FILTER')
-              const overrideMuted = !isGreenroom && Boolean(muteOverride)
-              const overrideCondition =
-                typeof conditionOverride?.parameters?.conditionName === 'string'
-                  ? String(conditionOverride.parameters.conditionName)
-                  : typeof conditionOverride?.parameters?.presetName === 'string'
-                    ? String(conditionOverride.parameters.presetName)
+            participants: (roomMembersByRoomId[room.id] || [])
+              .map((member) => {
+                const isSpectator = member.role === 'SPECTATOR'
+                const canShowSpectatorInRoom =
+                  isGreenRoomName(room.name) && sessionState === 'ENDED' && isEndedCooldownActive
+
+                if (isSpectator && !canShowSpectatorInRoom) {
+                  return null
+                }
+
+                const isSelf = member.userId === currentUserId
+                const muteOverride = getUserDMOverride(dmOverrides, member.userId, 'MUTE')
+                const distanceOverride = getUserDMOverride(dmOverrides, member.userId, 'DISTANCE')
+                const conditionOverride =
+                  getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
+                  getUserDMOverride(dmOverrides, member.userId, 'FILTER')
+                const overrideMuted = !isGreenroom && Boolean(muteOverride)
+                const overrideCondition =
+                  typeof conditionOverride?.parameters?.conditionName === 'string'
+                    ? String(conditionOverride.parameters.conditionName)
+                    : typeof conditionOverride?.parameters?.presetName === 'string'
+                      ? String(conditionOverride.parameters.presetName)
+                      : undefined
+                const overrideDistance =
+                  typeof distanceOverride?.parameters?.presetName === 'string'
+                    ? String(distanceOverride.parameters.presetName)
                     : undefined
-              const overrideDistance =
-                typeof distanceOverride?.parameters?.presetName === 'string'
-                  ? String(distanceOverride.parameters.presetName)
-                  : undefined
 
-              // Combine mute states: user can be muted by themselves OR by the DM
-              const userOwnMuted = userMuteState[member.userId] ?? false
-              const dmMuted = overrideMuted
-              const isMutedCombined = userOwnMuted || dmMuted
+                // Combine mute states: user can be muted by themselves OR by the DM
+                const userOwnMuted = userMuteState[member.userId] ?? false
+                const dmMuted = overrideMuted
+                const isMutedCombined = userOwnMuted || dmMuted
 
-              // Speaking indicator: only show as speaking if NOT muted, AND (LiveKit says speaking OR presence says speaking)
-              const isActivelySpeaking =
-                room.type === RoomType.PRIVATE
-                  ? false
-                  : (Boolean(liveKitSpeakingUsersWithLocal?.[member.userId]) ||
-                      member.presenceState === PresenceState.SPEAKING) &&
-                    !isMutedCombined
+                // Speaking indicator: only show as speaking if NOT muted, AND (LiveKit says speaking OR presence says speaking)
+                const isActivelySpeaking =
+                  room.type === RoomType.PRIVATE
+                    ? false
+                    : (Boolean(liveKitSpeakingUsersWithLocal?.[member.userId]) ||
+                        member.presenceState === PresenceState.SPEAKING) &&
+                      !isMutedCombined
 
-              return {
-                userId: member.userId,
-                username: member.username || member.userId,
-                avatarUrl: member.avatarUrl,
-                characterName: member.characterName,
-                playerName: member.playerName,
-                characterClass: member.characterClass,
-                characterSubclass: member.characterSubclass,
-                characterRace: member.characterRace,
-                level: member.level,
-                characterStats: member.characterStats,
-                roleLabel:
-                  member.userId === dmUserId ? ROOM_ROLE_LABELS.dm : ROOM_ROLE_LABELS.player,
-                presenceState: member.presenceState,
-                isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
-                isSpeaking: isActivelySpeaking,
-                distanceLabel: isGreenroom ? undefined : overrideDistance,
-                condition: isGreenroom
-                  ? undefined
-                  : overrideCondition ||
-                    (currentConditionName && member.userId === currentUserId
-                      ? currentConditionName
-                      : undefined),
-              }
-            }),
+                return {
+                  userId: member.userId,
+                  username: member.username || member.userId,
+                  avatarUrl: member.avatarUrl,
+                  characterName: member.characterName,
+                  playerName: member.playerName,
+                  characterClass: member.characterClass,
+                  characterSubclass: member.characterSubclass,
+                  characterRace: member.characterRace,
+                  level: member.level,
+                  characterStats: member.characterStats,
+                  roleLabel:
+                    member.userId === dmUserId
+                      ? ROOM_ROLE_LABELS.dm
+                      : member.role === 'SPECTATOR'
+                        ? ROOM_ROLE_LABELS.spectator
+                        : ROOM_ROLE_LABELS.player,
+                  presenceState: member.presenceState,
+                  isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
+                  isSpeaking: isActivelySpeaking,
+                  distanceLabel: isGreenroom ? undefined : overrideDistance,
+                  condition: isGreenroom
+                    ? undefined
+                    : overrideCondition ||
+                      (currentConditionName && member.userId === currentUserId
+                        ? currentConditionName
+                        : undefined),
+                }
+              })
+              .filter((participant): participant is NonNullable<typeof participant> =>
+                Boolean(participant)
+              ),
           }))}
           selectedRoomId={selectedRoomId}
           onSelectRoom={onSelectRoom}

@@ -207,7 +207,7 @@ describe('session disconnect cascade service', () => {
     expect(mocks.applySessionStateRoomTransition).toHaveBeenCalled()
   })
 
-  it('enters backend-only cleanup and restores inactive after greenroom purge', async () => {
+  it('flags CLEANUP immediately when table has fully disconnected outside active/paused', async () => {
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
       name: 'Session 1',
@@ -215,21 +215,33 @@ describe('session disconnect cascade service', () => {
       state: 'INACTIVE',
       createdAt: Date.now(),
     })
-    mocks.updateSessionState
-      .mockResolvedValueOnce({
-        id: SESSION_ID,
-        name: 'Session 1',
-        dmId: DM_ID,
-        state: 'INACTIVE',
-        createdAt: Date.now(),
-      })
-      .mockResolvedValueOnce({
-        id: SESSION_ID,
-        name: 'Session 1',
-        dmId: DM_ID,
-        state: 'INACTIVE',
-        createdAt: Date.now(),
-      })
+    mocks.updateSessionState.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'CLEANUP',
+      createdAt: Date.now(),
+    })
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        sessionId: SESSION_ID,
+        userId: DM_ID,
+        username: 'dm',
+        state: 'OFFLINE',
+        ghost: false,
+        primaryRoomId: ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+      {
+        sessionId: SESSION_ID,
+        userId: USER_ID,
+        username: 'alice',
+        state: 'OFFLINE',
+        ghost: false,
+        primaryRoomId: ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+    ])
 
     await service.handleUserDisconnected({
       sessionId: SESSION_ID,
@@ -241,10 +253,7 @@ describe('session disconnect cascade service', () => {
       isSessionConnected: () => false,
     })
 
-    await vi.advanceTimersByTimeAsync(21 * 60_000 + 5_000)
-
-    expect(mocks.updateSessionState).toHaveBeenNthCalledWith(1, SESSION_ID, 'CLEANUP', DM_ID)
-    expect(mocks.clearRoomMessages).toHaveBeenCalledWith(SESSION_ID, ROOM_ID)
-    expect(mocks.updateSessionState).toHaveBeenNthCalledWith(2, SESSION_ID, 'INACTIVE', DM_ID)
+    expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'CLEANUP', DM_ID)
+    expect(mocks.clearRoomMessages).not.toHaveBeenCalled()
   })
 })

@@ -1,11 +1,9 @@
 import { DISCONNECT_CASCADE_TIMERS_MS, PresenceState, Role, SessionState } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
-import { clearRoomMessages } from '@/services/chat.service'
 import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
 import {
   applySessionStateRoomTransition,
   deletePrivateRoomsForEndedSession,
-  getRooms,
   getSessionPresence,
   removePresenceProjection,
   updatePresenceState,
@@ -23,7 +21,6 @@ const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000000' as UUID
 const GHOST_ENTRY_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.ghostEntryDelay
 const PRESENCE_TTL_REMOVAL_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.presenceTtlRemoval
 const EVERYONE_LEAVES_AUTOSTOP_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.everyoneLeavesAutoStop
-const CLEANUP_TRIGGER_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.cleanupTriggerDelay
 
 interface CascadeWsAdapter {
   broadcastEventToSession: (sessionId: UUID, event: EventEnvelope, visibleTo?: UUID[]) => void
@@ -43,11 +40,6 @@ function userKey(sessionId: UUID, userId: UUID): string {
   return `${sessionId}:${userId}`
 }
 
-function isGreenRoomName(value: string): boolean {
-  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
-}
-
 function getBoundaryRoomIds(mainRoomId: UUID, greenRoomId: UUID): UUID[] {
   return Array.from(new Set([mainRoomId, greenRoomId]))
 }
@@ -56,12 +48,10 @@ export class SessionDisconnectCascadeService {
   private ghostTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private ttlTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private everyoneLeavesTimers = new Map<UUID, ReturnType<typeof setTimeout>>()
-  private cleanupTimers = new Map<UUID, ReturnType<typeof setTimeout>>()
 
   handleUserConnected(sessionId: UUID, userId: UUID): void {
     this.clearUserTimers(sessionId, userId)
     this.clearEveryoneLeavesTimer(sessionId)
-    this.clearCleanupTimer(sessionId)
   }
 
   async handleUserDisconnected(context: DisconnectContext): Promise<void> {
@@ -256,7 +246,6 @@ export class SessionDisconnectCascadeService {
     const session = await getSession(context.sessionId)
     if (!session) {
       this.clearEveryoneLeavesTimer(context.sessionId)
-      this.clearCleanupTimer(context.sessionId)
       return
     }
 
@@ -265,7 +254,54 @@ export class SessionDisconnectCascadeService {
       return
     }
 
-    this.scheduleCleanupTrigger(context)
+    await this.markSessionForScheduledCleanup(context.sessionId)
+  }
+
+  private async hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
+    const [sessionUsers, presence] = await Promise.all([
+      getSessionUsers(sessionId),
+      getSessionPresence(sessionId),
+    ])
+
+    const tableMemberIds = new Set(
+      sessionUsers
+        .filter((member) => member.role === Role.DM || member.role === Role.PLAYER)
+        .map((member) => member.id)
+    )
+
+    if (tableMemberIds.size === 0) {
+      return false
+    }
+
+    return presence.some(
+      (entry) => tableMemberIds.has(entry.userId) && entry.state !== PresenceState.OFFLINE
+    )
+  }
+
+  private async markSessionForScheduledCleanup(sessionId: UUID): Promise<void> {
+    const session = await getSession(sessionId)
+    if (!session) {
+      return
+    }
+
+    if (session.state === SessionState.CLEANUP) {
+      return
+    }
+
+    const tableStillConnected = await this.hasConnectedTableMembers(sessionId)
+    if (tableStillConnected) {
+      return
+    }
+
+    if (
+      session.state !== SessionState.ENDED &&
+      session.state !== SessionState.IDLE &&
+      session.state !== 'INACTIVE'
+    ) {
+      return
+    }
+
+    await updateSessionState(sessionId, SessionState.CLEANUP, session.dmId)
   }
 
   private scheduleEveryoneLeavesAutoStop(context: DisconnectContext): void {
@@ -420,63 +456,7 @@ export class SessionDisconnectCascadeService {
     })
 
     this.clearEveryoneLeavesTimer(context.sessionId)
-    this.scheduleCleanupTrigger(context)
-  }
-
-  private scheduleCleanupTrigger(context: DisconnectContext): void {
-    this.clearCleanupTimer(context.sessionId)
-
-    this.cleanupTimers.set(
-      context.sessionId,
-      setTimeout(() => {
-        void this.runCleanupTrigger(context)
-      }, CLEANUP_TRIGGER_DELAY_MS)
-    )
-  }
-
-  private async runCleanupTrigger(context: DisconnectContext): Promise<void> {
-    if (context.isSessionConnected(context.sessionId)) {
-      this.clearCleanupTimer(context.sessionId)
-      return
-    }
-
-    const session = await getSession(context.sessionId)
-    if (!session) {
-      this.clearCleanupTimer(context.sessionId)
-      return
-    }
-
-    if (session.state !== SessionState.ENDED && session.state !== 'INACTIVE') {
-      this.clearCleanupTimer(context.sessionId)
-      return
-    }
-
-    await updateSessionState(context.sessionId, SessionState.CLEANUP, session.dmId)
-
-    const rooms = await getRooms(context.sessionId)
-    const greenRoom = rooms.find((room) => room.type === 'GROUP' && isGreenRoomName(room.name))
-
-    if (greenRoom) {
-      await clearRoomMessages(context.sessionId, greenRoom.id)
-      context.wsManager.broadcastEventToSession(context.sessionId, {
-        id: crypto.randomUUID() as UUID,
-        type: 'CHAT:ROOM_CONTEXT_CLEARED',
-        version: 1,
-        userId: SYSTEM_ACTOR_ID,
-        userRole: Role.SYSTEM,
-        sessionId: context.sessionId,
-        roomId: greenRoom.id,
-        timestamp: Date.now(),
-        payload: {
-          roomId: greenRoom.id,
-          reason: 'SESSION_CLEANUP_TRIGGERED',
-        },
-      })
-    }
-
-    await updateSessionState(context.sessionId, 'INACTIVE', session.dmId)
-
-    this.clearCleanupTimer(context.sessionId)
+    await this.markSessionForScheduledCleanup(context.sessionId)
   }
 
   private clearUserTimers(sessionId: UUID, userId: UUID): void {
@@ -503,14 +483,6 @@ export class SessionDisconnectCascadeService {
     }
   }
 
-  private clearCleanupTimer(sessionId: UUID): void {
-    const timer = this.cleanupTimers.get(sessionId)
-    if (timer) {
-      clearTimeout(timer)
-      this.cleanupTimers.delete(sessionId)
-    }
-  }
-
   dispose(): void {
     for (const timer of this.ghostTimers.values()) {
       clearTimeout(timer)
@@ -521,14 +493,10 @@ export class SessionDisconnectCascadeService {
     for (const timer of this.everyoneLeavesTimers.values()) {
       clearTimeout(timer)
     }
-    for (const timer of this.cleanupTimers.values()) {
-      clearTimeout(timer)
-    }
 
     this.ghostTimers.clear()
     this.ttlTimers.clear()
     this.everyoneLeavesTimers.clear()
-    this.cleanupTimers.clear()
   }
 }
 

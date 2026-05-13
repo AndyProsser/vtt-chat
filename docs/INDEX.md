@@ -43,13 +43,10 @@ Complete guide to using mock players for testing multi-player scenarios without 
 
 **Topics:**
 
-- Mock player seeding and management
-- DEV endpoints (list, join, remove, reset)
-- Speaking simulator (random speaking for unmuted players)
-- Mute state architecture and persistence
-- Complete mute flow walkthrough
-- Testing checklist
-- Troubleshooting
+- Core contract (frontend parity, backend-only mock awareness)
+- Persistence parity rules
+- Takeover mode lifecycle
+- DEV usage checklist and validation flow
 
 ### [Mute & Speaking Indicator Architecture](guides/dev/mute-speaking-architecture.md)
 
@@ -72,28 +69,23 @@ Backend-driven mock player simulation system that makes mocks indistinguishable 
 
 **Topics:**
 
-- Simulation engine architecture (backend-driven WS events)
-- Speaking simulator (real-time speaking cycles with mute awareness)
-- Chat simulator (contextual message generation)
-- Disconnect simulator (network disruption testing)
-- Configuration API and settings management
-- Frontend WS event handlers
-- Session lifecycle integration
-- Testing scenarios and best practices
+- Canonical event strategy
+- Backend internal state and takeover mapping
+- Takeover API surface and authorization rules
+- Persistence and reconnect/recovery behavior
+- Test matrix for parity and identity switching
 
-### [Mock Player Control Panel](guides/dev/mock-control-panel.md)
+### [Mock Testing Panel](guides/dev/mock-control-panel.md)
 
 DEV-only settings interface for configuring mock behavior in real-time.
 
 **Topics:**
 
-- UI layout and components (slider, toggles, buttons)
-- Player count management and rerolling
-- Individual simulator controls
-- Live status monitoring
-- Styling and interaction patterns
-- API integration and service layer
-- Testing workflows
+- Simulation controls and roster actions
+- Take Over Player entry from context menu
+- Return to My User control flow
+- Active takeover PLAYER pill state
+- Accessibility and error-state expectations
 
 ---
 

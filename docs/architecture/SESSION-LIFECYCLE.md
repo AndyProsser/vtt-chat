@@ -112,8 +112,15 @@ The live session has concluded and cooldown is active.
 - Timer popper remains available and shows details from the just-closed session.
 - DM can extend cooldown (adds one more configured cooldown block) or cancel it early.
 - If DM disconnects during cooldown, connected players gain extend/cancel control.
-- While cooldown is active, spectator post-session interaction policy applies.
-- When cooldown reaches zero or is canceled, state transitions to `INACTIVE` and timer context resets for the next session.
+- While cooldown is active, connected spectators are temporarily elevated into post-session interaction mode:
+  - they can speak/chat with the table,
+  - they are rendered in the greenroom participant list with a `SPECTATOR` pill,
+  - DM mute/unmute controls apply to them in that window.
+- When cooldown reaches zero, spectator post-session interaction mode ends:
+  - spectators are hidden from the greenroom participant list,
+  - spectator voice input is disabled for post-session interaction,
+  - the timer state label remains `ENDED` and the ended-state timer continues counting from cooldown expiry.
+- DM may immediately start a new session from this state; new session start semantics are unchanged.
 
 ---
 
@@ -192,10 +199,30 @@ Key points:
 
 ### **ended**
 
-- Topbar timer shows cooldown countdown.
+- Topbar timer shows cooldown countdown, then transitions into elapsed-ended timing while remaining in `ENDED`.
 - Timer popper remains available and shows final session timing summary (start, end, pause totals).
 - DM can extend/cancel cooldown; players can extend/cancel only if DM disconnects.
-- When cooldown completes or is canceled, transition to `INACTIVE` and reset timer context.
+- Cooldown completion ends spectator post-session interaction visibility; cancellation transitions to `INACTIVE`.
+
+---
+
+## 5.2 Cleanup Scheduling
+
+`CLEANUP` is now a deferred maintenance state and is no longer driven by an in-memory per-session server timeout.
+
+- Trigger condition:
+  - when the last table participant (DM/player) disconnects, the session is marked `CLEANUP`.
+- Cleanup executor:
+  - a scheduled cleanup job runs every configurable interval (default: 5 minutes).
+- Eligibility rule:
+  - only sessions that have remained in `CLEANUP` for at least a configurable minimum age are processed (default: 20 minutes).
+- Processing result:
+  - cleanup job purges greenroom runtime context and transitions the session to `INACTIVE` (`IDLE` in persisted state).
+
+Configuration:
+
+- `SESSION_CLEANUP_JOB_INTERVAL_MINUTES` (default `5`)
+- `SESSION_CLEANUP_MIN_AGE_MINUTES` (default `20`)
 
 ### **5.1 Timer popper contract**
 

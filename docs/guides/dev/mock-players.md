@@ -1,232 +1,88 @@
 # Mock Players Guide
 
-Mock players are automatically seeded into every development session to enable testing of multi-player scenarios without spinning up multiple browser instances or actual LiveKit connections.
+This guide defines how DEV mock players are used to test multi-user behavior without spinning up many real clients.
 
-## Overview
+## Core Contract
 
-Mock players are seeded at application bootstrap via the `dev-mock-players.service.ts` backend service. They are:
+1. Frontend treats simulated players as real players.
+2. Only backend services know an actor is mock-generated.
+3. Mock-generated runtime activity follows normal persistence rules for that activity type.
+4. Any real connected user can temporarily assume a mock persona for end-to-end pathway testing.
 
-- 5-9 randomly-selected D&D archetypes (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Warlock, Wizard)
-- Generated with random character names
-- Automatically joined to the `MAIN` room when a session starts
-- Ephemeral (deleted when the session ends or is reset)
+## Why This Exists
 
-## DEV Endpoints
+Mock players let teams validate:
 
-All mock player endpoints require a running development session and are prefixed with `/dev/mock-players/`.
+- group movement and room membership behavior
+- role-based panel and action visibility
+- chat and session timeline behavior under load
+- reconnect and presence behavior across many actors
 
-### List Mock Players
+without requiring many human participants.
 
-```http
-GET /dev/mock-players
-```
+## Identity Model
 
-**Response:**
+### Backend
 
-```json
-{
-  "mockPlayers": [
-    {
-      "userId": "mock:player:1",
-      "displayName": "Grax Ironfist",
-      "archetype": "Barbarian",
-      "sessionId": "session:active:123",
-      "roomId": "room:main:456",
-      "isMuted": false,
-      "isSpeaking": false
-    }
-  ]
-}
-```
+- Mock actors are real records in DEV environments.
+- Backend may keep internal metadata for orchestration and seeding.
+- Internal mock metadata must not be required by frontend runtime logic.
 
-### Join a Mock Player to Session
+### Frontend
 
-```http
-POST /dev/mock-players/join
-Content-Type: application/json
+- Actor cards, chat rows, speaking indicators, and role gates behave as if all actors are real users.
+- Frontend does not need mock-only branching for core behavior.
 
-{
-  "sessionId": "session:active:123",
-  "roomId": "room:main:456"
-}
-```
+## Persistence Parity
 
-**Response:** Returns updated mock player state and confirms room membership.
+Mock-generated data is persisted via the same contracts used by real players for equivalent actions.
 
-### Remove a Mock Player
+Examples:
 
-```http
-POST /dev/mock-players/remove
-Content-Type: application/json
+- chat messages follow standard message persistence and hydration behavior
+- room joins/leaves follow standard presence and membership updates
+- session timeline/system transitions are handled by normal lifecycle contracts
 
-{
-  "userId": "mock:player:1",
-  "sessionId": "session:active:123"
-}
-```
+If a pathway is normally persisted for a real user, it is persisted the same way for mock-generated activity.
 
-**Response:** Confirms removal and cleanup.
+## Takeover Mode
 
-### Reset All Mock Players
+Takeover mode allows a real connected user to assume a mock persona temporarily.
 
-```http
-POST /dev/mock-players/reset
-Content-Type: application/json
+### Entry
 
-{
-  "sessionId": "session:active:123"
-}
-```
+- Use player context menu action: Take Over Player.
+- Any real user can initiate takeover (DM or player).
 
-**Response:** Clears all mock players and re-seeds fresh roster.
+### Active State
 
-## Speaking Simulator
+- Requests/actions are executed as the assumed persona identity.
+- UI and permission behavior should reflect that assumed persona.
+- Selected player pill uses a distinct color while takeover is active.
 
-The speaking simulator is a **DEV-only feature** that automatically generates random speaking events for unmuted mock players. This allows visual testing of speaking indicators without LiveKit audio connections.
+### Exit
 
-### How It Works
+- Use Mock Testing panel action: Return to My User.
+- Identity returns to the original authenticated real user.
 
-1. **Activation:** The simulator runs in `SessionLeftRailPanel.tsx` when the component mounts (development environment only)
-2. **Interval:** Picks a random unmuted player every 1.2–2.5 seconds
-3. **State Update:** Updates the Zustand store's `livekitSpeakingBySession` map
-4. **Mute Awareness:** Automatically excludes any user with:
-   - `userMuted === true` (user's own mute button)
-   - `dmMuted === true` (DM override mute)
+## Non-Negotiables
 
-### Expected Behavior
+1. No authorization bypass through takeover.
+2. No frontend-only mock event types required for normal runtime behavior.
+3. Reconnect/refresh must recover authoritative current identity (real or assumed) from backend state.
+4. Mock controls remain DEV-only.
 
-- **Avatar Highlighting:** Unmuted mock players pulse with a `speaking-glow` animation when active
-- **Avatar Stability:** Muted mock players show a mute badge and do not highlight
-- **Visual Feedback:** Speaking state animates smoothly and respects `prefers-reduced-motion`
+## Recommended Manual Checks
 
-### Testing the Simulator
+1. Start DEV session with seeded mock roster.
+2. Verify simulated player activity appears through normal UI pathways.
+3. Take over one mock player and verify PLAYER pill color change.
+4. Validate chat, notes, and role-gated panels from assumed persona.
+5. Return to real user via Mock Testing panel.
+6. Refresh page and verify identity state rehydrates correctly.
 
-1. **Start a development session** with mock players joined
-2. **Open the Groups panel** (left rail)
-3. **Watch avatar highlights** pulse and rotate between unmuted players
-4. **Mute a player** via the mute button → their highlight stops and mute badge appears
-5. **Unmute a player** → they re-enter the simulator rotation
+## Related Docs
 
-## Mute State Architecture
-
-The mute system has two independent sources:
-
-### User Mute
-
-- **Source:** Player's own mute button in `AudioPanel`
-- **Persistence:** Redis presence hash per session
-- **API Endpoint:** `POST /api/v1/audio/mute` or `/api/v1/audio/unmute`
-- **WS Event:** `AUDIO:USER_MUTED` or `AUDIO:USER_UNMUTED`
-- **Frontend Store:** `state.userMuteState[sessionId][userId]`
-
-### DM Override Mute
-
-- **Source:** DM's mute control in `DMAudioControls`
-- **Persistence:** Redis presence hash per session
-- **Action:** `setDMOverride(userId, { muted: true })`
-- **WS Event:** `AUDIO:DM_OVERRIDE_APPLIED`
-- **Frontend Store:** `state.audioPresetsState.dmOverrides[userId]`
-
-### Speaking Indicator Logic
-
-```typescript
-const isSpeaking = (liveKitActiveSpeaker || presenceSpeaking) && !userMuted && !dmMuted
-```
-
-A player is visible as speaking only if:
-
-- They have active LiveKit audio OR presence speaking state, AND
-- They are NOT muted by their own button, AND
-- They are NOT muted by the DM
-
-## Complete Mute Flow
-
-### Scenario: User Mutes Themselves
-
-1. Player clicks mute button in `AudioPanel`
-2. Frontend calls `POST /api/v1/audio/mute` with sessionId + userId
-3. Backend calls `setUserMuteState(sessionId, userId, true)`
-4. Backend persists to Redis presence hash
-5. Backend broadcasts `AUDIO:USER_MUTED` WS event to all session members
-6. Frontend dispatcher receives event → `handleUserMuted` updates Zustand
-7. All clients update their `userMuteState[sessionId][userId]` map
-8. Speaking indicator recalculates: `isSpeaking = false` (regardless of LiveKit state)
-9. Avatar highlight stops; mute badge appears
-10. In Groups panel, other players see the muted player's avatar with mute badge
-
-### Testing the Flow Locally
-
-**Required:** Two browser windows/tabs with same session active
-
-**Window A (Player 1):**
-
-1. Verify mock player avatar highlights in Groups panel
-2. Click mute button in AudioPanel
-
-**Window B (Player 2):** 3. Observe Player 1's avatar highlight immediately stops 4. Observe mute badge appears on Player 1's avatar 5. (Optional) Open browser DevTools Console → `localStorage.debug = 'vtt:*'` to see WS events
-
-## Backend Audio State Recovery
-
-When a player reconnects or refreshes the page, the `GET /api/v1/audio/state/:sessionId` endpoint restores their audio state:
-
-```json
-{
-  "roomEnvironmentNames": { "room:main": "tavern" },
-  "dmOverrides": { "user:123": { "muted": true } },
-  "broadcastState": "OFF",
-  "voiceOfGodState": "OFF",
-  "userMuteState": { "user:123": true }
-}
-```
-
-The `userMuteState` map ensures mute state survives page refresh.
-
-## Testing Checklist
-
-- [ ] Mock players seed with random names on session start
-- [ ] `/dev/mock-players` endpoint returns correct roster
-- [ ] Speaking simulator activates and rotates through unmuted players
-- [ ] Muted players are excluded from simulator rotation
-- [ ] Mute button updates mute state immediately in local store
-- [ ] Mute state syncs across multiple browser windows (check with 2 tabs)
-- [ ] Avatar highlighting animates smoothly
-- [ ] Reduced motion preference is respected (CSS `prefers-reduced-motion`)
-- [ ] Session cleanup clears mock players on session end
-- [ ] Page refresh restores mute state from `userMuteState` in audio state API
-
-## Code References
-
-| File                                                       | Purpose                                             |
-| ---------------------------------------------------------- | --------------------------------------------------- |
-| `backend/src/services/audio/dev-mock-players.service.ts`   | Mock player seeding and management                  |
-| `backend/src/api/audio.routes.ts`                          | DEV endpoints and audio state API                   |
-| `frontend/src/components/session/SessionLeftRailPanel.tsx` | Speaking simulator and Groups panel                 |
-| `frontend/src/state/userMuteSlice.ts`                      | Mute state store and WS handlers                    |
-| `frontend/src/components/rooms/AvatarOverlay.tsx`          | Avatar rendering with speaking/mute badges          |
-| `frontend/src/styles/components/rooms/AvatarOverlay.css`   | Speaking glow animation and reduced-motion fallback |
-
-## Troubleshooting
-
-**Mock players don't seed:**
-
-- Verify session is in `ACTIVE` state
-- Check backend logs: `grep "mock-players" ./backend.log`
-- Ensure Redis is running: `redis-cli ping` → should return `PONG`
-
-**Speaking simulator isn't running:**
-
-- Verify component is mounted: check React DevTools Profiler
-- Check frontend console for errors: `npm run dev` with verbose output
-- Confirm mock players are actually joined to a room: `GET /dev/mock-players`
-
-**Mute doesn't persist across refresh:**
-
-- Check Redis: `redis-cli hget presence:session:SESSIONID user:USERID` should show mute state
-- Verify `GET /api/v1/audio/state/:sessionId` returns `userMuteState` in response
-- Check backend logs for API errors
-
-**Avatar highlight not animating:**
-
-- Verify CSS was compiled: check browser DevTools → Styles → `avatar-glyph--speaking` class
-- Check `isSpeaking` prop is being passed: React DevTools Props panel on `AvatarOverlay` component
-- Test reduced motion: open System Settings → Accessibility → Display → Toggle "Reduce motion"
+- mock-simulation-engine.md
+- mock-control-panel.md
+- IMPLEMENTATION_STATUS.md

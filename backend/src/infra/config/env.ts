@@ -13,6 +13,8 @@ import {
   LIVEKIT_PUBLIC_URL,
   LIVEKIT_API_KEY,
   LIVEKIT_API_SECRET,
+  DEFAULT_SESSION_CLEANUP_JOB_INTERVAL_MINUTES,
+  DEFAULT_SESSION_CLEANUP_MIN_AGE_MINUTES,
 } from './constants'
 
 export interface AppConfig {
@@ -43,6 +45,10 @@ export interface AppConfig {
     apiKey: string
     apiSecret: string
   }
+  sessionCleanup: {
+    jobIntervalMinutes: number
+    minCleanupAgeMinutes: number
+  }
 }
 
 export const config: AppConfig = {
@@ -72,6 +78,24 @@ export const config: AppConfig = {
     publicUrl: process.env.LIVEKIT_PUBLIC_URL || LIVEKIT_PUBLIC_URL || undefined,
     apiKey: process.env.LIVEKIT_API_KEY || LIVEKIT_API_KEY,
     apiSecret: process.env.LIVEKIT_API_SECRET || LIVEKIT_API_SECRET,
+  },
+  sessionCleanup: {
+    jobIntervalMinutes: Math.max(
+      1,
+      Number.parseInt(
+        process.env.SESSION_CLEANUP_JOB_INTERVAL_MINUTES ||
+          String(DEFAULT_SESSION_CLEANUP_JOB_INTERVAL_MINUTES),
+        10
+      )
+    ),
+    minCleanupAgeMinutes: Math.max(
+      1,
+      Number.parseInt(
+        process.env.SESSION_CLEANUP_MIN_AGE_MINUTES ||
+          String(DEFAULT_SESSION_CLEANUP_MIN_AGE_MINUTES),
+        10
+      )
+    ),
   },
 }
 

@@ -194,6 +194,15 @@ export function SessionToolbar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
 
+  /** Seconds elapsed since cooldown fully expired while still in ENDED state. */
+  const endedElapsedSeconds = useMemo(() => {
+    if (sessionState !== 'ENDED' || !sessionEndedAtMs) return 0
+    const cooldownEndsAt = sessionEndedAtMs + safeCooldownDurationMs
+    if (now <= cooldownEndsAt) return 0
+    return Math.max(0, Math.floor((now - cooldownEndsAt) / 1000))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
+
   /** Seconds since the user entered the greenroom (local clock). */
   const greenroomElapsedSeconds = useMemo(() => {
     if (sessionState !== 'INACTIVE') return 0
@@ -218,7 +227,9 @@ export function SessionToolbar({
       case 'ENDED':
         return {
           primaryLabel:
-            cooldownRemainingSeconds > 0 ? formatDuration(cooldownRemainingSeconds) : '00:00:00',
+            cooldownRemainingSeconds > 0
+              ? formatDuration(cooldownRemainingSeconds)
+              : formatDuration(endedElapsedSeconds),
           primaryStateClass: 'is-ended',
         }
       case 'INACTIVE':
@@ -230,6 +241,7 @@ export function SessionToolbar({
     activeElapsedSeconds,
     pausedElapsedSeconds,
     cooldownRemainingSeconds,
+    endedElapsedSeconds,
     greenroomElapsedSeconds,
   ])
 

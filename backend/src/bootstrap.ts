@@ -11,6 +11,7 @@ import {
 } from '@/infra/http/middleware'
 import apiRouter from '@/api/index'
 import { WebSocketManager } from '@/ws'
+import { sessionCleanupJobService } from '@/services/session-cleanup-job.service'
 
 export interface BootstrapResult {
   app: Express
@@ -105,6 +106,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
             }
           }
 
+          sessionCleanupJobService.start()
+
           resolve()
         })
       } catch (error) {
@@ -124,6 +127,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
             `WebSocket server closed (${wsManager.getConnectionCount()} connections closed)`
           )
         })
+
+        sessionCleanupJobService.stop()
 
         server.close(() => {
           logger.info('bootstrap', 'Server stopped gracefully')

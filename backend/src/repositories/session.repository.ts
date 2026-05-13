@@ -115,6 +115,40 @@ export async function listSessions(): Promise<
   }))
 }
 
+export async function listCleanupCandidateSessions(cutoff: Date): Promise<
+  Array<{
+    id: string
+    dmId: string
+    name: string
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+    updatedAt: Date
+  }>
+> {
+  const rows = await prisma.session.findMany({
+    where: {
+      state: 'CLEANUP',
+      updatedAt: {
+        lte: cutoff,
+      },
+    },
+    select: {
+      id: true,
+      dmId: true,
+      name: true,
+      state: true,
+      updatedAt: true,
+    },
+  })
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    dmId: row.dmId,
+    name: row.name,
+    state: row.state,
+    updatedAt: row.updatedAt,
+  }))
+}
+
 export async function findSessionById(sessionId: string): Promise<{
   id: string
   campaignId: string | null

@@ -170,15 +170,15 @@ These are **not** role-based capabilities — they are structural constraints th
 
 | Constraint       | Rule                                                                                                                                                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Green room       | Never. Spectators cannot enter the green room under any circumstances.                                                                                                            |
+| Green room       | Normally no. Exception: during ENDED cooldown, connected spectators are shown in greenroom participant UI for post-session interaction only.                                      |
 | Session view     | Read-only. Spectators see the session view only while a session is active.                                                                                                        |
-| Chat             | Read-only. Spectators see public room chat but cannot send messages.                                                                                                              |
+| Chat             | Read-only by default. During ENDED cooldown window, spectators may participate in post-session goodbye chat.                                                                      |
 | Whispers         | Not visible to spectators.                                                                                                                                                        |
 | Notes            | Not visible to spectators.                                                                                                                                                        |
-| Audio controls   | Spectators can adjust local mix only (client-local). They cannot change room/global audio state.                                                                                  |
-| Presence         | Spectators appear in a separate spectator list, not in the player presence bar.                                                                                                   |
+| Audio controls   | Spectators can adjust local mix only (client-local). They cannot change room/global audio state; DM mute/unmute may apply during ENDED cooldown interaction window.               |
+| Presence         | Spectators are hidden from group participant UI except during ENDED cooldown, where they are shown with `SPECTATOR` role pill for temporary interaction visibility.               |
 | Slot retention   | A disconnected spectator retains their slot for the reconnect grace period (sysadmin-controlled). After expiry the slot is released and the next waitlist entry is auto-promoted. |
-| Session end      | Spectator view shows "Session ended" state; slot released immediately.                                                                                                            |
+| Session end      | Spectator view shows `ENDED`; cooldown completion removes spectator interaction visibility and disables post-session spectator audio input.                                       |
 | Spectator toggle | If spectators are disabled mid-session, already-connected spectators are grandfathered through that session. New sessions block spectator entry until re-enabled.                 |
 | Guest lifetime   | Guest spectator identity is temporary and scoped to watch-session participation.                                                                                                  |
 | Campaign browse  | Campaign visibility is controlled by campaign privacy/access rules (not session lifecycle). Guest players cannot browse campaigns. Guest spectators join via direct watch links.  |

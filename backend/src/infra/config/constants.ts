@@ -21,3 +21,7 @@ export const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880'
 export const LIVEKIT_PUBLIC_URL = process.env.LIVEKIT_PUBLIC_URL || ''
 export const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey'
 export const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret'
+
+// Session cleanup job
+export const DEFAULT_SESSION_CLEANUP_JOB_INTERVAL_MINUTES = 5
+export const DEFAULT_SESSION_CLEANUP_MIN_AGE_MINUTES = 20
