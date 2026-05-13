@@ -1,4 +1,5 @@
 import type { UUID } from '@shared'
+import { getSessionMockPlayerById } from '@/services/dev-mock-players.service'
 
 interface MockTakeoverState {
   assumedUserId: UUID
@@ -37,4 +38,43 @@ export function getMockTakeover(params: {
 }): MockTakeoverState | null {
   const key = buildKey(params.sessionId, params.actorUserId)
   return takeoverByActor.get(key) || null
+}
+
+/**
+ * Resolve effective chat/write actor for DEV mock takeover.
+ * When a real user has an active takeover of a mock player, their writes
+ * should appear as the mock player. No-op in production.
+ *
+ * Returns the original actor's identity unchanged if:
+ * - NODE_ENV is not 'development'
+ * - No active takeover exists for this actor
+ * - The assumed mock player can no longer be found in the session
+ */
+export async function resolveEffectiveActor(params: {
+  sessionId: UUID
+  actorUserId: UUID
+  actorUsername: string
+}): Promise<{ userId: UUID; username: string }> {
+  if (process.env.NODE_ENV !== 'development') {
+    return { userId: params.actorUserId, username: params.actorUsername }
+  }
+
+  const takeover = getMockTakeover({
+    sessionId: params.sessionId,
+    actorUserId: params.actorUserId,
+  })
+
+  if (!takeover) {
+    return { userId: params.actorUserId, username: params.actorUsername }
+  }
+
+  const mockPlayer = await getSessionMockPlayerById(params.sessionId, takeover.assumedUserId)
+  if (!mockPlayer) {
+    return { userId: params.actorUserId, username: params.actorUsername }
+  }
+
+  return {
+    userId: takeover.assumedUserId,
+    username: mockPlayer.displayName || mockPlayer.username,
+  }
 }

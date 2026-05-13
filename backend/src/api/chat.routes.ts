@@ -17,6 +17,7 @@ import { MessageType, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { resolveEffectiveActor } from '@/services/dev-mock-takeover.service'
 
 const router = Router()
 
@@ -250,11 +251,17 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
+    const effective = await resolveEffectiveActor({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorUsername: user.username,
+    })
+
     const stored = await sendMessage({
       sessionId: sessionId as UUID,
       roomId: roomId as UUID,
-      authorId: user.userId as UUID,
-      authorUsername: user.username,
+      authorId: effective.userId,
+      authorUsername: effective.username,
       dmId: session.dmId,
       content,
       type,
@@ -263,7 +270,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
-      const event = buildMessageSentEvent(stored, user.userId as UUID, requesterRole)
+      const event = buildMessageSentEvent(stored, effective.userId, requesterRole)
       wsManager.broadcastEventToSession(sessionId as UUID, event, stored.visibleTo)
     }
 

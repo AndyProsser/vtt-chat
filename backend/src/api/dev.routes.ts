@@ -251,10 +251,17 @@ router.get('/takeover/status/:sessionId', requireAuth, async (req: Request, res:
     actorUserId: user.userId as UUID,
   })
 
+  let assumedDisplayName: string | null = null
+  if (takeover) {
+    const mockPlayer = await getSessionMockPlayerById(sessionId as UUID, takeover.assumedUserId)
+    assumedDisplayName = mockPlayer?.displayName || mockPlayer?.username || null
+  }
+
   return res.json({
     sessionId,
     active: Boolean(takeover),
     assumedUserId: takeover?.assumedUserId || null,
+    assumedDisplayName,
     startedAt: takeover?.startedAt || null,
   })
 })

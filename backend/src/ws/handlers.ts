@@ -14,6 +14,7 @@ import { logger } from '@/utils'
 import { createNote, deleteNote, updateNote } from '@/services/notes.service'
 import { deleteMessage, editMessage, sendMessage } from '@/services/chat.service'
 import { getSession } from '@/services/session.service'
+import { resolveEffectiveActor } from '@/services/dev-mock-takeover.service'
 
 export { roomHandlers } from './handlers/room.handler'
 export { audioHandlers } from './handlers/audio.handler'
@@ -77,10 +78,16 @@ export const chatHandlers = {
           ? (requestedType as MessageType)
           : MessageType.OOC
 
+        const effective = await resolveEffectiveActor({
+          sessionId: event.sessionId as any,
+          actorUserId: event.userId as any,
+          actorUsername: payload.authorUsername || 'Unknown',
+        })
+
         await sendMessage({
           sessionId: event.sessionId as any,
-          authorId: event.userId as any,
-          authorUsername: payload.authorUsername || 'Unknown',
+          authorId: effective.userId,
+          authorUsername: effective.username,
           dmId: session.dmId as any,
           content: payload.content,
           type,
