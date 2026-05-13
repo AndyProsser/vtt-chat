@@ -89,6 +89,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const currentCondition = useStore((state) => state.currentCondition)
   const currentVoicePreset = useStore((state) => state.currentVoicePreset)
   const currentICPreset = useStore((state) => state.currentICPreset)
+  const apiUrl = useStore((state) => state.apiUrl)
+  const token = useStore((state) => state.token)
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
   const togglePTT = useStore((state) => state.togglePTT)

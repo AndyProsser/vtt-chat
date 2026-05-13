@@ -1086,6 +1086,9 @@ export function RoomSelector({
             showCreateGroupModal={showCreateGroupModal}
             canCreateGroups={canCreateGroups}
             createGroupWrapRef={createGroupWrapRef}
+            apiUrl={apiUrl}
+            token={token}
+            sessionId={sessionId}
             onBroadcastToggle={() => {
               void handleBroadcastToggleClick()
             }}

@@ -155,6 +155,28 @@ export function SessionLeftRailPanel({
 
   const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
 
+  // Include current user in speaking list if they're transmitting audio
+  // LiveKit's activeSpeakers might not include the local participant (publisher),
+  // so we need to detect this locally based on whether the user has their mic on
+  // and has active voice activity
+  const isCurrentUserSpeaking = !localUserMuted
+
+  const liveKitSpeakingUsersWithLocal = useMemo(() => {
+    if (!liveKitSpeakingUsers) return {}
+
+    const speaking = { ...liveKitSpeakingUsers }
+
+    // Add current user if they're transmitting
+    if (isCurrentUserSpeaking) {
+      speaking[currentUserId] = true
+    } else {
+      // Remove current user if they're not transmitting
+      delete speaking[currentUserId]
+    }
+
+    return speaking
+  }, [liveKitSpeakingUsers, isCurrentUserSpeaking, currentUserId])
+
   const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
 
   const visibleRooms = [...rooms]
@@ -247,7 +269,7 @@ export function SessionLeftRailPanel({
               const isActivelySpeaking =
                 room.type === RoomType.PRIVATE
                   ? false
-                  : (Boolean(liveKitSpeakingUsers?.[member.userId]) ||
+                  : (Boolean(liveKitSpeakingUsersWithLocal?.[member.userId]) ||
                       member.presenceState === PresenceState.SPEAKING) &&
                     !isMutedCombined
 

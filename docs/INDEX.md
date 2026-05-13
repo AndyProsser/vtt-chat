@@ -66,6 +66,35 @@ Deep technical reference for the entire audio state system.
 - Testing strategy and performance considerations
 - Known limitations and future work
 
+### [Mock Player Simulation Engine](guides/dev/mock-simulation-engine.md)
+
+Backend-driven mock player simulation system that makes mocks indistinguishable from real players.
+
+**Topics:**
+
+- Simulation engine architecture (backend-driven WS events)
+- Speaking simulator (real-time speaking cycles with mute awareness)
+- Chat simulator (contextual message generation)
+- Disconnect simulator (network disruption testing)
+- Configuration API and settings management
+- Frontend WS event handlers
+- Session lifecycle integration
+- Testing scenarios and best practices
+
+### [Mock Player Control Panel](guides/dev/mock-control-panel.md)
+
+DEV-only settings interface for configuring mock behavior in real-time.
+
+**Topics:**
+
+- UI layout and components (slider, toggles, buttons)
+- Player count management and rerolling
+- Individual simulator controls
+- Live status monitoring
+- Styling and interaction patterns
+- API integration and service layer
+- Testing workflows
+
 ---
 
 ## Quick Reference

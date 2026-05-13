@@ -1,6 +1,9 @@
+import { useRef, useState } from 'react'
 import type { RefObject } from 'react'
+import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 import { CreateGroupModal } from './CreateGroupModal'
+import { MockTestingPanel } from '../dev/MockTestingPanel'
 
 export interface GroupsHeaderActionsProps {
   headerModeCopy?: string
@@ -15,6 +18,9 @@ export interface GroupsHeaderActionsProps {
   showCreateGroupModal: boolean
   canCreateGroups: boolean
   createGroupWrapRef: RefObject<HTMLDivElement | null>
+  apiUrl?: string
+  token?: string
+  sessionId?: UUID
   onBroadcastToggle: () => void
   onDevReset: () => void
   onToggleCreateGroupModal: () => void
@@ -36,6 +42,9 @@ export function GroupsHeaderActions({
   showCreateGroupModal,
   canCreateGroups,
   createGroupWrapRef,
+  apiUrl,
+  token,
+  sessionId,
   onBroadcastToggle,
   onDevReset,
   onToggleCreateGroupModal,
@@ -43,6 +52,8 @@ export function GroupsHeaderActions({
   onCreateGroup,
   onEndWhisper,
 }: GroupsHeaderActionsProps) {
+  const [showMockPanel, setShowMockPanel] = useState(false)
+  const mockPanelRef = useRef<HTMLDivElement | null>(null)
   return (
     <div className="room-selector-header__meta room-selector-header__meta--actions">
       {headerModeCopy ? <span>{headerModeCopy}</span> : null}
@@ -73,22 +84,34 @@ export function GroupsHeaderActions({
         </Tooltip>
       ) : null}
       {canManageRooms && import.meta.env.DEV ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="room-selector-header__broadcast-icon"
-              aria-label="Reroll DEV mock players"
-              disabled={isDevResettingMocks}
-              onClick={onDevReset}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                shuffle
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Reroll DEV mock players</TooltipContent>
-        </Tooltip>
+        <div className="room-selector-header__mock-wrap" ref={mockPanelRef}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`room-selector-header__broadcast-icon ${showMockPanel ? 'active' : ''}`}
+                aria-label="Configure mock testing"
+                disabled={isDevResettingMocks}
+                onClick={() => setShowMockPanel((current) => !current)}
+                aria-haspopup="dialog"
+                aria-expanded={showMockPanel}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  shuffle
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">DEV: Configure mock testing</TooltipContent>
+          </Tooltip>
+          {showMockPanel && apiUrl && token && sessionId ? (
+            <MockTestingPanel
+              apiUrl={apiUrl}
+              token={token}
+              sessionId={sessionId}
+              onClose={() => setShowMockPanel(false)}
+            />
+          ) : null}
+        </div>
       ) : null}
       {showCreateGroupControl ? (
         <div className="room-selector-header__create-wrap" ref={createGroupWrapRef}>

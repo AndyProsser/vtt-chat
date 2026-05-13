@@ -1,0 +1,175 @@
+/* Mock Testing Panel — DEV-only testing interface for session simulation */
+
+.mock-testing-panel {
+  padding: 0.5rem 0.75rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.mock-testing-panel__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mock-testing-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mock-testing-panel__label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 4.5rem;
+}
+
+.mock-testing-panel__slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.mock-testing-panel__slider {
+  flex: 1;
+  accent-color: var(--color-primary-500, #3b82f6);
+}
+
+.mock-testing-panel__value {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  min-width: 1.8rem;
+  text-align: right;
+  font-weight: 600;
+}
+
+.mock-testing-panel__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    color 100ms ease,
+    background-color 100ms ease;
+}
+
+.mock-testing-panel__icon-button:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 92%, transparent);
+}
+
+.mock-testing-panel__icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mock-testing-panel__icon-button .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.mock-testing-panel__toggle-group {
+  display: flex;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 0.4rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+}
+
+.mock-testing-panel__segment-btn {
+  flex: 1;
+  padding: 0.28rem 0.5rem;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: none;
+  border-right: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  cursor: pointer;
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+.mock-testing-panel__segment-btn:last-child {
+  border-right: none;
+}
+
+.mock-testing-panel__segment-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 60%, transparent);
+}
+
+.mock-testing-panel__segment-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mock-testing-panel__segment-btn.is-active {
+  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
+  color: #fff;
+}
+
+.mock-testing-panel__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.mock-testing-panel__action-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 92%, transparent);
+  color: var(--color-text-primary);
+}
+
+.mock-testing-panel__action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mock-testing-panel__action-button--danger {
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 35%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 80%, #fff 20%);
+}
+
+.mock-testing-panel__action-button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 55%, transparent);
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 90%, #fff 10%);
+}
+
+.mock-testing-panel__action-button .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.mock-testing-panel__status {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.14));
+  text-align: center;
+}
