@@ -52,6 +52,7 @@ export function GroupsHeaderActions({
   onCreateGroup,
   onEndWhisper,
 }: GroupsHeaderActionsProps) {
+  void onDevReset
   const [showMockPanel, setShowMockPanel] = useState(false)
   const mockPanelRef = useRef<HTMLDivElement | null>(null)
   return (
