@@ -175,7 +175,7 @@ export async function updateSessionStateRecord(params: {
   endedAt?: Date
   cumulativePauseMs?: number
   pauseCount?: number
-  pauseStartedAt?: Date | undefined
+  pauseStartedAt?: Date | null | undefined
 }): Promise<void> {
   const data: {
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'

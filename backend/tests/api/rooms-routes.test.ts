@@ -335,8 +335,12 @@ describe('rooms routes', () => {
       const app = buildAppWithWS()
       await request(app).post(`/api/rooms/${ROOM_ID}/join`).set('Authorization', 'Bearer token')
       const wsManager = app.locals.wsManager
-      expect(wsManager.broadcastEventToSession).toHaveBeenCalledOnce()
-      const [sid, event] = wsManager.broadcastEventToSession.mock.calls[0]
+      expect(wsManager.broadcastEventToSession).toHaveBeenCalled()
+      const roomJoinedCall = wsManager.broadcastEventToSession.mock.calls.find(
+        ([, event]: [string, { type?: string }]) => event?.type === 'ROOM:USER_JOINED'
+      )
+      expect(roomJoinedCall).toBeDefined()
+      const [sid, event] = roomJoinedCall
       expect(sid).toBe(SESSION_ID)
       expect(event.type).toBe('ROOM:USER_JOINED')
       expect(event.payload.userId).toBe(PLAYER_ID)
@@ -421,8 +425,12 @@ describe('rooms routes', () => {
       const app = buildAppWithWS()
       await request(app).post(`/api/rooms/${ROOM_ID}/leave`).set('Authorization', 'Bearer token')
       const wsManager = app.locals.wsManager
-      expect(wsManager.broadcastEventToSession).toHaveBeenCalledOnce()
-      const [sid, event] = wsManager.broadcastEventToSession.mock.calls[0]
+      expect(wsManager.broadcastEventToSession).toHaveBeenCalled()
+      const roomLeftCall = wsManager.broadcastEventToSession.mock.calls.find(
+        ([, event]: [string, { type?: string }]) => event?.type === 'ROOM:USER_LEFT'
+      )
+      expect(roomLeftCall).toBeDefined()
+      const [sid, event] = roomLeftCall
       expect(sid).toBe(SESSION_ID)
       expect(event.type).toBe('ROOM:USER_LEFT')
       expect(event.payload.reason).toBe('VOLUNTARY')

@@ -205,7 +205,7 @@ export function updateSessionState(
     // Pause stats tracking
     let cumulativePauseMs = session.cumulativePauseMs ?? 0
     let pauseCount = session.pauseCount ?? 0
-    let pauseStartedAt: Date | undefined = session.pauseStartedAt ?? undefined
+    let pauseStartedAt: Date | null | undefined = session.pauseStartedAt ?? undefined
 
     // When transitioning to PAUSED: increment pauseCount and record pause start
     if (requestedState === SessionStateEnum.PAUSED) {
@@ -219,7 +219,7 @@ export function updateSessionState(
       pauseStartedAt
     ) {
       cumulativePauseMs += now - pauseStartedAt.getTime()
-      pauseStartedAt = undefined
+      pauseStartedAt = null
     }
     // When transitioning to ENDED: finalize any pending pause
     else if (
@@ -228,7 +228,7 @@ export function updateSessionState(
       pauseStartedAt
     ) {
       cumulativePauseMs += now - pauseStartedAt.getTime()
-      pauseStartedAt = undefined
+      pauseStartedAt = null
     }
 
     await updateSessionStateRecord({
