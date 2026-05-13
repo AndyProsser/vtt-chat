@@ -47,6 +47,9 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     name: string
     description: string | null
     plannedDurationMinutes: number | null
+    cumulativePauseMs: number
+    pauseCount: number
+    pauseStartedAt: Date | null
     dmId: string
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
@@ -65,6 +68,9 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     name: row.name,
     description: row.description,
     plannedDurationMinutes: row.plannedDurationMinutes,
+    cumulativePauseMs: row.cumulativePauseMs,
+    pauseCount: row.pauseCount,
+    pauseStartedAt: row.pauseStartedAt,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -79,6 +85,9 @@ export async function listSessions(): Promise<
     name: string
     description: string | null
     plannedDurationMinutes: number | null
+    cumulativePauseMs: number
+    pauseCount: number
+    pauseStartedAt: Date | null
     dmId: string
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     createdAt: Date
@@ -95,6 +104,9 @@ export async function listSessions(): Promise<
     name: row.name,
     description: row.description,
     plannedDurationMinutes: row.plannedDurationMinutes,
+    cumulativePauseMs: row.cumulativePauseMs,
+    pauseCount: row.pauseCount,
+    pauseStartedAt: row.pauseStartedAt,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -109,6 +121,9 @@ export async function findSessionById(sessionId: string): Promise<{
   name: string
   description: string | null
   plannedDurationMinutes: number | null
+  cumulativePauseMs: number
+  pauseCount: number
+  pauseStartedAt: Date | null
   dmId: string
   state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   createdAt: Date
@@ -117,6 +132,21 @@ export async function findSessionById(sessionId: string): Promise<{
 } | null> {
   const row = await prisma.session.findUnique({
     where: { id: sessionId },
+    select: {
+      id: true,
+      campaignId: true,
+      name: true,
+      description: true,
+      plannedDurationMinutes: true,
+      cumulativePauseMs: true,
+      pauseCount: true,
+      pauseStartedAt: true,
+      dmId: true,
+      state: true,
+      createdAt: true,
+      startedAt: true,
+      endedAt: true,
+    },
   })
 
   if (!row) return null
@@ -127,6 +157,9 @@ export async function findSessionById(sessionId: string): Promise<{
     name: row.name,
     description: row.description,
     plannedDurationMinutes: row.plannedDurationMinutes,
+    cumulativePauseMs: row.cumulativePauseMs,
+    pauseCount: row.pauseCount,
+    pauseStartedAt: row.pauseStartedAt,
     dmId: row.dmId,
     state: row.state,
     createdAt: row.createdAt,
@@ -140,11 +173,17 @@ export async function updateSessionStateRecord(params: {
   newState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
   startedAt?: Date
   endedAt?: Date
+  cumulativePauseMs?: number
+  pauseCount?: number
+  pauseStartedAt?: Date | undefined
 }): Promise<void> {
   const data: {
     state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
     startedAt?: Date
     endedAt?: Date
+    cumulativePauseMs?: number
+    pauseCount?: number
+    pauseStartedAt?: Date | null
   } = {
     state: params.newState,
   }
@@ -154,6 +193,15 @@ export async function updateSessionStateRecord(params: {
   }
   if (params.endedAt) {
     data.endedAt = params.endedAt
+  }
+  if (params.cumulativePauseMs !== undefined) {
+    data.cumulativePauseMs = params.cumulativePauseMs
+  }
+  if (params.pauseCount !== undefined) {
+    data.pauseCount = params.pauseCount
+  }
+  if (params.pauseStartedAt !== undefined) {
+    data.pauseStartedAt = params.pauseStartedAt ?? null
   }
 
   await prisma.session.update({

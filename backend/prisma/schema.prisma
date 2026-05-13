@@ -13,6 +13,9 @@ model Session {
   name                   String
   description            String?
   plannedDurationMinutes Int?
+  cumulativePauseMs      Int                 @default(0)
+  pauseCount             Int                 @default(0)
+  pauseStartedAt         DateTime?
   dmId                   String              @db.Uuid
   state                  SessionState        @default(IDLE)
   members                SessionMember[]

@@ -49,6 +49,9 @@ function mapSessionRecord(session: {
   dmId: string
   description: string | null
   plannedDurationMinutes: number | null
+  cumulativePauseMs: number
+  pauseCount: number
+  pauseStartedAt?: Date | null
   state: SessionState
   createdAt: Date
   startedAt?: Date | null
@@ -59,6 +62,9 @@ function mapSessionRecord(session: {
     name: session.name,
     description: session.description ?? undefined,
     plannedDurationMinutes: session.plannedDurationMinutes ?? undefined,
+    cumulativePauseMs: session.cumulativePauseMs ?? 0,
+    pauseCount: session.pauseCount ?? 0,
+    pauseStartedAt: session.pauseStartedAt?.getTime(),
     dmId: session.dmId as UUID,
     state: toPublicSessionState(session.state) ?? session.state,
     createdAt: session.createdAt.getTime(),
@@ -195,11 +201,43 @@ export function updateSessionState(
     const endedAt =
       requestedState === SessionStateEnum.ENDED ? new Date(now) : session.endedAt || undefined
 
+    // Pause stats tracking
+    let cumulativePauseMs = session.cumulativePauseMs ?? 0
+    let pauseCount = session.pauseCount ?? 0
+    let pauseStartedAt: Date | undefined = session.pauseStartedAt ?? undefined
+
+    // When transitioning to PAUSED: increment pauseCount and record pause start
+    if (requestedState === SessionStateEnum.PAUSED) {
+      pauseCount += 1
+      pauseStartedAt = new Date(now)
+    }
+    // When transitioning from PAUSED to ACTIVE: calculate pause duration
+    else if (
+      currentState === SessionStateEnum.PAUSED &&
+      requestedState === SessionStateEnum.ACTIVE &&
+      pauseStartedAt
+    ) {
+      cumulativePauseMs += now - pauseStartedAt.getTime()
+      pauseStartedAt = undefined
+    }
+    // When transitioning to ENDED: finalize any pending pause
+    else if (
+      requestedState === SessionStateEnum.ENDED &&
+      currentState === SessionStateEnum.PAUSED &&
+      pauseStartedAt
+    ) {
+      cumulativePauseMs += now - pauseStartedAt.getTime()
+      pauseStartedAt = undefined
+    }
+
     await updateSessionStateRecord({
       sessionId,
       newState: requestedState,
       startedAt,
       endedAt,
+      cumulativePauseMs,
+      pauseCount,
+      pauseStartedAt,
     })
 
     const updated = await findSessionById(sessionId)

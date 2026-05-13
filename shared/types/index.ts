@@ -104,6 +104,9 @@ export interface Session {
   name: string
   description?: string
   plannedDurationMinutes?: number
+  cumulativePauseMs?: number
+  pauseCount?: number
+  pauseStartedAt?: number
   dmId: UUID
   state: SessionLifecycleState
   createdAt: number

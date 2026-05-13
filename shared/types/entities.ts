@@ -30,6 +30,9 @@ export interface SessionEntity {
   state: SessionLifecycleState
   description?: string
   plannedDurationMinutes?: number
+  cumulativePauseMs: number
+  pauseCount: number
+  pauseStartedAt?: number
   createdAt: number
   startedAt?: number
   pausedAt?: number

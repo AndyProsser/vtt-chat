@@ -35,6 +35,7 @@ export interface SessionSlice {
   setIsGreenroom: (value: boolean) => void
   clearSessions: () => void
   clearPauseStats: (sessionId: UUID) => void
+  hydrateSessionPauseStats: (session: Session) => void
 
   // Event handlers
   handleSessionCreated: (event: EventEnvelope) => void
@@ -84,10 +85,21 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           : null
       const currentSession = nextCurrentSessionId ? nextSessions[nextCurrentSessionId] : null
 
+      // Hydrate pauseStats from loaded sessions
+      const nextPauseStats = { ...state.pauseStats }
+      for (const session of sessions) {
+        nextPauseStats[session.id] = {
+          cumulativePauseMs: session.cumulativePauseMs ?? 0,
+          pauseCount: session.pauseCount ?? 0,
+          pauseStartedAt: session.pauseStartedAt,
+        }
+      }
+
       return {
         sessions: nextSessions,
         currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        pauseStats: nextPauseStats,
       }
     }),
 
@@ -96,15 +108,25 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       const session = state.sessions[sessionId]
       if (!session) return state
 
+      const nextSession = { ...session, ...updates }
       const nextSessions = {
         ...state.sessions,
-        [sessionId]: { ...session, ...updates },
+        [sessionId]: nextSession,
       }
       const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      // Hydrate pauseStats from updated session
+      const nextPauseStats = { ...state.pauseStats }
+      nextPauseStats[sessionId] = {
+        cumulativePauseMs: nextSession.cumulativePauseMs ?? 0,
+        pauseCount: nextSession.pauseCount ?? 0,
+        pauseStartedAt: nextSession.pauseStartedAt,
+      }
 
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        pauseStats: nextPauseStats,
       }
     }),
 
@@ -149,6 +171,21 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       const next = { ...state.pauseStats }
       delete next[sessionId]
       return { pauseStats: next }
+    }),
+
+  hydrateSessionPauseStats: (session) =>
+    set((state) => {
+      // Initialize pauseStats from backend session data on hydration
+      return {
+        pauseStats: {
+          ...state.pauseStats,
+          [session.id]: {
+            cumulativePauseMs: session.cumulativePauseMs ?? 0,
+            pauseCount: session.pauseCount ?? 0,
+            pauseStartedAt: session.pauseStartedAt,
+          },
+        },
+      }
     }),
 
   // Event handlers
