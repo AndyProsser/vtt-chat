@@ -81,6 +81,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('SESSION:STATE_CHANGED', (event) => {
       useStore.getState().handleSessionStateChanged(event)
     })
+    dispatcher.register('SESSION:COOLDOWN_EXTENDED', (event) => {
+      useStore.getState().handleSessionCooldownExtended(event)
+    })
     dispatcher.register('SESSION:ENDED', (event) => {
       const store = useStore.getState()
       store.handleSessionEnded(event)

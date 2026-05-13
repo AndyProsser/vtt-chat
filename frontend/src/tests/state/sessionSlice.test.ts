@@ -150,7 +150,7 @@ describe('sessionSlice', () => {
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session).toBeDefined()
       expect(session!.name).toBe('New Campaign')
-      expect(session!.state).toBe('IDLE')
+      expect(session!.state).toBe('INACTIVE')
       expect(session!.createdAt).toBe(NOW)
     })
   })
@@ -181,6 +181,27 @@ describe('sessionSlice', () => {
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session!.state).toBe('ENDED')
       expect(session!.endedAt).toBe(NOW)
+    })
+  })
+
+  describe('handleSessionCooldownExtended', () => {
+    it('updates endedAt for an ended session from WS payload', () => {
+      useStore.getState().createSession({
+        ...SAMPLE_SESSION,
+        state: 'ENDED' as any,
+        endedAt: NOW,
+      })
+
+      const event = makeEvent('SESSION:COOLDOWN_EXTENDED', SESSION_ID_1, {
+        state: 'ENDED',
+        endedAt: NOW + 60_000,
+      })
+
+      useStore.getState().handleSessionCooldownExtended(event)
+
+      const session = useStore.getState().sessions[SESSION_ID_1]
+      expect(session!.state).toBe('ENDED')
+      expect(session!.endedAt).toBe(NOW + 60_000)
     })
   })
 

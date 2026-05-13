@@ -174,8 +174,9 @@ export function GroupMemberList({
           <Tooltip key={member.userId}>
             <TooltipTrigger asChild>
               <PlayerContextMenu
-                enabled={isPlayerTarget && !isGreenroom}
+                enabled={isPlayerTarget}
                 canManageRooms={canManageRooms}
+                isGreenroom={isGreenroom}
                 memberIsMuted={isMuted}
                 distanceTargets={distanceTargets}
                 conditionTargets={conditionTargets}

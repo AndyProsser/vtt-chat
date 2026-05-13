@@ -40,6 +40,7 @@ export interface SessionSlice {
   // Event handlers
   handleSessionCreated: (event: EventEnvelope) => void
   handleSessionStateChanged: (event: EventEnvelope) => void
+  handleSessionCooldownExtended: (event: EventEnvelope) => void
   handleSessionEnded: (event: EventEnvelope) => void
 }
 
@@ -271,6 +272,37 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           endedAt: event.timestamp,
         },
       }
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
+      }
+    })
+  },
+
+  handleSessionCooldownExtended: (event) => {
+    const payload = event.payload as { endedAt?: number | null }
+    set((state) => {
+      const current = state.sessions[event.sessionId]
+      if (!current) {
+        return state
+      }
+
+      const nextEndedAt =
+        typeof payload.endedAt === 'number' && Number.isFinite(payload.endedAt)
+          ? payload.endedAt
+          : current.endedAt
+
+      const nextSessions = {
+        ...state.sessions,
+        [event.sessionId]: {
+          ...current,
+          state: 'ENDED' as SessionState,
+          endedAt: nextEndedAt,
+        },
+      }
+
       const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
 
       return {

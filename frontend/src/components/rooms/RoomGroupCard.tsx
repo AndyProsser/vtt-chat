@@ -106,6 +106,7 @@ export function RoomGroupCard({
   getPresenceDotState,
   getStatEntries,
 }: GroupCardProps) {
+  const isGreenroomCard = isGreenRoomName(room.name)
   const isWhisperRoomGroup = isWhisperGroup(room)
   const whisperRoomParticipantCount = participants.filter(
     (participant) => participant.userId !== dmUserId
@@ -196,7 +197,7 @@ export function RoomGroupCard({
           </button>
 
           <span className="room-selector-item-actions">
-            {!isWhisperRoomGroup ? (
+            {!isWhisperRoomGroup && !isGreenroomCard ? (
               <div className="room-selector-item__env-wrap">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -225,7 +226,7 @@ export function RoomGroupCard({
               </div>
             ) : null}
 
-            {canManageRooms ? (
+            {canManageRooms && !isGreenroomCard ? (
               <>
                 {!isWhisperRoomGroup ? (
                   <Tooltip>

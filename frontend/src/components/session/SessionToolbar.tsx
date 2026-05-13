@@ -72,9 +72,14 @@ interface SessionToolbarProps {
   canStartSession: boolean
   canPauseSession: boolean
   canStopSession: boolean
+  showCooldownControls?: boolean
+  canManageCooldown?: boolean
+  cooldownControlLockedReason?: string
   onStartSession: () => void
   onPauseSession: () => void
   onStopSession: () => void
+  onCancelCooldown?: () => void
+  onExtendCooldown?: () => void
   onOpenUserSettings: () => void
   onExitToSelector: () => void
 }
@@ -95,9 +100,14 @@ export function SessionToolbar({
   canStartSession,
   canPauseSession,
   canStopSession,
+  showCooldownControls = false,
+  canManageCooldown = false,
+  cooldownControlLockedReason,
   onStartSession,
   onPauseSession,
   onStopSession,
+  onCancelCooldown,
+  onExtendCooldown,
   onOpenUserSettings,
   onExitToSelector,
 }: SessionToolbarProps) {
@@ -243,7 +253,10 @@ export function SessionToolbar({
 
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
   const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
-  const hasExtraButtons = canStartSession || canStopSession || canPauseSession
+  const isCooldownMode = sessionState === 'ENDED' && cooldownRemainingSeconds > 0
+  const shouldRenderCooldownControls = isCooldownMode && showCooldownControls
+  const hasExtraButtons =
+    canStartSession || canStopSession || canPauseSession || shouldRenderCooldownControls
 
   const toneFromCoreState = (value: CoreWsState): 'is-green' | 'is-yellow' | 'is-red' => {
     if (value === 'CONNECTED') return 'is-green'
@@ -376,10 +389,65 @@ export function SessionToolbar({
                     type="button"
                     onClick={onStartSession}
                     className="session-toolbar__action session-toolbar__action--start"
+                    disabled={shouldRenderCooldownControls}
                   >
                     <Icon name="play" />
                     <span>Start</span>
                   </button>
+                ) : null}
+
+                {shouldRenderCooldownControls ? (
+                  <span
+                    className="session-toolbar__split-action session-toolbar__split-action--cooldown"
+                    role="group"
+                    aria-label="Cooldown controls"
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canManageCooldown) return
+                            onCancelCooldown?.()
+                          }}
+                          className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-cancel"
+                          aria-label="Cancel cooldown"
+                          disabled={!canManageCooldown}
+                        >
+                          <Icon name="stop" />
+                          <span>Cancel</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end">
+                        {canManageCooldown
+                          ? 'End cooldown now'
+                          : cooldownControlLockedReason || 'Cooldown controls are locked'}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canManageCooldown) return
+                            onExtendCooldown?.()
+                          }}
+                          className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-extend"
+                          aria-label="Extend cooldown"
+                          disabled={!canManageCooldown}
+                        >
+                          <Icon name="timer" />
+                          <span>Extend</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end">
+                        {canManageCooldown
+                          ? 'Add one more cooldown block'
+                          : cooldownControlLockedReason || 'Cooldown controls are locked'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                 ) : null}
 
                 {canStopSession || canPauseSession ? (

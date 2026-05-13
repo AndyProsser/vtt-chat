@@ -5,6 +5,7 @@ import { PlayerContextMenuContent } from './PlayerContextMenuContent'
 interface PlayerContextMenuProps {
   enabled: boolean
   canManageRooms: boolean
+  isGreenroom?: boolean
   memberIsMuted: boolean
   distanceTargets: string[]
   conditionTargets: string[]
@@ -20,6 +21,7 @@ interface PlayerContextMenuProps {
 export function PlayerContextMenu({
   enabled,
   canManageRooms,
+  isGreenroom = false,
   memberIsMuted,
   distanceTargets,
   conditionTargets,
@@ -40,6 +42,7 @@ export function PlayerContextMenu({
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <PlayerContextMenuContent
         canManageRooms={canManageRooms}
+        isGreenroom={isGreenroom}
         memberIsMuted={memberIsMuted}
         distanceTargets={distanceTargets}
         conditionTargets={conditionTargets}

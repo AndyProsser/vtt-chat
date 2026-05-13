@@ -167,14 +167,25 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 66%, var(--color-surface));
 }
 
+.session-toolbar__split-action--cooldown {
+  min-width: 8.4rem;
+}
+
 .session-toolbar__split-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.22rem;
   border: 0;
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
+}
+
+.session-toolbar__split-btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.66;
+  filter: grayscale(0.12);
 }
 
 .session-toolbar__split-btn + .session-toolbar__split-btn {
@@ -189,6 +200,23 @@
 .session-toolbar__split-btn--pause {
   background: color-mix(in srgb, #d97706 16%, var(--color-surface));
   color: #b45309;
+}
+
+.session-toolbar__split-btn--cooldown-cancel {
+  background: color-mix(in srgb, #b91c1c 84%, var(--color-surface));
+  color: #fef2f2;
+}
+
+.session-toolbar__split-btn--cooldown-extend {
+  background: color-mix(in srgb, #0f766e 24%, var(--color-surface));
+  color: #0f766e;
+}
+
+.session-toolbar__split-btn--cooldown-cancel span:last-child,
+.session-toolbar__split-btn--cooldown-extend span:last-child {
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .session-toolbar__split-btn--placeholder {

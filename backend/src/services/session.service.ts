@@ -15,6 +15,7 @@ import {
   listSessionMembers,
   listSessions,
   removeSessionMember,
+  updateSessionEndedAtRecord,
   updateSessionMetadataRecord,
   updateSessionStateRecord,
   upsertSessionMember,
@@ -238,6 +239,48 @@ export function updateSessionState(
       cumulativePauseMs,
       pauseCount,
       pauseStartedAt,
+    })
+
+    const updated = await findSessionById(sessionId)
+    if (!updated) return null
+
+    return mapSessionRecord(updated as any)
+  })
+}
+
+export function extendSessionCooldown(
+  sessionId: UUID,
+  extensionMs: number,
+  dmId: UUID
+): Promise<Session | null> {
+  return findSessionById(sessionId).then(async (session) => {
+    if (!session) return null
+
+    if (session.dmId !== dmId) {
+      throw createError(ErrorCode.FORBIDDEN, {
+        message: 'Only DM can extend cooldown',
+      })
+    }
+
+    if (session.state !== SessionStateEnum.ENDED) {
+      throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
+        message: 'Cooldown can only be extended while session is ENDED',
+      })
+    }
+
+    if (!Number.isFinite(extensionMs) || extensionMs <= 0) {
+      throw createError(ErrorCode.INVALID_INPUT, {
+        message: 'extensionMs must be a positive number',
+        context: { field: 'extensionMs' },
+      })
+    }
+
+    const baseEndedAtMs = session.endedAt?.getTime() ?? Date.now()
+    const nextEndedAt = new Date(baseEndedAtMs + Math.round(extensionMs))
+
+    await updateSessionEndedAtRecord({
+      sessionId,
+      endedAt: nextEndedAt,
     })
 
     const updated = await findSessionById(sessionId)

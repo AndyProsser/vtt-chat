@@ -2679,6 +2679,50 @@ export function SessionInit({
     setShowStopSessionModal(true)
   }
 
+  const handleCancelCooldown = async (sessionId: UUID) => {
+    await handleTransitionSession(sessionId, SessionState.IDLE)
+  }
+
+  const handleExtendCooldown = useCallback(
+    async (sessionId: UUID, cooldownBlockMs: number) => {
+      if (!Number.isFinite(cooldownBlockMs) || cooldownBlockMs <= 0) {
+        return
+      }
+
+      setError(null)
+
+      try {
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/v1/session/${sessionId}/cooldown/extend`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ extensionMs: cooldownBlockMs }),
+          }
+        )
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          message?: string
+          session?: SessionRecord
+        }
+
+        if (!response.ok) {
+          throw new Error(payload.message || 'Failed to extend cooldown')
+        }
+
+        if (payload.session) {
+          updateSession(sessionId, normalizeSessionRecord(payload.session))
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to extend cooldown')
+      }
+    },
+    [apiUrl, fetchWithAuthGuard, token, updateSession]
+  )
+
   const handleConfirmStopSession = async () => {
     if (!currentSession) {
       setShowStopSessionModal(false)
@@ -2899,6 +2943,30 @@ export function SessionInit({
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
     currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
+  const dmPresence = useMemo(
+    () => currentPresence.find((presence) => presence.userId === currentSession?.dmId) || null,
+    [currentPresence, currentSession?.dmId]
+  )
+  const isDmDisconnected =
+    Boolean(currentSession) &&
+    currentSession?.dmId !== user.id &&
+    dmPresence?.state === PresenceState.OFFLINE
+  const configuredCooldownDurationMs = Math.max(
+    60_000,
+    toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000
+  )
+  const cooldownControlVisible =
+    currentSession?.state === SessionState.ENDED &&
+    (effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER)
+  const canManageCooldown =
+    currentSession?.state === SessionState.ENDED &&
+    (currentSession?.dmId === user.id || (effectiveSessionRole === Role.PLAYER && isDmDisconnected))
+  const cooldownControlLockedReason =
+    cooldownControlVisible && !canManageCooldown
+      ? effectiveSessionRole === Role.PLAYER
+        ? 'Cooldown controls unlock for players only if the DM disconnects.'
+        : 'Only the DM can control cooldown.'
+      : undefined
   // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
   // distinguish the campaign-scoped role from the global account role.
   const effectiveSessionUser =
@@ -3432,12 +3500,20 @@ export function SessionInit({
                   sessionEndedAt={currentSession.endedAt}
                   cumulativePauseMs={currentPauseStats.cumulativePauseMs}
                   pauseCount={currentPauseStats.pauseCount}
+                  cooldownDurationMs={configuredCooldownDurationMs}
                   canStartSession={canStartFromGreenroom}
                   canPauseSession={canPauseFromActive}
                   canStopSession={canStopFromActive}
+                  showCooldownControls={cooldownControlVisible}
+                  canManageCooldown={Boolean(canManageCooldown)}
+                  cooldownControlLockedReason={cooldownControlLockedReason}
                   onStartSession={() => handleStartSession(currentSession.id)}
                   onPauseSession={() => handlePauseSession(currentSession.id)}
                   onStopSession={() => handleStopSession(currentSession.id)}
+                  onCancelCooldown={() => handleCancelCooldown(currentSession.id)}
+                  onExtendCooldown={() =>
+                    void handleExtendCooldown(currentSession.id, configuredCooldownDurationMs)
+                  }
                   onOpenUserSettings={() => setShowUserSettingsModal(true)}
                   onExitToSelector={handleExitToCampaignSelector}
                 />

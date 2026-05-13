@@ -7,6 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import {
   createSession,
+  extendSessionCooldown,
   getSession,
   getAllSessions,
   updateSessionMetadata,
@@ -52,6 +53,7 @@ import {
 } from '@/services/session-access.service'
 import { resolveRoleForSessionJoin } from '@/services/session-authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
+import { resolveCooldownControlAuthorization } from '@/services/session-cooldown-authz.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -751,7 +753,41 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 
   try {
     const previousSession = await getSession(id as UUID)
-    const session = await updateSessionState(id as UUID, requestedState, user.userId)
+    if (!previousSession) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    let transitionActorUserId = user.userId as UUID
+    if (previousSession.dmId !== (user.userId as UUID)) {
+      const requestingCooldownCancel =
+        previousSession.state === 'ENDED' && requestedState === 'IDLE'
+
+      if (!requestingCooldownCancel) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Only DM can change session state',
+        })
+      }
+
+      const cooldownAuth = await resolveCooldownControlAuthorization({
+        sessionId: id as UUID,
+        requesterUserId: user.userId as UUID,
+      })
+
+      if (!cooldownAuth.ok || !cooldownAuth.transitionActorUserId) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: cooldownAuth.message || 'Cooldown controls are not available.',
+        })
+      }
+
+      transitionActorUserId = cooldownAuth.transitionActorUserId
+    }
+
+    const session = await updateSessionState(id as UUID, requestedState, transitionActorUserId)
     if (!session) {
       return res.status(404).json({
         code: ErrorCode.SESSION_NOT_FOUND,
@@ -938,6 +974,92 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     }
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
+    }
+    return internalErrorResponse(res)
+  }
+})
+
+router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+  const { extensionMs } = req.body || {}
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  const parsedExtensionMs = Number(extensionMs)
+  if (
+    !Number.isFinite(parsedExtensionMs) ||
+    parsedExtensionMs < 60_000 ||
+    parsedExtensionMs > 3_600_000 ||
+    parsedExtensionMs % 60_000 !== 0
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionMs must be between 60000 and 3600000 in 60000ms increments',
+      field: 'extensionMs',
+    })
+  }
+
+  try {
+    const cooldownAuth = await resolveCooldownControlAuthorization({
+      sessionId: id as UUID,
+      requesterUserId: user.userId as UUID,
+    })
+
+    if (!cooldownAuth.ok || !cooldownAuth.transitionActorUserId) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: cooldownAuth.message || 'Cooldown controls are not available.',
+      })
+    }
+
+    const previousSession = await getSession(id as UUID)
+    const session = await extendSessionCooldown(
+      id as UUID,
+      parsedExtensionMs,
+      cooldownAuth.transitionActorUserId
+    )
+
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:COOLDOWN_EXTENDED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          state: session.state,
+          extensionMs: parsedExtensionMs,
+          previousEndedAt: previousSession?.endedAt ?? null,
+          endedAt: session.endedAt ?? null,
+        },
+      })
+    }
+
+    return res.status(200).json({ session })
+  } catch (err: any) {
+    if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
+      return res.status(409).json(err)
+    }
+    if (err.code === ErrorCode.FORBIDDEN) {
+      return res.status(403).json(err)
     }
     return internalErrorResponse(res)
   }

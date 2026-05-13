@@ -2,6 +2,7 @@ import * as ContextMenu from '@radix-ui/react-context-menu'
 
 interface PlayerContextMenuContentProps {
   canManageRooms: boolean
+  isGreenroom?: boolean
   memberIsMuted: boolean
   distanceTargets: string[]
   conditionTargets: string[]
@@ -15,6 +16,7 @@ interface PlayerContextMenuContentProps {
 
 export function PlayerContextMenuContent({
   canManageRooms,
+  isGreenroom = false,
   memberIsMuted,
   distanceTargets,
   conditionTargets,
@@ -38,55 +40,59 @@ export function PlayerContextMenuContent({
               {memberIsMuted ? 'Unmute' : 'Mute'}
             </ContextMenu.Item>
 
-            <ContextMenu.Item
-              className="room-context-menu__item"
-              disabled={!onClearEffects}
-              onSelect={() => onClearEffects?.()}
-            >
-              Clear Effects
-            </ContextMenu.Item>
+            {!isGreenroom ? (
+              <>
+                <ContextMenu.Item
+                  className="room-context-menu__item"
+                  disabled={!onClearEffects}
+                  onSelect={() => onClearEffects?.()}
+                >
+                  Clear Effects
+                </ContextMenu.Item>
 
-            <ContextMenu.Sub>
-              <ContextMenu.SubTrigger className="room-context-menu__item">
-                Distance
-                <span aria-hidden>›</span>
-              </ContextMenu.SubTrigger>
-              <ContextMenu.Portal>
-                <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                  {distanceTargets.map((distanceOption) => (
-                    <ContextMenu.Item
-                      key={distanceOption}
-                      className="room-context-menu__item"
-                      disabled={!onDistanceSelect}
-                      onSelect={() => onDistanceSelect?.(distanceOption)}
-                    >
-                      {distanceOption}
-                    </ContextMenu.Item>
-                  ))}
-                </ContextMenu.SubContent>
-              </ContextMenu.Portal>
-            </ContextMenu.Sub>
+                <ContextMenu.Sub>
+                  <ContextMenu.SubTrigger className="room-context-menu__item">
+                    Distance
+                    <span aria-hidden>›</span>
+                  </ContextMenu.SubTrigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
+                      {distanceTargets.map((distanceOption) => (
+                        <ContextMenu.Item
+                          key={distanceOption}
+                          className="room-context-menu__item"
+                          disabled={!onDistanceSelect}
+                          onSelect={() => onDistanceSelect?.(distanceOption)}
+                        >
+                          {distanceOption}
+                        </ContextMenu.Item>
+                      ))}
+                    </ContextMenu.SubContent>
+                  </ContextMenu.Portal>
+                </ContextMenu.Sub>
 
-            <ContextMenu.Sub>
-              <ContextMenu.SubTrigger className="room-context-menu__item">
-                Condition
-                <span aria-hidden>›</span>
-              </ContextMenu.SubTrigger>
-              <ContextMenu.Portal>
-                <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                  {conditionTargets.map((conditionName) => (
-                    <ContextMenu.Item
-                      key={conditionName}
-                      className="room-context-menu__item"
-                      disabled={!onConditionSelect}
-                      onSelect={() => onConditionSelect?.(conditionName)}
-                    >
-                      {conditionName}
-                    </ContextMenu.Item>
-                  ))}
-                </ContextMenu.SubContent>
-              </ContextMenu.Portal>
-            </ContextMenu.Sub>
+                <ContextMenu.Sub>
+                  <ContextMenu.SubTrigger className="room-context-menu__item">
+                    Condition
+                    <span aria-hidden>›</span>
+                  </ContextMenu.SubTrigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
+                      {conditionTargets.map((conditionName) => (
+                        <ContextMenu.Item
+                          key={conditionName}
+                          className="room-context-menu__item"
+                          disabled={!onConditionSelect}
+                          onSelect={() => onConditionSelect?.(conditionName)}
+                        >
+                          {conditionName}
+                        </ContextMenu.Item>
+                      ))}
+                    </ContextMenu.SubContent>
+                  </ContextMenu.Portal>
+                </ContextMenu.Sub>
+              </>
+            ) : null}
 
             <ContextMenu.Item
               className="room-context-menu__item"
