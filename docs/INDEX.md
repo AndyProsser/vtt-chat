@@ -87,6 +87,17 @@ DEV-only settings interface for configuring mock behavior in real-time.
 - Active takeover PLAYER pill state
 - Accessibility and error-state expectations
 
+### [DMDX Authoring Guide](guides/dev/dmdx-authoring.md)
+
+Developer guide for D&D markdown blocks in Notes/Journal with AI-assisted generation and VS Code workflows.
+
+**Topics:**
+
+- DMDX block authoring flow
+- AI prompt templates for all block types
+- Validation and repair prompts
+- VS Code fenced-language setup and snippets
+
 ---
 
 ## Quick Reference
@@ -136,7 +147,8 @@ docs/
 │   │   └── audio-configuration.md         # Admin & DM reference
 │   ├── dev/
 │   │   ├── mock-players.md                # Testing with mock players
-│   │   └── mute-speaking-architecture.md  # Technical deep dive
+│   │   ├── mute-speaking-architecture.md  # Technical deep dive
+│   │   └── dmdx-authoring.md              # DMDX workflow and AI prompts
 │   └── user/
 │       └── groups-panel.md                # End-user guide
 └── INDEX.md (this file)

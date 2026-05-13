@@ -91,6 +91,17 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
+  "markdown.customCodeBlockLanguages": {
+    "npc": "yaml",
+    "monster": "yaml",
+    "encounter": "yaml",
+    "loot": "yaml",
+    "spell": "yaml",
+    "session": "yaml",
+    "roll": "plaintext",
+    "map": "yaml",
+    "timeline": "mermaid"
+  },
   "editor.trimAutoWhitespace": true,
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,

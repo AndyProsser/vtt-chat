@@ -260,6 +260,19 @@ Responses must use:
 - Tables (when appropriate)
 - Code blocks for code
 
+---
+
+## 8. DMDX Authoring Rules
+
+When generating or repairing D&D markdown blocks for Notes/Journal:
+
+- AI must follow `docs/subsystems/DMDX-MARKDOWN-EXTENSION.md` and `docs/subsystems/DMDX-IMPLEMENTATION-CONTRACT.md`.
+- AI must use only supported v1 block types (`npc`, `monster`, `encounter`, `loot`, `spell`, `session`, `roll`, `map`, `timeline`).
+- AI must preserve narrative meaning when repairing malformed blocks.
+- AI must not emit persisted `map.image` inline data URIs; use `attachment://` tokens.
+- AI should return warning-safe, parser-friendly YAML-like key/value structure.
+- Unknown user keys should be preserved if safe.
+
 ### **7.3 No Redundancy**
 
 AI must avoid:
@@ -281,7 +294,7 @@ Unless explicitly requested for mock/demo purposes.
 
 ---
 
-## 8. When AI Must Ask Clarifying Questions
+## 9. When AI Must Ask Clarifying Questions
 
 AI must request clarification when:
 
@@ -293,7 +306,7 @@ AI must request clarification when:
 
 ---
 
-## 9. When AI Must Refuse
+## 10. When AI Must Refuse
 
 AI must refuse when asked to:
 
@@ -314,7 +327,7 @@ Refusals must be:
 
 ---
 
-## 10. Example Allowed Behaviours
+## 11. Example Allowed Behaviours
 
 AI may:
 
@@ -329,7 +342,7 @@ AI may:
 
 ---
 
-## 11. Example Forbidden Behaviours
+## 12. Example Forbidden Behaviours
 
 AI must not:
 
@@ -345,7 +358,7 @@ AI must not:
 
 ---
 
-## 12. Summary
+## 13. Summary
 
 These prompting rules ensure that any AI assisting with VTT‑Chat:
 
@@ -362,7 +375,7 @@ This file, together with `AI-CONTEXT.md`, forms the **complete AI onboarding and
 
 ---
 
-## 13. Release Documentation Hygiene (Required)
+## 14. Release Documentation Hygiene (Required)
 
 When AI work changes delivery status, release scope, or user-facing behavior, AI must keep release-facing docs synchronized in the same change set.
 

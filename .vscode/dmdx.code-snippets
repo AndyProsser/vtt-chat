@@ -1,0 +1,149 @@
+{
+  "DMDX NPC Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-npc",
+    "body": [
+      "```npc",
+      "name: ${1:Elira Dawnwhisper}",
+      "race: ${2:Elf}",
+      "class: ${3:Wizard}",
+      "level: ${4:5}",
+      "alignment: ${5:CG}",
+      "tags: ${6:quest-giver, arcane, friendly}",
+      "portrait: attachment://${7:elira.png}",
+      "notes: >",
+      "  ${8:A wandering mage who seeks lost artifacts.}",
+      "```"
+    ],
+    "description": "Insert a DMDX npc block"
+  },
+  "DMDX Monster Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-monster",
+    "body": [
+      "```monster",
+      "name: ${1:Goblin}",
+      "size: ${2:Small}",
+      "type: ${3:Humanoid (goblinoid)}",
+      "ac: ${4:15}",
+      "hp: ${5:7}",
+      "speed: ${6:30 ft}",
+      "abilities:",
+      "  str: ${7:8}",
+      "  dex: ${8:14}",
+      "  con: ${9:10}",
+      "  int: ${10:10}",
+      "  wis: ${11:8}",
+      "  cha: ${12:8}",
+      "actions:",
+      "  - name: ${13:Scimitar}",
+      "    to_hit: ${14:+4}",
+      "    damage: ${15:1d6+2 slashing}",
+      "```"
+    ],
+    "description": "Insert a DMDX monster block"
+  },
+  "DMDX Encounter Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-encounter",
+    "body": [
+      "```encounter",
+      "name: ${1:Wolves in the Snow}",
+      "difficulty: ${2:medium}",
+      "environment: ${3:tundra}",
+      "creatures:",
+      "  - ${4:Wolf x3}",
+      "  - ${5:Dire Wolf x1}",
+      "objectives:",
+      "  - ${6:Survive the ambush}",
+      "  - ${7:Track the alpha wolf}",
+      "loot_ref: ${8:wolf_loot}",
+      "map_ref: ${9:snow_map}",
+      "```"
+    ],
+    "description": "Insert a DMDX encounter block"
+  },
+  "DMDX Loot Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-loot",
+    "body": [
+      "```loot id=${1:wolf_loot}",
+      "items:",
+      "  - ${2:Fur scraps}",
+      "  - ${3:Silver ring (10gp)}",
+      "  - ${4:Potion of Healing}",
+      "```"
+    ],
+    "description": "Insert a DMDX loot block"
+  },
+  "DMDX Spell Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-spell",
+    "body": [
+      "```spell",
+      "name: ${1:Fireball}",
+      "level: ${2:3}",
+      "school: ${3:Evocation}",
+      "casting_time: ${4:1 action}",
+      "range: ${5:150 ft}",
+      "components: ${6:V, S, M (a tiny ball of bat guano and sulfur)}",
+      "duration: ${7:Instantaneous}",
+      "description: >",
+      "  ${8:A bright streak flashes from your pointing finger.}",
+      "```"
+    ],
+    "description": "Insert a DMDX spell block"
+  },
+  "DMDX Session Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-session",
+    "body": [
+      "```session",
+      "date: ${1:2026-05-13}",
+      "dm: ${2:Arlen}",
+      "players:",
+      "  - ${3:Andy (Ranger)}",
+      "  - ${4:Marnie (Cleric)}",
+      "summary: >",
+      "  ${5:The party tracked the goblins to the ruined watchtower.}",
+      "events:",
+      "  - ${6:Found a hidden cache of potions}",
+      "  - ${7:Negotiated with a captured scout}",
+      "```"
+    ],
+    "description": "Insert a DMDX session block"
+  },
+  "DMDX Roll Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-roll",
+    "body": [
+      "```roll",
+      "${1:1d20+5}",
+      "```"
+    ],
+    "description": "Insert a DMDX roll block"
+  },
+  "DMDX Map Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-map",
+    "body": [
+      "```map id=${1:snow_map}",
+      "title: ${2:Snowfield Ambush}",
+      "image: attachment://${3:snowfield.png}",
+      "```"
+    ],
+    "description": "Insert a DMDX map block"
+  },
+  "DMDX Timeline Block": {
+    "scope": "markdown",
+    "prefix": "dmdx-timeline",
+    "body": [
+      "```timeline",
+      "${1:A --> B: Goblins flee}",
+      "${2:B --> C: Party gives chase}",
+      "${3:C --> D: Wolves ambush}",
+      "```"
+    ],
+    "description": "Insert a DMDX timeline block"
+  }
+}

@@ -145,6 +145,7 @@ vite.config.ts.timestamp-*
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/tasks.json
+!.vscode/*.code-snippets
 
 # Docker
 .dockerignore

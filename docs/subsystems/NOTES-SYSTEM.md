@@ -182,7 +182,7 @@ Metagame notes can still be shared or published.
 
 ## 6. Attachments
 
-Notes support **base64 images**:
+Notes support attachments for:
 
 - Maps
 - Handouts
@@ -196,11 +196,11 @@ Notes support **base64 images**:
 interface Attachment {
   id: string
   mime: string
-  data: string // base64
+  data: string // encoded attachment payload
 }
 ```
 
-Attachments are stored inline with the note.
+For DMDX `map` blocks in persisted notes/journal entries, `image` must reference an attachment token (`attachment://...`). Inline `data:image/*;base64,...` values are not persisted in v1.
 
 ---
 

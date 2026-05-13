@@ -58,6 +58,8 @@ When UI implementation docs diverge from these migration docs, update the implem
 
 - [CHAT-SYSTEM.md](subsystems/CHAT-SYSTEM.md)
 - [NOTES-SYSTEM.md](subsystems/NOTES-SYSTEM.md)
+- [DMDX-MARKDOWN-EXTENSION.md](subsystems/DMDX-MARKDOWN-EXTENSION.md)
+- [DMDX-IMPLEMENTATION-CONTRACT.md](subsystems/DMDX-IMPLEMENTATION-CONTRACT.md)
 - [AUDIO-ENGINE.md](subsystems/AUDIO-ENGINE.md)
 - [PRESENCE-STATE-MACHINE.md](subsystems/PRESENCE-STATE-MACHINE.md)
 - [SESSIONS.md](dm-tools/SESSIONS.md)
@@ -127,6 +129,10 @@ When UI implementation docs diverge from these migration docs, update the implem
 - [AI-CONTEXT-GITHUB.md](ai/AI-CONTEXT-GITHUB.md) — GitHub Copilot variant
 - [AI-CONTEXT-VSCODE.md](ai/AI-CONTEXT-VSCODE.md) — VS Code Copilot variant
 - [DESIGN.md](ai/DESIGN.md) — Deep architecture template
+
+### **Developer Guides**
+
+- [dmdx-authoring.md](guides/dev/dmdx-authoring.md) — AI templates, repair prompts, and VS Code DMDX authoring workflow
 
 ---
 

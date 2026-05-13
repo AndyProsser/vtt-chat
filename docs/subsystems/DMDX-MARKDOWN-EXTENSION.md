@@ -1,7 +1,25 @@
-# 🧙‍♂️ D&D Markdown Extension Specification (DMDX)
+# D&D Markdown Extension Specification (DMDX)
 
 A lightweight Markdown extension for tabletop RPG notes.
 All syntax is **optional**, **non‑breaking**, and **backwards‑compatible** with standard Markdown.
+
+Status: approved for v1 implementation.
+
+Related docs:
+
+- [DMDX Implementation Contract](DMDX-IMPLEMENTATION-CONTRACT.md)
+- [Developer Authoring Guide](../guides/dev/dmdx-authoring.md)
+
+---
+
+## v1 Decisions
+
+- Launch includes all 9 block types in this spec.
+- Parser behavior is **balanced**: preserve content, warn on malformed structure, and block only unsafe content.
+- `map` blocks in persisted notes/journal must use `attachment://` tokens. Inline `data:image/*;base64,...` content is not persisted.
+- `timeline` renders with Mermaid by default and must fall back to a plain-text timeline view when Mermaid rendering is unavailable.
+- DMDX is enabled in both **Notes** and **Journal** surfaces.
+- DMDX authoring support includes AI prompt templates, AI validation/repair prompts, and VS Code fenced-language formatting support.
 
 ---
 
@@ -179,7 +197,7 @@ Your renderer:
 
 ## 9. Map / Image Block
 
-Supports base64 or attachment tokens.
+Supports attachment tokens for persisted content.
 
 ````markdown
 ```map id=snow_map
@@ -188,13 +206,7 @@ image: attachment://snowfield.png
 ```
 ````
 
-Or inline:
-
-````markdown
-```map
-image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
-```
-````
+Inline base64 examples may be tolerated in transient drafts, but persisted Notes/Journal content must be converted to attachment tokens.
 
 ---
 
@@ -208,7 +220,7 @@ C --> D: Wolves ambush
 ```
 ````
 
-You can render this using Mermaid or your own flowchart engine.
+Use Mermaid as the default renderer. If Mermaid is unavailable or parsing fails, render a plain-text fallback preserving each line.
 
 ---
 
@@ -235,7 +247,7 @@ See encounter: @Wolves in the Snow
 
 ---
 
-# 🧱 Minimal Parsing Rules
+## 12. Minimal Parsing Rules
 
 1. Detect fenced blocks with a known type
 2. Parse key/value pairs (YAML‑ish)
@@ -244,3 +256,23 @@ See encounter: @Wolves in the Snow
 5. Allow references via `id` or `@Name`
 
 This keeps your parser tiny and your UX powerful.
+
+---
+
+## Validation and Safety Rules
+
+1. Never discard user-authored block text on parse failure.
+2. Unknown keys are preserved in block payloads.
+3. Unknown block types are rendered as normal markdown code fences.
+4. Unsafe URI schemes are rejected in token fields (`javascript:`, `file:`, etc.).
+5. `map.image` accepts `attachment://<token>` in persisted payloads.
+6. Structured field warnings should include line/field hints where possible.
+
+---
+
+## Storage and Interop Rules
+
+1. Canonical storage remains markdown text with DMDX fences embedded.
+2. Rendering is deterministic from markdown source only; no hidden client-only fields.
+3. Optional parsed block caches must be treated as derived data and safely rebuildable.
+4. References (`id=`, `loot_ref`, `map_ref`, `@Name`) resolve only within the current note/journal entry unless a future cross-note index is introduced.
