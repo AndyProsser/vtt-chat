@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -41,6 +42,7 @@ export function NotesRailPanel({
   onOpenNotesWorkspace,
 }: NotesRailPanelProps) {
   const [query, setQuery] = useState('')
+  const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'SHARED' | 'PRIVATE'>('ALL')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -114,15 +116,22 @@ export function NotesRailPanel({
   const normalizedQuery = query.trim().toLowerCase()
 
   const filteredNotes = useMemo(() => {
+    const visibilityScopedNotes =
+      visibilityFilter === 'ALL'
+        ? notes
+        : visibilityFilter === 'SHARED'
+          ? notes.filter((note) => note.visibility === NoteVisibility.PLAYERS_VISIBLE)
+          : notes.filter((note) => note.visibility !== NoteVisibility.PLAYERS_VISIBLE)
+
     if (!normalizedQuery) {
-      return notes
+      return visibilityScopedNotes
     }
 
-    return notes.filter((note) => {
+    return visibilityScopedNotes.filter((note) => {
       const searchText = `${note.title} ${note.content} ${note.ownerUsername} ${note.tags.join(' ')}`
       return searchText.toLowerCase().includes(normalizedQuery)
     })
-  }, [normalizedQuery, notes])
+  }, [normalizedQuery, notes, visibilityFilter])
 
   const statSummary = useMemo(() => {
     const total = notes.length
@@ -158,6 +167,27 @@ export function NotesRailPanel({
           Private <strong>{statSummary.privateCount}</strong>
         </p>
       </div>
+
+      <TabsPrimitive.Root
+        value={visibilityFilter}
+        onValueChange={(value) => setVisibilityFilter(value as 'ALL' | 'SHARED' | 'PRIVATE')}
+        className="knowledge-panel-tabs"
+      >
+        <TabsPrimitive.List
+          className="knowledge-panel-tabs__list"
+          aria-label="Notes visibility filter"
+        >
+          <TabsPrimitive.Trigger value="ALL" className="knowledge-panel-tabs__trigger">
+            All
+          </TabsPrimitive.Trigger>
+          <TabsPrimitive.Trigger value="SHARED" className="knowledge-panel-tabs__trigger">
+            Shared
+          </TabsPrimitive.Trigger>
+          <TabsPrimitive.Trigger value="PRIVATE" className="knowledge-panel-tabs__trigger">
+            Private
+          </TabsPrimitive.Trigger>
+        </TabsPrimitive.List>
+      </TabsPrimitive.Root>
 
       <label className="knowledge-panel-search">
         <span className="knowledge-panel-search-label">Filter notes</span>

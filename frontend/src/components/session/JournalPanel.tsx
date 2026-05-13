@@ -1,18 +1,22 @@
 import { useMemo, useState } from 'react'
+import * as TabsPrimitive from '@radix-ui/react-tabs'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import type { Note } from '@/types/notes'
 import '../../styles/components/session/KnowledgePanels.css'
 
 interface JournalPanelProps {
+  apiUrl?: string
+  token?: string
   sessionId: UUID
   role: Role
+  userId?: UUID
 }
 
 const EMPTY_NOTES: Record<UUID, Note> = {}
 
 export function JournalPanel({ sessionId, role }: JournalPanelProps) {
-  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'recent' | 'all'>('recent')
   const sessionNotes = useStore((state) => state.notes[sessionId] ?? EMPTY_NOTES)
 
   // Simply list all notes in reverse chronological order
@@ -23,6 +27,11 @@ export function JournalPanel({ sessionId, role }: JournalPanelProps) {
       return rightTimestamp - leftTimestamp
     })
   }, [sessionNotes])
+
+  const visibleEntries = useMemo(
+    () => (viewMode === 'recent' ? entries.slice(0, 8) : entries),
+    [entries, viewMode]
+  )
 
   if (entries.length === 0) {
     return (
@@ -36,27 +45,35 @@ export function JournalPanel({ sessionId, role }: JournalPanelProps) {
   return (
     <section className="knowledge-panel" aria-label="Journal">
       <h3 className="knowledge-panel__heading">Journal</h3>
-      <div className="knowledge-panel__content">
-        {entries.map((entry) => (
+      <TabsPrimitive.Root
+        value={viewMode}
+        onValueChange={(value) => setViewMode(value as 'recent' | 'all')}
+        className="knowledge-panel-tabs"
+      >
+        <TabsPrimitive.List className="knowledge-panel-tabs__list" aria-label="Journal view">
+          <TabsPrimitive.Trigger value="recent" className="knowledge-panel-tabs__trigger">
+            Recent
+          </TabsPrimitive.Trigger>
+          <TabsPrimitive.Trigger value="all" className="knowledge-panel-tabs__trigger">
+            All
+          </TabsPrimitive.Trigger>
+        </TabsPrimitive.List>
+      </TabsPrimitive.Root>
+
+      <div className="knowledge-panel__content" aria-label="Journal entries">
+        {visibleEntries.map((entry) => (
           <article key={entry.id} className="knowledge-panel__entry">
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedNoteId(expandedNoteId === entry.id ? null : (entry.id as string))
-              }
-              className="knowledge-panel__entry-header"
-            >
+            <header className="knowledge-panel__entry-header">
               <span className="knowledge-panel__entry-title">{entry.title}</span>
               <span className="knowledge-panel__entry-meta">
                 By {entry.ownerUsername}
                 {entry.tags.length > 0 && ` · ${entry.tags.join(', ')}`}
               </span>
-            </button>
-            {expandedNoteId === entry.id && (
-              <div className="knowledge-panel__entry-body">
-                <p>{entry.content}</p>
-              </div>
-            )}
+            </header>
+
+            <div className="knowledge-panel__entry-body">
+              <p>{entry.content}</p>
+            </div>
           </article>
         ))}
       </div>
