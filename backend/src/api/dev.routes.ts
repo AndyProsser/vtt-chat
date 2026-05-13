@@ -23,6 +23,13 @@ import {
   resetDevMockRoster,
   getSessionMockPlayerById,
 } from '@/services/dev-mock-players.service'
+import {
+  getMockSimulationBounds,
+  getMockSimulationPlayerCount,
+  getMockSimulationStatus,
+  stopMockSimulation,
+  updateMockSimulationConfig,
+} from '@/services/dev-mock-simulation.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
 import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
@@ -181,7 +188,7 @@ router.post('/remove', async (req: Request, res: Response) => {
  * Re-rolls the mock roster instantly without restarting backend.
  */
 router.post('/reset', async (req: Request, res: Response) => {
-  const { sessionId, campaignId } = req.body || {}
+  const { sessionId, campaignId, requestedCount, newPlayerCount } = req.body || {}
 
   if (!sessionId && !campaignId) {
     return res.status(400).json({
@@ -200,6 +207,12 @@ router.post('/reset', async (req: Request, res: Response) => {
   const result = await resetDevMockRoster({
     sessionId: sessionId as UUID | undefined,
     campaignId: campaignId as UUID | undefined,
+    requestedCount:
+      typeof requestedCount === 'number'
+        ? requestedCount
+        : typeof newPlayerCount === 'number'
+          ? newPlayerCount
+          : undefined,
   })
 
   // Broadcast WS events so all clients update without a page refresh
@@ -268,8 +281,103 @@ router.post('/reset', async (req: Request, res: Response) => {
   return res.json({
     ok: true,
     rerolledCount: result.count,
+    requestedCount:
+      typeof requestedCount === 'number'
+        ? requestedCount
+        : typeof newPlayerCount === 'number'
+          ? newPlayerCount
+          : undefined,
     sessionId: result.sessionId,
     campaignId: result.campaignId,
+  })
+})
+
+router.get('/simulation/status/:sessionId', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId } = req.params
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'Invalid sessionId' })
+  }
+
+  const status = await getMockSimulationStatus(sessionId as UUID)
+  const bounds = getMockSimulationBounds()
+
+  return res.json({
+    ...status,
+    bounds,
+  })
+})
+
+router.post('/simulation/settings', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId, config } = req.body || {}
+
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  const requestedConfig =
+    config && typeof config === 'object'
+      ? (config as {
+          speakingSimulatorEnabled?: boolean
+          chatSimulatorEnabled?: boolean
+          disconnectSimulatorEnabled?: boolean
+          playerCount?: number
+        })
+      : {}
+
+  const updated = await updateMockSimulationConfig({
+    sessionId: sessionId as UUID,
+    config: requestedConfig,
+  })
+
+  return res.json({
+    ok: true,
+    sessionId,
+    config: updated,
+  })
+})
+
+router.post('/reroll', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId, newPlayerCount } = req.body || {}
+
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  const result = await resetDevMockRoster({
+    sessionId: sessionId as UUID,
+    requestedCount: typeof newPlayerCount === 'number' ? newPlayerCount : undefined,
+  })
+
+  if (typeof newPlayerCount === 'number') {
+    await updateMockSimulationConfig({
+      sessionId: sessionId as UUID,
+      config: { playerCount: newPlayerCount },
+    })
+  }
+
+  return res.json({
+    ok: true,
+    sessionId,
+    rerolledCount: result.count,
+    playerCount: getMockSimulationPlayerCount(sessionId as UUID),
+  })
+})
+
+router.post('/disconnect-all', requireAuth, async (req: Request, res: Response) => {
+  const { sessionId } = req.body || {}
+
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
+  }
+
+  await stopMockSimulation(sessionId as UUID)
+  await removeMockPlayersFromSession(sessionId as UUID)
+
+  return res.json({
+    ok: true,
+    sessionId,
+    removed: true,
   })
 })
 

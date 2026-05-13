@@ -268,6 +268,18 @@ function pickRosterSize(): number {
   )
 }
 
+function normalizeRequestedRosterSize(value?: number): number | null {
+  if (!Number.isFinite(value)) {
+    return null
+  }
+
+  return clamp(
+    Math.floor(value as number),
+    1,
+    Math.min(MAX_DEV_MOCK_PLAYERS, DND_ARCHETYPES.length)
+  )
+}
+
 function pickLevels(count: number): number[] {
   const base = 3 + Math.floor(Math.random() * 12)
   return Array.from({ length: count }, () => clamp(base + Math.floor(Math.random() * 3) - 1, 1, 20))
@@ -406,8 +418,11 @@ function pickTargetRoom(
 function ensureRosterMemory(
   sessionId: UUID,
   campaignId?: UUID | null,
-  forceReroll = false
+  forceReroll = false,
+  requestedCount?: number
 ): string[] {
+  const normalizedRequestedCount = normalizeRequestedRosterSize(requestedCount)
+
   if (campaignId) {
     if (!forceReroll && campaignRosterByCampaignId.has(campaignId)) {
       const remembered = (campaignRosterByCampaignId.get(campaignId) as string[]).slice(
@@ -418,7 +433,7 @@ function ensureRosterMemory(
       return remembered
     }
 
-    const size = pickRosterSize()
+    const size = normalizedRequestedCount ?? pickRosterSize()
     const slugs = shuffle(DND_ARCHETYPES)
       .slice(0, size)
       .map((entry) => entry.slug)
@@ -436,7 +451,7 @@ function ensureRosterMemory(
     return remembered
   }
 
-  const size = pickRosterSize()
+  const size = normalizedRequestedCount ?? pickRosterSize()
   const slugs = shuffle(DND_ARCHETYPES)
     .slice(0, size)
     .map((entry) => entry.slug)
@@ -496,7 +511,10 @@ export async function listMockPlayers(): Promise<MockPlayerDef[]> {
   }))
 }
 
-export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<MockPlayerDef[]> {
+export async function ensureDevMockPlayersForSession(
+  sessionId: UUID,
+  options?: { forceReroll?: boolean; requestedCount?: number }
+): Promise<MockPlayerDef[]> {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     select: { id: true, campaignId: true, state: true },
@@ -512,7 +530,12 @@ export async function ensureDevMockPlayersForSession(sessionId: UUID): Promise<M
     return []
   }
 
-  const rememberedSlugs = ensureRosterMemory(sessionId, session.campaignId as UUID | null)
+  const rememberedSlugs = ensureRosterMemory(
+    sessionId,
+    session.campaignId as UUID | null,
+    options?.forceReroll || false,
+    options?.requestedCount
+  )
   let selectedArchetypes = rememberedSlugs
     .map((slug) => DND_ARCHETYPES.find((entry) => entry.slug === slug))
     .filter((entry): entry is MockArchetype => Boolean(entry))
@@ -601,7 +624,11 @@ export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
   await ensureDevMockPlayersForSession(sessionId)
 }
 
-export async function resetDevMockRoster(params: { sessionId?: UUID; campaignId?: UUID }): Promise<{
+export async function resetDevMockRoster(params: {
+  sessionId?: UUID
+  campaignId?: UUID
+  requestedCount?: number
+}): Promise<{
   count: number
   campaignId?: UUID
   sessionId?: UUID
@@ -649,13 +676,10 @@ export async function resetDevMockRoster(params: { sessionId?: UUID; campaignId?
       select: { campaignId: true },
     })
 
-    if (session?.campaignId) {
-      ensureRosterMemory(resolvedSessionId, session.campaignId as UUID, true)
-    } else {
-      ensureRosterMemory(resolvedSessionId, null, true)
-    }
-
-    const users = await ensureDevMockPlayersForSession(resolvedSessionId)
+    const users = await ensureDevMockPlayersForSession(resolvedSessionId, {
+      forceReroll: true,
+      requestedCount: params.requestedCount,
+    })
     // Snapshot presence after addition so we know which room the new players joined
     const presenceAfter = await getSessionPresence(resolvedSessionId)
     const addedUsers = users.map((u) => ({

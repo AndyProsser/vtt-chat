@@ -173,3 +173,25 @@
   border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.14));
   text-align: center;
 }
+
+.mock-testing-panel__trend {
+  margin-top: 0.15rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed
+    color-mix(in srgb, var(--color-border-default, rgba(148, 163, 184, 0.28)) 60%, transparent);
+}
+
+.mock-testing-panel__trend-label {
+  font-size: 0.64rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 0.15rem;
+}
+
+.mock-testing-panel__sparkline {
+  display: block;
+  width: 100%;
+  height: 1.45rem;
+  color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 78%, #ffffff 22%);
+  opacity: 0.95;
+}

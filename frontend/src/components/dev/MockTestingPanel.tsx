@@ -16,6 +16,12 @@ interface MockSimulationStatusResponse {
   activeMockCount: number
   speakingNow: UUID[]
   uptime: number
+  messagesSentLastMinuteByType?: {
+    IC: number
+    OOC: number
+    WHISPER: number
+  }
+  bounds?: { min: number; max: number }
 }
 
 interface MockTestingPanelProps {
@@ -43,6 +49,11 @@ export function MockTestingPanel({
   })
   const [status, setStatus] = useState<MockSimulationStatusResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [playerBounds, setPlayerBounds] = useState<{ min: number; max: number }>({
+    min: 1,
+    max: 9,
+  })
+  const [messageRateHistory, setMessageRateHistory] = useState<number[]>([])
 
   // Poll for status every 2s
   useEffect(() => {
@@ -59,6 +70,17 @@ export function MockTestingPanel({
           setStatus(data)
           setConfig(data.config)
           setPlayerCount(data.config.playerCount)
+          const byType = data.messagesSentLastMinuteByType
+          const totalPerMinute = byType
+            ? Number(byType.IC || 0) + Number(byType.OOC || 0) + Number(byType.WHISPER || 0)
+            : 0
+          setMessageRateHistory((prev) => [...prev.slice(-9), totalPerMinute])
+          if (data.bounds && Number.isFinite(data.bounds.min) && Number.isFinite(data.bounds.max)) {
+            setPlayerBounds({
+              min: Number(data.bounds.min),
+              max: Number(data.bounds.max),
+            })
+          }
         }
       } catch (error) {
         console.error('Failed to poll mock player status:', error)
@@ -104,10 +126,14 @@ export function MockTestingPanel({
     [apiUrl, token, sessionId, config]
   )
 
-  const handlePlayerCountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newCount = parseInt(e.target.value, 10)
-    setPlayerCount(newCount)
-  }, [])
+  const handlePlayerCountChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const requested = parseInt(e.target.value, 10)
+      const newCount = Math.max(playerBounds.min, Math.min(playerBounds.max, requested))
+      setPlayerCount(newCount)
+    },
+    [playerBounds.max, playerBounds.min]
+  )
 
   const handlePlayerCountCommit = useCallback(async () => {
     if (playerCount === config.playerCount) return
@@ -196,6 +222,39 @@ export function MockTestingPanel({
     return `${status.activeMockCount} active, ${speakingCount} speaking`
   }, [status])
 
+  const messageRateText = useMemo(() => {
+    if (!status?.messagesSentLastMinuteByType) {
+      return 'Messages/min: IC 0, OOC 0, Whisper 0'
+    }
+
+    const byType = status.messagesSentLastMinuteByType
+    return `Messages/min: IC ${byType.IC}, OOC ${byType.OOC}, Whisper ${byType.WHISPER}`
+  }, [status])
+
+  const sparklinePoints = useMemo(() => {
+    if (messageRateHistory.length === 0) {
+      return ''
+    }
+
+    const width = 120
+    const height = 26
+    const paddingX = 3
+    const paddingY = 3
+    const maxValue = Math.max(1, ...messageRateHistory)
+    const stepX =
+      messageRateHistory.length > 1 ? (width - paddingX * 2) / (messageRateHistory.length - 1) : 0
+
+    return messageRateHistory
+      .map((value, index) => {
+        const x = paddingX + index * stepX
+        const y = height - paddingY - (value / maxValue) * (height - paddingY * 2)
+        return `${x.toFixed(2)},${y.toFixed(2)}`
+      })
+      .join(' ')
+  }, [messageRateHistory])
+
+  const sparklineNow = messageRateHistory[messageRateHistory.length - 1] || 0
+
   return (
     <div className="mock-testing-panel" data-mock-testing-panel>
       <div className="mock-testing-panel__content">
@@ -205,8 +264,8 @@ export function MockTestingPanel({
           <div className="mock-testing-panel__slider-row">
             <input
               type="range"
-              min="1"
-              max="20"
+              min={String(playerBounds.min)}
+              max={String(playerBounds.max)}
               value={playerCount}
               onChange={handlePlayerCountChange}
               onMouseUp={handlePlayerCountCommit}
@@ -331,6 +390,28 @@ export function MockTestingPanel({
 
         {/* Status Display */}
         <div className="mock-testing-panel__status">Status: {statusText}</div>
+        <div className="mock-testing-panel__status">{messageRateText}</div>
+        <div
+          className="mock-testing-panel__trend"
+          aria-label="Message rate trend over last 10 polls"
+        >
+          <div className="mock-testing-panel__trend-label">Trend (last 10 polls)</div>
+          <svg
+            className="mock-testing-panel__sparkline"
+            viewBox="0 0 120 26"
+            role="img"
+            aria-label={`Current messages per minute total: ${sparklineNow}`}
+          >
+            <polyline
+              points={sparklinePoints}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </div>
     </div>
   )

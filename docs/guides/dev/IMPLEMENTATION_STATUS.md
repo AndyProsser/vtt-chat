@@ -1,6 +1,6 @@
 # Mock Player Implementation Status
 
-Last updated: 2026-05-13
+Last updated: 2026-05-13 (evening)
 
 ## Goal
 
@@ -28,15 +28,16 @@ Use DEV mock players to simulate full multi-player behavior where frontend pathw
 
 - DEV mock roster seeding and reroll/reset pathways exist on backend.
 - Mock testing controls are available in Groups header via the DEV panel.
-- Existing docs for simulation/control exist and are now being aligned to the new contract.
+- Backend takeover session model exists with start/stop/status endpoints.
+- Context menu takeover action is wired in room/player UI.
+- Mock Testing panel supports "Return to My User".
+- Active takeover projects PLAYER pill highlight state.
+- Mock speaking/typing/disconnect simulation now runs backend-side and emits canonical WS events.
+- Frontend no longer performs local-only mock speaking simulation.
 
 ### Not Yet Implemented (Required)
 
-- Backend takeover session model and token/session binding for assumed personas.
-- Context menu takeover action wiring in room/player UI.
-- "Return to My User" workflow in Mock Testing panel.
-- Pill color state projection for currently assumed player persona.
-- Elimination of mock-specific frontend event semantics in favor of canonical events only.
+- No blocking implementation gaps identified against this contract.
 
 ## Delivery Plan
 
@@ -77,6 +78,10 @@ Use DEV mock players to simulate full multi-player behavior where frontend pathw
 - [x] Add authorization checks for takeover eligibility
 - [x] Route assumed actor actions through canonical pipelines
 - [x] Add integration tests for takeover enter/exit and persistence
+- [x] Add simulation status/settings endpoints used by Mock Testing panel
+- [x] Add reroll/disconnect endpoints used by Mock Testing panel
+- [x] Emit canonical WS events for simulated speaking/typing
+- [x] Persist simulated speaking via presence state pipeline
 
 ### Frontend
 
@@ -85,6 +90,8 @@ Use DEV mock players to simulate full multi-player behavior where frontend pathw
 - [x] Add selected PLAYER pill color when takeover is active
 - [x] Keep panel/role behavior unchanged under assumed persona
 - [x] Add tests for takeover UI and role-gated rendering
+- [x] Keep speaking indicator logic dual-channel (LiveKit OR WS presence)
+- [x] Remove frontend-only mock speaking generator
 
 ## Risks and Guardrails
 
@@ -95,5 +102,6 @@ Use DEV mock players to simulate full multi-player behavior where frontend pathw
 
 ## Notes
 
-- The old mock simulator documents used mock-specific frontend markers. The target direction is canonical events and canonical UI behavior.
-- The current DEV panel name in code is Mock Testing panel and should remain the primary control surface for reset/revert operations.
+- The current DEV panel name in code is Mock Testing panel and remains the primary control surface for reset/revert/simulation operations.
+- Simulated speaking now travels via canonical `PRESENCE:STATE_CHANGED` events (`SPEAKING`/`ONLINE`) and typing via `CHAT:TYPING_STARTED`/`CHAT:TYPING_STOPPED`.
+- Frontend speaking highlights continue to react to both channels: LiveKit active speakers and WS presence speaking state.

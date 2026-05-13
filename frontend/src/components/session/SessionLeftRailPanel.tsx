@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
@@ -11,24 +11,6 @@ import { GroupsPanel } from '../rooms/GroupsPanel'
 
 // Stable empty object to avoid creating new references on every render
 const EMPTY_USER_MUTE_MAP: Record<UUID, boolean> = {}
-const DEV_MOCK_USERNAME_PREFIX = 'dev_mock_'
-
-function pickRandomUsers(userIds: UUID[], maxCount: number): UUID[] {
-  if (userIds.length === 0 || maxCount <= 0) {
-    return []
-  }
-
-  const shuffled = [...userIds]
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const tmp = shuffled[i]
-    shuffled[i] = shuffled[j]
-    shuffled[j] = tmp
-  }
-
-  return shuffled.slice(0, Math.min(maxCount, shuffled.length))
-}
-
 interface SessionLeftRailPanelProps {
   apiUrl: string
   token: string
@@ -87,9 +69,7 @@ export function SessionLeftRailPanel({
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
   const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId])
-  const setLiveKitSpeakingUsers = useStore((state) => state.setLiveKitSpeakingUsers)
   const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
-  const previousMockSpeakingKeyRef = useRef<string>('')
 
   const isGreenroom = isGreenroomSessionState(sessionState)
   const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now())
@@ -121,68 +101,6 @@ export function SessionLeftRailPanel({
 
     return cooldownNowMs < endedAtMs + cooldownWindowMs
   }, [cooldownNowMs, cooldownWindowMs, sessionEndedAt, sessionState])
-
-  const mockUserIds = useMemo(() => {
-    const ids = new Set<UUID>()
-
-    for (const members of Object.values(roomMembersByRoomId)) {
-      for (const member of members) {
-        if (member.username?.startsWith(DEV_MOCK_USERNAME_PREFIX)) {
-          ids.add(member.userId)
-        }
-      }
-    }
-
-    return Array.from(ids)
-  }, [roomMembersByRoomId])
-
-  useEffect(() => {
-    const simulateMockSpeakingInDev =
-      import.meta.env.DEV && import.meta.env.VITE_DEV_SIMULATE_MOCK_SPEAKING !== '0'
-
-    if (!simulateMockSpeakingInDev || mockUserIds.length === 0) {
-      return
-    }
-
-    const mockUserSet = new Set(mockUserIds)
-
-    const applyTick = () => {
-      const currentSpeakingBySession = useStore.getState().livekitSpeakingBySession[sessionId] || {}
-      const nonMockSpeaking = Object.keys(currentSpeakingBySession).filter(
-        (userId) => !mockUserSet.has(userId as UUID)
-      ) as UUID[]
-
-      const eligibleMocks = mockUserIds.filter((userId) => {
-        const userMuted = userMuteState[userId] ?? false
-        const dmMuted = !isGreenroom && Boolean(getUserDMOverride(dmOverrides, userId, 'MUTE'))
-        return !userMuted && !dmMuted
-      })
-
-      const shouldSpeakThisTick = Math.random() > 0.35
-      const randomSpeakerCount = shouldSpeakThisTick
-        ? Math.max(1, Math.min(3, Math.floor(Math.random() * 3) + 1))
-        : 0
-
-      const randomMockSpeaking = pickRandomUsers(eligibleMocks, randomSpeakerCount)
-      const nextSpeaking = [...nonMockSpeaking, ...randomMockSpeaking]
-      const nextMockKey = randomMockSpeaking.slice().sort().join(',')
-
-      if (nextMockKey === previousMockSpeakingKeyRef.current) {
-        return
-      }
-
-      previousMockSpeakingKeyRef.current = nextMockKey
-      setLiveKitSpeakingUsers(sessionId, nextSpeaking)
-    }
-
-    applyTick()
-    const intervalId = window.setInterval(applyTick, 1400)
-
-    return () => {
-      window.clearInterval(intervalId)
-      previousMockSpeakingKeyRef.current = ''
-    }
-  }, [dmOverrides, isGreenroom, mockUserIds, sessionId, setLiveKitSpeakingUsers, userMuteState])
 
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 

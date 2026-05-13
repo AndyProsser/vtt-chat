@@ -32,6 +32,9 @@ without requiring many human participants.
 
 - Actor cards, chat rows, speaking indicators, and role gates behave as if all actors are real users.
 - Frontend does not need mock-only branching for core behavior.
+- Frontend reacts to canonical signals only:
+  - LiveKit active-speaker channel (real audio participants)
+  - WS presence/chat channel (`PRESENCE:STATE_CHANGED`, `CHAT:TYPING_*`) for simulated actors
 
 ## Persistence Parity
 
@@ -64,6 +67,62 @@ Takeover mode allows a real connected user to assume a mock persona temporarily.
 
 - Use Mock Testing panel action: Return to My User.
 - Identity returns to the original authenticated real user.
+
+## Mock Testing Panel (Control Surface)
+
+The Groups header DEV control opens the Mock Testing panel. This is the canonical control surface for simulation runtime.
+
+Supported controls:
+
+- Mock Players slider + reroll button: rerolls session mock roster to requested count (backend clamped to supported bounds).
+- Speaking ON/OFF: toggles backend speaking simulator.
+- Chat ON/OFF: toggles backend typing plus persisted mock message simulator.
+- Disconnect ON/OFF: toggles backend transient disconnect simulator with room leave/rejoin.
+- Remove All: disconnects and removes all mock players from the active session.
+- Return to My User: exits active takeover and restores real identity.
+
+All control actions are backend-authoritative and immediately fan out through canonical WS events.
+
+## Speaking & Typing Simulation Transport
+
+Because mock players do not create real LiveKit audio streams, runtime simulation uses the app WS channel:
+
+- Speaking simulation emits canonical `PRESENCE:STATE_CHANGED` transitions (`SPEAKING` then `ONLINE`).
+- Typing simulation emits canonical `CHAT:TYPING_STARTED` / `CHAT:TYPING_STOPPED`.
+
+## Persisted Chat Simulation
+
+When chat simulation is enabled, mock actors send persisted messages through the normal backend chat service (`sendMessage`) and canonical WS broadcast (`CHAT:MESSAGE_SENT`).
+
+Behavior:
+
+- Message types include IC, OOC, and whisper.
+- Greenroom messages are constrained to OOC to match normal runtime policy.
+- Whisper messages use normal visibility filtering and recipient semantics.
+- Messages hydrate from history like real player output.
+
+Content source:
+
+- The simulator uses a constants dataset at `backend/src/constants/dev-mock-chat-messages.constants.ts`.
+- The dataset includes 50 templates with mixed lengths (single-word through multi-line markdown with basic formatting and bullets).
+
+## Disconnect Membership Simulation
+
+Disconnect simulation now mirrors room membership behavior:
+
+- On simulated disconnect, mock users emit `ROOM:USER_LEFT` and leave their current room membership.
+- Presence transitions to `OFFLINE`.
+- On simulated reconnect, users rejoin their previous room and emit `ROOM:USER_JOINED`.
+- Presence transitions back to `ONLINE`.
+
+This keeps users persistent as actors while still testing real room membership transitions and restoration.
+
+Frontend speaking highlights intentionally combine both channels:
+
+- LiveKit active speaker snapshots
+- Presence speaking state from WS
+
+This preserves realistic UI behavior for mixed sessions (real + simulated actors).
 
 ## Non-Negotiables
 
