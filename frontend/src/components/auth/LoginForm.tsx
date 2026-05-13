@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { isDevPasswordlessLoginEnabled, navigateAuthSurface } from '@/components/auth/auth-surface'
@@ -66,7 +67,7 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form-card">
+    <Form.Root onSubmit={handleSubmit} className="auth-form-card">
       <div className="auth-form-card__header">
         <div>
           <p className="auth-card__eyebrow">Account Access</p>
@@ -81,57 +82,63 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
 
       {error && <div className="auth-alert">{error}</div>}
 
-      <div className="auth-field">
-        <label htmlFor="username-or-email">
+      <Form.Field className="auth-field" name="identifier">
+        <Form.Label htmlFor="username-or-email">
           {passwordlessLoginEnabled ? 'Username' : 'Username or Email'}
-        </label>
-        <input
-          id="username-or-email"
-          type="text"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          disabled={isLoading}
-          autoComplete="username"
-          placeholder={passwordlessLoginEnabled ? 'Enter username' : 'Enter username or email'}
-          required
-        />
+        </Form.Label>
+        <Form.Control asChild>
+          <input
+            id="username-or-email"
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            disabled={isLoading}
+            autoComplete="username"
+            placeholder={passwordlessLoginEnabled ? 'Enter username' : 'Enter username or email'}
+            required
+          />
+        </Form.Control>
         <p className="auth-field__hint">
           {passwordlessLoginEnabled
             ? 'DEV Testing passwordless login uses username only.'
             : 'Use your full account username or email address.'}
         </p>
-      </div>
+      </Form.Field>
 
-      <div className="auth-field">
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading || passwordlessLoginEnabled}
-          autoComplete="current-password"
-          placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Enter password'}
-          required={!passwordlessLoginEnabled}
-        />
+      <Form.Field className="auth-field" name="password">
+        <Form.Label htmlFor="password">Password</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading || passwordlessLoginEnabled}
+            autoComplete="current-password"
+            placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Enter password'}
+            required={!passwordlessLoginEnabled}
+          />
+        </Form.Control>
         {passwordlessLoginEnabled ? (
           <p className="auth-field__hint">
             Password is disabled while passwordless DEV Testing is active.
           </p>
         ) : null}
-      </div>
+      </Form.Field>
 
       {passwordlessLoginEnabled && identifier.trim() ? (
         <div className="auth-status-panel">Passwords are not needed in DEV Testing.</div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={isLoading || !identifier.trim() || (!passwordlessLoginEnabled && !password)}
-        className="auth-submit"
-      >
-        {isLoading ? 'Logging in...' : 'Login'}
-      </button>
+      <Form.Submit asChild>
+        <button
+          type="submit"
+          disabled={isLoading || !identifier.trim() || (!passwordlessLoginEnabled && !password)}
+          className="auth-submit"
+        >
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
+      </Form.Submit>
 
       <div className="auth-form-links" aria-label="login help links">
         <a
@@ -155,6 +162,6 @@ export function LoginForm({ apiUrl, onLoginSuccess }: LoginFormProps) {
           Forgot Password
         </a>
       </div>
-    </form>
+    </Form.Root>
   )
 }

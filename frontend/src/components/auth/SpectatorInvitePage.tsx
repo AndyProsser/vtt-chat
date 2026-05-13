@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { PolicyNotice } from './PolicyNotice'
@@ -473,28 +474,32 @@ export function SpectatorInvitePage({
                     Continue instantly as a temporary guest spectator, or sign in with a full
                     account.
                   </p>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <label className="block text-sm">
-                      <span className="mb-1 block">Display Name</span>
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(event) => setDisplayName(event.target.value)}
-                        className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                        placeholder="Your display name"
-                      />
-                    </label>
-                    <label className="block text-sm">
-                      <span className="mb-1 block">Email</span>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
-                        placeholder="you@example.com"
-                      />
-                    </label>
-                  </div>
+                  <Form.Root className="grid gap-2 md:grid-cols-2">
+                    <Form.Field className="block text-sm" name="displayName">
+                      <Form.Label className="mb-1 block">Display Name</Form.Label>
+                      <Form.Control asChild>
+                        <input
+                          type="text"
+                          value={displayName}
+                          onChange={(event) => setDisplayName(event.target.value)}
+                          className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
+                          placeholder="Your display name"
+                        />
+                      </Form.Control>
+                    </Form.Field>
+                    <Form.Field className="block text-sm" name="email">
+                      <Form.Label className="mb-1 block">Email</Form.Label>
+                      <Form.Control asChild>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          className="block w-full rounded-ui-sm border border-ui-border-soft px-3 py-2"
+                          placeholder="you@example.com"
+                        />
+                      </Form.Control>
+                    </Form.Field>
+                  </Form.Root>
                   <button
                     type="button"
                     onClick={joinAsGuestSpectator}

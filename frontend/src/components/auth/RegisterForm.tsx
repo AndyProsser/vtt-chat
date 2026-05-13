@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import {
@@ -103,7 +104,7 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
+    <Form.Root onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
       <div className="auth-form-card__header">
         <div>
           <p className="auth-card__eyebrow">Account Access</p>
@@ -118,92 +119,102 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
 
       {error ? <div className="auth-alert">{error}</div> : null}
 
-      <div className="auth-field">
-        <label htmlFor="register-name">Name</label>
-        <input
-          id="register-name"
-          type="text"
-          value={name}
-          onChange={(e) => {
-            const nextName = e.target.value
-            setName(nextName)
-            if (!usernameCustomized) {
-              setUsername(normalizeUsernameFromName(nextName || 'user'))
-            }
-          }}
-          onBlur={() => void syncSuggestedUsername(name, username)}
-          disabled={isLoading}
-          autoComplete="name"
-          required
-        />
-      </div>
+      <Form.Field className="auth-field" name="name">
+        <Form.Label htmlFor="register-name">Name</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="register-name"
+            type="text"
+            value={name}
+            onChange={(e) => {
+              const nextName = e.target.value
+              setName(nextName)
+              if (!usernameCustomized) {
+                setUsername(normalizeUsernameFromName(nextName || 'user'))
+              }
+            }}
+            onBlur={() => void syncSuggestedUsername(name, username)}
+            disabled={isLoading}
+            autoComplete="name"
+            required
+          />
+        </Form.Control>
+      </Form.Field>
 
-      <div className="auth-field">
-        <label htmlFor="register-email">Email</label>
-        <input
-          id="register-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isLoading}
-          autoComplete="email"
-          required
-        />
-      </div>
+      <Form.Field className="auth-field" name="email">
+        <Form.Label htmlFor="register-email">Email</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="register-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            autoComplete="email"
+            required
+          />
+        </Form.Control>
+      </Form.Field>
 
-      <div className="auth-field">
-        <label htmlFor="register-username">Username</label>
-        <input
-          id="register-username"
-          type="text"
-          value={username}
-          onChange={(e) => {
-            setUsernameCustomized(true)
-            setUsername(normalizeUsernameFromName(e.target.value || 'user'))
-          }}
-          onBlur={() => void syncSuggestedUsername(name, username)}
-          disabled={isLoading}
-          autoComplete="username"
-          required
-        />
+      <Form.Field className="auth-field" name="username">
+        <Form.Label htmlFor="register-username">Username</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="register-username"
+            type="text"
+            value={username}
+            onChange={(e) => {
+              setUsernameCustomized(true)
+              setUsername(normalizeUsernameFromName(e.target.value || 'user'))
+            }}
+            onBlur={() => void syncSuggestedUsername(name, username)}
+            disabled={isLoading}
+            autoComplete="username"
+            required
+          />
+        </Form.Control>
         <p className="auth-field__hint">
           Auto-generated from your name. Letters, numbers, and underscores only. If taken, we add
           random digits automatically.
         </p>
-      </div>
+      </Form.Field>
 
-      <div className="auth-field">
-        <label htmlFor="register-password">Password</label>
-        <input
-          id="register-password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading || passwordlessLoginEnabled}
-          autoComplete="new-password"
-          placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Enter password'}
-          required={!passwordlessLoginEnabled}
-        />
-      </div>
+      <Form.Field className="auth-field" name="password">
+        <Form.Label htmlFor="register-password">Password</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="register-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading || passwordlessLoginEnabled}
+            autoComplete="new-password"
+            placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Enter password'}
+            required={!passwordlessLoginEnabled}
+          />
+        </Form.Control>
+      </Form.Field>
 
-      <div className="auth-field">
-        <label htmlFor="register-password-confirm">Confirm Password</label>
-        <input
-          id="register-password-confirm"
-          type="password"
-          value={passwordConfirm}
-          onChange={(e) => setPasswordConfirm(e.target.value)}
-          disabled={isLoading || passwordlessLoginEnabled}
-          autoComplete="new-password"
-          placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Confirm password'}
-          required={!passwordlessLoginEnabled}
-        />
+      <Form.Field className="auth-field" name="passwordConfirm">
+        <Form.Label htmlFor="register-password-confirm">Confirm Password</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="register-password-confirm"
+            type="password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            disabled={isLoading || passwordlessLoginEnabled}
+            autoComplete="new-password"
+            placeholder={passwordlessLoginEnabled ? 'Disabled for DEV Testing' : 'Confirm password'}
+            required={!passwordlessLoginEnabled}
+          />
+        </Form.Control>
         <p className="auth-field__hint">
           {passwordlessLoginEnabled
             ? 'Password fields are disabled while passwordless DEV Testing is active.'
             : 'Complex password required: 8+ chars with uppercase, lowercase, number, and special character.'}
         </p>
-      </div>
+      </Form.Field>
 
       <div className="auth-button-row">
         <button
@@ -216,10 +227,12 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
           </span>
           Back
         </button>
-        <button type="submit" className="auth-submit" disabled={isLoading}>
-          {isLoading ? 'Creating account...' : 'Register'}
-        </button>
+        <Form.Submit asChild>
+          <button type="submit" className="auth-submit" disabled={isLoading}>
+            {isLoading ? 'Creating account...' : 'Register'}
+          </button>
+        </Form.Submit>
       </div>
-    </form>
+    </Form.Root>
   )
 }

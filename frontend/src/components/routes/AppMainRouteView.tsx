@@ -6,12 +6,7 @@ import { RegisterForm } from '@/components/auth/RegisterForm'
 import { resolveAuthSurfaceRoute } from '@/components/auth/auth-surface'
 import { AppSplashOverlay } from '@/components/overlays/AppSplashOverlay'
 import type { AuthState } from '@/hooks/useAuthSession'
-import {
-  AUTH_FEATURE_CARDS,
-  AUTH_HERO_CHIP_TEXT,
-  AUTH_HERO_COPY,
-  AUTH_HERO_TITLE,
-} from '@/constants/appMainRoute.constants'
+import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import '@/styles/components/auth/AuthSurface.css'
@@ -39,6 +34,9 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
   }, [props.auth.token, props.auth.user?.id])
 
   const [readySessionKey, setReadySessionKey] = useState<string | null>(null)
+  const [authTagline] = useState(
+    () => APP_SPLASH_TITLES[Math.floor(Math.random() * APP_SPLASH_TITLES.length)]
+  )
 
   const isSessionSurfaceReady = authSessionKey !== null && readySessionKey === authSessionKey
 
@@ -67,36 +65,21 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
 
     return (
       <div className="auth-landing">
-        <section className="auth-hero">
-          <div className="auth-hero__inner">
-            <div className="auth-chip">
-              <img src="/branding/app-logo.png" alt="" className="auth-chip__logo" />
-              <span className="auth-chip__dot" />
-              {AUTH_HERO_CHIP_TEXT}
-            </div>
-
-            <h2 className="auth-hero__title">{AUTH_HERO_TITLE}</h2>
-            <p className="auth-hero__copy">{AUTH_HERO_COPY}</p>
-
-            <div className="auth-card-grid">
-              {AUTH_FEATURE_CARDS.map((card) => (
-                <article key={card.title} className="auth-card">
-                  <span className="auth-card__icon material-symbols-outlined" aria-hidden="true">
-                    {card.icon}
-                  </span>
-                  <div className="auth-card__body">
-                    <p className="auth-card__eyebrow">{card.eyebrow}</p>
-                    <h3 className="auth-card__title">{card.title}</h3>
-                    <p>{card.copy}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
         <section className="auth-form-pane">
-          <div className="auth-form-shell">{renderAuthSurface()}</div>
+          <div className="auth-form-shell">
+            <header className="auth-brand-header" aria-label="VTT Chat auth brand header">
+              <img
+                src="/branding/app-logo.png"
+                alt="VTT-Chat logo"
+                className="auth-brand-header__logo"
+              />
+              <div className="auth-brand-header__copy">
+                <h1 className="auth-brand-header__title">VTT-CHAT</h1>
+                <p className="auth-brand-header__tagline">{authTagline}</p>
+              </div>
+            </header>
+            {renderAuthSurface()}
+          </div>
         </section>
       </div>
     )

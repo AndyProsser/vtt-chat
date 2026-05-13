@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { navigateAuthSurface } from '@/components/auth/auth-surface'
 
 type PasswordResetRequestFormProps = {
@@ -46,7 +47,7 @@ export function PasswordResetRequestForm({ apiUrl }: PasswordResetRequestFormPro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
+    <Form.Root onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
       <div className="auth-form-card__header">
         <div>
           <p className="auth-card__eyebrow">Account Access</p>
@@ -62,18 +63,20 @@ export function PasswordResetRequestForm({ apiUrl }: PasswordResetRequestFormPro
       {error ? <div className="auth-alert">{error}</div> : null}
       {successMessage ? <div className="auth-status-panel">{successMessage}</div> : null}
 
-      <div className="auth-field">
-        <label htmlFor="reset-identifier">Username or Email</label>
-        <input
-          id="reset-identifier"
-          type="text"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          disabled={isLoading}
-          autoComplete="username"
-          required
-        />
-      </div>
+      <Form.Field className="auth-field" name="identifier">
+        <Form.Label htmlFor="reset-identifier">Username or Email</Form.Label>
+        <Form.Control asChild>
+          <input
+            id="reset-identifier"
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            disabled={isLoading}
+            autoComplete="username"
+            required
+          />
+        </Form.Control>
+      </Form.Field>
 
       <div className="auth-button-row">
         <button
@@ -86,10 +89,12 @@ export function PasswordResetRequestForm({ apiUrl }: PasswordResetRequestFormPro
           </span>
           Back
         </button>
-        <button type="submit" className="auth-submit" disabled={isLoading || !identifier.trim()}>
-          {isLoading ? 'Starting reset...' : 'Continue'}
-        </button>
+        <Form.Submit asChild>
+          <button type="submit" className="auth-submit" disabled={isLoading || !identifier.trim()}>
+            {isLoading ? 'Starting reset...' : 'Continue'}
+          </button>
+        </Form.Submit>
       </div>
-    </form>
+    </Form.Root>
   )
 }

@@ -1,6 +1,7 @@
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { PolicyNotice } from './PolicyNotice'
 import '@/styles/components/auth/InviteJoinPage.css'
 
@@ -625,29 +626,31 @@ export function InviteJoinPage({
           {renderPolicyNotice()}
 
           {campaign && (
-            <form className="invite-join-form" onSubmit={submitJoin}>
+            <Form.Root className="invite-join-form" onSubmit={submitJoin}>
               <label htmlFor="join-player-email">Email</label>
               <div className="invite-join-email-field">
-                <input
-                  id="join-player-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => {
-                    const nextEmail = event.target.value
-                    const trimmedEmail = nextEmail.trim()
-                    setEmail(nextEmail)
-                    setEmailChecked(false)
-                    setPrecheckResult(null)
-                    setFullAccountPassword('')
-                    setPrecheckLoading(false)
-                    if (!trimmedEmail) {
-                      setEmailCheckStatus('idle')
-                    } else if (!isValidEmailFormat(trimmedEmail)) {
-                      setEmailCheckStatus('invalid')
-                    }
-                  }}
-                  autoComplete="email"
-                />
+                <Form.Control asChild>
+                  <input
+                    id="join-player-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      const nextEmail = event.target.value
+                      const trimmedEmail = nextEmail.trim()
+                      setEmail(nextEmail)
+                      setEmailChecked(false)
+                      setPrecheckResult(null)
+                      setFullAccountPassword('')
+                      setPrecheckLoading(false)
+                      if (!trimmedEmail) {
+                        setEmailCheckStatus('idle')
+                      } else if (!isValidEmailFormat(trimmedEmail)) {
+                        setEmailCheckStatus('invalid')
+                      }
+                    }}
+                    autoComplete="email"
+                  />
+                </Form.Control>
                 <span
                   className={`invite-join-email-status status-${
                     emailCheckStatus === 'guest' || emailCheckStatus === 'full'
@@ -681,19 +684,21 @@ export function InviteJoinPage({
               {canEditJoinFields && (
                 <>
                   <label htmlFor="join-player-name">Player name</label>
-                  <input
-                    id="join-player-name"
-                    type="text"
-                    value={playerName}
-                    onChange={(event) => {
-                      const nextPlayerName = event.target.value
-                      setPlayerName(nextPlayerName)
-                      if (!characterNameTouched) {
-                        setCharacterName(nextPlayerName.trim())
-                      }
-                    }}
-                    autoComplete="name"
-                  />
+                  <Form.Control asChild>
+                    <input
+                      id="join-player-name"
+                      type="text"
+                      value={playerName}
+                      onChange={(event) => {
+                        const nextPlayerName = event.target.value
+                        setPlayerName(nextPlayerName)
+                        if (!characterNameTouched) {
+                          setCharacterName(nextPlayerName.trim())
+                        }
+                      }}
+                      autoComplete="name"
+                    />
+                  </Form.Control>
 
                   <button
                     type="button"
@@ -711,53 +716,63 @@ export function InviteJoinPage({
                       <p className="invite-join-character-grid__title">Optional</p>
 
                       <label htmlFor="join-character-name">Character name</label>
-                      <input
-                        id="join-character-name"
-                        type="text"
-                        value={characterName}
-                        onChange={(event) => {
-                          setCharacterName(event.target.value)
-                          setCharacterNameTouched(true)
-                        }}
-                      />
+                      <Form.Control asChild>
+                        <input
+                          id="join-character-name"
+                          type="text"
+                          value={characterName}
+                          onChange={(event) => {
+                            setCharacterName(event.target.value)
+                            setCharacterNameTouched(true)
+                          }}
+                        />
+                      </Form.Control>
 
                       <label htmlFor="join-character-race">Race</label>
-                      <input
-                        id="join-character-race"
-                        type="text"
-                        value={characterRace}
-                        onChange={(event) => setCharacterRace(event.target.value)}
-                      />
+                      <Form.Control asChild>
+                        <input
+                          id="join-character-race"
+                          type="text"
+                          value={characterRace}
+                          onChange={(event) => setCharacterRace(event.target.value)}
+                        />
+                      </Form.Control>
 
                       <label htmlFor="join-character-class">Class</label>
-                      <input
-                        id="join-character-class"
-                        type="text"
-                        value={characterClass}
-                        onChange={(event) => setCharacterClass(event.target.value)}
-                      />
+                      <Form.Control asChild>
+                        <input
+                          id="join-character-class"
+                          type="text"
+                          value={characterClass}
+                          onChange={(event) => setCharacterClass(event.target.value)}
+                        />
+                      </Form.Control>
 
                       <label htmlFor="join-character-level">Level</label>
-                      <input
-                        id="join-character-level"
-                        type="range"
-                        min={1}
-                        max={20}
-                        step={1}
-                        value={characterLevel}
-                        onChange={(event) => setCharacterLevel(Number(event.target.value) || 1)}
-                      />
+                      <Form.Control asChild>
+                        <input
+                          id="join-character-level"
+                          type="range"
+                          min={1}
+                          max={20}
+                          step={1}
+                          value={characterLevel}
+                          onChange={(event) => setCharacterLevel(Number(event.target.value) || 1)}
+                        />
+                      </Form.Control>
                       <output className="invite-join-level-output" htmlFor="join-character-level">
                         Level {characterLevel}
                       </output>
 
                       <label htmlFor="join-character-avatar">Avatar upload</label>
-                      <input
-                        id="join-character-avatar"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarSelected}
-                      />
+                      <Form.Control asChild>
+                        <input
+                          id="join-character-avatar"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarSelected}
+                        />
+                      </Form.Control>
 
                       {characterAvatarUrl ? (
                         <img
@@ -774,30 +789,34 @@ export function InviteJoinPage({
               {isFullUserEmail && (
                 <>
                   <label htmlFor="join-full-password">Password</label>
-                  <input
-                    id="join-full-password"
-                    type="password"
-                    value={fullAccountPassword}
-                    onChange={(event) => setFullAccountPassword(event.target.value)}
-                    autoComplete="current-password"
-                  />
+                  <Form.Control asChild>
+                    <input
+                      id="join-full-password"
+                      type="password"
+                      value={fullAccountPassword}
+                      onChange={(event) => setFullAccountPassword(event.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </Form.Control>
                 </>
               )}
 
-              <button
-                type="submit"
-                className="invite-join-submit"
-                disabled={
-                  joining ||
-                  precheckLoading ||
-                  !emailChecked ||
-                  !email.trim() ||
-                  (isFullUserEmail ? !fullAccountPassword.trim() : !playerName.trim())
-                }
-              >
-                {joining ? 'Joining…' : 'Join Campaign'}
-              </button>
-            </form>
+              <Form.Submit asChild>
+                <button
+                  type="submit"
+                  className="invite-join-submit"
+                  disabled={
+                    joining ||
+                    precheckLoading ||
+                    !emailChecked ||
+                    !email.trim() ||
+                    (isFullUserEmail ? !fullAccountPassword.trim() : !playerName.trim())
+                  }
+                >
+                  {joining ? 'Joining…' : 'Join Campaign'}
+                </button>
+              </Form.Submit>
+            </Form.Root>
           )}
 
           {error && !hasPolicyNotice && (

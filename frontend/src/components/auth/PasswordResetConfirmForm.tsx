@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import * as Form from '@radix-ui/react-form'
 import { navigateAuthSurface, validateComplexPassword } from '@/components/auth/auth-surface'
 
 type PasswordResetConfirmFormProps = {
@@ -87,7 +88,7 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
+    <Form.Root onSubmit={handleSubmit} className="auth-form-card auth-form-stack">
       <div className="auth-form-card__header">
         <div>
           <p className="auth-card__eyebrow">Account Access</p>
@@ -105,35 +106,39 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
 
       {!isVerifying && !successMessage && !verifyError ? (
         <>
-          <div className="auth-field">
-            <label htmlFor="reset-password">New Password</label>
-            <input
-              id="reset-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isSubmitting}
-              autoComplete="new-password"
-              required
-            />
-          </div>
+          <Form.Field className="auth-field" name="password">
+            <Form.Label htmlFor="reset-password">New Password</Form.Label>
+            <Form.Control asChild>
+              <input
+                id="reset-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                autoComplete="new-password"
+                required
+              />
+            </Form.Control>
+          </Form.Field>
 
-          <div className="auth-field">
-            <label htmlFor="reset-password-confirm">Confirm Password</label>
-            <input
-              id="reset-password-confirm"
-              type="password"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              disabled={isSubmitting}
-              autoComplete="new-password"
-              required
-            />
+          <Form.Field className="auth-field" name="passwordConfirm">
+            <Form.Label htmlFor="reset-password-confirm">Confirm Password</Form.Label>
+            <Form.Control asChild>
+              <input
+                id="reset-password-confirm"
+                type="password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                disabled={isSubmitting}
+                autoComplete="new-password"
+                required
+              />
+            </Form.Control>
             <p className="auth-field__hint">
               Complex password required: 8+ chars with uppercase, lowercase, number, and special
               character.
             </p>
-          </div>
+          </Form.Field>
         </>
       ) : null}
 
@@ -149,11 +154,13 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
           Back
         </button>
         {!successMessage && !isVerifying && !verifyError ? (
-          <button type="submit" className="auth-submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Set Password'}
-          </button>
+          <Form.Submit asChild>
+            <button type="submit" className="auth-submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Set Password'}
+            </button>
+          </Form.Submit>
         ) : null}
       </div>
-    </form>
+    </Form.Root>
   )
 }
