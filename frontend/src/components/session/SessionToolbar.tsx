@@ -39,7 +39,13 @@ function formatDuration(totalSeconds: number): string {
 
 function formatTimestamp(ms: number | undefined): string {
   if (!Number.isFinite(ms) || !ms) return '—'
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(ms).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function formatMs(ms: number): string {
@@ -107,28 +113,9 @@ export function SessionToolbar({
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
   const [tick, setTick] = useState(0)
   const [showTimerPopper, setShowTimerPopper] = useState(false)
-  const popperRef = useRef<HTMLDivElement>(null)
-  const timerBtnRef = useRef<HTMLButtonElement>(null)
 
   // Track when the user entered the greenroom (local, resets on refresh)
   const greenroomEnteredAtRef = useRef<number>(Date.now())
-
-  // Close popper on outside click
-  useEffect(() => {
-    if (!showTimerPopper) return
-    const handler = (e: MouseEvent) => {
-      if (
-        popperRef.current &&
-        !popperRef.current.contains(e.target as Node) &&
-        timerBtnRef.current &&
-        !timerBtnRef.current.contains(e.target as Node)
-      ) {
-        setShowTimerPopper(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showTimerPopper])
 
   // Tick every second whenever the session is in a state that needs a live clock
   useEffect(() => {
@@ -293,14 +280,27 @@ export function SessionToolbar({
 
         <div className="session-toolbar__zone session-toolbar__zone--center">
           <div className="session-toolbar__timer-group">
-            <div className="session-toolbar__timer-wrap">
+            <div
+              className="session-toolbar__timer-wrap"
+              onMouseEnter={canShowPopper ? () => setShowTimerPopper(true) : undefined}
+              onMouseLeave={canShowPopper ? () => setShowTimerPopper(false) : undefined}
+              onFocus={canShowPopper ? () => setShowTimerPopper(true) : undefined}
+              onBlur={
+                canShowPopper
+                  ? (event) => {
+                      const nextTarget = event.relatedTarget as Node | null
+                      if (!event.currentTarget.contains(nextTarget)) {
+                        setShowTimerPopper(false)
+                      }
+                    }
+                  : undefined
+              }
+            >
               <button
-                ref={timerBtnRef}
                 type="button"
                 className={`session-toolbar__timer-pill ${canShowPopper ? 'session-toolbar__timer-pill--interactive' : ''}`}
-                aria-label={`Session timer: ${primaryLabel}. ${canShowPopper ? 'Click for details.' : ''}`}
+                aria-label={`Session timer: ${primaryLabel}. ${canShowPopper ? 'Hover for details.' : ''}`}
                 aria-expanded={canShowPopper ? showTimerPopper : undefined}
-                onClick={canShowPopper ? () => setShowTimerPopper((v) => !v) : undefined}
               >
                 <span className="session-toolbar__timer-main">
                   <Icon name={sessionState === 'ENDED' ? 'hourglass' : 'timer'} />
@@ -310,17 +310,11 @@ export function SessionToolbar({
                   <span className={`session-toolbar__timer-state ${primaryStateClass}`}>
                     {timerStateLabel}
                   </span>
-                  {canShowPopper ? (
-                    <span className="session-toolbar__timer-chevron" aria-hidden="true">
-                      {showTimerPopper ? '▲' : '▼'}
-                    </span>
-                  ) : null}
                 </span>
               </button>
 
               {canShowPopper && showTimerPopper ? (
                 <div
-                  ref={popperRef}
                   className="session-toolbar__timer-popper"
                   role="region"
                   aria-label="Session timer details"
@@ -342,17 +336,20 @@ export function SessionToolbar({
                   <div className="session-toolbar__timer-popper-row">
                     <span>Total pause time</span>
                     <strong>
-                      {formatMs(
-                        cumulativePauseMs +
-                          (sessionState === 'PAUSED' && sessionPausedAtMs
-                            ? Date.now() - sessionPausedAtMs
-                            : 0)
+                      {formatDuration(
+                        Math.floor(
+                          (cumulativePauseMs +
+                            (sessionState === 'PAUSED' && sessionPausedAtMs
+                              ? Date.now() - sessionPausedAtMs
+                              : 0)) /
+                            1000
+                        )
                       )}
                     </strong>
                   </div>
                   <div className="session-toolbar__timer-popper-row">
-                    <span>Pauses</span>
-                    <strong>{pauseCount + (sessionState === 'PAUSED' ? 1 : 0)}</strong>
+                    <span>Times paused</span>
+                    <strong>{pauseCount}</strong>
                   </div>
                   {sessionState === 'ENDED' ? (
                     <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">

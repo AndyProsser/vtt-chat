@@ -28,9 +28,9 @@ import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { AudioPanel } from '../audio/AudioPanel'
 import { NotesRailPanel } from './NotesRailPanel'
-import { SearchPanel } from './SearchPanel'
 import { JournalPanel } from './JournalPanel'
 import { HistoryPanel } from './HistoryPanel'
+import { SessionRightRailContent } from './SessionRightRailContent'
 import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { Icon } from '../ui/Icon'
@@ -1300,7 +1300,7 @@ export function SessionInit({
 
       const payload = (await response.json()) as { session: SessionRecord }
       if (payload.session) {
-        updateSession(payload.session.id, payload.session)
+        updateSession(payload.session.id, normalizeSessionRecord(payload.session))
       }
       setLobbyNotice('Session settings saved.')
     } catch (err) {
@@ -2224,7 +2224,7 @@ export function SessionInit({
 
         const payload = (await response.json()) as { session: SessionRecord }
         await ensureSessionMembership(payload.session.id)
-        replaceSessions([payload.session, ...targetSessions])
+        replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
       } catch (err) {
@@ -2601,7 +2601,7 @@ export function SessionInit({
 
         const payload = (await response.json()) as { session: SessionRecord }
         await ensureSessionMembership(payload.session.id)
-        replaceSessions([payload.session, ...existingSessions])
+        replaceSessions([normalizeSessionRecord(payload.session), ...existingSessions])
         if (options?.carryFromSessionId) {
           scheduleGreenroomCarry(options.carryFromSessionId, payload.session.id)
         }
@@ -2627,7 +2627,7 @@ export function SessionInit({
           }
 
           const activeSession = await transitionResponse.json()
-          updateSession(payload.session.id, activeSession)
+          updateSession(payload.session.id, normalizeSessionRecord(activeSession as SessionRecord))
         }
 
         return payload.session.id
@@ -2724,8 +2724,29 @@ export function SessionInit({
         throw new Error(errorData.message || `Failed to transition session to ${state}`)
       }
 
-      const updatedSession = await response.json()
-      updateSession(sessionId, updatedSession)
+      const updatedSession = normalizeSessionRecord((await response.json()) as SessionRecord)
+      const transitionTimestamp = Date.now()
+      const localTransitionFallbacks: Partial<SessionRecord> =
+        state === SessionState.PAUSED
+          ? {
+              pausedAt: updatedSession.pausedAt ?? transitionTimestamp,
+            }
+          : state === SessionState.ACTIVE
+            ? {
+                startedAt:
+                  updatedSession.startedAt ?? currentSession?.startedAt ?? transitionTimestamp,
+                pausedAt: undefined,
+              }
+            : state === SessionState.ENDED
+              ? {
+                  endedAt: updatedSession.endedAt ?? transitionTimestamp,
+                }
+              : {}
+
+      updateSession(sessionId, {
+        ...updatedSession,
+        ...localTransitionFallbacks,
+      })
       if (isGreenroomSessionState(state)) {
         setSelectedRoomIdOverride('')
         resetToolbarActionsState()
@@ -3407,7 +3428,7 @@ export function SessionInit({
                   livekitState={connectionStatus.livekitState}
                   sessionState={toSessionStateValue(currentSession.state)}
                   sessionStartedAt={currentSession.startedAt}
-                  sessionPausedAt={currentSession.pausedAt}
+                  sessionPausedAt={currentSession.pausedAt ?? currentPauseStats.pauseStartedAt}
                   sessionEndedAt={currentSession.endedAt}
                   cumulativePauseMs={currentPauseStats.cumulativePauseMs}
                   pauseCount={currentPauseStats.pauseCount}
@@ -3504,146 +3525,106 @@ export function SessionInit({
                 </div>
               )}
               renderRightRailTab={(tab) => {
-                if (tab === 'information') {
-                  return (
-                    <CampaignInformationPanel
-                      campaign={selectedCampaign ?? null}
-                      sessionCount={settingsCampaignSessions.length}
-                      totalSessionDurationMs={settingsCampaignTotalDurationMs}
-                      canEdit={Boolean(
-                        selectedCampaign && selectedCampaign.currentDmId === user.id
-                      )}
-                      onEditCampaign={openCampaignSettingsModal}
-                    />
-                  )
-                }
-
-                if (tab === 'rooms') {
-                  return renderCampaignScaffoldPanel(
-                    'Groups',
-                    'Voice group configuration is being rebuilt around campaign-level controls.',
-                    [
-                      'DM-only group management',
-                      'Greenroom pre-create support',
-                      'Group defaults and templates',
-                      'Campaign routing and policy',
-                    ]
-                  )
-                }
-
-                if (tab === 'audio') {
-                  return renderCampaignScaffoldPanel(
-                    'Campaign Audio',
-                    'Audio policy controls are being reduced to a cleaner campaign-first surface.',
-                    [
-                      'Default campaign audio policy',
-                      'Environment and override presets',
-                      'Broadcast and moderation policy',
-                    ]
-                  )
-                }
-
-                if (tab === 'search') {
-                  return (
-                    <SearchPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      rooms={visibleRooms.map((room) => ({
-                        id: room.id,
-                        name: room.name,
-                        type: room.type,
-                      }))}
-                      participants={currentPresence}
-                      onSelectRoom={setSelectedRoomIdOverride}
-                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
-                      onOpenChatWorkspace={() => setToolbarCenterPaneView('chat')}
-                    />
-                  )
-                }
-
-                if (tab === 'notes') {
-                  return (
-                    <NotesRailPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
-                    />
-                  )
-                }
-
-                if (tab === 'journal') {
-                  return (
-                    <JournalPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      userId={user.id}
-                    />
-                  )
-                }
-
-                if (tab === 'history') {
-                  return (
-                    <HistoryPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      role={effectiveSessionRole}
-                      userId={user.id}
-                    />
-                  )
-                }
-
-                if (tab === 'settings') {
-                  return (
-                    <CampaignRightbarSettings
-                      role={
-                        effectiveSessionRole === 'DM'
-                          ? 'DM'
-                          : effectiveSessionRole === 'PLAYER'
-                            ? 'PLAYER'
-                            : 'SPECTATOR'
-                      }
-                      campaignId={selectedCampaignId || null}
-                      sessionName={sessionSettingsName}
-                      sessionDescription={sessionSettingsDescription}
-                      plannedDurationMinutes={sessionSettingsPlannedDurationMinutes}
-                      sessionStateLabel={currentSession.state}
-                      canEditSessionSettings={canEditSessionSettings}
-                      onSessionNameChange={setSessionSettingsName}
-                      onSessionDescriptionChange={setSessionSettingsDescription}
-                      onPlannedDurationMinutesChange={handlePlannedDurationMinutesChange}
-                      onSaveSessionSettings={() => {
-                        void saveSessionSettings()
-                      }}
-                      isSessionSaving={isSessionSettingsSaving}
-                      dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
-                      onDmAutoTargetChange={setSettingsDmAutoTargetOnFirstPlayerJoin}
-                      onSaveDmAutoTarget={() => {
-                        if (selectedCampaignId) void saveDmVoiceTargetingSetting(selectedCampaignId)
-                      }}
-                      isSaving={isDmVoiceTargetingSettingSaving}
-                      isLoading={isDmVoiceTargetingSettingLoading}
-                      characterDraft={characterSettingsDraft}
-                      onCharacterFieldChange={handleCharacterFieldChange}
-                      onSaveCharacterSettings={() => {
-                        void saveCharacterSettings()
-                      }}
-                      isCharacterLoading={isCharacterSettingsLoading}
-                      isCharacterSaving={isCharacterSettingsSaving}
-                    />
-                  )
-                }
-
                 return (
-                  <p className="session-placeholder-copy">
-                    Tool panel is not available for this tab.
-                  </p>
+                  <SessionRightRailContent
+                    tab={tab}
+                    informationPanel={
+                      <CampaignInformationPanel
+                        campaign={selectedCampaign ?? null}
+                        sessionCount={settingsCampaignSessions.length}
+                        totalSessionDurationMs={settingsCampaignTotalDurationMs}
+                        canEdit={Boolean(
+                          selectedCampaign && selectedCampaign.currentDmId === user.id
+                        )}
+                        onEditCampaign={openCampaignSettingsModal}
+                      />
+                    }
+                    roomsPanel={renderCampaignScaffoldPanel(
+                      'Groups',
+                      'Voice group configuration is being rebuilt around campaign-level controls.',
+                      [
+                        'DM-only group management',
+                        'Greenroom pre-create support',
+                        'Group defaults and templates',
+                        'Campaign routing and policy',
+                      ]
+                    )}
+                    audioPanel={renderCampaignScaffoldPanel(
+                      'Campaign Audio',
+                      'Audio policy controls are being reduced to a cleaner campaign-first surface.',
+                      [
+                        'Default campaign audio policy',
+                        'Environment and override presets',
+                        'Broadcast and moderation policy',
+                      ]
+                    )}
+                    notesPanel={
+                      <NotesRailPanel
+                        apiUrl={apiUrl}
+                        token={token}
+                        sessionId={currentSession.id}
+                        role={effectiveSessionRole}
+                        onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
+                      />
+                    }
+                    journalPanel={
+                      <JournalPanel
+                        apiUrl={apiUrl}
+                        token={token}
+                        sessionId={currentSession.id}
+                        role={effectiveSessionRole}
+                        userId={user.id}
+                      />
+                    }
+                    historyPanel={
+                      <HistoryPanel
+                        apiUrl={apiUrl}
+                        token={token}
+                        sessionId={currentSession.id}
+                        role={effectiveSessionRole}
+                        userId={user.id}
+                      />
+                    }
+                    settingsPanel={
+                      <CampaignRightbarSettings
+                        role={
+                          effectiveSessionRole === 'DM'
+                            ? 'DM'
+                            : effectiveSessionRole === 'PLAYER'
+                              ? 'PLAYER'
+                              : 'SPECTATOR'
+                        }
+                        campaignId={selectedCampaignId || null}
+                        sessionName={sessionSettingsName}
+                        sessionDescription={sessionSettingsDescription}
+                        plannedDurationMinutes={sessionSettingsPlannedDurationMinutes}
+                        sessionStateLabel={currentSession.state}
+                        canEditSessionSettings={canEditSessionSettings}
+                        onSessionNameChange={setSessionSettingsName}
+                        onSessionDescriptionChange={setSessionSettingsDescription}
+                        onPlannedDurationMinutesChange={handlePlannedDurationMinutesChange}
+                        onSaveSessionSettings={() => {
+                          void saveSessionSettings()
+                        }}
+                        isSessionSaving={isSessionSettingsSaving}
+                        dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
+                        onDmAutoTargetChange={setSettingsDmAutoTargetOnFirstPlayerJoin}
+                        onSaveDmAutoTarget={() => {
+                          if (selectedCampaignId)
+                            void saveDmVoiceTargetingSetting(selectedCampaignId)
+                        }}
+                        isSaving={isDmVoiceTargetingSettingSaving}
+                        isLoading={isDmVoiceTargetingSettingLoading}
+                        characterDraft={characterSettingsDraft}
+                        onCharacterFieldChange={handleCharacterFieldChange}
+                        onSaveCharacterSettings={() => {
+                          void saveCharacterSettings()
+                        }}
+                        isCharacterLoading={isCharacterSettingsLoading}
+                        isCharacterSaving={isCharacterSettingsSaving}
+                      />
+                    }
+                  />
                 )
               }}
             />

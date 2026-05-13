@@ -1302,15 +1302,12 @@ describe('SessionInit integration', () => {
 
     await screen.findByTestId('session-toolbar')
 
-    const notesTab = screen.getByRole('tab', { name: 'Tool Notes' })
-    fireEvent.click(notesTab)
+    const notesTabForSwitch = screen.getByRole('tab', { name: 'Tool Notes' })
+    fireEvent.click(notesTabForSwitch)
     expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
     expect(screen.getByText('Archive route')).toBeTruthy()
 
-    const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
-    fireEvent.click(searchTab)
-    expect(await screen.findByTestId('search-panel')).toBeTruthy()
-    expect(screen.getByPlaceholderText('Search notes, chat, rooms, or players')).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Search' })).toBeNull()
 
     const journalTab = screen.getByRole('tab', { name: 'Tool Journal' })
     fireEvent.click(journalTab)
@@ -1569,6 +1566,7 @@ describe('SessionInit integration', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
     await screen.findByText('Your active character profile for this campaign.')
+    expect((screen.getByLabelText('Name') as HTMLInputElement).disabled).toBe(false)
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aria Prime' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Save character' }))
 
@@ -1775,9 +1773,9 @@ describe('SessionInit integration', () => {
     fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'all' } })
     expect(screen.getByText('Archive route')).toBeTruthy()
 
-    const searchTab = screen.getByRole('tab', { name: 'Tool Search' })
-    fireEvent.click(searchTab)
-    expect(await screen.findByTestId('search-panel')).toBeTruthy()
+    const notesTabForSwitch = screen.getByRole('tab', { name: 'Tool Notes' })
+    fireEvent.click(notesTabForSwitch)
+    expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
 
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()

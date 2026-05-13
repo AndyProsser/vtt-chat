@@ -159,7 +159,7 @@
   align-items: center;
   border-radius: var(--radius-md);
   background: transparent;
-  padding: 0;
+  padding: 4px 0 0;
 }
 
 .command-center-right-rail-trigger {

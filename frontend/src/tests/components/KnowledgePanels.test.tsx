@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { HistoryPanel } from '../../components/session/HistoryPanel'
 import { JournalPanel } from '../../components/session/JournalPanel'
 import { NotesRailPanel } from '../../components/session/NotesRailPanel'
-import { SearchPanel } from '../../components/session/SearchPanel'
+
 import { useStore } from '../../state/store'
 
 const asUuid = (value: string) => value as UUID
@@ -21,125 +21,6 @@ describe('knowledge panels', () => {
     const store = useStore.getState()
     store.clearMessages()
     store.clearNotes()
-  })
-
-  it('searches across rooms, participants, messages, and notes', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: string | URL) => {
-        const url = String(input)
-
-        if (url.endsWith(`/api/chat/messages/${SESSION_ID}`)) {
-          return {
-            ok: true,
-            json: async () => ({
-              messages: [
-                {
-                  id: asUuid('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
-                  authorId: PLAYER_ID,
-                  authorUsername: 'Tara',
-                  content: 'Check the archive map before we move.',
-                  type: MessageType.OOC,
-                  isDmOnly: false,
-                  createdAt: 10,
-                },
-              ],
-            }),
-          }
-        }
-
-        if (url.endsWith(`/api/notes/${SESSION_ID}`)) {
-          return {
-            ok: true,
-            json: async () => ({
-              notes: [
-                {
-                  id: asUuid('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
-                  authorId: PLAYER_ID,
-                  authorUsername: 'Tara',
-                  title: 'Archive route',
-                  content: 'The cellar route stays quiet after midnight.',
-                  visibility: NoteVisibility.PLAYERS_VISIBLE,
-                  tags: ['route'],
-                  allowedUsers: [],
-                  createdAt: 5,
-                  updatedAt: 8,
-                },
-              ],
-            }),
-          }
-        }
-
-        throw new Error(`Unexpected fetch call: ${url}`)
-      })
-    )
-
-    const onSelectRoom = vi.fn()
-    const onOpenNotesWorkspace = vi.fn()
-    const onOpenChatWorkspace = vi.fn()
-
-    render(
-      <SearchPanel
-        apiUrl="http://localhost:3000"
-        token="token"
-        sessionId={SESSION_ID}
-        role={Role.PLAYER}
-        rooms={[{ id: ROOM_ID, name: 'Archive Cellar', type: RoomType.PRIVATE }]}
-        participants={[
-          {
-            userId: PLAYER_ID,
-            username: 'Tara',
-            state: PresenceState.SPEAKING,
-            primaryRoomId: ROOM_ID,
-            lastSeenAt: 10,
-          },
-        ]}
-        onSelectRoom={onSelectRoom}
-        onOpenNotesWorkspace={onOpenNotesWorkspace}
-        onOpenChatWorkspace={onOpenChatWorkspace}
-      />
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/1 rooms/i)).toBeTruthy()
-    })
-
-    fireEvent.change(screen.getByPlaceholderText('Search notes, chat, rooms, or players'), {
-      target: { value: 'archive' },
-    })
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Archive Cellar').length).toBeGreaterThan(0)
-    })
-    expect(screen.getAllByText('Archive route').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Check the archive map before we move.').length).toBeGreaterThan(0)
-
-    expect(screen.getByTestId('search-drilldown-panel')).toBeTruthy()
-
-    const searchResultsList = screen.getByRole('list', { name: 'Search results' })
-    const roomCard = within(searchResultsList).getAllByText('Archive Cellar')[0]?.closest('article')
-    if (!roomCard) {
-      throw new Error('Room result card not found')
-    }
-    fireEvent.click(within(roomCard).getByRole('button', { name: 'Inspect result' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Jump to room' }))
-    expect(onSelectRoom).toHaveBeenCalledWith(ROOM_ID)
-
-    const noteCard = screen.getByText('Archive route').closest('article')
-    if (!noteCard) {
-      throw new Error('Note result card not found')
-    }
-    fireEvent.click(within(noteCard).getByRole('button', { name: 'Inspect result' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Notes workspace' }))
-    expect(onOpenNotesWorkspace).toHaveBeenCalledTimes(1)
-
-    const messageCard = screen.getByText('Check the archive map before we move.').closest('article')
-    if (!messageCard) {
-      throw new Error('Message result card not found')
-    }
-    fireEvent.click(within(messageCard).getByRole('button', { name: 'Inspect result' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Chat workspace' }))
-    expect(onOpenChatWorkspace).toHaveBeenCalledTimes(1)
   })
 
   it('supports journal pin, favorite, quick publish, and tag filtering', async () => {

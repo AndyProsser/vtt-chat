@@ -43,11 +43,10 @@ describe('getRightRailTabsForRole', () => {
   it('returns full toolset for DM', () => {
     expect(getRightRailTabsForRole(Role.DM)).toEqual([
       'information',
-      'rooms',
-      'search',
       'notes',
       'journal',
       'history',
+      'rooms',
       'audio',
       'settings',
     ])
@@ -56,10 +55,10 @@ describe('getRightRailTabsForRole', () => {
   it('returns full player toolset for PLAYER', () => {
     expect(getRightRailTabsForRole(Role.PLAYER)).toEqual([
       'information',
-      'search',
       'notes',
       'journal',
       'history',
+      'settings',
     ])
   })
 
@@ -152,7 +151,6 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Groups' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
@@ -168,12 +166,12 @@ describe('CommandCenterFrame', () => {
     )
 
     expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Search' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
     expect(screen.queryByRole('tab', { name: 'Tool Groups' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'Tool Audio' })).toBeNull()
-    expect(screen.queryByRole('tab', { name: 'Tool Settings' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
   })
 
   it('renders system toasts container only when provided', () => {

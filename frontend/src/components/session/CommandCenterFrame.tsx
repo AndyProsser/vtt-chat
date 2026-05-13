@@ -37,22 +37,14 @@ export interface ToolbarActionModel {
 
 const DM_TABS: RightRailTab[] = [
   'information',
-  'rooms',
-  'search',
   'notes',
   'journal',
   'history',
+  'rooms',
   'audio',
   'settings',
 ]
-const PLAYER_TABS: RightRailTab[] = [
-  'information',
-  'search',
-  'notes',
-  'journal',
-  'history',
-  'settings',
-]
+const PLAYER_TABS: RightRailTab[] = ['information', 'notes', 'journal', 'history', 'settings']
 const SPECTATOR_TABS: RightRailTab[] = ['information', 'journal', 'history']
 
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
@@ -71,8 +63,6 @@ function formatTabLabel(tab: RightRailTab): string {
       return 'Audio'
     case 'notes':
       return 'Notes'
-    case 'search':
-      return 'Search'
     case 'journal':
       return 'Journal'
     case 'history':
@@ -86,7 +76,7 @@ function formatTabLabel(tab: RightRailTab): string {
 
 function iconForTab(
   tab: RightRailTab
-): 'rooms' | 'voice' | 'notes' | 'search' | 'journal' | 'history' | 'settings' | 'panel' {
+): 'rooms' | 'voice' | 'notes' | 'journal' | 'history' | 'settings' | 'panel' {
   switch (tab) {
     case 'information':
       return 'panel'
@@ -96,8 +86,6 @@ function iconForTab(
       return 'voice'
     case 'notes':
       return 'notes'
-    case 'search':
-      return 'search'
     case 'journal':
       return 'journal'
     case 'history':
@@ -259,6 +247,12 @@ export function CommandCenterFrame({
     setToolbarRightRailOpen(true)
   }
 
+  const handleRightRailClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (toolbarRightRailOpen && event.currentTarget === event.target && !isRightRailClosing) {
+      setToolbarRightRailOpen(false)
+    }
+  }
+
   return (
     <section aria-label="Command Center" className="command-center-frame">
       <section data-testid="toolbar" className="command-center-top-toolbar">
@@ -297,6 +291,7 @@ export function CommandCenterFrame({
               style={{
                 ['--panel-pointer-top' as string]: `${1.35 + activeTabIndex * 2.4}rem`,
               }}
+              onClick={handleRightRailClickOutside}
             >
               <div className="command-center-right-rail-layout">
                 <Tabs value={activeRightRailTab}>

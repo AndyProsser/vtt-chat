@@ -359,7 +359,7 @@ Interim issue note and follow-up tasks (deferred to W10, 2026-05-11):
 
 ### W0 Subtask: Topbar Settings and Information Panels
 
-**Status**: First-pass scaffold reset in progress (timer, user settings, campaign information panel, and DM campaign settings scaffold landed)
+**Status**: First-pass scaffold delivered; cleanup and role-gating pass completed (2026-05-13)
 **Related Docs**: [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md), [UI-FLOWS.md](docs/ui/UI-FLOWS.md), [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md), [UI-COMPONENT-PROPS.md](docs/ui/UI-COMPONENT-PROPS.md), [UI-COMPONENT-INTERFACES.md](docs/ui/UI-COMPONENT-INTERFACES.md)
 
 **Scope**: Implement and harden the topbar-driven popout panel model with Settings as primary entry points.
@@ -424,6 +424,10 @@ Recent delivery notes:
 - Rightbar campaign settings now has a dedicated component for DM auto-target, session name/description/planned-duration editing, and character settings editing.
 - Session metadata persistence is wired via backend `PATCH /api/v1/session/:id` for name, description, and planned duration.
 - Campaign home settings dialog now mirrors rightbar character settings for DM workflow parity.
+- SearchPanel component removed from UI (search now integrated into Notes/Journal/History tabs).
+- Right-rail panel now dismisses on click-outside (backdrop click closes the panel).
+- Settings panel is now role-gated: DM sees Session + Voice Targeting sections, Player/Spectator see Character section only.
+- All targeted tests passing for right-rail behavior, session integration, and knowledge panel functionality.
 
 **Definition of done**:
 

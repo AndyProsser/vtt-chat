@@ -7,7 +7,6 @@ export type RightRailTab =
   | 'rooms'
   | 'audio'
   | 'notes'
-  | 'search'
   | 'journal'
   | 'history'
   | 'settings'
