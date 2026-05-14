@@ -404,6 +404,13 @@ Tiny test data matrix (state inputs -> expected icon/color):
 - [ ] Topbar Information entry opens the information panel with default tab `CAMPAIGN`.
 - [ ] Information tab order is canonical: `CAMPAIGN | SEARCH | NOTES | JOURNAL | HISTORY`.
 - [ ] Journal tab is feature-flagged off by default in current release.
+- [ ] Campaign Info panel is visible to DM, player, and spectator personas.
+- [ ] Campaign Info allows DM-only editing for campaign name, description, and poster.
+- [ ] Campaign Info description editor allows only bold/italic/list formatting and blocks links/headings/images/tables.
+- [ ] Campaign Info edits use explicit Save/Cancel flow (no autosave).
+- [ ] Campaign Info poster actions support upload, replace, and remove.
+- [ ] Campaign Info stat cards remain compact and include total campaign length, players, sessions, completed sessions, and next session ETA.
+- [ ] Each Campaign Info stat includes definition-only tooltip/popper help.
 - [ ] Campaign settings are editable by DM only.
 - [ ] Player and spectator campaign settings view is read-only by default.
 - [ ] DM hide-campaign-settings behavior is enforced for non-DM personas.

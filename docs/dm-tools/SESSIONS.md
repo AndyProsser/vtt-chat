@@ -234,36 +234,41 @@ POST /api/campaigns/:campaignId/sessions/:sessionId/end
 
 ## 8. Session Journaling
 
-Each session has a **journal**:
+Each session has exactly one **journal** entry:
 
-- Manual DM notes
-- AI‑generated summary
-- Highlights
-- Tags
-- Linked notes
-- Linked chat messages
-- Linked recordings
+- Name (bound to session chapter name)
+- Content (markdown)
+- Space-separated hashtags
+- Attachments (images and PDFs)
+- Linked notes and chat references
 
 ### Journal Schema
 
 ```ts
 interface SessionJournal {
+  id: string
+  campaignId: string
   sessionId: string
-  manual: string
-  ai: string
-  highlights: string[]
+  name: string
+  markdown: string
+  hashtags: string[]
+  attachments?: string[]
+  authorUserId: string // canonical editor: DM
   linkedNotes: string[]
   linkedMessages: string[]
+  createdAt: number
+  updatedAt: number
 }
 ```
 
 ### Journal Generation
 
-Occurs:
+Lifecycle:
 
-- At session end
-- On demand
-- Via DM UI
+- Entry is created and associated to the session chapter
+- Session name and journal name remain linked
+- DM can refine content over time
+- Journal uses the same markdown editor contract as Notes
 
 ---
 

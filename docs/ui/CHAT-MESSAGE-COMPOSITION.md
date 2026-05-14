@@ -118,6 +118,19 @@ Each message cell contains:
 - **Greenroom:** show "Greenroom" tag (teal)
 - **Whisper Group:** show "Whisper" with participant indicators
 
+### **3.4 Notes and Journal Surfacing Cards**
+
+When DM shares a note as a handout, chat surfaces a one-time card to recipients only.
+
+- Event type: `NOTES:HANDOUT_SURFACED`
+- Visibility: recipients only (`PARTY`, `SELECTED`, `SPECTATORS`, or DM-only)
+- Card content: note name, short excerpt, hashtag chips, and open-note action
+- Excerpt behavior: auto-generated from note markdown by default; DM can optionally override before surfacing
+- Auto excerpt rules: strip markdown/link markup, clamp to UI-safe length, use deterministic fallback copy when content is sparse
+- Timeline behavior: card is inserted at share timestamp and is not repeatedly re-posted
+- Privacy: card must never appear for non-recipients
+- Purpose: timeline discoverability for narrative beats (for example: "You find a map of the dungeon")
+
 ---
 
 ## **4. Message Styling**

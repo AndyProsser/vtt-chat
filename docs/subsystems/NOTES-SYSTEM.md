@@ -1,6 +1,6 @@
-# Notes System
+# Notes and Journal System
 
-_A lightweight, persistent, DM‑controlled knowledge system for handouts, maps, summaries, and metagame notes._
+_A lightweight, persistent, markdown-based authoring system for campaign notes and per-session journals._
 
 Status:
 
@@ -12,17 +12,17 @@ Status:
 
 ## Overview
 
-The Notes System provides a structured way to store:
+The Notes and Journal system provides a structured way to store:
 
 - Handouts
 - Maps
-- Session summaries
+- Session journals (one journal per session chapter)
 - DM prep notes
 - Player‑shared notes
 - Metagame notes
-- Attachments (base64 images)
+- Attachments (images and PDFs)
 
-Notes are:
+Authoring artifacts are:
 
 - **Persistent** across sessions
 - **Markdown‑based**
@@ -30,21 +30,22 @@ Notes are:
 - **Searchable**
 - **Exportable/importable**
 - **Publishable to chat**
-- **DM‑curated** but optionally player‑contributed
+- **DM-driven** for handouts and session journals
 
 This document defines:
 
-- Note model
+- Notes model
+- Journal model
 - Visibility rules
 - Sharing model
-- Flags (read, hidden, starred)
+- Required fields and editor behavior
 - Publishing to chat
-- Import/export
-- Interaction with sessions, chat, and audio
+- Search behavior
+- Interaction with sessions and chat
 
 ---
 
-## 1. Note Model
+## 1. Notes Model
 
 ### Schema
 
@@ -53,89 +54,152 @@ interface Note {
   id: string
   campaignId: string
   authorUserId: string
+  name: string
   markdown: string
-  type: 'NORMAL' | 'METAGAME'
-  tags: string[]
-  visibility: 'DM_ONLY' | 'PARTY' | 'INDIVIDUALS' | 'GLOBAL'
+  hashtags: string[]
+  tags?: string[] // legacy compatibility alias for hashtags
+  visibility: 'PRIVATE' | 'PARTY' | 'SELECTED' | 'SPECTATORS'
   sharedWith?: string[] // userIds
   attachments?: Attachment[]
   createdAt: number
   updatedAt: number
-  publishedAt?: number
+  surfacedToChatAt?: number
 }
 ```
 
 ### Key Concepts
 
-| Field         | Meaning                          |
-| ------------- | -------------------------------- |
-| `markdown`    | Full note content (markdown)     |
-| `type`        | Normal or metagame               |
-| `visibility`  | Who can see the note             |
-| `sharedWith`  | Explicit per‑user visibility     |
-| `attachments` | Base64 images (maps, handouts)   |
-| `publishedAt` | Timestamp when published to chat |
+| Field              | Meaning                                  |
+| ------------------ | ---------------------------------------- |
+| `name`             | Human-readable note title                |
+| `markdown`         | Full note content (markdown)             |
+| `hashtags`         | Space-separated tags (stored normalized) |
+| `visibility`       | Who can see the note                     |
+| `sharedWith`       | Explicit per-user visibility             |
+| `attachments`      | Linked image/PDF assets                  |
+| `surfacedToChatAt` | Timestamp for one-time handout surfacing |
 
 ---
 
-## 2. Visibility Rules
+## 2. Journal Model
+
+Journal is similar to Notes, with one critical rule: exactly one journal item exists per session chapter.
+
+```ts
+interface SessionJournal {
+  id: string
+  campaignId: string
+  sessionId: string
+  authorUserId: string // canonical author/editor is DM
+  name: string // bound to session chapter name
+  markdown: string
+  hashtags: string[]
+  attachments?: Attachment[]
+  createdAt: number
+  updatedAt: number
+}
+```
+
+Journal contract:
+
+- Exactly one journal per session chapter.
+- `name` is linked to session name and follows session renames.
+- DM is the canonical editor/owner.
+- Journal visibility defaults to DM, players, and spectators.
+
+---
+
+## 3. Required Fields and Editor Contract
+
+Each Notes or Journal item must include:
+
+- `Name`
+- `Content` (markdown)
+- `Hashtags` (space-separated)
+- `Attachments` (images and PDFs)
+
+Editor behavior contract:
+
+- Default mode is rich markdown editing (formatted surface).
+- Users can toggle to raw markdown code view.
+- A simple helper toolbar supports basic formatting and list actions.
+- Editor primitives should prefer Radix-based prebuilt components where practical.
+- Toolbar and renderer both block external links.
+- Internal note links and attachment image links are allowed.
+
+Link policy:
+
+- Allowed: links to other notes, attachment image links, attachment document links.
+- Disallowed: external URLs in both editor affordances and rendered output.
+
+---
+
+## 4. Visibility Rules
 
 Visibility is determined by `visibility` + `sharedWith`.
 
 ### Visibility Modes
 
-| Mode            | Description                     |
-| --------------- | ------------------------------- |
-| **DM_ONLY**     | Only DM sees the note           |
-| **PARTY**       | All players + DM                |
-| **INDIVIDUALS** | Only specific players + DM      |
-| **GLOBAL**      | Visible to all campaign members |
+| Mode           | Description                                |
+| -------------- | ------------------------------------------ |
+| **PRIVATE**    | Only creator and DM                        |
+| **PARTY**      | DM + all players                           |
+| **SELECTED**   | DM + selected users in `sharedWith[]`      |
+| **SPECTATORS** | DM + connected spectators (runtime scoped) |
 
 ### DM Always Sees Everything
 
 DM has full visibility regardless of mode.
 
-### Players Cannot Unshare Notes
+### DM Handout Authority
 
-Players may share their own notes with others, but:
-
-- They cannot unshare once shared
-- They cannot change visibility of DM notes
-- They cannot delete DM notes
+DM is the primary handout authority and can share notes at any time.
 
 ---
 
-## 3. Sharing Model
+## 5. Sharing Model
 
-Notes can be shared in two ways:
+Notes can be shared using visibility targets and optional selected recipients.
 
-### 1. **Visibility = PARTY**
+Handout share contract:
 
-Everyone sees it.
-
-### 2. **Visibility = INDIVIDUALS**
-
-Only users in `sharedWith[]` see it.
-
-### Player‑Shared Notes
-
-Players can:
-
-- Create notes
-- Share with party
-- Share with individuals
-- Publish to chat
-- Attach images
-
-Players **cannot**:
-
-- Make DM‑only notes
-- Unshare notes once shared
-- Change visibility of DM notes
+- Share targets: `PRIVATE | PARTY | SELECTED | SPECTATORS`.
+- Sharing a note does not mutate note content.
+- Sharing a note does not grant broader visibility than the selected target.
+- Offline selected recipients remain valid targets and see shared notes when they reconnect.
 
 ---
 
-## 4. Note Flags (Per‑User State)
+## 6. Attachments
+
+Notes and Journal support campaign-persistent attachments:
+
+- Images
+- PDFs
+
+Attachment behavior:
+
+- Attachments are reusable across notes and journal entries.
+- Markdown content can reference attachments with attachment tokens.
+- Images can render inline in content.
+- PDFs can render as inline cards/embeds where supported.
+
+### Attachment Schema
+
+```ts
+interface Attachment {
+  id: string
+  campaignId: string
+  mime: string
+  name: string
+  uri: string // storage-backed reference
+  createdAt: number
+}
+```
+
+---
+
+## 7. Note Flags (Per-User State)
 
 Each user has independent flags for each note:
 
@@ -161,95 +225,55 @@ Flags do **not** affect other users.
 
 ---
 
-## 5. Note Types
+## 8. Surfacing Notes to Chat
 
-### 1. **NORMAL**
-
-Default note type.
-
-### 2. **METAGAME**
-
-Used for:
-
-- DM prep
-- Session summaries
-- Out‑of‑character notes
-- Rules clarifications
-
-Metagame notes can still be shared or published.
-
----
-
-## 6. Attachments
-
-Notes support attachments for:
-
-- Maps
-- Handouts
-- Screenshots
-- Player sketches
-- DM prep images
-
-### Attachment Schema
-
-```ts
-interface Attachment {
-  id: string
-  mime: string
-  data: string // encoded attachment payload
-}
-```
-
-For DMDX `map` blocks in persisted notes/journal entries, `image` must reference an attachment token (`attachment://...`). Inline `data:image/*;base64,...` values are not persisted in v1.
-
----
-
-## 7. Publishing Notes to Chat
-
-Notes can be published to chat as a **one‑time event**.
+DM handouts are surfaced to chat as a **one-time event**.
 
 ### Behavior
 
-- Chat receives a `note.publishedToChat` event
-- A snippet of the note is shown
-- A link to open the full note is included
-- Publishing does not change visibility
-- Publishing does not reveal hidden content (DM‑only notes cannot be published to players)
+- Chat receives a `NOTES:HANDOUT_SURFACED` event.
+- Recipients-only policy: only targeted recipients get the card in chat.
+- The card includes note name, short excerpt, and action to open the note.
+- Surfacing does not change stored note visibility.
+- Surfacing is non-repeat by default (one-time timeline surfacing per share action).
+- Hidden content is never leaked to non-recipients.
 
 ### Example Event
 
 ```json
 {
-  "type": "note.publishedToChat",
+  "type": "NOTES:HANDOUT_SURFACED",
   "payload": {
     "noteId": "n123",
-    "roomId": "main",
-    "markdown": "You find 50 gold pieces."
+    "recipientScope": "SELECTED",
+    "excerpt": "You find a map of the lower dungeon.",
+    "surfaceId": "surface_01"
   }
 }
 ```
 
 ---
 
-## 8. Searching Notes
+## 9. Search
 
 Search supports:
 
-- Full‑text search
-- Tags
-- Visibility filters
-- Author filters
-- Date ranges
+- Basic text match on `name`
+- Basic text match on markdown content
+- Basic text match on hashtags
+
+Advanced filters are deferred to a later stage.
 
 ### API
 
 ```text
-GET /api/search/notes
+GET /api/search/notes?q=<text>
+GET /api/search/journal?q=<text>
 ```
 
 ---
 
-## 9. Interaction With Sessions
+## 10. Interaction With Sessions
 
 ### Before Session
 
@@ -266,27 +290,25 @@ DM can:
 
 - Reveal notes
 - Share with individuals
-- Publish to chat
+- Surface handout cards to chat
 - Update notes live
 
 Players can:
 
-- Create notes
-- Share with party
-- Share with individuals
-- Publish to chat
+- Create and maintain personal notes
+- Read notes shared to them
 
 ### After Session
 
-Notes become part of the **session journal**.
+Session journal remains one entry for that session and can be refined by DM.
 
 ---
 
-## 10. Interaction With Chat
+## 11. Interaction With Chat
 
 Notes can be:
 
-- Published to chat
+- Surfaced to chat as recipients-only handout cards
 - Linked from chat
 - Referenced by chat messages
 - Tagged with hashtags used in chat
@@ -298,7 +320,7 @@ Chat messages can also be converted into notes:
 
 ---
 
-## 11. Interaction With Extension
+## 12. Interaction With Extension
 
 The browser extension can:
 
@@ -315,7 +337,7 @@ Examples:
 
 ---
 
-## 12. Import / Export
+## 13. Import / Export
 
 Notes are included in:
 
@@ -332,7 +354,7 @@ Notes are included in:
       "id": "n123",
       "markdown": "...",
       "visibility": "PARTY",
-      "tags": ["#loot"],
+      "hashtags": ["#loot"],
       "attachments": [ ... ]
     }
   ]
@@ -343,33 +365,33 @@ Notes are included in:
 
 ## Design Principles
 
-### 1. Notes are lightweight
+### 1. Authoring is lightweight
 
-Markdown + optional images.
+Markdown + helper toolbar + optional attachments.
 
-### 2. Notes are persistent
+### 2. Notes and Journal are persistent
 
-Stored in Postgres for long‑term campaign history.
+Stored in durable campaign/session storage for long-term continuity.
 
 ### 3. Visibility is explicit
 
 DM always sees everything.
 
-### 4. Sharing is irreversible
+### 4. Share visibility is explicit
 
-Players cannot unshare notes.
+Sharing always has an explicit recipient scope.
 
-### 5. Publishing is non‑destructive
+### 5. Chat surfacing is non-destructive
 
-Publishing does not change visibility.
+Surfacing does not change visibility.
 
 ### 6. Notes integrate with chat
 
-Publishing creates a chat event.
+Handout surfacing creates a recipients-scoped chat event.
 
-### 7. Notes integrate with sessions
+### 7. Journal is session-bound
 
-Notes become part of the session journal.
+Exactly one journal entry exists per session chapter.
 
 ### 8. Notes integrate with extension
 

@@ -426,19 +426,30 @@ Current implementation boundary (2026-05-08 first pass):
   - [x] Character settings (name, race, class, level, stats, avatar) player-editable in rightbar.
   - [x] Character defaults fallback to Human/Fighter/Level 1/8 (all stats) if blank.
   - [x] Character values supersede user profile defaults when present.
-- [ ] Information Campaign tab owns campaign metadata editing (name, description, banner/poster image) for DM.
-- [x] Information Campaign tab shows read-only campaign stats (session count, total session duration) for all personas.
+- [ ] Information Campaign tab owns campaign metadata editing (name, description, poster image) for DM.
+- [ ] Information Campaign tab edits happen in-panel with explicit Save/Cancel (no autosave).
+- [ ] Information Campaign description editor remains intentionally simple (bold/italic/lists only).
+- [x] Information Campaign tab shows compact read-only campaign stats for all personas:
+  - total campaign length (sum of active session durations)
+  - player count
+  - session count
+  - completed session count
+  - next session ETA (when available)
+- [ ] Campaign stat explanatory copy is hidden in tooltip/popper help (definition only).
 - [ ] Chat lifecycle bookends render for `Session Started`, `Session Ended`, `Session Paused`, and `Session Resumed` transitions.
 - [ ] Chat message visibility matches persona and group membership rules (runtime room membership).
 - [ ] Chat message creation uses the canonical composer surface.
 - [ ] Information tab order is canonical: `Campaign | Notes | Journal | History`.
 - [ ] Search panel is removed; per-tab search exists in Notes, Journal, and History.
 - [ ] Journal is feature-flagged off by default.
-- [ ] Notes panel supports `ADD | DELETE | EDIT | SHARE`, hashtag grouping/search, favorites-to-top, and markdown + helper toolbar.
-- [ ] Notes handout permissions enforce `PRIVATE | PARTY | SELECTED` with offline roster targeting support.
-- [ ] Notes support attached images rendered below note text and scaled to fit UI.
+- [ ] Notes panel supports `ADD | DELETE | EDIT | SHARE`, required fields (`Name`, `Content`, `Hashtags`, `Attachments`), markdown helper toolbar, and hashtag autocomplete from campaign tag history.
+- [ ] Notes handout permissions enforce `PRIVATE | PARTY | SELECTED | SPECTATORS` with offline roster targeting support.
+- [ ] Notes handout shares emit a one-time recipients-only chat card (surface event) without changing note visibility.
+- [ ] Notes support attached images and PDFs with inline markdown rendering via attachment tokens.
 - [ ] Notes detail view has a clear `X` close action and can expand to support list + note view while preserving 900px target shell behavior.
-- [ ] Journal supports reverse chronology, text/hashtag search, markdown content, no images, and DM edits only for completed past sessions.
+- [ ] Journal is one entry per session chapter (`Name` bound to session name), uses the same markdown editor contract as Notes, and supports hashtags + attachments.
+- [ ] Journal visibility defaults to DM, players, and spectators; DM is the canonical author/editor.
+- [ ] Notes and Journal use basic text search only (`Name + Content + Hashtags`) in this stage; advanced filters are deferred.
 - [ ] History is read-only, searchable, starts from bottom, and dynamically loads one session at a time while preserving privacy rules.
 - [ ] Rightbar Notes panel remains available from the Information surface.
 - [ ] Rightbar Journal panel remains available from the Information surface.
@@ -464,6 +475,25 @@ Recent delivery notes:
 - Right-rail panel now dismisses on click-outside (backdrop click closes the panel).
 - Settings panel is now role-gated: DM sees Session + Voice Targeting sections, Player/Spectator see Character section only.
 - All targeted tests passing for right-rail behavior, session integration, and knowledge panel functionality.
+
+Notes/Journal contract lock-in (2026-05-14):
+
+- Journal is a single per-session artifact; it links to the session chapter name and uses the same editor model as Notes.
+- Notes and Journal require `Name`, markdown `Content`, space-separated `Hashtags`, and `Attachments` (images + PDFs).
+- Editor UX defaults to rich markdown with helper toolbar and an explicit raw-markdown toggle.
+- External links are blocked in both toolbar affordances and markdown render/sanitize pipeline.
+- Notes sharing supports `PRIVATE | PARTY | SELECTED | SPECTATORS`.
+- DM handout shares surface as one-time recipients-only chat cards to improve timeline discoverability.
+- Search scope for this stage is intentionally basic: text search over `Name`, `Content`, and `Hashtags`.
+
+Campaign Info panel contract lock-in (2026-05-14):
+
+- Panel is visible to DM, players, and spectators.
+- DM can edit campaign name, description, and poster in this panel only.
+- Description editing is intentionally minimal and supports only bold, italic, bullet list, and numbered list formatting.
+- Poster controls support upload, replace, and remove.
+- Stats are intentionally compact and include total campaign length, players, sessions, completed sessions, and next session ETA.
+- Stat definitions are hidden behind popper/tooltip help to keep the surface visually simple.
 
 **Definition of done**:
 
@@ -648,6 +678,41 @@ Recent delivery notes:
 6. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon.
 7. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment.
 
+#### W0 Next Concrete Breakdown: Notes and Journal (2026-05-14)
+
+Implementation reference:
+
+- [docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md](docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md)
+
+Execution tasks (W0-now):
+
+1. Shared contract alignment:
+
+- Introduce dedicated notes event contract module and add `NOTES:HANDOUT_SURFACED`.
+- Normalize event naming across shared/backend/frontend/tests (`NOTES:CREATED|UPDATED|DELETED|SHARED`).
+
+2. Backend notes + journal contract pass:
+
+- Extend notes payload contract to required fields (`Name`, markdown `Content`, `Hashtags`, `Attachments`).
+- Implement session-journal one-entry-per-session behavior and DM-authoritative edit rules.
+- Add explicit share/surface endpoints and recipients-only fanout semantics.
+
+3. Frontend authoring UX pass:
+
+- Add rich markdown editor with helper toolbar and raw-markdown toggle.
+- Implement hashtag autocomplete and basic search (`Name + Content + Hashtags`).
+- Support attachment rendering (images inline, PDFs as inline card/embed where supported).
+
+4. Chat surfacing pass:
+
+- Render one-time recipients-only handout card on DM share.
+- Auto-generate handout card excerpt by default; allow optional DM override before send.
+- Prevent duplicate card surfacing during reconnect/hydration.
+
+5. W0 acceptance tests:
+
+- Add/extend notes/journal state and component tests for required fields, visibility scopes, editor behavior, and handout surfacing.
+
 Definition of done:
 
 - High-use right-panel screens are functionally complete and interaction-tested.
@@ -713,6 +778,44 @@ Definition of done:
 8. State-machine residual (priority P1): add off-the-record regression coverage for paused and whisper runtime content hydration behavior.
 9. State-machine residual (priority P2): add boundary marker persistence sequence coverage across start/pause/resume/end and refresh hydration.
 10. State-machine residual (priority P2): add frontend state/rendering coverage for boundary marker timeline rendering, reconnect snapshot replacement semantics, and DM voice mode control interactions.
+
+#### W2 Next Concrete Breakdown: Notes and Journal Gates (2026-05-14)
+
+Gate reference:
+
+- [docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md](docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md)
+
+Must-pass suites and checks:
+
+1. Backend route + WS integration:
+
+- Extend [backend/tests/integration/notes-routes-ws.integration.test.ts](backend/tests/integration/notes-routes-ws.integration.test.ts) for recipients-only handout surfacing and new share scopes.
+- Add journal route contract suite for one-per-session and DM-only edit authz.
+
+2. Frontend state and UI contract:
+
+- Update [frontend/tests/state/notesSlice.test.ts](frontend/tests/state/notesSlice.test.ts) to canonical notes event names.
+- Add editor tests (toolbar actions, code-toggle, external-link blocking).
+- Add chat integration test for one-time handout card visibility and dedupe.
+- Add excerpt tests for auto-generation default and manual override.
+
+3. WS/event contract drift checks:
+
+- Add test assertions that disallow legacy `NOTES:NOTE_CREATED`-style event names.
+- Verify shared/backend/frontend event catalogs match exactly.
+
+4. Release gate execution:
+
+- `npm --prefix backend run test`
+- `npm --prefix frontend run test`
+- `npm run qa:coverage-report`
+
+5. Exit gate criteria:
+
+- No notes/journal contract drift across docs, routes, shared events, and frontend handlers.
+- No recipients-leak regressions for handout surfacing cards.
+- Excerpt generation is deterministic and safe (no external-link leakage in surfaced excerpt text).
+- Stable pass rate across reruns for new notes/journal suites.
 
 Definition of done:
 

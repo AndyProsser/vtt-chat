@@ -291,7 +291,16 @@ UI behavior when not installed:
 **Information Panel - Campaign Tab**:
 
 - DM edits campaign metadata: name, description, banner/poster image.
-- All personas see read-only campaign stats: session count and total duration.
+- All personas see compact read-only campaign stats:
+  - Total campaign length (sum of active session durations only)
+  - Player count
+  - Session count
+  - Completed session count
+  - Next session ETA (when available)
+- Stat explanation text is hidden in tooltip/popper help (definition only).
+- Description editor is intentionally basic and supports only bold, italic, bullet lists, and numbered lists.
+- Editing happens in-panel with explicit `Save` and `Cancel` actions.
+- Poster controls support upload, replace, and remove.
 
 **Feature Toggle Access**:
 
@@ -322,7 +331,16 @@ UI behavior when not installed:
 **Information Campaign Tab**:
 
 - [ ] Add campaign metadata editor (name, description, banner/poster) for DM.
-- [ ] Add read-only campaign stats cards (session count, total session duration).
+- [ ] Add simple in-panel metadata editor with explicit Save/Cancel (no autosave).
+- [ ] Restrict description formatting to basic markdown affordances: bold, italic, bullet list, numbered list.
+- [ ] Add poster upload/replace/remove actions.
+- [ ] Add compact read-only campaign stats cards:
+  - total campaign length
+  - player count
+  - session count
+  - completed sessions
+  - next session ETA
+- [ ] Add stat definition tooltip/popper copy for each campaign stat.
 
 **Backend**:
 

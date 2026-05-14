@@ -20,6 +20,7 @@ Related docs:
 - `timeline` renders with Mermaid by default and must fall back to a plain-text timeline view when Mermaid rendering is unavailable.
 - DMDX is enabled in both **Notes** and **Journal** surfaces.
 - DMDX authoring support includes AI prompt templates, AI validation/repair prompts, and VS Code fenced-language formatting support.
+- Markdown link policy for Notes/Journal blocks external URLs in both editor and renderer; internal note links and `attachment://` links are allowed.
 
 ---
 

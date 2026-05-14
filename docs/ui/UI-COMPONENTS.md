@@ -480,8 +480,12 @@ Campaign metadata and campaign stats surface for all personas.
 - Campaign name
 - Campaign description
 - Campaign banner/poster image
-- Sessions played by current player (read-only stat)
-- Total session duration for current player (read-only stat)
+- Compact campaign stats (read-only):
+  - Total campaign length (sum of active session durations only)
+  - Player count
+  - Session count
+  - Completed session count
+  - Next session ETA (when available)
 
 **Persona rules:**
 
@@ -493,6 +497,16 @@ Campaign metadata and campaign stats surface for all personas.
 
 - Campaign stats are read-only for all personas.
 - Campaign metadata editing is owned here and is not duplicated in rightbar settings.
+- Stats are compact by default; explanatory text is hidden behind tooltip/popper help.
+- Description editor is intentionally minimal and supports only:
+  - Bold
+  - Italic
+  - Bullet lists
+  - Numbered lists
+- Description editor uses a tiny WYSIWYG helper surface (no full markdown/code mode in this panel).
+- External links, images, tables, headings, and advanced markdown are not supported in this panel.
+- Editing occurs in-panel with explicit `Save` and `Cancel` actions (no autosave).
+- Poster controls in-panel support upload, replace, and remove.
 
 ---
 
