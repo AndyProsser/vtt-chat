@@ -183,8 +183,8 @@ describe('useAudioEngine', () => {
 
     const context = audioContextInstances[0]
     const participantTrackGain = context.gainNodes[2]
-    const participantEffectsSend = context.gainNodes[3]
-    const participantRoomBus = context.gainNodes[4]
+    const participantEffectsSend = context.gainNodes[4]
+    const participantRoomBus = context.gainNodes[5]
     const participantFilter = context.biquadNodes[0]
 
     setStoreState({
@@ -236,7 +236,7 @@ describe('useAudioEngine', () => {
     expect(removableTrackGain.disconnect).toHaveBeenCalledTimes(1)
 
     result.current.addTrack('track-dispose', {} as MediaStream)
-    const disposableTrackGain = context.gainNodes[5]
+    const disposableTrackGain = context.gainNodes[6]
 
     result.current.dispose()
 

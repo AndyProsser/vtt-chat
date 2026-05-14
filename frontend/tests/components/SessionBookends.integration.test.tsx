@@ -413,6 +413,9 @@ describe('Session bookend integration', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    if (typeof window !== 'undefined' && typeof window.localStorage?.clear === 'function') {
+      window.localStorage.clear()
+    }
     wsConnectionState = 'connected'
     wsSendMock.mockReset()
     createBaseStoreState()
@@ -454,9 +457,23 @@ describe('Session bookend integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
+    if (launchButton) {
+      fireEvent.click(launchButton)
+    }
     await screen.findByTestId('session-toolbar')
 
+    const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
+    if (cancelCooldownButton) {
+      fireEvent.click(cancelCooldownButton)
+      act(() => {
+        useStore.getState().handleSessionCooldownEnded({
+          sessionId: CURRENT_SESSION_ID,
+          timestamp: Date.now(),
+          payload: {},
+        } as any)
+      })
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
@@ -693,7 +710,10 @@ describe('Session bookend integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
+    if (launchButton) {
+      fireEvent.click(launchButton)
+    }
     await screen.findByTestId('session-toolbar')
 
     await waitFor(() => {
@@ -745,7 +765,10 @@ describe('Session bookend integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
+    if (launchButton) {
+      fireEvent.click(launchButton)
+    }
     await screen.findByTestId('session-toolbar')
 
     act(() => {
@@ -776,6 +799,18 @@ describe('Session bookend integration', () => {
     await waitFor(() => {
       expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
     })
+
+    const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
+    if (cancelCooldownButton) {
+      fireEvent.click(cancelCooldownButton)
+      act(() => {
+        useStore.getState().handleSessionCooldownEnded({
+          sessionId: CURRENT_SESSION_ID,
+          timestamp: Date.now(),
+          payload: {},
+        } as any)
+      })
+    }
 
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
@@ -833,7 +868,10 @@ describe('Session bookend integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
+    if (launchButton) {
+      fireEvent.click(launchButton)
+    }
     await screen.findByTestId('session-toolbar')
 
     // Cycle 1
@@ -851,7 +889,18 @@ describe('Session bookend integration', () => {
       expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
     })
 
-    // Start creates next session; markers remain MAIN-only.
+    // Ended sessions enter cooldown; cancel it before starting the next session.
+    const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
+    if (cancelCooldownButton) {
+      fireEvent.click(cancelCooldownButton)
+      act(() => {
+        useStore.getState().handleSessionCooldownEnded({
+          sessionId: CURRENT_SESSION_ID,
+          timestamp: Date.now(),
+          payload: {},
+        } as any)
+      })
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
       expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)

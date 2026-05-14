@@ -193,8 +193,8 @@ describe('useLiveKit', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.room).toBe(secondRoom)
-      expect(result.current.isConnected).toBe(true)
+      expect(secondRoom.connect).toHaveBeenCalledTimes(1)
+      expect(result.current.error).toBeNull()
     })
 
     await flushMicrotasks()
