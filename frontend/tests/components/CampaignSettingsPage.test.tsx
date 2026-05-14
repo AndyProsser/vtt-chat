@@ -1,227 +1,101 @@
-import { render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UUID } from '@shared'
 import { CampaignSettingsPage } from '../../src/components/session/CampaignSettingsPage'
 
-// Mock the toast hook
 vi.mock('../../src/hooks/useToast', () => ({
   useToast: () => vi.fn(),
 }))
 
+const API_URL = 'http://localhost:3000'
+const TOKEN = 'test-token'
+const CAMPAIGN_ID = 'campaign-1' as UUID
+
+function makeCampaign(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: CAMPAIGN_ID,
+    name: 'Test Campaign',
+    description: 'Test description',
+    extensionSyncPolicy: 'DM_AND_PLAYERS',
+    inviteCode: 'TEST123',
+    inviteActive: true,
+    spectatorInviteCode: null,
+    spectatorInviteActive: false,
+    postSessionChatEnabled: true,
+    postSessionChatDurationMs: 300000,
+    ...overrides,
+  }
+}
+
+function makeGetFetch(campaignOverrides: Partial<Record<string, unknown>> = {}) {
+  return vi.fn(async (_url: string, init?: RequestInit) => {
+    if (!init?.method || init.method === 'GET') {
+      return { ok: true, json: async () => ({ campaign: makeCampaign(campaignOverrides) }) }
+    }
+    return { ok: true, json: async () => ({}) }
+  })
+}
+
+function renderPage() {
+  return render(
+    <CampaignSettingsPage apiUrl={API_URL} token={TOKEN} campaignId={CAMPAIGN_ID} />
+  )
+}
+
 describe('CampaignSettingsPage', () => {
-  it('renders without crashing', () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        campaign: {
-          id: 'campaign-1' as UUID,
-          name: 'Test Campaign',
-          description: 'Test',
-          extensionSyncPolicy: 'DM_AND_PLAYERS',
-          inviteCode: 'TEST',
-          inviteActive: true,
-          spectatorInviteCode: null,
-          spectatorInviteActive: false,
-          postSessionChatEnabled: true,
-          postSessionChatDurationMs: 300000,
-        },
-      }),
-    }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(
-      <CampaignSettingsPage
-        apiUrl="http://localhost:3000"
-        token="token"
-        campaignId={'campaign-1' as UUID}
-      />
-    )
-
-    expect(true).toBe(true)
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('extension sync policy controls', () => {
-    it('renders integration policy controls in form', async () => {
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                spectatorInviteCode: null,
-                spectatorInviteActive: false,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
+    it('renders ALLOW, DM_ONLY and BLOCK buttons', async () => {
+      vi.stubGlobal('fetch', makeGetFetch())
+      renderPage()
       await waitFor(() => {
-        expect(screen.getByText(/integrations/i)).toBeTruthy()
         expect(screen.getByRole('button', { name: 'ALLOW' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'DM_ONLY' })).toBeTruthy()
         expect(screen.getByRole('button', { name: 'BLOCK' })).toBeTruthy()
       })
     })
 
-    it('loads DM_AND_PLAYERS policy as ALLOW UI state', async () => {
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                spectatorInviteCode: null,
-                spectatorInviteActive: false,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
+    it('renders Integrations heading', async () => {
+      vi.stubGlobal('fetch', makeGetFetch())
+      renderPage()
       await waitFor(() => {
-        const allowButton = screen.getByRole('button', { name: 'ALLOW' })
-        expect(allowButton.getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByText(/integrations/i)).toBeTruthy()
       })
     })
 
-    it('allows changing extension sync policy', async () => {
-      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'GET') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                spectatorInviteCode: null,
-                spectatorInviteActive: false,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'PATCH') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_ONLY',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                spectatorInviteCode: null,
-                spectatorInviteActive: false,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-              message: 'Campaign metadata saved.',
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
+    it('maps DM_AND_PLAYERS to ALLOW aria-pressed', async () => {
+      vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'DM_AND_PLAYERS' }))
+      renderPage()
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'DM_ONLY' })).toBeTruthy()
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'DM_ONLY' }))
-      fireEvent.click(screen.getByRole('button', { name: /save/i }))
-
-      await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          expect.stringContaining('/campaigns/' + mockCampaignId + '/settings'),
-          expect.objectContaining({ method: 'PATCH' })
-        )
+        expect(screen.getByRole('button', { name: 'ALLOW' }).getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe('false')
+        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe('false')
       })
     })
 
-    it('displays helper text explaining integration policy options', async () => {
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                spectatorInviteCode: null,
-                spectatorInviteActive: false,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
+    it('maps DM_ONLY to DM_ONLY aria-pressed', async () => {
+      vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'DM_ONLY' }))
+      renderPage()
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe('true')
       })
-      vi.stubGlobal('fetch', fetchMock)
+    })
 
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
+    it('maps NONE to BLOCK aria-pressed', async () => {
+      vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'NONE' }))
+      renderPage()
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe('true')
+      })
+    })
 
+    it('displays helper text for integration policy options', async () => {
+      vi.stubGlobal('fetch', makeGetFetch())
+      renderPage()
       await waitFor(() => {
         expect(
           screen.getByText(
@@ -231,322 +105,97 @@ describe('CampaignSettingsPage', () => {
       })
     })
   })
-})
 
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
+  describe('saving', () => {
+    it('sends DM_ONLY in PATCH body when DM_ONLY is selected', async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init?.method || init.method === 'GET') {
+          return { ok: true, json: async () => ({ campaign: makeCampaign() }) }
         }
-        return { ok: true, json: async () => ({}) }
+        return {
+          ok: true,
+          json: async () => ({
+            campaign: makeCampaign({ extensionSyncPolicy: 'DM_ONLY' }),
+            message: 'Campaign metadata saved.',
+          }),
+        }
       })
       vi.stubGlobal('fetch', fetchMock)
+      renderPage()
 
-      render(
-        <CampaignSettingsPage campaignId={mockCampaignId} onDone={vi.fn()} />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByText(/integrations/i)).toBeTruthy()
-        expect(screen.getByRole('button', { name: 'ALLOW' })).toBeTruthy()
-        expect(screen.getByRole('button', { name: 'DM_ONLY' })).toBeTruthy()
-        expect(screen.getByRole('button', { name: 'BLOCK' })).toBeTruthy()
-      })
-    })
-
-    it('loads DM_AND_PLAYERS policy as ALLOW UI state', async () => {
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
-      await waitFor(() => {
-        const allowButton = screen.getByRole('button', { name: 'ALLOW' })
-        expect(allowButton.getAttribute('aria-pressed')).toBe('true')
-      })
-    })
-
-    it('allows changing policy from ALLOW to DM_ONLY and saves', async () => {
-      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'GET') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'PATCH') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_ONLY',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-              message: 'Campaign metadata saved.',
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'DM_ONLY' })).toBeTruthy()
-      })
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'DM_ONLY' })).toBeTruthy())
       fireEvent.click(screen.getByRole('button', { name: 'DM_ONLY' }))
+      fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
+      await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
-          expect.stringContaining('/campaigns/' + mockCampaignId + '/settings'),
+          expect.stringContaining(`/campaigns/${CAMPAIGN_ID}/settings`),
           expect.objectContaining({
             method: 'PATCH',
             body: expect.stringContaining('"extensionSyncPolicy":"DM_ONLY"'),
           })
         )
-      })
+      )
     })
 
-    it('allows changing policy to BLOCK and saves', async () => {
-      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'GET') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
+    it('sends NONE in PATCH body when BLOCK is selected', async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init?.method || init.method === 'GET') {
+          return { ok: true, json: async () => ({ campaign: makeCampaign() }) }
         }
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'PATCH') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'NONE',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-              message: 'Campaign metadata saved.',
-            }),
-          }
+        return {
+          ok: true,
+          json: async () => ({
+            campaign: makeCampaign({ extensionSyncPolicy: 'NONE' }),
+            message: 'Campaign metadata saved.',
+          }),
         }
-        return { ok: true, json: async () => ({}) }
       })
       vi.stubGlobal('fetch', fetchMock)
+      renderPage()
 
-      render(
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'BLOCK' })).toBeTruthy()
-      })
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'BLOCK' })).toBeTruthy())
       fireEvent.click(screen.getByRole('button', { name: 'BLOCK' }))
+      fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
+      await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
-          expect.stringContaining('/campaigns/' + mockCampaignId + '/settings'),
+          expect.stringContaining(`/campaigns/${CAMPAIGN_ID}/settings`),
           expect.objectContaining({
             method: 'PATCH',
             body: expect.stringContaining('"extensionSyncPolicy":"NONE"'),
           })
         )
-      })
+      )
     })
 
-    it('displays helper text explaining integration policy options', async () => {
-      const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings')) {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_AND_PLAYERS',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
+    it('PATCH payload always includes extensionSyncPolicy field', async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init?.method || init.method === 'GET') {
+          return { ok: true, json: async () => ({ campaign: makeCampaign({ extensionSyncPolicy: 'DM_ONLY' }) }) }
         }
-        return { ok: true, json: async () => ({}) }
-        <CampaignSettingsPage
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-        />
+        const body = JSON.parse(init.body as string)
+        expect(body).toHaveProperty('extensionSyncPolicy')
+        return {
+          ok: true,
+          json: async () => ({
+            campaign: makeCampaign({ extensionSyncPolicy: body.extensionSyncPolicy }),
+            message: 'Campaign metadata saved.',
+          }),
+        }
+      })
       vi.stubGlobal('fetch', fetchMock)
+      renderPage()
 
-      render(
-        <CampaignSettingsPage campaignId={mockCampaignId} onDone={vi.fn()} />
+      await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining(`/campaigns/${CAMPAIGN_ID}/settings`),
+          expect.objectContaining({ method: 'PATCH' })
+        )
       )
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(
-            /ALLOW permits DM and players to sync updates\. DM_ONLY restricts updates to DM\. BLOCK disables integration-driven updates\./
-          )
-        ).toBeTruthy()
-      })
-    })
-  })
-
-  describe('save functionality', () => {
-    it('includes extension policy in save payload', async () => {
-      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'GET') {
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: 'DM_ONLY',
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-            }),
-          }
-        }
-        if (url.includes('/campaigns/' + mockCampaignId + '/settings') && init?.method === 'PATCH') {
-          const bodyObj = JSON.parse(init.body as string)
-          expect(bodyObj).toHaveProperty('extensionSyncPolicy')
-          return {
-            ok: true,
-            json: async () => ({
-              campaign: {
-                id: mockCampaignId,
-                name: 'Test Campaign',
-                description: 'Test description',
-                extensionSyncPolicy: bodyObj.extensionSyncPolicy,
-                inviteCode: 'TEST123',
-                inviteActive: true,
-                postSessionChatEnabled: true,
-                postSessionChatDurationMs: 300000,
-              },
-              message: 'Campaign metadata saved.',
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({}) }
-      })
-          apiUrl={mockApiUrl}
-          token={mockToken}
-          campaignId={mockCampaignId}
-
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(
-        <CampaignSettingsPage campaignId={mockCampaignId} onDone={vi.fn()} />
-      )
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'ALLOW' })).toBeTruthy()
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: 'ALLOW' }))
-
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(screen.getByText(/Campaign metadata saved\./)).toBeTruthy()
-      })
     })
   })
 })
