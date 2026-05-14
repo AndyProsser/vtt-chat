@@ -8,7 +8,7 @@ import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
-} from './groupPanel.types'
+} from '@/types/groupPanel'
 
 interface RoomMemberListProps {
   room: GroupPanelGroupWithParticipants

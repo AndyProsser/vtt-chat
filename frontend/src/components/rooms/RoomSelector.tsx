@@ -27,14 +27,14 @@ import {
   getResolvedGroupEnvironmentName,
   getGroupStatEntries,
   waitForGroupDeleteReconciled,
-} from './groupsPanel.helpers'
+} from '@/utils/groupsPanel'
 import {
   isWhisperGroup,
   type GroupPanelGroupWithParticipants,
   type GroupParticipantStatus,
   type GroupParticipantWithGroupId,
   type GroupsPanelProps,
-} from './groupPanel.types'
+} from '@/types/groupPanel'
 import { useRoomMoves } from './useRoomMoves'
 import { useWhisperFlow } from './useWhisperFlow'
 import '../../styles/components/rooms/RoomSelector.css'
@@ -46,7 +46,7 @@ export type {
   GroupsPanelProps,
   RoomParticipantStatus,
   RoomSelectorRoom,
-} from './groupPanel.types'
+} from '@/types/groupPanel'
 
 export function RoomSelector({
   apiUrl,

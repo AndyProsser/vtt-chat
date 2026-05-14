@@ -4,7 +4,7 @@ import type { UUID } from '@shared'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
-} from './groupPanel.types'
+} from '@/types/groupPanel'
 
 interface UseRoomMovesOptions {
   apiUrl: string

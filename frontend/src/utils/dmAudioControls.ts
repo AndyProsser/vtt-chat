@@ -1,8 +1,8 @@
 import type { UUID } from '@shared'
 import type { AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { getUserDMOverride } from '@/utils/audioOverrides'
-import { FILTER_PRESETS } from '../../constants/dmAudioControls.constants'
-import type { AudioRoomOption, ParticipantOption, PendingMove } from './dmAudioControls.types'
+import { FILTER_PRESETS } from '@/constants/dmAudioControls.constants'
+import type { AudioRoomOption, ParticipantOption, PendingMove } from '@/types/dmAudioControls'
 
 export function buildParticipantsById(
   participants: ParticipantOption[]

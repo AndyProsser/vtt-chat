@@ -4,8 +4,8 @@ import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
   WhisperGroupContextSnapshot,
-} from './groupPanel.types'
-import { isWhisperGroup } from './groupPanel.types'
+} from '@/types/groupPanel'
+import { isWhisperGroup } from '@/types/groupPanel'
 
 interface UseWhisperFlowOptions {
   apiUrl: string

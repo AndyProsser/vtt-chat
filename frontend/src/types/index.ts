@@ -23,6 +23,28 @@ export type {
   EmailCheckStatus,
 } from './invite'
 export type { SessionLogEntry, HistoryGroupBy, HistorySortOrder, HistoryControls } from './history'
+export type {
+  GroupPanelGroup,
+  GroupPanelGroupWithParticipants,
+  GroupParticipantStatus,
+  GroupParticipantWithGroupId,
+  GroupsPanelProps,
+  WhisperGroupContextSnapshot,
+  RoomSelectorRoom,
+  RoomParticipantStatus,
+  RoomParticipantWithRoomId,
+  RoomSelectorRoomWithParticipants,
+  RoomSelectorProps,
+  WhisperContextSnapshot,
+} from './groupPanel'
+export type {
+  AudioRoomOption,
+  ParticipantOption,
+  AudioPreset,
+  DMAudioControlsProps,
+  PendingOverride,
+  PendingMove,
+} from './dmAudioControls'
 export type { ConnectionState, ConnectionOptions, EventHandler } from './ws'
 export type { SessionMetadata, MetadataSnapshot, MetadataTimelineEntry } from './metadata'
 export type { ToastVariant, CenterPaneView, RightRailTab } from './ui'

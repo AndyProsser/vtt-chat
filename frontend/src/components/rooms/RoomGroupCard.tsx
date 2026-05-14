@@ -7,11 +7,11 @@ import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import { Icon } from '../ui/Icon'
 import { resolveEnvironmentGlyph } from '../../constants/voiceGroup.constants'
 import { GroupMemberList } from './GroupMemberList'
-import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from './groupPanel.types'
+import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from '@/types/groupPanel'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
-} from './groupPanel.types'
+} from '@/types/groupPanel'
 
 export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants

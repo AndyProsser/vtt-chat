@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { UUID } from '@shared'
-import './MockPlayerControlPanel.css'
+import '@/styles/components/audio/MockPlayerControlPanel.css'
 
 interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean

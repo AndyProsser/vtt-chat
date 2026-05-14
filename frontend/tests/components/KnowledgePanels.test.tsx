@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MessageType, NoteVisibility, PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -125,8 +125,10 @@ describe('knowledge panels', () => {
       createdAt: 15,
       updatedAt: 25,
     }
-    notesState.addNote(SESSION_ID, firstNote)
-    notesState.addNote(SESSION_ID, secondNote)
+    await act(async () => {
+      notesState.addNote(SESSION_ID, firstNote)
+      notesState.addNote(SESSION_ID, secondNote)
+    })
 
     expect(await screen.findByText('Recovered sigil')).toBeTruthy()
     expect(screen.getByText('By Tara · sigil, vault')).toBeTruthy()
@@ -148,8 +150,10 @@ describe('knowledge panels', () => {
     )
 
     const secondState = useStore.getState()
-    secondState.addNote(SESSION_ID, firstNote)
-    secondState.addNote(SESSION_ID, secondNote)
+    await act(async () => {
+      secondState.addNote(SESSION_ID, firstNote)
+      secondState.addNote(SESSION_ID, secondNote)
+    })
 
     await waitFor(() => {
       expect(screen.getByText('Recovered sigil')).toBeTruthy()
@@ -174,8 +178,10 @@ describe('knowledge panels', () => {
     )
 
     const thirdState = useStore.getState()
-    thirdState.addNote(SESSION_TWO_ID, firstNote)
-    thirdState.addNote(SESSION_TWO_ID, secondNote)
+    await act(async () => {
+      thirdState.addNote(SESSION_TWO_ID, firstNote)
+      thirdState.addNote(SESSION_TWO_ID, secondNote)
+    })
 
     expect(await screen.findByText('Recovered sigil')).toBeTruthy()
     expect(screen.getByText('Tunnel map')).toBeTruthy()

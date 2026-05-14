@@ -89,6 +89,10 @@ describe('guest auth route surfaces', () => {
         />
       )
 
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
       await screen.findByText('Player Invite')
       const emailInput = await screen.findByLabelText('Email')
 
@@ -211,6 +215,10 @@ describe('guest auth route surfaces', () => {
           onAuthenticated={onAuthenticated}
         />
       )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
 
       await screen.findByText('Player Invite')
       const emailInput = await screen.findByLabelText('Email')
@@ -426,6 +434,10 @@ describe('guest auth route surfaces', () => {
           onAuthenticated={onAuthenticated}
         />
       )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
 
       await screen.findByText('Spectator Invite')
       const displayNameInput = await screen.findByLabelText('Display Name')

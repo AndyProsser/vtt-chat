@@ -19,13 +19,13 @@ import {
   buildPlayersByRoom,
   getActiveOverrideSummary,
   getSelectedFilterPreset,
-} from './dmAudioControls.helpers'
+} from '@/utils/dmAudioControls'
 import type {
   AudioPreset,
   DMAudioControlsProps,
   PendingMove,
   PendingOverride,
-} from './dmAudioControls.types'
+} from '@/types/dmAudioControls'
 
 export function DMAudioControls({
   apiUrl,
