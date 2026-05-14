@@ -35,7 +35,7 @@ export function JournalPanel({ sessionId, role }: JournalPanelProps) {
 
   if (entries.length === 0) {
     return (
-      <section className="knowledge-panel" aria-label="Journal">
+      <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
         <h3 className="knowledge-panel__heading">Journal</h3>
         <p className="knowledge-panel__empty">No journal entries yet.</p>
       </section>
@@ -43,7 +43,7 @@ export function JournalPanel({ sessionId, role }: JournalPanelProps) {
   }
 
   return (
-    <section className="knowledge-panel" aria-label="Journal">
+    <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
       <h3 className="knowledge-panel__heading">Journal</h3>
       <TabsPrimitive.Root
         value={viewMode}

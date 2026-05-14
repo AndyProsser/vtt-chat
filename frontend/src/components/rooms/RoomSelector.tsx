@@ -9,8 +9,12 @@ import {
   ROOM_PRESENCE_COPY,
   ROOM_ROLE_LABELS,
 } from '../../constants/roomPresence.constants'
-import { CONDITION_PRESETS, DM_FLAVOR_LINES } from '../../constants/voiceGroup.constants'
+import { CONDITION_PRESETS } from '../../constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
+import {
+  DISTANCE_PRESETS,
+  getRoomSelectorDmFlavorLine,
+} from '../../constants/roomSelector.constants'
 import { useStore } from '../../hooks/useStore'
 import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
@@ -43,8 +47,6 @@ export type {
   RoomParticipantStatus,
   RoomSelectorRoom,
 } from './groupPanel.types'
-
-const DISTANCE_PRESETS = ['Default', 'Nearby', 'Visible', 'Far'] as const
 
 export function RoomSelector({
   apiUrl,
@@ -83,16 +85,10 @@ export function RoomSelector({
   const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
 
-  const dmFlavorLine = useMemo(() => {
-    const seed = `${dmUserId}:${sessionId}`
-    let hash = 0
-    for (let index = 0; index < seed.length; index += 1) {
-      hash = (hash << 5) - hash + seed.charCodeAt(index)
-      hash |= 0
-    }
-
-    return DM_FLAVOR_LINES[Math.abs(hash) % DM_FLAVOR_LINES.length]
-  }, [dmUserId, sessionId])
+  const dmFlavorLine = useMemo(
+    () => getRoomSelectorDmFlavorLine(dmUserId, sessionId),
+    [dmUserId, sessionId]
+  )
 
   const confirmedRoomIds = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms])
 
@@ -305,12 +301,9 @@ export function RoomSelector({
 
   const syncMockTakeoverStatus = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${apiUrl}/api/dev/mock-players/takeover/status/${sessionId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
+      const response = await fetch(`${apiUrl}/api/dev/mock-players/takeover/status/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
       if (!response.ok) {
         return
