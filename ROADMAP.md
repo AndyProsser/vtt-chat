@@ -2,11 +2,42 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-11
+Last updated: 2026-05-14
 
 Related roadmap:
 
 - Development roadmap (feature-stage history and delivery log): [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)
+
+---
+
+## Recent Delivery Update (2026-05-14)
+
+Completed today across frontend and backend:
+
+- Frontend architectural refactor and centralization:
+  - Moved component-local helper/type/style files into central `src/utils`, `src/types`, and `src/styles/components` locations.
+  - Refactored invite/join and history flows to use centralized constants/types/helpers (`inviteJoin`, `history`) and removed local duplication.
+  - Refactored room/group and DM audio controls to use centralized `groupPanel` and `dmAudioControls` contracts/utilities.
+- Frontend stability and test-hardening:
+  - Stabilized integration/hook/component tests for session boundaries and audio/livekit behavior.
+  - Updated auth/guest route tests and knowledge panel tests to current UX contracts.
+  - Full frontend suite now passes in current workspace state.
+- Backend service and route refactors:
+  - Session service decomposition (`session/core.service.ts`) and route/service wiring cleanup.
+  - Guest-auth/audio/session import-path and index reorganization.
+  - Access control and session logging wiring expanded through route and middleware pathways.
+
+Current readiness notes from local verification (2026-05-14):
+
+- Frontend tests: `45` files / `392` tests passing.
+- Backend tests: `69` files / `545` tests run; `6` currently failing in:
+  - `tests/api/rooms-routes.test.ts` (delete/move-members flow)
+  - `tests/infra/telemetry-store.test.ts` (path/retention/rotation assertions)
+
+Immediate next cleanup priorities:
+
+- Align backend telemetry-store tests for cross-platform path behavior (Windows path handling and retention pruning expectations).
+- Resolve room-delete member-move API test contract mismatch (`500` vs expected `200`).
 
 ---
 
@@ -123,15 +154,17 @@ Out of scope:
 ## 2) Current Readiness Snapshot
 
 - Build and lint: green at workspace level
-- Backend tests: 47 files / 311 tests passing
-- Frontend tests: 33 files / 368 tests passing
-- Admin tests: 17 files / 139 tests passing
+- Backend tests (local run 2026-05-14): 69 files / 545 tests run, 6 failing
+- Frontend tests (local run 2026-05-14): 45 files / 392 tests passing
+- Admin tests: 17 files / 139 tests passing (last known baseline)
 - Backend coverage snapshot: statements 60.99, branches 51.69, functions 60.17, lines 61.35
 - Admin coverage snapshot: statements 86.72, branches 71.85, functions 83.49, lines 88.2
 
 Known readiness gap classes:
 
 - Redis-first runtime-state consistency and session-audit coverage across websocket-visible mutations
+- Cross-platform backend telemetry-store test determinism (path and retention windows)
+- Group-delete member-move API parity and regression guard coverage
 - Multi-client reconnect and soak hardening (presence/groups-audio topology; runtime rooms)
 - Telemetry durability and restart-survival operational checks
 - Telemetry signal definition clarity (what is tracked, why it matters, and how it is consumed)

@@ -1,5 +1,5 @@
 export const APP_NAME = 'VTT-Chat'
-export const APP_VERSION = '0.6.3'
+export const APP_VERSION = '0.7.0'
 
 // Server defaults
 export const DEFAULT_PORT = 3000
