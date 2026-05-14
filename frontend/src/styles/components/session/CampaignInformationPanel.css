@@ -32,6 +32,53 @@
   color: var(--color-text);
 }
 
+.cip-field-label {
+  display: block;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cip-input,
+.cip-textarea {
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.cip-textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.cip-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.cip-toolbar__button {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font-size: 0.72rem;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.cip-toolbar__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .cip-description,
 .cip-muted {
   margin: 0;
@@ -96,6 +143,18 @@
   letter-spacing: 0.05em;
 }
 
+.cip-stat__hint {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  text-align: center;
+  line-height: 0.9rem;
+  font-size: 0.62rem;
+  margin-left: 0.18rem;
+}
+
 .cip-meta {
   display: grid;
   gap: 0.5rem;
@@ -153,4 +212,19 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.cip-poster-controls {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-subtle);
+}
+
+.cip-error {
+  margin: 0;
+  color: var(--color-danger, #d05454);
+  font-size: 0.8rem;
 }

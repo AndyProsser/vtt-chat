@@ -13,6 +13,7 @@ type CampaignSettingsPayload = {
   id: UUID
   name: string
   description?: string | null
+  extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   inviteCode: string
   inviteActive: boolean
   spectatorInviteCode?: string | null
@@ -28,6 +29,9 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
   const [description, setDescription] = useState('')
   const [postSessionChatEnabled, setPostSessionChatEnabled] = useState(true)
   const [postSessionChatDurationMinutes, setPostSessionChatDurationMinutes] = useState(5)
+  const [extensionSyncPolicy, setExtensionSyncPolicy] = useState<'ALLOW' | 'DM_ONLY' | 'NONE'>(
+    'ALLOW'
+  )
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -86,6 +90,11 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
         setPostSessionChatDurationMinutes(
           Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
         )
+        setExtensionSyncPolicy(
+          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
+            ? 'ALLOW'
+            : payload.campaign.extensionSyncPolicy
+        )
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
@@ -117,6 +126,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
           postSessionChatDurationMs: postSessionChatEnabled
             ? postSessionChatDurationMinutes * 60_000
             : 300_000,
+          extensionSyncPolicy,
         }),
       })
 
@@ -132,6 +142,11 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
       setPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
       setPostSessionChatDurationMinutes(
         Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+      )
+      setExtensionSyncPolicy(
+        payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
+          ? 'ALLOW'
+          : payload.campaign.extensionSyncPolicy
       )
       setNotice('Campaign metadata saved.')
     } catch (err) {
@@ -300,6 +315,49 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
               />
               <p className="session-card-subtitle">
                 Default 5 minutes. Minimum 1 minute, maximum 60 minutes.
+              </p>
+
+              <h4 className="session-inline-form-title">Integrations</h4>
+              <label className="session-label" htmlFor="campaign-extension-sync-policy">
+                D&D Beyond / extension updates
+              </label>
+              <div
+                id="campaign-extension-sync-policy"
+                className="session-toggle-group"
+                role="group"
+                aria-label="Extension sync policy"
+              >
+                <button
+                  type="button"
+                  className={`session-toggle-button ${extensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
+                  aria-pressed={extensionSyncPolicy === 'ALLOW'}
+                  onClick={() => setExtensionSyncPolicy('ALLOW')}
+                  disabled={isSaving}
+                >
+                  ALLOW
+                </button>
+                <button
+                  type="button"
+                  className={`session-toggle-button ${extensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
+                  aria-pressed={extensionSyncPolicy === 'DM_ONLY'}
+                  onClick={() => setExtensionSyncPolicy('DM_ONLY')}
+                  disabled={isSaving}
+                >
+                  DM_ONLY
+                </button>
+                <button
+                  type="button"
+                  className={`session-toggle-button ${extensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
+                  aria-pressed={extensionSyncPolicy === 'NONE'}
+                  onClick={() => setExtensionSyncPolicy('NONE')}
+                  disabled={isSaving}
+                >
+                  BLOCK
+                </button>
+              </div>
+              <p className="session-card-subtitle">
+                ALLOW permits DM and players to sync updates. DM_ONLY restricts updates to DM.
+                BLOCK disables integration-driven updates.
               </p>
             </form>
 

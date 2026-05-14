@@ -85,6 +85,7 @@ interface CampaignSummary {
   name: string
   description?: string | null
   posterUrl?: string | null
+  extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   inviteCode: string
   currentDmId: UUID
   memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
@@ -2356,7 +2357,7 @@ export function SessionInit({
       spectatorReconnectGraceSecs: settingsSpectatorsEnabled
         ? settingsSpectatorReconnectGraceSecs
         : 60,
-      extensionSyncPolicy: settingsSpectatorsEnabled ? settingsExtensionSyncPolicy : 'ALLOW',
+      extensionSyncPolicy: settingsExtensionSyncPolicy,
       postSessionChatEnabled: Boolean(settingsPostSessionChatEnabled),
       postSessionChatDurationMs:
         toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000,
@@ -2416,6 +2417,7 @@ export function SessionInit({
                 name: payload.campaign.name,
                 description: payload.campaign.description,
                 posterUrl: payload.campaign.posterUrl,
+                extensionSyncPolicy: payload.campaign.extensionSyncPolicy,
               }
             : campaign
         )
@@ -2430,6 +2432,70 @@ export function SessionInit({
       setIsSettingsSaving(false)
     }
   }
+
+  const handleSaveCampaignInfoPanel = useCallback(
+    async (
+      campaignId: UUID,
+      updates: {
+        name: string
+        description: string
+        posterUrl: string | null
+        integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+      }
+    ) => {
+      setError(null)
+
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: updates.name,
+          description: updates.description,
+          posterUrl: updates.posterUrl,
+          extensionSyncPolicy: updates.integrationSyncPolicy,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.message || 'Failed to save campaign info')
+      }
+
+      const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
+
+      setCampaigns((prev) =>
+        prev.map((campaign) =>
+          campaign.id === payload.campaign.id
+            ? {
+                ...campaign,
+                name: payload.campaign.name,
+                description: payload.campaign.description,
+                posterUrl: payload.campaign.posterUrl,
+                extensionSyncPolicy: payload.campaign.extensionSyncPolicy,
+              }
+            : campaign
+        )
+      )
+
+      if (settingsData?.id === payload.campaign.id) {
+        setSettingsData(payload.campaign)
+        setSettingsName(payload.campaign.name)
+        setSettingsDescription(payload.campaign.description || '')
+        setSettingsPosterUrl(payload.campaign.posterUrl || '')
+        setSettingsExtensionSyncPolicy(
+          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
+            ? 'ALLOW'
+            : payload.campaign.extensionSyncPolicy
+        )
+      }
+
+      setLobbyNotice('Campaign information saved.')
+    },
+    [apiUrl, fetchWithAuthGuard, settingsData?.id, token]
+  )
 
   const handlePosterFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -3656,6 +3722,7 @@ export function SessionInit({
                           selectedCampaign && selectedCampaign.currentDmId === user.id
                         )}
                         onEditCampaign={openCampaignSettingsModal}
+                        onSaveCampaignInfo={handleSaveCampaignInfoPanel}
                       />
                     }
                     roomsPanel={renderCampaignScaffoldPanel(
@@ -4334,7 +4401,7 @@ export function SessionInit({
                       className={`session-toggle-button ${settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
                       aria-pressed={settingsExtensionSyncPolicy === 'ALLOW'}
                       onClick={() => setSettingsExtensionSyncPolicy('ALLOW')}
-                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                      disabled={isSettingsSaving}
                     >
                       ALLOW
                     </button>
@@ -4343,7 +4410,7 @@ export function SessionInit({
                       className={`session-toggle-button ${settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
                       aria-pressed={settingsExtensionSyncPolicy === 'DM_ONLY'}
                       onClick={() => setSettingsExtensionSyncPolicy('DM_ONLY')}
-                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                      disabled={isSettingsSaving}
                     >
                       DM_ONLY
                     </button>
@@ -4352,7 +4419,7 @@ export function SessionInit({
                       className={`session-toggle-button ${settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
                       aria-pressed={settingsExtensionSyncPolicy === 'NONE'}
                       onClick={() => setSettingsExtensionSyncPolicy('NONE')}
-                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
+                      disabled={isSettingsSaving}
                     >
                       NONE
                     </button>

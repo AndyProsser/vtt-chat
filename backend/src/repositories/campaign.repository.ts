@@ -100,6 +100,7 @@ export async function listCampaignsForUser(userId: string): Promise<
     description: string | null
     posterUrl: string | null
     inviteCode: string
+    extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
     currentDmId: string
     memberRole: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
     latestSessionState: SessionState | null
@@ -205,6 +206,7 @@ export async function listCampaignsForUser(userId: string): Promise<
     description: m.campaign.description,
     posterUrl: m.campaign.posterUrl,
     inviteCode: m.campaign.inviteCode,
+    extensionSyncPolicy: m.campaign.extensionSyncPolicy,
     currentDmId: m.campaign.currentDmId,
     dmUsername: m.campaign.currentDm?.username || 'dm',
     dmDisplayName: m.campaign.currentDm?.displayName || m.campaign.currentDm?.username || 'DM',
