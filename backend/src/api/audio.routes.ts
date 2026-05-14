@@ -12,27 +12,11 @@ import {
 } from '@/services/audio/audio-state'
 import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/ws/event-broadcaster'
+import { AUDIO_EVENT_TYPES, AUDIO_PRESETS } from '@/constants/audio.constants'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
 const router = Router()
-
-type AudioPreset = {
-  id: string
-  name: string
-  category: 'VOICE' | 'DISTANCE' | 'ENVIRONMENT' | 'CONDITION' | 'IC'
-}
-
-const AUDIO_PRESETS: AudioPreset[] = [
-  { id: 'voice-narrator', name: 'Narrator', category: 'VOICE' },
-  { id: 'voice-whisper', name: 'Whisper', category: 'VOICE' },
-  { id: 'distance-near', name: 'Near', category: 'DISTANCE' },
-  { id: 'distance-far', name: 'Far', category: 'DISTANCE' },
-  { id: 'env-tavern', name: 'Tavern', category: 'ENVIRONMENT' },
-  { id: 'env-cave', name: 'Cave', category: 'ENVIRONMENT' },
-  { id: 'cond-silenced', name: 'Silenced', category: 'CONDITION' },
-  { id: 'ic-goblin', name: 'Goblin', category: 'IC' },
-]
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -206,7 +190,7 @@ async function handleSetEnvironment(req: Request, res: Response) {
   })
 
   const event = createEvent({
-    type: 'AUDIO:ENVIRONMENT_SET',
+    type: AUDIO_EVENT_TYPES.ENVIRONMENT_SET,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
@@ -276,7 +260,7 @@ async function handleApplyDmOverride(req: Request, res: Response) {
   })
 
   const event = createEvent({
-    type: 'AUDIO:DM_OVERRIDE_APPLIED',
+    type: AUDIO_EVENT_TYPES.DM_OVERRIDE_APPLIED,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
@@ -333,7 +317,7 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
   })
 
   const event = createEvent({
-    type: 'AUDIO:DM_OVERRIDE_REMOVED',
+    type: AUDIO_EVENT_TYPES.DM_OVERRIDE_REMOVED,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
@@ -436,7 +420,7 @@ async function handleSetBroadcastState(req: Request, res: Response) {
   })
 
   const event = createEvent({
-    type: 'AUDIO:BROADCAST_STATE_CHANGED',
+    type: AUDIO_EVENT_TYPES.BROADCAST_STATE_CHANGED,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
