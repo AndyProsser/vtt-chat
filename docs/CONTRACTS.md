@@ -114,11 +114,35 @@ Until a contract re-lock, runtime authorization still resolves to the locked rol
 ### Session States
 
 ```typescript
-SessionState.IDLE // Not yet started
-SessionState.ACTIVE // Players can join and act
-SessionState.PAUSED // DM control, state frozen
-SessionState.ENDED // Frozen, read-only for all
+SessionState.IDLE // Not yet started; greenroom mode
+SessionState.ACTIVE // Players can join and act; session running
+SessionState.PAUSED // DM control; state frozen, off-the-record runtime
+SessionState.ENDED // Session stopped; recording/summary work triggered; new session cannot begin yet
+SessionState.CLEANUP // Post-session terminal state; no users connected; background cleanup job purges greenroom chat
 ```
+
+**State transitions and authority:**
+
+- `IDLE` → `ACTIVE`: DM explicit action (start session)
+- `ACTIVE` → `PAUSED`: DM explicit action OR automatic on DM disconnect
+- `ACTIVE` → `ENDED`: DM explicit action (stop session)
+- `PAUSED` → `ACTIVE`: DM explicit action (resume session)
+- `PAUSED` → `ENDED`: DM explicit action (stop session)
+- `ENDED` → `CLEANUP`: Automatic when all users disconnect (background scheduled job detects and transitions)
+- `CLEANUP` → `IDLE`: Background cleanup job completes (greenroom chat purged; session ready for fresh start)
+
+**Multi-session campaigns:**
+
+- GREENROOM chat persists across all sessions for a campaign
+- On `IDLE` → `ACTIVE`: existing GREENROOM remains; if no prior session, create new GREENROOM
+- On final session `ENDED` + all users disconnect: ALL previously ENDED sessions (from same campaign) transition to `CLEANUP` simultaneously
+- Cleanup job runs once per campaign, purges greenroom for all transitioned sessions
+
+**Post-session cooldown:**
+
+- If `postSessionChatEnabled` (campaign setting, default true): spectators remain connected until cooldown expires (default 300000 ms / 5 minutes)
+- During cooldown, players/DM/spectators can chat/speak; interaction never recorded
+- After cooldown expiry or DM early-end: all users disconnected; background job transitions `ENDED` → `CLEANUP`
 
 ### Other Enums
 
@@ -150,6 +174,8 @@ Campaign-model compatibility addendum (2026-05-04 lock):
 - A player has one active character per campaign; character replacement is allowed.
 - Message/history records preserve send-time character snapshot fields (for example name/avatar) so prior logs remain historically accurate after character replacement.
 - Spectators do not own characters and cannot create campaign-state mutations.
+- Campaign settings include `postSessionChatEnabled: boolean` (default true) and `postSessionChatDurationMs: integer` (default 300000 ms / 5 minutes, range 60000–3600000 ms).
+- GREENROOM (via RoomType) persists at campaign scope; shared across all sessions for that campaign.
 
 ---
 

@@ -10,25 +10,27 @@
 
 ### 1.1 Session State
 
-**Contract:** `session.state ∈ { INACTIVE, ACTIVE, PAUSED, CLEANUP }`
+**Contract:** `session.state ∈ { IDLE, ACTIVE, PAUSED, ENDED, CLEANUP }`
 
 **Current Codebase:**
 
-| Component           | Location                                          | Current                                                                                                                       | Contract Required                                             |
-| ------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **Backend DB**      | `backend/src/db/schema.prisma`                    | `SessionState` enum still persists IDLE, ACTIVE, PAUSED, ENDED, CLEANUP; shared helpers expose INACTIVE compatibility         | Rename IDLE→INACTIVE at persistence layer, keep CLEANUP state |
-| **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED); CLEANUP can be cleared back to IDLE on DM reconnect | Add CLEANUP transition logic, 60s timer, 20min timer          |
-| **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                                                                                  | Update allowed transitions, add timer enforcement             |
-| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                                                                            | Add cleanup state handling, mark for hydration on reconnect   |
-| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                                                                            | No change (endpoint stays same)                               |
+| Component           | Location                                          | Current                                                                  | Contract Required                                                                          |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| **Backend DB**      | `backend/src/db/schema.prisma`                    | `SessionState` enum with IDLE, ACTIVE, PAUSED, ENDED, CLEANUP            | Keep IDLE (canonical), ensure CLEANUP state ready for use                                  |
+| **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED) | Implement backend detection of ENDED + all users → CLEANUP                                 |
+| **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                             | Implement scheduled job for CLEANUP detection/transition                                   |
+| **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts`         | Scheduled job runs periodically                                          | Detect ENDED sessions with no connected users; transition to CLEANUP; purge greenroom chat |
+| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                       | Handle CLEANUP state on hydration and WS events                                            |
+| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                       | No change (endpoint stays same)                                                            |
 
 **Action Items:**
 
-- [x] Add `CLEANUP` to Prisma `SessionState` enum
-- [x] Add 60s auto-stop timer in backend when all users disconnect from ACTIVE/PAUSED
-- [x] Add 20min cleanup sweep for CLEANUP sessions (scheduled job; Redis TTL contract still pending)
-- [x] Implement backend-only `CLEANUP` transition + greenroom purge + return to INACTIVE compatibility state
-- [x] Update frontend to handle reconnect with backend snapshot replace (not merge)
+- [x] Ensure `SessionState` enum has IDLE, ACTIVE, PAUSED, ENDED, CLEANUP (don't rename IDLE)
+- [ ] Implement backend scheduled job: periodically scan ENDED sessions, check if all users disconnected, transition to CLEANUP
+- [ ] Implement multi-session detection: if final session in campaign is ENDED + all users gone, transition ALL ENDED sessions (from same campaign) to CLEANUP
+- [ ] Implement cleanup task: when job detects CLEANUP transition, purge greenroom chat and emit WS event
+- [ ] Update frontend to handle CLEANUP state on store hydration
+- [ ] Broadcast `SESSION:STATE_CHANGED` WS event when job transitions ENDED → CLEANUP
 
 ---
 
@@ -222,7 +224,7 @@
 
 ### 4.3 Post-Session Chat & Processing Window
 
-**Contract:** ENDED is the post-stop processing phase. DM may enable a spectator chat window with a configurable duration; on ENDED, the backend immediately triggers recording shutdown and summary/close-out work, then returns without waiting for that work to finish.
+**Contract:** ENDED is the post-stop processing phase. DM may enable a spectator chat window with a configurable duration (default 5 minutes / 300000 ms); on ENDED, the backend immediately triggers recording shutdown and summary/close-out work, then returns without waiting for that work to finish. When all users disconnect from cooldown window (or on expiry), background job transitions ENDED → CLEANUP.
 
 **Current Codebase:**
 
@@ -241,58 +243,91 @@
 - [ ] If post-session chat is enabled, start window timer in Redis and keep spectators connected until expiry or DM early-end
 - [ ] Add DM actions to extend the window and end it early
 - [ ] Update spectator UI to show duration slider, disable toggle, and countdown timer
-- [ ] Test: ENDED with chat enabled → spectators can chat during window → after expiry → spectators disconnected → session may transition to INACTIVE after trigger work has been dispatched
+- [ ] Test: ENDED with chat enabled → spectators can chat during window → after expiry → all users disconnected → scheduled job transitions ENDED → CLEANUP
 
 ---
 
-## 5. Timers & Auto-Transitions
+## 5. Session Lifecycle & Cleanup
 
-### 5.1 Disconnect Timer Cascade
+### 5.1 Session State Transitions (Scheduled Job Model)
 
 **Contract:**
 
-- Player intentional disconnect: immediate presence = DISCONNECTED; 5s later ghost=true; 60s later remove
-- DM intentional disconnect: immediate presence = DISCONNECTED + session = PAUSED
-- Everyone leaves ACTIVE/PAUSED: 60s later session = INACTIVE
-- Everyone leaves INACTIVE: 20min later session = CLEANUP → terminal cleanup
+Sessions move through a deterministic lifecycle managed by backend state transitions and a background scheduled cleanup job:
+
+1. **IDLE → ACTIVE**: DM explicit action (start session)
+2. **ACTIVE → PAUSED**: DM explicit action OR automatic on DM disconnect
+3. **ACTIVE → ENDED**: DM explicit action (stop session); triggers recording shutdown + summary work (async, non-blocking)
+4. **PAUSED → ACTIVE**: DM explicit action (resume session)
+5. **PAUSED → ENDED**: DM explicit action (stop session); triggers recording shutdown + summary work
+6. **ENDED → CLEANUP**: Automatic via scheduled job when all users disconnect and cooldown window expires (if enabled)
+7. **CLEANUP → IDLE**: Automatic via scheduled job after greenroom purge completes (session ready for fresh start)
+
+**Multi-session campaigns:**
+
+- Session A ends (`ENDED`); Session B starts (new `ACTIVE`)
+- GREENROOM persists from Session A into Session B
+- When Session B ends (`ENDED`) and all users disconnect: scheduled job detects "final session" and transitions **all ENDED sessions** (A, B, etc.) to `CLEANUP` simultaneously
+- Single cleanup run purges greenroom for all transitioned sessions
+
+**Cooldown timing:**
+
+- When session reaches `ENDED`: if `postSessionChatEnabled` (default true), hold spectators connected for `postSessionChatDurationMs` (default 300000 ms / 5 min)
+- During cooldown: players/DM/spectators can chat/speak; never recorded
+- On cooldown expiry or DM early-end: all users disconnected; scheduled job sees all users gone → transitions `ENDED` → `CLEANUP`
 
 **Current Codebase:**
 
-| Component        | Location                   | Current                        | Contract Required                         |
-| ---------------- | -------------------------- | ------------------------------ | ----------------------------------------- |
-| **Backend WS**   | `backend/src/ws/handlers/` | Disconnect handler             | Implement timer cascade per role          |
-| **Redis Timers** | `backend/src/infra/redis/` | TTL keys exist (handoff, etc.) | Add session-level TTL keys for 60s/20min  |
-| **Timer Jobs**   | `backend/src/jobs/`        | Job queue exists (?)           | Add cleanup job that runs on timer expiry |
+| Component        | Location                                          | Current                              | Contract Required                                    |
+| ---------------- | ------------------------------------------------- | ------------------------------------ | ---------------------------------------------------- |
+| **Backend Job**  | `backend/src/jobs/session-cleanup.job.ts`         | Scheduled job exists (?)             | Implement periodic scan + ENDED→CLEANUP transition   |
+| **Backend WS**   | `backend/src/ws/handlers/`                        | Presence events exist                | Emit `SESSION:STATE_CHANGED` when job transitions    |
+| **Redis Timers** | `backend/src/infra/redis/`                        | No session-level ENDED→CLEANUP logic | Add presence count check per session                 |
+| **Cleanup Task** | `backend/src/services/session-cleanup.service.ts` | Greenroom cleanup exists (?)         | Run on job transition, purge greenroom chat, emit WS |
 
 **Action Items:**
 
-- [ ] Implement player disconnect: set ghost=true on 5s timer
-- [ ] Implement player TTL: remove from session on 60s timer (cancel if reconnect)
-- [ ] Implement DM disconnect: immediately PAUSE session
-- [ ] Implement everyone-leaves-ACTIVE: 60s → session auto-stop to INACTIVE
-- [ ] Implement everyone-leaves-INACTIVE: 20min → session enters CLEANUP + terminal cleanup
-- [ ] Add comprehensive timer tests in `backend/src/tests/`
+- [ ] Create/enhance scheduled job: periodically query all `ENDED` sessions
+- [ ] For each `ENDED` session: check if all users (players, DM, spectators) have disconnected for cooldown duration
+- [ ] If cooldown expired: detect if this is the final session for its campaign; if yes, transition all ENDED sessions to CLEANUP; if no, transition only this session
+- [ ] On CLEANUP transition: run greenroom purge; emit `SESSION:STATE_CHANGED` WS event to all clients
+- [ ] Test multi-session: Session A ENDED → Session B ACTIVE → Session B ENDED + all users disconnect → job transitions both A and B to CLEANUP → greenroom purged
 
 ---
 
-### 5.2 Cleanup Job
+### 5.2 Cleanup Job Implementation
 
-**Contract:** On 20min timer expiry in CLEANUP state: purge greenroom chat, reset session for fresh start
+**Contract:** Background scheduled job runs on a configurable interval (default: every 5 minutes) and handles all post-session cleanup.
+
+**Job responsibilities:**
+
+1. **Scan ENDED sessions** — Find all sessions with state = `ENDED` and no active cooldown window
+2. **Check presence** — For each ENDED session, verify all users have been disconnected for > cooldown duration (or 0 if cooldown disabled)
+3. **Detect final session** — Determine if this is the last session in the campaign: query campaign for any `ACTIVE` or `PAUSED` sessions; if none, this is final
+4. **Batch transition** — If final session: transition ALL ENDED sessions for that campaign to `CLEANUP`; otherwise transition only this session
+5. **Run cleanup** — For each transitioned session, purge greenroom chat (soft-delete or move to archive table)
+6. **Emit events** — Broadcast `SESSION:STATE_CHANGED` with new state = `CLEANUP` to all connected clients for that session/campaign
+7. **Mark ready** — After cleanup, session is ready for fresh start (can later transition back to IDLE for new session)
 
 **Current Codebase:**
 
-| Component          | Location                                              | Current                                                          | Contract Required                                         |
-| ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------- |
-| **Cleanup Job**    | `backend/src/services/session-cleanup-job.service.ts` | Scheduled sweep job exists; Redis TTL cleanup is not implemented | Create `cleanupSession` job / reconcile with TTL contract |
-| **Greenroom Chat** | `backend/src/services/chat.service.ts`                | Chat persisted to DB                                             | Add soft-delete or archive for greenroom chat in CLEANUP  |
-| **Session Reset**  | `backend/src/services/session.service.ts`             | State updates                                                    | After cleanup, session ready for fresh start              |
+| Component           | Location                                  | Current                         | Contract Required                                      |
+| ------------------- | ----------------------------------------- | ------------------------------- | ------------------------------------------------------ |
+| **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts` | Scheduled job runs periodically | Implement ENDED→CLEANUP detection + batch transition   |
+| **Greenroom Chat**  | `backend/src/services/chat.service.ts`    | Chat persisted to DB            | Mark greenroom chat as archived on CLEANUP transition  |
+| **Session Service** | `backend/src/services/session.service.ts` | State updates                   | Implement helper to check all-users-disconnected state |
+| **Presence**        | `backend/src/infra/redis/presence.ts`     | Presence tracking exists        | Query presence count per session                       |
 
 **Action Items:**
 
-- [ ] Create `cleanupSession(sessionId)` job
-- [ ] Soft-delete or archive greenroom chat messages
-- [ ] Mark session as ready for fresh start (remove CLEANUP state, revert to INACTIVE as blank slate)
-- [ ] Test: session hits CLEANUP → 20min expires → job runs → chat purged → DM can start new session
+- [ ] Create cleanup job entry point that runs on schedule (e.g., every 5 minutes)
+- [ ] Implement `detectEndedSessions()` — query DB for state = ENDED + no active cooldown
+- [ ] Implement `getAllUsersDisconnected(sessionId)` — check Redis presence for session; return true if count = 0
+- [ ] Implement `isDetectFinalSession(sessionId)` — query DB for campaign; count ACTIVE + PAUSED sessions; return true if count = 0
+- [ ] Implement `transitionBatch(sessionIds)` — for each session ID, update state to CLEANUP and emit WS event
+- [ ] Implement `purgeGreeneroomChat(sessionId)` — soft-delete or archive all chat messages in GREENROOM for this session
+- [ ] Add error handling + logging; don't let one session failure block others
+- [ ] Test: schedule job every 5s (test config) → ENDED session after cooldown → job runs → detects, transitions, purges → verify state change in DB and WS event received
 
 ---
 
@@ -326,12 +361,12 @@
 
 ## 7. Implementation Phasing
 
-### Phase 1: State Naming & Session Lifecycle (W0 planning → S1)
+### Phase 1: Session Lifecycle & Cleanup Job (W0 planning → S1)
 
-- Rename IDLE → INACTIVE in codebase
-- Add CLEANUP state to Prisma + API
-- Implement 60s auto-stop timer
-- Implement 20min cleanup TTL
+- Ensure IDLE, ACTIVE, PAUSED, ENDED, CLEANUP states in Prisma (canonical is IDLE, not INACTIVE)
+- Implement scheduled cleanup job: periodic scan + ENDED→CLEANUP detection
+- Implement multi-session campaign batch transition logic
+- Implement greenroom chat archival on CLEANUP
 
 ### Phase 2: Presence & Ghost-mode (S1 → S2)
 
@@ -354,10 +389,10 @@
 - Implement boundary marker creation (backend-authoritative)
 - Implement off-the-record flagging for Whisper + Pause
 
-### Phase 5: Spectator Cooldown & Cleanup (S4 → S5)
+### Phase 5: Spectator Cooldown & Finalization (S4 → S5)
 
-- Implement post-session cooldown window
-- Implement cleanup job for terminal cleanup
+- Implement post-session cooldown window (default 5 minutes / 300000 ms)
+- Wire cooldown window expiry to trigger job transition
 - Add DM cooldown extension/early-end actions
 - Comprehensive integration testing
 
@@ -380,13 +415,14 @@
 
 ## 9. Risk & Mitigation
 
-| Risk                                                   | Mitigation                                                                                                  |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| State inconsistency across layers (Zustand, Redis, DB) | Follow strict rule: backend authoritative, frontend snapshot replaces on reconnect, WS events drive updates |
-| Ghost-mode timer race conditions                       | Use Redis transactions; single source of truth for timer state                                              |
-| Losing player state during group delete                | Atomic batch migration; test orphan detection                                                               |
-| Boundary markers duplicated on refresh                 | Backend-authoritative only; de-duplicate on frontend if local marker + WS marker arrive close               |
-| Spectator cooldown extending forever                   | Add hard cap on extension count (e.g., max 3 extensions); test TTL expiry                                   |
+| Risk                                                     | Mitigation                                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| State inconsistency across layers (Zustand, Redis, DB)   | Follow strict rule: backend authoritative, frontend snapshot replaces on reconnect, WS events drive updates  |
+| ENDED→CLEANUP transition misses some ENDED sessions      | Scheduled job queries DB directly; ensures comprehensive scan; test with seeded DB records                   |
+| Multi-session batch transition triggers on wrong session | Implement `isFinalSessionForCampaign()` logic; query for ACTIVE/PAUSED siblings; test multi-session scenario |
+| Losing greenroom chat during archival                    | Soft-delete (add `archivedAt` column) rather than hard delete; allow DM audit recovery if needed             |
+| Cleanup job and manual state change race                 | Implement row-level DB locking or transaction for state update; idempotent checks                            |
+| Cooldown timer expires mid-job execution                 | Cooldown duration stored in `session.cooldownEndsAt`; job reads this, not local timer state                  |
 
 ---
 
