@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes } from 'node:crypto'
 import type { HandoffTarget } from '@/types/handoff.types'
 
 export type { HandoffTarget } from '@/types/handoff.types'

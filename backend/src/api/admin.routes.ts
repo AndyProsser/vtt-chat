@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import os from 'os'
+import os from 'node:os'
 import { getAllSessions } from '@/services/session.service'
 import { getChatTelemetrySnapshot } from '@/services/chat.service'
 import { logger } from '@/utils/logger'
@@ -25,7 +25,7 @@ import {
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { listExternalSystems, updateExternalSystem } from '@/services/integrations.service'
-import { randomBytes } from 'crypto'
+import { randomBytes } from 'node:crypto'
 import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
 

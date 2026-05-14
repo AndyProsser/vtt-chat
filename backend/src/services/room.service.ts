@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import type {

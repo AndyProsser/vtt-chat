@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { Router, type NextFunction, type Request, type Response } from 'express'
 import { ErrorCode, Role, type EventEnvelope, type UUID, isValidUUID } from '@shared'
 import { extractTokenFromHeader, verifyToken, type TokenPayload } from '@/services/auth.service'

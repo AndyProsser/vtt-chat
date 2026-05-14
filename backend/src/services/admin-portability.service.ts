@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { PortabilityArtifactType, PresenceState, Prisma, PrismaClient } from '@prisma/client'
 import type { CampaignTransferBundle, OperationalExportBundle } from '@/types/portability.types'
 import type { Role } from '@prisma/client'

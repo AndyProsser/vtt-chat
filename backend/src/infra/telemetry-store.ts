@@ -1,6 +1,6 @@
-import { randomBytes } from 'crypto'
-import { appendFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'fs/promises'
-import path from 'path'
+import { randomBytes } from 'node:crypto'
+import { appendFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 
 export interface PersistedTelemetryEvent {
   id: string

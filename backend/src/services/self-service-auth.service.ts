@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import type { UUID } from '@shared'
 import { isValidUsername } from '@shared'
 import { getPrismaClient } from '@/infra/db'

@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes } from 'node:crypto'
 
 export function sanitizeEmail(email: string): string {
   return email.trim().toLowerCase()

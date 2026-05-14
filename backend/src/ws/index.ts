@@ -4,7 +4,7 @@
  */
 
 import { WebSocket, WebSocketServer } from 'ws'
-import { Server as HTTPServer } from 'http'
+import { Server as HTTPServer } from 'node:http'
 import { EventDispatcher } from './dispatcher'
 import {
   registerEventForRecovery,

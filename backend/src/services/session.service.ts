@@ -5,7 +5,7 @@
  */
 
 import type { UUID, Session, SessionLifecycleState, SessionState, User } from '@shared'
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { SessionState as SessionStateEnum } from '@shared'
 import { createError, ErrorCode, normalizeSessionState, toPublicSessionState } from '@shared'
 import {

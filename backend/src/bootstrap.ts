@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express'
-import { Server as HTTPServer, createServer } from 'http'
+import { Server as HTTPServer, createServer } from 'node:http'
 import { config } from '@/infra/config'
 import { logger } from '@/utils'
 import { seedMockPlayers } from '@/services/dev-mock-players.service'

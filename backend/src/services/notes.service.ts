@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import { NoteVisibility } from '@shared'
 import type { UUID } from '@shared'
 import type { StoredNote } from '@/types/notes.types'

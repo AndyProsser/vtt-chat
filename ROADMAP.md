@@ -142,20 +142,21 @@ Known readiness gap classes:
 
 ## 3) Workstreams
 
-| ID  | Workstream                       | Status                  | Scope                                                                                                                              |
-| --- | -------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| W0  | Frontend Surface Completion      | In Progress             | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX         |
-| W11 | Runtime State and Audit Contract | Planned (High Priority) | Redis-first runtime-state adoption, websocket mutation persistence policy, and session-audit trail enforcement across domain flows |
-| W1  | Hardening and Reliability        | In Progress             | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                              |
-| W2  | Testing Program and Gates        | In Progress             | Cross-package test gates, regression matrix, perf/security checks                                                                  |
-| W3  | Operatisation and Runbooks       | Planned                 | Telemetry durability checks, backup/restore drills, migration parity checks                                                        |
-| W4  | UI Modernization Completion      | In Progress             | Regression hardening, accessibility and visual consistency follow-through                                                          |
-| W5  | User Documentation               | Planned                 | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                                   |
-| W6  | Refactor and Simplification      | Completed               | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                                   |
-| W7  | Admin Operations UX Review       | Planned                 | Best-practice operations review for admin information architecture and workflows                                                   |
-| W8  | Localization Foundation          | Planned                 | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                            |
-| W9  | DEV Mock Players                 | In Progress             | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players            |
-| W10 | Voice Group Panel Follow-up      | Planned                 | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel        |
+| ID  | Workstream                       | Status                  | Scope                                                                                                                                       |
+| --- | -------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion      | In Progress             | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX                  |
+| W11 | Runtime State and Audit Contract | Planned (High Priority) | Redis-first runtime-state adoption, websocket mutation persistence policy, and session-audit trail enforcement across domain flows          |
+| W1  | Hardening and Reliability        | In Progress             | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                                       |
+| W2  | Testing Program and Gates        | In Progress             | Cross-package test gates, regression matrix, perf/security checks                                                                           |
+| W3  | Operatisation and Runbooks       | Planned                 | Telemetry durability checks, backup/restore drills, migration parity checks                                                                 |
+| W4  | UI Modernization Completion      | In Progress             | Regression hardening, accessibility and visual consistency follow-through                                                                   |
+| W5  | User Documentation               | Planned                 | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                                            |
+| W6  | Refactor and Simplification      | Completed               | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                                            |
+| W7  | Admin Operations UX Review       | Planned                 | Best-practice operations review for admin information architecture and workflows                                                            |
+| W8  | Localization Foundation          | Planned                 | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                                     |
+| W9  | DEV Mock Players                 | In Progress             | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players                     |
+| W10 | Voice Group Panel Follow-up      | Planned                 | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel                 |
+| W12 | Temporal API Migration           | Planned (Future)        | Phased migration from legacy `Date` to `Temporal` API; Phase 1 (pure timestamps) is low-risk; Phases 2–4 blocked on Prisma Temporal support |
 
 ---
 
@@ -787,6 +788,49 @@ Definition of done:
 - At least one additional locale is wired end-to-end for smoke validation.
 - Localization checks are integrated into roadmap test/release gates.
 - Operator/user docs include localization workflow and troubleshooting basics.
+
+### W12: Temporal API Migration (Date → Temporal)
+
+Migrate backend timestamp generation and arithmetic from the legacy `Date` API to the `Temporal` API, which is now globally available in Node.js 26 without a flag or polyfill.
+
+**Why this matters:**
+
+- `Temporal` is immutable, unambiguous about timezone intent, and eliminates whole classes of bugs around `Date` mutation and DST edge cases.
+- `Date.now()` provides milliseconds but no timezone metadata; `Temporal.Now.instant()` is explicit and composable.
+- Node.js 26 ships `Temporal` globally — no import, no polyfill, no dependency required on the backend.
+
+**Scope assessment:** This is a **medium-large** migration. The codebase has approximately 100+ `Date`-related call sites across backend and frontend. They fall into three categories with very different migration costs:
+
+| Category                                                                                                | Example                                       | Count (approx.)           | Migration cost                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pure timestamp generation** — `Date.now()` for ephemeral numeric timestamps                           | `const setAt = Date.now()`                    | ~35 backend, ~25 frontend | Low — mechanical swap to `Temporal.Now.instant().epochMilliseconds`                                                                                                                                                                                                                          |
+| **ISO string generation** — `new Date().toISOString()` for logging and export metadata                  | `timestamp: new Date().toISOString()`         | ~10 backend               | Low — mechanical swap to `Temporal.Now.instant().toString()`                                                                                                                                                                                                                                 |
+| **Prisma `Date` object interop** — `.toISOString()` / `.getTime()` called on objects returned by Prisma | `campaign.createdAt.toISOString()`            | ~25+ backend              | **Blocking** — Prisma v5 returns JS `Date` objects for `DateTime` fields; these calls are correct and cannot be changed without either (a) a Prisma Temporal adapter, (b) a `Date ↔ Temporal.Instant` converter utility at every Prisma boundary, or (c) waiting for official Prisma support |
+| **Timestamp round-trips** — `new Date(value)` used to construct `Date` for Prisma input                 | `new Date(message.createdAt)`                 | ~10 backend               | Medium — requires `Temporal.Instant.from(isoString).toJSDate()` adapter at Prisma write boundary                                                                                                                                                                                             |
+| **Frontend locale display** — `new Date(ts).toLocaleString()` for UI rendering                          | `new Date(note.publishedAt).toLocaleString()` | ~10 frontend              | Low-to-medium — `Temporal` has locale formatting but with a different API surface; Intl interop is non-trivial                                                                                                                                                                               |
+| **Browser compatibility**                                                                               | Frontend Temporal usage                       | all frontend              | Verify: Temporal landed in Chrome 127+, Firefox 130+, Safari 18. Should be safe for modern targets but requires explicit baseline documentation                                                                                                                                              |
+
+**The Prisma problem is the primary blocker.** Until Prisma officially supports `Temporal` types (or a community adapter is stable), the `Date` objects returned at Prisma boundaries are a hard dependency. The migration cannot go all the way without addressing this layer.
+
+**Recommended phasing:**
+
+1. **Phase 1 (Low risk, do now or during W1):** Replace all `Date.now()` pure timestamp generation in backend non-Prisma paths with `Temporal.Now.instant().epochMilliseconds`. Replace `new Date().toISOString()` in logging and export metadata with `Temporal.Now.instant().toString()`. No Prisma touch required.
+2. **Phase 2 (Medium, after Prisma adapter decision):** Introduce a `temporalToJSDate(instant: Temporal.Instant): Date` adapter utility at Prisma write boundaries. Replace `new Date(value)` Prisma inputs with adapter calls.
+3. **Phase 3 (Evaluate browser baseline first):** Migrate frontend `Date.now()` calls to `Temporal.Now.instant().epochMilliseconds`. Document supported browser baseline. Skip locale-formatting migration until Temporal locale API is more ergonomic.
+4. **Phase 4 (Long-term, Prisma-dependent):** Remove all remaining `Date` usage from Prisma read paths once Prisma ships native `Temporal` support or a stable adapter is available.
+
+**Do NOT migrate:**
+
+- Prisma read-side `.toISOString()` / `.getTime()` on returned `Date` objects (blocking on Prisma support).
+- `shared/utils/format.ts` `new Date(timestamp).toLocaleString()` until Temporal locale API stabilizes.
+- Test fixtures using `Date.now()` as mock timestamps (low value, high noise).
+
+**Definition of done (Phase 1 only gate for now):**
+
+- All non-Prisma backend `Date.now()` calls are replaced with `Temporal.Now.instant().epochMilliseconds`.
+- All non-Prisma `new Date().toISOString()` calls for generated timestamps are replaced with `Temporal.Now.instant().toString()`.
+- No new bare `Date.now()` / `new Date()` calls are introduced in non-Prisma backend paths (lint rule or PR convention).
+- Prisma interop paths are explicitly commented as `// Prisma Date interop — Temporal migration blocked on Prisma support`.
 
 ### W9: DEV Mock Players
 

@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import type { Request, Response, Router } from 'express'
 import { hashPassword } from '@/services/auth.service'
