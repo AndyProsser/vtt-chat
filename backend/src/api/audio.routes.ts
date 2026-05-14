@@ -10,6 +10,7 @@ import {
   setRoomEnvironmentState,
   setUserMuteState,
 } from '@/services/audio-state.service'
+import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
@@ -562,6 +563,97 @@ router.post('/mute', requireAuth, async (req: Request, res: Response) => {
 
 router.post('/unmute', requireAuth, async (req: Request, res: Response) => {
   return handleSetUserMute(req, res)
+})
+
+async function handleSetDmVoiceMode(req: Request, res: Response) {
+  const user = getAuthUser(req)
+  const { sessionId, voiceMode, targetGroupId, backgroundVolume } = req.body
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid sessionId',
+      field: 'sessionId',
+    })
+  }
+
+  if (voiceMode !== 'TARGET_GROUP' && voiceMode !== 'BROADCAST') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'voiceMode must be TARGET_GROUP or BROADCAST',
+      field: 'voiceMode',
+    })
+  }
+
+  if (voiceMode === 'TARGET_GROUP' && targetGroupId !== undefined && !isValidUUID(targetGroupId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid targetGroupId',
+      field: 'targetGroupId',
+    })
+  }
+
+  if (
+    backgroundVolume !== undefined &&
+    (typeof backgroundVolume !== 'number' || backgroundVolume < 0 || backgroundVolume > 1)
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'backgroundVolume must be a number between 0 and 1',
+      field: 'backgroundVolume',
+    })
+  }
+
+  const authz = await validateDmControl(sessionId as UUID, user)
+  if (!authz.ok) {
+    return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  const changedAt = Date.now()
+  const state = await setDmVoiceMode({
+    sessionId: sessionId as UUID,
+    dmId: user.userId as UUID,
+    voiceMode,
+    targetGroupId: targetGroupId as UUID | undefined,
+    backgroundVolume: typeof backgroundVolume === 'number' ? backgroundVolume : undefined,
+    changedAt,
+  })
+
+  const event = createEvent({
+    type: 'AUDIO:DM_VOICE_MODE_CHANGED',
+    user,
+    userRole: authz.role,
+    sessionId: sessionId as UUID,
+    roomId: (targetGroupId as UUID | undefined) ?? null,
+    payload: {
+      dmId: state.dmId,
+      voiceMode: state.voiceMode,
+      targetGroupId: state.targetGroupId,
+      backgroundVolume: state.backgroundVolume,
+      changedAt: state.changedAt,
+    },
+  })
+
+  eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  logger.info('audio', 'DM voice mode changed', {
+    sessionId,
+    dmId: user.userId,
+    voiceMode,
+    backgroundVolume: state.backgroundVolume,
+  })
+
+  return res.status(200).json({
+    ok: true,
+    voiceMode: state.voiceMode,
+    targetGroupId: state.targetGroupId,
+    backgroundVolume: state.backgroundVolume,
+    eventId: event.id,
+  })
+}
+
+router.post('/voice-mode', requireAuth, async (req: Request, res: Response) => {
+  return handleSetDmVoiceMode(req, res)
 })
 
 export default router

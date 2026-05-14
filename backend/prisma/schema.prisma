@@ -87,6 +87,8 @@ model User {
   adminRole                AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
   isActive                 Boolean                @default(true)
   tokenInvalidBefore       DateTime?
+  dmVoiceMode              DmVoiceMode            @default(TARGET_GROUP)
+  dmBackgroundVolume       Float                  @default(0.3)
   campaignsDm              Campaign[]             @relation("CampaignCurrentDm")
   campaignLinks            CampaignMembership[]
   characters               Character[]
@@ -513,4 +515,9 @@ enum PortabilityArtifactType {
   CAMPAIGN_EXPORT
   CAMPAIGN_IMPORT
   OPERATIONS_EXPORT
+}
+
+enum DmVoiceMode {
+  TARGET_GROUP
+  BROADCAST
 }

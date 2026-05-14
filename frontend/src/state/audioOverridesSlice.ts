@@ -18,6 +18,9 @@ export interface AudioOverridesSlice {
   broadcastRoomId?: string
   broadcastDmId?: UUID
   broadcastChangedAt?: number
+  dmVoiceMode: 'TARGET_GROUP' | 'BROADCAST'
+  dmBackgroundVolume: number
+  dmVoiceTargetGroupId?: UUID
 
   togglePTT: (active: boolean) => void
   setPrivateRoomCleanMode: (enabled: boolean) => void
@@ -37,6 +40,7 @@ export interface AudioOverridesSlice {
   handleDMOverrideApplied: (event: EventEnvelope) => void
   handleDMOverrideRemoved: (event: EventEnvelope) => void
   handleBroadcastStateChanged: (event: EventEnvelope) => void
+  handleDmVoiceModeChanged: (event: EventEnvelope) => void
 }
 
 export const initialAudioOverridesState = {
@@ -47,6 +51,9 @@ export const initialAudioOverridesState = {
   broadcastRoomId: undefined,
   broadcastDmId: undefined,
   broadcastChangedAt: undefined,
+  dmVoiceMode: 'TARGET_GROUP' as const,
+  dmBackgroundVolume: 0.3,
+  dmVoiceTargetGroupId: undefined,
 } as const
 
 export const createAudioOverridesSlice: StateCreator<
@@ -169,6 +176,23 @@ export const createAudioOverridesSlice: StateCreator<
       broadcastRoomId: payload.broadcastRoomId,
       broadcastDmId: payload.dmId,
       broadcastChangedAt: payload.changedAt ?? event.timestamp,
+    }))
+  },
+
+  handleDmVoiceModeChanged: (event) => {
+    const payload = event.payload as {
+      dmId: UUID
+      voiceMode: 'TARGET_GROUP' | 'BROADCAST'
+      targetGroupId?: UUID | null
+      backgroundVolume: number
+      changedAt: number
+    }
+
+    set(() => ({
+      dmVoiceMode: payload.voiceMode,
+      dmBackgroundVolume: payload.backgroundVolume,
+      dmVoiceTargetGroupId: payload.targetGroupId ?? undefined,
+      broadcastModeEnabled: payload.voiceMode === 'BROADCAST',
     }))
   },
 })

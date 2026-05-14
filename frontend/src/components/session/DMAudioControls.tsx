@@ -8,7 +8,6 @@ import { DMVoicePresetSection } from '../audio/DMVoicePresetSection'
 import { useStore } from '../../hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 import { telemetryClient } from '../../utils/telemetry'
-
 interface AudioRoomOption {
   id: UUID
   name: string
@@ -83,6 +82,15 @@ export function DMAudioControls({
   const dmOverrides = useStore((state) => state.dmOverrides)
   const setDMOverride = useStore((state) => state.setDMOverride)
   const removeDMOverride = useStore((state) => state.removeDMOverride)
+  const dmVoiceMode = useStore((state) => state.dmVoiceMode)
+  const dmBackgroundVolume = useStore((state) => state.dmBackgroundVolume)
+  const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
+
+  const [localVoiceMode, setLocalVoiceMode] = useState<'TARGET_GROUP' | 'BROADCAST'>(dmVoiceMode)
+  const [localBackgroundVolume, setLocalBackgroundVolume] = useState(dmBackgroundVolume)
+  const [localTargetGroupId, setLocalTargetGroupId] = useState<UUID | ''>(
+    dmVoiceTargetGroupId ?? ''
+  )
 
   const [presetOptions, setPresetOptions] = useState<AudioPreset[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<UUID | ''>('')
@@ -351,8 +359,48 @@ export function DMAudioControls({
     }
   }
 
-  const moveParticipantToRoom = async (userId: UUID, toRoomId: UUID) => {
-    const participant = participantsById[userId]
+  const applyVoiceMode = async () => {
+    setIsSubmitting(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const body: Record<string, unknown> = {
+        sessionId,
+        voiceMode: localVoiceMode,
+        backgroundVolume: localBackgroundVolume,
+      }
+      if (localVoiceMode === 'TARGET_GROUP' && localTargetGroupId) {
+        body.targetGroupId = localTargetGroupId
+      }
+
+      const response = await fetch(`${apiUrl}/api/audio/voice-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { message?: string }
+        throw new Error(payload.message || 'Failed to set voice mode')
+      }
+
+      telemetryClient.track('AUDIO_DM_VOICE_MODE_CHANGED', {
+        sessionId,
+        voiceMode: localVoiceMode,
+        backgroundVolume: localBackgroundVolume,
+        role,
+      })
+
+      setSuccess(`Voice mode set to ${localVoiceMode === 'BROADCAST' ? 'Broadcast' : 'Target Group'}.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set voice mode')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const moveParticipantToRoom = async (userId: UUID, toRoomId: UUID) => {    const participant = participantsById[userId]
     if (!participant) {
       return
     }
@@ -623,6 +671,74 @@ export function DMAudioControls({
           draggedUserIdRef.current = null
         }}
       />
+
+      <div className="grid gap-2">
+        <p className="mb-0 mt-0 font-semibold text-ui-primary text-sm">DM Voice Mode</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={`rounded px-3 py-1 text-sm font-medium ${localVoiceMode === 'TARGET_GROUP' ? 'bg-accent text-white' : 'bg-ui-surface text-ui-secondary border border-ui-border'}`}
+            onClick={() => setLocalVoiceMode('TARGET_GROUP')}
+          >
+            Target Group
+          </button>
+          <button
+            type="button"
+            className={`rounded px-3 py-1 text-sm font-medium ${localVoiceMode === 'BROADCAST' ? 'bg-accent text-white' : 'bg-ui-surface text-ui-secondary border border-ui-border'}`}
+            onClick={() => setLocalVoiceMode('BROADCAST')}
+          >
+            Broadcast All
+          </button>
+        </div>
+
+        {localVoiceMode === 'TARGET_GROUP' && rooms.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-ui-secondary" htmlFor="dm-voice-target-group">
+              Target Group
+            </label>
+            <select
+              id="dm-voice-target-group"
+              className="rounded border border-ui-border bg-ui-surface px-2 py-1 text-sm text-ui-primary"
+              value={localTargetGroupId}
+              onChange={(e) => setLocalTargetGroupId(e.target.value as UUID | '')}
+            >
+              <option value="">— select group —</option>
+              {rooms.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {localVoiceMode === 'BROADCAST' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-ui-secondary" htmlFor="dm-background-volume">
+              Background Volume: {Math.round(localBackgroundVolume * 100)}%
+            </label>
+            <input
+              id="dm-background-volume"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={localBackgroundVolume}
+              onChange={(e) => setLocalBackgroundVolume(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="mt-1 w-fit rounded bg-accent px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+          disabled={isSubmitting}
+          onClick={() => void applyVoiceMode()}
+        >
+          Apply Voice Mode
+        </button>
+      </div>
 
       {error ? (
         <p className="m-0 text-sm text-ui-error-text" role="alert">

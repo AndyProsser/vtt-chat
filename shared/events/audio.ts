@@ -25,6 +25,7 @@ export type AudioEventType =
   | 'AUDIO:DM_OVERRIDE_REMOVED'
   | 'AUDIO:BROADCAST_STATE_CHANGED'
   | 'AUDIO:VOICE_OF_GOD_CHANGED'
+  | 'AUDIO:DM_VOICE_MODE_CHANGED'
 
 /**
  * NOTES:CREATED
@@ -208,6 +209,22 @@ export type AudioVoiceOfGodChanged = AudioBroadcastStateChanged
 export type AudioVoiceOfGodChangedEvent = AudioBroadcastStateChangedEvent
 
 /**
+ * AUDIO:DM_VOICE_MODE_CHANGED
+ * DM changes their voice mode (target a group or broadcast to all).
+ * Visibility: All session members.
+ */
+export interface AudioDmVoiceModeChanged {
+  dmId: UUID
+  voiceMode: 'TARGET_GROUP' | 'BROADCAST'
+  /** Room the DM is targeting. Required when voiceMode is TARGET_GROUP. */
+  targetGroupId?: UUID
+  backgroundVolume: number
+  changedAt: number
+}
+
+export type AudioDmVoiceModeChangedEvent = EventEnvelope<AudioDmVoiceModeChanged>
+
+/**
  * Union types.
  */
 export type NotesEvent =
@@ -225,3 +242,4 @@ export type AudioEvent =
   | AudioDMOverrideAppliedEvent
   | AudioDMOverrideRemovedEvent
   | AudioBroadcastStateChangedEvent
+  | AudioDmVoiceModeChangedEvent

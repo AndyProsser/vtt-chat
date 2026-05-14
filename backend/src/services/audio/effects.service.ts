@@ -6,6 +6,9 @@ import {
   removeAudioDMOverrideRecord,
   upsertAudioDMOverrideRecord,
 } from '@/repositories/audio.repository'
+import { getPrismaClient } from '@/infra/db'
+
+const prisma = getPrismaClient()
 
 export const AUDIO_BROADCAST_OVERRIDE_TYPE = 'VOICE_OF_GOD'
 
@@ -134,5 +137,70 @@ export async function setUserMuteState(params: {
     sessionId: params.sessionId,
     userMuted,
     mutedAt,
+  }
+}
+
+export type DmVoiceModeValue = 'TARGET_GROUP' | 'BROADCAST'
+
+export interface DmVoiceModeState {
+  dmId: UUID
+  voiceMode: DmVoiceModeValue
+  targetGroupId: UUID | null
+  backgroundVolume: number
+  changedAt: number
+}
+
+/**
+ * Set DM voice mode and background volume.
+ * Persists the preference to the User record (cross-device).
+ * When switching to BROADCAST, also activates the broadcast override record.
+ * When switching to TARGET_GROUP, deactivates the broadcast override record.
+ */
+export async function setDmVoiceMode(params: {
+  sessionId: UUID
+  dmId: UUID
+  voiceMode: DmVoiceModeValue
+  targetGroupId?: UUID | null
+  backgroundVolume?: number
+  changedAt?: number
+}): Promise<DmVoiceModeState> {
+  const changedAt = params.changedAt ?? Date.now()
+  const backgroundVolume = params.backgroundVolume ?? 0.3
+
+  await prisma.user.update({
+    where: { id: params.dmId },
+    data: {
+      dmVoiceMode: params.voiceMode,
+      dmBackgroundVolume: backgroundVolume,
+    },
+  })
+
+  if (params.voiceMode === 'BROADCAST') {
+    await upsertAudioDMOverrideRecord({
+      sessionId: params.sessionId,
+      targetUserId: params.dmId,
+      overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
+      parameters: {
+        enabled: true,
+        broadcastRoomId: getBroadcastRoomId(params.sessionId),
+        backgroundVolume,
+      },
+      appliedBy: params.dmId,
+      appliedAt: new Date(changedAt),
+    })
+  } else {
+    await removeAudioDMOverrideRecord({
+      sessionId: params.sessionId,
+      targetUserId: params.dmId,
+      overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
+    })
+  }
+
+  return {
+    dmId: params.dmId,
+    voiceMode: params.voiceMode,
+    targetGroupId: params.targetGroupId ?? null,
+    backgroundVolume,
+    changedAt,
   }
 }

@@ -173,6 +173,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     })
 
     // Audio events
+    dispatcher.register('AUDIO:DM_VOICE_MODE_CHANGED', (event) => {
+      useStore.getState().handleDmVoiceModeChanged(event)
+    })
     dispatcher.register('AUDIO:EFFECT_APPLIED', (event) => {
       useStore.getState().handleEffectApplied(event)
     })
