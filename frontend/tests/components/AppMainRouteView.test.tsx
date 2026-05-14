@@ -3,7 +3,7 @@ import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppMainRouteView } from '../../src/components/routes/AppMainRouteView'
-import { AUTH_FEATURE_CARDS } from '@/constants/appMainRoute.constants'
+import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 
 vi.mock('../../src/components/auth/LoginForm', () => ({
   LoginForm: () => <div>Mock Login Form</div>,
@@ -50,7 +50,7 @@ describe('AppMainRouteView', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders auth feature cards from centralized constants', async () => {
+  it('renders auth brand shell with centralized splash titles', async () => {
     await act(async () => {
       render(
         <AppMainRouteView
@@ -63,10 +63,10 @@ describe('AppMainRouteView', () => {
       await Promise.resolve()
     })
 
-    for (const card of AUTH_FEATURE_CARDS) {
-      expect(screen.getByText(card.title)).toBeTruthy()
-      expect(screen.getByText(card.copy)).toBeTruthy()
-    }
+    expect(screen.getByLabelText('VTT Chat auth brand header')).toBeTruthy()
+    expect(screen.getByText('VTT-CHAT')).toBeTruthy()
+    const splashTaglineMatcher = new RegExp(APP_SPLASH_TITLES.join('|'))
+    expect(screen.getByText(splashTaglineMatcher)).toBeTruthy()
   })
 
   it('cleans splash interval and pending timeout on unmount', async () => {

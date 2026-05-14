@@ -7,6 +7,7 @@ import { JournalPanel } from '../../src/components/session/JournalPanel'
 import { NotesRailPanel } from '../../src/components/session/NotesRailPanel'
 
 import { useStore } from '../../src/state/store'
+import type { Note } from '../../src/types/notes'
 
 const asUuid = (value: string) => value as UUID
 
@@ -23,7 +24,7 @@ describe('knowledge panels', () => {
     store.clearNotes()
   })
 
-  it('supports journal pin, favorite, quick publish, and tag filtering', async () => {
+  it('renders journal entries from state and supports recent vs all views', async () => {
     const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
       const url = String(input)
 
@@ -66,17 +67,6 @@ describe('knowledge panels', () => {
         }
       }
 
-      if (url.includes('/publish') && init?.method === 'POST') {
-        return {
-          ok: true,
-          json: async () => ({
-            note: {
-              publishedAt: 30,
-            },
-          }),
-        }
-      }
-
       throw new Error(`Unexpected fetch call: ${url}`)
     })
 
@@ -108,60 +98,42 @@ describe('knowledge panels', () => {
       />
     )
 
-    expect(await screen.findByText('Recovered sigil')).toBeTruthy()
-    expect(screen.getByText('Editable source')).toBeTruthy()
-    expect(screen.getAllByText('sigil').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('vault').length).toBeGreaterThan(0)
-
-    const recoveredSigilCard = screen.getByText('Recovered sigil').closest('article')
-    if (!recoveredSigilCard) {
-      throw new Error('Recovered sigil card not found')
+    const notesState = useStore.getState()
+    const firstNote: Note = {
+      id: asUuid('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+      ownerId: PLAYER_ID,
+      ownerUsername: 'Tara',
+      title: 'Recovered sigil',
+      content: 'Recovered from the archive vault door.',
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      tags: ['sigil', 'vault'],
+      allowedUsers: [],
+      publishedAt: null,
+      createdAt: 10,
+      updatedAt: 20,
     }
+    const secondNote: Note = {
+      id: asUuid('11111111-2222-4333-8444-555555555555'),
+      ownerId: PLAYER_ID,
+      ownerUsername: 'Tara',
+      title: 'Tunnel map',
+      content: 'Tunnel routes are marked.',
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      tags: ['map'],
+      allowedUsers: [],
+      publishedAt: 20,
+      createdAt: 15,
+      updatedAt: 25,
+    }
+    notesState.addNote(SESSION_ID, firstNote)
+    notesState.addNote(SESSION_ID, secondNote)
 
-    fireEvent.click(within(recoveredSigilCard).getByRole('button', { name: 'Pin entry' }))
-    fireEvent.click(within(recoveredSigilCard).getByRole('button', { name: 'Favorite entry' }))
-    expect(screen.getAllByText('Pinned').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Favorite').length).toBeGreaterThan(0)
+    expect(await screen.findByText('Recovered sigil')).toBeTruthy()
+    expect(screen.getByText('By Tara · sigil, vault')).toBeTruthy()
+    expect(screen.getByText('By Tara · map')).toBeTruthy()
 
-    fireEvent.click(within(recoveredSigilCard).getByRole('button', { name: 'Quick publish' }))
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/publish'),
-        expect.objectContaining({ method: 'POST' })
-      )
-    })
-
-    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'map' } })
-    expect(screen.getByText('Tunnel map')).toBeTruthy()
-    expect(screen.queryByText('Recovered sigil')).toBeNull()
-
-    fireEvent.change(screen.getByLabelText('Journal preset name'), {
-      target: { value: 'Map only' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
-
-    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'all' } })
-    expect(screen.getByText('Recovered sigil')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Map only' }))
-    expect(screen.getByText('Tunnel map')).toBeTruthy()
-    expect(screen.queryByText('Recovered sigil')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Set default' }))
-    expect(screen.getByRole('button', { name: 'Default preset' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
-    fireEvent.change(screen.getByLabelText('Rename Map only'), {
-      target: { value: 'Map focus' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
-    expect(screen.getByRole('button', { name: 'Apply Map focus' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Copy export' }))
-    expect(clipboardWriteText).toHaveBeenCalled()
-
-    const exportPayload = (screen.getByLabelText('Journal preset export') as HTMLTextAreaElement)
-      .value
+    const journalEntryList = screen.getByLabelText('Journal entries')
+    expect(within(journalEntryList).getAllByRole('article').length).toBe(2)
 
     firstRender.unmount()
 
@@ -175,10 +147,19 @@ describe('knowledge panels', () => {
       />
     )
 
+    const secondState = useStore.getState()
+    secondState.addNote(SESSION_ID, firstNote)
+    secondState.addNote(SESSION_ID, secondNote)
+
     await waitFor(() => {
+      expect(screen.getByText('Recovered sigil')).toBeTruthy()
       expect(screen.getByText('Tunnel map')).toBeTruthy()
-      expect(screen.queryByText('Recovered sigil')).toBeNull()
     })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }))
+    expect(screen.getByText('Recovered sigil')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
+    expect(screen.getByText('Tunnel map')).toBeTruthy()
 
     secondRender.unmount()
 
@@ -192,17 +173,15 @@ describe('knowledge panels', () => {
       />
     )
 
+    const thirdState = useStore.getState()
+    thirdState.addNote(SESSION_TWO_ID, firstNote)
+    thirdState.addNote(SESSION_TWO_ID, secondNote)
+
     expect(await screen.findByText('Recovered sigil')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Journal preset import'), {
-      target: { value: exportPayload },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Import presets' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Map focus' }))
     expect(screen.getByText('Tunnel map')).toBeTruthy()
-    expect(screen.queryByText('Recovered sigil')).toBeNull()
   })
 
-  it('renders and filters persisted session history entries', async () => {
+  it('renders history entries and supports grouping and sort controls', async () => {
     const storage = new Map<string, string>()
     vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -265,42 +244,14 @@ describe('knowledge panels', () => {
 
     expect(await screen.findByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
 
-    fireEvent.change(screen.getByLabelText('Event type'), { target: { value: 'USER_JOINED' } })
+    expect(screen.getByRole('tab', { name: 'Day' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Newest' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Oldest' })).toBeTruthy()
+    expect(screen.getByText('State Changed')).toBeTruthy()
+    expect(screen.getByText('User Joined')).toBeTruthy()
     expect(screen.getByText('Tara joined main room')).toBeTruthy()
-    expect(screen.queryByText('Session state changed from IDLE to ACTIVE')).toBeNull()
-
-    fireEvent.change(screen.getByLabelText('Event type'), { target: { value: 'all' } })
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'Morgan' } })
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-    expect(screen.queryByText('Tara joined main room')).toBeNull()
-
-    fireEvent.change(screen.getByLabelText('History preset name'), {
-      target: { value: 'Morgan only' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
-
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'all' } })
-    expect(screen.getByText('Tara joined main room')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Morgan only' }))
-    expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-    expect(screen.queryByText('Tara joined main room')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Set default' }))
-    expect(screen.getByRole('button', { name: 'Default preset' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
-    fireEvent.change(screen.getByLabelText('Rename Morgan only'), {
-      target: { value: 'Morgan lens' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
-    expect(screen.getByRole('button', { name: 'Apply Morgan lens' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Copy export' }))
-    expect(clipboardWriteText).toHaveBeenCalled()
-
-    const exportPayload = (screen.getByLabelText('History preset export') as HTMLTextAreaElement)
-      .value
 
     firstRender.unmount()
 
@@ -316,7 +267,7 @@ describe('knowledge panels', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-      expect(screen.queryByText('Tara joined main room')).toBeNull()
+      expect(screen.getByText('Tara joined main room')).toBeTruthy()
     })
 
     secondRender.unmount()
@@ -332,13 +283,7 @@ describe('knowledge panels', () => {
     )
 
     expect(await screen.findByText('Tara joined main room')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('History preset import'), {
-      target: { value: exportPayload },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Import presets' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Morgan lens' }))
-    expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-    expect(screen.queryByText('Tara joined main room')).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
   })
 
   it('renders notes rail data and supports quick filtering', async () => {

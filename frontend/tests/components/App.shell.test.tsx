@@ -1,26 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
+import type { AppShellStoreState } from '../types/app-shell.types'
 
 const { mockUseStore, setStoreState } = vi.hoisted(() => {
-  type Room = {
-    id: string
-    sessionId: string
-    type: 'MAIN' | 'GROUP' | 'PRIVATE'
-  }
-
-  type StoreState = {
-    currentSessionId?: string
-    rooms: Record<string, Record<string, Room>>
-  }
-
-  let state: StoreState = {
+  let state: AppShellStoreState = {
     currentSessionId: undefined,
     rooms: {},
   }
 
   return {
-    mockUseStore: vi.fn((selector: (s: StoreState) => unknown) => selector(state)),
-    setStoreState: (next: Partial<StoreState>) => {
+    mockUseStore: vi.fn((selector: (s: AppShellStoreState) => unknown) => selector(state)),
+    setStoreState: (next: Partial<AppShellStoreState>) => {
       state = {
         ...state,
         ...next,
@@ -83,11 +74,10 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(
-      screen.getByText(
-        'A DM-grade, session-aware voice and chat platform built specifically for tabletop RPGs — because Discord was never designed for this.'
-      )
-    ).toBeTruthy()
+    expect(screen.getByLabelText('VTT Chat auth brand header')).toBeTruthy()
+    expect(screen.getByText('VTT-CHAT')).toBeTruthy()
+    const splashTaglineMatcher = new RegExp(APP_SPLASH_TITLES.join('|'))
+    expect(screen.getByText(splashTaglineMatcher)).toBeTruthy()
     expect(screen.getByText('Mock Login Form')).toBeTruthy()
     expect(screen.queryByText(/Session Init Mounted:/)).toBeNull()
     expect(screen.queryByText(/Audio Panel Mounted:/)).toBeNull()
@@ -119,12 +109,12 @@ describe('App shell', () => {
     expect(screen.queryByText('Mock Login Form')).toBeNull()
   })
 
-  it('renders current auth hero capability cards', async () => {
+  it('renders current auth brand shell', async () => {
     const { default: App } = await import('../../src/App')
 
     render(<App />)
 
-    expect(screen.getByText('DM-Controlled Session Gating')).toBeTruthy()
-    expect(screen.getByText('One Surface for the Table')).toBeTruthy()
+    expect(screen.getByLabelText('VTT Chat auth brand header')).toBeTruthy()
+    expect(screen.getByText('Mock Login Form')).toBeTruthy()
   })
 })

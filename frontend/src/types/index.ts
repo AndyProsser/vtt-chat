@@ -14,6 +14,15 @@ export type {
 } from './audio'
 export type { User, SessionUser, UserSummary, UserPreferences } from './user'
 export type { AuthUser, AuthState, AuthProfile } from './auth'
+export type {
+  InviteCampaign,
+  InviteValidationResult,
+  InviteJoinPageProps,
+  PolicyCode,
+  PlayerPrecheckResult,
+  EmailCheckStatus,
+} from './invite'
+export type { SessionLogEntry, HistoryGroupBy, HistorySortOrder, HistoryControls } from './history'
 export type { ConnectionState, ConnectionOptions, EventHandler } from './ws'
 export type { SessionMetadata, MetadataSnapshot, MetadataTimelineEntry } from './metadata'
 export type { ToastVariant, CenterPaneView, RightRailTab } from './ui'

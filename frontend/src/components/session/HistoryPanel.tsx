@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import type { Role, UUID } from '@shared'
+import type { HistoryGroupBy, HistorySortOrder, SessionLogEntry } from '@/types/history'
+import {
+  DEFAULT_HISTORY_GROUP_BY,
+  DEFAULT_HISTORY_SORT_ORDER,
+  formatEventLabel,
+  getHistoryControlStorageKey,
+  parsePersistedHistoryControls,
+} from '@/utils/history'
 import '../../styles/components/session/KnowledgePanels.css'
 
 interface HistoryPanelProps {
@@ -11,73 +19,24 @@ interface HistoryPanelProps {
   userId?: UUID
 }
 
-interface SessionLogEntry {
-  id: string
-  sessionId: string
-  userId: string | null
-  username: string
-  eventType: string
-  detail: string | null
-  createdAt: string
-}
-
-type HistoryGroupBy = 'day' | 'event'
-type HistorySortOrder = 'newest' | 'oldest'
-
-const DEFAULT_HISTORY_GROUP_BY: HistoryGroupBy = 'day'
-const DEFAULT_HISTORY_SORT_ORDER: HistorySortOrder = 'newest'
-
-function getHistoryControlStorageKey(sessionId: UUID, role: Role, userId?: UUID): string {
-  const userScope = userId || role
-  return `vtt-chat:history:controls:${userScope}:${sessionId}`
-}
-
-function parsePersistedHistoryControls(raw: string | null): {
-  groupBy: HistoryGroupBy
-  sortOrder: HistorySortOrder
-} {
-  if (!raw) {
-    return {
-      groupBy: DEFAULT_HISTORY_GROUP_BY,
-      sortOrder: DEFAULT_HISTORY_SORT_ORDER,
-    }
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as {
-      groupBy?: string
-      sortOrder?: string
-    }
-
-    const groupBy: HistoryGroupBy = parsed.groupBy === 'event' ? 'event' : DEFAULT_HISTORY_GROUP_BY
-    const sortOrder: HistorySortOrder =
-      parsed.sortOrder === 'oldest' ? 'oldest' : DEFAULT_HISTORY_SORT_ORDER
-
-    return { groupBy, sortOrder }
-  } catch {
-    return {
-      groupBy: DEFAULT_HISTORY_GROUP_BY,
-      sortOrder: DEFAULT_HISTORY_SORT_ORDER,
-    }
-  }
-}
-
-function formatEventLabel(eventType: string): string {
-  return eventType
-    .toLowerCase()
-    .split('_')
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ')
-}
-
 export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: HistoryPanelProps) {
   const [logs, setLogs] = useState<SessionLogEntry[]>([])
   const storageKey = useMemo(
     () => getHistoryControlStorageKey(sessionId, role, userId),
     [sessionId, role, userId]
   )
-  const [groupBy, setGroupBy] = useState<HistoryGroupBy>(DEFAULT_HISTORY_GROUP_BY)
-  const [sortOrder, setSortOrder] = useState<HistorySortOrder>(DEFAULT_HISTORY_SORT_ORDER)
+  const [groupBy, setGroupBy] = useState<HistoryGroupBy>(() => {
+    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
+      return DEFAULT_HISTORY_GROUP_BY
+    }
+    return parsePersistedHistoryControls(window.localStorage.getItem(storageKey)).groupBy
+  })
+  const [sortOrder, setSortOrder] = useState<HistorySortOrder>(() => {
+    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
+      return DEFAULT_HISTORY_SORT_ORDER
+    }
+    return parsePersistedHistoryControls(window.localStorage.getItem(storageKey)).sortOrder
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,8 +46,10 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
     }
 
     const persisted = parsePersistedHistoryControls(window.localStorage.getItem(storageKey))
-    setGroupBy(persisted.groupBy)
-    setSortOrder(persisted.sortOrder)
+    queueMicrotask(() => {
+      setGroupBy(persisted.groupBy)
+      setSortOrder(persisted.sortOrder)
+    })
   }, [storageKey])
 
   useEffect(() => {

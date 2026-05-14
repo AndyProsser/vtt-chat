@@ -90,8 +90,9 @@ describe('guest auth route surfaces', () => {
       )
 
       await screen.findByText('Player Invite')
+      const emailInput = await screen.findByLabelText('Email')
 
-      fireEvent.change(screen.getByLabelText('Email'), {
+      fireEvent.change(emailInput, {
         target: { value: 'aria@example.com' },
       })
 
@@ -212,8 +213,9 @@ describe('guest auth route surfaces', () => {
       )
 
       await screen.findByText('Player Invite')
+      const emailInput = await screen.findByLabelText('Email')
 
-      fireEvent.change(screen.getByLabelText('Email'), {
+      fireEvent.change(emailInput, {
         target: { value: 'boot@example.com' },
       })
 
@@ -238,8 +240,7 @@ describe('guest auth route surfaces', () => {
 
       const fullJoinCall = fetchMock.mock.calls.find(([input, init]) => {
         return (
-          String(input).includes('/api/auth/join/full/player') &&
-          (init?.method || 'GET') === 'POST'
+          String(input).includes('/api/auth/join/full/player') && (init?.method || 'GET') === 'POST'
         )
       })
       expect(fullJoinCall).toBeTruthy()
@@ -314,8 +315,9 @@ describe('guest auth route surfaces', () => {
     )
 
     await screen.findByText('Spectator Invite')
+    const displayNameInput = await screen.findByLabelText('Display Name')
 
-    fireEvent.change(screen.getByLabelText('Display Name'), {
+    fireEvent.change(displayNameInput, {
       target: { value: 'Guest Watcher' },
     })
     fireEvent.change(screen.getByLabelText('Email'), {
@@ -426,8 +428,9 @@ describe('guest auth route surfaces', () => {
       )
 
       await screen.findByText('Spectator Invite')
+      const displayNameInput = await screen.findByLabelText('Display Name')
 
-      fireEvent.change(screen.getByLabelText('Display Name'), {
+      fireEvent.change(displayNameInput, {
         target: { value: 'Waitlist User' },
       })
       fireEvent.change(screen.getByLabelText('Email'), {

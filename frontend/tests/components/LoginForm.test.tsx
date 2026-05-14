@@ -92,6 +92,6 @@ describe('LoginForm', () => {
 
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'devtester' } })
 
-    expect(screen.getByText("Passwords aren't needed in DEV Testing.")).toBeTruthy()
+    expect(screen.getByText('Passwords are not needed in DEV Testing.')).toBeTruthy()
   })
 })
