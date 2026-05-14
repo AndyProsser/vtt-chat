@@ -59,7 +59,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   listCampaignsForUser: vi.fn(),
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: vi.fn(),
 }))
 

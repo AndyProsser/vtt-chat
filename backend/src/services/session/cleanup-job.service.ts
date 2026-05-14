@@ -8,7 +8,7 @@ import {
   listEndedSessionIdsByCampaign,
 } from '@/repositories/session.repository'
 import { getRooms, getSessionPresence } from '@/services/room.service'
-import { updateSessionState, getSessionUsers } from '@/services/session.service'
+import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import { STANDALONE_SESSION_COOLDOWN_MS } from '@/constants/session.constants'
 import { logger } from '@/utils'

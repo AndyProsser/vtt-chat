@@ -17,7 +17,7 @@ import {
   addUserToSession,
   removeUserFromSession,
   getSessionUsers,
-} from '@/services/session.service'
+} from '@/services/session/core.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import {
   isValidSessionName,

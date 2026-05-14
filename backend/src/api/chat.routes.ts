@@ -6,7 +6,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession } from '@/services/session.service'
+import { getSession } from '@/services/session/core.service'
 import { sendMessage, editMessage, deleteMessage, getMessages } from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
 import type { StoredMessage } from '@/types/chat.types'

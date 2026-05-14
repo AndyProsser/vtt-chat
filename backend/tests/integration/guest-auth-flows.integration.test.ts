@@ -106,7 +106,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   listCharactersForUser: vi.fn(),
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: vi.fn(),
 }))
 

@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockGetSessionEventHistory: vi.fn(),
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   getSession: mocks.mockGetSession,
   getSessionUsers: mocks.mockGetSessionUsers,
 }))

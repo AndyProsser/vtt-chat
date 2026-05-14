@@ -13,7 +13,7 @@ import { MessageType, NoteVisibility } from '@shared'
 import { logger } from '@/utils'
 import { createNote, deleteNote, updateNote } from '@/services/notes.service'
 import { deleteMessage, editMessage, sendMessage } from '@/services/chat.service'
-import { getSession } from '@/services/session.service'
+import { getSession } from '@/services/session/core.service'
 import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 
 export { roomHandlers } from './handlers/room.handler'

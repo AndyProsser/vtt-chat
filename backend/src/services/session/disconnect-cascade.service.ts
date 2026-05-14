@@ -13,7 +13,7 @@ import {
   clearSessionDMOverrideState,
   getSessionAudioState,
 } from '@/services/audio/audio-state'
-import { updateSessionState, getSession, getSessionUsers } from '@/services/session.service'
+import { updateSessionState, getSession, getSessionUsers } from '@/services/session/core.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { logSessionStateChange } from '@/services/session/logs.service'
 

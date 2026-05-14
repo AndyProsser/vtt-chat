@@ -3,7 +3,7 @@ import { getPrismaClient } from '@/infra/db'
 import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { createSession } from '@/services/session.service'
+import { createSession } from '@/services/session/core.service'
 import { ensureSessionDefaultRoomsForSession } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import {

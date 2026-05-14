@@ -1,6 +1,6 @@
 import { Role, type UUID } from '@shared'
 import { getPrismaClient } from '@/infra/db'
-import { getSession, getSessionUsers } from '@/services/session.service'
+import { getSession, getSessionUsers } from '@/services/session/core.service'
 
 const prisma = getPrismaClient()
 

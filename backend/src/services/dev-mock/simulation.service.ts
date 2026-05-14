@@ -7,7 +7,7 @@ import {
   MAX_DEV_MOCK_SIMULATOR_COUNT,
   MIN_DEV_MOCK_SIMULATOR_COUNT,
 } from '@/constants/dev-mock.constants'
-import { getSession } from '@/services/session.service'
+import { getSession } from '@/services/session/core.service'
 import {
   getSessionPresence,
   getRooms,

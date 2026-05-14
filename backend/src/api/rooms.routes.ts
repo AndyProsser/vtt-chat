@@ -10,7 +10,7 @@ import {
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { addUserToSession, getSession, getSessionUsers } from '@/services/session.service'
+import { addUserToSession, getSession, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import { config } from '@/infra/config'
 import {

@@ -10,7 +10,7 @@ import {
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession } from '@/services/session.service'
+import { getSession } from '@/services/session/core.service'
 import {
   createNote,
   deleteNote,

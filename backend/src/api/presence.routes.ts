@@ -3,7 +3,7 @@ import { ErrorCode, PresenceState, isValidPresenceState, isValidUUID } from '@sh
 import type { EventEnvelope, UUID } from '@shared'
 import { getSessionParticipantProfiles } from '@/repositories/session.repository'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession, getSessionUsers } from '@/services/session.service'
+import { getSession, getSessionUsers } from '@/services/session/core.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
   getSessionPresence,

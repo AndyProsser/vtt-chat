@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import os from 'node:os'
-import { getAllSessions } from '@/services/session.service'
+import { getAllSessions } from '@/services/session/core.service'
 import { getChatTelemetrySnapshot } from '@/services/chat.service'
 import { logger } from '@/utils/logger'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'

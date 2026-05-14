@@ -42,7 +42,7 @@ vi.mock('@/services/audio/audio-state', () => ({
   getSessionAudioState: mocks.getSessionAudioState,
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   updateSessionState: mocks.updateSessionState,
   getSession: mocks.getSession,
   getSessionUsers: mocks.getSessionUsers,

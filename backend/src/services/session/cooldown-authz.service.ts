@@ -1,7 +1,7 @@
 import { PresenceState, Role, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
-import { getSession, getSessionUsers } from '@/services/session.service'
+import { getSession, getSessionUsers } from '@/services/session/core.service'
 
 interface CooldownControlParams {
   sessionId: UUID

@@ -31,7 +31,7 @@ import {
   updateMockSimulationConfig,
 } from '@/services/dev-mock/simulation.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession } from '@/services/session.service'
+import { getSession } from '@/services/session/core.service'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import { getSessionPresence } from '@/services/room.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'

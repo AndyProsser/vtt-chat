@@ -8,7 +8,7 @@
 import { getPrismaClient } from '@/infra/db'
 import { createToken, hashPassword } from '@/services/auth.service'
 import { getSessionPresence, getRooms, joinRoom, leaveRoom } from '@/services/room.service'
-import { addUserToSession, removeUserFromSession } from '@/services/session.service'
+import { addUserToSession, removeUserFromSession } from '@/services/session/core.service'
 import {
   DEV_MOCK_AVATAR_URL,
   DEV_MOCK_EMAIL_DOMAIN,

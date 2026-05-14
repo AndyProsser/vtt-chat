@@ -25,7 +25,7 @@ vi.mock('@/services/notes.service', () => ({
   deleteNote: mocks.deleteNote,
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   getSession: mocks.getSession,
 }))
 

@@ -83,7 +83,7 @@ vi.mock('@/repositories/session.repository', () => ({
   upsertSessionMember: repo.upsertSessionMember,
 }))
 
-import { createSession, updateSessionState } from '@/services/session.service'
+import { createSession, updateSessionState } from '@/services/session/core.service'
 
 const asUuid = (value: string) => value as UUID
 const DM_ID = asUuid('22222222-2222-4222-8222-222222222222')

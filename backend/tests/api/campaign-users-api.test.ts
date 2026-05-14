@@ -50,7 +50,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   listCharactersForUser: mocks.mockListCharactersForUser,
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: mocks.mockCreateSession,
 }))
 

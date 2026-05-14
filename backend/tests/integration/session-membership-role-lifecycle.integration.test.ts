@@ -74,7 +74,7 @@ vi.mock('@/infra/db', () => ({
   }),
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: vi.fn(),
   getSession: mocks.getSession,
   getAllSessions: vi.fn(async () => []),

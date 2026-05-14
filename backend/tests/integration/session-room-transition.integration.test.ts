@@ -26,7 +26,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.mockVerifyToken,
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: vi.fn(),
   getSession: mocks.mockGetSession,
   getAllSessions: vi.fn(async () => []),

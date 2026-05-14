@@ -50,7 +50,7 @@ vi.mock('@/services/room.service', () => ({
   leaveRoom: mocks.mockLeaveRoom,
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   addUserToSession: mocks.mockAddUserToSession,
   removeUserFromSession: mocks.mockRemoveUserFromSession,
 }))

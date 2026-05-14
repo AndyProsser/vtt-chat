@@ -1,7 +1,7 @@
 import { PresenceState, Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
-import { getSession, getSessionUsers } from '@/services/session.service'
+import { getSession, getSessionUsers } from '@/services/session/core.service'
 import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
 

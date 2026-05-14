@@ -36,7 +36,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   createCharacterForCampaign: vi.fn(),
 }))
 
-vi.mock('@/services/session.service', () => ({
+vi.mock('@/services/session/core.service', () => ({
   createSession: vi.fn(),
 }))
 
