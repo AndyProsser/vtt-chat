@@ -9,18 +9,19 @@ import { getPrismaClient } from '@/infra/db'
 import { createToken, hashPassword } from '@/services/auth.service'
 import { getSessionPresence, getRooms, joinRoom, leaveRoom } from '@/services/room.service'
 import { addUserToSession, removeUserFromSession } from '@/services/session.service'
+import {
+  DEV_MOCK_AVATAR_URL,
+  DEV_MOCK_EMAIL_DOMAIN,
+  DEV_MOCK_PREFIX,
+  MAX_DEV_MOCK_PLAYERS,
+  MIN_DEV_MOCK_PLAYERS,
+} from '@/constants/dev-mock.constants'
 import { logger } from '@/utils/logger'
 import { Prisma } from '@prisma/client'
 import { PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()
-
-const DEV_MOCK_PREFIX = 'dev_mock_'
-const DEV_MOCK_EMAIL_DOMAIN = 'dev.local'
-const DEV_MOCK_AVATAR_URL = '/branding/mock-races/adventurer-robot.svg'
-const MIN_DEV_MOCK_PLAYERS = 5
-const MAX_DEV_MOCK_PLAYERS = 9
 
 const campaignRosterByCampaignId = new Map<UUID, string[]>()
 const sessionRosterBySessionId = new Map<UUID, string[]>()

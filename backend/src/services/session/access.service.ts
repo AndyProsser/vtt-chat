@@ -1,6 +1,6 @@
 import type { UUID } from '@shared'
 import { getSession, getSessionUsers } from '@/services/session.service'
-import { getSessionEventHistory } from '@/services/session-logs.service'
+import { getSessionEventHistory } from '@/services/session/logs.service'
 
 type Requester = {
   userId: string

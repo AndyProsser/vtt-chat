@@ -37,7 +37,7 @@ import { ErrorCode, isValidUsername } from '@shared'
 import { joinCampaignForUser } from '@/repositories/campaign.repository'
 import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
-import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth-user-context.service'
+import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth/user-context.service'
 import {
   joinGuestSpectatorViaInvite,
   precheckPlayerInviteEmail,
@@ -50,8 +50,8 @@ import {
   requestPasswordReset,
   suggestAvailableUsername,
   verifyPasswordResetToken,
-} from '@/services/self-service-auth.service'
-import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session-authz.service'
+} from '@/services/self-service-auth'
+import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session/authz.service'
 
 const router = Router()
 const prisma = getPrismaClient()

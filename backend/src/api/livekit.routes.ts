@@ -7,9 +7,10 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { LiveKitTokenService } from '@/infra/livekit/token.service'
 import { config } from '@/infra/config'
-import { ErrorCode, isValidUUID } from '@shared'
+import { ErrorCode, isValidUUID, type UUID } from '@shared'
 import { logger } from '@/utils'
-import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
+import { getServerMuteEnforcementState } from '@/services/audio-state.service'
 
 const router = Router()
 const tokenService = new LiveKitTokenService(config)
@@ -132,7 +133,14 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
     const resolvedRoomId =
       requestedChannel === 'broadcast' ? `dm-broadcast:${sessionId}` : (roomId as string)
 
-    const canPublish = requestedChannel === 'broadcast' ? isSessionDm : true
+    const muteState = await getServerMuteEnforcementState({
+      sessionId: sessionId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    const publishAllowedByMute = !muteState.enforcedMuted
+
+    const canPublish = requestedChannel === 'broadcast' ? isSessionDm && publishAllowedByMute : publishAllowedByMute
     const canSubscribe = requestedChannel === 'broadcast' ? !isSessionDm : true
 
     // Generate LiveKit token
@@ -147,7 +155,13 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
 
     logger.info(
       'livekit',
-      `Token issued for user ${user.userId} to room ${resolvedRoomId} in session ${sessionId}`
+      `Token issued for user ${user.userId} to room ${resolvedRoomId} in session ${sessionId}`,
+      {
+        canPublish,
+        muteEnforced: muteState.enforcedMuted,
+        userMuted: muteState.userMuted,
+        dmMuted: muteState.dmMuted,
+      }
     )
 
     res.status(200).json({
@@ -155,6 +169,8 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
       url,
       roomName: resolvedRoomId,
       channel: requestedChannel,
+      canPublish,
+      muteEnforced: muteState.enforcedMuted,
       userId: user.userId,
       userName: user.username,
     })

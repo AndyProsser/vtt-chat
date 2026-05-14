@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from 'express'
 import { Server as HTTPServer, createServer } from 'node:http'
 import { config } from '@/infra/config'
 import { logger } from '@/utils'
-import { seedMockPlayers } from '@/services/dev-mock-players.service'
+import { seedMockPlayers } from '@/services/dev-mock/players.service'
 import {
   requestLoggingMiddleware,
   corsMiddleware,
@@ -11,7 +11,7 @@ import {
 } from '@/infra/http/middleware'
 import apiRouter from '@/api/index'
 import { WebSocketManager } from '@/ws'
-import { sessionCleanupJobService } from '@/services/session-cleanup-job.service'
+import { sessionCleanupJobService } from '@/services/session/cleanup-job.service'
 
 export interface BootstrapResult {
   app: Express

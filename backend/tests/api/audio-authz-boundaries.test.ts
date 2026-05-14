@@ -37,7 +37,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.mockVerifyToken,
 }))
 
-vi.mock('@/services/session-authz.service', () => ({
+vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: mocks.mockResolveEffectiveSessionRole,
 }))
 

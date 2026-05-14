@@ -127,8 +127,8 @@
 **Action Items:**
 
 - [ ] Verify frontend mute UI is correct (already seems done)
-- [ ] Add server-side mute validation in LiveKit webhook handler or audio pipeline
-- [ ] If mute detected in backend, reject/ignore audio packet (silent no-op)
+- [x] Add server-side mute validation in LiveKit webhook handler or audio pipeline — implemented at LiveKit token issuance path (`/api/livekit/token`) via backend mute enforcement state
+- [x] If mute detected in backend, reject/ignore audio packet (silent no-op) — implemented as server-issued `canPublish=false` grant for muted users (`userMuted || dmMuted`)
 - [ ] (Optional) Add mute info to LiveKit token for reference
 
 ---

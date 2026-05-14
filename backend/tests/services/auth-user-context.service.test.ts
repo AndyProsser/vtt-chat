@@ -18,7 +18,7 @@ import {
   getHandoffExchangeUser,
   getUserAuthContext,
   validateUserAuthState,
-} from '@/services/auth-user-context.service'
+} from '@/services/auth/user-context.service'
 
 describe('auth-user-context.service', () => {
   beforeEach(() => {

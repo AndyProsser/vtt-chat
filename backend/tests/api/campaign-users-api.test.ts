@@ -26,7 +26,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.mockVerifyToken,
 }))
 
-vi.mock('@/services/auth-user-context.service', () => ({
+vi.mock('@/services/auth/user-context.service', () => ({
   validateUserAuthState: mocks.mockValidateUserAuthState,
 }))
 

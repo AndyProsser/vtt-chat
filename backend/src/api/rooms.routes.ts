@@ -27,7 +27,7 @@ import {
   leaveRoom,
   updatePresenceState,
 } from '@/services/room.service'
-import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()

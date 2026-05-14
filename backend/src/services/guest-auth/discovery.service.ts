@@ -6,6 +6,7 @@ import {
   sanitizeExternalSystem,
   sanitizeInviteCode,
 } from '@/utils/guest-auth.helpers'
+import { PLATFORM_STATUS_VERSION } from '@/constants/guest-auth.constants'
 import type {
   InviteValidationResult,
   PlatformStatus,
@@ -39,7 +40,7 @@ export async function getPlatformStatus(): Promise<PlatformStatus> {
 
   return {
     online: true,
-    version: '0.5.3',
+    version: PLATFORM_STATUS_VERSION,
     activeUsers,
     activeCampaigns,
     activeSessions,

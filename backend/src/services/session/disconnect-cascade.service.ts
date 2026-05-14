@@ -14,8 +14,8 @@ import {
   getSessionAudioState,
 } from '@/services/audio-state.service'
 import { updateSessionState, getSession, getSessionUsers } from '@/services/session.service'
-import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
-import { logSessionStateChange } from '@/services/session-logs.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
+import { logSessionStateChange } from '@/services/session/logs.service'
 
 const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000000' as UUID
 const GHOST_ENTRY_DELAY_MS = DISCONNECT_CASCADE_TIMERS_MS.ghostEntryDelay

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
   verifyToken: vi.fn(),
   resolveEffectiveSessionRole: vi.fn(),
+  getServerMuteEnforcementState: vi.fn(),
   generateToken: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn(),
@@ -16,8 +17,12 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.verifyToken,
 }))
 
-vi.mock('@/services/session-authz.service', () => ({
+vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
+}))
+
+vi.mock('@/services/audio-state.service', () => ({
+  getServerMuteEnforcementState: mocks.getServerMuteEnforcementState,
 }))
 
 vi.mock('@/infra/livekit/token.service', () => ({
@@ -63,6 +68,11 @@ describe('livekit routes', () => {
       ok: true,
       role: 'PLAYER',
       session: { id: SESSION_ID, dmId: 'dm-id' },
+    })
+    mocks.getServerMuteEnforcementState.mockResolvedValue({
+      userMuted: false,
+      dmMuted: false,
+      enforcedMuted: false,
     })
     mocks.generateToken.mockResolvedValue('livekit-token')
   })
@@ -129,12 +139,41 @@ describe('livekit routes', () => {
     expect(response.status).toBe(200)
     expect(response.body.token).toBe('livekit-token')
     expect(response.body.roomName).toBe(ROOM_ID)
+    expect(response.body.canPublish).toBe(true)
+    expect(response.body.muteEnforced).toBe(false)
     expect(mocks.generateToken).toHaveBeenCalledWith(
       expect.objectContaining({
         roomId: ROOM_ID,
         userId: USER_ID,
         sessionId: SESSION_ID,
         canPublish: true,
+        canSubscribe: true,
+      })
+    )
+  })
+
+  it('disables publish grant when backend mute enforcement is active', async () => {
+    const app = buildApp()
+    mocks.getServerMuteEnforcementState.mockResolvedValue({
+      userMuted: true,
+      dmMuted: false,
+      enforcedMuted: true,
+    })
+
+    const response = await request(app)
+      .post('/api/livekit/token')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, roomId: ROOM_ID })
+
+    expect(response.status).toBe(200)
+    expect(response.body.canPublish).toBe(false)
+    expect(response.body.muteEnforced).toBe(true)
+    expect(mocks.generateToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: ROOM_ID,
+        userId: USER_ID,
+        sessionId: SESSION_ID,
+        canPublish: false,
         canSubscribe: true,
       })
     )

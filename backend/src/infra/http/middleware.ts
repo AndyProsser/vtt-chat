@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Request, Response, NextFunction } from 'express'
 import { verifyAdminToken } from '@/utils'
 import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
-import { validateUserAuthState } from '@/services/auth-user-context.service'
+import { validateUserAuthState } from '@/services/auth/user-context.service'
 import { AuthToken, AdminAuthToken, AuthError, AppError } from '@/types'
 import { logger } from '@/utils/logger'
 

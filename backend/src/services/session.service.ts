@@ -22,7 +22,11 @@ import {
 } from '@/repositories/session.repository'
 import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth.service'
 import type { RemoveUserFromSessionResult } from '@/types/session.types'
-import { getSessionEventHistory } from '@/services/session-logs.service'
+import { getSessionEventHistory } from '@/services/session/logs.service'
+import {
+  SESSION_COOLDOWN_FORCE_EXPIRE_OFFSET_MS,
+  SESSION_STATE_TRANSITIONS,
+} from '@/constants/session.constants'
 
 /**
  * Generate a UUID for session creation.
@@ -175,15 +179,7 @@ export function updateSessionState(
     }
 
     // Validate state transition
-    const validTransitions: Record<SessionState, SessionState[]> = {
-      [SessionStateEnum.IDLE]: [SessionStateEnum.ACTIVE, SessionStateEnum.CLEANUP],
-      [SessionStateEnum.ACTIVE]: [SessionStateEnum.PAUSED, SessionStateEnum.ENDED],
-      [SessionStateEnum.PAUSED]: [SessionStateEnum.ACTIVE, SessionStateEnum.ENDED],
-      [SessionStateEnum.ENDED]: [SessionStateEnum.IDLE, SessionStateEnum.CLEANUP],
-      [SessionStateEnum.CLEANUP]: [SessionStateEnum.IDLE],
-    }
-
-    const allowedTransitions = validTransitions[currentState]
+    const allowedTransitions = SESSION_STATE_TRANSITIONS[currentState]
     if (!allowedTransitions.includes(requestedState)) {
       throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
         context: {
@@ -314,7 +310,7 @@ export function endSessionCooldown(sessionId: UUID, dmId: UUID): Promise<Session
 
     // Set endedAt far enough in the past that the cleanup job sees the cooldown as expired
     // regardless of postSessionChatDurationMs setting (max 60 min = 3_600_000 ms).
-    const pastEndedAt = new Date(Date.now() - 4_000_000)
+    const pastEndedAt = new Date(Date.now() - SESSION_COOLDOWN_FORCE_EXPIRE_OFFSET_MS)
 
     await updateSessionEndedAtRecord({
       sessionId,

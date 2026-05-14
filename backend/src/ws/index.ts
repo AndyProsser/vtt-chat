@@ -26,7 +26,7 @@ import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/services/event-broadcaster.service'
-import { sessionDisconnectCascadeService } from '@/services/session-disconnect-cascade.service'
+import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
   snapshotSessionPresence,

@@ -156,6 +156,7 @@ describe('chat.service', () => {
           content: 'hi',
           type: MessageType.WHISPER,
           isDmOnly: true,
+          isOffTheRecord: true,
           visibleTo: [AUTHOR_ID],
           createdAt: 1,
         },

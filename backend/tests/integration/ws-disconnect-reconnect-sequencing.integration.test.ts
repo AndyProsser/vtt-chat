@@ -63,7 +63,7 @@ vi.mock('@/services/event-broadcaster.service', () => ({
   },
 }))
 
-vi.mock('@/services/session-disconnect-cascade.service', () => ({
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
   sessionDisconnectCascadeService: {
     handleUserConnected: mocks.mockHandleUserConnected,
     handleUserDisconnected: mocks.mockHandleUserDisconnected,

@@ -15,14 +15,14 @@ vi.mock('@/services/session.service', () => ({
   getSessionUsers: mocks.mockGetSessionUsers,
 }))
 
-vi.mock('@/services/session-logs.service', () => ({
+vi.mock('@/services/session/logs.service', () => ({
   getSessionEventHistory: mocks.mockGetSessionEventHistory,
 }))
 
 import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
-} from '@/services/session-access.service'
+} from '@/services/session/access.service'
 
 describe('session-access.service', () => {
   beforeEach(() => {

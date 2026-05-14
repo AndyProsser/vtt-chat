@@ -26,7 +26,7 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
-import { deriveCampaignJoinRole } from '@/services/session-authz.service'
+import { deriveCampaignJoinRole } from '@/services/session/authz.service'
 
 const router = Router()
 const prisma = getPrismaClient()

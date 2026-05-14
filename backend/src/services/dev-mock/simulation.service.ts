@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { sendMessage } from '@/services/chat.service'
 import { DEV_MOCK_CHAT_MESSAGES } from '@/constants/dev-mock-chat-messages.constants'
+import {
+  DEV_MOCK_MESSAGE_WINDOW_MS,
+  DEV_MOCK_PREFIX,
+  MAX_DEV_MOCK_SIMULATOR_COUNT,
+  MIN_DEV_MOCK_SIMULATOR_COUNT,
+} from '@/constants/dev-mock.constants'
 import { getSession } from '@/services/session.service'
 import {
   getSessionPresence,
@@ -13,10 +19,6 @@ import { MessageType, PresenceState, Role, RoomType } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import type { StoredMessage } from '@/types/chat.types'
-
-const DEV_MOCK_PREFIX = 'dev_mock_'
-const MIN_MOCK_COUNT = 1
-const MAX_MOCK_COUNT = 9
 
 export interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean
@@ -54,7 +56,6 @@ interface DisconnectedMockState {
 }
 
 const runtimeBySession = new Map<UUID, MockSimulationRuntime>()
-const MESSAGE_WINDOW_MS = 60_000
 
 function defaultConfig(): MockSimulationConfig {
   return {
@@ -70,7 +71,10 @@ function clampPlayerCount(value: number): number {
     return defaultConfig().playerCount
   }
 
-  return Math.max(MIN_MOCK_COUNT, Math.min(MAX_MOCK_COUNT, Math.floor(value)))
+  return Math.max(
+    MIN_DEV_MOCK_SIMULATOR_COUNT,
+    Math.min(MAX_DEV_MOCK_SIMULATOR_COUNT, Math.floor(value))
+  )
 }
 
 function pickRandomUsers(userIds: UUID[], maxCount: number): UUID[] {
@@ -384,7 +388,7 @@ function pickTemplate(type: MessageType): string {
 }
 
 function pruneMessageWindow(runtime: MockSimulationRuntime, now: number) {
-  const cutoff = now - MESSAGE_WINDOW_MS
+  const cutoff = now - DEV_MOCK_MESSAGE_WINDOW_MS
   runtime.messageSentAtByType.IC = runtime.messageSentAtByType.IC.filter((ts) => ts >= cutoff)
   runtime.messageSentAtByType.OOC = runtime.messageSentAtByType.OOC.filter((ts) => ts >= cutoff)
   runtime.messageSentAtByType.WHISPER = runtime.messageSentAtByType.WHISPER.filter(
@@ -789,5 +793,8 @@ export function getMockSimulationPlayerCount(sessionId: UUID): number {
 }
 
 export function getMockSimulationBounds(): { min: number; max: number } {
-  return { min: MIN_MOCK_COUNT, max: MAX_MOCK_COUNT }
+  return {
+    min: MIN_DEV_MOCK_SIMULATOR_COUNT,
+    max: MAX_DEV_MOCK_SIMULATOR_COUNT,
+  }
 }

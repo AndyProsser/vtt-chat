@@ -44,7 +44,7 @@ vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: (...args: unknown[]) => mocks.mockExtractTokenFromHeader(...args),
 }))
 
-vi.mock('@/services/auth-user-context.service', () => ({
+vi.mock('@/services/auth/user-context.service', () => ({
   validateUserAuthState: vi.fn(async () => ({ ok: true })),
   getUserAuthContext: vi.fn(async () => ({
     userId: 'guest-user',

@@ -634,7 +634,7 @@ Definition of done:
 6. Define and enforce a session-audit action taxonomy for room, presence, audio, chat, notes/journal/history, and session lifecycle actions.
 7. Add integration tests for all in-scope families asserting Redis state, websocket fanout, durable persistence (where required), and audit append behavior.
 8. Validate reconnect behavior against backend-authoritative recovery (Redis runtime + durable fallback) and eliminate client-local drift assumptions.
-9. State-machine residual (priority P0): implement backend server-side mute enforcement in webhook/audio pipeline and reject or ignore muted audio packets.
+9. State-machine residual (priority P0): implement backend server-side mute enforcement in webhook/audio pipeline and reject or ignore muted audio packets. - Done (2026-05-14: LiveKit token issuance now enforces `canPublish=false` when `userMuted || dmMuted`)
 10. State-machine residual (priority P0): on ENDED transition, dispatch recording shutdown plus summary/close-out work asynchronously before returning control-path response.
 11. State-machine residual (priority P1): verify and enforce environment sync contract on room change (join response and SessionInit projection behavior) to avoid stale ambience/effect projections.
 

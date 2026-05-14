@@ -56,11 +56,11 @@ vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
 }))
 
-vi.mock('@/services/session-stats.service', () => ({
+vi.mock('@/services/session/stats.service', () => ({
   broadcastSessionStatsSnapshot: mocks.mockBroadcastSessionStatsSnapshot,
 }))
 
-vi.mock('@/services/session-logs.service', () => ({
+vi.mock('@/services/session/logs.service', () => ({
   logSessionStateChange: mocks.mockLogSessionStateChange,
   logSessionJoin: vi.fn(),
   logSessionLeave: mocks.mockLogSessionLeave,

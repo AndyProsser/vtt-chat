@@ -19,7 +19,7 @@ vi.mock('@/services/room.service', () => ({
   getSessionPresence: mocks.mockGetSessionPresence,
 }))
 
-import { resolveCooldownControlAuthorization } from '@/services/session-cooldown-authz.service'
+import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
 
 describe('session-cooldown-authz.service', () => {
   beforeEach(() => {

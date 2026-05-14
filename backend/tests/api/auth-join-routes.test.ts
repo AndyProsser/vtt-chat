@@ -33,7 +33,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyPassword: (...args: unknown[]) => mocks.mockVerifyPassword(...args),
 }))
 
-vi.mock('@/services/auth-user-context.service', () => ({
+vi.mock('@/services/auth/user-context.service', () => ({
   getUserAuthContext: (...args: unknown[]) => mocks.mockGetUserAuthContext(...args),
   getHandoffExchangeUser: (...args: unknown[]) => mocks.mockGetHandoffExchangeUser(...args),
 }))
@@ -55,7 +55,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   joinCampaignForUser: vi.fn().mockResolvedValue(true),
 }))
 
-vi.mock('@/services/session-authz.service', () => ({
+vi.mock('@/services/session/authz.service', () => ({
   deriveCampaignJoinRole: vi.fn((role) => role),
   normalizePlayerFacingRole: vi.fn((role) => role),
 }))

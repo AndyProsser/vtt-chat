@@ -14,7 +14,7 @@ import { logger } from '@/utils'
 import { createNote, deleteNote, updateNote } from '@/services/notes.service'
 import { deleteMessage, editMessage, sendMessage } from '@/services/chat.service'
 import { getSession } from '@/services/session.service'
-import { resolveEffectiveActor } from '@/services/dev-mock-takeover.service'
+import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 
 export { roomHandlers } from './handlers/room.handler'
 export { audioHandlers } from './handlers/audio.handler'

@@ -23,7 +23,7 @@ import { MessageType } from '@shared'
 import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
 import { logger } from '@/utils/logger'
-import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
 const router = Router()
 

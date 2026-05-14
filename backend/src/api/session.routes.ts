@@ -48,14 +48,21 @@ import {
   logSessionJoin,
   logSessionLeave,
   logSessionStateChange,
-} from '@/services/session-logs.service'
+} from '@/services/session/logs.service'
 import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
-} from '@/services/session-access.service'
-import { resolveRoleForSessionJoin } from '@/services/session-authz.service'
-import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
-import { resolveCooldownControlAuthorization } from '@/services/session-cooldown-authz.service'
+} from '@/services/session/access.service'
+import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
+import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
+import {
+  isSessionActiveOrPaused,
+  SESSION_COOLDOWN_EXTENSION_MAX_MS,
+  SESSION_COOLDOWN_EXTENSION_MIN_MS,
+  SESSION_COOLDOWN_EXTENSION_STEP_MS,
+} from '@/constants/session.constants'
+import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -137,7 +144,7 @@ async function ensureJoinedMemberPresence(params: {
     rooms.find((room) => normalizeRoomName(room.name) === 'green room') ||
     rooms.find((room) => normalizeRoomName(room.name) === 'green-room')
 
-  const shouldUseMain = params.session.state === 'ACTIVE' || params.session.state === 'PAUSED'
+  const shouldUseMain = isSessionActiveOrPaused(params.session.state)
 
   if (shouldUseMain) {
     await ensureSessionWhisperRoomForSession(params.session.id, params.session.dmId)
@@ -825,10 +832,9 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 
     // Only clear environment for the neutral room (main or greenroom), not other groups.
     // ACTIVE + PAUSED are both staged in Main Room.
-    const neutralRoomId =
-      requestedState === 'ACTIVE' || requestedState === 'PAUSED'
-        ? transition.mainRoomId
-        : transition.greenRoomId
+    const neutralRoomId = isSessionActiveOrPaused(requestedState)
+      ? transition.mainRoomId
+      : transition.greenRoomId
 
     await clearRoomEnvironmentState({
       sessionId: session.id,
@@ -1009,9 +1015,9 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
   const parsedExtensionMs = Number(extensionMs)
   if (
     !Number.isFinite(parsedExtensionMs) ||
-    parsedExtensionMs < 60_000 ||
-    parsedExtensionMs > 3_600_000 ||
-    parsedExtensionMs % 60_000 !== 0
+    parsedExtensionMs < SESSION_COOLDOWN_EXTENSION_MIN_MS ||
+    parsedExtensionMs > SESSION_COOLDOWN_EXTENSION_MAX_MS ||
+    parsedExtensionMs % SESSION_COOLDOWN_EXTENSION_STEP_MS !== 0
   ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
@@ -1051,7 +1057,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
     if (wsManager) {
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
-        type: 'SESSION:COOLDOWN_EXTENDED',
+        type: SESSION_EVENT_TYPES.COOLDOWN_EXTENDED,
         version: 1,
         userId: user.userId as UUID,
         userRole: user.role,
@@ -1122,7 +1128,7 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
     if (wsManager) {
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
-        type: 'SESSION:COOLDOWN_ENDED',
+        type: SESSION_EVENT_TYPES.COOLDOWN_ENDED,
         version: 1,
         userId: user.userId as UUID,
         userRole: user.role,

@@ -6,11 +6,9 @@ import { createToken, hashPassword } from '@/services/auth.service'
 import { sendPasswordResetEmail } from '@/services/email.service'
 import { validatePassword } from '@/utils/password'
 import { logger } from '@/utils/logger'
+import { AUTH_EMAIL_REGEX, PASSWORD_RESET_TTL_MS } from '@/constants/auth.constants'
 
 const prisma = getPrismaClient()
-
-const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
@@ -39,7 +37,7 @@ function generateResetToken(): string {
 }
 
 function validateEmailFormat(email: string): boolean {
-  return EMAIL_REGEX.test(email)
+  return AUTH_EMAIL_REGEX.test(email)
 }
 
 async function ensureUniqueUsername(baseValue: string): Promise<string> {

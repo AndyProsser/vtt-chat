@@ -3,7 +3,7 @@ import { ErrorCode } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getUserProfileById, listCharactersForUser } from '@/repositories/campaign.repository'
-import { validateUserAuthState } from '@/services/auth-user-context.service'
+import { validateUserAuthState } from '@/services/auth/user-context.service'
 
 const router = Router()
 

@@ -1,7 +1,9 @@
 import type { UUID } from '@shared'
 import type { AudioBroadcastState, AudioDMOverrideState } from '@/types/audio.types'
 import { getRedisClient } from '@/infra/redis'
+import { AUDIO_BROADCAST_OVERRIDE_TYPE, AUDIO_DM_OVERRIDE_TYPES } from '@/constants/audio.constants'
 import {
+  listAudioDMOverridesBySession,
   removeAudioDMOverridesBySession,
   removeAudioDMOverrideRecord,
   upsertAudioDMOverrideRecord,
@@ -10,7 +12,13 @@ import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
 
-export const AUDIO_BROADCAST_OVERRIDE_TYPE = 'VOICE_OF_GOD'
+export { AUDIO_BROADCAST_OVERRIDE_TYPE }
+
+export interface ServerMuteEnforcementState {
+  userMuted: boolean
+  dmMuted: boolean
+  enforcedMuted: boolean
+}
 
 export function getBroadcastRoomId(sessionId: UUID): string {
   return `dm-broadcast:${sessionId}`
@@ -137,6 +145,46 @@ export async function setUserMuteState(params: {
     sessionId: params.sessionId,
     userMuted,
     mutedAt,
+  }
+}
+
+/**
+ * Authoritative backend mute gate used by LiveKit token issuance.
+ * If this returns enforcedMuted=true, token issuance should set canPublish=false.
+ */
+export async function getServerMuteEnforcementState(params: {
+  sessionId: UUID
+  userId: UUID
+}): Promise<ServerMuteEnforcementState> {
+  const redis = await getRedisClient()
+  const presenceHashKey = `presence:session:${params.sessionId}`
+
+  const presenceJson = await redis.hGet(presenceHashKey, params.userId)
+
+  let userMuted = false
+  if (presenceJson) {
+    try {
+      const parsed = JSON.parse(presenceJson) as { userMuted?: unknown }
+      userMuted = parsed.userMuted === true
+    } catch {
+      userMuted = false
+    }
+  }
+
+  const overrides = await listAudioDMOverridesBySession(params.sessionId)
+  const latestMuteIntent = overrides.find(
+    (row) =>
+      row.targetUserId === params.userId &&
+      (row.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE ||
+        row.overrideType === AUDIO_DM_OVERRIDE_TYPES.UNMUTE)
+  )
+
+  const dmMuted = latestMuteIntent?.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE
+
+  return {
+    userMuted,
+    dmMuted,
+    enforcedMuted: userMuted || dmMuted,
   }
 }
 

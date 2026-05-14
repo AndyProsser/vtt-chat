@@ -48,17 +48,17 @@ vi.mock('@/services/session.service', () => ({
   getSessionUsers: mocks.getSessionUsers,
 }))
 
-vi.mock('@/services/session-stats.service', () => ({
+vi.mock('@/services/session/stats.service', () => ({
   broadcastSessionStatsSnapshot: mocks.broadcastSessionStatsSnapshot,
 }))
 
-vi.mock('@/services/session-logs.service', () => ({
+vi.mock('@/services/session/logs.service', () => ({
   logSessionStateChange: mocks.logSessionStateChange,
 }))
 
 import { Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
-import { SessionDisconnectCascadeService } from '@/services/session-disconnect-cascade.service'
+import { SessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
 const USER_ID = '22222222-2222-4222-8222-222222222222' as UUID

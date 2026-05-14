@@ -16,8 +16,8 @@ import type { UUID } from '@shared'
 import { MessageType, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
-import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
-import { resolveEffectiveActor } from '@/services/dev-mock-takeover.service'
+import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
+import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 
 const router = Router()
 

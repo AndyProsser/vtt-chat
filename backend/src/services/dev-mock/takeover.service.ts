@@ -1,5 +1,5 @@
 import type { UUID } from '@shared'
-import { getSessionMockPlayerById } from '@/services/dev-mock-players.service'
+import { getSessionMockPlayerById } from '@/services/dev-mock/players.service'
 
 interface MockTakeoverState {
   assumedUserId: UUID

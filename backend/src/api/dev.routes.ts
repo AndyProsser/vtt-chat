@@ -22,24 +22,24 @@ import {
   getMockPlayerTokens,
   resetDevMockRoster,
   getSessionMockPlayerById,
-} from '@/services/dev-mock-players.service'
+} from '@/services/dev-mock/players.service'
 import {
   getMockSimulationBounds,
   getMockSimulationPlayerCount,
   getMockSimulationStatus,
   stopMockSimulation,
   updateMockSimulationConfig,
-} from '@/services/dev-mock-simulation.service'
+} from '@/services/dev-mock/simulation.service'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session.service'
-import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import { getSessionPresence } from '@/services/room.service'
-import { broadcastSessionStatsSnapshot } from '@/services/session-stats.service'
+import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import {
   getMockTakeoverSnapshot,
   startMockTakeover,
   stopMockTakeover,
-} from '@/services/dev-mock-takeover.service'
+} from '@/services/dev-mock/takeover.service'
 import type { WebSocketManager } from '@/ws'
 import type { UUID } from '@shared'
 

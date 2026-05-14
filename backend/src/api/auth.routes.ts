@@ -20,7 +20,7 @@ import { joinCampaignForUser } from '@/repositories/campaign.repository'
 import { getPrismaClient } from '@/infra/db'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
-import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth-user-context.service'
+import { getHandoffExchangeUser, getUserAuthContext } from '@/services/auth/user-context.service'
 import {
   joinGuestSpectatorViaInvite,
   getExtensionPreflight,
@@ -29,7 +29,7 @@ import {
   loginGuestViaExtension,
   upgradeGuestAccount,
 } from '@/services/guest-auth.service'
-import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session-authz.service'
+import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session/authz.service'
 
 const router = Router()
 const prisma = getPrismaClient()

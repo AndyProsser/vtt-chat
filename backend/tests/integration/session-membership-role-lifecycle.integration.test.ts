@@ -58,7 +58,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: mocks.verifyToken,
 }))
 
-vi.mock('@/services/session-authz.service', () => ({
+vi.mock('@/services/session/authz.service', () => ({
   resolveRoleForSessionJoin: vi.fn(async () => ({ ok: true, role: 'PLAYER' })),
   resolveEffectiveSessionRole: vi.fn(async () => ({ ok: true, isMember: true, role: 'PLAYER' })),
 }))
@@ -109,13 +109,13 @@ vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: vi.fn(),
 }))
 
-vi.mock('@/services/session-logs.service', () => ({
+vi.mock('@/services/session/logs.service', () => ({
   logSessionJoin: vi.fn(),
   logSessionLeave: vi.fn(),
   logSessionStateChange: vi.fn(),
 }))
 
-vi.mock('@/services/session-access.service', () => ({
+vi.mock('@/services/session/access.service', () => ({
   listSessionLogsForRequester: mocks.listSessionLogsForRequester,
   listSessionUsersForRequester: mocks.listSessionUsersForRequester,
 }))

@@ -10,13 +10,8 @@ import {
 import { getRooms, getSessionPresence } from '@/services/room.service'
 import { updateSessionState, getSessionUsers } from '@/services/session.service'
 import { clearRoomMessages } from '@/services/chat.service'
+import { STANDALONE_SESSION_COOLDOWN_MS } from '@/constants/session.constants'
 import { logger } from '@/utils'
-
-/**
- * Default post-session cooldown used when a session has no campaign (standalone session).
- * Mirrors the Campaign model default (postSessionChatDurationMs = 300000).
- */
-const STANDALONE_SESSION_COOLDOWN_MS = 300_000
 
 function isGreenRoomName(value: string): boolean {
   const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')

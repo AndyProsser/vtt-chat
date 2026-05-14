@@ -2,6 +2,7 @@ import { PresenceState, Role } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
 import { getSession, getSessionUsers } from '@/services/session.service'
+import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
 
 export interface SessionStatsSnapshot {
@@ -71,7 +72,7 @@ export async function broadcastSessionStatsSnapshot(params: {
 
   const event: EventEnvelope = {
     id: crypto.randomUUID() as UUID,
-    type: 'SESSION:STATS_UPDATED',
+    type: SESSION_EVENT_TYPES.STATS_UPDATED,
     version: 1,
     userId: params.actorUserId,
     userRole: params.actorUserRole,

@@ -50,7 +50,7 @@ vi.mock('@/repositories/session.repository', () => ({
   getSessionParticipantProfiles: mocks.mockGetSessionParticipantProfiles,
 }))
 
-vi.mock('@/services/dev-mock-takeover.service', () => ({
+vi.mock('@/services/dev-mock/takeover.service', () => ({
   getMockTakeoverSnapshot: mocks.mockGetMockTakeoverSnapshot,
 }))
 

@@ -2,6 +2,7 @@ import { getPrismaClient } from '@/infra/db'
 import { createToken } from '@/services/auth.service'
 import { findOrCreateGuestAccount } from '@/services/guest-account.service'
 import { randomOpaqueToken, sanitizeEmail, sanitizeInviteCode } from '@/utils/guest-auth.helpers'
+import { DEFAULT_SPECTATOR_MAX } from '@/constants/guest-auth.constants'
 import type {
   BrowseCampaignResult,
   GuestSpectatorJoinResult,
@@ -103,7 +104,7 @@ export async function joinGuestSpectatorViaInvite(params: {
   })
 
   const activeSession = campaign.sessions[0] || null
-  const spectatorSlotsMax = campaign.spectatorMax ?? 5
+  const spectatorSlotsMax = campaign.spectatorMax ?? DEFAULT_SPECTATOR_MAX
   const currentFilled = activeSession?.members.length || 0
 
   if (!activeSession || currentFilled >= spectatorSlotsMax) {

@@ -39,7 +39,7 @@ vi.mock('@/services/session.service', () => ({
   getSession: mocks.getSession,
 }))
 
-vi.mock('@/services/session-authz.service', () => ({
+vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
 }))
 
@@ -47,7 +47,7 @@ vi.mock('@/services/room.service', () => ({
   getSessionPresence: mocks.getSessionPresence,
 }))
 
-vi.mock('@/services/dev-mock-players.service', () => ({
+vi.mock('@/services/dev-mock/players.service', () => ({
   listMockPlayers: vi.fn().mockResolvedValue([]),
   getMockPlayerTokens: vi.fn().mockResolvedValue([]),
   joinMockPlayersToSession: vi.fn().mockResolvedValue(undefined),
@@ -56,7 +56,7 @@ vi.mock('@/services/dev-mock-players.service', () => ({
   getSessionMockPlayerById: mocks.getSessionMockPlayerById,
 }))
 
-vi.mock('@/services/dev-mock-takeover.service', () => ({
+vi.mock('@/services/dev-mock/takeover.service', () => ({
   getMockTakeoverSnapshot: mocks.getMockTakeoverSnapshot,
   startMockTakeover: mocks.startMockTakeover,
   stopMockTakeover: mocks.stopMockTakeover,
@@ -68,7 +68,7 @@ vi.mock('@/services/dev-mock-takeover.service', () => ({
     })),
 }))
 
-vi.mock('@/services/session-stats.service', () => ({
+vi.mock('@/services/session/stats.service', () => ({
   broadcastSessionStatsSnapshot: vi.fn().mockResolvedValue(undefined),
 }))
 

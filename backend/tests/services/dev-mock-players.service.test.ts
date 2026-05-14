@@ -62,7 +62,7 @@ vi.mock('@/utils/logger', () => ({
   },
 }))
 
-import { ensureDevMockPlayersForSession } from '@/services/dev-mock-players.service'
+import { ensureDevMockPlayersForSession } from '@/services/dev-mock/players.service'
 
 describe('dev-mock-players service', () => {
   beforeEach(() => {

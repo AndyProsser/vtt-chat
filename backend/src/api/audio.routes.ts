@@ -13,7 +13,7 @@ import {
 import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/services/event-broadcaster.service'
 import { logger } from '@/utils'
-import { resolveEffectiveSessionRole } from '@/services/session-authz.service'
+import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
 const router = Router()
 

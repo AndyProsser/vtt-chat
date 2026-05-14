@@ -1,0 +1,2 @@
+export const PLATFORM_STATUS_VERSION = '0.5.3'
+export const DEFAULT_SPECTATOR_MAX = 5

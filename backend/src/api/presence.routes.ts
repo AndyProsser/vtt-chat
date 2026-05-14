@@ -12,11 +12,11 @@ import {
   snapshotSessionPresence,
   updatePresenceState,
 } from '@/services/room.service'
-import { getMockTakeoverSnapshot } from '@/services/dev-mock-takeover.service'
+import { getMockTakeoverSnapshot } from '@/services/dev-mock/takeover.service'
 import {
   broadcastSessionStatsSnapshot,
   getSessionStatsSnapshot,
-} from '@/services/session-stats.service'
+} from '@/services/session/stats.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
