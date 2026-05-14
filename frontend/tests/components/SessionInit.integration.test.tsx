@@ -1768,19 +1768,12 @@ describe('SessionInit integration', () => {
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
-    const recentTab = screen.getByRole('tab', { name: /Recent/i })
-    expect(recentTab.getAttribute('aria-selected')).toBe('true')
-    fireEvent.click(screen.getByRole('tab', { name: /All/i }))
-
     const notesTabForSwitch = screen.getByRole('tab', { name: /Notes/i })
     fireEvent.click(notesTabForSwitch)
     expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
 
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
-
-    // Journal re-mount should re-apply default view preset.
-    expect(screen.getByRole('tab', { name: /Recent/i }).getAttribute('aria-selected')).toBe('true')
 
     const historyTab = screen.getByRole('tab', { name: /History/i })
     fireEvent.click(historyTab)

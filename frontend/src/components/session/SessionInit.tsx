@@ -3758,6 +3758,7 @@ export function SessionInit({
                         apiUrl={apiUrl}
                         token={token}
                         sessionId={currentSession.id}
+                        sessionName={currentSession.name}
                         role={effectiveSessionRole}
                         userId={user.id}
                       />

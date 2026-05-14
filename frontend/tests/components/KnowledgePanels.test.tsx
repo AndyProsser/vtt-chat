@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MessageType, NoteVisibility, PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +7,6 @@ import { JournalPanel } from '../../src/components/session/JournalPanel'
 import { NotesRailPanel } from '../../src/components/session/NotesRailPanel'
 
 import { useStore } from '../../src/state/store'
-import type { Note } from '../../src/types/notes'
 
 const asUuid = (value: string) => value as UUID
 
@@ -24,167 +23,71 @@ describe('knowledge panels', () => {
     store.clearNotes()
   })
 
-  it('renders journal entries from state and supports recent vs all views', async () => {
-    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
-      const url = String(input)
-
-      if (
-        url.endsWith(`/api/notes/${SESSION_ID}`) ||
-        url.endsWith(`/api/notes/${SESSION_TWO_ID}`)
-      ) {
-        return {
-          ok: true,
-          json: async () => ({
-            notes: [
-              {
-                id: asUuid('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
-                authorId: PLAYER_ID,
-                authorUsername: 'Tara',
-                title: 'Recovered sigil',
-                content: 'Recovered from the archive vault door.',
-                visibility: NoteVisibility.PLAYERS_VISIBLE,
-                tags: ['sigil', 'vault'],
-                allowedUsers: [],
-                publishedAt: null,
-                createdAt: 10,
-                updatedAt: 20,
-              },
-              {
-                id: asUuid('11111111-2222-4333-8444-555555555555'),
-                authorId: PLAYER_ID,
-                authorUsername: 'Tara',
-                title: 'Tunnel map',
-                content: 'Tunnel routes are marked.',
-                visibility: NoteVisibility.PLAYERS_VISIBLE,
-                tags: ['map'],
-                allowedUsers: [],
-                publishedAt: 20,
-                createdAt: 15,
-                updatedAt: 25,
-              },
-            ],
-          }),
-        }
-      }
-
-      throw new Error(`Unexpected fetch call: ${url}`)
-    })
-
-    vi.stubGlobal('fetch', fetchMock)
-
-    const storage = new Map<string, string>()
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn((key: string) => storage.get(key) ?? null),
-      setItem: vi.fn((key: string, value: string) => {
-        storage.set(key, value)
-      }),
-    })
-
-    const clipboardWriteText = vi.fn(async () => undefined)
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText,
-      },
-    })
-
-    const firstRender = render(
-      <JournalPanel
-        apiUrl="http://localhost:3000"
-        token="token"
-        sessionId={SESSION_ID}
-        role={Role.DM}
-        userId={PLAYER_ID}
-      />
-    )
-
-    const notesState = useStore.getState()
-    const firstNote: Note = {
+  it('renders journal editor for DM and read-only view for players', async () => {
+    const journalNote = {
       id: asUuid('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
-      ownerId: PLAYER_ID,
-      ownerUsername: 'Tara',
-      title: 'Recovered sigil',
-      content: 'Recovered from the archive vault door.',
+      authorId: PLAYER_ID,
+      authorUsername: 'Tara',
+      title: 'Session Journal',
+      content: 'The party descended into the vault.',
       visibility: NoteVisibility.PLAYERS_VISIBLE,
-      tags: ['sigil', 'vault'],
+      tags: ['_journal'],
       allowedUsers: [],
       publishedAt: null,
       createdAt: 10,
       updatedAt: 20,
     }
-    const secondNote: Note = {
-      id: asUuid('11111111-2222-4333-8444-555555555555'),
-      ownerId: PLAYER_ID,
-      ownerUsername: 'Tara',
-      title: 'Tunnel map',
-      content: 'Tunnel routes are marked.',
-      visibility: NoteVisibility.PLAYERS_VISIBLE,
-      tags: ['map'],
-      allowedUsers: [],
-      publishedAt: 20,
-      createdAt: 15,
-      updatedAt: 25,
-    }
-    await act(async () => {
-      notesState.addNote(SESSION_ID, firstNote)
-      notesState.addNote(SESSION_ID, secondNote)
+
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+      if (url.includes('/api/notes/')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [journalNote] }),
+        }
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
     })
+    vi.stubGlobal('fetch', fetchMock)
 
-    expect(await screen.findByText('Recovered sigil')).toBeTruthy()
-    expect(screen.getByText('By Tara · sigil, vault')).toBeTruthy()
-    expect(screen.getByText('By Tara · map')).toBeTruthy()
-
-    const journalEntryList = screen.getByLabelText('Journal entries')
-    expect(within(journalEntryList).getAllByRole('article').length).toBe(2)
-
-    firstRender.unmount()
-
-    const secondRender = render(
+    // DM sees editor with Edit button
+    const { unmount: unmountDm } = render(
       <JournalPanel
         apiUrl="http://localhost:3000"
         token="token"
         sessionId={SESSION_ID}
+        sessionName="Chapter One"
         role={Role.DM}
         userId={PLAYER_ID}
       />
     )
 
-    const secondState = useStore.getState()
-    await act(async () => {
-      secondState.addNote(SESSION_ID, firstNote)
-      secondState.addNote(SESSION_ID, secondNote)
-    })
+    expect(await screen.findByTestId('journal-panel')).toBeTruthy()
+    expect(await screen.findByLabelText('Edit journal')).toBeTruthy()
+    // Editor is read-only until Edit is clicked
+    expect(screen.getByTestId('markdown-editor')).toBeTruthy()
 
-    await waitFor(() => {
-      expect(screen.getByText('Recovered sigil')).toBeTruthy()
-      expect(screen.getByText('Tunnel map')).toBeTruthy()
-    })
+    // Click Edit — editor becomes active
+    fireEvent.click(screen.getByLabelText('Edit journal'))
+    expect(screen.getByLabelText('Save journal')).toBeTruthy()
+    expect(screen.getByLabelText('Cancel editing')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }))
-    expect(screen.getByText('Recovered sigil')).toBeTruthy()
-    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
-    expect(screen.getByText('Tunnel map')).toBeTruthy()
+    unmountDm()
 
-    secondRender.unmount()
-
+    // Player sees read-only editor, no Edit button
     render(
       <JournalPanel
         apiUrl="http://localhost:3000"
         token="token"
-        sessionId={SESSION_TWO_ID}
-        role={Role.DM}
+        sessionId={SESSION_ID}
+        role={Role.PLAYER}
         userId={PLAYER_ID}
       />
     )
 
-    const thirdState = useStore.getState()
-    await act(async () => {
-      thirdState.addNote(SESSION_TWO_ID, firstNote)
-      thirdState.addNote(SESSION_TWO_ID, secondNote)
-    })
-
-    expect(await screen.findByText('Recovered sigil')).toBeTruthy()
-    expect(screen.getByText('Tunnel map')).toBeTruthy()
+    expect(await screen.findByTestId('journal-panel')).toBeTruthy()
+    expect(screen.getByTestId('markdown-editor')).toBeTruthy()
+    expect(screen.queryByLabelText('Edit journal')).toBeNull()
   })
 
   it('renders history entries and supports grouping and sort controls', async () => {
