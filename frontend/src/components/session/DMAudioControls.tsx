@@ -5,70 +5,27 @@ import { DMEnvironmentSection } from '../audio/DMEnvironmentSection'
 import { DMPlayerOverridesSection } from '../audio/DMPlayerOverridesSection'
 import { DMRoomMovementSection } from '../audio/DMRoomMovementSection'
 import { DMVoicePresetSection } from '../audio/DMVoicePresetSection'
+import {
+  FILTER_PRESETS,
+  OVERRIDE_CONFIRMATION_TIMEOUT_MS,
+  ROOM_MOVE_CONFIRMATION_TIMEOUT_MS,
+} from '../../constants/dmAudioControls.constants'
 import { useStore } from '../../hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 import { telemetryClient } from '../../utils/telemetry'
-interface AudioRoomOption {
-  id: UUID
-  name: string
-  type: RoomType
-}
-
-interface ParticipantOption {
-  userId: UUID
-  username: string
-  state: PresenceState
-  primaryRoomId?: UUID
-}
-
-interface AudioPreset {
-  id: string
-  name: string
-  category: 'VOICE' | 'DISTANCE' | 'ENVIRONMENT' | 'CONDITION' | 'IC'
-}
-
-interface DMAudioControlsProps {
-  apiUrl: string
-  token: string
-  role: Role
-  sessionId: UUID
-  dmUserId: UUID
-  rooms: AudioRoomOption[]
-  participants: ParticipantOption[]
-}
-
-interface PendingOverride {
-  userId: UUID
-  overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
-  expectedAppliedAt: number
-  startedAt: number
-}
-
-interface PendingMove {
-  userId: UUID
-  username: string
-  fromRoomId?: UUID
-  toRoomId: UUID
-  startedAt: number
-}
-
-const FILTER_PRESETS: Array<{ id: string; name: string; params: Record<string, unknown> }> = [
-  {
-    id: 'filter-radio',
-    name: 'Radio',
-    params: { lowpassHz: 2400, highpassHz: 300, drive: 0.05 },
-  },
-  {
-    id: 'filter-whisper',
-    name: 'Whisper',
-    params: { lowpassHz: 5200, gain: 0.75, breathMix: 0.2 },
-  },
-  {
-    id: 'filter-helmet',
-    name: 'Helmet',
-    params: { lowpassHz: 1800, resonance: 0.7, gain: 0.85 },
-  },
-]
+import {
+  buildParticipantRoomById,
+  buildParticipantsById,
+  buildPlayersByRoom,
+  getActiveOverrideSummary,
+  getSelectedFilterPreset,
+} from './dmAudioControls.helpers'
+import type {
+  AudioPreset,
+  DMAudioControlsProps,
+  PendingMove,
+  PendingOverride,
+} from './dmAudioControls.types'
 
 export function DMAudioControls({
   apiUrl,
@@ -131,13 +88,7 @@ export function DMAudioControls({
     [presetOptions]
   )
 
-  const participantsById = useMemo(
-    () =>
-      Object.fromEntries(
-        participants.map((participant) => [participant.userId, participant])
-      ) as Record<UUID, ParticipantOption>,
-    [participants]
-  )
+  const participantsById = useMemo(() => buildParticipantsById(participants), [participants])
 
   useEffect(() => {
     setSelectedRoomId((previous) => {
@@ -392,7 +343,9 @@ export function DMAudioControls({
         role,
       })
 
-      setSuccess(`Voice mode set to ${localVoiceMode === 'BROADCAST' ? 'Broadcast' : 'Target Group'}.`)
+      setSuccess(
+        `Voice mode set to ${localVoiceMode === 'BROADCAST' ? 'Broadcast' : 'Target Group'}.`
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set voice mode')
     } finally {
@@ -400,7 +353,8 @@ export function DMAudioControls({
     }
   }
 
-  const moveParticipantToRoom = async (userId: UUID, toRoomId: UUID) => {    const participant = participantsById[userId]
+  const moveParticipantToRoom = async (userId: UUID, toRoomId: UUID) => {
+    const participant = participantsById[userId]
     if (!participant) {
       return
     }
@@ -481,7 +435,7 @@ export function DMAudioControls({
           continue
         }
 
-        if (now - pending.startedAt > 10000) {
+        if (now - pending.startedAt > OVERRIDE_CONFIRMATION_TIMEOUT_MS) {
           delete next[userId]
           changed = true
           setError(`Timed out waiting for realtime confirmation for ${pending.overrideType}.`)
@@ -507,7 +461,7 @@ export function DMAudioControls({
           continue
         }
 
-        if (now - pending.startedAt > 10000) {
+        if (now - pending.startedAt > ROOM_MOVE_CONFIRMATION_TIMEOUT_MS) {
           delete next[userId]
           changed = true
           setError(`Timed out waiting for realtime room move confirmation for ${pending.username}.`)
@@ -519,51 +473,19 @@ export function DMAudioControls({
   }, [participantsById])
 
   const participantRoomById = useMemo(() => {
-    const next: Record<UUID, UUID | undefined> = {}
-
-    for (const participant of controllableParticipants) {
-      const pendingMove = pendingRoomMoves[participant.userId]
-      next[participant.userId] = pendingMove?.toRoomId || participant.primaryRoomId
-    }
-
-    return next
+    return buildParticipantRoomById(controllableParticipants, pendingRoomMoves)
   }, [controllableParticipants, pendingRoomMoves])
 
   const playersByRoom = useMemo(() => {
-    const grouped: Record<UUID, ParticipantOption[]> = {}
-    for (const room of rooms) {
-      grouped[room.id] = []
-    }
-
-    for (const participant of controllableParticipants) {
-      const roomId = participantRoomById[participant.userId]
-      if (roomId && grouped[roomId]) {
-        grouped[roomId].push(participant)
-      }
-    }
-
-    return grouped
+    return buildPlayersByRoom(rooms, controllableParticipants, participantRoomById)
   }, [controllableParticipants, participantRoomById, rooms])
 
   if (role !== 'DM') {
     return <p className="m-0 text-sm text-ui-secondary">Audio controls are DM-only.</p>
   }
 
-  const activeOverride = selectedTargetUserId
-    ? [
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'MUTE'),
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'GAIN'),
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'DISTANCE'),
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'CONDITION'),
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'FILTER'),
-        getUserDMOverride(dmOverrides, selectedTargetUserId, 'VOICE'),
-      ]
-        .filter(Boolean)
-        .map((override) => override?.overrideType)
-        .join(', ')
-    : undefined
-  const selectedFilterPreset =
-    FILTER_PRESETS.find((preset) => preset.id === selectedFilterPresetId) || FILTER_PRESETS[0]
+  const activeOverride = getActiveOverrideSummary(dmOverrides, selectedTargetUserId)
+  const selectedFilterPreset = getSelectedFilterPreset(selectedFilterPresetId)
 
   return (
     <div className="grid gap-3">

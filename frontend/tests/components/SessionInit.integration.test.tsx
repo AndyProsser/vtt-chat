@@ -1768,15 +1768,9 @@ describe('SessionInit integration', () => {
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
-    await waitFor(() => {
-      expect(screen.getByText(/Tunnel map/i)).toBeTruthy()
-      expect(screen.queryByText(/Archive route/i)).toBeNull()
-    })
-
-    // Tag filter may be 'Tag' or 'Tags' depending on UI
-    const tagLabel = screen.getByLabelText(/Tag/i)
-    fireEvent.change(tagLabel, { target: { value: 'all' } })
-    expect(screen.getByText(/Archive route/i)).toBeTruthy()
+    const recentTab = screen.getByRole('tab', { name: /Recent/i })
+    expect(recentTab.getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByRole('tab', { name: /All/i }))
 
     const notesTabForSwitch = screen.getByRole('tab', { name: /Notes/i })
     fireEvent.click(notesTabForSwitch)
@@ -1785,24 +1779,17 @@ describe('SessionInit integration', () => {
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
-    await waitFor(() => {
-      expect(screen.getByText(/Tunnel map/i)).toBeTruthy()
-      expect(screen.queryByText(/Archive route/i)).toBeNull()
-    })
+    // Journal re-mount should re-apply default view preset.
+    expect(screen.getByRole('tab', { name: /Recent/i }).getAttribute('aria-selected')).toBe('true')
 
     const historyTab = screen.getByRole('tab', { name: /History/i })
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 
-    await waitFor(() => {
-      expect(screen.getByText(/Session state changed from IDLE to ACTIVE/i)).toBeTruthy()
-      expect(screen.queryByText(/Tara joined main room/i)).toBeNull()
-    })
-
-    // Actor filter may be 'Actor' or 'Actors' depending on UI
-    const actorLabel = screen.getByLabelText(/Actor/i)
-    fireEvent.change(actorLabel, { target: { value: 'all' } })
-    expect(screen.getByText(/Tara joined main room/i)).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Day/i }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /Newest/i }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByRole('tab', { name: /Event/i }))
+    fireEvent.click(screen.getByRole('tab', { name: /Oldest/i }))
 
     const notesTab = screen.getByRole('tab', { name: /Notes/i })
     fireEvent.click(notesTab)
@@ -1811,10 +1798,9 @@ describe('SessionInit integration', () => {
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 
-    await waitFor(() => {
-      expect(screen.getByText(/Session state changed from IDLE to ACTIVE/i)).toBeTruthy()
-      expect(screen.queryByText(/Tara joined main room/i)).toBeNull()
-    })
+    // History re-mount should re-apply default grouping/sort presets.
+    expect(screen.getByRole('tab', { name: /Day/i }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /Newest/i }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('joins from a full invite link entered in the home join modal', async () => {

@@ -82,7 +82,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
       return
     }
 
@@ -92,7 +92,7 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   }, [storageKey])
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.localStorage?.setItem !== 'function') {
       return
     }
 

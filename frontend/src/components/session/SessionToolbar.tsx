@@ -2,59 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ToolbarActionModel } from './CommandCenterFrame'
 import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import {
+  DEFAULT_COOLDOWN_MS,
+  formatDuration,
+  formatTimestamp,
+  toFiniteTimestamp,
+  toneFromAudioState,
+  toneFromCoreState,
+} from '../../constants/sessionToolbar.constants'
 import { Icon } from '../ui/Icon'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import '../../styles/components/session/SessionToolbar.css'
-
-/** Default post-session cooldown window: 5 minutes */
-const DEFAULT_COOLDOWN_MS = 5 * 60 * 1000
-
-function toFiniteTimestamp(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string') {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric)) {
-      return numeric
-    }
-
-    const parsed = Date.parse(value)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return undefined
-}
-
-function formatDuration(totalSeconds: number): string {
-  const s = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0
-  const hh = String(Math.floor(s / 3600)).padStart(2, '0')
-  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0')
-  const ss = String(s % 60).padStart(2, '0')
-  return `${hh}:${mm}:${ss}`
-}
-
-function formatTimestamp(ms: number | undefined): string {
-  if (!Number.isFinite(ms) || !ms) return '—'
-  return new Date(ms).toLocaleString([], {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatMs(ms: number): string {
-  const safeMs = Number.isFinite(ms) ? ms : 0
-  const s = Math.max(0, Math.floor(safeMs / 1000))
-  const mm = String(Math.floor(s / 60)).padStart(2, '0')
-  const ss = String(s % 60).padStart(2, '0')
-  return `${mm}:${ss}`
-}
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
@@ -269,20 +227,6 @@ export function SessionToolbar({
   const shouldRenderCooldownControls = isCooldownMode && showCooldownControls
   const hasExtraButtons =
     canStartSession || canStopSession || canPauseSession || shouldRenderCooldownControls
-
-  const toneFromCoreState = (value: CoreWsState): 'is-green' | 'is-yellow' | 'is-red' => {
-    if (value === 'CONNECTED') return 'is-green'
-    if (value === 'CONNECTING') return 'is-yellow'
-    return 'is-red'
-  }
-
-  const toneFromAudioState = (
-    value: LiveKitConnectionState
-  ): 'is-green' | 'is-yellow' | 'is-red' => {
-    if (value === 'CONNECTED') return 'is-green'
-    if (value === 'CONNECTING' || value === 'NOT_APPLICABLE') return 'is-yellow'
-    return 'is-red'
-  }
 
   const coreToneClass = toneFromCoreState(coreWsState)
   const audioToneClass = toneFromAudioState(livekitState)
