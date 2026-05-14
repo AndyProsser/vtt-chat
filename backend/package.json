@@ -34,7 +34,7 @@
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.8",
-    "@types/node": "^25.6.0",
+    "@types/node": "^26",
     "@types/nodemailer": "^8.0.0",
     "@types/supertest": "^7.2.0",
     "@types/ws": "^8.5.12",

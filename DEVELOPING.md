@@ -42,10 +42,10 @@ sudo usermod -aG docker $USER
 
 Log out and back in to apply group changes.
 
-### **Node.js 25**
+### **Node.js 26**
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_25.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
@@ -419,7 +419,7 @@ sudo pacman -S --needed git nodejs npm docker docker-compose make
 Verify Node.js version:
 
 ```bash
-node --version  # Should be 25.x or later
+node --version  # Should be 26.x or later
 ```
 
 ### **Enable Docker**

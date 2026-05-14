@@ -1,4 +1,4 @@
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 # Context is the project root so shared/ is accessible alongside backend/
 WORKDIR /workspace
 
@@ -19,7 +19,7 @@ COPY backend/tsconfig.json ./
 COPY backend/src ./src
 RUN npm run build
 
-FROM node:25-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 COPY --from=builder /workspace/backend/package.json /workspace/backend/package-lock.json* ./

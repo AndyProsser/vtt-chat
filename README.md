@@ -153,7 +153,7 @@ For full setup details, reverse-proxy configuration, and upgrade instructions se
 
 See [DEVELOPING.md](DEVELOPING.md) for the full setup guide (Linux/Ubuntu focused). The short version:
 
-**Requirements:** Node.js 25, Docker, Docker Compose
+**Requirements:** Node.js 26, Docker, Docker Compose
 
 ```bash
 git clone https://github.com/AndyProsser/vtt-chat.git

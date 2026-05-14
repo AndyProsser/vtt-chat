@@ -1,4 +1,4 @@
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 # Context is the project root so shared/ is accessible alongside admin/
 WORKDIR /workspace
 
@@ -16,7 +16,7 @@ COPY admin/vite.config.ts ./
 COPY admin/src ./src
 RUN npm run build
 
-FROM node:25-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 RUN npm install -g http-server
