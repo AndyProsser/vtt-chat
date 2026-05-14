@@ -7,6 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import {
   createSession,
+  endSessionCooldown,
   extendSessionCooldown,
   getSession,
   getAllSessions,
@@ -1062,6 +1063,76 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
           extensionMs: parsedExtensionMs,
           previousEndedAt: previousSession?.endedAt ?? null,
           endedAt: session.endedAt ?? null,
+        },
+      })
+    }
+
+    return res.status(200).json({ session })
+  } catch (err: any) {
+    if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
+      return res.status(409).json(err)
+    }
+    if (err.code === ErrorCode.FORBIDDEN) {
+      return res.status(403).json(err)
+    }
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * POST /sessions/:id/cooldown/end
+ * DM ends the post-session cooldown window early.
+ * Sets endedAt to a past timestamp so the cleanup job picks up the session immediately.
+ */
+router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const cooldownAuth = await resolveCooldownControlAuthorization({
+      sessionId: id as UUID,
+      requesterUserId: user.userId as UUID,
+    })
+
+    if (!cooldownAuth.ok || !cooldownAuth.transitionActorUserId) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: cooldownAuth.message || 'Cooldown controls are not available.',
+      })
+    }
+
+    const session = await endSessionCooldown(id as UUID, cooldownAuth.transitionActorUserId)
+
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:COOLDOWN_ENDED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          state: session.state,
+          endedBy: user.userId,
+          endedAt: Date.now(),
         },
       })
     }

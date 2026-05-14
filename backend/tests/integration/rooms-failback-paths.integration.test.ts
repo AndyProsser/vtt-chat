@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   getSessionUsers: vi.fn(),
   clearRoomMessages: vi.fn(),
+  closeRoom: vi.fn(),
   createRoom: vi.fn(),
   deleteRoom: vi.fn(),
   endWhisperBubbleForSession: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('@/services/chat.service', () => ({
 }))
 
 vi.mock('@/services/room.service', () => ({
+  closeRoom: mocks.closeRoom,
   createRoom: mocks.createRoom,
   deleteRoom: mocks.deleteRoom,
   endWhisperBubbleForSession: mocks.endWhisperBubbleForSession,
@@ -146,6 +148,7 @@ describe('room failback integration paths', () => {
     mocks.getRoomMemberIds.mockResolvedValue([])
     mocks.updatePresenceState.mockResolvedValue(undefined)
     mocks.clearRoomMessages.mockResolvedValue(undefined)
+    mocks.closeRoom.mockResolvedValue({ movedUsers: [], movedUserIds: [] })
     mocks.deleteRoom.mockResolvedValue(undefined)
     mocks.ensureSessionDefaultRoomsForSession.mockResolvedValue(undefined)
     mocks.endWhisperBubbleForSession.mockResolvedValue([
@@ -235,6 +238,52 @@ describe('room failback integration paths', () => {
 
     expect(reconcileJoined).toBeTruthy()
     expect(reconcileJoined?.[1]?.payload?.roomId).toBe(MAIN_ROOM_ID)
+  })
+
+  it('emits ROOM:USER_LEFT and ROOM:USER_JOINED before ROOM:DELETED during group delete', async () => {
+    mocks.getRoom.mockResolvedValue({
+      id: GROUP_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Scout Team',
+      type: RoomType.GROUP,
+    })
+
+    mocks.closeRoom.mockResolvedValue({
+      movedUsers: [{ userId: PLAYER_ID, username: 'player-one' }],
+      movedUserIds: [PLAYER_ID],
+    })
+
+    const app = buildApp()
+    const res = await request(app)
+      .delete(`/api/rooms/${GROUP_ROOM_ID}`)
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
+
+    expect(res.status).toBe(200)
+
+    const wsCalls = app.locals.wsManager.broadcastEventToSession.mock.calls as Array<[string, any]>
+    const roomClosedCalls = wsCalls.filter(([, event]) => event.payload?.reason === 'ROOM_CLOSED')
+
+    expect(roomClosedCalls.length).toBeGreaterThanOrEqual(2)
+
+    const leftIndex = wsCalls.findIndex(
+      ([, event]) => event.type === 'ROOM:USER_LEFT' && event.payload?.reason === 'ROOM_CLOSED'
+    )
+    const joinedIndex = wsCalls.findIndex(
+      ([, event]) => event.type === 'ROOM:USER_JOINED' && event.payload?.reason === 'ROOM_CLOSED'
+    )
+    const deletedIndex = wsCalls.findIndex(([, event]) => event.type === 'ROOM:DELETED')
+
+    expect(leftIndex).toBeGreaterThanOrEqual(0)
+    expect(joinedIndex).toBeGreaterThanOrEqual(0)
+    expect(deletedIndex).toBeGreaterThanOrEqual(0)
+
+    expect(leftIndex).toBeLessThan(deletedIndex)
+    expect(joinedIndex).toBeLessThan(deletedIndex)
+
+    const deletedEvent = wsCalls[deletedIndex]?.[1]
+    expect(deletedEvent.payload?.movedUserIds).toContain(PLAYER_ID)
+    expect(deletedEvent.payload?.movedToRoomId).toBe(MAIN_ROOM_ID)
   })
 
   it('uses MAIN fallback path for whisper end movement and emits joined event to MAIN', async () => {

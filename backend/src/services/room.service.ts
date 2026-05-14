@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { PresenceState, RoomType, SessionState } from '@shared'
+import { createError, ErrorCode, PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import type {
   RealtimePresence,
@@ -372,9 +372,70 @@ export async function deleteRoom(params: { sessionId: UUID; roomId: UUID }): Pro
     return
   }
 
+  const memberIds = await getRoomMemberIds(params.sessionId, params.roomId)
+  if (memberIds.length > 0) {
+    throw createError(ErrorCode.INVALID_INPUT, {
+      message: 'Room must be empty before deleteRoom is called',
+      context: {
+        sessionId: params.sessionId,
+        roomId: params.roomId,
+        memberCount: memberIds.length,
+      },
+    })
+  }
+
   const redis = await getRedisClient()
   await redis.del(roomMembersKey(params.sessionId, params.roomId))
   await deleteRoomRecord(params.roomId)
+}
+
+export async function closeRoom(params: {
+  sessionId: UUID
+  roomId: UUID
+  mainRoomId: UUID
+}): Promise<{ movedUsers: Array<{ userId: UUID; username: string }>; movedUserIds: UUID[] }> {
+  const room = await findRoomById(params.roomId)
+  if (!room || room.sessionId !== params.sessionId) {
+    return { movedUsers: [], movedUserIds: [] }
+  }
+
+  const members = await getRoomMemberIds(params.sessionId, params.roomId)
+  if (members.length === 0) {
+    return { movedUsers: [], movedUserIds: [] }
+  }
+
+  const currentPresence = await getSessionPresence(params.sessionId)
+  const presenceByUserId = new Map(currentPresence.map((entry) => [entry.userId, entry]))
+
+  const movedUsers: Array<{ userId: UUID; username: string }> = []
+  for (const memberId of members) {
+    const presence = presenceByUserId.get(memberId)
+    if (!presence) {
+      continue
+    }
+
+    const movedPresence = await joinRoom({
+      sessionId: params.sessionId,
+      roomId: params.mainRoomId,
+      userId: memberId,
+      username: presence.username,
+      state: presence.state,
+    })
+
+    if (!movedPresence) {
+      continue
+    }
+
+    movedUsers.push({
+      userId: memberId,
+      username: presence.username,
+    })
+  }
+
+  return {
+    movedUsers,
+    movedUserIds: movedUsers.map((entry) => entry.userId),
+  }
 }
 
 export async function snapshotSessionPresence(sessionId: UUID): Promise<number> {

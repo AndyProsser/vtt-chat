@@ -137,22 +137,23 @@
 
 ### 3.1 Group Deletion with Member Migration
 
-**Contract:** Delete group → move all members to MAIN + broadcast ROOM:USER_LEFT/JOINED events
+**Contract:** Close group first (move all members to MAIN), then delete only after room is empty; broadcast ROOM:USER_LEFT/JOINED before ROOM:DELETED.
 
 **Current Codebase:**
 
-| Component        | Location                               | Current               | Contract Required                             |
-| ---------------- | -------------------------------------- | --------------------- | --------------------------------------------- |
-| **Room Service** | `backend/src/services/room.service.ts` | `deleteRoom()` exists | Ensure members migrated to MAIN before delete |
-| **Room API**     | `backend/src/api/room.routes.ts`       | DELETE endpoint       | Already calls deleteRoom()                    |
-| **WS Events**    | `shared/events/room.ts`                | Room events defined   | Already broadcasts ROOM:USER_LEFT/JOINED ✓    |
+| Component        | Location                               | Current                        | Contract Required                                               |
+| ---------------- | -------------------------------------- | ------------------------------ | --------------------------------------------------------------- |
+| **Room Service** | `backend/src/services/room.service.ts` | `closeRoom()` + `deleteRoom()` | `closeRoom()` moves members; `deleteRoom()` requires empty room |
+| **Room API**     | `backend/src/api/rooms.routes.ts`      | DELETE endpoint                | Executes Close -> Delete flow                                   |
+| **WS Events**    | `shared/events/room.ts`                | Room events defined            | Already broadcasts ROOM:USER_LEFT/JOINED ✓                      |
 
 **Action Items:**
 
-- [ ] Verify `deleteRoom()` migrates all members to MAIN before delete completes
-- [ ] Ensure migration is atomic (all-or-nothing)
-- [ ] Broadcast ROOM:USER_LEFT for each player leaving deleted group
-- [ ] Broadcast ROOM:USER_JOINED for each player joining MAIN
+- [x] Keep explicit Close -> Delete flow in backend (`closeRoom()` then `deleteRoom()`)
+- [x] Enforce guard: `deleteRoom()` fails if room still has members
+- [x] Broadcast ROOM:USER_LEFT for each player leaving closed group
+- [x] Broadcast ROOM:USER_JOINED for each player joining MAIN
+- [x] Broadcast ROOM:DELETED only after successful close + empty-room delete
 
 ---
 
@@ -242,12 +243,16 @@
 
 **Action Items:**
 
-- [ ] Add `postSessionChatEnabled` and `postSessionChatDurationMs` to Campaign Prisma model (default enabled, 300000 ms)
-- [ ] Restrict duration slider to 1-60 minutes, with 1 minute decrement steps and 5 minute increment steps
+- [x] Add `postSessionChatEnabled` and `postSessionChatDurationMs` to Campaign Prisma model (default enabled, 300000 ms) — schema added, **migration pending**
+- [x] Restrict duration slider to 1-60 minutes, with 1 minute decrement steps and 5 minute increment steps
 - [ ] On session transition to ENDED: enqueue or dispatch recording shutdown + summary/close-out work immediately, then return without waiting for completion
-- [ ] If post-session chat is enabled, start window timer in Redis and keep spectators connected until expiry or DM early-end
-- [ ] Add DM actions to extend the window and end it early
-- [ ] Update spectator UI to show duration slider, disable toggle, and countdown timer
+- [x] Add DM actions to extend the window and end it early — `POST /:id/cooldown/extend` (existing) + `POST /:id/cooldown/end` (new) — both use `resolveCooldownControlAuthorization`; broadcasts `SESSION:COOLDOWN_EXTENDED` / `SESSION:COOLDOWN_ENDED`
+- [x] `endSessionCooldown()` service function in `session.service.ts` — sets `endedAt` to 4 min in past; cleanup job picks up on next poll
+- [x] `handleSessionCooldownEnded` handler in `sessionSlice.ts` — sets `endedAt = 0` so countdown reads as expired
+- [x] `SESSION:COOLDOWN_ENDED` registered in `useWebSocket.ts` dispatcher
+- [x] `handleCancelCooldown` in `SessionInit.tsx` now calls `POST /api/session/:id/cooldown/end` (was incorrectly calling IDLE transition)
+- [x] `SpectatorWaitScreen.tsx` created — shows intermission holding screen (PAUSED) or cooldown countdown (ENDED with active window) or session-ended message
+- [ ] Update spectator UI to show duration slider, disable toggle, and countdown timer — partially done via SpectatorWaitScreen countdown; slider/toggle in SessionInit campaign settings
 - [ ] Test: ENDED with chat enabled → spectators can chat during window → after expiry → all users disconnected → scheduled job transitions ENDED → CLEANUP
 
 ---
@@ -396,10 +401,12 @@ Sessions move through a deterministic lifecycle managed by backend state transit
 
 ### Phase 5: Spectator Cooldown & Finalization (S4 → S5)
 
-- Implement post-session cooldown window (default 5 minutes / 300000 ms)
-- Wire cooldown window expiry to trigger job transition
-- Add DM cooldown extension/early-end actions
-- Comprehensive integration testing
+- [x] Post-session cooldown window backend (`endSessionCooldown`, `extendSessionCooldown`, `POST cooldown/end`, `POST cooldown/extend`)
+- [x] `SESSION:COOLDOWN_ENDED` shared event type + frontend handler + WS dispatcher registration
+- [x] `SpectatorWaitScreen.tsx` — intermission + cooldown countdown + ended fallback
+- [x] `handleCancelCooldown` fixed to call `cooldown/end` endpoint (was calling IDLE state transition directly)
+- [ ] Comprehensive integration testing (see § 6)
+- [ ] Recording shutdown dispatch on ENDED transition
 
 ---
 

@@ -18,6 +18,8 @@ export type SessionEventType =
   | 'SESSION:ENDED'
   | 'SESSION:ARCHIVED'
   | 'SESSION:STATS_UPDATED'
+  | 'SESSION:COOLDOWN_EXTENDED'
+  | 'SESSION:COOLDOWN_ENDED'
 
 /**
  * SESSION:CREATED
@@ -121,6 +123,34 @@ export interface SessionStatsUpdated {
 export type SessionStatsUpdatedEvent = EventEnvelope<SessionStatsUpdated>
 
 /**
+ * SESSION:COOLDOWN_EXTENDED
+ * DM extended the post-session cooldown window.
+ */
+export interface SessionCooldownExtended {
+  sessionId: UUID
+  state: string
+  extensionMs: number
+  previousEndedAt: number | null
+  endedAt: number | null
+}
+
+export type SessionCooldownExtendedEvent = EventEnvelope<SessionCooldownExtended>
+
+/**
+ * SESSION:COOLDOWN_ENDED
+ * DM ended the post-session cooldown window early.
+ * All clients should treat the session as finalized.
+ */
+export interface SessionCooldownEnded {
+  sessionId: UUID
+  state: string
+  endedBy: UUID
+  endedAt: number
+}
+
+export type SessionCooldownEndedEvent = EventEnvelope<SessionCooldownEnded>
+
+/**
  * Union type for all session events.
  */
 export type SessionEvent =
@@ -131,3 +161,5 @@ export type SessionEvent =
   | SessionEndedEvent
   | SessionArchivedEvent
   | SessionStatsUpdatedEvent
+  | SessionCooldownExtendedEvent
+  | SessionCooldownEndedEvent

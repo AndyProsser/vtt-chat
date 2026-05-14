@@ -825,6 +825,11 @@ Migrate backend timestamp generation and arithmetic from the legacy `Date` API t
 - `shared/utils/format.ts` `new Date(timestamp).toLocaleString()` until Temporal locale API stabilizes.
 - Test fixtures using `Date.now()` as mock timestamps (low value, high noise).
 
+**Node typing compatibility note (Node 26 runtime):**
+
+- Use latest published `@types/node` until 26 typings are available.
+- Do not pin `@types/node` to `^26` until DefinitelyTyped publishes that major.
+
 **Definition of done (Phase 1 only gate for now):**
 
 - All non-Prisma backend `Date.now()` calls are replaced with `Temporal.Now.instant().epochMilliseconds`.

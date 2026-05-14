@@ -237,10 +237,16 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 - `ROOM:CREATED` — DM creates room
 - `ROOM:USER_JOINED` — User joins (system message generated)
 - `ROOM:USER_LEFT` — User leaves (system message generated)
-- `ROOM:DELETED` — DM cleanup
+- `ROOM:DELETED` — DM cleanup (must occur only after Close -> Delete flow)
 - `PRESENCE:STATE_CHANGED` — User state transition (ONLINE→TYPING→SPEAKING, etc.)
 - `PRESENCE:HEARTBEAT` — Internal keepalive
 - `PRESENCE:RECONNECTED` — Restore state after disconnect
+
+Room close/delete sequencing contract:
+
+- For GROUP room removal, backend must execute Close -> Delete.
+- Close step moves every remaining member to MAIN and emits `ROOM:USER_LEFT` + `ROOM:USER_JOINED` with reason `ROOM_CLOSED`.
+- Delete step runs only when the room is empty and then emits `ROOM:DELETED`.
 
 **Notes** (file: `events/audio.ts`)
 

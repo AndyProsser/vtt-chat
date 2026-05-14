@@ -1,0 +1,56 @@
+.spectator-wait-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  gap: 0.75rem;
+  min-height: 280px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface-subtle) 76%, transparent);
+}
+
+.spectator-wait-screen__icon {
+  font-size: 2.5rem;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.spectator-wait-screen__icon .material-symbols-outlined {
+  font-size: 2.5rem;
+}
+
+.spectator-wait-screen__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.spectator-wait-screen__body {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  max-width: 380px;
+  line-height: 1.5;
+}
+
+.spectator-wait-screen__countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.spectator-wait-screen__hint {
+  margin: 0;
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.spectator-wait-screen--cooldown .spectator-wait-screen__icon {
+  color: var(--color-accent, var(--color-text-secondary));
+}

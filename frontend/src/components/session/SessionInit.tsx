@@ -33,6 +33,7 @@ import { HistoryPanel } from './HistoryPanel'
 import { SessionRightRailContent } from './SessionRightRailContent'
 import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
+import { SpectatorWaitScreen } from './SpectatorWaitScreen'
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
@@ -2703,7 +2704,36 @@ export function SessionInit({
   }
 
   const handleCancelCooldown = async (sessionId: UUID) => {
-    await handleTransitionSession(sessionId, SessionState.IDLE)
+    setError(null)
+
+    try {
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/session/${sessionId}/cooldown/end`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({}),
+        }
+      )
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        message?: string
+        session?: SessionRecord
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.message || 'Failed to end cooldown')
+      }
+
+      if (payload.session) {
+        updateSession(sessionId, normalizeSessionRecord(payload.session))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to end cooldown')
+    }
   }
 
   const handleExtendCooldown = useCallback(
@@ -3590,7 +3620,17 @@ export function SessionInit({
               )}
               renderCenterPane={(view) => (
                 <div className="session-command-center-pane">
-                  {view === 'chat' ? (
+                  {effectiveSessionRole === Role.SPECTATOR &&
+                  (currentSession.state === SessionState.PAUSED ||
+                    currentSession.state === SessionState.ENDED) ? (
+                    <SpectatorWaitScreen
+                      sessionState={
+                        currentSession.state === SessionState.PAUSED ? 'PAUSED' : 'ENDED'
+                      }
+                      sessionEndedAt={currentSession.endedAt}
+                      cooldownDurationMs={configuredCooldownDurationMs}
+                    />
+                  ) : view === 'chat' ? (
                     <div className="session-live-comms">
                       <section className="session-live-comms__chat" aria-label="Chat panel">
                         {selectedRoomId ? (

@@ -41,6 +41,7 @@ export interface SessionSlice {
   handleSessionCreated: (event: EventEnvelope) => void
   handleSessionStateChanged: (event: EventEnvelope) => void
   handleSessionCooldownExtended: (event: EventEnvelope) => void
+  handleSessionCooldownEnded: (event: EventEnvelope) => void
   handleSessionEnded: (event: EventEnvelope) => void
 }
 
@@ -300,6 +301,33 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...current,
           state: 'ENDED' as SessionState,
           endedAt: nextEndedAt,
+        },
+      }
+
+      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
+      }
+    })
+  },
+
+  handleSessionCooldownEnded: (event) => {
+    // Cooldown ended early — keep state as ENDED but signal via endedAt = 0 so
+    // countdown timers immediately read as expired.
+    set((state) => {
+      const current = state.sessions[event.sessionId]
+      if (!current) {
+        return state
+      }
+
+      const nextSessions = {
+        ...state.sessions,
+        [event.sessionId]: {
+          ...current,
+          state: 'ENDED' as SessionState,
+          endedAt: 0,
         },
       }
 

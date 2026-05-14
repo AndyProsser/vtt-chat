@@ -291,6 +291,44 @@ export function extendSessionCooldown(
 }
 
 /**
+ * End session cooldown early.
+ * Sets endedAt to a past timestamp so the cleanup job treats the cooldown as expired
+ * on its next poll and transitions the session to CLEANUP.
+ * Broadcasts SESSION:COOLDOWN_ENDED should be done by the caller (route handler).
+ */
+export function endSessionCooldown(sessionId: UUID, dmId: UUID): Promise<Session | null> {
+  return findSessionById(sessionId).then(async (session) => {
+    if (!session) return null
+
+    if (session.dmId !== dmId) {
+      throw createError(ErrorCode.FORBIDDEN, {
+        message: 'Only DM can end cooldown',
+      })
+    }
+
+    if (session.state !== SessionStateEnum.ENDED) {
+      throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
+        message: 'Cooldown can only be ended while session is ENDED',
+      })
+    }
+
+    // Set endedAt far enough in the past that the cleanup job sees the cooldown as expired
+    // regardless of postSessionChatDurationMs setting (max 60 min = 3_600_000 ms).
+    const pastEndedAt = new Date(Date.now() - 4_000_000)
+
+    await updateSessionEndedAtRecord({
+      sessionId,
+      endedAt: pastEndedAt,
+    })
+
+    const updated = await findSessionById(sessionId)
+    if (!updated) return null
+
+    return mapSessionRecord(updated as any)
+  })
+}
+
+/**
  * Add a user to a session
  */
 export async function addUserToSession(sessionId: UUID, user: User): Promise<boolean> {

@@ -1,0 +1,128 @@
+import { useEffect, useRef, useState } from 'react'
+import '../../styles/components/session/SpectatorWaitScreen.css'
+
+interface SpectatorWaitScreenProps {
+  /** Current session state */
+  sessionState: 'PAUSED' | 'ENDED'
+  /** Timestamp (ms) when the session ended — used to compute cooldown countdown */
+  sessionEndedAt?: number
+  /** Configured cooldown duration in ms (e.g., 300000 for 5 min) */
+  cooldownDurationMs?: number
+}
+
+function computeRemaining(sessionEndedAt: number | undefined, cooldownDurationMs: number): number {
+  if (!sessionEndedAt || sessionEndedAt === 0) return 0
+  return Math.max(0, sessionEndedAt + cooldownDurationMs - Date.now())
+}
+
+function formatCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0')
+  const ss = String(totalSeconds % 60).padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
+/**
+ * SpectatorWaitScreen
+ *
+ * Shown to spectators when they cannot observe the live session:
+ * - PAUSED: session is on intermission (curtain down).
+ * - ENDED: post-session cooldown window is active or has expired.
+ *
+ * Contract:
+ * - PAUSED → spectators see an intermission holding screen.
+ * - ENDED with cooldown active → spectators see a countdown and the message that
+ *   post-session chat is open (they can use the chat panel below/alongside this).
+ * - ENDED with cooldown expired (endedAt = 0 or past) → "Session has ended" message.
+ */
+export function SpectatorWaitScreen({
+  sessionState,
+  sessionEndedAt,
+  cooldownDurationMs = 300_000,
+}: SpectatorWaitScreenProps) {
+  const [remainingMs, setRemainingMs] = useState<number>(() =>
+    computeRemaining(sessionEndedAt, cooldownDurationMs)
+  )
+
+  const endedAtRef = useRef(sessionEndedAt)
+  const cooldownRef = useRef(cooldownDurationMs)
+
+  useEffect(() => {
+    endedAtRef.current = sessionEndedAt
+    cooldownRef.current = cooldownDurationMs
+  })
+
+  useEffect(() => {
+    if (sessionState !== 'ENDED') return
+
+    const id = setInterval(() => {
+      setRemainingMs(computeRemaining(endedAtRef.current, cooldownRef.current))
+    }, 1000)
+
+    return () => clearInterval(id)
+  }, [sessionState])
+
+  if (sessionState === 'PAUSED') {
+    return (
+      <div className="spectator-wait-screen" role="status" aria-live="polite">
+        <div className="spectator-wait-screen__icon" aria-hidden="true">
+          <span className="material-symbols-outlined">theaters</span>
+        </div>
+        <h2 className="spectator-wait-screen__title">Session is on intermission</h2>
+        <p className="spectator-wait-screen__body">
+          The DM has paused the session. The curtain will rise again shortly — sit tight!
+        </p>
+      </div>
+    )
+  }
+
+  if (sessionState === 'ENDED') {
+    const cooldownActive = sessionEndedAt !== undefined && sessionEndedAt !== 0 && remainingMs > 0
+
+    if (cooldownActive) {
+      return (
+        <div
+          className="spectator-wait-screen spectator-wait-screen--cooldown"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="spectator-wait-screen__icon" aria-hidden="true">
+            <span className="material-symbols-outlined">celebration</span>
+          </div>
+          <h2 className="spectator-wait-screen__title">That&apos;s a wrap!</h2>
+          <p className="spectator-wait-screen__body">
+            The session has ended. Post-session chat is open for{' '}
+            <span
+              className="spectator-wait-screen__countdown"
+              aria-label={`${formatCountdown(remainingMs)} remaining`}
+            >
+              {formatCountdown(remainingMs)}
+            </span>
+          </p>
+          <p className="spectator-wait-screen__hint">
+            Use the chat panel to say farewell to the table.
+          </p>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className="spectator-wait-screen spectator-wait-screen--ended"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="spectator-wait-screen__icon" aria-hidden="true">
+          <span className="material-symbols-outlined">history</span>
+        </div>
+        <h2 className="spectator-wait-screen__title">Session has ended</h2>
+        <p className="spectator-wait-screen__body">
+          Thanks for watching! This session is now closed. Campaign history will be available once
+          the DM archives the session.
+        </p>
+      </div>
+    )
+  }
+
+  return null
+}
