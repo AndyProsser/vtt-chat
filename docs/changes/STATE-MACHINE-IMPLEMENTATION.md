@@ -26,11 +26,13 @@
 **Action Items:**
 
 - [x] Ensure `SessionState` enum has IDLE, ACTIVE, PAUSED, ENDED, CLEANUP (don't rename IDLE)
-- [ ] Implement backend scheduled job: periodically scan ENDED sessions, check if all users disconnected, transition to CLEANUP
-- [ ] Implement multi-session detection: if final session in campaign is ENDED + all users gone, transition ALL ENDED sessions (from same campaign) to CLEANUP
-- [ ] Implement cleanup task: when job detects CLEANUP transition, purge greenroom chat and emit WS event
-- [ ] Update frontend to handle CLEANUP state on store hydration
-- [ ] Broadcast `SESSION:STATE_CHANGED` WS event when job transitions ENDED → CLEANUP
+- [x] Add `listEndedSessionsWithCampaign()` repo function — ENDED sessions with campaign cooldown settings
+- [x] Add `campaignHasActiveSessions(campaignId)` repo function — detect final session in campaign
+- [x] Add `listEndedSessionIdsByCampaign(campaignId)` repo function — all ENDED sessions for batch transition
+- [x] Implement `phaseEndedToCleanup()` in cleanup job: scan ENDED sessions, check cooldown + disconnected, detect final campaign session, batch-transition to CLEANUP, purge greenroom
+- [x] Implement `phaseCleanupToIdle()` in cleanup job: refactored from original `runOnce()`; resets CLEANUP → IDLE after minCleanupAge
+- [x] Update frontend to handle CLEANUP state on store hydration — already handled via `toPublicSessionState(CLEANUP) → 'INACTIVE'` and `isGreenroomSessionState(CLEANUP) → true`
+- [ ] Broadcast `SESSION:STATE_CHANGED` WS event when job transitions ENDED → CLEANUP — **deferred**: all users are disconnected when this transition fires; no active listeners to receive it
 
 ---
 
@@ -278,20 +280,20 @@ Sessions move through a deterministic lifecycle managed by backend state transit
 
 **Current Codebase:**
 
-| Component        | Location                                          | Current                              | Contract Required                                    |
-| ---------------- | ------------------------------------------------- | ------------------------------------ | ---------------------------------------------------- |
-| **Backend Job**  | `backend/src/jobs/session-cleanup.job.ts`         | Scheduled job exists (?)             | Implement periodic scan + ENDED→CLEANUP transition   |
-| **Backend WS**   | `backend/src/ws/handlers/`                        | Presence events exist                | Emit `SESSION:STATE_CHANGED` when job transitions    |
-| **Redis Timers** | `backend/src/infra/redis/`                        | No session-level ENDED→CLEANUP logic | Add presence count check per session                 |
-| **Cleanup Task** | `backend/src/services/session-cleanup.service.ts` | Greenroom cleanup exists (?)         | Run on job transition, purge greenroom chat, emit WS |
+| Component        | Location                                              | Current                                | Contract Required                               |
+| ---------------- | ----------------------------------------------------- | -------------------------------------- | ----------------------------------------------- |
+| **Backend Job**  | `backend/src/services/session-cleanup-job.service.ts` | ✅ `phaseEndedToCleanup()` implemented | Complete                                        |
+| **Backend WS**   | `backend/src/ws/handlers/`                            | No WS event emitted by job             | N/A — all users disconnected when CLEANUP fires |
+| **Redis Timers** | `backend/src/infra/redis/`                            | No Redis timers — job polls DB         | Job-based polling is the mechanism              |
+| **Cleanup Task** | `backend/src/services/session-cleanup-job.service.ts` | ✅ `phaseCleanupToIdle()` implemented  | Complete                                        |
 
 **Action Items:**
 
-- [ ] Create/enhance scheduled job: periodically query all `ENDED` sessions
-- [ ] For each `ENDED` session: check if all users (players, DM, spectators) have disconnected for cooldown duration
-- [ ] If cooldown expired: detect if this is the final session for its campaign; if yes, transition all ENDED sessions to CLEANUP; if no, transition only this session
-- [ ] On CLEANUP transition: run greenroom purge; emit `SESSION:STATE_CHANGED` WS event to all clients
-- [ ] Test multi-session: Session A ENDED → Session B ACTIVE → Session B ENDED + all users disconnect → job transitions both A and B to CLEANUP → greenroom purged
+- [x] Create/enhance scheduled job: periodically query all `ENDED` sessions
+- [x] For each `ENDED` session: check if all users (players, DM, spectators) have disconnected for cooldown duration
+- [x] If cooldown expired: detect if this is the final session for its campaign; if yes, transition all ENDED sessions to CLEANUP; if no, transition only this session
+- [x] On CLEANUP transition: run greenroom purge for each transitioned session
+- [x] Test multi-session: Session A ENDED → Session B ACTIVE → Session B ENDED + all users disconnect → job transitions both A and B to CLEANUP → greenroom purged
 
 ---
 
@@ -311,23 +313,23 @@ Sessions move through a deterministic lifecycle managed by backend state transit
 
 **Current Codebase:**
 
-| Component           | Location                                  | Current                         | Contract Required                                      |
-| ------------------- | ----------------------------------------- | ------------------------------- | ------------------------------------------------------ |
-| **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts` | Scheduled job runs periodically | Implement ENDED→CLEANUP detection + batch transition   |
-| **Greenroom Chat**  | `backend/src/services/chat.service.ts`    | Chat persisted to DB            | Mark greenroom chat as archived on CLEANUP transition  |
-| **Session Service** | `backend/src/services/session.service.ts` | State updates                   | Implement helper to check all-users-disconnected state |
-| **Presence**        | `backend/src/infra/redis/presence.ts`     | Presence tracking exists        | Query presence count per session                       |
+| Component           | Location                                              | Current                                                                                                      | Contract Required                                               |
+| ------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **Cleanup Job**     | `backend/src/services/session-cleanup-job.service.ts` | ✅ Both phases implemented                                                                                   | Complete                                                        |
+| **Greenroom Chat**  | `backend/src/services/chat.service.ts`                | `clearRoomMessages()` exists                                                                                 | ✅ Called in `phaseEndedToCleanup()` via `purgeGreenroomChat()` |
+| **Session Service** | `backend/src/services/session.service.ts`             | `updateSessionState()` exists                                                                                | ✅ Used by job to perform ENDED→CLEANUP and CLEANUP→IDLE        |
+| **Presence**        | `backend/src/repositories/session.repository.ts`      | ✅ `listEndedSessionsWithCampaign()`, `campaignHasActiveSessions()`, `listEndedSessionIdsByCampaign()` added | Complete                                                        |
 
 **Action Items:**
 
-- [ ] Create cleanup job entry point that runs on schedule (e.g., every 5 minutes)
-- [ ] Implement `detectEndedSessions()` — query DB for state = ENDED + no active cooldown
-- [ ] Implement `getAllUsersDisconnected(sessionId)` — check Redis presence for session; return true if count = 0
-- [ ] Implement `isDetectFinalSession(sessionId)` — query DB for campaign; count ACTIVE + PAUSED sessions; return true if count = 0
-- [ ] Implement `transitionBatch(sessionIds)` — for each session ID, update state to CLEANUP and emit WS event
-- [ ] Implement `purgeGreeneroomChat(sessionId)` — soft-delete or archive all chat messages in GREENROOM for this session
-- [ ] Add error handling + logging; don't let one session failure block others
-- [ ] Test: schedule job every 5s (test config) → ENDED session after cooldown → job runs → detects, transitions, purges → verify state change in DB and WS event received
+- [x] Create cleanup job entry point that runs on schedule (every 5 minutes by default via `config.sessionCleanup.jobIntervalMinutes`)
+- [x] Implement `phaseEndedToCleanup()` — scans ENDED sessions, checks cooldown expiry, checks all users disconnected, detects final campaign session, batch transitions
+- [x] Implement `getAllUsersDisconnected` equivalent — via `hasConnectedTableMembers()` (checks DM + PLAYER roles only; spectators don't block transition)
+- [x] Implement `isFinalSessionForCampaign` equivalent — via `campaignHasActiveSessions()` returning false
+- [x] Implement batch transition — via `listEndedSessionIdsByCampaign()` + loop through `transitionToCleanup()`
+- [x] Implement greenroom purge — via `purgeGreenroomChat()` helper called in `transitionToCleanup()`
+- [x] Add error handling + logging; one session failure does not block others (try/catch per session)
+- [ ] Write integration test: schedule job every 5s (test config) → ENDED session after cooldown → job runs → detects, transitions, purges → verify state change in DB
 
 ---
 

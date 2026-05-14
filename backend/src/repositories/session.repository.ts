@@ -149,6 +149,95 @@ export async function listCleanupCandidateSessions(cutoff: Date): Promise<
   }))
 }
 
+/**
+ * Returns all ENDED sessions with their campaign's post-session chat settings.
+ * Used by the cleanup job to determine when a session's cooldown has expired.
+ */
+export async function listEndedSessionsWithCampaign(): Promise<
+  Array<{
+    id: string
+    dmId: string
+    name: string
+    campaignId: string | null
+    endedAt: Date | null
+    campaign: {
+      postSessionChatEnabled: boolean
+      postSessionChatDurationMs: number
+    } | null
+  }>
+> {
+  const rows = await prisma.session.findMany({
+    where: { state: 'ENDED' },
+    select: {
+      id: true,
+      dmId: true,
+      name: true,
+      campaignId: true,
+      endedAt: true,
+      campaign: {
+        select: {
+          postSessionChatEnabled: true,
+          postSessionChatDurationMs: true,
+        },
+      },
+    },
+  })
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    dmId: row.dmId,
+    name: row.name,
+    campaignId: row.campaignId ?? null,
+    endedAt: row.endedAt ?? null,
+    campaign: row.campaign
+      ? {
+          postSessionChatEnabled: row.campaign.postSessionChatEnabled,
+          postSessionChatDurationMs: row.campaign.postSessionChatDurationMs,
+        }
+      : null,
+  }))
+}
+
+/**
+ * Returns true if the campaign has any sessions currently ACTIVE or PAUSED.
+ * Used to determine whether a campaign's final session has ended.
+ */
+export async function campaignHasActiveSessions(campaignId: string): Promise<boolean> {
+  const count = await prisma.session.count({
+    where: {
+      campaignId,
+      state: { in: ['ACTIVE', 'PAUSED'] },
+    },
+  })
+  return count > 0
+}
+
+/**
+ * Returns all ENDED sessions for a given campaign.
+ * Used to batch-transition all ENDED sessions to CLEANUP when the final session ends.
+ */
+export async function listEndedSessionIdsByCampaign(campaignId: string): Promise<
+  Array<{
+    id: string
+    dmId: string
+    name: string
+  }>
+> {
+  const rows = await prisma.session.findMany({
+    where: {
+      campaignId,
+      state: 'ENDED',
+    },
+    select: {
+      id: true,
+      dmId: true,
+      name: true,
+    },
+  })
+
+  return rows.map((row: any) => ({ id: row.id, dmId: row.dmId, name: row.name }))
+}
+
 export async function findSessionById(sessionId: string): Promise<{
   id: string
   campaignId: string | null
