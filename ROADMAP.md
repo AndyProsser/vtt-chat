@@ -634,6 +634,9 @@ Definition of done:
 6. Define and enforce a session-audit action taxonomy for room, presence, audio, chat, notes/journal/history, and session lifecycle actions.
 7. Add integration tests for all in-scope families asserting Redis state, websocket fanout, durable persistence (where required), and audit append behavior.
 8. Validate reconnect behavior against backend-authoritative recovery (Redis runtime + durable fallback) and eliminate client-local drift assumptions.
+9. State-machine residual (priority P0): implement backend server-side mute enforcement in webhook/audio pipeline and reject or ignore muted audio packets.
+10. State-machine residual (priority P0): on ENDED transition, dispatch recording shutdown plus summary/close-out work asynchronously before returning control-path response.
+11. State-machine residual (priority P1): verify and enforce environment sync contract on room change (join response and SessionInit projection behavior) to avoid stale ambience/effect projections.
 
 Definition of done:
 
@@ -672,6 +675,11 @@ Definition of done:
 3. Add explicit non-functional checks for authz boundaries and high-risk error paths. - Done
 4. Track and burn down flaky tests to agreed threshold. - In Progress
 5. Expand frontend/backend automated coverage for refactor-sensitive paths (store selectors, integration hooks, API naming migration behavior). - In Progress
+6. State-machine residual (priority P1): add cleanup-job integration coverage for ENDED -> CLEANUP detection and greenroom purge on schedule.
+7. State-machine residual (priority P1): add spectator cooldown end-to-end coverage (ENDED window behavior, expiry/early-end, disconnect + cleanup transition).
+8. State-machine residual (priority P1): add off-the-record regression coverage for paused and whisper runtime content hydration behavior.
+9. State-machine residual (priority P2): add boundary marker persistence sequence coverage across start/pause/resume/end and refresh hydration.
+10. State-machine residual (priority P2): add frontend state/rendering coverage for boundary marker timeline rendering, reconnect snapshot replacement semantics, and DM voice mode control interactions.
 
 Definition of done:
 
@@ -699,6 +707,7 @@ Definition of done:
 4. Keep framework boundaries enforced (frontend core UI vs admin MUI).
 5. Refactor audio panel, campaign settings panel, and right-side panel UX so interactions are coherent and reliably functional.
 6. Resolve Create Group popover CSS reliability (selector scope, stacking-context behavior, and shared panel token parity with Audio Settings style contract).
+7. State-machine residual (priority P2): finalize spectator wait/cooldown UX parity (countdown + campaign setting affordances + DM-only control clarity) and close remaining polish gaps.
 
 Definition of done:
 

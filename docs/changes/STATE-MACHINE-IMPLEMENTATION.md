@@ -357,7 +357,7 @@ Sessions move through a deterministic lifecycle managed by backend state transit
 - [ ] Session boundary markers: [Session Started] → [Session Paused] → [Session Resumed] → [Session Ended] persisted and appear in history
 - [ ] Whisper content not persisted: create private room → chat → refresh → no whisper chat in history
 - [ ] Pause content not persisted: pause → chat during pause → resume → no pause chat in history
-- [ ] Group deletion: delete group with members → members auto-move to MAIN → no orphaned members
+- [x] Group deletion: delete group with members → members auto-move to MAIN → no orphaned members (covered by rooms-failback integration, including ROOM:USER_LEFT/JOINED ordering before ROOM:DELETED)
 - [ ] Spectator cooldown: end session → spectators in cooldown window → can chat/speak → after TTL → spectators forced disconnect
 
 ### Frontend Tests
