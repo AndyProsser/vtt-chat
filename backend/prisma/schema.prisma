@@ -253,6 +253,7 @@ model ChatMessage {
   content        String      @db.Text
   type           MessageType
   isDmOnly       Boolean     @default(false)
+  isOffTheRecord Boolean     @default(false)
   visibleTo      Json?
   createdAt      DateTime    @default(now())
   editedAt       DateTime?

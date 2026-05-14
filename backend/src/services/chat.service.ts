@@ -81,6 +81,7 @@ function mapStoredMessage(row: {
   content: string
   type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
   isDmOnly: boolean
+  isOffTheRecord: boolean
   visibleTo: unknown
   createdAt: Date
   editedAt: Date | null
@@ -98,6 +99,7 @@ function mapStoredMessage(row: {
     content: row.content,
     type: row.type as MessageType,
     isDmOnly: row.isDmOnly,
+    isOffTheRecord: row.isOffTheRecord,
     visibleTo: visibility.visibleTo,
     createdAt: row.createdAt.getTime(),
     editedAt: row.editedAt?.getTime(),
@@ -128,8 +130,9 @@ export async function sendMessage(params: {
   content: string
   type: MessageType
   recipientId?: UUID
+  isOffTheRecord?: boolean
 }): Promise<StoredMessage> {
-  const { sessionId, roomId, authorId, authorUsername, dmId, content, type, recipientId } = params
+  const { sessionId, roomId, authorId, authorUsername, dmId, content, type, recipientId, isOffTheRecord } = params
   const resolvedAuthorId = type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_ID : authorId
   const resolvedAuthorUsername =
     type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_USERNAME : authorUsername
@@ -146,6 +149,7 @@ export async function sendMessage(params: {
     content,
     type,
     isDmOnly: type === MessageType.WHISPER,
+    isOffTheRecord: isOffTheRecord ?? false,
     visibleTo: visibility.visibleTo,
     createdAt: Date.now(),
   }
@@ -158,6 +162,7 @@ export async function sendMessage(params: {
     content,
     type,
     isDmOnly: message.isDmOnly,
+    isOffTheRecord: message.isOffTheRecord,
     visibleTo: visibility,
     createdAt: new Date(message.createdAt),
   })
@@ -173,7 +178,13 @@ export async function getMessages(
 ): Promise<StoredMessage[]> {
   const rows = await listSessionMessages(sessionId)
   const messages = rows.map(mapStoredMessage)
-  return messages.filter((m) => canSeeMessage(m, requesterId, requesterRole, roomId))
+  return messages.filter((m) => {
+    // DM can see all messages (audit)
+    if (requesterRole === 'DM') return canSeeMessage(m, requesterId, requesterRole, roomId)
+    // Other users cannot see off-the-record messages
+    if (m.isOffTheRecord) return false
+    return canSeeMessage(m, requesterId, requesterRole, roomId)
+  })
 }
 
 export async function editMessage(

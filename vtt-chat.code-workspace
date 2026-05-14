@@ -57,5 +57,6 @@
       "./node_modules/.bin/vitest": true,
     },
     "chat.agent.maxRequests": 100,
+    "powershell.cwd": "vtt-chat",
   },
 }

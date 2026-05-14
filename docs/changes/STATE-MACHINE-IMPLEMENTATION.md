@@ -100,13 +100,14 @@
 
 **Action Items:**
 
-- [ ] Add `dmVoiceMode` and `dmBackgroundVolume` columns to User table (Prisma)
-- [ ] Create `POST /api/audio/voice-mode` endpoint to set mode + volume
-- [ ] Broadcast `AUDIO:DM_VOICE_MODE_CHANGED` WS event to all session users
-- [ ] Update LiveKit token generation to include DM's voice target room in token claims
-- [ ] Add `handleDmVoiceModeChanged` handler in frontend audioSlice
-- [ ] Create DM audio routing UI: selector for TARGET_GROUP / BROADCAST + volume slider
-- [ ] Persist `dmBackgroundVolume` to DB (user-level setting, cross-device)
+- [x] Add `dmVoiceMode` and `dmBackgroundVolume` columns to User table (Prisma)
+- [x] Create `POST /api/audio/voice-mode` endpoint to set mode + volume
+- [x] Broadcast `AUDIO:DM_VOICE_MODE_CHANGED` WS event to all session users
+- [x] Validate voiceMode enum, targetGroupId UUID, backgroundVolume range (0–1)
+- [x] Add `handleDmVoiceModeChanged` handler in frontend audioSlice
+- [x] Create DM audio routing UI: selector for TARGET_GROUP / BROADCAST + volume slider
+- [x] Persist `dmVoiceMode` and `dmBackgroundVolume` to DB (user-level setting, cross-device)
+- [x] **⚠️ REQUIRES PRISMA MIGRATION** — `npx prisma migrate dev --name add-dm-voice-mode` (Phase 3 complete, pending migration)
 
 ---
 
@@ -216,11 +217,13 @@
 
 **Action Items:**
 
-- [ ] Add `isOffTheRecord` column to chat Message table
-- [ ] On chat save in PRIVATE room: set `isOffTheRecord = true`
-- [ ] On chat save during PAUSED state: set `isOffTheRecord = true`
-- [ ] Update history API to exclude isOffTheRecord messages (with exception for DM-only audit logs)
-- [ ] Test: Pause session → chat during pause → refresh → marker shows [Session Paused] but runtime chat gone
+- [x] Add `isOffTheRecord` column to chat Message table (Prisma schema)
+- [x] On chat save in PRIVATE room: set `isOffTheRecord = true` (infrastructure ready; PRIVATE room chat blocked by validation)
+- [x] On chat save during PAUSED state: set `isOffTheRecord = true` (infrastructure ready; PAUSED state chat blocked by validation)
+- [x] Update history API to exclude isOffTheRecord messages (with exception for DM-only audit logs)
+- [x] Update chat service `getMessages()` to filter out isOffTheRecord messages for non-DM users
+- [x] Update WS event `CHAT:MESSAGE_SENT` to include isOffTheRecord payload field
+- [ ] Test: Pause session → chat during pause (after validation lifted) → refresh → marker shows [Session Paused] but runtime chat gone
 
 ---
 

@@ -11,6 +11,7 @@ export async function createChatMessageRecord(params: {
   content: string
   type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
   isDmOnly: boolean
+  isOffTheRecord?: boolean
   visibleTo?: unknown
   createdAt: Date
 }): Promise<void> {
@@ -23,6 +24,7 @@ export async function createChatMessageRecord(params: {
       content: params.content,
       type: params.type,
       isDmOnly: params.isDmOnly,
+      isOffTheRecord: params.isOffTheRecord ?? false,
       visibleTo: params.visibleTo ? (params.visibleTo as Prisma.InputJsonValue) : undefined,
       createdAt: params.createdAt,
     },
@@ -38,6 +40,7 @@ export async function listSessionMessages(sessionId: string): Promise<
     content: string
     type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
     isDmOnly: boolean
+    isOffTheRecord: boolean
     visibleTo: unknown
     createdAt: Date
     editedAt: Date | null
@@ -58,6 +61,7 @@ export async function listSessionMessages(sessionId: string): Promise<
     content: row.content,
     type: row.type,
     isDmOnly: row.isDmOnly,
+    isOffTheRecord: row.isOffTheRecord,
     visibleTo: row.visibleTo,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
@@ -74,6 +78,7 @@ export async function findMessageById(messageId: string): Promise<{
   content: string
   type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
   isDmOnly: boolean
+  isOffTheRecord: boolean
   visibleTo: unknown
   createdAt: Date
   editedAt: Date | null
@@ -94,6 +99,7 @@ export async function findMessageById(messageId: string): Promise<{
     content: row.content,
     type: row.type,
     isDmOnly: row.isDmOnly,
+    isOffTheRecord: row.isOffTheRecord,
     visibleTo: row.visibleTo,
     createdAt: row.createdAt,
     editedAt: row.editedAt,

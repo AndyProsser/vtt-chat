@@ -77,6 +77,7 @@ function buildMessageSentEvent(
       content: message.content,
       type: message.type,
       isDmOnly: message.isDmOnly,
+      isOffTheRecord: message.isOffTheRecord,
       visibleTo: message.visibleTo,
     },
   }
