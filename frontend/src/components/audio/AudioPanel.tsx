@@ -22,8 +22,15 @@ import {
   AUDIO_EFFECT_COPY,
   getPushToTalkEffectDescription,
 } from '../../constants/audioUi.constants'
-import { AudioDevicePanel } from './AudioDevicePanel'
-import { AudioSettingsPanel } from './AudioSettingsPanel'
+import {
+  AUDIO_BROADCAST_TRACK_PREFIX,
+  AUDIO_ROOM_TRACK_PREFIX,
+  LOCAL_SPEAKING_HOLD_MS,
+  LOCAL_SPEAKING_RELEASE_LEVEL,
+  LOCAL_SPEAKING_TRIGGER_LEVEL,
+} from '../../constants/audioPanel.constants'
+import { AudioDevicePanel } from './panels/AudioDevicePanel'
+import { AudioSettingsPanel } from './panels/AudioSettingsPanel'
 import '../../styles/components/audio/AudioPanel.css'
 
 interface AudioPanelProps {
@@ -40,13 +47,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
 
-  const LOCAL_SPEAKING_TRIGGER_LEVEL = 0.162
-  const LOCAL_SPEAKING_RELEASE_LEVEL = 0.092
-  const LOCAL_SPEAKING_HOLD_MS = 320
-
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
-      const trackId = `room:${trackSid}`
+      const trackId = `${AUDIO_ROOM_TRACK_PREFIX}${trackSid}`
       trackParticipantByTrackIdRef.current.set(trackId, meta.participantIdentity as UUID)
       audioEngine.addTrack(trackId, mediaStream)
     },
@@ -55,7 +58,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const handleTrackUnsubscribed = useCallback(
     (trackSid: string) => {
-      const trackId = `room:${trackSid}`
+      const trackId = `${AUDIO_ROOM_TRACK_PREFIX}${trackSid}`
       trackParticipantByTrackIdRef.current.delete(trackId)
       audioEngine.removeTrack(trackId)
     },
@@ -64,14 +67,14 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const handleBroadcastTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream) => {
-      audioEngine.addTrack(`vog:${trackSid}`, mediaStream)
+      audioEngine.addTrack(`${AUDIO_BROADCAST_TRACK_PREFIX}${trackSid}`, mediaStream)
     },
     [audioEngine]
   )
 
   const handleBroadcastTrackUnsubscribed = useCallback(
     (trackSid: string) => {
-      audioEngine.removeTrack(`vog:${trackSid}`)
+      audioEngine.removeTrack(`${AUDIO_BROADCAST_TRACK_PREFIX}${trackSid}`)
     },
     [audioEngine]
   )

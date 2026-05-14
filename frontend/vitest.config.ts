@@ -6,7 +6,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     maxWorkers: 1,
-    setupFiles: ['./src/tests/setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
@@ -16,7 +16,7 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/main.tsx',
         'src/vite-env.d.ts',
-        'src/tests/**',
+        'tests/**',
         'src/**/index.ts',
         // Temporary scope exclusions for modules without targeted coverage yet.
         'src/components/notes/NotesPanel.tsx',

@@ -1,0 +1,5 @@
+export const AUDIO_ROOM_TRACK_PREFIX = 'room:'
+export const AUDIO_BROADCAST_TRACK_PREFIX = 'vog:'
+export const LOCAL_SPEAKING_TRIGGER_LEVEL = 0.162
+export const LOCAL_SPEAKING_RELEASE_LEVEL = 0.092
+export const LOCAL_SPEAKING_HOLD_MS = 320

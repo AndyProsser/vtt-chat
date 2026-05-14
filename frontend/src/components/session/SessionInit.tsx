@@ -39,6 +39,26 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import { useToast } from '../../hooks/useToast'
 import { dismissToast } from '../../state/toastCenter'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
+import {
+  ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
+  ALLOWED_CHAT_GROUPING_WINDOWS,
+  CHAT_GROUPING_STORAGE_KEY,
+  DEFAULT_CHAT_GROUPING_WINDOW_MS,
+  DEFAULT_GREENROOM_CACHE_TTL_MS,
+  DEFAULT_PLANNED_DURATION_MINUTES,
+  LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
+  LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
+  LOBBY_NOTICE_STORAGE_KEY,
+  MAX_POSTER_DATA_URL_CHARS,
+  MAX_POSTER_WIDTH_PX,
+  ROOM_ENVIRONMENT_PRESET_FALLBACKS,
+  SESSION_BOOKEND_DEDUPE_WINDOW_MS,
+  SESSION_BOOKEND_PREFIXES,
+  SESSION_SUMMARY_TAG,
+  SESSION_SUMMARY_TITLE,
+  WS_AUTO_RETRY_WINDOW_MS,
+  WS_ERROR_TOAST_ID,
+} from '../../constants/sessionInit.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
@@ -142,31 +162,6 @@ interface ApiAudioEnvironmentState {
 type CampaignMembershipRole = CampaignSummary['memberRole']
 type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
 
-const CHAT_GROUPING_STORAGE_KEY = 'vtt-chat:chat-grouping-window-ms'
-const DEFAULT_CHAT_GROUPING_WINDOW_MS = 5 * 60 * 1000
-const ALLOWED_CHAT_GROUPING_WINDOWS = new Set([0, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000])
-const LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY = 'vtt-chat:lobby-campaign-focus-id'
-const LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY = 'vtt-chat:lobby-auto-enter-campaign-id'
-const LOBBY_NOTICE_STORAGE_KEY = 'vtt-chat:lobby-notice'
-const ACTIVE_SESSION_CONTEXT_STORAGE_KEY = 'vtt-chat:active-session-context'
-const MAX_POSTER_WIDTH_PX = 1024
-const DEFAULT_PLANNED_DURATION_MINUTES = 180
-const MAX_POSTER_DATA_URL_CHARS = 350_000
-const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
-const SESSION_SUMMARY_TAG = 'session-summary'
-const SESSION_SUMMARY_TITLE = 'Session Summary'
-const WS_ERROR_TOAST_ID = 'session-init:ws-error'
-const WS_AUTO_RETRY_WINDOW_MS = 30_000
-const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
-const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-] as const
-
 function safeLocalStorageGetItem(key: string): string | null {
   if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
     return null
@@ -189,20 +184,6 @@ function safeLocalStorageRemoveItem(key: string): void {
   }
 
   window.localStorage.removeItem(key)
-}
-
-const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
-  string,
-  { reverbSend: number; lowpassFreq: number; roomGain: number }
-> = {
-  default: { reverbSend: 0.3, lowpassFreq: 8000, roomGain: 0 },
-  forest: { reverbSend: 0.42, lowpassFreq: 7600, roomGain: -1 },
-  cave: { reverbSend: 0.62, lowpassFreq: 4200, roomGain: -2 },
-  tavern: { reverbSend: 0.36, lowpassFreq: 6800, roomGain: -1 },
-  city: { reverbSend: 0.28, lowpassFreq: 8200, roomGain: -0.5 },
-  dungeon: { reverbSend: 0.54, lowpassFreq: 3600, roomGain: -2.5 },
-  night: { reverbSend: 0.24, lowpassFreq: 9000, roomGain: -1.2 },
-  storm: { reverbSend: 0.48, lowpassFreq: 5200, roomGain: -1.8 },
 }
 
 type ActiveSessionContext = {
@@ -2707,17 +2688,14 @@ export function SessionInit({
     setError(null)
 
     try {
-      const response = await fetchWithAuthGuard(
-        `${apiUrl}/api/session/${sessionId}/cooldown/end`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({}),
-        }
-      )
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${sessionId}/cooldown/end`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      })
 
       const payload = (await response.json().catch(() => ({}))) as {
         message?: string
