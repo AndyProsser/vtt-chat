@@ -41,7 +41,7 @@ vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: mocks.mockResolveEffectiveSessionRole,
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   setRoomEnvironmentState: mocks.mockSetRoomEnvironmentState,
   applyDMOverrideState: mocks.mockApplyDMOverrideState,
   removeDMOverrideState: mocks.mockRemoveDMOverrideState,
@@ -49,7 +49,7 @@ vi.mock('@/services/audio-state.service', () => ({
   setBroadcastState: mocks.mockSetBroadcastState,
 }))
 
-vi.mock('@/services/event-broadcaster.service', () => ({
+vi.mock('@/ws/event-broadcaster', () => ({
   default: { broadcastToSession: mocks.mockBroadcastToSession },
 }))
 

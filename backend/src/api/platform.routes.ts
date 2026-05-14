@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { getPlatformStatus } from '@/services/guest-auth.service'
+import { getPlatformStatus } from '@/services/guest-auth'
 
 const router = Router()
 

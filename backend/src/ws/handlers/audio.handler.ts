@@ -12,7 +12,7 @@ import {
   removeDMOverrideState,
   setRoomEnvironmentState,
   setUserMuteState,
-} from '@/services/audio-state.service'
+} from '@/services/audio/audio-state'
 
 // ============================================================================
 // Handler Interface

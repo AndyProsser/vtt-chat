@@ -38,7 +38,7 @@ vi.mock('@/services/auth/user-context.service', () => ({
   getHandoffExchangeUser: (...args: unknown[]) => mocks.mockGetHandoffExchangeUser(...args),
 }))
 
-vi.mock('@/services/guest-auth.service', () => ({
+vi.mock('@/services/guest-auth', () => ({
   joinGuestPlayerViaInvite: (...args: unknown[]) => mocks.mockJoinGuestPlayerViaInvite(...args),
   joinGuestSpectatorViaInvite: (...args: unknown[]) =>
     mocks.mockJoinGuestSpectatorViaInvite(...args),

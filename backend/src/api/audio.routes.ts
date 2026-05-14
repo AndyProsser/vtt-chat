@@ -9,9 +9,9 @@ import {
   setBroadcastState,
   setRoomEnvironmentState,
   setUserMuteState,
-} from '@/services/audio-state.service'
+} from '@/services/audio/audio-state'
 import { setDmVoiceMode } from '@/services/audio/effects.service'
-import eventBroadcaster from '@/services/event-broadcaster.service'
+import eventBroadcaster from '@/ws/event-broadcaster'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 

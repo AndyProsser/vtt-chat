@@ -42,7 +42,7 @@ vi.mock('@/services/room.service', () => ({
   deletePrivateRoomsForEndedSession: mocks.mockDeletePrivateRoomsForEndedSession,
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   getSessionAudioState: mocks.mockGetSessionAudioState,
   clearSessionDMOverrideState: mocks.mockClearSessionDMOverrideState,
   clearRoomEnvironmentState: mocks.mockClearRoomEnvironmentState,

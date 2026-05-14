@@ -83,7 +83,7 @@ vi.mock('ws', () => {
   }
 })
 
-vi.mock('@/services/event-broadcaster.service', () => ({
+vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     setWebSocketManager: setWebSocketManagerMock,
   },

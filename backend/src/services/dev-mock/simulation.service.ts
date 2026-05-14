@@ -17,7 +17,7 @@ import {
 } from '@/services/room.service'
 import { MessageType, PresenceState, Role, RoomType } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
-import eventBroadcaster from '@/services/event-broadcaster.service'
+import eventBroadcaster from '@/ws/event-broadcaster'
 import type { StoredMessage } from '@/types/chat.types'
 
 export interface MockSimulationConfig {

@@ -31,7 +31,7 @@ vi.mock('@/services/auth.service', () => ({
   hashPassword: vi.fn(),
 }))
 
-import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth.service'
+import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth'
 
 describe('promoteNextWaitlistedSpectatorForSession', () => {
   beforeEach(() => {

@@ -57,7 +57,7 @@ vi.mock('@/services/room.service', () => ({
   snapshotSessionPresence: mocks.mockSnapshotSessionPresence,
 }))
 
-vi.mock('@/services/event-broadcaster.service', () => ({
+vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     setWebSocketManager: mocks.mockSetWebSocketManager,
   },

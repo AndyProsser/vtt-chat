@@ -33,7 +33,7 @@ vi.mock('@/services/room.service', () => ({
   updatePresenceState: updatePresenceStateMock,
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   applyDMOverrideState: applyDMOverrideStateMock,
   removeDMOverrideState: removeDMOverrideStateMock,
   setRoomEnvironmentState: setRoomEnvironmentStateMock,

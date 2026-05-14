@@ -20,7 +20,7 @@ import {
   getSpectatorWaitlistStatus,
   validatePlayerInviteCode,
   validateSpectatorInviteCode,
-} from '@/services/guest-auth.service'
+} from '@/services/guest-auth'
 import { randomOpaqueToken } from '@/utils/guest-auth.helpers'
 import {
   listCampaignExternalLinks,

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   loggerError: vi.fn(),
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   setRoomEnvironmentState: mocks.setRoomEnvironmentState,
   applyDMOverrideState: mocks.applyDMOverrideState,
   removeDMOverrideState: mocks.removeDMOverrideState,

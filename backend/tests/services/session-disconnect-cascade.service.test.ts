@@ -36,7 +36,7 @@ vi.mock('@/services/room.service', () => ({
   updatePresenceState: mocks.updatePresenceState,
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   clearRoomEnvironmentState: mocks.clearRoomEnvironmentState,
   clearSessionDMOverrideState: mocks.clearSessionDMOverrideState,
   getSessionAudioState: mocks.getSessionAudioState,

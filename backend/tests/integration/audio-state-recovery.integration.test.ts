@@ -28,7 +28,7 @@ import {
   removeDMOverrideState,
   setBroadcastState,
   setRoomEnvironmentState,
-} from '@/services/audio-state.service'
+} from '@/services/audio/audio-state'
 
 // In-memory repository store — mirrors repository schema without Prisma
 const roomStateRows = new Map<

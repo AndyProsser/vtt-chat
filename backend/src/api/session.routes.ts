@@ -42,7 +42,7 @@ import {
   clearRoomEnvironmentState,
   clearSessionDMOverrideState,
   getSessionAudioState,
-} from '@/services/audio-state.service'
+} from '@/services/audio/audio-state'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
   logSessionJoin,

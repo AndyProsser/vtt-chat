@@ -20,7 +20,7 @@ import {
   updateSessionStateRecord,
   upsertSessionMember,
 } from '@/repositories/session.repository'
-import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth.service'
+import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth'
 import type { RemoveUserFromSessionResult } from '@/types/session.types'
 import { getSessionEventHistory } from '@/services/session/logs.service'
 import {

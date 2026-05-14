@@ -43,7 +43,7 @@ import {
   precheckPlayerInviteEmail,
   joinGuestPlayerViaInvite,
   upgradeGuestAccount,
-} from '@/services/guest-auth.service'
+} from '@/services/guest-auth'
 import {
   completePasswordReset,
   registerFullAccount,

@@ -67,7 +67,7 @@ vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: vi.fn(),
 }))
 
-vi.mock('@/services/guest-auth.service', () => ({
+vi.mock('@/services/guest-auth', () => ({
   browseSpectatorCampaignsForUser: vi.fn(),
   getSpectatorWaitlistStatus: vi.fn(),
   validatePlayerInviteCode: vi.fn(),

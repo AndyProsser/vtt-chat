@@ -16,7 +16,7 @@ vi.mock('@/utils', () => ({
   },
 }))
 
-vi.mock('@/services/event-broadcaster.service', () => ({
+vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     broadcastToSession: mocks.broadcastToSession,
   },

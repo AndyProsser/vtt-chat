@@ -18,7 +18,7 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: (...args: unknown[]) => mocks.mockVerifyToken(...args),
 }))
 
-vi.mock('@/services/guest-auth.service', () => ({
+vi.mock('@/services/guest-auth', () => ({
   browseSpectatorCampaignsForUser: (...args: unknown[]) =>
     mocks.mockBrowseSpectatorCampaignsForUser(...args),
   getSpectatorWaitlistStatus: (...args: unknown[]) => mocks.mockGetSpectatorWaitlistStatus(...args),

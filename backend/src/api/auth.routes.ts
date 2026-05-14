@@ -28,7 +28,7 @@ import {
   joinGuestPlayerViaInvite,
   loginGuestViaExtension,
   upgradeGuestAccount,
-} from '@/services/guest-auth.service'
+} from '@/services/guest-auth'
 import { deriveCampaignJoinRole, normalizePlayerFacingRole } from '@/services/session/authz.service'
 
 const router = Router()

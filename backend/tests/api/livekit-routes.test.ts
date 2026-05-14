@@ -21,7 +21,7 @@ vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
 }))
 
-vi.mock('@/services/audio-state.service', () => ({
+vi.mock('@/services/audio/audio-state', () => ({
   getServerMuteEnforcementState: mocks.getServerMuteEnforcementState,
 }))
 

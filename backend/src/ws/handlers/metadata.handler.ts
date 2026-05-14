@@ -11,7 +11,7 @@
 
 import type { EventEnvelope } from '@shared'
 import { logger } from '@/utils'
-import eventBroadcaster from '@/services/event-broadcaster.service'
+import eventBroadcaster from '@/ws/event-broadcaster'
 
 // ============================================================================
 // Handler Interface

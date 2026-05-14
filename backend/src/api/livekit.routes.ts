@@ -10,7 +10,7 @@ import { config } from '@/infra/config'
 import { ErrorCode, isValidUUID, type UUID } from '@shared'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
-import { getServerMuteEnforcementState } from '@/services/audio-state.service'
+import { getServerMuteEnforcementState } from '@/services/audio/audio-state'
 
 const router = Router()
 const tokenService = new LiveKitTokenService(config)
