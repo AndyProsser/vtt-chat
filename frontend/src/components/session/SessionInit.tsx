@@ -61,6 +61,7 @@ import {
   WS_ERROR_TOAST_ID,
 } from '../../constants/sessionInit.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
+import { fetchSessionNotesOnce } from '../../utils/notesFetch'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Note } from '@/types/notes'
@@ -1316,12 +1317,12 @@ export function SessionInit({
   }, [loadUserCharacters])
 
   useEffect(() => {
-    if (!selectedCampaignId || !currentSession) {
+    if (!selectedCampaignId || !currentSession?.id) {
       return
     }
 
     void loadDmVoiceTargetingSetting(selectedCampaignId)
-  }, [currentSession, loadDmVoiceTargetingSetting, selectedCampaignId])
+  }, [currentSession?.id, loadDmVoiceTargetingSetting, selectedCampaignId])
 
   const loadCampaignSettingsSessionContext = useCallback(
     async (campaignId: UUID, authoritativeLatestSessionId: UUID | '' = '') => {
@@ -1532,31 +1533,11 @@ export function SessionInit({
       campaignSettingsActions.setSettingsReferenceNotesError(null)
 
       try {
-        const response = await fetchWithAuthGuard(
-          `${apiUrl}/api/notes/${settingsReferenceSessionId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+        const fetchedEntries: Note[] = await fetchSessionNotesOnce(
+          apiUrl,
+          settingsReferenceSessionId,
+          token
         )
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-
-        const data = await response.json()
-        const fetchedEntries: Note[] = (data.notes || []).map((note: any) => ({
-          id: note.id,
-          ownerId: note.authorId,
-          ownerUsername: note.authorUsername,
-          title: note.title,
-          content: note.content,
-          visibility: note.visibility,
-          tags: note.tags || [],
-          allowedUsers: note.allowedUsers || [],
-          publishedAt: note.publishedAt,
-          createdAt: note.createdAt,
-          updatedAt: note.updatedAt,
-        }))
 
         if (!cancelled) {
           for (const entry of fetchedEntries) {

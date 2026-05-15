@@ -10,6 +10,8 @@ import type { Session as SessionRecord } from '@/types/session'
 import type { UserCharacterRecord } from '@/hooks/useCharacterSettings'
 import { DEFAULT_CHARACTER_SETTINGS } from '@/hooks/useCharacterSettings'
 
+const inFlightDmVoiceTargetingRequests = new Map<string, Promise<boolean | null>>()
+
 export interface SessionControllerContext {
   apiUrl: string
   token: string
@@ -152,31 +154,49 @@ export const createCampaignSettingsController = (ctx: SessionControllerContext) 
   },
 
   async loadDmVoiceTargetingSetting(campaignId: UUID, config?: CampaignSettingsConfig) {
-    try {
-      const response = await ctx.fetchWithAuthGuard(
-        `${ctx.apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
-        {
-          headers: {
-            Authorization: `Bearer ${ctx.token}`,
-          },
+    const requestKey = `${ctx.apiUrl}|${ctx.token}|${campaignId}`
+    let request = inFlightDmVoiceTargetingRequests.get(requestKey)
+
+    if (!request) {
+      request = (async () => {
+        try {
+          const response = await ctx.fetchWithAuthGuard(
+            `${ctx.apiUrl}/api/campaigns/${campaignId}/settings/dm-voice-targeting`,
+            {
+              headers: {
+                Authorization: `Bearer ${ctx.token}`,
+              },
+            }
+          )
+
+          if (!response.ok) {
+            return null
+          }
+
+          const payload = (await response.json()) as {
+            campaignId: UUID
+            dmAutoTargetOnFirstPlayerJoin: boolean
+          }
+
+          return payload.dmAutoTargetOnFirstPlayerJoin !== false
+        } catch {
+          return null
         }
-      )
+      })()
 
-      if (!response.ok) {
-        return null
-      }
-
-      const payload = (await response.json()) as {
-        campaignId: UUID
-        dmAutoTargetOnFirstPlayerJoin: boolean
-      }
-
-      const enabled = payload.dmAutoTargetOnFirstPlayerJoin !== false
-      config?.onDmVoiceTargetingLoaded?.(enabled)
-      return enabled
-    } catch {
-      return null
+      inFlightDmVoiceTargetingRequests.set(requestKey, request)
+      request.finally(() => {
+        if (inFlightDmVoiceTargetingRequests.get(requestKey) === request) {
+          inFlightDmVoiceTargetingRequests.delete(requestKey)
+        }
+      })
     }
+
+    const enabled = await request
+    if (enabled !== null) {
+      config?.onDmVoiceTargetingLoaded?.(enabled)
+    }
+    return enabled
   },
 
   async saveDmVoiceTargetingSetting(
