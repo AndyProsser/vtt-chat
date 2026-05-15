@@ -665,7 +665,6 @@ export function SessionInit({
   const notes = useStore((state) => state.notes)
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
-  const clearRoomMessages = useStore((state) => state.clearRoomMessages)
   const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
@@ -1838,19 +1837,9 @@ export function SessionInit({
       window.clearTimeout(greenroomCleanupTimerRef.current)
     }
 
-    greenroomCleanupTimerRef.current = window.setTimeout(() => {
-      for (const session of sessionList) {
-        const sessionRooms = Object.values(typedRoomsBySession[session.id] || {})
-        const greenRoom = sessionRooms.find((room) => isGreenRoom(room))
-
-        if (!greenRoom) {
-          continue
-        }
-
-        clearRoomMessages(session.id, greenRoom.id)
-      }
-      greenroomCleanupTimerRef.current = null
-    }, ttlMs)
+    // Greenroom messages are preserved in Zustand until the server emits
+    // CHAT:ROOM_CONTEXT_CLEARED (only on CLEANUP). Do not evict them locally.
+    greenroomCleanupTimerRef.current = null
 
     return () => {
       if (greenroomCleanupTimerRef.current !== null) {
@@ -1859,7 +1848,6 @@ export function SessionInit({
       }
     }
   }, [
-    clearRoomMessages,
     currentPresence,
     currentSessionStats,
     currentSession,

@@ -199,17 +199,16 @@ export function SessionToolbar({
           primaryStateClass: 'is-paused',
         }
       case 'ENDED':
-        return {
-          primaryLabel:
-            cooldownRemainingSeconds > 0
-              ? formatDuration(cooldownRemainingSeconds)
-              : formatDuration(endedElapsedSeconds),
-          primaryStateClass: 'is-ended',
-        }
+        return cooldownRemainingSeconds > 0
+          ? {
+              primaryLabel: formatDuration(cooldownRemainingSeconds),
+              primaryStateClass: 'is-ended',
+            }
+          : { primaryLabel: formatDuration(endedElapsedSeconds), primaryStateClass: '' }
       case 'CLEANUP':
         return {
           primaryLabel: formatDuration(endedElapsedSeconds),
-          primaryStateClass: 'is-ended',
+          primaryStateClass: '',
         }
       case 'IDLE':
       default:
@@ -248,16 +247,23 @@ export function SessionToolbar({
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
   const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
   const isCooldownMode = sessionState === 'ENDED' && cooldownRemainingSeconds > 0
+  const shouldShowStartAction = canStartSession && !isCooldownMode
   const shouldRenderCooldownControls = isCooldownMode && showCooldownControls
   const hasExtraButtons =
-    canStartSession || canStopSession || canPauseSession || shouldRenderCooldownControls
+    shouldShowStartAction || canStopSession || canPauseSession || shouldRenderCooldownControls
 
   const coreToneClass = toneFromCoreState(coreWsState)
   const audioToneClass = toneFromAudioState(livekitState)
 
   // Timer state label text
   const timerStateLabel =
-    sessionState === 'ENDED' ? (cooldownRemainingSeconds > 0 ? 'COOLDOWN' : 'ENDED') : sessionState
+    sessionState === 'ENDED'
+      ? cooldownRemainingSeconds > 0
+        ? 'COOLDOWN'
+        : 'GREENROOM'
+      : sessionState === 'CLEANUP'
+        ? 'GREENROOM'
+        : sessionState
 
   return (
     <TooltipProvider delayDuration={140}>
@@ -364,12 +370,11 @@ export function SessionToolbar({
           {hasExtraButtons ? (
             <>
               <div className="session-toolbar__extra-buttons" aria-label="Session actions">
-                {canStartSession ? (
+                {shouldShowStartAction ? (
                   <button
                     type="button"
                     onClick={onStartSession}
                     className="session-toolbar__action session-toolbar__action--start"
-                    disabled={shouldRenderCooldownControls}
                   >
                     <Icon name="play" />
                     <span>Start</span>

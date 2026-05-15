@@ -28,7 +28,7 @@ import {
 } from '@shared'
 import { ErrorCode, PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
-import { emitSessionBoundarySystemMessage } from '@/services/system-messages.service'
+import { emitSessionBoundarySystemMessage, emitSessionRecapMessage } from '@/services/system-messages.service'
 import {
   applySessionStateRoomTransition,
   deletePrivateRoomsForEndedSession,
