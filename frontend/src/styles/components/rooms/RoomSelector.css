@@ -225,61 +225,6 @@
   font-size: 0.68rem;
 }
 
-.room-selector--takeover-active {
-  border: 1px solid color-mix(in srgb, #ea580c 28%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, #ea580c 8%, transparent), transparent 32%);
-}
-
-.room-selector-takeover-banner {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.42rem;
-  border: 1px solid color-mix(in srgb, #ea580c 36%, var(--color-border-soft));
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, #ea580c 14%, transparent);
-  padding: 0.36rem 0.46rem;
-}
-
-.room-selector-takeover-banner > .material-symbols-outlined {
-  font-size: 1rem;
-  color: color-mix(in srgb, #ea580c 82%, var(--color-text-primary));
-}
-
-.room-selector-takeover-banner__copy {
-  min-width: 0;
-  display: grid;
-  gap: 0.04rem;
-}
-
-.room-selector-takeover-banner__copy strong {
-  font-size: 0.66rem;
-  line-height: 1.25;
-  color: var(--color-text-primary);
-}
-
-.room-selector-takeover-banner__copy span {
-  font-size: 0.62rem;
-  line-height: 1.25;
-  color: var(--color-text-secondary);
-}
-
-.room-selector-takeover-banner__exit {
-  border: 1px solid color-mix(in srgb, #ea580c 42%, var(--color-border-soft));
-  border-radius: 999px;
-  background: color-mix(in srgb, #ea580c 20%, transparent);
-  color: color-mix(in srgb, #ea580c 90%, var(--color-text-primary));
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 0.12rem 0.44rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.room-selector-takeover-banner__exit:hover {
-  background: color-mix(in srgb, #ea580c 28%, transparent);
-}
-
 .room-selector-header__meta > span {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
