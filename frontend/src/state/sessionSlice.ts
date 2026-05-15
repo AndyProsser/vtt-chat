@@ -10,6 +10,10 @@ import type { EventEnvelope } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { Session } from '@/types/session'
 
+/** Lookup helper — avoids branded-UUID index issues throughout the slice */
+const sessionById = (sessions: Record<UUID, Session>, id: UUID | string | null): Session | null =>
+  id ? ((sessions as Record<string, Session>)[id] ?? null) : null
+
 export type { Session } from '@/types/session'
 
 export interface SessionPauseStats {
@@ -64,7 +68,9 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ...state.sessions,
         [session.id]: session,
       }
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       return {
         sessions: nextSessions,
@@ -82,10 +88,12 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         {} as Record<UUID, Session>
       )
       const nextCurrentSessionId =
-        state.currentSessionId && nextSessions[state.currentSessionId]
+        state.currentSessionId && sessionById(nextSessions, state.currentSessionId)
           ? state.currentSessionId
           : null
-      const currentSession = nextCurrentSessionId ? nextSessions[nextCurrentSessionId] : null
+      const currentSession = nextCurrentSessionId
+        ? sessionById(nextSessions, nextCurrentSessionId)
+        : null
 
       // Hydrate pauseStats from loaded sessions
       const nextPauseStats = { ...state.pauseStats }
@@ -115,7 +123,9 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ...state.sessions,
         [sessionId]: nextSession,
       }
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       // Hydrate pauseStats from updated session
       const nextPauseStats = { ...state.pauseStats }
@@ -138,7 +148,9 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       delete nextSessions[sessionId]
       const nextCurrentSessionId =
         state.currentSessionId === sessionId ? null : state.currentSessionId
-      const currentSession = nextCurrentSessionId ? nextSessions[nextCurrentSessionId] : null
+      const currentSession = nextCurrentSessionId
+        ? sessionById(nextSessions, nextCurrentSessionId)
+        : null
 
       return {
         sessions: nextSessions,
@@ -149,7 +161,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
   setCurrentSession: (sessionId) =>
     set((state) => {
-      const currentSession = sessionId ? state.sessions[sessionId] : null
+      const currentSession = sessionId ? sessionById(state.sessions, sessionId) : null
       return {
         currentSessionId: sessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
@@ -205,35 +217,36 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           createdAt: event.timestamp,
         },
       },
-      isGreenroom: isGreenroomSessionState(state.sessions[state.currentSessionId]?.state),
+      isGreenroom: isGreenroomSessionState(
+        state.currentSessionId
+          ? sessionById(state.sessions, state.currentSessionId)?.state
+          : undefined
+      ),
     }))
   },
 
   handleSessionStateChanged: (event) => {
     const payload = event.payload as { state: SessionLifecycleState }
     set((state) => {
-      const nextSessions = {
-        ...state.sessions,
-        [event.sessionId]: {
-          ...state.sessions[event.sessionId]!,
-          state: payload.state,
-          startedAt:
-            payload.state === 'ACTIVE'
-              ? event.timestamp
-              : state.sessions[event.sessionId]?.startedAt,
-          pausedAt:
-            payload.state === 'PAUSED'
-              ? event.timestamp
-              : state.sessions[event.sessionId]?.pausedAt,
-          endedAt:
-            payload.state === 'ENDED' ? event.timestamp : state.sessions[event.sessionId]?.endedAt,
-        },
-      }
       // Guard: only update if session exists (prevent partial shapes from unknown WS events)
       if (!state.sessions[event.sessionId]) {
         return state
       }
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+
+      const existing = state.sessions[event.sessionId]
+      const nextSessions = {
+        ...state.sessions,
+        [event.sessionId]: {
+          ...existing,
+          state: payload.state,
+          startedAt: payload.state === 'ACTIVE' ? event.timestamp : existing.startedAt,
+          pausedAt: payload.state === 'PAUSED' ? event.timestamp : existing.pausedAt,
+          endedAt: payload.state === 'ENDED' ? event.timestamp : existing.endedAt,
+        },
+      }
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       // Accumulate pause stats client-side for server-synchronized timer
       const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
@@ -273,15 +286,19 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
   handleSessionEnded: (event) => {
     set((state) => {
+      const endedExisting = state.sessions[event.sessionId]
+      if (!endedExisting) return state
       const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
-          ...state.sessions[event.sessionId]!,
-          state: 'ENDED' as SessionState,
+          ...endedExisting,
+          state: 'ENDED' as SessionLifecycleState,
           endedAt: event.timestamp,
         },
       }
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       return {
         sessions: nextSessions,
@@ -307,12 +324,14 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ...state.sessions,
         [event.sessionId]: {
           ...current,
-          state: 'ENDED' as SessionState,
+          state: 'ENDED' as SessionLifecycleState,
           endedAt: nextEndedAt,
         },
       }
 
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       return {
         sessions: nextSessions,
@@ -334,12 +353,14 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ...state.sessions,
         [event.sessionId]: {
           ...current,
-          state: 'ENDED' as SessionState,
+          state: 'ENDED' as SessionLifecycleState,
           endedAt: 0,
         },
       }
 
-      const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
 
       return {
         sessions: nextSessions,
