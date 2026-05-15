@@ -59,7 +59,9 @@ export interface MessageEntity {
   content: string
   type: MessageType
   isDmOnly?: boolean
+  isOffTheRecord?: boolean
   visibleTo?: UUID[]
+  targetIds?: UUID[]
   createdAt: number
   editedAt?: number
 }

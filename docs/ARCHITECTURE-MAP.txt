@@ -59,7 +59,8 @@ Each subsystem is isolated, documented, and event‑driven.
 
  ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
  │       CHAT           │   │       NOTES          │   │       AUDIO          │
- │ IC/OOC/Whispers      │   │ Private/Shared/DM    │   │ Effects / Presets    │
+ │ Unified session      │   │ Private/Shared/DM    │   │ Effects / Presets    │
+ │ timeline + typing    │   │                      │   │                      │
  └──────────────────────┘   └──────────────────────┘   └──────────────────────┘
 
  ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐

@@ -235,6 +235,9 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       content: string
       type: MessageType
       isDmOnly: boolean
+      isOffTheRecord?: boolean
+      visibleTo?: UUID[]
+      targetIds?: UUID[]
     }
 
     const message: Message = {
@@ -245,6 +248,9 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       content: payload.content,
       type: payload.type,
       isDmOnly: payload.isDmOnly,
+      isOffTheRecord: payload.isOffTheRecord,
+      visibleTo: payload.visibleTo,
+      targetIds: payload.targetIds,
       createdAt: event.timestamp,
     }
 
@@ -335,7 +341,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   },
 
   handleTypingStarted: (event) => {
-    const payload = event.payload as { userId: UUID; username: string }
+    const payload = event.payload as { userId: UUID; username: string; roomId?: UUID }
 
     set((state) => {
       const indicators = [...(state.typingIndicators[event.sessionId] || [])]
@@ -344,6 +350,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       filtered.push({
         userId: payload.userId,
         username: payload.username,
+        roomId: payload.roomId,
         until: event.timestamp + 5000, // Expires in 5 seconds
       })
 

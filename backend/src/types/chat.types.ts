@@ -6,6 +6,7 @@ export interface StoredMessage extends MessageEntity {
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo?: UUID[]
+  targetIds?: UUID[]
   editedAt?: number
   deletedAt?: number
   deletedBy?: UUID

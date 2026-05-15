@@ -243,11 +243,11 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 
 **Chat** (file: `events/chat.ts`)
 
-- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/system, role-filtered
+- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/system, delivery metadata includes room scope, send-time audience, and off-the-record state
 - `CHAT:MESSAGE_EDITED` — Author or DM can edit
 - `CHAT:MESSAGE_DELETED` — Author or DM can delete
-- `CHAT:TYPING_STARTED` — Ephemeral, room-scoped
-- `CHAT:TYPING_STOPPED` — Ephemeral
+- `CHAT:TYPING_STARTED` — Ephemeral, room-scoped payload, never durable
+- `CHAT:TYPING_STOPPED` — Ephemeral, room-scoped payload, never durable
 
 **Rooms & Presence** (file: `events/room.ts`)
 

@@ -4,16 +4,20 @@
  * Spectators are restricted to OOC only.
  */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
+  onTypingStarted?: () => void
+  onTypingStopped?: () => void
   disabled?: boolean
   role: Role | string
   forceMessageType?: MessageType
 }
+
+const TYPING_IDLE_TIMEOUT_MS = 1800
 
 const ROLE_ALLOWED_TYPES: Record<string, MessageType[]> = {
   DM: [MessageType.IC, MessageType.OOC, MessageType.WHISPER],
@@ -28,7 +32,14 @@ const TYPE_LABELS: Record<MessageType, string> = {
   [MessageType.SYSTEM]: 'System',
 }
 
-export function MessageInput({ onSend, disabled, role, forceMessageType }: MessageInputProps) {
+export function MessageInput({
+  onSend,
+  onTypingStarted,
+  onTypingStopped,
+  disabled,
+  role,
+  forceMessageType,
+}: MessageInputProps) {
   const roleAllowedTypes = useMemo(
     () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
     [role]
@@ -42,7 +53,46 @@ export function MessageInput({ onSend, disabled, role, forceMessageType }: Messa
   const [recipientId, setRecipientId] = useState('')
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isTypingRef = useRef(false)
   const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
+
+  const emitTypingStarted = () => {
+    if (isTypingRef.current) {
+      return
+    }
+
+    isTypingRef.current = true
+    onTypingStarted?.()
+  }
+
+  const emitTypingStopped = () => {
+    if (!isTypingRef.current) {
+      return
+    }
+
+    isTypingRef.current = false
+    onTypingStopped?.()
+  }
+
+  const scheduleTypingStop = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStopped()
+    }, TYPING_IDLE_TIMEOUT_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+      emitTypingStopped()
+    }
+  }, [])
 
   const handleSend = async () => {
     const trimmed = content.trim()
@@ -54,6 +104,7 @@ export function MessageInput({ onSend, disabled, role, forceMessageType }: Messa
     try {
       await onSend(trimmed, type, type === MessageType.WHISPER ? trimmedRecipient : undefined)
       setContent('')
+      emitTypingStopped()
       if (type !== MessageType.WHISPER) {
         setRecipientId('')
       }
@@ -105,7 +156,21 @@ export function MessageInput({ onSend, disabled, role, forceMessageType }: Messa
         <textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            const nextValue = e.target.value
+            setContent(nextValue)
+
+            if (!nextValue.trim()) {
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current)
+              }
+              emitTypingStopped()
+              return
+            }
+
+            emitTypingStarted()
+            scheduleTypingStop()
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled || isSending}
           placeholder={

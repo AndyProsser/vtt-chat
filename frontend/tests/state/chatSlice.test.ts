@@ -179,17 +179,22 @@ describe('chatSlice', () => {
     it('adds message from event payload', () => {
       const event = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
         messageId: MSG_ID_1,
+        roomId: ROOM_ID_A,
         authorId: USER_ID,
         authorUsername: 'alice',
         content: 'Hi there',
         type: 'OOC',
         isDmOnly: false,
+        isOffTheRecord: false,
+        visibleTo: [USER_ID],
       })
       useStore.getState().handleMessageSent(event)
       const msg = useStore.getState().messages[SESSION_A]![MSG_ID_1]
       expect(msg).toBeDefined()
       expect(msg!.content).toBe('Hi there')
       expect(msg!.createdAt).toBe(NOW)
+      expect(msg!.roomId).toBe(ROOM_ID_A)
+      expect(msg!.visibleTo).toEqual([USER_ID])
     })
   })
 
@@ -233,11 +238,13 @@ describe('chatSlice', () => {
       const event = makeEvent('CHAT:TYPING_STARTED', SESSION_A, {
         userId: USER_ID,
         username: 'alice',
+        roomId: ROOM_ID_A,
       })
       useStore.getState().handleTypingStarted(event)
       const indicators = useStore.getState().typingIndicators[SESSION_A]
       expect(indicators).toHaveLength(1)
       expect(indicators![0]!.username).toBe('alice')
+      expect(indicators![0]!.roomId).toBe(ROOM_ID_A)
       expect(indicators![0]!.until).toBeGreaterThan(NOW)
     })
 

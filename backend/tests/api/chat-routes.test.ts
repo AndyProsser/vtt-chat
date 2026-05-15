@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   getSessionUsers: vi.fn(),
   getRoom: vi.fn(),
   getSessionPresence: vi.fn(),
+  resolveEffectiveSessionRole: vi.fn(),
+  resolveEffectiveActor: vi.fn(),
   sendMessage: vi.fn(),
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
@@ -37,6 +39,14 @@ vi.mock('@/services/chat.service', () => ({
 vi.mock('@/services/room.service', () => ({
   getRoom: mocks.getRoom,
   getSessionPresence: mocks.getSessionPresence,
+}))
+
+vi.mock('@/services/session/authz.service', () => ({
+  resolveEffectiveSessionRole: mocks.resolveEffectiveSessionRole,
+}))
+
+vi.mock('@/services/dev-mock/takeover.service', () => ({
+  resolveEffectiveActor: mocks.resolveEffectiveActor,
 }))
 
 import chatRoutes from '@/api/chat.routes'
@@ -97,6 +107,16 @@ describe('chat routes', () => {
       },
     ])
 
+    mocks.resolveEffectiveSessionRole.mockResolvedValue({
+      ok: true,
+      role: 'PLAYER',
+    })
+
+    mocks.resolveEffectiveActor.mockResolvedValue({
+      userId: USER_ID,
+      username: 'alice',
+    })
+
     mocks.sendMessage.mockResolvedValue({
       id: MESSAGE_ID,
       sessionId: SESSION_ID,
@@ -105,7 +125,9 @@ describe('chat routes', () => {
       content: 'hello',
       type: MessageType.OOC,
       isDmOnly: false,
+      isOffTheRecord: false,
       visibleTo: undefined,
+      targetIds: undefined,
       createdAt: 1700000000000,
     })
 
@@ -143,10 +165,7 @@ describe('chat routes', () => {
       username: 'watcher',
       role: 'SPECTATOR',
     })
-    mocks.getSessionUsers.mockResolvedValueOnce([
-      { id: USER_ID, username: 'watcher', role: 'SPECTATOR', createdAt: Date.now() },
-      { id: DM_ID, username: 'morgan', role: 'DM', createdAt: Date.now() },
-    ])
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'SPECTATOR' })
 
     const response = await request(app)
       .post('/api/chat/message')
@@ -217,6 +236,7 @@ describe('chat routes', () => {
     expect(response.status).toBe(201)
     expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
     expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
+    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual([DM_ID, USER_ID])
 
     const [sessionIdArg, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
     expect(sessionIdArg).toBe(SESSION_ID)
@@ -245,6 +265,8 @@ describe('chat routes', () => {
       username: 'morgan',
       role: 'PLAYER',
     })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'DM' })
+    mocks.resolveEffectiveActor.mockResolvedValueOnce({ userId: DM_ID, username: 'morgan' })
 
     mocks.sendMessage.mockResolvedValueOnce({
       id: MESSAGE_ID,
@@ -270,7 +292,7 @@ describe('chat routes', () => {
       })
 
     expect(response.status).toBe(201)
-    expect(mocks.getSessionPresence).not.toHaveBeenCalled()
+    expect(mocks.getSessionPresence).toHaveBeenCalledTimes(1)
     expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
 
     const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
@@ -285,6 +307,7 @@ describe('chat routes', () => {
       username: 'morgan',
       role: 'PLAYER',
     })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'DM' })
     mocks.getMessages.mockResolvedValueOnce([{ id: MESSAGE_ID }])
 
     const response = await request(app)
@@ -295,6 +318,19 @@ describe('chat routes', () => {
     expect(response.status).toBe(200)
     expect(mocks.getSessionPresence).not.toHaveBeenCalled()
     expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, DM_ID, 'DM', ROOM_ID)
+  })
+
+  it('returns the visible session timeline when roomId is omitted', async () => {
+    const app = buildApp()
+    mocks.getMessages.mockResolvedValueOnce([{ id: MESSAGE_ID }])
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', undefined)
+    expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
   })
 
   it('edits a message and broadcasts update', async () => {

@@ -24,13 +24,17 @@ export type ChatEventType =
  */
 export interface ChatMessageSent {
   messageId: UUID
+  roomId?: UUID
   authorId: UUID
   authorUsername: string
   content: string
   type: MessageType
   isDmOnly: boolean
+  isOffTheRecord?: boolean
   /** If WHISPER: array of user IDs who can see this */
   visibleTo?: UUID[]
+  /** If WHISPER: explicit target user IDs */
+  targetIds?: UUID[]
 }
 
 export type ChatMessageSentEvent = EventEnvelope<ChatMessageSent>
@@ -84,6 +88,8 @@ export type ChatRoomContextClearedEvent = EventEnvelope<ChatRoomContextCleared>
 export interface ChatTypingStarted {
   userId: UUID
   username: string
+  roomId?: UUID
+  startedAt?: number
 }
 
 export type ChatTypingStartedEvent = EventEnvelope<ChatTypingStarted>
@@ -94,6 +100,9 @@ export type ChatTypingStartedEvent = EventEnvelope<ChatTypingStarted>
  */
 export interface ChatTypingStopped {
   userId: UUID
+  username?: string
+  roomId?: UUID
+  stoppedAt?: number
 }
 
 export type ChatTypingStoppedEvent = EventEnvelope<ChatTypingStopped>

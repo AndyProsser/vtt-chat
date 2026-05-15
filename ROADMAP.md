@@ -510,9 +510,7 @@ Campaign Info panel contract lock-in (2026-05-14):
 - [UI-COMPONENTS.md](docs/ui/UI-COMPONENTS.md) — Component visibility matrix and behavior specs
 - [UI-LAYOUT.md](docs/ui/UI-LAYOUT.md) — Topbar/rightbar layout and timer display rules
 - [DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md) — Three-layer settings architecture (topbar/rightbar/toggles)
-- [SESSION-SUMMARY-BOOKENDS.md](docs/ui/SESSION-SUMMARY-BOOKENDS.md) — Chat lifecycle bookends and persistence
-- [CHAT-MESSAGE-VISIBILITY.md](docs/ui/CHAT-MESSAGE-VISIBILITY.md) — Message visibility matrix by persona/group/state (runtime room mapping)
-- [CHAT-MESSAGE-COMPOSITION.md](docs/ui/CHAT-MESSAGE-COMPOSITION.md) — Composer rules and ephemeral chat (whisper/cooldown)
+- [CHAT-CONTRACT.md](docs/architecture/CHAT-CONTRACT.md) — Canonical live-session chat contract, delivery metadata, remembered timeline, typing indicators, and boundary markers
 
 ---
 

@@ -15,6 +15,7 @@ interface MessageListProps {
   listRef?: RefObject<HTMLDivElement | null>
   onListScroll?: UIEventHandler<HTMLDivElement>
   participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
+  roomDirectory?: Record<string, { name: string }>
 }
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -78,6 +79,7 @@ export function MessageList({
   listRef,
   onListScroll,
   participantDirectory,
+  roomDirectory,
 }: MessageListProps) {
   if (messages.length === 0) {
     return <div className="chat-message-list__empty">No messages yet. Say something!</div>
@@ -96,6 +98,7 @@ export function MessageList({
           INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
         const isSelf = !isSystem && msg.authorId === currentUserId
+        const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
         const authorProfile = participantDirectory?.[msg.authorId]
         const authorName = isSystem
           ? 'SYSTEM'
@@ -147,6 +150,7 @@ export function MessageList({
                 {!isGroupedWithPrevious ? (
                   <div className="chat-message__meta">
                     <span className="chat-message__author">{authorName}</span>
+                    {roomName ? <span className="chat-message__type"> · {roomName}</span> : null}
                   </div>
                 ) : null}
 

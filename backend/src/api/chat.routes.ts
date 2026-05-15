@@ -52,6 +52,24 @@ function isGreenRoomName(name: string): boolean {
   return normalized === 'green room' || normalized === 'green-room'
 }
 
+function uniqueVisibleAudience(userIds: Array<UUID | undefined | null>): UUID[] {
+  return Array.from(new Set(userIds.filter((userId): userId is UUID => Boolean(userId))))
+}
+
+async function resolveRoomAudience(params: {
+  sessionId: UUID
+  roomId: UUID
+  dmId: UUID
+}): Promise<UUID[]> {
+  const presence = await getSessionPresence(params.sessionId)
+  return uniqueVisibleAudience([
+    params.dmId,
+    ...presence
+      .filter((entry) => entry.primaryRoomId === params.roomId)
+      .map((entry) => entry.userId as UUID),
+  ])
+}
+
 /**
  * Build a CHAT:MESSAGE_SENT event envelope for WS broadcast.
  */
@@ -79,6 +97,7 @@ function buildMessageSentEvent(
       isDmOnly: message.isDmOnly,
       isOffTheRecord: message.isOffTheRecord,
       visibleTo: message.visibleTo,
+      targetIds: message.targetIds,
     },
   }
 }
@@ -258,6 +277,29 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       actorUsername: user.username,
     })
 
+    let visibleTo: UUID[] | undefined
+    if (type === MessageType.WHISPER) {
+      const presence = await getSessionPresence(sessionId as UUID)
+      const recipientPresence = presence.find((entry) => entry.userId === (recipientId as UUID))
+      const recipientIsDm = (recipientId as UUID) === session.dmId
+      const recipientInCurrentRoom = recipientPresence?.primaryRoomId === (roomId as UUID)
+
+      if (!recipientIsDm && !recipientInCurrentRoom) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Whispers may only target the DM or users in your current room',
+        })
+      }
+
+      visibleTo = uniqueVisibleAudience([effective.userId, session.dmId, recipientId as UUID])
+    } else {
+      visibleTo = await resolveRoomAudience({
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        dmId: session.dmId,
+      })
+    }
+
     const stored = await sendMessage({
       sessionId: sessionId as UUID,
       roomId: roomId as UUID,
@@ -267,6 +309,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       content,
       type,
       recipientId: recipientId as UUID | undefined,
+      visibleTo,
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -295,7 +338,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
     }
 
-    if (!isValidUUID(roomId)) {
+    if (roomId !== undefined && !isValidUUID(roomId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
     }
 
@@ -316,16 +359,18 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     }
     const requesterRole = authz.role
 
-    const room = await getRoom(roomId as UUID)
-    if (!room || room.sessionId !== (sessionId as UUID)) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    if (roomId !== undefined) {
+      const room = await getRoom(roomId as UUID)
+      if (!room || room.sessionId !== (sessionId as UUID)) {
+        return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+      }
+
+      if (room.type === 'PRIVATE') {
+        return res.status(200).json({ messages: [] })
+      }
     }
 
-    if (room.type === 'PRIVATE') {
-      return res.status(200).json({ messages: [] })
-    }
-
-    if (requesterRole !== 'DM') {
+    if (requesterRole !== 'DM' && roomId !== undefined) {
       const presence = await getSessionPresence(sessionId as UUID)
       const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
       if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
@@ -340,7 +385,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       sessionId as UUID,
       user.userId as UUID,
       requesterRole,
-      roomId as UUID
+      roomId !== undefined ? (roomId as UUID) : undefined
     )
     return res.status(200).json({ messages })
   } catch {

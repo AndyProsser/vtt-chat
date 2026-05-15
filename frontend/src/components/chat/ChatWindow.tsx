@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { UUID, Role } from '@shared'
+import type { EventEnvelope, UUID, Role } from '@shared'
 import { MessageType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { ROOM_NAMES } from '../../constants/roomPresence.constants'
@@ -25,23 +25,10 @@ interface ChatWindowProps {
   user: { id: UUID; username: string; role: Role | string }
   messageGroupingWindowMs?: number
   forceMessageType?: MessageType
+  sendWsEvent?: (event: EventEnvelope) => void
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
-const GREENROOM_SUPPRESSED_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
-
-function isGreenroomSuppressedBookend(message: Pick<Message, 'type' | 'content'>): boolean {
-  return (
-    message.type === MessageType.SYSTEM &&
-    GREENROOM_SUPPRESSED_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
-  )
-}
-
-function isGreenroomRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
-}
-
 export function ChatWindow({
   apiUrl,
   token,
@@ -51,6 +38,7 @@ export function ChatWindow({
   user,
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
   forceMessageType,
+  sendWsEvent,
 }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,13 +49,18 @@ export function ChatWindow({
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
   const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
-  const suppressSessionBookends = isGreenroomRoomName(resolvedRoomName)
 
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
     | undefined
+  const sessionTypingIndicators = useStore(
+    (state) => (state.typingIndicators as any)[sessionId]
+  ) as Array<{ userId: UUID; username: string; roomId?: UUID; until: number }> | undefined
   const sessionPresence = useStore((state) => (state.sessionPresence as any)[sessionId]) as
     | Record<UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }>
+    | undefined
+  const sessionRooms = useStore((state) => (state.rooms as any)[sessionId]) as
+    | Record<UUID, { id: UUID; name: string }>
     | undefined
   const addMessage = useStore((state) => state.addMessage)
   const enqueueOutgoingMessage = useStore((state) => state.enqueueOutgoingMessage)
@@ -93,11 +86,38 @@ export function ChatWindow({
     )
   }, [sessionPresence])
 
+  const roomDirectory = useMemo(() => {
+    const entries = Object.values(sessionRooms ?? {}) as Array<{ id: UUID; name: string }>
+    return entries.reduce(
+      (acc, room) => {
+        acc[room.id] = { name: room.name }
+        return acc
+      },
+      {} as Record<string, { name: string }>
+    )
+  }, [sessionRooms])
+
   // Derive ordered message list for this session
   // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
   const messageList: Message[] = Object.values(sessionMessages ?? {}).sort(
     (a, b) => a.createdAt - b.createdAt
   )
+
+  const [typingClock, setTypingClock] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!sessionTypingIndicators || sessionTypingIndicators.length === 0) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setTypingClock(Date.now())
+    }, 500)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [sessionTypingIndicators])
 
   // Load message history on mount
   useEffect(() => {
@@ -108,7 +128,7 @@ export function ChatWindow({
       setError(null)
 
       try {
-        const res = await fetch(`${apiUrl}/api/chat/messages/${sessionId}?roomId=${roomId}`, {
+        const res = await fetch(`${apiUrl}/api/chat/messages/${sessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -130,12 +150,8 @@ export function ChatWindow({
           editedAt: m.editedAt as number | undefined,
         }))
 
-        const visibleHistory = suppressSessionBookends
-          ? msgs.filter((message) => !isGreenroomSuppressedBookend(message))
-          : msgs
-
         if (!cancelled) {
-          for (const msg of visibleHistory) {
+          for (const msg of msgs) {
             addMessage(sessionId, msg)
           }
         }
@@ -150,7 +166,7 @@ export function ChatWindow({
     return () => {
       cancelled = true
     }
-  }, [addMessage, apiUrl, roomId, sessionId, suppressSessionBookends, token])
+  }, [addMessage, apiUrl, sessionId, token])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -176,17 +192,49 @@ export function ChatWindow({
     setIsUserPinnedToBottom(isNearBottom)
   }, [])
 
-  const visibleMessages = messageList.filter((message) => {
-    if (message.roomId !== roomId) {
-      return false
-    }
+  const visibleMessages = messageList
 
-    if (suppressSessionBookends && isGreenroomSuppressedBookend(message)) {
-      return false
-    }
+  const typingUsers = useMemo(() => {
+    return (sessionTypingIndicators ?? [])
+      .filter((indicator) => indicator.until > typingClock)
+      .filter((indicator) => indicator.userId !== user.id)
+      .filter((indicator) => !indicator.roomId || indicator.roomId === roomId)
+  }, [roomId, sessionTypingIndicators, typingClock, user.id])
 
-    return true
-  })
+  const emitTypingEvent = useCallback(
+    (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
+      if (!sendWsEvent) {
+        return
+      }
+
+      const now = Date.now()
+      sendWsEvent({
+        id: crypto.randomUUID() as UUID,
+        type,
+        version: 1,
+        userId: user.id,
+        userRole: user.role as Role,
+        sessionId,
+        roomId,
+        timestamp: now,
+        payload:
+          type === 'CHAT:TYPING_STARTED'
+            ? {
+                userId: user.id,
+                username: user.username,
+                roomId,
+                startedAt: now,
+              }
+            : {
+                userId: user.id,
+                username: user.username,
+                roomId,
+                stoppedAt: now,
+              },
+      })
+    },
+    [roomId, sendWsEvent, sessionId, user.id, user.role, user.username]
+  )
 
   const failedQueueItems = useMemo(
     () =>
@@ -369,8 +417,17 @@ export function ChatWindow({
           listRef={messageListRef}
           onListScroll={handleListScroll}
           participantDirectory={participantDirectory}
+          roomDirectory={roomDirectory}
         />
       )}
+
+      {typingUsers.length > 0 ? (
+        <div className="chat-window__subtitle" aria-live="polite">
+          {typingUsers.length === 1
+            ? `${typingUsers[0]?.username} is typing...`
+            : `${typingUsers.length} people are typing...`}
+        </div>
+      ) : null}
 
       {!isLoading && visibleMessages.length > 0 && !isUserPinnedToBottom ? (
         <TooltipProvider delayDuration={140}>
@@ -396,6 +453,8 @@ export function ChatWindow({
       {/* Input */}
       <MessageInput
         onSend={handleSend}
+        onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
+        onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
         role={user.role}
         disabled={isLoading}
         forceMessageType={forceMessageType}

@@ -24,6 +24,7 @@ const SYSTEM_CHAT_AUTHOR_USERNAME = 'SYSTEM'
 interface ChatVisibilityPayload {
   visibleTo?: UUID[]
   roomId?: UUID
+  targetIds?: UUID[]
 }
 
 function parseUUIDArray(value: unknown): UUID[] | undefined {
@@ -47,6 +48,7 @@ function parseVisibility(value: unknown): ChatVisibilityPayload {
     return {
       visibleTo: parseUUIDArray(maybeObject.visibleTo),
       roomId: typeof maybeObject.roomId === 'string' ? (maybeObject.roomId as UUID) : undefined,
+      targetIds: parseUUIDArray(maybeObject.targetIds),
     }
   }
 
@@ -58,9 +60,14 @@ function computeVisibility(
   authorId: UUID,
   dmId: UUID,
   roomId?: UUID,
-  recipientId?: UUID
+  recipientId?: UUID,
+  visibleAudience?: UUID[]
 ): ChatVisibilityPayload {
   const visibility: ChatVisibilityPayload = roomId ? { roomId } : {}
+
+  if (visibleAudience && visibleAudience.length > 0) {
+    visibility.visibleTo = Array.from(new Set(visibleAudience))
+  }
 
   if (type !== MessageType.WHISPER) {
     return visibility
@@ -69,6 +76,7 @@ function computeVisibility(
   const visibleTo = new Set<UUID>([authorId, dmId])
   if (recipientId) visibleTo.add(recipientId)
   visibility.visibleTo = Array.from(visibleTo)
+  visibility.targetIds = recipientId ? [recipientId] : undefined
 
   return visibility
 }
@@ -101,6 +109,7 @@ function mapStoredMessage(row: {
     isDmOnly: row.isDmOnly,
     isOffTheRecord: row.isOffTheRecord,
     visibleTo: visibility.visibleTo,
+    targetIds: visibility.targetIds,
     createdAt: row.createdAt.getTime(),
     editedAt: row.editedAt?.getTime(),
     deletedAt: row.deletedAt?.getTime(),
@@ -130,6 +139,7 @@ export async function sendMessage(params: {
   content: string
   type: MessageType
   recipientId?: UUID
+  visibleTo?: UUID[]
   isOffTheRecord?: boolean
 }): Promise<StoredMessage> {
   const {
@@ -141,6 +151,7 @@ export async function sendMessage(params: {
     content,
     type,
     recipientId,
+    visibleTo,
     isOffTheRecord,
   } = params
   const resolvedAuthorId = type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_ID : authorId
@@ -148,7 +159,7 @@ export async function sendMessage(params: {
     type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_USERNAME : authorUsername
 
   const id = crypto.randomUUID() as UUID
-  const visibility = computeVisibility(type, resolvedAuthorId, dmId, roomId, recipientId)
+  const visibility = computeVisibility(type, resolvedAuthorId, dmId, roomId, recipientId, visibleTo)
 
   const message: StoredMessage = {
     id,
@@ -161,6 +172,7 @@ export async function sendMessage(params: {
     isDmOnly: type === MessageType.WHISPER,
     isOffTheRecord: isOffTheRecord ?? false,
     visibleTo: visibility.visibleTo,
+    targetIds: visibility.targetIds,
     createdAt: Date.now(),
   }
 

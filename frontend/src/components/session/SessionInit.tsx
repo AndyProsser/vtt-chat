@@ -699,6 +699,7 @@ export function SessionInit({
   const {
     state: wsState,
     error: wsError,
+    send,
     retryConnection,
   } = useWebSocket({
     url: wsUrl,
@@ -3256,6 +3257,7 @@ export function SessionInit({
                             roomName={selectedRoom?.name}
                             user={effectiveSessionUser}
                             messageGroupingWindowMs={messageGroupingWindowMs}
+                            sendWsEvent={send}
                             forceMessageType={isGreenroomChatMode ? MessageType.OOC : undefined}
                           />
                         ) : (

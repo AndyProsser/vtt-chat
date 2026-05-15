@@ -47,6 +47,7 @@ function buildSystemChatEvent(message: {
       content: message.content,
       type: message.type,
       isDmOnly: message.isDmOnly,
+      isOffTheRecord: false,
     },
   }
 }
