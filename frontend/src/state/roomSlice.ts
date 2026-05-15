@@ -331,6 +331,14 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       userId: UUID
       username: string
       joinedAt?: number
+      playerName?: string
+      avatarUrl?: string
+      characterName?: string
+      characterClass?: string
+      characterSubclass?: string | null
+      characterRace?: string
+      level?: number
+      characterStats?: Record<string, unknown> | null
     }
 
     const joinedAt = payload.joinedAt || event.timestamp
@@ -339,14 +347,14 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       userId: payload.userId,
       username: payload.username,
       role: existingPresence?.role,
-      playerName: existingPresence?.playerName,
-      avatarUrl: existingPresence?.avatarUrl,
-      characterName: existingPresence?.characterName,
-      characterClass: existingPresence?.characterClass,
-      characterSubclass: existingPresence?.characterSubclass,
-      characterRace: existingPresence?.characterRace,
-      level: existingPresence?.level,
-      characterStats: existingPresence?.characterStats,
+      playerName: payload.playerName ?? existingPresence?.playerName,
+      avatarUrl: payload.avatarUrl ?? existingPresence?.avatarUrl,
+      characterName: payload.characterName ?? existingPresence?.characterName,
+      characterClass: payload.characterClass ?? existingPresence?.characterClass,
+      characterSubclass: payload.characterSubclass ?? existingPresence?.characterSubclass,
+      characterRace: payload.characterRace ?? existingPresence?.characterRace,
+      level: payload.level ?? existingPresence?.level,
+      characterStats: payload.characterStats ?? existingPresence?.characterStats,
       presenceState: PresenceState.ONLINE,
       ghost: existingPresence?.ghost,
       previousGroupId: existingPresence?.previousGroupId,
@@ -366,6 +374,14 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       username: payload.username,
       roomId: payload.roomId,
       joinedAt,
+      playerName: payload.playerName,
+      avatarUrl: payload.avatarUrl,
+      characterName: payload.characterName,
+      characterClass: payload.characterClass,
+      characterSubclass: payload.characterSubclass,
+      characterRace: payload.characterRace,
+      level: payload.level,
+      characterStats: payload.characterStats,
     })
   },
 

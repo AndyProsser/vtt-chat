@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { EventEnvelope } from '@shared'
-import type { UUID } from '@shared'
+import type { EventEnvelope, UUID } from '../../../shared'
 import { useStore } from '../../src/state/store'
-import type { Room, RoomUser } from '@/types/room'
+import type { Room, RoomUser } from '../../src/types/room'
 
 const SESSION_A = '11111111-1111-4111-8111-111111111111' as UUID
 const SESSION_B = '22222222-2222-4222-8222-222222222222' as UUID
@@ -174,6 +173,32 @@ describe('roomSlice', () => {
       useStore.getState().addRoomMember(ROOM_ID_1, updated)
       expect(useStore.getState().roomMembers[ROOM_ID_1]).toHaveLength(1)
       expect(useStore.getState().roomMembers[ROOM_ID_1]![0]!.username).toBe('alice-renamed')
+    })
+
+    it('overwrites stale mock character details from ROOM:USER_JOINED payload metadata', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'dev_mock_doran',
+          playerName: 'Doran Flint',
+          avatarUrl: '/branding/mock-races/scout-robot.svg',
+          characterName: 'Magnus Gearwright',
+          characterClass: 'Artificer',
+          characterSubclass: 'Battle Smith',
+          characterRace: 'Rock Gnome',
+          level: 8,
+          characterStats: { level: 8 },
+        })
+      )
+
+      const member = useStore.getState().roomMembers[ROOM_ID_1]![0]!
+      expect(member.playerName).toBe('Doran Flint')
+      expect(member.characterName).toBe('Magnus Gearwright')
+      expect(member.characterClass).toBe('Artificer')
+      expect(member.characterRace).toBe('Rock Gnome')
+      expect(member.level).toBe(8)
     })
   })
 

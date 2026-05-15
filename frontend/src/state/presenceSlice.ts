@@ -29,6 +29,14 @@ export interface PresenceSlice {
     username: string
     roomId: UUID
     joinedAt: number
+    playerName?: string
+    avatarUrl?: string
+    characterName?: string
+    characterClass?: string
+    characterSubclass?: string | null
+    characterRace?: string
+    level?: number
+    characterStats?: Record<string, unknown> | null
   }) => void
   markSessionPresenceOnLeft: (params: { sessionId: UUID; userId: UUID; leftAt: number }) => void
   applySessionPresenceStateChange: (params: {
@@ -103,7 +111,21 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       return { sessionPresence: nextPresence, sessionStatsBySessionId: nextStats }
     }),
 
-  upsertSessionPresenceOnJoin: ({ sessionId, userId, username, roomId, joinedAt }) =>
+  upsertSessionPresenceOnJoin: ({
+    sessionId,
+    userId,
+    username,
+    roomId,
+    joinedAt,
+    playerName,
+    avatarUrl,
+    characterName,
+    characterClass,
+    characterSubclass,
+    characterRace,
+    level,
+    characterStats,
+  }) =>
     set((state) => {
       const existingPresence = state.sessionPresence[sessionId]?.[userId]
 
@@ -116,6 +138,14 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               ...existingPresence,
               userId,
               username,
+              playerName: playerName ?? existingPresence?.playerName,
+              avatarUrl: avatarUrl ?? existingPresence?.avatarUrl,
+              characterName: characterName ?? existingPresence?.characterName,
+              characterClass: characterClass ?? existingPresence?.characterClass,
+              characterSubclass: characterSubclass ?? existingPresence?.characterSubclass,
+              characterRace: characterRace ?? existingPresence?.characterRace,
+              level: level ?? existingPresence?.level,
+              characterStats: characterStats ?? existingPresence?.characterStats,
               state: PresenceState.ONLINE,
               primaryRoomId: roomId,
               lastSeenAt: joinedAt,

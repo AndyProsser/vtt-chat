@@ -237,6 +237,14 @@ export interface MockPlayerDef {
   username: string
   displayName: string
   email: string | null
+  playerName?: string
+  avatarUrl?: string
+  characterName?: string
+  characterClass?: string
+  characterSubclass?: string | null
+  characterRace?: string
+  level?: number
+  characterStats?: Prisma.JsonValue
 }
 
 function normalizeRoomName(value: string): string {
@@ -369,6 +377,12 @@ async function upsertMockUser(archetype: MockArchetype): Promise<MockPlayerDef> 
     username: user.username,
     displayName: user.displayName,
     email: user.email,
+    playerName: archetype.playerName,
+    avatarUrl: avatarUrl,
+    characterName: archetype.characterName,
+    characterClass: archetype.className,
+    characterSubclass: archetype.subclass || null,
+    characterRace: archetype.race,
   }
 }
 
@@ -627,6 +641,12 @@ export async function ensureDevMockPlayersForSession(
       })
     }
 
+    selectedUsers.push({
+      ...user,
+      level,
+      characterStats: buildStatBlock(level) as Prisma.JsonValue,
+    })
+
     await addUserToSession(sessionId, {
       id: user.id,
       username: user.username,
@@ -664,7 +684,21 @@ export async function resetDevMockRoster(params: {
   campaignId?: UUID
   sessionId?: UUID
   removedUsers: Array<{ userId: UUID; username: string; primaryRoomId?: UUID }>
-  addedUsers: Array<{ userId: UUID; username: string; roomId?: UUID }>
+  addedUsers: Array<{
+    userId: UUID
+    username: string
+    displayName: string
+    email: string | null
+    roomId?: UUID
+    playerName?: string
+    avatarUrl?: string
+    characterName?: string
+    characterClass?: string
+    characterSubclass?: string | null
+    characterRace?: string
+    level?: number
+    characterStats?: Prisma.JsonValue
+  }>
 }> {
   if (!params.sessionId && !params.campaignId) {
     return { count: 0, removedUsers: [], addedUsers: [] }
@@ -726,7 +760,21 @@ export async function resetDevMockRoster(params: {
       campaignId: resolvedCampaignId,
       sessionId: resolvedSessionId,
       removedUsers,
-      addedUsers,
+      addedUsers: users.map((user) => ({
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        email: user.email,
+        roomId: presenceAfter.find((p) => p.userId === user.id)?.primaryRoomId,
+        playerName: user.playerName,
+        avatarUrl: user.avatarUrl,
+        characterName: user.characterName,
+        characterClass: user.characterClass,
+        characterSubclass: user.characterSubclass,
+        characterRace: user.characterRace,
+        level: user.level,
+        characterStats: user.characterStats,
+      })),
     }
   }
 

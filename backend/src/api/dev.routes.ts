@@ -69,7 +69,19 @@ async function broadcastDevMockRosterChange(
   result: {
     sessionId?: UUID
     removedUsers: Array<{ userId: UUID; username: string; primaryRoomId?: UUID }>
-    addedUsers: Array<{ userId: UUID; username: string; roomId?: UUID }>
+    addedUsers: Array<{
+      userId: UUID
+      username: string
+      roomId?: UUID
+      playerName?: string
+      avatarUrl?: string
+      characterName?: string
+      characterClass?: string
+      characterSubclass?: string | null
+      characterRace?: string
+      level?: number
+      characterStats?: unknown
+    }>
   }
 ) {
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -122,6 +134,14 @@ async function broadcastDevMockRosterChange(
         roomId: added.roomId,
         userId: added.userId,
         username: added.username,
+        playerName: added.playerName,
+        avatarUrl: added.avatarUrl,
+        characterName: added.characterName,
+        characterClass: added.characterClass,
+        characterSubclass: added.characterSubclass,
+        characterRace: added.characterRace,
+        level: added.level,
+        characterStats: added.characterStats,
         joinedAt: now,
         reason: 'dev_mock_reroll',
       },
