@@ -138,6 +138,13 @@
   background: color-mix(in srgb, var(--color-success, #22c55e) 20%, transparent);
 }
 
+.room-selector-header__broadcast-icon.takeover-active {
+  color: color-mix(in srgb, #ea580c 86%, var(--color-text-primary));
+  border-color: color-mix(in srgb, #ea580c 56%, var(--color-border-soft));
+  background: color-mix(in srgb, #ea580c 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ea580c 22%, transparent);
+}
+
 .room-selector-header__broadcast-icon .material-symbols-outlined {
   font-size: 1rem;
 }
@@ -198,6 +205,79 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.room-selector-header__takeover-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, #ea580c 44%, var(--color-border-soft));
+  border-radius: 999px;
+  padding: 0.1rem 0.34rem;
+  background: color-mix(in srgb, #ea580c 15%, transparent);
+  color: color-mix(in srgb, #ea580c 84%, var(--color-text-primary));
+}
+
+.room-selector-header__takeover-pill .material-symbols-outlined {
+  font-size: 0.68rem;
+}
+
+.room-selector--takeover-active {
+  border: 1px solid color-mix(in srgb, #ea580c 28%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, #ea580c 8%, transparent), transparent 32%);
+}
+
+.room-selector-takeover-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  border: 1px solid color-mix(in srgb, #ea580c 36%, var(--color-border-soft));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #ea580c 14%, transparent);
+  padding: 0.36rem 0.46rem;
+}
+
+.room-selector-takeover-banner > .material-symbols-outlined {
+  font-size: 1rem;
+  color: color-mix(in srgb, #ea580c 82%, var(--color-text-primary));
+}
+
+.room-selector-takeover-banner__copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.04rem;
+}
+
+.room-selector-takeover-banner__copy strong {
+  font-size: 0.66rem;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
+
+.room-selector-takeover-banner__copy span {
+  font-size: 0.62rem;
+  line-height: 1.25;
+  color: var(--color-text-secondary);
+}
+
+.room-selector-takeover-banner__exit {
+  border: 1px solid color-mix(in srgb, #ea580c 42%, var(--color-border-soft));
+  border-radius: 999px;
+  background: color-mix(in srgb, #ea580c 20%, transparent);
+  color: color-mix(in srgb, #ea580c 90%, var(--color-text-primary));
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.12rem 0.44rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.room-selector-takeover-banner__exit:hover {
+  background: color-mix(in srgb, #ea580c 28%, transparent);
 }
 
 .room-selector-header__meta > span {
@@ -679,6 +759,12 @@
 
 .room-selector-member--ghost .avatar-overlay {
   border-style: dashed;
+}
+
+.room-selector-member--takeover-active .avatar-overlay {
+  border-color: color-mix(in srgb, #ea580c 64%, var(--color-border-soft));
+  background: color-mix(in srgb, #ea580c 8%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ea580c 28%, transparent);
 }
 
 .room-selector-member__pending {

@@ -4,7 +4,7 @@ import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { createSession } from '@/services/session/core.service'
-import { ensureSessionDefaultRoomsForSession } from '@/services/room.service'
+import { ensureSessionDefaultRoomsForSession, getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import {
   createCampaignForUser,
@@ -1183,6 +1183,51 @@ router.patch(
       return res
         .status(404)
         .json({ code: ErrorCode.NOT_FOUND, message: 'Character not found for this user' })
+    }
+
+    const wsManager = req.app.locals.wsManager as
+      | { broadcastEventToSession: (sessionId: UUID, event: any) => void }
+      | undefined
+
+    if (wsManager) {
+      const sessions = await listSessionsByCampaign(campaignId as UUID)
+      const updatedAt = Date.now()
+      const characterStats =
+        character.metadata &&
+        typeof character.metadata === 'object' &&
+        !Array.isArray(character.metadata)
+          ? (character.metadata as Record<string, unknown>)
+          : null
+
+      for (const session of sessions) {
+        const presence = await getSessionPresence(session.id as UUID)
+        if (!presence.some((entry) => entry.userId === (user.userId as UUID))) {
+          continue
+        }
+
+        wsManager.broadcastEventToSession(session.id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:PROFILE_UPDATED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id as UUID,
+          roomId: null,
+          timestamp: updatedAt,
+          payload: {
+            userId: user.userId as UUID,
+            username: user.username,
+            updatedAt,
+            characterName: character.name,
+            characterClass: character.class,
+            characterSubclass: character.subclass,
+            characterRace: character.race,
+            level: typeof characterStats?.level === 'number' ? characterStats.level : null,
+            characterStats,
+            avatarUrl: character.avatarUrl,
+          },
+        })
+      }
     }
 
     return res.status(200).json({ character })

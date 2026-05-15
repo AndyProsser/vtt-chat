@@ -176,6 +176,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('PRESENCE:USER_GHOST_MODE_CHANGED', (event) => {
       useStore.getState().handlePresenceGhostModeChanged(event)
     })
+    dispatcher.register('PRESENCE:PROFILE_UPDATED', (event) => {
+      useStore.getState().handlePresenceProfileUpdated(event)
+    })
 
     // Audio events
     dispatcher.register('AUDIO:DM_VOICE_MODE_CHANGED', (event) => {

@@ -174,6 +174,19 @@ export function RoomSelector({
     () => (isGreenroom ? baseParticipants : baseParticipants.filter((p) => p.userId !== dmUserId)),
     [baseParticipants, dmUserId, isGreenroom]
   )
+  const activeTakeoverParticipant = useMemo(
+    () =>
+      activeTakeoverUserId
+        ? baseParticipants.find((participant) => participant.userId === activeTakeoverUserId) ||
+          null
+        : null,
+    [activeTakeoverUserId, baseParticipants]
+  )
+  const takeoverDisplayName =
+    activeTakeoverParticipant?.characterName ||
+    activeTakeoverParticipant?.playerName ||
+    activeTakeoverParticipant?.username ||
+    null
 
   const canCreateGroups = canManageRooms && !isGreenroom
   const showCreateGroupControl = canManageRooms && !isGreenroom
@@ -1218,10 +1231,25 @@ export function RoomSelector({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
+      <section
+        className={`room-selector room-selector--mobile-expanded ${activeTakeoverUserId ? 'room-selector--takeover-active' : ''}`}
+        aria-label="Room Selector"
+      >
         <header className="room-selector-header">
           <h4>
             <Icon name="rooms" /> Groups
+            {activeTakeoverUserId ? (
+              <span
+                className="room-selector-header__takeover-pill"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  swap_horiz
+                </span>
+                Takeover Active
+              </span>
+            ) : null}
           </h4>
           <GroupsHeaderActions
             headerModeCopy={headerModeCopy}
@@ -1258,6 +1286,29 @@ export function RoomSelector({
             }}
           />
         </header>
+
+        {activeTakeoverUserId ? (
+          <div className="room-selector-takeover-banner" role="status" aria-live="polite">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              switch_account
+            </span>
+            <div className="room-selector-takeover-banner__copy">
+              <strong>
+                Mock takeover active{takeoverDisplayName ? `: ${takeoverDisplayName}` : ''}
+              </strong>
+              <span>Exit takeover from here or from DEV mock testing.</span>
+            </div>
+            <button
+              type="button"
+              className="room-selector-takeover-banner__exit"
+              onClick={() => {
+                void handleReturnToMyUser()
+              }}
+            >
+              Return to My User
+            </button>
+          </div>
+        ) : null}
 
         <div className="room-selector-body">
           {dmParticipant && !isGreenroom ? (

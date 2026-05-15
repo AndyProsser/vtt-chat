@@ -465,7 +465,7 @@ export function MockTestingPanel({
 
         {activeTakeoverUserId ? (
           <button
-            className="mock-testing-panel__action-button"
+            className="mock-testing-panel__action-button mock-testing-panel__action-button--takeover-exit"
             onClick={() => {
               void onReturnToUser?.()
             }}

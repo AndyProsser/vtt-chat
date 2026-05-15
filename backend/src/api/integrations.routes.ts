@@ -1,6 +1,9 @@
 import { Request, Response, Router, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { ErrorCode, isValidUUID } from '@shared'
+import type { UUID } from '@shared'
+import { getSessionPresence } from '@/services/room.service'
+import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { syncExternalIntegration } from '@/services/integration-sync.service'
 
 const router = Router()
@@ -89,6 +92,57 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
         code: result.code,
         message: result.message,
       })
+    }
+
+    const wsManager = req.app.locals.wsManager as
+      | { broadcastEventToSession: (sessionId: UUID, event: any) => void }
+      | undefined
+
+    if (wsManager && characterUpdate && typeof characterUpdate === 'object') {
+      const updatedAt = Date.now()
+      const characterStats =
+        characterUpdate.metadata && typeof characterUpdate.metadata === 'object'
+          ? (characterUpdate.metadata as Record<string, unknown>)
+          : null
+      const sessions = await listSessionsByCampaign(campaignId)
+
+      for (const session of sessions) {
+        const presence = await getSessionPresence(session.id as UUID)
+        if (!presence.some((entry) => entry.userId === user.userId)) {
+          continue
+        }
+
+        wsManager.broadcastEventToSession(session.id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:PROFILE_UPDATED',
+          version: 1,
+          userId: user.userId,
+          userRole: user.role,
+          sessionId: session.id as UUID,
+          roomId: null,
+          timestamp: updatedAt,
+          payload: {
+            userId: user.userId,
+            username: user.username,
+            updatedAt,
+            characterName:
+              typeof characterUpdate.name === 'string' ? characterUpdate.name : undefined,
+            characterClass:
+              typeof characterUpdate.class === 'string' ? characterUpdate.class : undefined,
+            characterSubclass:
+              typeof characterUpdate.subclass === 'string' ? characterUpdate.subclass : undefined,
+            characterRace:
+              typeof characterUpdate.race === 'string' ? characterUpdate.race : undefined,
+            level:
+              typeof characterUpdate.level === 'number' && Number.isFinite(characterUpdate.level)
+                ? characterUpdate.level
+                : null,
+            characterStats,
+            avatarUrl:
+              typeof characterUpdate.avatarUrl === 'string' ? characterUpdate.avatarUrl : undefined,
+          },
+        })
+      }
     }
 
     return res.status(200).json({

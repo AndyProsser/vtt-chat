@@ -76,6 +76,12 @@ Placement boundary:
 - Backend session broadcasts only fan out to sockets whose authenticated connection state is bound to the matching session id.
 - A socket can authenticate successfully without being eligible for session broadcasts if it is not session-bound.
 
+### Presence Profile Updates
+
+- `PRESENCE:PROFILE_UPDATED` is the session-scoped event for character sheet / player card metadata changes while the user remains in-session.
+- The payload carries the latest profile fields needed to refresh live room cards in place: player name, avatar, character name, class, subclass, race, level, and character stats.
+- New profile data should be broadcast after persistence succeeds and before the acting user relies on a refresh to see the change.
+
 ---
 
 ## Location

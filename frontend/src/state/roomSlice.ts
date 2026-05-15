@@ -35,6 +35,7 @@ export interface RoomSlice {
   handleUserLeft: (event: EventEnvelope) => void
   handlePresenceStateChanged: (event: EventEnvelope) => void
   handlePresenceGhostModeChanged: (event: EventEnvelope) => void
+  handlePresenceProfileUpdated: (event: EventEnvelope) => void
   handleSessionRoomTransitionApplied: (event: EventEnvelope) => void
 }
 
@@ -500,6 +501,87 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       changedAt,
       ghost: payload.ghostMode || false,
       previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
+    })
+  },
+
+  handlePresenceProfileUpdated: (event) => {
+    const payload = event.payload as {
+      userId: UUID
+      username?: string
+      updatedAt?: number
+      roomId?: UUID | null
+      previousGroupId?: UUID | null
+      playerName?: string | null
+      avatarUrl?: string | null
+      characterName?: string | null
+      characterClass?: string | null
+      characterSubclass?: string | null
+      characterRace?: string | null
+      level?: number | null
+      characterStats?: Record<string, unknown> | null
+    }
+
+    const updatedAt = payload.updatedAt || event.timestamp
+    const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
+
+    set((state) => {
+      const nextRoomMembers: Record<UUID, RoomUser[]> = {}
+      for (const [roomId, members] of Object.entries(state.roomMembers)) {
+        nextRoomMembers[roomId as UUID] = members.map((member) =>
+          member.userId === payload.userId
+            ? {
+                ...member,
+                username: payload.username || member.username,
+                playerName:
+                  payload.playerName !== undefined
+                    ? (payload.playerName ?? undefined)
+                    : member.playerName,
+                avatarUrl:
+                  payload.avatarUrl !== undefined ? (payload.avatarUrl ?? null) : member.avatarUrl,
+                characterName:
+                  payload.characterName !== undefined
+                    ? (payload.characterName ?? null)
+                    : member.characterName,
+                characterClass:
+                  payload.characterClass !== undefined
+                    ? (payload.characterClass ?? null)
+                    : member.characterClass,
+                characterSubclass:
+                  payload.characterSubclass !== undefined
+                    ? (payload.characterSubclass ?? null)
+                    : member.characterSubclass,
+                characterRace:
+                  payload.characterRace !== undefined
+                    ? (payload.characterRace ?? null)
+                    : member.characterRace,
+                level: payload.level !== undefined ? (payload.level ?? null) : member.level,
+                characterStats:
+                  payload.characterStats !== undefined
+                    ? (payload.characterStats ?? null)
+                    : member.characterStats,
+              }
+            : member
+        )
+      }
+
+      return { roomMembers: nextRoomMembers }
+    })
+
+    get().applySessionPresenceProfileUpdate({
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      username: payload.username || existingPresence?.username,
+      updatedAt,
+      roomId: payload.roomId || existingPresence?.primaryRoomId,
+      previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
+      playerName: payload.playerName,
+      avatarUrl: payload.avatarUrl,
+      characterName: payload.characterName,
+      characterClass: payload.characterClass,
+      characterSubclass: payload.characterSubclass,
+      characterRace: payload.characterRace,
+      level: payload.level,
+      characterStats: payload.characterStats,
     })
   },
 

@@ -48,6 +48,30 @@ export interface PresenceSlice {
     changedAt: number
     ghost?: boolean
     previousGroupId?: UUID
+    playerName?: string | null
+    avatarUrl?: string | null
+    characterName?: string | null
+    characterClass?: string | null
+    characterSubclass?: string | null
+    characterRace?: string | null
+    level?: number | null
+    characterStats?: Record<string, unknown> | null
+  }) => void
+  applySessionPresenceProfileUpdate: (params: {
+    sessionId: UUID
+    userId: UUID
+    username?: string
+    updatedAt: number
+    roomId?: UUID
+    previousGroupId?: UUID
+    playerName?: string | null
+    avatarUrl?: string | null
+    characterName?: string | null
+    characterClass?: string | null
+    characterSubclass?: string | null
+    characterRace?: string | null
+    level?: number | null
+    characterStats?: Record<string, unknown> | null
   }) => void
   applySessionRoomTransitionPresence: (params: {
     sessionId: UUID
@@ -192,6 +216,14 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     changedAt,
     ghost,
     previousGroupId,
+    playerName,
+    avatarUrl,
+    characterName,
+    characterClass,
+    characterSubclass,
+    characterRace,
+    level,
+    characterStats,
   }) =>
     set((currentState) => {
       const bySession = currentState.sessionPresence[sessionId] || {}
@@ -207,6 +239,30 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               ...existing,
               userId,
               username: username || existing?.username || '',
+              playerName:
+                playerName !== undefined ? (playerName ?? undefined) : existing?.playerName,
+              avatarUrl: avatarUrl !== undefined ? (avatarUrl ?? undefined) : existing?.avatarUrl,
+              characterName:
+                characterName !== undefined
+                  ? (characterName ?? undefined)
+                  : existing?.characterName,
+              characterClass:
+                characterClass !== undefined
+                  ? (characterClass ?? undefined)
+                  : existing?.characterClass,
+              characterSubclass:
+                characterSubclass !== undefined
+                  ? (characterSubclass ?? undefined)
+                  : existing?.characterSubclass,
+              characterRace:
+                characterRace !== undefined
+                  ? (characterRace ?? undefined)
+                  : existing?.characterRace,
+              level: level !== undefined ? (level ?? undefined) : existing?.level,
+              characterStats:
+                characterStats !== undefined
+                  ? (characterStats ?? undefined)
+                  : existing?.characterStats,
               state,
               ghost: ghost !== undefined ? ghost : existing?.ghost || false,
               primaryRoomId: resolvedRoomId,
@@ -214,6 +270,70 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
                 previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId,
               privateRoomId: existing?.privateRoomId,
               lastSeenAt: changedAt,
+            },
+          },
+        },
+      }
+    }),
+
+  applySessionPresenceProfileUpdate: ({
+    sessionId,
+    userId,
+    username,
+    updatedAt,
+    roomId,
+    previousGroupId,
+    playerName,
+    avatarUrl,
+    characterName,
+    characterClass,
+    characterSubclass,
+    characterRace,
+    level,
+    characterStats,
+  }) =>
+    set((currentState) => {
+      const bySession = currentState.sessionPresence[sessionId] || {}
+      const existing = bySession[userId]
+      const resolvedRoomId = roomId || existing?.primaryRoomId
+
+      return {
+        sessionPresence: {
+          ...currentState.sessionPresence,
+          [sessionId]: {
+            ...bySession,
+            [userId]: {
+              ...existing,
+              userId,
+              username: username || existing?.username || '',
+              playerName:
+                playerName !== undefined ? (playerName ?? undefined) : existing?.playerName,
+              avatarUrl: avatarUrl !== undefined ? (avatarUrl ?? undefined) : existing?.avatarUrl,
+              characterName:
+                characterName !== undefined
+                  ? (characterName ?? undefined)
+                  : existing?.characterName,
+              characterClass:
+                characterClass !== undefined
+                  ? (characterClass ?? undefined)
+                  : existing?.characterClass,
+              characterSubclass:
+                characterSubclass !== undefined
+                  ? (characterSubclass ?? undefined)
+                  : existing?.characterSubclass,
+              characterRace:
+                characterRace !== undefined
+                  ? (characterRace ?? undefined)
+                  : existing?.characterRace,
+              level: level !== undefined ? (level ?? undefined) : existing?.level,
+              characterStats:
+                characterStats !== undefined
+                  ? (characterStats ?? undefined)
+                  : existing?.characterStats,
+              primaryRoomId: resolvedRoomId,
+              previousGroupId:
+                previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId,
+              lastSeenAt: updatedAt,
             },
           },
         },

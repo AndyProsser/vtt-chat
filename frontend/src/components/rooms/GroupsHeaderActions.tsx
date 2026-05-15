@@ -59,6 +59,7 @@ export function GroupsHeaderActions({
   void onDevReset
   const [showMockPanel, setShowMockPanel] = useState(false)
   const mockPanelRef = useRef<HTMLDivElement | null>(null)
+  const takeoverActive = Boolean(activeTakeoverUserId)
   return (
     <div className="room-selector-header__meta room-selector-header__meta--actions">
       {headerModeCopy ? <span>{headerModeCopy}</span> : null}
@@ -94,19 +95,27 @@ export function GroupsHeaderActions({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className={`room-selector-header__broadcast-icon ${showMockPanel ? 'active' : ''}`}
-                aria-label="Configure mock testing"
+                className={`room-selector-header__broadcast-icon ${showMockPanel ? 'active' : ''} ${takeoverActive ? 'takeover-active' : ''}`}
+                aria-label={
+                  takeoverActive
+                    ? 'Mock takeover active — open controls to return'
+                    : 'Configure mock testing'
+                }
                 disabled={isDevResettingMocks}
                 onClick={() => setShowMockPanel((current) => !current)}
                 aria-haspopup="dialog"
                 aria-expanded={showMockPanel}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">
-                  shuffle
+                  {takeoverActive ? 'exit_to_app' : 'shuffle'}
                 </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">DEV: Configure mock testing</TooltipContent>
+            <TooltipContent side="top">
+              {takeoverActive
+                ? 'DEV: Takeover active — open to return to your user'
+                : 'DEV: Configure mock testing'}
+            </TooltipContent>
           </Tooltip>
           {showMockPanel && apiUrl && token && sessionId ? (
             <MockTestingPanel

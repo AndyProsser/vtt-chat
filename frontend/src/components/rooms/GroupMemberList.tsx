@@ -149,7 +149,7 @@ export function GroupMemberList({
         const memberButton = (
           <button
             type="button"
-            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''}`}
+            className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''} ${isTakeoverActive ? 'room-selector-member--takeover-active' : ''}`}
             draggable={canDrag}
             aria-label={canDrag ? `Drag ${member.username}` : member.username}
             onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}

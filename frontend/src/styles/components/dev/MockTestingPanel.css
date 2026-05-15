@@ -162,6 +162,22 @@
   color: color-mix(in srgb, var(--color-danger, #ef4444) 90%, #fff 10%);
 }
 
+.mock-testing-panel__action-button--takeover-exit {
+  border-color: color-mix(
+    in srgb,
+    #ea580c 52%,
+    var(--color-border-default, rgba(148, 163, 184, 0.28))
+  );
+  background: color-mix(in srgb, #ea580c 18%, transparent);
+  color: color-mix(in srgb, #ea580c 84%, #ffffff 16%);
+}
+
+.mock-testing-panel__action-button--takeover-exit:hover:not(:disabled) {
+  background: color-mix(in srgb, #ea580c 24%, transparent);
+  border-color: color-mix(in srgb, #ea580c 64%, transparent);
+  color: color-mix(in srgb, #ea580c 92%, #ffffff 8%);
+}
+
 .mock-testing-panel__action-button .material-symbols-outlined {
   font-size: 1rem;
 }

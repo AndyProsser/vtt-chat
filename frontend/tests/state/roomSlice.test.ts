@@ -200,6 +200,42 @@ describe('roomSlice', () => {
       expect(member.characterRace).toBe('Rock Gnome')
       expect(member.level).toBe(8)
     })
+
+    it('refreshes live member profile details from PRESENCE:PROFILE_UPDATED', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'dev_mock_doran',
+        })
+      )
+
+      useStore.getState().handlePresenceProfileUpdated(
+        makeEvent('PRESENCE:PROFILE_UPDATED', SESSION_A, {
+          userId: USER_ID_1,
+          username: 'dev_mock_doran',
+          updatedAt: NOW + 1000,
+          playerName: 'Doran Flint',
+          avatarUrl: '/branding/mock-races/scout-robot.svg',
+          characterName: 'Magnus Gearwright',
+          characterClass: 'Artificer',
+          characterSubclass: 'Battle Smith',
+          characterRace: 'Rock Gnome',
+          level: 8,
+          characterStats: { level: 8 },
+        })
+      )
+
+      const member = useStore.getState().roomMembers[ROOM_ID_1]![0]!
+      expect(member.playerName).toBe('Doran Flint')
+      expect(member.characterName).toBe('Magnus Gearwright')
+      expect(member.characterClass).toBe('Artificer')
+      expect(member.level).toBe(8)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.characterName).toBe(
+        'Magnus Gearwright'
+      )
+    })
   })
 
   describe('removeRoomMember', () => {

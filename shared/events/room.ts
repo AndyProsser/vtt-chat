@@ -20,6 +20,7 @@ export type RoomEventType =
 export type PresenceEventType =
   | 'PRESENCE:STATE_CHANGED'
   | 'PRESENCE:USER_GHOST_MODE_CHANGED'
+  | 'PRESENCE:PROFILE_UPDATED'
   | 'PRESENCE:HEARTBEAT'
   | 'PRESENCE:RECONNECTED'
 
@@ -146,6 +147,29 @@ export interface PresenceUserGhostModeChanged {
 export type PresenceUserGhostModeChangedEvent = EventEnvelope<PresenceUserGhostModeChanged>
 
 /**
+ * PRESENCE:PROFILE_UPDATED
+ * User profile or character metadata changed while remaining in session.
+ * Visibility: Room members and session participants see updated profile fields immediately.
+ */
+export interface PresenceProfileUpdated {
+  userId: UUID
+  username: string
+  updatedAt: number
+  roomId?: UUID | null
+  previousGroupId?: UUID | null
+  playerName?: string | null
+  avatarUrl?: string | null
+  characterName?: string | null
+  characterClass?: string | null
+  characterSubclass?: string | null
+  characterRace?: string | null
+  level?: number | null
+  characterStats?: Record<string, unknown> | null
+}
+
+export type PresenceProfileUpdatedEvent = EventEnvelope<PresenceProfileUpdated>
+
+/**
  * PRESENCE:HEARTBEAT
  * Ephemeral keepalive to maintain presence state.
  * Sent periodically to detect stale connections.
@@ -189,5 +213,6 @@ export type RoomEvent =
 export type PresenceEvent =
   | PresenceStateChangedEvent
   | PresenceUserGhostModeChangedEvent
+  | PresenceProfileUpdatedEvent
   | PresenceHeartbeatEvent
   | PresenceReconnectedEvent
