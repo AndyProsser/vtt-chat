@@ -58,6 +58,13 @@ export function MessageInput({
   const [selectedType, setSelectedType] = useState<MessageType>(MessageType.OOC)
   const [content, setContent] = useState('')
   const [recipientId, setRecipientId] = useState('')
+  // Derive effective recipient — clears to '' when the selected recipient is no
+  // longer in whisperRecipients, without needing a setState-in-effect cycle.
+  const validRecipientId = useMemo(() => {
+    if (type !== MessageType.WHISPER || !recipientId.trim()) return recipientId
+    if (whisperRecipients.some((o) => o.id === recipientId)) return recipientId
+    return ''
+  }, [recipientId, type, whisperRecipients])
   const [isSending, setIsSending] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -101,25 +108,9 @@ export function MessageInput({
     }
   }, [])
 
-  useEffect(() => {
-    if (type !== MessageType.WHISPER) {
-      return
-    }
-
-    if (!recipientId.trim()) {
-      return
-    }
-
-    if (whisperRecipients.some((option) => option.id === recipientId)) {
-      return
-    }
-
-    setRecipientId('')
-  }, [recipientId, type, whisperRecipients])
-
   const handleSend = async () => {
     const trimmed = content.trim()
-    const trimmedRecipient = recipientId.trim()
+    const trimmedRecipient = validRecipientId.trim()
     if (!trimmed || isSending) return
     if (type === MessageType.WHISPER && !trimmedRecipient) return
 
@@ -171,7 +162,7 @@ export function MessageInput({
           <>
             {whisperRecipients.length > 0 ? (
               <select
-                value={recipientId}
+                value={validRecipientId}
                 onChange={(e) => setRecipientId(e.target.value)}
                 disabled={disabled || isSending}
                 className="chat-input__recipient"
@@ -185,7 +176,7 @@ export function MessageInput({
               </select>
             ) : (
               <input
-                value={recipientId}
+                value={validRecipientId}
                 onChange={(e) => setRecipientId(e.target.value)}
                 disabled={disabled || isSending}
                 placeholder="Recipient user ID"
@@ -229,7 +220,7 @@ export function MessageInput({
             !content.trim() ||
             disabled ||
             isSending ||
-            (type === MessageType.WHISPER && !recipientId.trim())
+            (type === MessageType.WHISPER && !validRecipientId.trim())
           }
           className="chat-input__send"
         >

@@ -62,6 +62,7 @@ module.exports = [
   },
   {
     files: [
+      'frontend/src/components/rooms/RoomSelector.tsx',
       'frontend/src/components/session/CampaignInformationPanel.tsx',
       'frontend/src/components/session/CommandCenterFrame.tsx',
       'frontend/src/components/session/DMAudioControls.tsx',

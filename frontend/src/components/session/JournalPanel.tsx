@@ -63,13 +63,7 @@ function noteToEntry(note: RawNote): JournalEntry {
   }
 }
 
-export function JournalPanel({
-  apiUrl,
-  token,
-  sessionId,
-  sessionName,
-  role,
-}: JournalPanelProps) {
+export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: JournalPanelProps) {
   const isDm = role === 'DM'
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
@@ -85,10 +79,10 @@ export function JournalPanel({
   // ── Load journal entry for this session ──────────────────────────
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setSaveError(null)
 
     const load = async () => {
+      setIsLoading(true)
+      setSaveError(null)
       try {
         // Future: GET /api/journal/:sessionId
         const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
@@ -232,9 +226,7 @@ export function JournalPanel({
   }
 
   const displayName = entry?.name ?? draftName
-  const lastUpdated = entry?.updatedAt
-    ? new Date(entry.updatedAt).toLocaleDateString()
-    : null
+  const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
 
   return (
     <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
@@ -317,9 +309,7 @@ export function JournalPanel({
       )}
 
       {!isDm && !entry && (
-        <p className="knowledge-panel-copy">
-          The DM has not written a session journal entry yet.
-        </p>
+        <p className="knowledge-panel-copy">The DM has not written a session journal entry yet.</p>
       )}
     </section>
   )
