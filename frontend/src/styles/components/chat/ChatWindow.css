@@ -276,6 +276,51 @@
   color: color-mix(in srgb, var(--color-warning-text, #f59e0b) 80%, var(--color-text-secondary));
 }
 
+/* ── Session Recap Card ─────────────────────────────────────────────────────── */
+/* Appears after [Session Started] bookend; shows previous session journal or   */
+/* a sarcastic fallback when the DM skipped journaling.                         */
+.chat-session-recap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0.35rem 0.5rem 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--color-surface) 88%, #0f172a 12%);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent, #6366f1) 55%, transparent);
+  border-radius: 6px;
+}
+
+.chat-session-recap__icon {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  color: color-mix(in srgb, var(--color-accent, #6366f1) 70%, var(--color-text-muted));
+  margin-top: 0.05rem;
+}
+
+.chat-session-recap__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chat-session-recap__label {
+  display: block;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-accent, #6366f1) 75%, var(--color-text-muted));
+  margin-bottom: 0.25rem;
+}
+
+.chat-session-recap__text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 .chat-day-separator {
   display: flex;
   align-items: center;

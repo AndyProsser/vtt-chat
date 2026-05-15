@@ -46,6 +46,7 @@ const SESSION_BOOKEND_PREFIXES = [
   '[Session Resumed]',
 ]
 const SESSION_NOTE_PREFIX = 'Session Note:'
+const SESSION_RECAP_PREFIX = '[Last Session]'
 const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]']
 
 function getAuthorInitial(username: string): string {
@@ -134,6 +135,7 @@ export function MessageList({
           isSessionBookend &&
           INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
+        const isSessionRecap = isSystem && msg.content.startsWith(SESSION_RECAP_PREFIX)
         const isSelf = !isSystem && msg.authorId === currentUserId
         const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
         const authorProfile = participantDirectory?.[msg.authorId]
@@ -164,6 +166,24 @@ export function MessageList({
 
         if (hideIntermissionMarkers && isIntermissionBookend) {
           return null
+        }
+
+        if (isSessionRecap) {
+          const recapBody = msg.content.slice(SESSION_RECAP_PREFIX.length).trim()
+          return (
+            <article key={msg.id} className="chat-session-recap">
+              <span
+                className="chat-session-recap__icon material-symbols-outlined"
+                aria-hidden="true"
+              >
+                menu_book
+              </span>
+              <div className="chat-session-recap__body">
+                <span className="chat-session-recap__label">Last Session</span>
+                <p className="chat-session-recap__text">{recapBody}</p>
+              </div>
+            </article>
+          )
         }
 
         if (isSessionBookend || isSessionNote) {
