@@ -40,6 +40,7 @@ const UNASSIGNED_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
 interface AuthMessage {
   type: 'WS:AUTH'
   token: string
+  sessionId?: UUID
 }
 
 /**
@@ -205,17 +206,20 @@ export class WebSocketManager {
     })
   }
 
-  private authenticateConnection(ws: ExtendedWebSocket, token: string): void {
+  private authenticateConnection(ws: ExtendedWebSocket, token: string, sessionId?: UUID): void {
     const payload = verifyToken(token)
     if (!payload) {
       ws.close(1008, 'Invalid or expired token')
       return
     }
 
+    const resolvedSessionId =
+      sessionId || (payload.sessionId as UUID | undefined) || UNASSIGNED_SESSION_ID
+
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const connectionState = createConnectionState(
       payload.userId as UUID,
-      (payload.sessionId || UNASSIGNED_SESSION_ID) as UUID,
+      resolvedSessionId,
       connectionId
     )
 
@@ -229,6 +233,13 @@ export class WebSocketManager {
     }
 
     logger.info('ws', `Client authenticated: ${payload.username} (${connectionId})`)
+    logger.info('ws', 'Client session binding resolved', {
+      connectionId,
+      userId: payload.userId,
+      tokenSessionId: payload.sessionId || null,
+      authSessionId: sessionId || null,
+      resolvedSessionId,
+    })
 
     ws.send(
       JSON.stringify({
@@ -285,7 +296,13 @@ export class WebSocketManager {
           ws.close(1008, 'Authenticate first using WS:AUTH')
           return
         }
-        this.authenticateConnection(ws, auth.token)
+        this.authenticateConnection(
+          ws,
+          auth.token,
+          typeof auth.sessionId === 'string' && auth.sessionId
+            ? (auth.sessionId as UUID)
+            : undefined
+        )
         return
       }
 

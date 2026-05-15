@@ -1,4 +1,4 @@
-import type { EventEnvelope } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
@@ -7,6 +7,8 @@ export interface ConnectionOptions {
   url: string
   /** JWT token for authentication */
   token: string
+  /** Active session to bind the socket to for session-scoped broadcasts */
+  sessionId?: UUID | null
   /** Callback when connection state changes */
   onStateChange?: (state: ConnectionState) => void
   /** Callback when an event is received */

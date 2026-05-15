@@ -594,18 +594,6 @@ export function SessionInit({
     forceLogoutToAuthScreen()
   }, [forceLogoutToAuthScreen])
 
-  // WebSocket connection
-  const {
-    state: wsState,
-    error: wsError,
-    retryConnection,
-  } = useWebSocket({
-    url: wsUrl,
-    token,
-    enabled: !!token,
-    onAuthFailure: handleWebSocketAuthFailure,
-  })
-
   // Controllers for API orchestration (lazy-initialized in effect to avoid ref access during render)
   const campaignSettingsControllerRef = useRef<ReturnType<
     typeof createCampaignSettingsController
@@ -706,6 +694,20 @@ export function SessionInit({
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
+
+  // WebSocket connection
+  const {
+    state: wsState,
+    error: wsError,
+    retryConnection,
+  } = useWebSocket({
+    url: wsUrl,
+    token,
+    sessionId: currentSessionId,
+    enabled: !!token,
+    onAuthFailure: handleWebSocketAuthFailure,
+  })
+
   const currentPauseStats = currentSessionId
     ? (pauseStats[currentSessionId] ?? {
         cumulativePauseMs: 0,

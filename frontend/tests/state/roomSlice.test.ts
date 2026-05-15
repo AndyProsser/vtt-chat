@@ -376,6 +376,37 @@ describe('roomSlice', () => {
         ROOM_ID_2
       )
     })
+
+    it('moves a member to the new room when presence state changes roomId', () => {
+      const roomOne: Room = { ...SAMPLE_ROOM, id: ROOM_ID_1, name: 'Room One' }
+      const roomTwo: Room = { ...SAMPLE_ROOM, id: ROOM_ID_2, name: 'Room Two' }
+
+      useStore.getState().createRoom(SESSION_A, roomOne)
+      useStore.getState().createRoom(SESSION_A, roomTwo)
+
+      const joinEvent = makeEvent('ROOM:USER_JOINED', SESSION_A, {
+        roomId: ROOM_ID_1,
+        userId: USER_ID_1,
+        username: 'alice',
+      })
+      useStore.getState().handleUserJoined(joinEvent)
+
+      const event = makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+        roomId: ROOM_ID_2,
+        userId: USER_ID_1,
+        username: 'alice',
+        newState: 'ONLINE',
+      })
+
+      useStore.getState().handlePresenceStateChanged(event)
+
+      expect(useStore.getState().roomMembers[ROOM_ID_1]).toHaveLength(0)
+      expect(useStore.getState().roomMembers[ROOM_ID_2]).toHaveLength(1)
+      expect(useStore.getState().roomMembers[ROOM_ID_2]![0]!.userId).toBe(USER_ID_1)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(
+        ROOM_ID_2
+      )
+    })
   })
 
   describe('handleSessionRoomTransitionApplied', () => {

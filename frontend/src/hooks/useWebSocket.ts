@@ -16,6 +16,7 @@ import { logger } from '../utils/logger'
 export interface UseWebSocketOptions {
   url: string
   token: string
+  sessionId?: UUID | null
   enabled?: boolean
   onAuthFailure?: (reason: string) => void
 }
@@ -34,7 +35,7 @@ export interface UseWebSocketReturn {
  * Registers event handlers with the store.
  */
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
-  const { url, token, enabled = true, onAuthFailure } = options
+  const { url, token, sessionId = null, enabled = true, onAuthFailure } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
   const [error, setError] = useState<Error | null>(null)
@@ -52,6 +53,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     const client = new WebSocketClient({
       url,
       token,
+      sessionId,
       onStateChange: (nextState) => {
         setState(nextState)
         if (
@@ -160,7 +162,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       const store = useStore.getState()
       store.handleSessionRoomTransitionApplied(event)
       // Clear per-session audio presets when transitioning to greenroom or session end
-      const payload = event.payload as { nextState?: string }
+      const payload = event.payload as { nextState?: import('@shared').SessionState | null }
       if (isGreenroomSessionState(payload.nextState)) {
         store.resetSessionAudioState()
         store.clearActiveEffects()
@@ -243,7 +245,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [enabled, onAuthFailure, token, url])
+  }, [enabled, onAuthFailure, sessionId, token, url])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {

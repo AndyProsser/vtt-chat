@@ -43,6 +43,7 @@ export class WebSocketClient {
   private socket: WebSocket | null = null
   private state: ConnectionState = 'disconnected'
   private token: string
+  private sessionId: UUID | null
   private url: string
   private manualDisconnect = false
 
@@ -66,6 +67,7 @@ export class WebSocketClient {
   constructor(options: ConnectionOptions) {
     this.url = options.url
     this.token = options.token
+    this.sessionId = options.sessionId ?? null
     this.callbacks = {
       onStateChange: options.onStateChange,
       onEvent: options.onEvent,
@@ -111,6 +113,7 @@ export class WebSocketClient {
             JSON.stringify({
               type: 'WS:AUTH',
               token: this.token,
+              sessionId: this.sessionId,
             })
           )
           this.reconnectAttempts = 0
@@ -298,6 +301,13 @@ export class WebSocketClient {
         const wsEvent = (incoming as any).event as EventEnvelope
         bumpLoopCounter('ws.incoming.type.WS:EVENT')
         bumpLoopCounter(`ws.incoming.event.${wsEvent.type}`)
+        if (import.meta.env.DEV) {
+          logger.info('ws.client', `Received WS event ${wsEvent.type}`, {
+            eventId: wsEvent.id,
+            sessionId: wsEvent.sessionId,
+            roomId: wsEvent.roomId,
+          })
+        }
         this.callbacks.onEvent?.((incoming as any).event)
         return
       }
@@ -332,6 +342,14 @@ export class WebSocketClient {
             connectionId: msg.connectionId,
           },
         }
+        if (import.meta.env.DEV) {
+          logger.info('ws.client', 'Received WS:CONNECTED', {
+            connectionId: msg.connectionId,
+            userId: msg.userId,
+            username: msg.username,
+            role: msg.role,
+          })
+        }
         this.callbacks.onEvent?.(normalized)
         logger.debug('ws.client', 'Server confirmed WS connection', {
           userId: msg.userId,
@@ -349,6 +367,9 @@ export class WebSocketClient {
       if ((incoming as any).type === 'WS:ERROR') {
         bumpLoopCounter('ws.incoming.type.WS:ERROR')
         const msg = incoming as { type: 'WS:ERROR'; message: string }
+        if (import.meta.env.DEV) {
+          logger.warn('ws.client', 'Received WS:ERROR', msg)
+        }
         this.callbacks.onError?.(new Error(msg.message || 'WebSocket server error'))
         return
       }

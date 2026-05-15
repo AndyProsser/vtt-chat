@@ -70,6 +70,12 @@ Placement boundary:
 - Shared enum/type contracts should live in `shared/`.
 - Admin keeps admin-specific presentation constants local, mapped to the same shared enums.
 
+### WebSocket Session Binding
+
+- Frontend WebSocket auth must include the active `sessionId` alongside the JWT token when a session is loaded.
+- Backend session broadcasts only fan out to sockets whose authenticated connection state is bound to the matching session id.
+- A socket can authenticate successfully without being eligible for session broadcasts if it is not session-bound.
+
 ---
 
 ## Location

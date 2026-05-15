@@ -408,14 +408,41 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const nextPresence = payload.newState || payload.presence || PresenceState.IDLE
     const changedAt = payload.changedAt || event.timestamp
     const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
-    const roomId = payload.roomId || existingPresence?.primaryRoomId
+    const previousRoomId = existingPresence?.primaryRoomId
+    const roomId = payload.roomId || previousRoomId
 
     set((state) => {
       const nextRoomMembers = { ...state.roomMembers }
-      if (roomId) {
-        nextRoomMembers[roomId] = (state.roomMembers[roomId] || []).map((member) =>
-          member.userId === payload.userId ? { ...member, presenceState: nextPresence } : member
+      if (previousRoomId && previousRoomId !== roomId) {
+        nextRoomMembers[previousRoomId] = (state.roomMembers[previousRoomId] || []).filter(
+          (member) => member.userId !== payload.userId
         )
+      }
+
+      if (roomId) {
+        const existingMember = (state.roomMembers[roomId] || []).find(
+          (member) => member.userId === payload.userId
+        )
+        const nextMember: RoomUser = {
+          userId: payload.userId,
+          username:
+            payload.username || existingMember?.username || existingPresence?.username || '',
+          role: existingMember?.role ?? existingPresence?.role,
+          playerName: existingMember?.playerName ?? existingPresence?.playerName,
+          avatarUrl: existingMember?.avatarUrl ?? existingPresence?.avatarUrl,
+          characterName: existingMember?.characterName ?? existingPresence?.characterName,
+          characterClass: existingMember?.characterClass ?? existingPresence?.characterClass,
+          characterSubclass:
+            existingMember?.characterSubclass ?? existingPresence?.characterSubclass,
+          characterRace: existingMember?.characterRace ?? existingPresence?.characterRace,
+          level: existingMember?.level ?? existingPresence?.level,
+          characterStats: existingMember?.characterStats ?? existingPresence?.characterStats,
+          presenceState: nextPresence,
+          ghost: existingMember?.ghost ?? existingPresence?.ghost,
+          previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
+          joinedAt: existingMember?.joinedAt || changedAt,
+        }
+        nextRoomMembers[roomId] = upsertMember(nextRoomMembers[roomId] || [], nextMember)
       }
 
       return {
