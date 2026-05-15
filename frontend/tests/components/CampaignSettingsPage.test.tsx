@@ -37,9 +37,7 @@ function makeGetFetch(campaignOverrides: Partial<Record<string, unknown>> = {}) 
 }
 
 function renderPage() {
-  return render(
-    <CampaignSettingsPage apiUrl={API_URL} token={TOKEN} campaignId={CAMPAIGN_ID} />
-  )
+  return render(<CampaignSettingsPage apiUrl={API_URL} token={TOKEN} campaignId={CAMPAIGN_ID} />)
 }
 
 describe('CampaignSettingsPage', () => {
@@ -71,9 +69,15 @@ describe('CampaignSettingsPage', () => {
       vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'DM_AND_PLAYERS' }))
       renderPage()
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'ALLOW' }).getAttribute('aria-pressed')).toBe('true')
-        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe('false')
-        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe('false')
+        expect(screen.getByRole('button', { name: 'ALLOW' }).getAttribute('aria-pressed')).toBe(
+          'true'
+        )
+        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe(
+          'false'
+        )
+        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe(
+          'false'
+        )
       })
     })
 
@@ -81,7 +85,9 @@ describe('CampaignSettingsPage', () => {
       vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'DM_ONLY' }))
       renderPage()
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByRole('button', { name: 'DM_ONLY' }).getAttribute('aria-pressed')).toBe(
+          'true'
+        )
       })
     })
 
@@ -89,7 +95,9 @@ describe('CampaignSettingsPage', () => {
       vi.stubGlobal('fetch', makeGetFetch({ extensionSyncPolicy: 'NONE' }))
       renderPage()
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe('true')
+        expect(screen.getByRole('button', { name: 'BLOCK' }).getAttribute('aria-pressed')).toBe(
+          'true'
+        )
       })
     })
 
@@ -172,7 +180,10 @@ describe('CampaignSettingsPage', () => {
     it('PATCH payload always includes extensionSyncPolicy field', async () => {
       const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
         if (!init?.method || init.method === 'GET') {
-          return { ok: true, json: async () => ({ campaign: makeCampaign({ extensionSyncPolicy: 'DM_ONLY' }) }) }
+          return {
+            ok: true,
+            json: async () => ({ campaign: makeCampaign({ extensionSyncPolicy: 'DM_ONLY' }) }),
+          }
         }
         const body = JSON.parse(init.body as string)
         expect(body).toHaveProperty('extensionSyncPolicy')

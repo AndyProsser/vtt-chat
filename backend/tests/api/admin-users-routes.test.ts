@@ -15,25 +15,26 @@ vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
-  AdminService: {
-    adminUsersExist: mocks.mockAdminUsersExist,
-    createAdmin: vi.fn(),
-    authenticateAdmin: vi.fn(),
-    getAdminUsers: vi.fn(),
-    promoteUserAdminRole: vi.fn(),
-    getAdminById: vi.fn(),
-  },
-}))
-
-vi.mock('@/services/admin-portability.service', () => ({
-  buildCampaignExport: vi.fn(),
-  importCampaignBundle: vi.fn(),
-  isValidTransferBundle: vi.fn().mockReturnValue(true),
-  listRecordingMetadata: vi.fn(),
-  createRecordingMetadata: vi.fn(),
-  createOperationalExportArtifact: vi.fn(),
-}))
+vi.mock('@/services/admin.service', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/services/admin.service')>()
+  return {
+    ...mod,
+    AdminService: {
+      adminUsersExist: mocks.mockAdminUsersExist,
+      createAdmin: vi.fn(),
+      authenticateAdmin: vi.fn(),
+      getAdminUsers: vi.fn(),
+      promoteUserAdminRole: vi.fn(),
+      getAdminById: vi.fn(),
+    },
+    buildCampaignExport: vi.fn(),
+    importCampaignBundle: vi.fn(),
+    isValidTransferBundle: vi.fn().mockReturnValue(true),
+    listRecordingMetadata: vi.fn(),
+    createRecordingMetadata: vi.fn(),
+    createOperationalExportArtifact: vi.fn(),
+  }
+})
 
 vi.mock('@/infra/telemetry-store', () => ({
   loadTelemetryEvents: vi.fn().mockResolvedValue([]),

@@ -17,38 +17,35 @@ const mocks = vi.hoisted(() => ({
   mockPresenceFindUnique: vi.fn(),
   mockPresenceUpsert: vi.fn(),
   mockAdminAuditCreate: vi.fn(),
-  mockBuildCampaignExport: vi.fn(),
-  mockImportCampaignBundle: vi.fn(),
-  mockListRecordingMetadata: vi.fn(),
-  mockCreateRecordingMetadata: vi.fn(),
+  mockImportExportArtifactCreate: vi.fn(),
+  mockRecordingMetadataFindMany: vi.fn(),
+  mockRecordingMetadataCreate: vi.fn(),
+  mockPrismaTransaction: vi.fn(),
 }))
 
 vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
-  AdminService: {
-    adminUsersExist: mocks.mockAdminUsersExist,
-    createAdmin: vi.fn(),
-    authenticateAdmin: vi.fn(),
-    getAdminUsers: vi.fn(),
-    promoteUserAdminRole: vi.fn(),
-    getAdminById: vi.fn(),
-  },
-}))
-
-vi.mock('@/services/admin-portability.service', () => ({
-  buildCampaignExport: mocks.mockBuildCampaignExport,
-  importCampaignBundle: mocks.mockImportCampaignBundle,
-  isValidTransferBundle: (input: unknown) => Boolean(input && typeof input === 'object'),
-  listRecordingMetadata: mocks.mockListRecordingMetadata,
-  createRecordingMetadata: mocks.mockCreateRecordingMetadata,
-  createOperationalExportArtifact: vi.fn(),
-}))
+vi.mock('@/services/admin.service', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/services/admin.service')>()
+  return {
+    ...mod,
+    AdminService: {
+      adminUsersExist: mocks.mockAdminUsersExist,
+      createAdmin: vi.fn(),
+      authenticateAdmin: vi.fn(),
+      getAdminUsers: vi.fn(),
+      promoteUserAdminRole: vi.fn(),
+      getAdminById: vi.fn(),
+    },
+    createOperationalExportArtifact: vi.fn(),
+  }
+})
 
 vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({
+    $transaction: mocks.mockPrismaTransaction,
     user: {
       findUnique: mocks.mockUserFindUnique,
       update: vi.fn(),
@@ -74,6 +71,14 @@ vi.mock('@/infra/db', () => ({
       findUnique: mocks.mockRoomFindUnique,
       findFirst: mocks.mockRoomFindFirst,
       findMany: vi.fn().mockResolvedValue([]),
+    },
+    importExportArtifact: {
+      create: mocks.mockImportExportArtifactCreate,
+      findUnique: vi.fn(),
+    },
+    recordingMetadata: {
+      findMany: mocks.mockRecordingMetadataFindMany,
+      create: mocks.mockRecordingMetadataCreate,
     },
     sessionMember: {
       findUnique: mocks.mockSessionMemberFindUnique,
