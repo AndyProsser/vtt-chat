@@ -117,19 +117,21 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 
 ### 2.1 Canonical session states
 
-- `INACTIVE`
+- `IDLE`
 - `ACTIVE`
 - `PAUSED`
+- `ENDED`
 - `CLEANUP`
 
 **Green room:**
 
 - Green room is **not** a separate session state.
-- Green room is implied when `session.state === INACTIVE` and users are in `GREEN_ROOM` group.
+- Green room is a calculated runtime state: `session.state !== ACTIVE && session.state !== PAUSED`.
+- In practice, green room mode applies to `IDLE`, `ENDED`, and `CLEANUP` while users are in `GREEN_ROOM` group.
 
 ### 2.2 Allowed transitions
 
-- `INACTIVE → ACTIVE`
+- `IDLE → ACTIVE`
   - Trigger: DM starts session.
   - Effects:
     - All players + DM move to `MAIN` group.
@@ -138,19 +140,18 @@ This document defines **where state lives**, **who is authoritative**, and **whi
   - Trigger: DM disconnects (intentional or network) or DM explicitly pauses.
 - `PAUSED → ACTIVE`
   - Trigger: DM resumes session (only DM).
-- `ACTIVE → INACTIVE`
+- `ACTIVE → ENDED`
   - Trigger: DM stops session.
   - Semantics:
     - Session is ended; recording/close-out tasks begin.
-    - Optionally: intermediate `ENDED` flag/event; once close-out tasks triggered, state becomes `INACTIVE`.
-- `INACTIVE → CLEANUP`
+- `ENDED → CLEANUP`
   - Trigger: All players & DM disconnected and remain disconnected for 20min.
   - Backend action: Start 20min TTL timer in Redis.
   - Visibility: Backend-only state (clients never see or care about `CLEANUP` state).
   - Effects: Green room chat and per-session ephemeral state queued for purge after TTL.
-- `CLEANUP → INACTIVE`
+- `CLEANUP → IDLE`
   - Trigger: Any player/DM reconnects before cleanup TTL expires.
-  - Backend action: Cancel TTL; restore session to `INACTIVE`; DM can start new session.
+  - Backend action: Cancel TTL; restore session to `IDLE`; DM can start new session.
 - `CLEANUP → (terminal cleanup)`
   - Trigger: Cleanup TTL expires (20min after last disconnect).
   - Backend action: Purge green room chat; reset session for fresh start.
@@ -181,8 +182,8 @@ Per user (PLAYER/DM/SPECTATOR):
   - Session membership dropped.
   - They can rejoin (spectator limits apply).
 - Spectators do not count toward player/DM cleanup timers.
-- Spectators may join only after at least one DM/player has established the campaign as active for a playable cycle (not cold-empty INACTIVE).
-- On session `INACTIVE` or `PAUSED`:
+- Spectators may join only after at least one DM/player has established the campaign as active for a playable cycle (not cold-empty `IDLE`).
+- On session `IDLE`, `PAUSED`, or `CLEANUP`:
   - Spectators see a **wait screen**.
 - During `ENDED` cooldown:
   - Spectators can participate only while cooldown is running.
@@ -249,18 +250,18 @@ Per user (PLAYER/DM/SPECTATOR):
     - `session.state = ACTIVE` (or `PAUSED`) — unchanged.
   - After 60s:
     - If **still no one connected**:
-      - `session.state = INACTIVE` (session auto-stopped).
+      - `session.state = ENDED` (session auto-stopped and close-out triggered).
       - Initiate session end-of-session processes (recording finalization, etc.).
     - If **anyone reconnected during 60s**:
       - Resume normal session behavior (no state change).
-- From `INACTIVE` (green room):
+- From green room-calculated states (`IDLE`, `ENDED`, `CLEANUP`):
   - If everyone disconnected:
     - Start 20min timer.
     - During 20min:
-      - Transition to `CLEANUP` state (backend-only; clients never see it).
+      - Transition to `CLEANUP` state.
       - Green room chat and ephemeral state queued for purge.
     - If anyone reconnects before 20min:
-      - Cancel `CLEANUP` timer; revert to `INACTIVE`.
+      - Cancel `CLEANUP` timer; revert to `IDLE`.
       - DM can now start a new session or resume.
     - After 20min:
       - Terminal cleanup: green room chat purged, session state reset (client sees join as new session).
@@ -281,11 +282,11 @@ Per user (PLAYER/DM/SPECTATOR):
   - `PRIVATE`
   - `OTHER`
 - **Green room mode:**
-  - When `session.state === INACTIVE`:
+  - When `session.state !== ACTIVE && session.state !== PAUSED`:
     - All players + DM **must** be in `GREEN_ROOM`.
     - No effects, no conditions.
 - **Session active:**
-  - On `INACTIVE → ACTIVE`:
+  - On `IDLE → ACTIVE`:
     - Everyone moves to `MAIN`.
     - Audio presets reset to default.
 
@@ -402,7 +403,7 @@ Per user (PLAYER/DM/SPECTATOR):
 - `ENDED` is the post-stop processing phase.
   - Recording stops.
   - Summary and close-out processing begins.
-  - A new session cannot be started until the session leaves `ENDED` and becomes `INACTIVE`.
+  - A new session cannot be started until the session leaves `ENDED` and becomes `IDLE`.
 - **Post-session spectator chat:** DM-controlled and optional.
   - Default: enabled with a 1 minute window.
   - Minimum: 1 minute.
@@ -414,19 +415,19 @@ Per user (PLAYER/DM/SPECTATOR):
   - If DM disconnects during cooldown, connected players gain extend/cancel controls.
 - **When disabled:**
   - `ENDED` still triggers stop-recording and summary-processing work.
-  - No wait-for-chat behavior is required; the phase may advance to `INACTIVE` as soon as the required tasks are triggered.
+  - No wait-for-chat behavior is required; the phase may advance to `IDLE` as soon as the required tasks are triggered.
   - This is a processing trigger, not a blocking wait state.
 - **During enabled window:**
   - Spectators can interact with players and DM according to campaign policy.
   - The interaction is off-the-record and is not persisted in session history.
-  - Once the window ends or is canceled, spectators are disconnected and the session transitions to `INACTIVE`.
+  - Once the window ends or is canceled, spectators are disconnected and the session transitions to `IDLE`.
 - **Storage:** Per-campaign setting in Prisma, for example `Campaign.postSessionChatEnabled` and `Campaign.postSessionChatDurationMs` (default `60000` ms).
 
 ### 5.4 Topbar timer and timer-popper contract
 
 The topbar timer always represents elapsed/remaining time for the current lifecycle state.
 
-- `INACTIVE`: show elapsed time since first DM/player joined greenroom membership for next-session readiness; no popper.
+- `IDLE`: show elapsed time since first DM/player joined greenroom membership for next-session readiness; no popper.
 - `ACTIVE`: reset to `00:00` at start and show active elapsed time.
 - `PAUSED`: topbar primary timer shows paused elapsed duration in paused color; active elapsed continues in background.
 - `ENDED`: topbar timer shows cooldown countdown to zero.

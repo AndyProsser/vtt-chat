@@ -121,6 +121,11 @@ SessionState.ENDED // Session stopped; recording/summary work triggered; new ses
 SessionState.CLEANUP // Post-session terminal state; no users connected; background cleanup job purges greenroom chat
 ```
 
+GREENROOM is a calculated runtime state, not an enum member:
+
+- `isGreenroomSessionState(state) := state !== SessionState.ACTIVE && state !== SessionState.PAUSED`
+- This evaluates true for `IDLE`, `ENDED`, and `CLEANUP`.
+
 **State transitions and authority:**
 
 - `IDLE` → `ACTIVE`: DM explicit action (start session)
