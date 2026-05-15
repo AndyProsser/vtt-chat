@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageType, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { ChatWindow } from '../../src/components/chat/ChatWindow'
+import { MessageList } from '../../src/components/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
@@ -48,7 +49,7 @@ describe('ChatWindow timeline behavior', () => {
     )
   })
 
-  it('hides pause/resume bookends in greenroom while preserving the rest of the unified timeline', async () => {
+  it('shows only greenroom messages while in greenroom mode', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -118,9 +119,48 @@ describe('ChatWindow timeline behavior', () => {
       )
     })
 
-    expect(await screen.findByText('[Session Started] Session Alpha')).toBeTruthy()
     expect(screen.getByText('Greenroom table talk')).toBeTruthy()
+    expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
+  })
+
+  it('renders day separators for editorial timeline grouping', () => {
+    const yesterday = Date.now() - 24 * 60 * 60 * 1000
+
+    render(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Yesterday recap',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: yesterday,
+            },
+            {
+              id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Today action',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    const separators = document.querySelectorAll('.chat-day-separator')
+    expect(separators.length).toBe(2)
+    expect(screen.getByText('Today action')).toBeTruthy()
   })
 })

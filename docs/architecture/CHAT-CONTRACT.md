@@ -50,6 +50,7 @@ Context is not encoded as a separate message type. Context is carried by room me
 - Greenroom:
   - OOC only.
   - Always ephemeral.
+  - Greenroom views render only Greenroom-room chat (no cross-room timeline entries).
   - Never promoted to campaign history automatically.
 - Whisper Bubble:
   - Off-the-record by default.

@@ -5,10 +5,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { EventEnvelope, UUID, Role } from '@shared'
-import { MessageType } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
+import { MessageType, Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
-import { ROOM_NAMES } from '../../constants/roomPresence.constants'
+import { isGreenRoomName, ROOM_NAMES } from '../../constants/roomPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
@@ -66,10 +66,22 @@ export function ChatWindow({
     (state) => (state.typingIndicators as any)[sessionId]
   ) as Array<{ userId: UUID; username: string; roomId?: UUID; until: number }> | undefined
   const sessionPresence = useStore((state) => (state.sessionPresence as any)[sessionId]) as
-    | Record<UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }>
+    | Record<
+        UUID,
+        {
+          username: string
+          avatarUrl?: string | null
+          characterName?: string | null
+          role?: Role | string
+          primaryRoomId?: UUID
+        }
+      >
     | undefined
   const sessionRooms = useStore((state) => (state.rooms as any)[sessionId]) as
     | Record<UUID, { id: UUID; name: string }>
+    | undefined
+  const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
+    | { dmId?: UUID }
     | undefined
   const addMessage = useStore((state) => state.addMessage)
   const enqueueOutgoingMessage = useStore((state) => state.enqueueOutgoingMessage)
@@ -213,10 +225,60 @@ export function ChatWindow({
           return true
         }
 
+        const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
+        const isGreenroomMessage =
+          message.roomId === roomId ||
+          (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
+
+        if (!isGreenroomMessage) {
+          return false
+        }
+
         return !isIntermissionBookend(message.content, message.type)
       }),
-    [isGreenroomMode, messageList]
+    [isGreenroomMode, messageList, roomDirectory, roomId]
   )
+
+  const whisperRecipients = useMemo(() => {
+    const participants = Object.entries(sessionPresence ?? {}) as Array<
+      [
+        UUID,
+        {
+          username: string
+          characterName?: string | null
+          role?: Role | string
+          primaryRoomId?: UUID
+        },
+      ]
+    >
+
+    const dmId = sessionRecord?.dmId
+
+    return participants
+      .filter(([participantUserId, participant]) => {
+        if (participantUserId === user.id) {
+          return false
+        }
+
+        if (user.role === Role.DM || String(user.role) === 'DM') {
+          return participant.primaryRoomId === roomId
+        }
+
+        if (dmId && participantUserId === dmId) {
+          return true
+        }
+
+        return participant.primaryRoomId === roomId
+      })
+      .map(([participantUserId, participant]) => ({
+        id: participantUserId,
+        label:
+          participant.characterName && participant.characterName.trim().length > 0
+            ? `${participant.characterName} (${participant.username})`
+            : participant.username,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label))
+  }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
 
   const visibleRoomCount = useMemo(
     () => new Set(visibleMessages.map((message) => message.roomId).filter(Boolean)).size,
@@ -224,8 +286,11 @@ export function ChatWindow({
   )
 
   const offFocusMessageCount = useMemo(
-    () => visibleMessages.filter((message) => message.roomId && message.roomId !== roomId).length,
-    [roomId, visibleMessages]
+    () =>
+      isGreenroomMode
+        ? 0
+        : visibleMessages.filter((message) => message.roomId && message.roomId !== roomId).length,
+    [isGreenroomMode, roomId, visibleMessages]
   )
 
   const typingUsers = useMemo(() => {
@@ -293,9 +358,7 @@ export function ChatWindow({
       return `${offFocusMessageCount} remembered ${offFocusMessageCount === 1 ? 'moment' : 'moments'} from other rooms`
     }
 
-    return isGreenroomMode
-      ? 'Greenroom shows only chatter that matters before the curtain rises'
-      : 'Everything here is happening in your current room'
+    return 'Everything here is happening in your current room'
   }, [isGreenroomMode, isLoading, offFocusMessageCount, visibleMessages.length])
 
   const typingSummary =
@@ -421,7 +484,6 @@ export function ChatWindow({
           <p className="chat-window__subtitle">{headerSubtitle}</p>
         </div>
         <div className="chat-window__header-pills" aria-label="Timeline context">
-          <span className="chat-window__pill chat-window__pill--accent">Unified Timeline</span>
           <span className="chat-window__pill">{visibleRoomCount || 1} room focus</span>
           <span className="chat-window__pill">
             {visibleMessages.length} {visibleMessages.length === 1 ? 'entry' : 'entries'}
@@ -431,15 +493,9 @@ export function ChatWindow({
 
       <section className="chat-window__timeline-bar" aria-label="Timeline status">
         <div>
-          <p className="chat-window__timeline-kicker">
-            {isGreenroomMode ? 'Greenroom relay' : 'Live room focus'}
-          </p>
           <p className="chat-window__timeline-summary">{timelineSummary}</p>
         </div>
         <div className="chat-window__timeline-badges">
-          <span className="chat-window__timeline-badge chat-window__timeline-badge--focus">
-            Now viewing {resolvedRoomName}
-          </span>
           {typingUsers.length > 0 ? (
             <span
               className="chat-window__timeline-badge chat-window__timeline-badge--typing"
@@ -540,6 +596,7 @@ export function ChatWindow({
         role={user.role}
         disabled={isLoading}
         forceMessageType={forceMessageType}
+        whisperRecipients={whisperRecipients}
       />
     </section>
   )

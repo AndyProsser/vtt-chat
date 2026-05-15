@@ -395,7 +395,6 @@ export function SessionToolbar({
                           disabled={!canManageCooldown}
                         >
                           <Icon name="stop" />
-                          <span>Cancel</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" align="end">
@@ -418,7 +417,6 @@ export function SessionToolbar({
                           disabled={!canManageCooldown}
                         >
                           <Icon name="timer" />
-                          <span>Extend</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" align="end">

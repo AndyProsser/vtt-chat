@@ -8,6 +8,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType } from '@shared'
 import type { Role } from '@shared'
 
+interface WhisperRecipientOption {
+  id: string
+  label: string
+}
+
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
   onTypingStarted?: () => void
@@ -15,6 +20,7 @@ interface MessageInputProps {
   disabled?: boolean
   role: Role | string
   forceMessageType?: MessageType
+  whisperRecipients?: WhisperRecipientOption[]
 }
 
 const TYPING_IDLE_TIMEOUT_MS = 1800
@@ -39,6 +45,7 @@ export function MessageInput({
   disabled,
   role,
   forceMessageType,
+  whisperRecipients = [],
 }: MessageInputProps) {
   const roleAllowedTypes = useMemo(
     () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
@@ -94,6 +101,22 @@ export function MessageInput({
     }
   }, [])
 
+  useEffect(() => {
+    if (type !== MessageType.WHISPER) {
+      return
+    }
+
+    if (!recipientId.trim()) {
+      return
+    }
+
+    if (whisperRecipients.some((option) => option.id === recipientId)) {
+      return
+    }
+
+    setRecipientId('')
+  }, [recipientId, type, whisperRecipients])
+
   const handleSend = async () => {
     const trimmed = content.trim()
     const trimmedRecipient = recipientId.trim()
@@ -145,13 +168,31 @@ export function MessageInput({
       {/* Input row */}
       <div className="chat-input__composer">
         {type === MessageType.WHISPER && (
-          <input
-            value={recipientId}
-            onChange={(e) => setRecipientId(e.target.value)}
-            disabled={disabled || isSending}
-            placeholder="Recipient user ID"
-            className="chat-input__recipient"
-          />
+          <>
+            {whisperRecipients.length > 0 ? (
+              <select
+                value={recipientId}
+                onChange={(e) => setRecipientId(e.target.value)}
+                disabled={disabled || isSending}
+                className="chat-input__recipient"
+              >
+                <option value="">Select whisper recipient</option>
+                {whisperRecipients.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={recipientId}
+                onChange={(e) => setRecipientId(e.target.value)}
+                disabled={disabled || isSending}
+                placeholder="Recipient user ID"
+                className="chat-input__recipient"
+              />
+            )}
+          </>
         )}
         <textarea
           ref={textareaRef}

@@ -1029,6 +1029,7 @@ export async function updateMockSimulationConfig(params: {
   config: Partial<MockSimulationConfig>
 }): Promise<MockSimulationConfig> {
   const runtime = getOrCreateRuntime(params.sessionId)
+  const previousSpeakingSimulatorEnabled = runtime.config.speakingSimulatorEnabled
   const disconnectConfig = normalizeDisconnectConfig(runtime.config, params.config)
 
   runtime.config = {
@@ -1039,6 +1040,11 @@ export async function updateMockSimulationConfig(params: {
       params.config.disconnectSimulatorEnabled ?? runtime.config.disconnectSimulatorEnabled,
     playerCount: clampPlayerCount(params.config.playerCount ?? runtime.config.playerCount),
     ...disconnectConfig,
+  }
+
+  if (previousSpeakingSimulatorEnabled && !runtime.config.speakingSimulatorEnabled) {
+    const users = await listSessionMockUsers(params.sessionId)
+    await clearSpeaking(params.sessionId, runtime, users)
   }
 
   if (shouldRun(runtime.config)) {

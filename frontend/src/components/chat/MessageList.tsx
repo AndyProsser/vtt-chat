@@ -74,6 +74,39 @@ function formatRelativeTime(ts: number): string {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
+function dayKey(ts: number): string {
+  const date = new Date(ts)
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function formatDayLabel(ts: number): string {
+  const targetDate = new Date(ts)
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfTarget = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate()
+  )
+  const deltaDays = Math.round(
+    (startOfTarget.getTime() - startOfToday.getTime()) / (24 * 60 * 60 * 1000)
+  )
+
+  if (deltaDays === 0) {
+    return 'Today'
+  }
+
+  if (deltaDays === -1) {
+    return 'Yesterday'
+  }
+
+  return targetDate.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 export function MessageList({
   messages,
   currentUserId,
@@ -127,6 +160,7 @@ export function MessageList({
           roomName &&
           (!previous || previous.roomId !== msg.roomId || previous.type === MessageType.SYSTEM)
         )
+        const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
 
         if (hideIntermissionMarkers && isIntermissionBookend) {
           return null
@@ -145,6 +179,17 @@ export function MessageList({
 
         return (
           <Fragment key={msg.id}>
+            {showDaySeparator ? (
+              <div
+                className="chat-day-separator"
+                aria-label={`Messages from ${formatDayLabel(msg.createdAt)}`}
+              >
+                <span className="chat-day-separator__line" aria-hidden="true" />
+                <span className="chat-day-separator__pill">{formatDayLabel(msg.createdAt)}</span>
+                <span className="chat-day-separator__line" aria-hidden="true" />
+              </div>
+            ) : null}
+
             {showRoomShift ? (
               <div className="chat-room-shift" aria-label={`Room shift to ${roomName}`}>
                 <span className="chat-room-shift__line" aria-hidden="true" />
