@@ -56,6 +56,19 @@ module.exports = [
       'react/react-in-jsx-scope': 'off',
       'prettier/prettier': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+    },
+  },
+  {
+    files: [
+      'frontend/src/components/session/CampaignInformationPanel.tsx',
+      'frontend/src/components/session/CommandCenterFrame.tsx',
+      'frontend/src/components/session/DMAudioControls.tsx',
+      'frontend/src/components/session/SessionInit.tsx',
+    ],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ]

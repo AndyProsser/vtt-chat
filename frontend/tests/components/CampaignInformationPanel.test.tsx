@@ -128,7 +128,9 @@ describe('CampaignInformationPanel', () => {
       })
 
       const nameInput = screen.getByDisplayValue('Test Campaign') as HTMLInputElement
-      const descInput = screen.getByDisplayValue('A test campaign description') as HTMLTextAreaElement
+      const descInput = screen.getByDisplayValue(
+        'A test campaign description'
+      ) as HTMLTextAreaElement
 
       fireEvent.change(nameInput, { target: { value: 'Updated Campaign' } })
       fireEvent.change(descInput, { target: { value: 'Updated description' } })

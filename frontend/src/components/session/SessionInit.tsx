@@ -1077,7 +1077,7 @@ export function SessionInit({
         existingSignatures.add(roomSignature)
       }
     },
-    [addMessage, apiUrl, token]
+    [addMessage, apiUrl, fetchWithAuthGuard, token]
   )
 
   const activeTransitionNotice =
@@ -1185,7 +1185,7 @@ export function SessionInit({
         setIsSettingsLoading(false)
       }
     },
-    [apiUrl, token]
+    [apiUrl, fetchWithAuthGuard, token]
   )
 
   const loadDmVoiceTargetingSetting = useCallback(
@@ -1220,7 +1220,7 @@ export function SessionInit({
         setIsDmVoiceTargetingSettingLoading(false)
       }
     },
-    [apiUrl, token]
+    [apiUrl, fetchWithAuthGuard, token]
   )
 
   const saveDmVoiceTargetingSetting = useCallback(
@@ -1263,7 +1263,7 @@ export function SessionInit({
         setIsDmVoiceTargetingSettingSaving(false)
       }
     },
-    [apiUrl, settingsDmAutoTargetOnFirstPlayerJoin, token]
+    [apiUrl, fetchWithAuthGuard, settingsDmAutoTargetOnFirstPlayerJoin, token]
   )
 
   const saveSessionSettings = useCallback(async () => {
@@ -1455,7 +1455,7 @@ export function SessionInit({
       const data = (await response.json()) as { sessions?: SessionRecord[] }
       return Array.isArray(data.sessions) ? data.sessions.map(normalizeSessionRecord) : []
     },
-    [apiUrl, token]
+    [apiUrl, fetchWithAuthGuard, token]
   )
 
   const loadCampaignSettingsSessionContext = useCallback(
@@ -1519,7 +1519,7 @@ export function SessionInit({
         return
       }
     },
-    [apiUrl, token]
+    [apiUrl, fetchWithAuthGuard, token]
   )
 
   const handleToggleBroadcastMode = useCallback(
@@ -1563,7 +1563,7 @@ export function SessionInit({
         setBroadcastState({ enabled })
       }
     },
-    [apiUrl, currentSession, setBroadcastState, token, user.id]
+    [apiUrl, currentSession, fetchWithAuthGuard, setBroadcastState, token, user.id]
   )
 
   useEffect(() => {
@@ -1646,7 +1646,7 @@ export function SessionInit({
     }
 
     void loadCampaigns()
-  }, [apiUrl, token, clearSessions])
+  }, [apiUrl, clearSessions, fetchWithAuthGuard, token])
 
   useEffect(() => {
     const loadCampaignSessions = async () => {
@@ -1732,7 +1732,14 @@ export function SessionInit({
     return () => {
       cancelled = true
     }
-  }, [addNote, apiUrl, settingsReferenceSessionId, showCampaignSettingsModal, token])
+  }, [
+    addNote,
+    apiUrl,
+    fetchWithAuthGuard,
+    settingsReferenceSessionId,
+    showCampaignSettingsModal,
+    token,
+  ])
 
   useEffect(() => {
     telemetryClient.setTransport(
@@ -1949,6 +1956,7 @@ export function SessionInit({
   }, [
     apiUrl,
     currentSession,
+    fetchWithAuthGuard,
     setSelectedRoomIdOverride,
     token,
     wsState,
@@ -2243,6 +2251,7 @@ export function SessionInit({
       campaigns,
       ensureSessionMembership,
       fetchCampaignSessions,
+      fetchWithAuthGuard,
       replaceSessions,
       user.id,
       apiUrl,
@@ -2711,6 +2720,7 @@ export function SessionInit({
     [
       apiUrl,
       ensureSessionMembership,
+      fetchWithAuthGuard,
       onSessionCreated,
       replaceSessions,
       scheduleGreenroomCarry,

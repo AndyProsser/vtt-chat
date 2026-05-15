@@ -91,10 +91,7 @@ async function restoreCampaignRoomsForSession(params: {
   }
 }
 
-async function ensureSessionDefaultRooms(params: {
-  sessionId: UUID
-  dmId: UUID
-}): Promise<{
+async function ensureSessionDefaultRooms(params: { sessionId: UUID; dmId: UUID }): Promise<{
   mainRoom: Awaited<ReturnType<typeof createRoom>>
   greenRoom: Awaited<ReturnType<typeof createRoom>>
 }> {

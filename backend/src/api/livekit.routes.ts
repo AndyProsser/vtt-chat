@@ -140,7 +140,8 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
 
     const publishAllowedByMute = !muteState.enforcedMuted
 
-    const canPublish = requestedChannel === 'broadcast' ? isSessionDm && publishAllowedByMute : publishAllowedByMute
+    const canPublish =
+      requestedChannel === 'broadcast' ? isSessionDm && publishAllowedByMute : publishAllowedByMute
     const canSubscribe = requestedChannel === 'broadcast' ? !isSessionDm : true
 
     // Generate LiveKit token

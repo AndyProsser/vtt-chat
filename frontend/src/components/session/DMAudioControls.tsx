@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
 import { DMEnvironmentSection } from '../audio/DMEnvironmentSection'

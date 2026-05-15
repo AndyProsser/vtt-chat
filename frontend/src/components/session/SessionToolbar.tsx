@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ToolbarActionModel } from './CommandCenterFrame'
 import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
@@ -79,11 +79,9 @@ export function SessionToolbar({
   }
 
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
-  const [tick, setTick] = useState(0)
   const [showTimerPopper, setShowTimerPopper] = useState(false)
-
-  // Track when the user entered the greenroom (local, resets on refresh)
-  const greenroomEnteredAtRef = useRef<number>(Date.now())
+  const [currentTimeMs, setCurrentTimeMs] = useState(0)
+  const [greenroomEnteredAtMs, setGreenroomEnteredAtMs] = useState<number | null>(null)
 
   // Tick every second whenever the session is in a state that needs a live clock
   useEffect(() => {
@@ -94,13 +92,21 @@ export function SessionToolbar({
       sessionState === 'INACTIVE'
     if (!needsTick) return
 
-    const timer = window.setInterval(() => setTick((n) => n + 1), 1000)
+    const timer = window.setInterval(() => {
+      const now = Date.now()
+      setCurrentTimeMs(now)
+      setGreenroomEnteredAtMs((previous) => {
+        if (sessionState !== 'INACTIVE') {
+          return null
+        }
+        return previous ?? now
+      })
+    }, 1000)
     return () => window.clearInterval(timer)
   }, [sessionState])
 
   // ── Timer values ──────────────────────────────────────────────────────────
 
-  const now = Date.now()
   const sessionStartedAtMs = toFiniteTimestamp(sessionStartedAt)
   const sessionPausedAtMs = toFiniteTimestamp(sessionPausedAt)
   const sessionEndedAtMs = toFiniteTimestamp(sessionEndedAt)
@@ -111,9 +117,13 @@ export function SessionToolbar({
 
   /** Seconds the session has been actively running (pauses excluded). */
   const activeElapsedSeconds = useMemo(() => {
+    if (!currentTimeMs) return 0
     if (!sessionStartedAtMs) return 0
     if (sessionState === 'ACTIVE') {
-      return Math.max(0, Math.floor((now - sessionStartedAtMs - safeCumulativePauseMs) / 1000))
+      return Math.max(
+        0,
+        Math.floor((currentTimeMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
+      )
     }
     if (sessionState === 'PAUSED' && sessionPausedAtMs) {
       return Math.max(
@@ -128,9 +138,8 @@ export function SessionToolbar({
       )
     }
     return 0
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    tick,
+    currentTimeMs,
     sessionState,
     sessionStartedAtMs,
     sessionPausedAtMs,
@@ -140,33 +149,36 @@ export function SessionToolbar({
 
   /** Seconds since the current pause began. */
   const pausedElapsedSeconds = useMemo(() => {
+    if (!currentTimeMs) return 0
     if (sessionState !== 'PAUSED' || !sessionPausedAtMs) return 0
-    return Math.max(0, Math.floor((now - sessionPausedAtMs) / 1000))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, sessionState, sessionPausedAtMs])
+    return Math.max(0, Math.floor((currentTimeMs - sessionPausedAtMs) / 1000))
+  }, [currentTimeMs, sessionState, sessionPausedAtMs])
 
   /** Seconds remaining in the post-session cooldown window. */
   const cooldownRemainingSeconds = useMemo(() => {
+    if (!currentTimeMs) return 0
     if (sessionState !== 'ENDED' || !sessionEndedAtMs) return 0
-    return Math.max(0, Math.floor((sessionEndedAtMs + safeCooldownDurationMs - now) / 1000))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
+    return Math.max(
+      0,
+      Math.floor((sessionEndedAtMs + safeCooldownDurationMs - currentTimeMs) / 1000)
+    )
+  }, [currentTimeMs, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
 
   /** Seconds elapsed since cooldown fully expired while still in ENDED state. */
   const endedElapsedSeconds = useMemo(() => {
+    if (!currentTimeMs) return 0
     if (sessionState !== 'ENDED' || !sessionEndedAtMs) return 0
     const cooldownEndsAt = sessionEndedAtMs + safeCooldownDurationMs
-    if (now <= cooldownEndsAt) return 0
-    return Math.max(0, Math.floor((now - cooldownEndsAt) / 1000))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
+    if (currentTimeMs <= cooldownEndsAt) return 0
+    return Math.max(0, Math.floor((currentTimeMs - cooldownEndsAt) / 1000))
+  }, [currentTimeMs, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
 
   /** Seconds since the user entered the greenroom (local clock). */
   const greenroomElapsedSeconds = useMemo(() => {
+    if (!currentTimeMs || !greenroomEnteredAtMs) return 0
     if (sessionState !== 'INACTIVE') return 0
-    return Math.max(0, Math.floor((now - greenroomEnteredAtRef.current) / 1000))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, sessionState])
+    return Math.max(0, Math.floor((currentTimeMs - greenroomEnteredAtMs) / 1000))
+  }, [currentTimeMs, greenroomEnteredAtMs, sessionState])
 
   // ── Primary timer display ─────────────────────────────────────────────────
 
@@ -309,7 +321,7 @@ export function SessionToolbar({
                         Math.floor(
                           (cumulativePauseMs +
                             (sessionState === 'PAUSED' && sessionPausedAtMs
-                              ? Date.now() - sessionPausedAtMs
+                              ? currentTimeMs - sessionPausedAtMs
                               : 0)) /
                             1000
                         )
