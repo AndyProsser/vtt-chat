@@ -1,0 +1,1 @@
+export const NOTE_PUBLISH_SNIPPET_MAX_LENGTH = 280

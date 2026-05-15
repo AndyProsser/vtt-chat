@@ -72,6 +72,10 @@ Completed service modularization waves:
 - [x] Room service split into membership, lifecycle, and whisper modules with compatibility exports.
   - backend/src/services/room/
   - backend/src/services/room.service.ts (compat re-export)
+- [x] Notes route helper/DTO slice split into constants, route DTOs, and helper service.
+  - backend/src/constants/notes.constants.ts
+  - backend/src/types/notes-route.types.ts
+  - backend/src/services/notes/route-helpers.service.ts
 
 High-priority route hotspots checklist:
 
@@ -79,7 +83,13 @@ High-priority route hotspots checklist:
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts
-  - Uses services, but still contains notable policy/visibility/event shaping logic in route layer.
+  - Progress in this batch:
+    - Route-local request/visibility helpers moved into service/types/constants:
+      - backend/src/services/notes/route-helpers.service.ts
+      - backend/src/types/notes-route.types.ts
+      - backend/src/constants/notes.constants.ts
+  - Remaining:
+    - Route still coordinates note CRUD and WS broadcast plumbing.
 - [~] backend/src/api/rooms.routes.ts
   - Uses services, but still contains room reconciliation and event orchestration in route layer.
 - [~] backend/src/api/audio.routes.ts
