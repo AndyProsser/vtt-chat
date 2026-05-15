@@ -111,7 +111,7 @@ export async function ensurePresenceRecoveredFromSnapshots(sessionId: UUID): Pro
       primaryRoomId: snapshot.primaryRoomId ? (snapshot.primaryRoomId as UUID) : undefined,
       privateRoomId: snapshot.privateRoomId ? (snapshot.privateRoomId as UUID) : undefined,
       ghost: false,
-      state: 'OFFLINE',
+      state: 'OFFLINE' as PresenceState,
       lastSeenAt: snapshot.lastSeenAt.getTime(),
     }
 

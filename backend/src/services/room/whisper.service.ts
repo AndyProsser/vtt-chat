@@ -1,4 +1,4 @@
-import { RoomType } from '@shared'
+import { RoomType, PresenceState } from '@shared'
 import type { UUID } from '@shared'
 import { getRooms, getSessionPresence, joinRoom, updatePresenceState } from './membership.service'
 
@@ -26,7 +26,7 @@ export async function endWhisperBubbleForSession(params: {
       roomId: targetRoomId,
       userId: entry.userId,
       username: entry.username,
-      state: 'ONLINE',
+      state: 'ONLINE' as PresenceState,
     })
 
     if (!updated) {

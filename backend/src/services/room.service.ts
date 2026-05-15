@@ -21,3 +21,4 @@ export {
 } from '@/services/room/lifecycle.service'
 
 export { endWhisperBubbleForSession } from '@/services/room/whisper.service'
+export { ensurePresenceRecoveredFromSnapshots } from '@/services/room/shared'

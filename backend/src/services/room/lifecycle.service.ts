@@ -170,9 +170,7 @@ export async function deletePrivateRoomsForEndedSession(sessionId: UUID) {
     return []
   }
 
-  const redis = (await import('@/infra/redis')).getRedisClient
-    ? await (await import('@/infra/redis')).getRedisClient()
-    : null
+  const redis = await (await import('@/infra/redis')).getRedisClient()
   for (const room of privateRooms) {
     if (redis) {
       await redis.del(`room:session:${sessionId}:${room.id}:members`)

@@ -5,14 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as DialogPrimitive from '@radix-ui/react-dialog'
-import {
-  SessionState,
-  Role,
-  MessageType,
-  deriveCampaignDisplayState,
-  isGreenroomSessionState,
-} from '@shared'
+import { SessionState, Role, MessageType, isGreenroomSessionState } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
@@ -22,8 +15,10 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { ChatWindow } from '../chat/ChatWindow'
 import { NotesPanel } from '../notes/NotesPanel'
 import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
+import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
-import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
+import { SessionLobbyView } from './SessionLobbyView'
+import { SessionInitModals } from './SessionInitModals'
 import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
 import { AudioPanel } from '../audio/AudioPanel'
@@ -34,8 +29,6 @@ import { SessionRightRailContent } from './SessionRightRailContent'
 import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { SpectatorWaitScreen } from './SpectatorWaitScreen'
-import { Icon } from '../ui/Icon'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { useToast } from '../../hooks/useToast'
 import { dismissToast } from '../../state/toastCenter'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
@@ -69,6 +62,14 @@ import type {
   RoomUser as RoomMember,
   SessionPresence as PresenceRecord,
 } from '@/types/room'
+import {
+  type CampaignMembershipRole,
+  type CampaignSettingsPayload,
+  type CampaignSettingsHomeTab,
+  type CampaignSummary,
+  getCampaignDisplayState,
+  resolveMembershipRole,
+} from './sessionInit.shared'
 import '../../styles/components/session/SessionInit.css'
 
 interface SessionInitProps {
@@ -78,28 +79,6 @@ interface SessionInitProps {
   user: { id: UUID; username: string; role: Role; authType?: 'FULL' | 'GUEST' }
   onSessionCreated?: (sessionId: UUID) => void
   onReady?: () => void
-}
-
-interface CampaignSummary {
-  id: UUID
-  name: string
-  description?: string | null
-  posterUrl?: string | null
-  extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
-  inviteCode: string
-  currentDmId: UUID
-  memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
-  dmUsername?: string
-  dmDisplayName?: string
-  dmAvatarUrl?: string | null
-  dmOnline?: boolean
-  connectedPlayers?: number
-  connectedPlayersRounded?: number
-  connectedPlayersLabel?: string
-  connectedSpectatorsRounded?: number
-  connectedSpectatorsLabel?: string
-  displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
-  latestSessionState?: SessionState | null
 }
 
 interface ApiRoom {
@@ -160,9 +139,6 @@ interface ApiAudioEnvironmentState {
   environmentName: string
 }
 
-type CampaignMembershipRole = CampaignSummary['memberRole']
-type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
-
 function safeLocalStorageGetItem(key: string): string | null {
   if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
     return null
@@ -218,31 +194,6 @@ function resolveGreenroomCacheTtlMs(): number {
   }
 
   return raw
-}
-
-type CampaignSettingsPayload = {
-  latestSessionId?: UUID | null
-  latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
-  latestSessionEndedAt?: string | null
-  id: UUID
-  name: string
-  description?: string | null
-  posterUrl?: string | null
-  discoverable: boolean
-  spectatorPolicy: 'NONE' | 'GUESTS' | 'USERS'
-  spectatorMax: number | null
-  spectatorWaitlistEnabled: boolean
-  spectatorReconnectGraceSecs: number
-  extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
-  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
-  lateJoinGraceMinutes: number
-  inviteCode: string
-  inviteActive: boolean
-  spectatorInviteCode?: string | null
-  spectatorInviteActive: boolean
-  postSessionChatEnabled: boolean
-  postSessionChatDurationMs: number
-  dmAutoTargetOnFirstPlayerJoin: boolean
 }
 
 type UserCharacterRecord = {
@@ -317,16 +268,6 @@ function formatTransitionNotice(params: {
   return `Session ${stateLabel}: moved ${usersLabel} to ${params.targetRoomName} (${targetStateLabel}).`
 }
 
-function getCampaignDisplayState(
-  campaign: CampaignSummary
-): 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' {
-  if (campaign.displayState) {
-    return campaign.displayState
-  }
-
-  return deriveCampaignDisplayState(campaign.latestSessionState)
-}
-
 function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   if (sessions.length === 0) return null
 
@@ -379,12 +320,6 @@ function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
   const nextSessionNumber = existingSessions.length + 1
   const dateLabel = new Date().toLocaleDateString('en-CA')
   return `Session ${nextSessionNumber} - ${dateLabel}`
-}
-
-function getPrivacyCounterLabel(label: string | undefined, rounded: number | undefined): string {
-  if (label && label.trim()) return label
-  if (!rounded || rounded <= 0) return '0'
-  return `~${rounded}`
 }
 
 function normalizeTimestamp(value: unknown): number | undefined {
@@ -451,55 +386,6 @@ function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState
 
 function toSessionStateValue(state: SessionState): SessionState {
   return state
-}
-
-function getCampaignEntryAction(campaign: CampaignSummary): {
-  label: 'Launch' | 'Watch'
-  icon: 'rocket_launch' | 'visibility'
-  disabled: boolean
-  reason?: string
-} {
-  const state = getCampaignDisplayState(campaign)
-  const isSpectator = campaign.memberRole === 'SPECTATOR'
-
-  if (!isSpectator) {
-    return {
-      label: 'Launch',
-      icon: 'rocket_launch',
-      disabled: false,
-    }
-  }
-
-  if (state !== 'ACTIVE') {
-    return {
-      label: 'Watch',
-      icon: 'visibility',
-      disabled: true,
-      reason: 'Spectators can only watch active campaigns.',
-    }
-  }
-
-  const hasTableOnline = Boolean(campaign.dmOnline) || (campaign.connectedPlayers || 0) > 0
-  if (!hasTableOnline) {
-    return {
-      label: 'Watch',
-      icon: 'visibility',
-      disabled: true,
-      reason: 'Campaign is active, but no DM or player is online yet.',
-    }
-  }
-
-  return {
-    label: 'Watch',
-    icon: 'visibility',
-    disabled: false,
-  }
-}
-
-function resolveMembershipRole(memberRole: CampaignMembershipRole | null | undefined): Role {
-  if (memberRole === 'DM') return Role.DM
-  if (memberRole === 'SPECTATOR') return Role.SPECTATOR
-  return Role.PLAYER
 }
 
 function parsePlayerInviteCode(input: string): string {
@@ -3102,28 +2988,6 @@ export function SessionInit({
     currentSession?.state === SessionState.ACTIVE ||
     currentSession?.state === SessionState.PAUSED
 
-  const renderCampaignScaffoldPanel = (title: string, subtitle: string, sections: string[]) => (
-    <section className="session-campaign-scaffold" aria-label={title}>
-      <header className="session-campaign-scaffold__header">
-        <h4 className="session-campaign-scaffold__title">
-          <Icon name="panel" />
-          {title}
-        </h4>
-        <p className="session-campaign-scaffold__subtitle">{subtitle}</p>
-      </header>
-
-      <p className="session-campaign-scaffold__context">
-        Campaign context: {selectedCampaign?.name || 'Campaign'}
-      </p>
-
-      <ul className="session-campaign-scaffold__list">
-        {sections.map((section) => (
-          <li key={section}>{section}</li>
-        ))}
-      </ul>
-    </section>
-  )
-
   useEffect(() => {
     if (!error) return
 
@@ -3274,309 +3138,27 @@ export function SessionInit({
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home'}`}
       >
         {!hasSessionSelected && (
-          <>
-            <div
-              className="session-toolbar session-toolbar--lobby"
-              data-testid="session-lobby-toolbar"
-            >
-              <div className="session-toolbar__zone session-toolbar__zone--left">
-                <div className="session-toolbar__brand" aria-label="Lobby toolbar">
-                  <span className="session-toolbar__brand-mark" aria-hidden="true">
-                    <img
-                      src="/branding/app-logo.png"
-                      alt=""
-                      className="session-toolbar__brand-logo"
-                    />
-                  </span>
-                  <strong className="session-toolbar__brand-title">VTT Chat</strong>
-                </div>
-              </div>
-
-              <div className="session-toolbar__zone session-toolbar__zone--right">
-                <TooltipProvider delayDuration={140}>
-                  <div className="session-toolbar__extra-buttons" aria-label="Campaign actions">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="session-toolbar__icon-btn"
-                          onClick={() => setShowCreateCampaignModal(true)}
-                          disabled={isCreatingCampaign}
-                          aria-label="Create campaign"
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            add_circle
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end">
-                        Create Campaign
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="session-toolbar__icon-btn"
-                          onClick={() => setShowJoinCampaignModal(true)}
-                          disabled={isJoiningCampaign}
-                          aria-label="Join campaign"
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            group_add
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end">
-                        Join Campaign
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-
-                  <span className="session-toolbar__separator" aria-hidden="true" />
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="session-toolbar__icon-btn"
-                        onClick={handleToggleTheme}
-                        aria-label="Theme"
-                      >
-                        <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" align="end">
-                      Theme
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="session-toolbar__icon-btn"
-                        onClick={() => setShowUserSettingsModal(true)}
-                        aria-label="Settings"
-                      >
-                        <Icon name="settings" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" align="end">
-                      Settings
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                        onClick={handleLogoff}
-                        aria-label="Logoff"
-                      >
-                        <Icon name="logout" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" align="end">
-                      Logoff
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className="session-toolbar__connection"
-                        data-status-color={connectionStatus.statusColorKey}
-                        aria-label={`Connection: ${connectionStatus.label}`}
-                        role="status"
-                      >
-                        <span className="session-toolbar__connection-dot" aria-hidden="true" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      align="end"
-                      className="session-toolbar__tooltip-content--status"
-                    >
-                      <div className="session-toolbar__status-tooltip-title">Status</div>
-                      <div className="session-toolbar__status-tooltip-row">
-                        <span>Core</span>
-                        <strong
-                          className={
-                            connectionStatus.coreWsState === 'CONNECTED'
-                              ? 'is-green'
-                              : connectionStatus.coreWsState === 'CONNECTING'
-                                ? 'is-yellow'
-                                : 'is-red'
-                          }
-                        >
-                          {connectionStatus.coreWsState}
-                        </strong>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
-
-            <div className="session-card">
-              <div className="session-card-header">
-                <div>
-                  <h3 className="session-card-title">Campaigns</h3>
-                </div>
-              </div>
-
-              {isLoadingCampaigns ? (
-                <div className="session-status-message">Loading campaigns...</div>
-              ) : campaigns.length === 0 ? (
-                <div className="session-status-message">No campaigns available yet.</div>
-              ) : (
-                <div className="session-campaign-grid" role="list" aria-label="Campaign list">
-                  {campaigns.map((campaign) => {
-                    const isSelected = selectedCampaignId === campaign.id
-                    const state = getCampaignDisplayState(campaign)
-                    const entryAction = getCampaignEntryAction(campaign)
-                    const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
-                    const playersLabel = getPrivacyCounterLabel(
-                      campaign.connectedPlayersLabel,
-                      campaign.connectedPlayersRounded
-                    )
-                    const spectatorsLabel = getPrivacyCounterLabel(
-                      campaign.connectedSpectatorsLabel,
-                      campaign.connectedSpectatorsRounded
-                    )
-                    const isCampaignDm = campaign.currentDmId === user.id
-                    const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
-                    const dmInitial = dmDisplayName.charAt(0).toUpperCase()
-                    const cardPosterUrl = campaign.posterUrl || undefined
-                    return (
-                      <div
-                        key={campaign.id}
-                        role="listitem"
-                        tabIndex={0}
-                        onClick={() => setSelectedCampaignId(campaign.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            setSelectedCampaignId(campaign.id)
-                          }
-                        }}
-                        className={`session-campaign-card ${isSelected ? 'is-selected' : ''} ${cardPosterUrl ? 'has-poster' : ''}`}
-                        style={
-                          cardPosterUrl
-                            ? {
-                                backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
-                              }
-                            : undefined
-                        }
-                      >
-                        <span className="session-campaign-card__header">
-                          <span className="session-campaign-card__title">
-                            <span
-                              className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
-                              aria-label={`Campaign ${state.toLowerCase()}`}
-                            />
-                            <span>{campaign.name}</span>
-                          </span>
-                          <span
-                            className="session-campaign-card__stats"
-                            aria-label="Campaign activity stats"
-                          >
-                            <span className="session-campaign-card__stat" title="Connected players">
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                groups
-                              </span>
-                              <span>{playersLabel}</span>
-                            </span>
-                            <span
-                              className="session-campaign-card__stat"
-                              title="Connected spectators"
-                            >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                visibility
-                              </span>
-                              <span>{spectatorsLabel}</span>
-                            </span>
-                          </span>
-                        </span>
-                        <span
-                          className={`session-campaign-card__dm session-campaign-card__dm--${campaign.dmOnline ? 'online' : 'offline'}`}
-                        >
-                          {campaign.dmAvatarUrl ? (
-                            <img
-                              src={campaign.dmAvatarUrl}
-                              alt={`${dmDisplayName} avatar`}
-                              className="session-campaign-card__dm-avatar"
-                            />
-                          ) : (
-                            <span className="session-campaign-card__dm-avatar session-campaign-card__dm-avatar--fallback">
-                              {dmInitial}
-                            </span>
-                          )}
-                          <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
-                          <span className="session-campaign-card__dm-status">{dmStatus}</span>
-                        </span>
-                        {campaign.description ? (
-                          <span className="session-campaign-card__description">
-                            {campaign.description}
-                          </span>
-                        ) : (
-                          <span className="session-campaign-card__description">
-                            No description provided.
-                          </span>
-                        )}
-                        <span className="session-campaign-card__actions">
-                          {isCampaignDm && (
-                            <button
-                              type="button"
-                              className="session-card-action-button"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                openCampaignSettingsModal(campaign.id)
-                              }}
-                              title="Campaign settings"
-                              aria-label="Campaign settings"
-                            >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                tune
-                              </span>
-                              <span>Settings</span>
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="session-card-action-button session-card-action-button-launch"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              if (entryAction.disabled) {
-                                if (entryAction.reason) {
-                                  setError(entryAction.reason)
-                                }
-                                return
-                              }
-                              void handleEnterCampaign(campaign.id)
-                            }}
-                            title={entryAction.reason || `${entryAction.label} campaign`}
-                            aria-label={entryAction.reason || `${entryAction.label} campaign`}
-                            disabled={entryAction.disabled}
-                          >
-                            <span>{entryAction.label}</span>
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              {entryAction.icon}
-                            </span>
-                          </button>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </>
+          <SessionLobbyView
+            campaigns={campaigns}
+            selectedCampaignId={selectedCampaignId}
+            currentUserId={user.id}
+            isLoadingCampaigns={isLoadingCampaigns}
+            isCreatingCampaign={isCreatingCampaign}
+            isJoiningCampaign={isJoiningCampaign}
+            themeMode={themeMode}
+            connectionStatus={connectionStatus}
+            onSelectCampaign={setSelectedCampaignId}
+            onCreateCampaign={() => setShowCreateCampaignModal(true)}
+            onJoinCampaign={() => setShowJoinCampaignModal(true)}
+            onToggleTheme={handleToggleTheme}
+            onOpenUserSettings={() => setShowUserSettingsModal(true)}
+            onLogoff={handleLogoff}
+            onOpenCampaignSettings={openCampaignSettingsModal}
+            onEnterCampaign={(campaignId) => {
+              void handleEnterCampaign(campaignId)
+            }}
+            onError={setError}
+          />
         )}
 
         {/* Command center shown whenever a session is selected */}
@@ -3732,25 +3314,31 @@ export function SessionInit({
                         onSaveCampaignInfo={handleSaveCampaignInfoPanel}
                       />
                     }
-                    roomsPanel={renderCampaignScaffoldPanel(
-                      'Groups',
-                      'Voice group configuration is being rebuilt around campaign-level controls.',
-                      [
-                        'DM-only group management',
-                        'Greenroom pre-create support',
-                        'Group defaults and templates',
-                        'Campaign routing and policy',
-                      ]
-                    )}
-                    audioPanel={renderCampaignScaffoldPanel(
-                      'Campaign Audio',
-                      'Audio policy controls are being reduced to a cleaner campaign-first surface.',
-                      [
-                        'Default campaign audio policy',
-                        'Environment and override presets',
-                        'Broadcast and moderation policy',
-                      ]
-                    )}
+                    roomsPanel={
+                      <CampaignScaffoldPanel
+                        title="Groups"
+                        subtitle="Voice group configuration is being rebuilt around campaign-level controls."
+                        sections={[
+                          'DM-only group management',
+                          'Greenroom pre-create support',
+                          'Group defaults and templates',
+                          'Campaign routing and policy',
+                        ]}
+                        campaignName={selectedCampaign?.name}
+                      />
+                    }
+                    audioPanel={
+                      <CampaignScaffoldPanel
+                        title="Campaign Audio"
+                        subtitle="Audio policy controls are being reduced to a cleaner campaign-first surface."
+                        sections={[
+                          'Default campaign audio policy',
+                          'Environment and override presets',
+                          'Broadcast and moderation policy',
+                        ]}
+                        campaignName={selectedCampaign?.name}
+                      />
+                    }
                     notesPanel={
                       <NotesRailPanel
                         apiUrl={apiUrl}
@@ -3825,820 +3413,92 @@ export function SessionInit({
         )}
       </div>
 
-      {showCreateCampaignModal && (
-        <div className="session-modal-backdrop" role="presentation">
-          <div
-            className="session-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Create campaign"
-          >
-            <h4 className="session-inline-form-title">Create Campaign</h4>
-            <p className="session-card-subtitle">
-              Create a campaign, return to the lobby with it selected, and continue to launch when
-              you are ready.
-            </p>
-            {user.authType === 'GUEST' && (
-              <p className="session-card-subtitle session-card-subtitle--warn">
-                Guest access is campaign-scoped. Upgrade to a full account to create a new campaign.
-              </p>
-            )}
-            <form onSubmit={handleCreateCampaign}>
-              <label className="session-label" htmlFor="create-campaign-name">
-                Campaign name
-              </label>
-              <input
-                id="create-campaign-name"
-                type="text"
-                value={newCampaignName}
-                onChange={(e) => setNewCampaignName(e.target.value)}
-                placeholder="The Emerald Crown"
-                className="session-input"
-                disabled={isCreatingCampaign}
-                required
-              />
-              <label className="session-label" htmlFor="create-campaign-description">
-                Short description
-              </label>
-              <textarea
-                id="create-campaign-description"
-                value={newCampaignDescription}
-                onChange={(e) => setNewCampaignDescription(e.target.value)}
-                placeholder="Optional context for players before they continue into the campaign."
-                className="session-textarea"
-                disabled={isCreatingCampaign}
-              />
-              <div className="session-create-campaign-note" aria-label="Create campaign next steps">
-                <p className="session-create-campaign-note__title">What happens next</p>
-                <ul className="session-create-campaign-note__list">
-                  <li>You become the campaign DM.</li>
-                  <li>The new campaign appears selected in your lobby.</li>
-                  <li>You can open settings or continue to launch from the campaign card.</li>
-                </ul>
-              </div>
-              <div className="session-action-row">
-                <button
-                  type="submit"
-                  disabled={
-                    isCreatingCampaign || !newCampaignName.trim() || user.authType === 'GUEST'
-                  }
-                  className="session-button session-button-brand"
-                >
-                  {isCreatingCampaign ? 'Creating...' : 'Create Campaign and Continue'}
-                </button>
-                <button
-                  type="button"
-                  className="session-button session-button-neutral"
-                  onClick={() => setShowCreateCampaignModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showJoinCampaignModal && (
-        <div className="session-modal-backdrop" role="presentation">
-          <div className="session-modal" role="dialog" aria-modal="true" aria-label="Join campaign">
-            <h4 className="session-inline-form-title">Join Campaign</h4>
-            <form onSubmit={handleJoinCampaign}>
-              <input
-                type="text"
-                value={joinInviteInput}
-                onChange={(e) => setJoinInviteInput(e.target.value)}
-                placeholder="Invite code or /join link"
-                className="session-input"
-                disabled={isJoiningCampaign}
-                required
-              />
-              <div className="session-action-row">
-                <button
-                  type="submit"
-                  disabled={isJoiningCampaign || !joinInviteInput.trim()}
-                  className="session-button session-button-indigo"
-                >
-                  {isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
-                </button>
-                <button
-                  type="button"
-                  className="session-button session-button-neutral"
-                  onClick={() => setShowJoinCampaignModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showCampaignSettingsModal && (
-        <div className="session-modal-backdrop" role="presentation">
-          <div
-            className="session-modal session-campaign-settings-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Campaign settings"
-          >
-            <div className="session-campaign-settings-header">
-              <div>
-                <h4 className="session-inline-form-title">Campaign Settings</h4>
-                <p className="session-card-subtitle">
-                  Manage metadata, poster, and invite links from the lobby.
-                </p>
-              </div>
-              <div className="session-campaign-settings-header__actions">
-                <button
-                  type="submit"
-                  form="campaign-settings-form"
-                  className="session-icon-action"
-                  title={isSettingsSaving ? 'Saving settings' : 'Save settings'}
-                  aria-label={isSettingsSaving ? 'Saving settings' : 'Save settings'}
-                  disabled={
-                    settingsHomeTab !== 'home' ||
-                    isSettingsSaving ||
-                    !settingsData ||
-                    !settingsName.trim()
-                  }
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {isSettingsSaving ? 'hourglass_top' : 'save'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="session-icon-action"
-                  title="Close settings"
-                  aria-label="Close settings"
-                  onClick={() => setShowCampaignSettingsModal(false)}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    close
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div
-              className="session-campaign-settings-tabs"
-              role="tablist"
-              aria-label="Settings home tabs"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsHomeTab === 'home'}
-                className={`session-campaign-settings-tab ${settingsHomeTab === 'home' ? 'is-active' : ''}`}
-                onClick={() => setSettingsHomeTab('home')}
-              >
-                Home
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsHomeTab === 'notes'}
-                className={`session-campaign-settings-tab ${settingsHomeTab === 'notes' ? 'is-active' : ''}`}
-                onClick={() => setSettingsHomeTab('notes')}
-                disabled={!settingsReferenceSessionId}
-              >
-                Notes
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={settingsHomeTab === 'journal'}
-                className={`session-campaign-settings-tab ${settingsHomeTab === 'journal' ? 'is-active' : ''}`}
-                onClick={() => setSettingsHomeTab('journal')}
-                disabled={!settingsReferenceSessionId}
-              >
-                Journal
-              </button>
-            </div>
-
-            {settingsHomeTab === 'journal' && settingsCampaignSessions.length > 0 ? (
-              <div className="session-campaign-settings-session-context">
-                <label className="session-label" htmlFor="settings-session-context">
-                  Session context
-                </label>
-                <select
-                  id="settings-session-context"
-                  className="session-input"
-                  value={settingsReferenceSessionId}
-                  onChange={(event) => setSettingsReferenceSessionId(event.target.value as UUID)}
-                  disabled={!settingsCampaignSessions.length}
-                >
-                  {settingsCampaignSessions.length === 0 ? (
-                    <option value="">No sessions available</option>
-                  ) : (
-                    [...settingsCampaignSessions].reverse().map((session) => (
-                      <option key={session.id} value={session.id}>
-                        {session.name} ({new Date(session.createdAt).toLocaleDateString()})
-                      </option>
-                    ))
-                  )}
-                </select>
-                {settingsReferenceSession ? (
-                  <p className="session-card-subtitle">
-                    Working in {settingsReferenceSession.name} ({settingsReferenceSession.id}).
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {isSettingsLoading ? (
-              <div className="session-status-message">Loading campaign settings...</div>
-            ) : !settingsData ? (
-              <div className="session-status-message">Unable to load campaign settings.</div>
-            ) : settingsHomeTab === 'notes' ? (
-              renderCampaignScaffoldPanel(
-                'Campaign Notes',
-                'Notes are being transitioned to campaign-scoped authoring and sharing.',
-                [
-                  'Campaign notebook landing view',
-                  'Handout permissions and targeting',
-                  'Pinned references and templates',
-                ]
-              )
-            ) : settingsHomeTab === 'journal' ? (
-              renderCampaignScaffoldPanel(
-                'Campaign Journal',
-                settingsReferenceSessionId
-                  ? `Session context available: ${settingsReferenceSession?.name || settingsReferenceSessionId}`
-                  : 'No session context selected yet.',
-                [
-                  'Session recap flow and timeline anchors',
-                  'DM editing guardrails',
-                  'Player/spectator read visibility',
-                ]
-              )
-            ) : (
-              <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">
-                <div className="session-campaign-settings-column">
-                  {renderCampaignScaffoldPanel(
-                    'Campaign Overview',
-                    'Home now focuses on campaign metadata and policy, not session snapshots.',
-                    [
-                      'Campaign profile and branding',
-                      'Invite and visibility controls',
-                      'Participation and access policy',
-                    ]
-                  )}
-
-                  <form
-                    id="campaign-settings-form"
-                    className="session-campaign-settings-panel"
-                    onSubmit={handleSaveCampaignSettings}
-                  >
-                    <h5 className="session-inline-form-title">Campaign Profile</h5>
-
-                    <label className="session-label" htmlFor="campaign-settings-name">
-                      Name
-                    </label>
-                    <input
-                      id="campaign-settings-name"
-                      className="session-input"
-                      type="text"
-                      value={settingsName}
-                      onChange={(e) => setSettingsName(e.target.value)}
-                      disabled={isSettingsSaving}
-                      required
-                    />
-
-                    <label className="session-label" htmlFor="campaign-settings-description">
-                      Description
-                    </label>
-                    <textarea
-                      id="campaign-settings-description"
-                      className="session-textarea"
-                      value={settingsDescription}
-                      onChange={(e) => setSettingsDescription(e.target.value)}
-                      rows={4}
-                      disabled={isSettingsSaving}
-                    />
-
-                    <label className="session-label" htmlFor="campaign-settings-poster-file">
-                      Upload poster
-                    </label>
-                    <input
-                      id="campaign-settings-poster-file"
-                      className="session-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePosterFileSelected}
-                      disabled={isSettingsSaving}
-                    />
-
-                    <p className="session-card-subtitle">
-                      Poster appears muted behind the campaign card so text remains readable.
-                    </p>
-                  </form>
-
-                  <section
-                    className="session-campaign-settings-panel session-campaign-invite-panel"
-                    aria-label="Invite links"
-                  >
-                    <h5 className="session-inline-form-title">Invite Links</h5>
-                    <div className="session-invite-link-row">
-                      <div className="session-invite-link-row__label">Player</div>
-                      <div className="session-invite-link-row__input-wrap">
-                        <input
-                          className="session-invite-link-row__input"
-                          type="text"
-                          readOnly
-                          value={`${window.location.origin}/join/${encodeURIComponent(settingsData.inviteCode)}`}
-                          aria-label="Player invite URL"
-                        />
-                      </div>
-                      <div className="session-invite-link-row__actions">
-                        <button
-                          type="button"
-                          className="session-icon-action"
-                          title="Copy player invite URL"
-                          aria-label="Copy player invite URL"
-                          onClick={() => void copyInviteUrl('PLAYER')}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            content_copy
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="session-icon-action"
-                          title="Refresh player invite URL"
-                          aria-label="Refresh player invite URL"
-                          disabled={isInviteReissuing}
-                          onClick={() => void reissueInvite('PLAYER')}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            refresh
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="session-invite-link-row">
-                      <div className="session-invite-link-row__label">Spectator</div>
-                      <div className="session-invite-link-row__input-wrap">
-                        <input
-                          className="session-invite-link-row__input"
-                          type="text"
-                          readOnly
-                          value={
-                            !settingsSpectatorsEnabled
-                              ? ''
-                              : settingsData.spectatorInviteCode
-                                ? `${window.location.origin}/watch/${encodeURIComponent(settingsData.spectatorInviteCode)}`
-                                : ''
-                          }
-                          aria-label="Spectator invite URL"
-                          disabled={!settingsSpectatorsEnabled}
-                        />
-                      </div>
-                      <div className="session-invite-link-row__actions">
-                        <button
-                          type="button"
-                          className="session-icon-action"
-                          title="Copy spectator invite URL"
-                          aria-label="Copy spectator invite URL"
-                          disabled={!settingsSpectatorsEnabled || !settingsData.spectatorInviteCode}
-                          onClick={() => void copyInviteUrl('SPECTATOR')}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            content_copy
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="session-icon-action"
-                          title="Refresh spectator invite URL"
-                          aria-label="Refresh spectator invite URL"
-                          disabled={!settingsSpectatorsEnabled || isInviteReissuing}
-                          onClick={() => void reissueInvite('SPECTATOR')}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            refresh
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-
-                <section
-                  className="session-campaign-settings-panel session-campaign-settings-panel--compact"
-                  aria-label="Campaign settings controls"
-                >
-                  <h5 className="session-inline-form-title">Settings</h5>
-                  <label className="session-label" htmlFor="campaign-settings-visibility">
-                    Visibility
-                  </label>
-                  <div className="session-toggle-group" role="group" aria-label="Visibility">
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsVisibility === 'PUBLIC' ? 'is-active' : ''}`}
-                      aria-pressed={settingsVisibility === 'PUBLIC'}
-                      onClick={() => setSettingsVisibility('PUBLIC')}
-                      disabled={isSettingsSaving}
-                    >
-                      Public
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsVisibility === 'PRIVATE' ? 'is-active' : ''}`}
-                      aria-pressed={settingsVisibility === 'PRIVATE'}
-                      onClick={() => setSettingsVisibility('PRIVATE')}
-                      disabled={isSettingsSaving}
-                    >
-                      Private
-                    </button>
-                  </div>
-
-                  <label className="session-label" htmlFor="campaign-settings-spectators">
-                    Spectators
-                  </label>
-                  <div className="session-toggle-group" role="group" aria-label="Spectators">
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsSpectatorsEnabled ? 'is-active' : ''}`}
-                      aria-pressed={settingsSpectatorsEnabled}
-                      onClick={() => setSettingsSpectatorsEnabled(true)}
-                      disabled={isSettingsSaving}
-                    >
-                      ON
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${!settingsSpectatorsEnabled ? 'is-active' : ''}`}
-                      aria-pressed={!settingsSpectatorsEnabled}
-                      onClick={() => setSettingsSpectatorsEnabled(false)}
-                      disabled={isSettingsSaving}
-                    >
-                      OFF
-                    </button>
-                  </div>
-
-                  <label className="session-label" htmlFor="campaign-settings-spectator-max">
-                    Max spectators: {settingsSpectatorMax}
-                  </label>
-                  <input
-                    id="campaign-settings-spectator-max"
-                    className="session-slider"
-                    type="range"
-                    min={5}
-                    max={50}
-                    step={5}
-                    value={settingsSpectatorMax}
-                    onChange={(event) => setSettingsSpectatorMax(Number(event.target.value))}
-                    disabled={isSettingsSaving || !settingsSpectatorsEnabled}
-                  />
-
-                  <label className="session-label" htmlFor="campaign-settings-waitlist">
-                    Spectator waitlist
-                  </label>
-                  <div
-                    className="session-toggle-group"
-                    role="group"
-                    aria-label="Spectator waitlist"
-                  >
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
-                      aria-pressed={settingsSpectatorWaitlistEnabled}
-                      onClick={() => setSettingsSpectatorWaitlistEnabled(true)}
-                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
-                    >
-                      ON
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${!settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
-                      aria-pressed={!settingsSpectatorWaitlistEnabled}
-                      onClick={() => setSettingsSpectatorWaitlistEnabled(false)}
-                      disabled={isSettingsSaving || !settingsSpectatorsEnabled}
-                    >
-                      OFF
-                    </button>
-                  </div>
-
-                  <label className="session-label" htmlFor="campaign-settings-reconnect-grace">
-                    Spectator reconnect grace (seconds): {settingsSpectatorReconnectGraceSecs}
-                  </label>
-                  <input
-                    id="campaign-settings-reconnect-grace"
-                    className="session-slider"
-                    type="range"
-                    min={30}
-                    max={90}
-                    step={5}
-                    value={settingsSpectatorReconnectGraceSecs}
-                    onChange={(event) =>
-                      setSettingsSpectatorReconnectGraceSecs(Number(event.target.value))
-                    }
-                    disabled={isSettingsSaving || !settingsSpectatorsEnabled}
-                  />
-
-                  <label className="session-label" htmlFor="campaign-settings-post-session-chat">
-                    Post-session spectator chat
-                  </label>
-                  <div
-                    className="session-toggle-group"
-                    role="group"
-                    aria-label="Post-session spectator chat"
-                  >
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsPostSessionChatEnabled ? 'is-active' : ''}`}
-                      aria-pressed={settingsPostSessionChatEnabled}
-                      onClick={() => setSettingsPostSessionChatEnabled(true)}
-                      disabled={isSettingsSaving}
-                    >
-                      ON
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${!settingsPostSessionChatEnabled ? 'is-active' : ''}`}
-                      aria-pressed={!settingsPostSessionChatEnabled}
-                      onClick={() => setSettingsPostSessionChatEnabled(false)}
-                      disabled={isSettingsSaving}
-                    >
-                      OFF
-                    </button>
-                  </div>
-
-                  <label
-                    className="session-label"
-                    htmlFor="campaign-settings-post-session-duration"
-                  >
-                    Post-session duration: {settingsPostSessionChatDurationMinutes} min
-                  </label>
-                  <input
-                    id="campaign-settings-post-session-duration"
-                    className="session-slider"
-                    type="range"
-                    min={1}
-                    max={60}
-                    step={1}
-                    value={settingsPostSessionChatDurationMinutes}
-                    onChange={(event) =>
-                      setSettingsPostSessionChatDurationMinutes(
-                        toValidPostSessionDurationMinutes(event.target.value)
-                      )
-                    }
-                    disabled={isSettingsSaving || !settingsPostSessionChatEnabled}
-                  />
-                  <p className="session-card-subtitle">
-                    Default 5 minutes. Minimum 1 minute, maximum 60 minutes.
-                  </p>
-
-                  <label
-                    className="session-label"
-                    htmlFor="campaign-settings-extension-sync-policy"
-                  >
-                    Extension sync policy
-                  </label>
-                  <div
-                    className="session-toggle-group"
-                    role="group"
-                    aria-label="Extension sync policy"
-                  >
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
-                      aria-pressed={settingsExtensionSyncPolicy === 'ALLOW'}
-                      onClick={() => setSettingsExtensionSyncPolicy('ALLOW')}
-                      disabled={isSettingsSaving}
-                    >
-                      ALLOW
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
-                      aria-pressed={settingsExtensionSyncPolicy === 'DM_ONLY'}
-                      onClick={() => setSettingsExtensionSyncPolicy('DM_ONLY')}
-                      disabled={isSettingsSaving}
-                    >
-                      DM_ONLY
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
-                      aria-pressed={settingsExtensionSyncPolicy === 'NONE'}
-                      onClick={() => setSettingsExtensionSyncPolicy('NONE')}
-                      disabled={isSettingsSaving}
-                    >
-                      NONE
-                    </button>
-                  </div>
-
-                  <label className="session-label" htmlFor="campaign-settings-late-join-policy">
-                    Late join policy
-                  </label>
-                  <div className="session-toggle-group" role="group" aria-label="Late join policy">
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsLateJoinPolicy === 'OPEN' ? 'is-active' : ''}`}
-                      aria-pressed={settingsLateJoinPolicy === 'OPEN'}
-                      onClick={() => setSettingsLateJoinPolicy('OPEN')}
-                      disabled={isSettingsSaving}
-                    >
-                      OPEN
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsLateJoinPolicy === 'SCREENED' ? 'is-active' : ''}`}
-                      aria-pressed={settingsLateJoinPolicy === 'SCREENED'}
-                      onClick={() => setSettingsLateJoinPolicy('SCREENED')}
-                      disabled={isSettingsSaving}
-                    >
-                      SCREENED
-                    </button>
-                    <button
-                      type="button"
-                      className={`session-toggle-button ${settingsLateJoinPolicy === 'BLOCKED' ? 'is-active' : ''}`}
-                      aria-pressed={settingsLateJoinPolicy === 'BLOCKED'}
-                      onClick={() => setSettingsLateJoinPolicy('BLOCKED')}
-                      disabled={isSettingsSaving}
-                    >
-                      BLOCKED
-                    </button>
-                  </div>
-
-                  <label className="session-label" htmlFor="campaign-settings-late-join-grace">
-                    Late join grace (minutes): {settingsLateJoinGraceMinutes}
-                  </label>
-                  <input
-                    id="campaign-settings-late-join-grace"
-                    className="session-slider"
-                    type="range"
-                    min={30}
-                    max={90}
-                    step={10}
-                    value={settingsLateJoinGraceMinutes}
-                    onChange={(event) =>
-                      setSettingsLateJoinGraceMinutes(Number(event.target.value))
-                    }
-                    disabled={isSettingsSaving || settingsLateJoinPolicy === 'OPEN'}
-                  />
-                </section>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <DialogPrimitive.Root open={showUserSettingsModal} onOpenChange={setShowUserSettingsModal}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
-          <DialogPrimitive.Content
-            className="session-modal session-user-settings-modal session-modal--floating"
-            aria-label="User settings"
-          >
-            <h4 className="session-inline-form-title">User Settings</h4>
-            <SessionUserSettingsPanel
-              messageGroupingWindowMs={messageGroupingWindowMs}
-              onMessageGroupingWindowChange={setMessageGroupingWindowMs}
-              apiUrl={apiUrl}
-              token={token}
-              userId={user.id}
-              username={user.username}
-            />
-            <div className="session-action-row">
-              <DialogPrimitive.Close asChild>
-                <button type="button" className="session-button session-button-neutral">
-                  Close
-                </button>
-              </DialogPrimitive.Close>
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
-
-      {showExitSessionModal && (
-        <div className="session-modal-backdrop" role="presentation">
-          <div className="session-modal" role="dialog" aria-modal="true" aria-label="Exit session">
-            <h4 className="session-inline-form-title">Leave Session</h4>
-            {user.authType === 'GUEST' ? (
-              <>
-                <p className="session-card-subtitle">
-                  You are on a guest account. Add a password now to upgrade before exit, or skip to
-                  sign out. Skipping requires using your invite URL again to return.
-                </p>
-
-                <label className="session-label" htmlFor="exit-upgrade-password">
-                  Password to upgrade account
-                </label>
-                <input
-                  id="exit-upgrade-password"
-                  type="password"
-                  className="session-input"
-                  value={exitUpgradePassword}
-                  onChange={(event) => setExitUpgradePassword(event.target.value)}
-                  autoComplete="new-password"
-                  disabled={exitUpgradeLoading}
-                />
-
-                {exitUpgradeError ? (
-                  <p className="session-card-subtitle">{exitUpgradeError}</p>
-                ) : null}
-
-                <div className="session-action-row">
-                  <button
-                    type="button"
-                    className="session-button session-button-neutral"
-                    onClick={() => setShowExitSessionModal(false)}
-                    disabled={exitUpgradeLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="session-button session-button-warn"
-                    onClick={handleSkipGuestUpgrade}
-                    disabled={exitUpgradeLoading}
-                  >
-                    Skip
-                  </button>
-                  <button
-                    type="button"
-                    className="session-button session-button-success"
-                    onClick={() => {
-                      void handleUpgradeAndExit()
-                    }}
-                    disabled={exitUpgradeLoading || !exitUpgradePassword.trim()}
-                  >
-                    {exitUpgradeLoading ? 'Upgrading...' : 'Upgrade and Exit'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="session-card-subtitle">
-                  Leave this session and return to the campaign selector? Unsaved local UI state may
-                  be lost.
-                </p>
-                <div className="session-action-row">
-                  <button
-                    type="button"
-                    className="session-button session-button-neutral"
-                    onClick={() => setShowExitSessionModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="session-button session-button-primary"
-                    onClick={handleConfirmExitAsFullAccount}
-                  >
-                    OK
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showStopSessionModal && (
-        <div
-          className="session-modal-backdrop"
-          role="presentation"
-          onClick={() => setShowStopSessionModal(false)}
-        >
-          <div
-            className="session-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="End session"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h4 className="session-inline-form-title">End Session</h4>
-            <p className="session-card-subtitle">
-              End this session now? This closes the current chapter for everyone and moves players
-              back to greenroom/offline state.
-            </p>
-            <div className="session-action-row">
-              <button
-                type="button"
-                className="session-button session-button-neutral"
-                onClick={() => setShowStopSessionModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="session-button session-button-warn"
-                onClick={() => {
-                  void handleConfirmStopSession()
-                }}
-              >
-                End Session
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SessionInitModals
+        apiUrl={apiUrl}
+        token={token}
+        user={user}
+        selectedCampaignName={selectedCampaign?.name}
+        showCreateCampaignModal={showCreateCampaignModal}
+        isCreatingCampaign={isCreatingCampaign}
+        newCampaignName={newCampaignName}
+        newCampaignDescription={newCampaignDescription}
+        onCreateCampaignSubmit={handleCreateCampaign}
+        onNewCampaignNameChange={setNewCampaignName}
+        onNewCampaignDescriptionChange={setNewCampaignDescription}
+        onCloseCreateCampaign={() => setShowCreateCampaignModal(false)}
+        showJoinCampaignModal={showJoinCampaignModal}
+        joinInviteInput={joinInviteInput}
+        isJoiningCampaign={isJoiningCampaign}
+        onJoinCampaignSubmit={handleJoinCampaign}
+        onJoinInviteInputChange={setJoinInviteInput}
+        onCloseJoinCampaign={() => setShowJoinCampaignModal(false)}
+        showCampaignSettingsModal={showCampaignSettingsModal}
+        settingsHomeTab={settingsHomeTab}
+        onSettingsHomeTabChange={setSettingsHomeTab}
+        settingsCampaignSessions={settingsCampaignSessions}
+        settingsReferenceSessionId={settingsReferenceSessionId}
+        onSettingsReferenceSessionChange={(sessionId) => setSettingsReferenceSessionId(sessionId)}
+        settingsReferenceSession={settingsReferenceSession}
+        isSettingsLoading={isSettingsLoading}
+        settingsData={settingsData}
+        isSettingsSaving={isSettingsSaving}
+        onCloseCampaignSettings={() => setShowCampaignSettingsModal(false)}
+        onSaveCampaignSettings={handleSaveCampaignSettings}
+        settingsName={settingsName}
+        onSettingsNameChange={setSettingsName}
+        settingsDescription={settingsDescription}
+        onSettingsDescriptionChange={setSettingsDescription}
+        onPosterFileSelected={handlePosterFileSelected}
+        isInviteReissuing={isInviteReissuing}
+        onCopyInviteUrl={(inviteType) => {
+          void copyInviteUrl(inviteType)
+        }}
+        onReissueInvite={(inviteType) => {
+          void reissueInvite(inviteType)
+        }}
+        settingsVisibility={settingsVisibility}
+        onSettingsVisibilityChange={setSettingsVisibility}
+        settingsSpectatorsEnabled={settingsSpectatorsEnabled}
+        onSettingsSpectatorsEnabledChange={setSettingsSpectatorsEnabled}
+        settingsSpectatorMax={settingsSpectatorMax}
+        onSettingsSpectatorMaxChange={setSettingsSpectatorMax}
+        settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
+        onSettingsSpectatorWaitlistEnabledChange={setSettingsSpectatorWaitlistEnabled}
+        settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
+        onSettingsSpectatorReconnectGraceSecsChange={setSettingsSpectatorReconnectGraceSecs}
+        settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
+        onSettingsPostSessionChatEnabledChange={setSettingsPostSessionChatEnabled}
+        settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
+        onSettingsPostSessionChatDurationMinutesChange={(value) =>
+          setSettingsPostSessionChatDurationMinutes(toValidPostSessionDurationMinutes(value))
+        }
+        settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
+        onSettingsExtensionSyncPolicyChange={setSettingsExtensionSyncPolicy}
+        settingsLateJoinPolicy={settingsLateJoinPolicy}
+        onSettingsLateJoinPolicyChange={setSettingsLateJoinPolicy}
+        settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
+        onSettingsLateJoinGraceMinutesChange={setSettingsLateJoinGraceMinutes}
+        showUserSettingsModal={showUserSettingsModal}
+        onUserSettingsOpenChange={setShowUserSettingsModal}
+        messageGroupingWindowMs={messageGroupingWindowMs}
+        onMessageGroupingWindowChange={setMessageGroupingWindowMs}
+        showExitSessionModal={showExitSessionModal}
+        exitUpgradePassword={exitUpgradePassword}
+        onExitUpgradePasswordChange={setExitUpgradePassword}
+        exitUpgradeLoading={exitUpgradeLoading}
+        exitUpgradeError={exitUpgradeError}
+        onCloseExitSession={() => setShowExitSessionModal(false)}
+        onSkipGuestUpgrade={handleSkipGuestUpgrade}
+        onUpgradeAndExit={() => {
+          void handleUpgradeAndExit()
+        }}
+        onConfirmExitAsFullAccount={handleConfirmExitAsFullAccount}
+        showStopSessionModal={showStopSessionModal}
+        onCloseStopSession={() => setShowStopSessionModal(false)}
+        onConfirmStopSession={() => {
+          void handleConfirmStopSession()
+        }}
+      />
     </>
   )
 }

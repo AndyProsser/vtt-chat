@@ -1,12 +1,12 @@
 # VTT-Chat Copilot Instructions
 
-You are working on **VTT-Chat** — a real-time, multi-user voice and chat platform for tabletop roleplaying games (TTRPGs). Sessions run across months and years. The DM must never be overwhelmed. The experience must be fun, magical, and so good players tell everyone they know.
+You are working on **VTT-Chat** — a real-time, multi-user voice and chat platform for tabletop roleplaying games (TTRPGs). Sessions run across months and years. The DM must be able to manage core actions within 2 clicks or 1 drag, without confusing state or delayed feedback. The experience must be fun, magical, and so good players tell everyone they know.
 
 ---
 
 ## Vision
 
-This app is what Discord will never be. It gives the DM **superpowers**:
+This app goes beyond Discord by providing DM-specific control over voice groups, audio conditions, environments, and persistent campaign state that standard chat tools do not provide. It gives the DM **superpowers**:
 
 - Move players between voice groups with a drag
 - Apply audio conditions (silenced, drunk, confused) that affect how other players hear them
@@ -22,14 +22,22 @@ The goal: make Wizards of the Coast ask to collaborate.
 
 ### State Management
 
-**Every state change must be consistent across ALL of these simultaneously:**
+**Every state change must converge across all required state layers:**
 
 1. **Zustand** — local store for the current user's session state
 2. **WebSocket broadcast** — other connected users must receive the change via WS event
 3. **Redis** — presence, room membership, and audio state persisted for reconnects
 4. **Database (PostgreSQL via Prisma)** — campaign-scoped data survives session boundaries
 
-**Never update only one layer.** If the DM changes a player's condition:
+**Never update only one layer.** Apply cross-layer changes in this order unless a stricter server contract already exists:
+
+1. Validate the request and target entities.
+2. Persist the authoritative server state in PostgreSQL and/or Redis as required by the feature.
+3. Broadcast the resulting WS event to all affected clients.
+4. Update Zustand from the server result or WS payload so local state matches the authoritative state.
+5. Confirm the UI surface reflects the final state for both the acting user and affected users.
+
+If the DM changes a player's condition, the completed flow must result in all of the following:
 
 - The DM's Zustand store updates `dmOverrides`
 - The target player's Zustand store updates `currentCondition`
@@ -78,12 +86,16 @@ This must feel instant: quick private huddle, then back to play.
 
 ### Session Lifecycle Rules
 
-- On `SESSION:ENDED` or `ROOM:SESSION_TRANSITION_APPLIED` with `nextState === 'IDLE'` or `'ENDED'`:
-  - Call `resetSessionAudioState()` and `clearActiveEffects()` on the Zustand store
-  - Do NOT clear `roomEnvironmentNames` (campaign-persistent)
-- On session enter/hydration:
-  - Call `resetSessionAudioState()` BEFORE re-hydrating from server state
-  - Re-apply environment, conditions, and overrides from the server audio state API
+Use the following transition rules so cleanup and rehydration stay predictable:
+
+| Situation                                                      | Required action                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Session enters hydration/initial load                          | Call `resetSessionAudioState()` before rehydrating any session-scoped audio state from the server |
+| Session enters hydration/initial load                          | Re-apply environment, conditions, and overrides from the server audio state API after reset       |
+| `SESSION:ENDED` fires                                          | Call `resetSessionAudioState()` and `clearActiveEffects()`                                        |
+| `ROOM:SESSION_TRANSITION_APPLIED` with `nextState === 'IDLE'`  | Call `resetSessionAudioState()` and `clearActiveEffects()`                                        |
+| `ROOM:SESSION_TRANSITION_APPLIED` with `nextState === 'ENDED'` | Call `resetSessionAudioState()` and `clearActiveEffects()`                                        |
+| Any of the above cleanup paths                                 | Do **not** clear `roomEnvironmentNames` because it is campaign-persistent                         |
 
 ### Recording Policy (Contract)
 
@@ -134,7 +146,7 @@ A silenced player's audio output is **routed only to the DM & spectators**. All 
 
 ### DM Simplicity
 
-The DM cannot be overwhelmed. Every action must be ≤ 2 clicks or 1 drag. If an interaction requires more than that, redesign it.
+The DM must be able to complete every primary control in 2 clicks or 1 drag, with immediate visible feedback and no hidden recovery steps. If an interaction requires more than that, redesign it.
 
 DM actions that must remain simple:
 
@@ -163,6 +175,7 @@ DM actions that must remain simple:
 - Empty groups collapse to single-line for DM, with inline X delete button
 - Empty groups are excluded from broadcast (no one to hear it)
 - When a DM deletes a `GROUP` room (in-session or greenroom), it is permanently removed.
+- Deleting a `GROUP` room during an active session must require an explicit confirmation step that warns the DM the deletion is permanent.
 
 ### Spectator Theatre Mode
 
@@ -191,11 +204,13 @@ Session state semantics:
 
 When the DM sets a group's environment:
 
-1. POST to `/api/audio/environments/apply`
-2. Backend broadcasts `AUDIO:ENVIRONMENT_SET` to all session members
-3. Frontend `handleEnvironmentSet` updates `roomEnvironmentNames` in Zustand for ALL clients
-4. `SessionInit` env-sync effect applies the new environment for players currently in that room
-5. AudioPanel shows updated environment immediately — no refresh required
+1. Validate the requested environment name and room target before applying changes.
+2. If the API receives invalid input, return `400` with a descriptive error message and log the validation failure for debugging.
+3. POST to `/api/audio/environments/apply`
+4. Backend broadcasts `AUDIO:ENVIRONMENT_SET` to all session members
+5. Frontend `handleEnvironmentSet` updates `roomEnvironmentNames` in Zustand for ALL clients
+6. `SessionInit` env-sync effect applies the new environment for players currently in that room
+7. AudioPanel shows updated environment immediately — no refresh required
 
 ---
 
@@ -239,6 +254,13 @@ Every state change that affects multiple users must travel via a WS event:
 - Rooms: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`, `ROOM:SESSION_TRANSITION_APPLIED`
 - Session: `SESSION:STATE_CHANGED`, `SESSION:ENDED`
 
+If a WebSocket disconnects during an active or paused session:
+
+- Attempt reconnection immediately and continue retrying within a 5-second recovery window.
+- Treat local Zustand as stale until backend snapshots and WS events rehydrate it.
+- If reconnection does not recover within that window, notify the user that live sync is degraded and present an explicit retry path.
+- After reconnection succeeds, rehydrate session topology, audio state, and boundary markers from backend-authoritative sources.
+
 ### Session Bookends Must Survive Refresh
 
 Session boundary markers are authoritative server data, not ephemeral UI-only markers.
@@ -248,6 +270,7 @@ Session boundary markers are authoritative server data, not ephemeral UI-only ma
 - Frontend must render both canonical server boundary formats (`[Session Started]`, `[Session Ended]`, `[Session Paused]`, `[Session Resumed]`) as chat bookends.
 - On page refresh/reconnect, the frontend must restore boundary markers from chat history API hydration; markers must not disappear after reload.
 - Frontend must avoid duplicate boundary markers when local fallback and server/WS boundary events arrive close together.
+- If boundary persistence fails, retry the persistence operation up to 3 times and log the failure for manual review.
 
 Boundary sync and authority rules:
 
