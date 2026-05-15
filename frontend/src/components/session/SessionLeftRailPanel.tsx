@@ -208,7 +208,9 @@ export function SessionLeftRailPanel({
                 const conditionOverride =
                   getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
                   getUserDMOverride(dmOverrides, member.userId, 'FILTER')
-                const overrideMuted = !isGreenroom && Boolean(muteOverride)
+                // Mute state must be reflected in UI even in greenroom so context-menu
+                // toggles and speaking indicators converge for mock players.
+                const overrideMuted = Boolean(muteOverride)
                 const overrideCondition =
                   typeof conditionOverride?.parameters?.conditionName === 'string'
                     ? String(conditionOverride.parameters.conditionName)

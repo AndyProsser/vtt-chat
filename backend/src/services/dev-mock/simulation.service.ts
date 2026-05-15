@@ -19,6 +19,9 @@ import { MessageType, PresenceState, Role, RoomType } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import type { StoredMessage } from '@/types/chat.types'
+import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
+import { setUserMuteState } from '@/services/audio/effects.service'
+import { AUDIO_DM_OVERRIDE_TYPES } from '@/constants/audio.constants'
 
 export interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean
@@ -528,6 +531,84 @@ async function clearTyping(
   }
 }
 
+async function listDmMutedMockUsers(
+  sessionId: UUID,
+  users: MockPresenceUser[]
+): Promise<MockPresenceUser[]> {
+  const overrides = await listAudioDMOverridesBySession(sessionId)
+  const dmMutedUserIds = new Set(
+    overrides
+      .filter((override) => override.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE)
+      .map((override) => override.targetUserId as UUID)
+  )
+
+  return users.filter(
+    (user) =>
+      dmMutedUserIds.has(user.userId) &&
+      Boolean(user.primaryRoomId) &&
+      user.state !== PresenceState.OFFLINE
+  )
+}
+
+async function emitMockSelfUnmute(sessionId: UUID, user: MockPresenceUser): Promise<void> {
+  const mutedAt = Date.now()
+  const nextMuteState = await setUserMuteState({
+    sessionId,
+    userId: user.userId,
+    muted: false,
+    mutedAt,
+  })
+
+  broadcastEvent(sessionId, {
+    id: randomUUID() as UUID,
+    type: 'AUDIO:USER_UNMUTED',
+    version: 1,
+    userId: user.userId,
+    userRole: Role.PLAYER,
+    sessionId,
+    roomId: null,
+    timestamp: mutedAt,
+    payload: {
+      userId: nextMuteState.userId,
+      userMuted: nextMuteState.userMuted,
+      mutedAt: nextMuteState.mutedAt,
+    },
+  })
+}
+
+async function maybeEmitMockSelfUnmute(
+  sessionId: UUID,
+  runtime: MockSimulationRuntime,
+  users: MockPresenceUser[]
+): Promise<void> {
+  // Intentionally mirrors a real player action: a user can try to unmute
+  // while DM-muted; DM override still remains authoritative for audibility.
+  if (!runtime.config.speakingSimulatorEnabled) {
+    return
+  }
+
+  const dmMutedUsers = await listDmMutedMockUsers(sessionId, users)
+  if (dmMutedUsers.length === 0 || Math.random() <= 0.72) {
+    return
+  }
+
+  const [userId] = pickRandomUsers(
+    dmMutedUsers.map((user) => user.userId),
+    1
+  )
+
+  if (!userId) {
+    return
+  }
+
+  const selected = dmMutedUsers.find((user) => user.userId === userId)
+  if (!selected) {
+    return
+  }
+
+  await emitMockSelfUnmute(sessionId, selected)
+}
+
 async function runTick(sessionId: UUID): Promise<void> {
   const runtime = runtimeBySession.get(sessionId)
   if (!runtime || !runtime.isRunning) {
@@ -543,6 +624,8 @@ async function runTick(sessionId: UUID): Promise<void> {
   const roomsById = new Map(
     rooms.map((room) => [room.id, { id: room.id, type: room.type, name: room.name }])
   )
+
+  await maybeEmitMockSelfUnmute(sessionId, runtime, users)
 
   for (const [userId, disconnected] of runtime.disconnectedByUserId.entries()) {
     if (disconnected.reconnectAt <= now) {
