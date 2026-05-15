@@ -58,6 +58,11 @@ export function MessageInput({
   const [selectedType, setSelectedType] = useState<MessageType>(MessageType.OOC)
   const [content, setContent] = useState('')
   const [recipientId, setRecipientId] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isTypingRef = useRef(false)
+  const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
   // Derive effective recipient — clears to '' when the selected recipient is no
   // longer in whisperRecipients, without needing a setState-in-effect cycle.
   const validRecipientId = useMemo(() => {
@@ -65,11 +70,6 @@ export function MessageInput({
     if (whisperRecipients.some((o) => o.id === recipientId)) return recipientId
     return ''
   }, [recipientId, type, whisperRecipients])
-  const [isSending, setIsSending] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isTypingRef = useRef(false)
-  const type = allowedTypes.includes(selectedType) ? selectedType : allowedTypes[0]
 
   const emitTypingStarted = () => {
     if (isTypingRef.current) {
