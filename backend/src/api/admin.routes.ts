@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
-import { getPrismaClient } from '@/infra/db'
 import { loadLogRetentionSettings, updateLogRetentionSettings } from '@/infra/telemetry-store'
-import { importCampaignBundle, isValidTransferBundle } from '@/services/admin-portability.service'
 import {
   createAdminUsersCsv,
   getAdminUsersExportRows,
@@ -16,7 +14,6 @@ import {
   parseAdminCampaignsListRequest,
 } from '@/services/admin-campaigns.service'
 import type { AdminAuthToken } from '@/types'
-import type { Prisma } from '@prisma/client'
 import {
   authorizeAdminIntegrationSystem,
   blockAdminIntegrationSystem,
@@ -28,6 +25,7 @@ import {
   createAdminCampaignRecordingPayload,
   endAdminCampaignSession,
   getAdminCampaignExportPayload,
+  importAdminCampaignBundlePayload,
   getAdminCampaignRecordingsPayload,
   getAdminCampaignRoomsPayload,
   moveAdminCampaignPlayerPayload,
@@ -36,6 +34,7 @@ import {
 import { randomBytes } from 'node:crypto'
 import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
+import { writeAdminAudit } from '@/services/admin-audit.service'
 import {
   buildAdminTelemetryDashboardPayload,
   buildAdminTelemetryLogsListPayload,
@@ -54,7 +53,6 @@ import {
 } from '@/services/admin-settings-backup.service'
 
 const router = Router()
-const prisma = getPrismaClient()
 
 type AdminRole = AdminAuthToken['adminRole']
 
@@ -69,34 +67,9 @@ function hasRole(actorRole: AdminRole, requiredRole: AdminRole): boolean {
   return roleRank[actorRole] >= roleRank[requiredRole]
 }
 
-async function writeAudit(params: {
-  actor?: AdminAuthToken
-  action: string
-  targetType: string
-  targetId?: string
-  reason?: string
-  outcome?: 'SUCCESS' | 'DENIED' | 'FAILED'
-  metadata?: Prisma.InputJsonValue
-}) {
-  await prisma.adminAuditLog.create({
-    data: {
-      actorUserId: params.actor?.userId,
-      actorName: params.actor?.username || 'system',
-      actorRole: params.actor?.adminRole,
-      action: params.action,
-      targetType: params.targetType,
-      targetId: params.targetId,
-      reason: params.reason,
-      outcome: params.outcome || 'SUCCESS',
-      metadata: params.metadata,
-    },
-  })
-}
-
 registerAdminAccessRoutes(router, {
-  prisma,
   hasRole,
-  writeAudit,
+  writeAudit: writeAdminAudit,
 })
 
 // Apply admin auth middleware to all telemetry routes
@@ -143,7 +116,7 @@ router.get('/users/export', adminAuthMiddleware, async (req: Request, res: Respo
     const format = parseAdminUsersExportFormat(req.query.format)
     const rows = await getAdminUsersExportRows()
 
-    await writeAudit({
+    await writeAdminAudit({
       actor,
       action: 'EXPORT_USERS',
       targetType: 'user',
@@ -274,13 +247,13 @@ router.post(
       })
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
           reason: result.audit.reason,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -317,13 +290,13 @@ router.post(
       })
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
           reason: result.audit.reason,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -360,13 +333,13 @@ router.post(
       })
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
           reason: result.audit.reason,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -398,12 +371,12 @@ router.get(
       const result = await getAdminCampaignExportPayload({ actor, campaignId })
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -427,45 +400,22 @@ router.post('/campaigns/import', adminAuthMiddleware, async (req: Request, res: 
       return
     }
 
-    const bundle = req.body?.bundle ?? req.body
-    const name = String(req.body?.name || '').trim() || undefined
-
-    if (!isValidTransferBundle(bundle)) {
-      res.status(400).json({
-        error: 'Invalid campaign transfer bundle',
-        code: 'INVALID_TRANSFER_BUNDLE',
-      })
-      return
-    }
-
-    const imported = await importCampaignBundle(prisma, actor.userId, bundle, name)
-
-    if (!imported) {
-      res.status(400).json({
-        error: 'Invalid campaign transfer bundle',
-        code: 'INVALID_TRANSFER_BUNDLE',
-      })
-      return
-    }
-
-    await writeAudit({
+    const result = await importAdminCampaignBundlePayload({
       actor,
-      action: 'CAMPAIGN_IMPORT',
-      targetType: 'CAMPAIGN',
-      targetId: imported.campaign.id,
-      metadata: {
-        artifactId: imported.artifactId,
-        importedCampaignName: imported.campaign.name,
-        ...imported.counts,
-      },
+      body: (req.body || {}) as Record<string, unknown>,
     })
 
-    res.status(201).json({
-      message: 'Campaign imported successfully',
-      artifactId: imported.artifactId,
-      counts: imported.counts,
-      campaign: imported.campaign,
-    })
+    if (result.audit) {
+      await writeAdminAudit({
+        actor,
+        action: result.audit.action,
+        targetType: result.audit.targetType,
+        targetId: result.audit.targetId,
+        metadata: result.audit.metadata,
+      })
+    }
+
+    res.status(result.status).json(result.body)
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }
@@ -522,12 +472,12 @@ router.post(
       })
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -631,13 +581,13 @@ router.post(
       }
 
       if (result.audit) {
-        await writeAudit({
+        await writeAdminAudit({
           actor,
           action: result.audit.action,
           targetType: result.audit.targetType,
           targetId: result.audit.targetId,
           reason: result.audit.reason,
-          metadata: result.audit.metadata as Prisma.InputJsonValue,
+          metadata: result.audit.metadata,
         })
       }
 
@@ -691,11 +641,11 @@ router.put('/settings', adminAuthMiddleware, async (req: Request, res: Response)
 
     const mergedSettings = mergeAdminSettingsWithRetention(runtimeSettingsState, retention)
 
-    await writeAudit({
+    await writeAdminAudit({
       actor,
       action: 'SETTINGS_UPDATE',
       targetType: 'ADMIN_SETTINGS',
-      metadata: mergedSettings as unknown as Prisma.InputJsonValue,
+      metadata: mergedSettings,
     })
 
     res.status(200).json({
@@ -722,7 +672,7 @@ router.post('/settings/backup', adminAuthMiddleware, async (req: Request, res: R
 
     const payload = buildSettingsBackupQueuedPayload()
 
-    await writeAudit({
+    await writeAdminAudit({
       actor,
       action: 'SETTINGS_BACKUP_TRIGGER',
       targetType: 'ADMIN_SETTINGS',
@@ -750,7 +700,7 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
 
     const payload = await buildSettingsOperationsExportPayload(actor.userId)
 
-    await writeAudit({
+    await writeAdminAudit({
       actor,
       action: 'SETTINGS_OPERATIONS_EXPORT',
       targetType: 'ADMIN_SETTINGS',
@@ -804,12 +754,12 @@ router.post(
         return
       }
 
-      await writeAudit({
+      await writeAdminAudit({
         actor,
         action: result.audit.action,
         targetType: result.audit.targetType,
         targetId: result.audit.targetId,
-        metadata: result.audit.metadata as Prisma.InputJsonValue,
+        metadata: result.audit.metadata,
       })
 
       res.status(200).json({
@@ -845,12 +795,12 @@ router.post(
         return
       }
 
-      await writeAudit({
+      await writeAdminAudit({
         actor,
         action: result.audit.action,
         targetType: result.audit.targetType,
         targetId: result.audit.targetId,
-        metadata: result.audit.metadata as Prisma.InputJsonValue,
+        metadata: result.audit.metadata,
       })
 
       res.status(200).json({
@@ -889,12 +839,12 @@ router.patch(
         return
       }
 
-      await writeAudit({
+      await writeAdminAudit({
         actor,
         action: result.audit.action,
         targetType: result.audit.targetType,
         targetId: result.audit.targetId,
-        metadata: result.audit.metadata as Prisma.InputJsonValue,
+        metadata: result.audit.metadata,
       })
 
       res.status(200).json({

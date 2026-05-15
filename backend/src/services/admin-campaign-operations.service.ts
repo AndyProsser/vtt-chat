@@ -7,6 +7,8 @@ import {
 import {
   buildCampaignExport,
   createRecordingMetadata,
+  importCampaignBundle,
+  isValidTransferBundle,
   listRecordingMetadata,
 } from '@/services/admin-portability.service'
 import type { AdminAuthToken } from '@/types'
@@ -865,6 +867,65 @@ export async function moveAdminCampaignPlayerPayload(params: {
       targetUsername: sessionMember.username,
       previousRoomId: previousPresence?.primaryRoomId || null,
       roomId: room.id,
+    },
+  }
+}
+
+export async function importAdminCampaignBundlePayload(params: {
+  actor: AdminAuthToken
+  body: Record<string, unknown>
+}): Promise<{
+  status: number
+  body: Record<string, unknown>
+  audit?: {
+    action: 'CAMPAIGN_IMPORT'
+    targetType: 'CAMPAIGN'
+    targetId: string
+    metadata: Record<string, unknown>
+  }
+}> {
+  const bundle = params.body.bundle ?? params.body
+  const name = String(params.body.name || '').trim() || undefined
+
+  if (!isValidTransferBundle(bundle)) {
+    return {
+      status: 400,
+      body: {
+        error: 'Invalid campaign transfer bundle',
+        code: 'INVALID_TRANSFER_BUNDLE',
+      },
+    }
+  }
+
+  const imported = await importCampaignBundle(prisma, params.actor.userId, bundle, name)
+
+  if (!imported) {
+    return {
+      status: 400,
+      body: {
+        error: 'Invalid campaign transfer bundle',
+        code: 'INVALID_TRANSFER_BUNDLE',
+      },
+    }
+  }
+
+  return {
+    status: 201,
+    body: {
+      message: 'Campaign imported successfully',
+      artifactId: imported.artifactId,
+      counts: imported.counts,
+      campaign: imported.campaign,
+    },
+    audit: {
+      action: 'CAMPAIGN_IMPORT',
+      targetType: 'CAMPAIGN',
+      targetId: imported.campaign.id,
+      metadata: {
+        artifactId: imported.artifactId,
+        importedCampaignName: imported.campaign.name,
+        ...imported.counts,
+      },
     },
   }
 }

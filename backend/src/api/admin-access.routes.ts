@@ -1,11 +1,25 @@
 import { randomBytes } from 'node:crypto'
-import type { Prisma } from '@prisma/client'
 import type { Request, Response, Router } from 'express'
 import { hashPassword } from '@/services/auth.service'
 import { AdminService } from '@/services/admin.service'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { issueHandoffToken, consumeHandoffToken } from '@/services/handoff.service'
 import type { AdminAuthToken } from '@/types'
+import type { AdminAuditWriteInput } from '@/services/admin-audit.service'
+import {
+  createAdminInviteRecord,
+  createUserFromInvite,
+  getAdminHandoffUserById,
+  getAdminInviteForRedeem,
+  getAdminInviteForValidation,
+  getUserByEmailForInvite,
+  getUserByUsernameForInvite,
+  invalidateAdminManagedUserSessions,
+  markAdminInviteUsed,
+  restoreAdminManagedUser,
+  suspendAdminManagedUser,
+  updateUserFromInvite,
+} from '@/services/admin-access.service'
 import { createAdminToken } from '@/utils/auth'
 import { validatePassword } from '@/utils/password'
 import { logger } from '@/utils/logger'
@@ -13,29 +27,8 @@ import { logger } from '@/utils/logger'
 type AdminRole = AdminAuthToken['adminRole']
 
 interface AdminAccessRouteDeps {
-  prisma: {
-    user: {
-      findUnique: (...args: any[]) => Promise<any>
-      findFirst: (...args: any[]) => Promise<any>
-      create: (...args: any[]) => Promise<any>
-      update: (...args: any[]) => Promise<any>
-    }
-    adminInvite: {
-      create: (...args: any[]) => Promise<any>
-      findUnique: (...args: any[]) => Promise<any>
-      update: (...args: any[]) => Promise<any>
-    }
-  }
   hasRole: (actorRole: AdminRole, requiredRole: AdminRole) => boolean
-  writeAudit: (params: {
-    actor?: AdminAuthToken
-    action: string
-    targetType: string
-    targetId?: string
-    reason?: string
-    outcome?: 'SUCCESS' | 'DENIED' | 'FAILED'
-    metadata?: Prisma.InputJsonValue
-  }) => Promise<void>
+  writeAudit: (params: AdminAuditWriteInput) => Promise<void>
 }
 
 function createInviteToken(): string {
@@ -281,20 +274,12 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
       }
 
       const token = createInviteToken()
-      const invite = await deps.prisma.adminInvite.create({
-        data: {
-          token,
-          invitedRole: adminRole,
-          email: email || null,
-          invitedByUserId: actor.userId,
-          expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
-        },
-        select: {
-          token: true,
-          invitedRole: true,
-          email: true,
-          expiresAt: true,
-        },
+      const invite = await createAdminInviteRecord({
+        token,
+        invitedRole: adminRole,
+        email: email || null,
+        invitedByUserId: actor.userId,
+        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
       })
 
       await deps.writeAudit({
@@ -330,16 +315,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
         return
       }
 
-      const invite = await deps.prisma.adminInvite.findUnique({
-        where: { token },
-        select: {
-          token: true,
-          invitedRole: true,
-          email: true,
-          expiresAt: true,
-          usedAt: true,
-        },
-      })
+      const invite = await getAdminInviteForValidation(token)
 
       if (!invite) {
         res.status(404).json({ error: 'Invite not found', code: 'INVITE_NOT_FOUND' })
@@ -404,7 +380,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
         return
       }
 
-      const invite = await deps.prisma.adminInvite.findUnique({ where: { token } })
+      const invite = await getAdminInviteForRedeem(token)
       if (!invite) {
         res.status(404).json({ error: 'Invite not found', code: 'INVITE_NOT_FOUND' })
         return
@@ -427,16 +403,8 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
 
       const passwordHash = await hashPassword(password)
 
-      const existingByEmail = email
-        ? await deps.prisma.user.findUnique({
-            where: { email },
-            select: { id: true, username: true },
-          })
-        : null
-      const existingByUsername = await deps.prisma.user.findUnique({
-        where: { username },
-        select: { id: true, username: true, email: true },
-      })
+      const existingByEmail = email ? await getUserByEmailForInvite(email) : null
+      const existingByUsername = await getUserByUsernameForInvite(username)
 
       if (existingByEmail && existingByUsername && existingByEmail.id !== existingByUsername.id) {
         res.status(409).json({
@@ -448,39 +416,24 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
 
       let userId = existingByEmail?.id || existingByUsername?.id
       if (!userId) {
-        const created = await deps.prisma.user.create({
-          data: {
-            username,
-            email: email || null,
-            displayName: username,
-            password: passwordHash,
-            role: 'PLAYER',
-            adminRole: invite.invitedRole,
-            isActive: true,
-          },
-          select: { id: true },
+        const created = await createUserFromInvite({
+          username,
+          email: email || null,
+          passwordHash,
+          invitedRole: invite.invitedRole as AdminRole,
         })
         userId = created.id
       } else {
-        await deps.prisma.user.update({
-          where: { id: userId },
-          data: {
-            username,
-            email: email || null,
-            password: passwordHash,
-            adminRole: invite.invitedRole,
-            isActive: true,
-          },
+        await updateUserFromInvite({
+          userId,
+          username,
+          email: email || null,
+          passwordHash,
+          invitedRole: invite.invitedRole as AdminRole,
         })
       }
 
-      await deps.prisma.adminInvite.update({
-        where: { id: invite.id },
-        data: {
-          usedAt: new Date(),
-          usedByUserId: userId,
-        },
-      })
+      await markAdminInviteUsed({ inviteId: invite.id, userId })
 
       await deps.writeAudit({
         action: 'ADMIN_INVITE_REDEEM',
@@ -538,11 +491,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
           return
         }
 
-        const updated = await deps.prisma.user.update({
-          where: { id: userId },
-          data: { isActive: false, tokenInvalidBefore: new Date() },
-          select: { id: true, username: true, isActive: true },
-        })
+        const updated = await suspendAdminManagedUser(userId)
 
         await deps.writeAudit({
           actor,
@@ -585,11 +534,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
           return
         }
 
-        const updated = await deps.prisma.user.update({
-          where: { id: userId },
-          data: { isActive: true },
-          select: { id: true, username: true, isActive: true },
-        })
+        const updated = await restoreAdminManagedUser(userId)
 
         await deps.writeAudit({
           actor,
@@ -632,11 +577,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
           return
         }
 
-        const updated = await deps.prisma.user.update({
-          where: { id: userId },
-          data: { tokenInvalidBefore: new Date() },
-          select: { id: true, username: true, tokenInvalidBefore: true },
-        })
+        const updated = await invalidateAdminManagedUserSessions(userId)
 
         await deps.writeAudit({
           actor,
@@ -707,18 +648,7 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
         return
       }
 
-      const user = await deps.prisma.user.findUnique({
-        where: { id: consumed.userId },
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-          adminRole: true,
-          password: true,
-          isActive: true,
-        },
-      })
+      const user = await getAdminHandoffUserById(consumed.userId)
 
       if (!user || !user.isActive) {
         res.status(403).json({

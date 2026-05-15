@@ -111,8 +111,19 @@ High-priority route hotspots checklist:
     - Room move-player Prisma validation/persistence cluster extracted to service:
       - backend/src/services/admin-campaign-operations.service.ts
       - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/sessions/:sessionId/rooms/:roomId/move-player` delegates DB orchestration to service; route retains WS event emission + HTTP mapping)
+    - Campaign import Prisma orchestration extracted to service:
+      - backend/src/services/admin-campaign-operations.service.ts
+      - backend/src/api/admin.routes.ts (`/campaigns/import` delegates to service helper)
+    - Route-level admin audit persistence extracted to dedicated audit service:
+      - backend/src/services/admin-audit.service.ts
+      - backend/src/api/admin.routes.ts (all audit writes delegate to `writeAdminAudit`)
+    - Setup/onboarding and admin-access Prisma clusters extracted from route module:
+      - backend/src/services/admin-access.service.ts
+      - backend/src/api/admin-access.routes.ts (`/invites`, `/invites/validate`, `/invites/redeem`, `/auth/handoff/exchange`, `/users/:userId/suspend`, `/users/:userId/restore`, `/users/:userId/force-logout` use service helpers instead of route-level Prisma)
   - Remaining:
-    - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
+    - `backend/src/api/admin.routes.ts` no longer uses direct Prisma access.
+    - `backend/src/api/admin-access.routes.ts` no longer uses direct Prisma access.
+    - Other non-admin route hotspots still contain route-level orchestration per checklist below.
 - [~] backend/src/api/notes.routes.ts
   - Progress in this batch:
     - Route-local request/visibility helpers moved into service/types/constants:
