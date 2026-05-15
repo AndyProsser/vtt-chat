@@ -1,7 +1,4 @@
 import { Router, Request, Response } from 'express'
-import os from 'node:os'
-import { getAllSessions } from '@/services/session/core.service'
-import { getChatTelemetrySnapshot } from '@/services/chat.service'
 import { logger } from '@/utils/logger'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { getPrismaClient } from '@/infra/db'
@@ -43,7 +40,10 @@ import { listExternalSystems, updateExternalSystem } from '@/services/integratio
 import { randomBytes } from 'node:crypto'
 import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
-import { buildAdminTelemetryStatusPayload } from '@/services/admin-telemetry.service'
+import {
+  buildAdminTelemetryDashboardPayload,
+  buildAdminTelemetryStatusPayload,
+} from '@/services/admin-telemetry.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1591,67 +1591,11 @@ function parseTimeRange(value: string | undefined): number {
 }
 
 router.get('/telemetry/dashboard', async (_req: Request, res: Response) => {
-  const sessions = await getAllSessions()
   const wsManager = _req.app.locals.wsManager as { getConnectionCount?: () => number } | undefined
-  const chat = await getChatTelemetrySnapshot()
-  const memory = process.memoryUsage()
-  const activeSessions = sessions.filter((s) => s.state === 'ACTIVE').length
-  const memoryUsedMb = Math.round(memory.heapUsed / 1024 / 1024)
-  const memoryTotalMb = Math.max(1, Math.round(memory.heapTotal / 1024 / 1024))
-  const storageUsagePercent = Math.min(99, Math.round((memoryUsedMb / memoryTotalMb) * 100))
-
-  const recentErrors = logger
-    .getHistory()
-    .filter((entry) => entry.level === 'ERROR')
-    .filter(
-      (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 24 * 60 * 60 * 1000
-    ).length
-
-  const telemetryEvents = await loadTelemetryEvents()
-  const clientTelemetryLastHour = telemetryEvents.filter(
-    (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000
-  )
-
-  const topClientEvents = Object.entries(
-    clientTelemetryLastHour.reduce(
-      (acc, entry) => {
-        const eventName = String(entry.message || 'unknown')
-        acc[eventName] = (acc[eventName] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>
-    )
-  )
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([event, count]) => ({ event, count }))
-
-  const [totalUsers, suspendedUsers, activeCampaigns, recentModerationActions] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { isActive: false } }),
-    prisma.campaign.count(),
-    prisma.adminAuditLog.count({
-      where: {
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        action: { in: ['USER_SUSPEND', 'USER_RESTORE', 'USER_FORCE_LOGOUT', 'USER_PROMOTE'] },
-      },
-    }),
-  ])
-
-  res.status(200).json({
+  const payload = await buildAdminTelemetryDashboardPayload({
     activeUsers: wsManager?.getConnectionCount?.() ?? 0,
-    activeRooms: activeSessions,
-    recentErrors,
-    systemLoadPercent: Math.min(100, Math.round((os.loadavg()[0] / 4) * 100)),
-    messageThroughputPerMinute: chat.messagesLastMinute,
-    storageUsagePercent,
-    totalUsers,
-    suspendedUsers,
-    activeCampaigns,
-    recentModerationActions,
-    clientTelemetryEventsLastHour: clientTelemetryLastHour.length,
-    topClientEvents,
   })
+  res.status(200).json(payload)
 })
 
 router.get('/telemetry/status', async (_req: Request, res: Response) => {
