@@ -15,7 +15,7 @@ interface CampaignInformationPanelProps {
     dmAvatarUrl?: string | null
     connectedPlayersRounded?: number
     connectedSpectatorsRounded?: number
-    latestSessionState?: SessionLifecycleState | 'INACTIVE' | null
+    latestSessionState?: SessionLifecycleState | null
     extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   } | null
   sessionCount: number
@@ -71,12 +71,12 @@ function formatDuration(totalMs: number): string {
   return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
 }
 
-function formatSessionState(state?: SessionLifecycleState | 'INACTIVE' | null): string {
+function formatSessionState(state?: SessionLifecycleState | null): string {
   if (!state) {
     return 'Unknown'
   }
 
-  return state === 'INACTIVE' ? 'Idle' : state
+  return state === 'IDLE' ? 'Idle' : state
 }
 
 export function CampaignInformationPanel({
@@ -298,14 +298,20 @@ export function CampaignInformationPanel({
           ) : (
             <>
               <h3 className="cip-heading">{campaign.name}</h3>
-              <p className="cip-description">{campaign.description || 'No description provided.'}</p>
+              <p className="cip-description">
+                {campaign.description || 'No description provided.'}
+              </p>
             </>
           )}
         </div>
 
         <div className="cip-poster" aria-hidden="true">
           {(isEditing ? posterUrlDraft : campaign.posterUrl) ? (
-            <img className="cip-poster__image" src={(isEditing ? posterUrlDraft : campaign.posterUrl) || ''} alt="" />
+            <img
+              className="cip-poster__image"
+              src={(isEditing ? posterUrlDraft : campaign.posterUrl) || ''}
+              alt=""
+            />
           ) : (
             <div className="cip-poster__placeholder">{campaign.name.charAt(0).toUpperCase()}</div>
           )}
@@ -411,7 +417,9 @@ export function CampaignInformationPanel({
               </button>
             </div>
           ) : (
-            <span className="cip-meta__value">{integrationPolicyLabel(toUiIntegrationPolicy(campaign.extensionSyncPolicy))}</span>
+            <span className="cip-meta__value">
+              {integrationPolicyLabel(toUiIntegrationPolicy(campaign.extensionSyncPolicy))}
+            </span>
           )}
         </div>
       </div>

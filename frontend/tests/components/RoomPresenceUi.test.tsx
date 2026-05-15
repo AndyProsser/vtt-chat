@@ -2708,10 +2708,7 @@ describe('RoomSelector', () => {
     useStore.getState().setMockTakeoverUserId(asUuid('session-1'), asUuid('user-2'))
 
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
-      if (
-        url.endsWith('/api/dev/mock-players/simulation/status/session-1') &&
-        !options?.method
-      ) {
+      if (url.endsWith('/api/dev/mock-players/simulation/status/session-1') && !options?.method) {
         return new Response(
           JSON.stringify({
             sessionId: 'session-1',

@@ -13,31 +13,33 @@ const mocks = vi.hoisted(() => ({
   mockLoadTelemetryEvents: vi.fn(),
   mockLoadDiagnosticEvents: vi.fn(),
   mockCreateOperationalExportArtifact: vi.fn(),
+  mockImportExportArtifactCreate: vi.fn(),
 }))
 
 vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
-  AdminService: {
-    adminUsersExist: mocks.mockAdminUsersExist,
-    createAdmin: vi.fn(),
-    authenticateAdmin: vi.fn(),
-    getAdminUsers: vi.fn(),
-    promoteUserAdminRole: vi.fn(),
-    getAdminById: vi.fn(),
-  },
-}))
-
-vi.mock('@/services/admin-portability.service', () => ({
-  buildCampaignExport: vi.fn(),
-  importCampaignBundle: vi.fn(),
-  isValidTransferBundle: vi.fn().mockReturnValue(true),
-  listRecordingMetadata: vi.fn().mockResolvedValue([]),
-  createRecordingMetadata: vi.fn(),
-  createOperationalExportArtifact: mocks.mockCreateOperationalExportArtifact,
-}))
+vi.mock('@/services/admin.service', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/services/admin.service')>()
+  return {
+    ...mod,
+    AdminService: {
+      adminUsersExist: mocks.mockAdminUsersExist,
+      createAdmin: vi.fn(),
+      authenticateAdmin: vi.fn(),
+      getAdminUsers: vi.fn(),
+      promoteUserAdminRole: vi.fn(),
+      getAdminById: vi.fn(),
+    },
+    buildCampaignExport: vi.fn(),
+    importCampaignBundle: vi.fn(),
+    isValidTransferBundle: vi.fn().mockReturnValue(true),
+    listRecordingMetadata: vi.fn().mockResolvedValue([]),
+    createRecordingMetadata: vi.fn(),
+    createOperationalExportArtifact: mocks.mockCreateOperationalExportArtifact,
+  }
+})
 
 vi.mock('@/infra/telemetry-store', () => ({
   loadTelemetryEvents: mocks.mockLoadTelemetryEvents,
@@ -112,7 +114,7 @@ vi.mock('@/infra/db', () => ({
       update: vi.fn(),
     },
     importExportArtifact: {
-      create: vi.fn(),
+      create: mocks.mockImportExportArtifactCreate,
       findUnique: vi.fn(),
     },
     recordingMetadata: {
@@ -388,6 +390,7 @@ describe('admin settings routes — GET /settings/backup/export', () => {
       },
     })
     mocks.mockAdminAuditCreate.mockResolvedValue({ id: 'audit-1' })
+    mocks.mockImportExportArtifactCreate.mockResolvedValue({ id: 'artifact-export-1' })
   })
 
   it('creates and returns operational export bundle', async () => {

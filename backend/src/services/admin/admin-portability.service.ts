@@ -1,29 +1,17 @@
 import { randomUUID } from 'node:crypto'
-import type { PortabilityArtifactType, PresenceState, Prisma, PrismaClient } from '@prisma/client'
+import { getPrismaClient } from '@/infra/db'
+import { PORTABILITY_FORMAT_VERSION } from '@/constants/admin-portability.constants'
 import type { CampaignTransferBundle, OperationalExportBundle } from '@/types/portability.types'
-import type { Role } from '@prisma/client'
+import type { PortabilityArtifactType, Prisma, PresenceState, Role } from '@prisma/client'
 
-export const PORTABILITY_FORMAT_VERSION = 1
+const prisma = getPrismaClient()
 
-interface RecordingCreateInput {
-  campaignId: string
-  sessionId?: string | null
-  roomId?: string | null
-  title: string
-  storageKey?: string | null
-  sourceUrl?: string | null
-  durationSeconds?: number | null
-  startedAt?: string | null
-  endedAt?: string | null
-  journalSummary?: string | null
-  metadata?: Prisma.InputJsonValue | null
-}
+// ─── Private Helpers ──────────────────────────────────────────────────────────
 
 function toIso(value: Date | string | null | undefined): string | null {
   if (!value) {
     return null
   }
-
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
@@ -32,7 +20,6 @@ function toDate(value: string | null | undefined): Date | null {
   if (!value) {
     return null
   }
-
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
 }
@@ -53,11 +40,9 @@ function mapUserIdList(
   if (!Array.isArray(value)) {
     return value
   }
-
   const mapped = value
     .map((entry) => (typeof entry === 'string' ? userIdMap.get(entry) || entry : null))
     .filter((entry): entry is string => Boolean(entry))
-
   return mapped
 }
 
@@ -78,7 +63,6 @@ function isCampaignTransferBundle(input: unknown): input is CampaignTransferBund
   if (!input || typeof input !== 'object') {
     return false
   }
-
   const candidate = input as Partial<CampaignTransferBundle>
   return (
     candidate.version === PORTABILITY_FORMAT_VERSION &&
@@ -202,59 +186,31 @@ async function resolveImportedUsers(
   return userIdMap
 }
 
-export async function buildCampaignExport(
-  prisma: PrismaClient,
-  campaignId: string,
-  actorUserId?: string | null
-) {
+// ─── Portability: Bundle ──────────────────────────────────────────────────────
+
+export async function buildCampaignExport(campaignId: string, actorUserId?: string | null) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
-      currentDm: {
-        select: {
-          id: true,
-          username: true,
-        },
-      },
+      currentDm: { select: { id: true, username: true } },
       members: {
         include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              role: true,
-            },
-          },
+          user: { select: { id: true, username: true, displayName: true, role: true } },
         },
         orderBy: { joinedAt: 'asc' },
       },
-      characters: {
-        orderBy: { createdAt: 'asc' },
-      },
+      characters: { orderBy: { createdAt: 'asc' } },
       sessions: {
         orderBy: { createdAt: 'asc' },
         include: {
-          rooms: {
-            orderBy: { createdAt: 'asc' },
-          },
-          members: {
-            orderBy: { joinedAt: 'asc' },
-          },
-          messages: {
-            orderBy: { createdAt: 'asc' },
-          },
-          notes: {
-            orderBy: { createdAt: 'asc' },
-          },
-          logs: {
-            orderBy: { createdAt: 'asc' },
-          },
+          rooms: { orderBy: { createdAt: 'asc' } },
+          members: { orderBy: { joinedAt: 'asc' } },
+          messages: { orderBy: { createdAt: 'asc' } },
+          notes: { orderBy: { createdAt: 'asc' } },
+          logs: { orderBy: { createdAt: 'asc' } },
         },
       },
-      recordings: {
-        orderBy: { createdAt: 'asc' },
-      },
+      recordings: { orderBy: { createdAt: 'asc' } },
     },
   })
 
@@ -380,15 +336,10 @@ export async function buildCampaignExport(
     select: { id: true },
   })
 
-  return {
-    bundle,
-    artifactId: artifact.id,
-    counts,
-  }
+  return { bundle, artifactId: artifact.id, counts }
 }
 
 export async function importCampaignBundle(
-  prisma: PrismaClient,
   actorUserId: string,
   input: unknown,
   nameOverride?: string | null
@@ -431,11 +382,7 @@ export async function importCampaignBundle(
       )
 
     if (!membershipRows.some((member) => member.userId === actorUserId)) {
-      membershipRows.unshift({
-        campaignId: campaign.id,
-        userId: actorUserId,
-        role: 'DM',
-      })
+      membershipRows.unshift({ campaignId: campaign.id, userId: actorUserId, role: 'DM' })
     }
 
     if (membershipRows.length > 0) {
@@ -494,9 +441,7 @@ export async function importCampaignBundle(
 
     bundle.sessions.forEach((session) => {
       const mappedSessionId = sessionIdMap.get(session.id)
-      if (!mappedSessionId) {
-        return
-      }
+      if (!mappedSessionId) return
 
       session.rooms.forEach((room) => {
         const newRoomId = randomUUID()
@@ -570,25 +515,11 @@ export async function importCampaignBundle(
       })
     })
 
-    if (roomRows.length > 0) {
-      await tx.room.createMany({ data: roomRows as any[] })
-    }
-
-    if (memberRows.length > 0) {
-      await tx.sessionMember.createMany({ data: memberRows as any[] })
-    }
-
-    if (messageRows.length > 0) {
-      await tx.chatMessage.createMany({ data: messageRows as any[] })
-    }
-
-    if (noteRows.length > 0) {
-      await tx.note.createMany({ data: noteRows as any[] })
-    }
-
-    if (logRows.length > 0) {
-      await tx.sessionLog.createMany({ data: logRows as any[] })
-    }
+    if (roomRows.length > 0) await tx.room.createMany({ data: roomRows as any[] })
+    if (memberRows.length > 0) await tx.sessionMember.createMany({ data: memberRows as any[] })
+    if (messageRows.length > 0) await tx.chatMessage.createMany({ data: messageRows as any[] })
+    if (noteRows.length > 0) await tx.note.createMany({ data: noteRows as any[] })
+    if (logRows.length > 0) await tx.sessionLog.createMany({ data: logRows as any[] })
 
     if (bundle.recordings.length > 0) {
       await tx.recordingMetadata.createMany({
@@ -630,99 +561,15 @@ export async function importCampaignBundle(
       select: { id: true },
     })
 
-    return {
-      campaign,
-      artifactId: artifact.id,
-      counts,
-    }
+    return { campaign, artifactId: artifact.id, counts }
   })
 
   return imported
 }
 
-export async function listRecordingMetadata(prisma: PrismaClient, campaignId: string) {
-  return prisma.recordingMetadata.findMany({
-    where: { campaignId },
-    orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
-    select: {
-      id: true,
-      campaignId: true,
-      sessionId: true,
-      roomId: true,
-      title: true,
-      storageKey: true,
-      sourceUrl: true,
-      durationSeconds: true,
-      startedAt: true,
-      endedAt: true,
-      journalSummary: true,
-      metadata: true,
-      session: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      room: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
-}
-
-export async function createRecordingMetadata(prisma: PrismaClient, input: RecordingCreateInput) {
-  return prisma.recordingMetadata.create({
-    data: {
-      campaignId: input.campaignId,
-      sessionId: input.sessionId || null,
-      roomId: input.roomId || null,
-      title: input.title,
-      storageKey: input.storageKey || null,
-      sourceUrl: input.sourceUrl || null,
-      durationSeconds: input.durationSeconds || null,
-      startedAt: toDate(input.startedAt),
-      endedAt: toDate(input.endedAt),
-      journalSummary: input.journalSummary || null,
-      metadata: input.metadata || undefined,
-    },
-    select: {
-      id: true,
-      campaignId: true,
-      sessionId: true,
-      roomId: true,
-      title: true,
-      storageKey: true,
-      sourceUrl: true,
-      durationSeconds: true,
-      startedAt: true,
-      endedAt: true,
-      journalSummary: true,
-      metadata: true,
-      session: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      room: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
-}
+// ─── Portability: Artifact ────────────────────────────────────────────────────
 
 export async function createOperationalExportArtifact(
-  prisma: PrismaClient,
   actorUserId: string,
   settings: Record<string, unknown>,
   telemetry: Array<Record<string, unknown>>,
@@ -753,10 +600,7 @@ export async function createOperationalExportArtifact(
     select: { id: true },
   })
 
-  return {
-    artifactId: artifact.id,
-    bundle,
-  }
+  return { artifactId: artifact.id, bundle }
 }
 
 export function isValidTransferBundle(input: unknown): input is CampaignTransferBundle {
@@ -771,4 +615,81 @@ export function portabilityArtifactTypeLabel(type: PortabilityArtifactType): str
 
 export function defaultRecordingState(): PresenceState {
   return 'OFFLINE'
+}
+
+// ─── Portability: Recording Metadata ─────────────────────────────────────────
+
+interface RecordingCreateInput {
+  campaignId: string
+  sessionId?: string | null
+  roomId?: string | null
+  title: string
+  storageKey?: string | null
+  sourceUrl?: string | null
+  durationSeconds?: number | null
+  startedAt?: string | null
+  endedAt?: string | null
+  journalSummary?: string | null
+  metadata?: Prisma.InputJsonValue | null
+}
+
+export async function listRecordingMetadata(campaignId: string) {
+  return prisma.recordingMetadata.findMany({
+    where: { campaignId },
+    orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
+    select: {
+      id: true,
+      campaignId: true,
+      sessionId: true,
+      roomId: true,
+      title: true,
+      storageKey: true,
+      sourceUrl: true,
+      durationSeconds: true,
+      startedAt: true,
+      endedAt: true,
+      journalSummary: true,
+      metadata: true,
+      session: { select: { id: true, name: true } },
+      room: { select: { id: true, name: true } },
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+}
+
+export async function createRecordingMetadata(input: RecordingCreateInput) {
+  return prisma.recordingMetadata.create({
+    data: {
+      campaignId: input.campaignId,
+      sessionId: input.sessionId || null,
+      roomId: input.roomId || null,
+      title: input.title,
+      storageKey: input.storageKey || null,
+      sourceUrl: input.sourceUrl || null,
+      durationSeconds: input.durationSeconds || null,
+      startedAt: toDate(input.startedAt),
+      endedAt: toDate(input.endedAt),
+      journalSummary: input.journalSummary || null,
+      metadata: input.metadata || undefined,
+    },
+    select: {
+      id: true,
+      campaignId: true,
+      sessionId: true,
+      roomId: true,
+      title: true,
+      storageKey: true,
+      sourceUrl: true,
+      durationSeconds: true,
+      startedAt: true,
+      endedAt: true,
+      journalSummary: true,
+      metadata: true,
+      session: { select: { id: true, name: true } },
+      room: { select: { id: true, name: true } },
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
 }

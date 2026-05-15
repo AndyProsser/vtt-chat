@@ -20,7 +20,7 @@ export enum SessionState {
   CLEANUP = 'CLEANUP',
 }
 
-export type SessionLifecycleState = SessionState | 'INACTIVE'
+export type SessionLifecycleState = SessionState
 
 export enum RoomType {
   MAIN = 'MAIN',

@@ -82,21 +82,18 @@ describe('DMAudioControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply Environment' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/audio/environments/apply',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer token',
-          },
-          body: JSON.stringify({
-            sessionId: SESSION_ID,
-            roomId: ROOM_A,
-            environmentName: 'Tavern',
-          }),
-        }
-      )
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/environments/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token',
+        },
+        body: JSON.stringify({
+          sessionId: SESSION_ID,
+          roomId: ROOM_A,
+          environmentName: 'Tavern',
+        }),
+      })
     })
   })
 
@@ -152,22 +149,19 @@ describe('DMAudioControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mute' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/audio/overrides/dm/apply',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer token',
-          },
-          body: JSON.stringify({
-            sessionId: SESSION_ID,
-            targetUserId: PLAYER_ID,
-            overrideType: 'MUTE',
-            parameters: undefined,
-          }),
-        }
-      )
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/audio/overrides/dm/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token',
+        },
+        body: JSON.stringify({
+          sessionId: SESSION_ID,
+          targetUserId: PLAYER_ID,
+          overrideType: 'MUTE',
+          parameters: undefined,
+        }),
+      })
     })
 
     expect(

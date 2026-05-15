@@ -1,6 +1,6 @@
 # Backend Structure Consistency Plan
 
-Last updated: 2026-05-02
+Last updated: 2026-05-15
 
 ## Goals
 
@@ -21,53 +21,117 @@ Last updated: 2026-05-02
 
 ## Route Refactor Status
 
-Completed extraction waves:
+Legend:
 
-- campaign external links moved from route into service:
+- [x] Completed
+- [~] Partially completed / in progress
+- [ ] Not completed
+
+Checklist:
+
+- [x] Campaign external links moved from route into service.
   - backend/src/services/campaign-external-links.service.ts
   - backend/src/api/campaign.routes.ts
-- integration sync moved from route into service:
+- [x] Integration sync moved from route into service.
   - backend/src/services/integration-sync.service.ts
   - backend/src/api/integrations.routes.ts
-- metadata runtime closure implemented with route + core split:
-  - backend/src/api/metadata.routes.ts
-  - backend/src/core/metadata/\*
-- auth/user auth-context lookups moved from routes into service:
-  - backend/src/services/auth-user-context.service.ts
+- [~] Metadata runtime closure extracted from route, but not into backend/src/core/metadata/\* as originally planned.
+  - Implemented at:
+    - backend/src/api/metadata.routes.ts
+    - backend/src/services/metadata.service.ts
+  - Planned path not present:
+    - backend/src/core/metadata/\*
+- [x] Auth/user auth-context lookups moved from routes into service layer.
+  - backend/src/services/auth/user-context.service.ts
   - backend/src/api/auth.routes.ts
   - backend/src/api/users.routes.ts
-- shared auth-state validation moved into service and reused by infra middleware:
-  - backend/src/services/auth-user-context.service.ts
+- [x] Shared auth-state validation moved into service and reused by infra middleware.
+  - backend/src/services/auth/user-context.service.ts
   - backend/src/infra/http/middleware.ts
-- session read-access logic extracted for users/logs endpoints:
-  - backend/src/services/session-access.service.ts
+- [x] Session read-access logic extracted for users/logs endpoints.
+  - backend/src/services/session/access.service.ts
   - backend/src/api/session.routes.ts
 
-Remaining high-priority route hotspots:
+Completed service modularization waves:
 
-1. backend/src/api/admin.routes.ts
-2. backend/src/api/notes.routes.ts
-3. backend/src/api/rooms.routes.ts
-4. backend/src/api/audio.routes.ts
-5. backend/src/api/session.routes.ts
+- [x] Admin domain fully consolidated under `services/admin/` with a barrel entry point.
+  - backend/src/services/admin.service.ts (barrel re-exporting all domain sub-files)
+  - backend/src/services/admin/admin-core.service.ts (AdminService class)
+  - backend/src/services/admin/admin-access.service.ts (auth, invites, audit, handoff)
+  - backend/src/services/admin/admin-campaigns.service.ts (campaign listing + archive markers)
+  - backend/src/services/admin/admin-portability.service.ts (export/import bundles, recording metadata)
+  - backend/src/services/admin/admin-campaign-operations.service.ts (campaign route handlers)
+  - backend/src/services/admin/admin-integrations.service.ts (integration system management)
+  - backend/src/services/admin/admin-settings.service.ts (runtime settings + backup/export)
+  - backend/src/services/admin/admin-telemetry.service.ts (telemetry dashboard, status, logs)
+  - backend/src/services/admin/admin-users.service.ts (user listing, export, CSV, import preview)
+  - DTOs, constants, and repositories split by domain:
+    - backend/src/constants/admin-users.constants.ts
+    - backend/src/constants/admin-campaigns.constants.ts
+    - backend/src/constants/admin-portability.constants.ts
+    - backend/src/types/admin-users.types.ts
+    - backend/src/types/admin-campaigns.types.ts
+    - backend/src/repositories/admin-users.repository.ts
+    - backend/src/repositories/admin-campaigns.repository.ts
+- [x] Room service split into membership, lifecycle, and whisper modules with compatibility exports.
+  - backend/src/services/room/
+  - backend/src/services/room.service.ts (compat re-export)
+- [x] Notes route helper/DTO slice split into constants, route DTOs, and helper service.
+  - backend/src/constants/notes.constants.ts
+  - backend/src/types/notes-route.types.ts
+  - backend/src/services/notes/route-helpers.service.ts
+- [x] Notes service split into feature modules with compatibility exports.
+  - backend/src/services/notes/
+  - backend/src/services/notes.service.ts (compat re-export)
+
+High-priority route hotspots checklist:
+
+- [x] backend/src/api/admin.routes.ts
+  - All admin domain logic extracted into `backend/src/services/admin/` sub-files:
+    - Telemetry (dashboard, status, logs): `backend/src/services/admin/admin-telemetry.service.ts`
+    - Settings (state, update, backup, export): `backend/src/services/admin/admin-settings.service.ts`
+    - Integrations systems (list, authorize, block, update): `backend/src/services/admin/admin-integrations.service.ts`
+    - Campaign operations (rooms, session end, archive/restore, export, recordings, move-player, import): `backend/src/services/admin/admin-campaign-operations.service.ts`
+    - Portability (export/import bundles, recording metadata): `backend/src/services/admin/admin-portability.service.ts`
+    - Users (listing, export, CSV, import preview): `backend/src/services/admin/admin-users.service.ts`
+    - Campaigns (listing, archive markers): `backend/src/services/admin/admin-campaigns.service.ts`
+  - Audit writes delegate to `writeAdminAudit` in `backend/src/services/admin/admin-access.service.ts`
+  - `backend/src/api/admin.routes.ts` and `backend/src/api/admin-access.routes.ts` contain no direct Prisma access.
+  - `backend/src/services/admin.service.ts` is a barrel re-exporting all domain sub-files.
+  - Intermediate shim files (`admin.services.ts`, `access/`, `audit/`) removed.
+- [~] backend/src/api/notes.routes.ts
+  - Progress in this batch:
+    - Route-local request/visibility helpers moved into service/types/constants:
+      - backend/src/services/notes/route-helpers.service.ts
+      - backend/src/types/notes-route.types.ts
+      - backend/src/constants/notes.constants.ts
+  - Remaining:
+    - Route still coordinates note CRUD and WS broadcast plumbing.
+- [~] backend/src/api/rooms.routes.ts
+  - Uses services, but still contains room reconciliation and event orchestration in route layer.
+- [~] backend/src/api/audio.routes.ts
+  - Uses services, but still contains authz/control/event assembly logic in route layer.
+- [~] backend/src/api/session.routes.ts
+  - Contains extracted access service usage, but remains a large orchestrator route file.
 
 ## Types Normalization Status
 
-Completed:
+Checklist:
 
-- Split backend/src/types/index.ts into focused modules:
-  - backend/src/types/ws.types.ts
-  - backend/src/types/api.types.ts
-  - backend/src/types/auth.types.ts
-  - backend/src/types/service.types.ts
-  - backend/src/types/errors.types.ts
-  - backend/src/types/pagination.types.ts
-- Preserved backward compatibility via barrel exports in backend/src/types/index.ts.
-
-Next steps:
-
-- Move route-local DTOs into domain type modules where reused.
-- Remove stale legacy type contracts that no longer match runtime events.
+- [x] Split backend/src/types/index.ts into focused modules.
+  - Baseline modules from plan are present:
+    - backend/src/types/ws.types.ts
+    - backend/src/types/api.types.ts
+    - backend/src/types/auth.types.ts
+    - backend/src/types/service.types.ts
+    - backend/src/types/errors.types.ts
+    - backend/src/types/pagination.types.ts
+  - Additional domain modules also exist (metadata, notes, room, session, audio, integrations, etc.).
+- [x] Preserved backward compatibility via barrel exports in backend/src/types/index.ts.
+- [x] Move route-local DTOs into domain type modules where reused.
+  - backend/src/types/admin-users.types.ts
+  - backend/src/types/admin-campaigns.types.ts
+- [~] Remove stale legacy type contracts that no longer match runtime events.
 
 ## Refactor Rules (Apply to Every Route)
 

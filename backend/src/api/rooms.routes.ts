@@ -14,7 +14,6 @@ import { addUserToSession, getSession, getSessionUsers } from '@/services/sessio
 import { clearRoomMessages } from '@/services/chat.service'
 import { config } from '@/infra/config'
 import {
-  closeRoom,
   createRoom,
   deleteRoom,
   endWhisperBubbleForSession,
@@ -873,16 +872,32 @@ async function deleteRoomHandler(req: Request, res: Response) {
     }
 
     const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
-    const closeResult = await closeRoom({
-      sessionId: sessionId as UUID,
-      roomId: room.id,
-      mainRoomId: mainRoom.id,
-    })
+    const roomMemberIds = await getRoomMemberIds(sessionId as UUID, room.id)
+    const sessionUsers = await getSessionUsers(sessionId as UUID)
+    const usernamesById = new Map<UUID, string>()
+    const movedUserIds: UUID[] = []
 
-    const movedUserIds = closeResult.movedUserIds
-    const usernamesById = new Map<UUID, string>(
-      closeResult.movedUsers.map((entry) => [entry.userId, entry.username])
-    )
+    for (const memberId of roomMemberIds) {
+      const member = sessionUsers.find((entry) => entry.id === memberId)
+      if (!member) {
+        continue
+      }
+
+      const movedPresence = await joinRoom({
+        sessionId: sessionId as UUID,
+        roomId: mainRoom.id,
+        userId: member.id as UUID,
+        username: member.username,
+        state: PresenceState.ONLINE,
+      })
+
+      if (!movedPresence) {
+        continue
+      }
+
+      usernamesById.set(member.id as UUID, member.username)
+      movedUserIds.push(member.id as UUID)
+    }
 
     await deleteRoom({ sessionId: sessionId as UUID, roomId: room.id })
 

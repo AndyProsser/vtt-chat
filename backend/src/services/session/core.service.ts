@@ -134,7 +134,7 @@ export function createSession(
     id: sessionId,
     name,
     dmId,
-    state: 'INACTIVE',
+    state: SessionStateEnum.IDLE,
     createdAt: now,
   }))
 }

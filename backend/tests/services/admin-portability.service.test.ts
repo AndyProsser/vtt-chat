@@ -1,6 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CampaignTransferBundle } from '@/types/portability.types'
 
+const mocks = vi.hoisted(() => ({
+  mockCampaignFindUnique: vi.fn(),
+  mockArtifactCreate: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockRecordingFindMany: vi.fn(),
+  mockRecordingCreate: vi.fn(),
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    campaign: { findUnique: mocks.mockCampaignFindUnique },
+    importExportArtifact: { create: mocks.mockArtifactCreate },
+    $transaction: mocks.mockTransaction,
+    recordingMetadata: {
+      findMany: mocks.mockRecordingFindMany,
+      create: mocks.mockRecordingCreate,
+    },
+  }),
+}))
+
 import {
   buildCampaignExport,
   createOperationalExportArtifact,
@@ -10,7 +30,7 @@ import {
   isValidTransferBundle,
   listRecordingMetadata,
   portabilityArtifactTypeLabel,
-} from '@/services/admin-portability.service'
+} from '@/services/admin.service'
 
 const NOW = new Date('2026-05-02T00:00:00.000Z')
 
@@ -151,11 +171,9 @@ describe('admin-portability.service', () => {
   })
 
   it('buildCampaignExport returns null for missing campaign', async () => {
-    const prisma = {
-      campaign: { findUnique: vi.fn().mockResolvedValue(null) },
-    } as any
+    mocks.mockCampaignFindUnique.mockResolvedValue(null)
 
-    const result = await buildCampaignExport(prisma, 'missing')
+    const result = await buildCampaignExport('missing')
 
     expect(result).toBeNull()
   })
@@ -182,12 +200,10 @@ describe('admin-portability.service', () => {
       recordings: [],
     }
 
-    const prisma = {
-      campaign: { findUnique: vi.fn().mockResolvedValue(campaign) },
-      importExportArtifact: { create: vi.fn().mockResolvedValue({ id: 'artifact-1' }) },
-    } as any
+    mocks.mockCampaignFindUnique.mockResolvedValue(campaign)
+    mocks.mockArtifactCreate.mockResolvedValue({ id: 'artifact-1' })
 
-    const result = await buildCampaignExport(prisma, 'campaign-1', 'actor-1')
+    const result = await buildCampaignExport('campaign-1', 'actor-1')
 
     expect(result?.artifactId).toBe('artifact-1')
     expect(result?.counts).toEqual({
@@ -200,16 +216,14 @@ describe('admin-portability.service', () => {
       logs: 0,
       recordings: 0,
     })
-    expect(prisma.importExportArtifact.create).toHaveBeenCalledTimes(1)
+    expect(mocks.mockArtifactCreate).toHaveBeenCalledTimes(1)
   })
 
   it('importCampaignBundle returns null for invalid payload', async () => {
-    const prisma = { $transaction: vi.fn() } as any
-
-    const result = await importCampaignBundle(prisma, 'actor-1', { bad: true })
+    const result = await importCampaignBundle('actor-1', { bad: true })
 
     expect(result).toBeNull()
-    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(mocks.mockTransaction).not.toHaveBeenCalled()
   })
 
   it('importCampaignBundle imports members, session trees, and recordings', async () => {
@@ -242,11 +256,11 @@ describe('admin-portability.service', () => {
       importExportArtifact: { create: vi.fn().mockResolvedValue({ id: 'artifact-import-1' }) },
     }
 
-    const prisma = {
-      $transaction: vi.fn(async (cb: (trx: typeof tx) => Promise<unknown>) => cb(tx)),
-    } as any
+    mocks.mockTransaction.mockImplementation(async (cb: (trx: typeof tx) => Promise<unknown>) =>
+      cb(tx)
+    )
 
-    const result = await importCampaignBundle(prisma, 'actor-1', bundle)
+    const result = await importCampaignBundle('actor-1', bundle)
 
     expect(result).toBeTruthy()
     expect(result?.artifactId).toBe('artifact-import-1')
@@ -258,15 +272,11 @@ describe('admin-portability.service', () => {
   })
 
   it('lists and creates recording metadata via prisma passthrough', async () => {
-    const prisma = {
-      recordingMetadata: {
-        findMany: vi.fn().mockResolvedValue([{ id: 'rec-1' }]),
-        create: vi.fn().mockResolvedValue({ id: 'rec-2' }),
-      },
-    } as any
+    mocks.mockRecordingFindMany.mockResolvedValue([{ id: 'rec-1' }])
+    mocks.mockRecordingCreate.mockResolvedValue({ id: 'rec-2' })
 
-    const list = await listRecordingMetadata(prisma, 'campaign-1')
-    const created = await createRecordingMetadata(prisma, {
+    const list = await listRecordingMetadata('campaign-1')
+    const created = await createRecordingMetadata({
       campaignId: 'campaign-1',
       title: 'Session Mix',
       durationSeconds: 123,
@@ -277,14 +287,9 @@ describe('admin-portability.service', () => {
   })
 
   it('creates operations export artifact with bundled payload metadata', async () => {
-    const prisma = {
-      importExportArtifact: {
-        create: vi.fn().mockResolvedValue({ id: 'ops-1' }),
-      },
-    } as any
+    mocks.mockArtifactCreate.mockResolvedValue({ id: 'ops-1' })
 
     const result = await createOperationalExportArtifact(
-      prisma,
       'actor-1',
       { maintenanceMode: 'off' },
       [{ id: 't1' }],
@@ -294,7 +299,7 @@ describe('admin-portability.service', () => {
 
     expect(result.artifactId).toBe('ops-1')
     expect(result.bundle.version).toBe(1)
-    expect(prisma.importExportArtifact.create).toHaveBeenCalledTimes(1)
+    expect(mocks.mockArtifactCreate).toHaveBeenCalledTimes(1)
   })
 
   it('validates transfer bundle and utility labels/states', () => {

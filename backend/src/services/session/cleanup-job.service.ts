@@ -181,11 +181,15 @@ export class SessionCleanupJobService {
             try {
               await transitionToCleanup(sibling)
             } catch (err) {
-              logger.warn('session-cleanup-job', 'Failed to transition sibling session to CLEANUP', {
-                sessionId: sibling.id,
-                campaignId,
-                error: err instanceof Error ? err.message : String(err),
-              })
+              logger.warn(
+                'session-cleanup-job',
+                'Failed to transition sibling session to CLEANUP',
+                {
+                  sessionId: sibling.id,
+                  campaignId,
+                  error: err instanceof Error ? err.message : String(err),
+                }
+              )
             }
           }
 
@@ -195,10 +199,14 @@ export class SessionCleanupJobService {
           await transitionToCleanup(session)
         }
       } catch (error) {
-        logger.warn('session-cleanup-job', 'Error processing ENDED session in phaseEndedToCleanup', {
-          sessionId,
-          error: error instanceof Error ? error.message : String(error),
-        })
+        logger.warn(
+          'session-cleanup-job',
+          'Error processing ENDED session in phaseEndedToCleanup',
+          {
+            sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        )
       }
     }
   }

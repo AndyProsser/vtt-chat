@@ -31,7 +31,7 @@
 - [x] Add `listEndedSessionIdsByCampaign(campaignId)` repo function — all ENDED sessions for batch transition
 - [x] Implement `phaseEndedToCleanup()` in cleanup job: scan ENDED sessions, check cooldown + disconnected, detect final campaign session, batch-transition to CLEANUP, purge greenroom
 - [x] Implement `phaseCleanupToIdle()` in cleanup job: refactored from original `runOnce()`; resets CLEANUP → IDLE after minCleanupAge
-- [x] Update frontend to handle CLEANUP state on store hydration — already handled via `toPublicSessionState(CLEANUP) → 'INACTIVE'` and `isGreenroomSessionState(CLEANUP) → true`
+- [x] Update frontend to handle CLEANUP state on store hydration — handled via canonical lifecycle state (`SessionState.CLEANUP`) and greenroom-state checks
 - [ ] Broadcast `SESSION:STATE_CHANGED` WS event when job transitions ENDED → CLEANUP — **deferred**: all users are disconnected when this transition fires; no active listeners to receive it
 
 ---

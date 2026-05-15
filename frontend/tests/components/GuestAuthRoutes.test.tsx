@@ -38,7 +38,7 @@ describe('guest auth route surfaces', () => {
                 connectedPlayersLabel: '0',
                 connectedSpectatorsRounded: 0,
                 connectedSpectatorsLabel: '0',
-                displayState: 'INACTIVE',
+                displayState: 'IDLE',
               },
               platformStatus: {
                 online: true,
@@ -164,7 +164,7 @@ describe('guest auth route surfaces', () => {
                 connectedPlayersLabel: '0',
                 connectedSpectatorsRounded: 0,
                 connectedSpectatorsLabel: '0',
-                displayState: 'INACTIVE',
+                displayState: 'IDLE',
               },
               platformStatus: {
                 online: true,

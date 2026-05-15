@@ -380,7 +380,7 @@ describe('session state room orchestration', () => {
     ])
   })
 
-  it('accepts INACTIVE as the canonical alias for greenroom transition', async () => {
+  it('accepts IDLE as the canonical greenroom transition state', async () => {
     const app = buildApp()
     const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
 
@@ -388,7 +388,7 @@ describe('session state room orchestration', () => {
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
-      state: 'INACTIVE',
+      state: 'IDLE',
       createdAt: Date.now(),
     })
 
@@ -406,7 +406,7 @@ describe('session state room orchestration', () => {
     const response = await request(app)
       .put(`/api/session/${SESSION_ID}/state`)
       .set('Authorization', 'Bearer token')
-      .send({ state: 'INACTIVE' })
+      .send({ state: 'IDLE' })
 
     expect(response.status).toBe(200)
     expect(mocks.mockUpdateSessionState).toHaveBeenCalledWith(SESSION_ID, 'IDLE', DM_ID)

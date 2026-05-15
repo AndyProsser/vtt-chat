@@ -16,22 +16,33 @@ const mocks = vi.hoisted(() => ({
   mockLoadLogRetentionSettings: vi.fn(),
   mockUpdateLogRetentionSettings: vi.fn(),
   mockCreateOperationalExportArtifact: vi.fn(),
+  mockImportExportArtifactCreate: vi.fn(),
 }))
 
 vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
-  AdminService: {
-    adminUsersExist: mocks.mockAdminUsersExist,
-    createAdmin: vi.fn(),
-    authenticateAdmin: vi.fn(),
-    getAdminUsers: vi.fn(),
-    promoteUserAdminRole: vi.fn(),
-    getAdminById: vi.fn(),
-  },
-}))
+vi.mock('@/services/admin.service', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/services/admin.service')>()
+  return {
+    ...mod,
+    AdminService: {
+      adminUsersExist: mocks.mockAdminUsersExist,
+      createAdmin: vi.fn(),
+      authenticateAdmin: vi.fn(),
+      getAdminUsers: vi.fn(),
+      promoteUserAdminRole: vi.fn(),
+      getAdminById: vi.fn(),
+    },
+    buildCampaignExport: vi.fn(),
+    importCampaignBundle: vi.fn(),
+    isValidTransferBundle: vi.fn().mockReturnValue(true),
+    listRecordingMetadata: vi.fn(),
+    createRecordingMetadata: vi.fn(),
+    createOperationalExportArtifact: mocks.mockCreateOperationalExportArtifact,
+  }
+})
 
 vi.mock('@/infra/telemetry-store', () => ({
   loadTelemetryEvents: mocks.mockLoadTelemetryEvents,
@@ -41,15 +52,6 @@ vi.mock('@/infra/telemetry-store', () => ({
   findDiagnosticEventById: mocks.mockFindDiagnosticEventById,
   loadLogRetentionSettings: mocks.mockLoadLogRetentionSettings,
   updateLogRetentionSettings: mocks.mockUpdateLogRetentionSettings,
-}))
-
-vi.mock('@/services/admin-portability.service', () => ({
-  buildCampaignExport: vi.fn(),
-  importCampaignBundle: vi.fn(),
-  isValidTransferBundle: vi.fn().mockReturnValue(true),
-  listRecordingMetadata: vi.fn(),
-  createRecordingMetadata: vi.fn(),
-  createOperationalExportArtifact: mocks.mockCreateOperationalExportArtifact,
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -107,6 +109,10 @@ vi.mock('@/infra/db', () => ({
     appEventLogLegacy: {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
+    },
+    importExportArtifact: {
+      create: mocks.mockImportExportArtifactCreate,
+      findUnique: vi.fn(),
     },
   }),
 }))
@@ -235,17 +241,7 @@ describe('admin telemetry durability and drill-down', () => {
       diagnosticMaxFileSizeMb: 15,
       diagnosticMaxFiles: 8,
     })
-    mocks.mockCreateOperationalExportArtifact.mockResolvedValue({
-      artifactId: 'ops-artifact-1',
-      bundle: {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        settings: { primaryRegion: 'us-east-1' },
-        telemetry: [],
-        diagnostics: [],
-        auditLog: [],
-      },
-    })
+    mocks.mockImportExportArtifactCreate.mockResolvedValue({ id: 'ops-artifact-1' })
   })
 
   it('returns merged telemetry and audit logs with durable ids', async () => {
@@ -350,6 +346,5 @@ describe('admin telemetry durability and drill-down', () => {
 
     expect(response.status).toBe(200)
     expect(response.body.artifactId).toBe('ops-artifact-1')
-    expect(mocks.mockCreateOperationalExportArtifact).toHaveBeenCalledTimes(1)
   })
 })

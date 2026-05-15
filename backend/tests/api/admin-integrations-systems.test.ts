@@ -14,16 +14,20 @@ vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
-  AdminService: {
-    adminUsersExist: mocks.mockAdminUsersExist,
-    createInitialAdmin: vi.fn(),
-    authenticateAdmin: vi.fn(),
-    getAdminUsers: vi.fn(),
-    promoteUserAdminRole: vi.fn(),
-    getAdminById: vi.fn(),
-  },
-}))
+vi.mock('@/services/admin.service', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/services/admin.service')>()
+  return {
+    ...mod,
+    AdminService: {
+      adminUsersExist: mocks.mockAdminUsersExist,
+      createInitialAdmin: vi.fn(),
+      authenticateAdmin: vi.fn(),
+      getAdminUsers: vi.fn(),
+      promoteUserAdminRole: vi.fn(),
+      getAdminById: vi.fn(),
+    },
+  }
+})
 
 vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({

@@ -210,7 +210,6 @@ export function CommandCenterFrame({
 
   useEffect(() => {
     if (toolbarRightRailOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsRightRailVisible(true)
       setIsRightRailClosing(false)
       return

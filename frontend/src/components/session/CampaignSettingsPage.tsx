@@ -356,8 +356,8 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
                 </button>
               </div>
               <p className="session-card-subtitle">
-                ALLOW permits DM and players to sync updates. DM_ONLY restricts updates to DM.
-                BLOCK disables integration-driven updates.
+                ALLOW permits DM and players to sync updates. DM_ONLY restricts updates to DM. BLOCK
+                disables integration-driven updates.
               </p>
             </form>
 

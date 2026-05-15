@@ -4,9 +4,8 @@ import {
   isValidNoteTitle,
   isValidNoteContent,
   isValidNoteVisibility,
-  isValidTag,
-  NoteVisibility,
   ErrorCode,
+  NoteVisibility,
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
@@ -24,6 +23,12 @@ import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
 import { logger } from '@/utils/logger'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
+import {
+  noteVisibleTo,
+  parseCreateNoteRequest,
+  parseUpdateNoteRequest,
+} from '@/services/notes/route-helpers.service'
+import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
 
 const router = Router()
 
@@ -44,36 +49,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   ;(req as any).user = user
   next()
-}
-
-function sanitizeTags(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((tag): tag is string => isValidTag(tag))
-}
-
-function sanitizeAllowedUsers(value: unknown): UUID[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((id): id is UUID => isValidUUID(id))
-}
-
-function noteVisibleTo(note: {
-  authorId: UUID
-  visibility: NoteVisibility
-  allowedUsers?: UUID[]
-  dmId: UUID
-}): UUID[] | undefined {
-  if (note.visibility === NoteVisibility.PLAYERS_VISIBLE) {
-    return undefined
-  }
-
-  const visible = new Set<UUID>([note.authorId, note.dmId])
-  if (note.visibility === NoteVisibility.CUSTOM) {
-    for (const userId of note.allowedUsers || []) {
-      visible.add(userId)
-    }
-  }
-
-  return Array.from(visible)
 }
 
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
@@ -106,7 +81,9 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { sessionId, title, content, visibility, tags, allowedUsers } = req.body
+  const { sessionId, title, content, visibility, tags, allowedUsers } = parseCreateNoteRequest(
+    req.body
+  )
 
   if (!isValidUUID(sessionId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_SESSION, message: 'Invalid sessionId' })
@@ -153,8 +130,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     title,
     content,
     visibility,
-    tags: sanitizeTags(tags),
-    allowedUsers: visibility === NoteVisibility.CUSTOM ? sanitizeAllowedUsers(allowedUsers) : [],
+    tags,
+    allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
   })
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -198,7 +175,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { noteId } = req.params
-  const { title, content, visibility, tags, allowedUsers } = req.body
+  const { title, content, visibility, tags, allowedUsers } = parseUpdateNoteRequest(req.body)
 
   if (!isValidUUID(noteId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
@@ -251,10 +228,10 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
       title,
       content,
       visibility,
-      tags: tags !== undefined ? sanitizeTags(tags) : undefined,
+      tags,
       allowedUsers:
         visibility === NoteVisibility.CUSTOM || allowedUsers !== undefined
-          ? sanitizeAllowedUsers(allowedUsers)
+          ? allowedUsers
           : undefined,
     })
   } catch (err: any) {
@@ -374,7 +351,9 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   })
 
   const snippet =
-    published.content.length > 280 ? `${published.content.slice(0, 280)}...` : published.content
+    published.content.length > NOTE_PUBLISH_SNIPPET_MAX_LENGTH
+      ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
+      : published.content
   const message = await sendMessage({
     sessionId: published.sessionId,
     authorId: user.userId as UUID,

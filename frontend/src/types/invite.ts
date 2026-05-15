@@ -1,6 +1,6 @@
 import type { Role, UUID } from '@shared'
 
-export type InviteCampaignDisplayState = 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+export type InviteCampaignDisplayState = 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
 
 export interface InviteCampaign {
   id: string

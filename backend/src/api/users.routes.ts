@@ -80,34 +80,28 @@ router.patch('/me', requireAuth, async (req: Request, res: Response) => {
 
   if (displayName !== undefined) {
     if (typeof displayName !== 'string') {
-      return res
-        .status(400)
-        .json({
-          code: ErrorCode.INVALID_INPUT,
-          message: 'displayName must be a string',
-          field: 'displayName',
-        })
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'displayName must be a string',
+        field: 'displayName',
+      })
     }
     if (displayName.trim().length > 64) {
-      return res
-        .status(400)
-        .json({
-          code: ErrorCode.INVALID_INPUT,
-          message: 'displayName must be 64 characters or fewer',
-          field: 'displayName',
-        })
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'displayName must be 64 characters or fewer',
+        field: 'displayName',
+      })
     }
   }
 
   if (avatarUrl !== undefined && avatarUrl !== null) {
     if (typeof avatarUrl !== 'string') {
-      return res
-        .status(400)
-        .json({
-          code: ErrorCode.INVALID_INPUT,
-          message: 'avatarUrl must be a string or null',
-          field: 'avatarUrl',
-        })
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'avatarUrl must be a string or null',
+        field: 'avatarUrl',
+      })
     }
     if (avatarUrl.trim().length > 2_000_000) {
       return res

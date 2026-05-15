@@ -58,5 +58,6 @@
     },
     "chat.agent.maxRequests": 100,
     "powershell.cwd": "vtt-chat",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
   },
 }
