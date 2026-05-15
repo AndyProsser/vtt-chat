@@ -22,7 +22,7 @@ export type InviteValidationResult =
         connectedPlayersLabel: string
         connectedSpectatorsRounded: number
         connectedSpectatorsLabel: string
-        displayState: 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+        displayState: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
       }
       platformStatus: PlatformStatus
     }

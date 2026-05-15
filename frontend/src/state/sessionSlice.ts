@@ -200,7 +200,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           id: payload.id,
           name: payload.name,
           dmId: payload.dmId,
-          state: 'INACTIVE' as SessionLifecycleState,
+          state: 'IDLE' as SessionLifecycleState,
           description: payload.description,
           createdAt: event.timestamp,
         },
@@ -250,7 +250,11 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           pauseCount: prevStats.pauseCount + 1,
           pauseStartedAt: undefined,
         }
-      } else if (payload.state === 'INACTIVE' || payload.state === 'ENDED') {
+      } else if (
+        payload.state === 'IDLE' ||
+        payload.state === 'ENDED' ||
+        payload.state === 'CLEANUP'
+      ) {
         // Session ended or reset — keep stats until explicit clear
         nextStats = { ...prevStats, pauseStartedAt: undefined }
       }

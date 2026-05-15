@@ -293,11 +293,7 @@ export class SessionDisconnectCascadeService {
       return
     }
 
-    if (
-      session.state !== SessionState.ENDED &&
-      session.state !== SessionState.IDLE &&
-      session.state !== 'INACTIVE'
-    ) {
+    if (session.state !== SessionState.ENDED && session.state !== SessionState.IDLE) {
       return
     }
 

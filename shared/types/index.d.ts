@@ -18,7 +18,7 @@ export declare enum SessionState {
   ENDED = 'ENDED',
   CLEANUP = 'CLEANUP',
 }
-export type SessionLifecycleState = SessionState | 'INACTIVE'
+export type SessionLifecycleState = SessionState
 export declare enum RoomType {
   MAIN = 'MAIN',
   GROUP = 'GROUP',

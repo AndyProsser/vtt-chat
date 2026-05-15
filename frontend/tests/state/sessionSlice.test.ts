@@ -150,7 +150,7 @@ describe('sessionSlice', () => {
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session).toBeDefined()
       expect(session!.name).toBe('New Campaign')
-      expect(session!.state).toBe('INACTIVE')
+      expect(session!.state).toBe('IDLE')
       expect(session!.createdAt).toBe(NOW)
     })
   })

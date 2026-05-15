@@ -89,14 +89,15 @@ export function SessionToolbar({
       sessionState === 'ACTIVE' ||
       sessionState === 'PAUSED' ||
       sessionState === 'ENDED' ||
-      sessionState === 'INACTIVE'
+      sessionState === 'IDLE' ||
+      sessionState === 'CLEANUP'
     if (!needsTick) return
 
     const timer = window.setInterval(() => {
       const now = Date.now()
       setCurrentTimeMs(now)
       setGreenroomEnteredAtMs((previous) => {
-        if (sessionState !== 'INACTIVE') {
+        if (sessionState !== 'IDLE') {
           return null
         }
         return previous ?? now
@@ -131,7 +132,10 @@ export function SessionToolbar({
         Math.floor((sessionPausedAtMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
       )
     }
-    if ((sessionState === 'ENDED' || sessionState === 'INACTIVE') && sessionEndedAtMs) {
+    if (
+      (sessionState === 'ENDED' || sessionState === 'CLEANUP' || sessionState === 'IDLE') &&
+      sessionEndedAtMs
+    ) {
       return Math.max(
         0,
         Math.floor((sessionEndedAtMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
@@ -167,7 +171,7 @@ export function SessionToolbar({
   /** Seconds elapsed since cooldown fully expired while still in ENDED state. */
   const endedElapsedSeconds = useMemo(() => {
     if (!currentTimeMs) return 0
-    if (sessionState !== 'ENDED' || !sessionEndedAtMs) return 0
+    if ((sessionState !== 'ENDED' && sessionState !== 'CLEANUP') || !sessionEndedAtMs) return 0
     const cooldownEndsAt = sessionEndedAtMs + safeCooldownDurationMs
     if (currentTimeMs <= cooldownEndsAt) return 0
     return Math.max(0, Math.floor((currentTimeMs - cooldownEndsAt) / 1000))
@@ -176,7 +180,7 @@ export function SessionToolbar({
   /** Seconds since the user entered the greenroom (local clock). */
   const greenroomElapsedSeconds = useMemo(() => {
     if (!currentTimeMs || !greenroomEnteredAtMs) return 0
-    if (sessionState !== 'INACTIVE') return 0
+    if (sessionState !== 'IDLE') return 0
     return Math.max(0, Math.floor((currentTimeMs - greenroomEnteredAtMs) / 1000))
   }, [currentTimeMs, greenroomEnteredAtMs, sessionState])
 
@@ -202,7 +206,12 @@ export function SessionToolbar({
               : formatDuration(endedElapsedSeconds),
           primaryStateClass: 'is-ended',
         }
-      case 'INACTIVE':
+      case 'CLEANUP':
+        return {
+          primaryLabel: formatDuration(endedElapsedSeconds),
+          primaryStateClass: 'is-ended',
+        }
+      case 'IDLE':
       default:
         return { primaryLabel: formatDuration(greenroomElapsedSeconds), primaryStateClass: '' }
     }
@@ -216,7 +225,10 @@ export function SessionToolbar({
   ])
 
   const canShowPopper =
-    sessionState === 'ACTIVE' || sessionState === 'PAUSED' || sessionState === 'ENDED'
+    sessionState === 'ACTIVE' ||
+    sessionState === 'PAUSED' ||
+    sessionState === 'ENDED' ||
+    sessionState === 'CLEANUP'
 
   const handleToggleTheme = () => {
     if (typeof document === 'undefined') {
@@ -332,7 +344,7 @@ export function SessionToolbar({
                     <span>Times paused</span>
                     <strong>{pauseCount}</strong>
                   </div>
-                  {sessionState === 'ENDED' ? (
+                  {sessionState === 'ENDED' || sessionState === 'CLEANUP' ? (
                     <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">
                       <span>Cooldown left</span>
                       <strong>

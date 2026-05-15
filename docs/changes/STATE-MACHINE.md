@@ -8,21 +8,21 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 
 ## 0. State Naming Clarification
 
-**Canonical contract names:** `INACTIVE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`
+**Canonical contract names:** `IDLE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`
 
-**Codebase current names:** `IDLE` (≡ `INACTIVE`), `ACTIVE`, `PAUSED`, `ENDED` (processing window before `INACTIVE`), `CLEANUP`
+**Codebase current names:** `IDLE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`
 
 **Mapping:**
 
-| Contract   | Codebase | Meaning                                                                                                                   |
-| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `INACTIVE` | `IDLE`   | Session exists but not running; green room mode.                                                                          |
-| `ACTIVE`   | `ACTIVE` | Session running; players/DM in `MAIN` with effects active.                                                                |
-| `PAUSED`   | `PAUSED` | Session suspended; players in `MAIN`, no session effects, off-the-record runtime.                                         |
-| `ENDED`    | `ENDED`  | Session has stopped; recording is shut down and summary/close-out work is triggered, but a new session may not begin yet. |
-| `CLEANUP`  | _(new)_  | Post-session: no users connected, 20min greenroom purge timer running.                                                    |
+| Contract  | Codebase  | Meaning                                                                                                                   |
+| --------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `IDLE`    | `IDLE`    | Session exists but not running; green room mode.                                                                          |
+| `ACTIVE`  | `ACTIVE`  | Session running; players/DM in `MAIN` with effects active.                                                                |
+| `PAUSED`  | `PAUSED`  | Session suspended; players in `MAIN`, no session effects, off-the-record runtime.                                         |
+| `ENDED`   | `ENDED`   | Session has stopped; recording is shut down and summary/close-out work is triggered, but a new session may not begin yet. |
+| `CLEANUP` | `CLEANUP` | Post-session: no users connected, 20min greenroom purge timer running.                                                    |
 
-**Implementation rule:** When updating codebase to enforce this contract, rename `IDLE` → `INACTIVE` for clarity, keep `ENDED` as the explicit stop/processing phase, and transition to `INACTIVE` only after the backend has triggered recording shutdown and summary/close-out work. The backend must not block on those jobs completing. If the DM disables post-session spectator chat, `ENDED` may be a very short-lived trigger state that only dispatches the required work before moving on.
+**Implementation rule:** Keep `IDLE` as the canonical greenroom state, keep `ENDED` as the explicit stop/processing phase, and transition to `IDLE` only after the backend has triggered recording shutdown and summary/close-out work. The backend must not block on those jobs completing. If the DM disables post-session spectator chat, `ENDED` may be a very short-lived trigger state that only dispatches the required work before moving on.
 
 ---
 
@@ -38,7 +38,7 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 **Examples:**
 
 - **Session:**
-  - `session.state ∈ { INACTIVE, ACTIVE, PAUSED, CLEANUP }`
+  - `session.state ∈ { IDLE, ACTIVE, PAUSED, ENDED, CLEANUP }`
   - `session.hasEnded: boolean` (optional helper)
   - `session.inactiveAnchorAt: ISO8601 | null` (first DM/player greenroom join for next-session readiness timer)
   - `session.startedAt: ISO8601 | null` (active timer anchor)

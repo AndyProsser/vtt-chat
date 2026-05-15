@@ -212,7 +212,7 @@ describe('session disconnect cascade service', () => {
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
-      state: 'INACTIVE',
+      state: 'IDLE',
       createdAt: Date.now(),
     })
     mocks.updateSessionState.mockResolvedValue({

@@ -98,8 +98,8 @@ interface CampaignSummary {
   connectedPlayersLabel?: string
   connectedSpectatorsRounded?: number
   connectedSpectatorsLabel?: string
-  displayState?: 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
-  latestSessionState?: SessionState | 'INACTIVE' | null
+  displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+  latestSessionState?: SessionState | null
 }
 
 interface ApiRoom {
@@ -306,7 +306,7 @@ function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSe
 }
 
 function formatTransitionNotice(params: {
-  nextState: SessionState | 'INACTIVE'
+  nextState: SessionState
   movedUsers: number
   targetRoomName: string
   targetState: PresenceState
@@ -319,7 +319,7 @@ function formatTransitionNotice(params: {
 
 function getCampaignDisplayState(
   campaign: CampaignSummary
-): 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' {
+): 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' {
   if (campaign.displayState) {
     return campaign.displayState
   }
@@ -432,10 +432,7 @@ function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
   return isGreenRoomName(room.name)
 }
 
-function getVisibleRoomsForSessionState(
-  rooms: RoomRecord[],
-  state: SessionState | 'INACTIVE'
-): RoomRecord[] {
+function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState): RoomRecord[] {
   if (!rooms.length) {
     return rooms
   }
@@ -452,8 +449,8 @@ function getVisibleRoomsForSessionState(
   return rooms
 }
 
-function toSessionStateValue(state: SessionState | 'INACTIVE'): SessionState {
-  return state === 'INACTIVE' ? SessionState.IDLE : state
+function toSessionStateValue(state: SessionState): SessionState {
+  return state
 }
 
 function getCampaignEntryAction(campaign: CampaignSummary): {
@@ -3101,7 +3098,7 @@ export function SessionInit({
   const canEditCharacterSettings =
     effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER
   const canEditSessionSettings =
-    currentSession?.state === 'INACTIVE' ||
+    currentSession?.state === SessionState.IDLE ||
     currentSession?.state === SessionState.ACTIVE ||
     currentSession?.state === SessionState.PAUSED
 

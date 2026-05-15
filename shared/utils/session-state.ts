@@ -1,13 +1,12 @@
 import { SessionState, type SessionLifecycleState } from '../types/index'
 
-export type CampaignDisplayState = 'INACTIVE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+export type CampaignDisplayState = 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
 
 export function normalizeSessionState(
   state: SessionLifecycleState | null | undefined
 ): SessionState | null {
   if (!state) return null
 
-  if (state === 'INACTIVE') return SessionState.IDLE
   if (state === SessionState.CLEANUP) return SessionState.CLEANUP
   if (state === SessionState.IDLE) return SessionState.IDLE
   if (state === SessionState.ACTIVE) return SessionState.ACTIVE
@@ -21,9 +20,6 @@ export function toPublicSessionState(
   state: SessionLifecycleState | null | undefined
 ): SessionLifecycleState | null {
   if (!state) return null
-
-  if (state === SessionState.IDLE) return 'INACTIVE'
-  if (state === SessionState.CLEANUP) return 'INACTIVE'
   return state
 }
 
@@ -31,24 +27,21 @@ export function isGreenroomSessionState(state: SessionLifecycleState | null | un
   if (!state) return true
 
   return (
-    state === SessionState.IDLE ||
-    state === 'INACTIVE' ||
-    state === SessionState.ENDED ||
-    state === SessionState.CLEANUP
+    state === SessionState.IDLE || state === SessionState.ENDED || state === SessionState.CLEANUP
   )
 }
 
 export function deriveCampaignDisplayState(
   latestSessionState: SessionLifecycleState | null | undefined
 ): CampaignDisplayState {
-  if (!latestSessionState) return 'INACTIVE'
+  if (!latestSessionState) return 'IDLE'
   if (latestSessionState === 'ACTIVE') return 'ACTIVE'
   if (latestSessionState === 'PAUSED') return 'PAUSED'
   return 'GREENROOM'
 }
 
 export function prettySessionState(state: SessionLifecycleState): string {
-  if (state === 'IDLE' || state === 'INACTIVE') return 'Inactive'
+  if (state === 'IDLE') return 'Idle'
   if (state === 'ACTIVE') return 'Active'
   if (state === 'PAUSED') return 'Paused'
   if (state === SessionState.CLEANUP) return 'Cleanup'
@@ -59,7 +52,7 @@ export function sessionStatusClass(state: SessionLifecycleState | 'NO_SESSION'):
   if (state === 'ACTIVE') return 'status-active'
   if (state === 'PAUSED') return 'status-paused'
   if (state === 'ENDED') return 'status-ended'
-  if (state === 'IDLE' || state === 'INACTIVE' || state === SessionState.CLEANUP) {
+  if (state === 'IDLE' || state === SessionState.CLEANUP) {
     return 'status-idle'
   }
   return 'status-none'

@@ -15,7 +15,7 @@ interface CampaignInformationPanelProps {
     dmAvatarUrl?: string | null
     connectedPlayersRounded?: number
     connectedSpectatorsRounded?: number
-    latestSessionState?: SessionLifecycleState | 'INACTIVE' | null
+    latestSessionState?: SessionLifecycleState | null
     extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   } | null
   sessionCount: number
@@ -71,12 +71,12 @@ function formatDuration(totalMs: number): string {
   return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
 }
 
-function formatSessionState(state?: SessionLifecycleState | 'INACTIVE' | null): string {
+function formatSessionState(state?: SessionLifecycleState | null): string {
   if (!state) {
     return 'Unknown'
   }
 
-  return state === 'INACTIVE' ? 'Idle' : state
+  return state === 'IDLE' ? 'Idle' : state
 }
 
 export function CampaignInformationPanel({
