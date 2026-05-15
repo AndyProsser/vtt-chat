@@ -14,7 +14,6 @@ vi.mock('@/utils', () => ({
   verifyAdminToken: mocks.mockVerifyAdminToken,
 }))
 
-vi.mock('@/services/admin.service', () => ({
 vi.mock('@/services/admin.service', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@/services/admin.service')>()
   return {
