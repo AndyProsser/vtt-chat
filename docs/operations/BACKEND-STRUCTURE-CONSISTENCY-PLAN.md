@@ -54,21 +54,25 @@ Checklist:
 
 Completed service modularization waves:
 
-- [x] Admin users slice split into DTOs, constants, repository, and subfolder services.
-  - backend/src/constants/admin-users.constants.ts
-  - backend/src/types/admin-users.types.ts
-  - backend/src/repositories/admin-users.repository.ts
-  - backend/src/services/admin-users/
-  - backend/src/services/admin-users.service.ts (compat re-export)
-- [x] Admin campaigns list slice split into DTOs, constants, repository, and service.
-  - backend/src/constants/admin-campaigns.constants.ts
-  - backend/src/types/admin-campaigns.types.ts
-  - backend/src/repositories/admin-campaigns.repository.ts
-  - backend/src/services/admin-campaigns.service.ts
-- [x] Admin portability split into feature modules with compatibility exports.
-  - backend/src/constants/admin-portability.constants.ts
-  - backend/src/services/admin-portability/
-  - backend/src/services/admin-portability.service.ts (compat re-export)
+- [x] Admin domain fully consolidated under `services/admin/` with a barrel entry point.
+  - backend/src/services/admin.service.ts (barrel re-exporting all domain sub-files)
+  - backend/src/services/admin/admin-core.service.ts (AdminService class)
+  - backend/src/services/admin/admin-access.service.ts (auth, invites, audit, handoff)
+  - backend/src/services/admin/admin-campaigns.service.ts (campaign listing + archive markers)
+  - backend/src/services/admin/admin-portability.service.ts (export/import bundles, recording metadata)
+  - backend/src/services/admin/admin-campaign-operations.service.ts (campaign route handlers)
+  - backend/src/services/admin/admin-integrations.service.ts (integration system management)
+  - backend/src/services/admin/admin-settings.service.ts (runtime settings + backup/export)
+  - backend/src/services/admin/admin-telemetry.service.ts (telemetry dashboard, status, logs)
+  - backend/src/services/admin/admin-users.service.ts (user listing, export, CSV, import preview)
+  - DTOs, constants, and repositories split by domain:
+    - backend/src/constants/admin-users.constants.ts
+    - backend/src/constants/admin-campaigns.constants.ts
+    - backend/src/constants/admin-portability.constants.ts
+    - backend/src/types/admin-users.types.ts
+    - backend/src/types/admin-campaigns.types.ts
+    - backend/src/repositories/admin-users.repository.ts
+    - backend/src/repositories/admin-campaigns.repository.ts
 - [x] Room service split into membership, lifecycle, and whisper modules with compatibility exports.
   - backend/src/services/room/
   - backend/src/services/room.service.ts (compat re-export)
@@ -82,57 +86,19 @@ Completed service modularization waves:
 
 High-priority route hotspots checklist:
 
-- [~] backend/src/api/admin.routes.ts
-  - Progress in this batch:
-    - Telemetry status payload construction extracted to service:
-      - backend/src/services/admin-telemetry.service.ts
-      - backend/src/api/admin.routes.ts (`/telemetry/status` delegates to service)
-    - Telemetry dashboard payload construction extracted to service:
-      - backend/src/services/admin-telemetry.service.ts
-      - backend/src/api/admin.routes.ts (`/telemetry/dashboard` delegates to service)
-    - Telemetry logs list/drill-down payload construction extracted to service:
-      - backend/src/services/admin-telemetry.service.ts
-      - backend/src/api/admin.routes.ts (`/telemetry/logs` and `/telemetry/logs/:logId` delegate to service)
-    - Settings state/update/merge logic extracted to service:
-      - backend/src/services/admin-settings.service.ts
-      - backend/src/api/admin.routes.ts (`/settings` and `/settings` PUT delegate to service helpers)
-    - Settings backup/export orchestration extracted to service:
-      - backend/src/services/admin-settings-backup.service.ts
-      - backend/src/api/admin.routes.ts (`/settings/backup` and `/settings/backup/export` delegate to service helpers)
-    - Integrations systems list/mutation orchestration extracted to service:
-      - backend/src/services/admin-integrations.service.ts
-      - backend/src/api/admin.routes.ts (`/integrations/systems`, `/integrations/systems/:system/authorize`, `/integrations/systems/:system/block`, `/integrations/systems/:system` delegate to service helpers)
-    - Campaign operations Prisma cluster extracted to service:
-      - backend/src/services/admin-campaign-operations.service.ts
-      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/rooms`, `/campaigns/:campaignId/sessions/:sessionId/end`, `/campaigns/:campaignId/archive`, `/campaigns/:campaignId/restore` delegate to service helpers)
-    - Campaign export/read recording/create recording Prisma clusters extracted to service:
-      - backend/src/services/admin-campaign-operations.service.ts
-      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/export`, `/campaigns/:campaignId/recordings` GET/POST delegate to service helpers)
-    - Room move-player Prisma validation/persistence cluster extracted to service:
-      - backend/src/services/admin-campaign-operations.service.ts
-      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/sessions/:sessionId/rooms/:roomId/move-player` delegates DB orchestration to service; route retains WS event emission + HTTP mapping)
-    - Campaign import Prisma orchestration extracted to service:
-      - backend/src/services/admin-campaign-operations.service.ts
-      - backend/src/api/admin.routes.ts (`/campaigns/import` delegates to service helper)
-    - Route-level admin audit persistence extracted to dedicated audit service:
-      - backend/src/services/admin-audit.service.ts
-      - backend/src/api/admin.routes.ts (all audit writes delegate to `writeAdminAudit`)
-    - Setup/onboarding and admin-access Prisma clusters extracted from route module:
-      - backend/src/services/admin-access.service.ts
-      - backend/src/api/admin-access.routes.ts (`/invites`, `/invites/validate`, `/invites/redeem`, `/auth/handoff/exchange`, `/users/:userId/suspend`, `/users/:userId/restore`, `/users/:userId/force-logout` use service helpers instead of route-level Prisma)
-    - Admin services consolidated under `services/admin` with a conductor:
-      - backend/src/services/admin/admin.services.ts (tiny compatibility barrel; re-exports only the unified admin access implementation)
-      - backend/src/services/admin/admin-access.service.ts (single admin access/audit implementation)
-      - compatibility re-exports preserved at:
-        - backend/src/services/admin-access.service.ts
-        - backend/src/services/admin-audit.service.ts
-    - Remaining admin-access route orchestration extracted to domain services:
-      - backend/src/services/admin/admin-access.service.ts
-      - backend/src/api/admin-access.routes.ts (`/setup-status`, `/setup`, `/login`, `/invites`, `/invites/validate`, `/invites/redeem`, `/users/:userId/suspend`, `/users/:userId/restore`, `/users/:userId/force-logout`, `/handoff/app`, `/auth/handoff/exchange` delegate orchestration to service helpers)
-  - Remaining:
-    - `backend/src/api/admin.routes.ts` no longer uses direct Prisma access.
-    - `backend/src/api/admin-access.routes.ts` no longer uses direct Prisma access.
-    - Other non-admin route hotspots still contain route-level orchestration per checklist below.
+- [x] backend/src/api/admin.routes.ts
+  - All admin domain logic extracted into `backend/src/services/admin/` sub-files:
+    - Telemetry (dashboard, status, logs): `backend/src/services/admin/admin-telemetry.service.ts`
+    - Settings (state, update, backup, export): `backend/src/services/admin/admin-settings.service.ts`
+    - Integrations systems (list, authorize, block, update): `backend/src/services/admin/admin-integrations.service.ts`
+    - Campaign operations (rooms, session end, archive/restore, export, recordings, move-player, import): `backend/src/services/admin/admin-campaign-operations.service.ts`
+    - Portability (export/import bundles, recording metadata): `backend/src/services/admin/admin-portability.service.ts`
+    - Users (listing, export, CSV, import preview): `backend/src/services/admin/admin-users.service.ts`
+    - Campaigns (listing, archive markers): `backend/src/services/admin/admin-campaigns.service.ts`
+  - Audit writes delegate to `writeAdminAudit` in `backend/src/services/admin/admin-access.service.ts`
+  - `backend/src/api/admin.routes.ts` and `backend/src/api/admin-access.routes.ts` contain no direct Prisma access.
+  - `backend/src/services/admin.service.ts` is a barrel re-exporting all domain sub-files.
+  - Intermediate shim files (`admin.services.ts`, `access/`, `audit/`) removed.
 - [~] backend/src/api/notes.routes.ts
   - Progress in this batch:
     - Route-local request/visibility helpers moved into service/types/constants:

@@ -1,6 +1,6 @@
 # Backend Debt Matrix
 
-Last updated: 2026-05-02
+Last updated: 2026-05-15
 
 This document is the execution matrix for backend debt inventory and closure.
 It classifies all backend stub/placeholder files found in backend src and assigns an action:
@@ -8,6 +8,13 @@ It classifies all backend stub/placeholder files found in backend src and assign
 - implement: keep file and replace stub content with runtime implementation
 - remove: delete file and remove references (or prevent future references)
 - defer: intentionally keep for later stage, with explicit owner and reason
+
+Current runtime status:
+
+- The backend API is mounted at the canonical root `/api/**` with no `/v1` version prefix.
+- Admin runtime logic is consolidated under `backend/src/services/admin/` with `backend/src/services/admin.service.ts` as a barrel only.
+- Placeholder admin shim files and empty compatibility folders have been removed.
+- The Stage 14 debt inventory is fully closed; the decision table below is retained only as a historical planning record.
 
 ## Scope Summary
 
@@ -65,6 +72,8 @@ Close-out note:
 
 ## Decision Matrix
 
+Historical record only. No Stage 14 action remains open in the current codebase.
+
 | File                                            | Category                 | Action    | Stage 14 substage | Owner            | Effort | Notes                                                                      |
 | ----------------------------------------------- | ------------------------ | --------- | ----------------- | ---------------- | ------ | -------------------------------------------------------------------------- |
 | backend/src/api/metadata.routes.ts              | API runtime gap          | implement | 14.3              | Backend API      | M      | Replace stage stub; wire metadata endpoints or feature-flag implementation |
@@ -77,7 +86,7 @@ Close-out note:
 | backend/src/core/audio/environments.ts          | Audio durability         | implement | 14.4              | Realtime/Audio   | S      | Room environment state model and validation                                |
 | backend/src/api/export.routes.ts                | Legacy stub API          | remove    | 14.2              | Backend API      | S      | Unused route module; export flows implemented elsewhere                    |
 | backend/src/api/health.routes.ts                | Legacy stub API          | remove    | 14.2              | Backend API      | S      | Unused route module; health route already in api index/bootstrap           |
-| backend/src/core/admin/admin.service.ts         | Legacy core duplicate    | remove    | 14.2              | Backend Platform | S      | Active admin logic lives under services/api paths                          |
+| backend/src/core/admin/admin.service.ts         | Legacy core duplicate    | remove    | 14.2              | Backend Platform | S      | Active admin logic is under backend/src/services/admin/                    |
 | backend/src/core/admin/audit-log.ts             | Legacy core duplicate    | remove    | 14.2              | Backend Platform | S      | Audit behavior implemented in active admin route/service paths             |
 | backend/src/core/auth/auth.service.ts           | Legacy core duplicate    | remove    | 14.2              | Auth             | S      | Active auth is in backend/src/services/auth.service.ts                     |
 | backend/src/core/export/export.service.ts       | Legacy core duplicate    | remove    | 14.2              | Backend Platform | S      | Export runtime implemented under admin portability flows                   |
