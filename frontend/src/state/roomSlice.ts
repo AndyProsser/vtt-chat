@@ -62,6 +62,19 @@ function presenceToRoomMember(entry: SessionPresence): RoomUser {
   }
 }
 
+function pruneRoomMembers(state: RoomSlice, roomIdsToRemove: UUID[]): Record<UUID, RoomUser[]> {
+  if (roomIdsToRemove.length === 0) {
+    return state.roomMembers
+  }
+
+  const nextMembers = { ...state.roomMembers }
+  for (const roomId of roomIdsToRemove) {
+    delete nextMembers[roomId]
+  }
+
+  return nextMembers
+}
+
 export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
   set,
   get
@@ -131,6 +144,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
   replaceSessionRooms: (sessionId, rooms) =>
     set((state) => {
+      const previousRoomIds = Object.keys(state.rooms[sessionId] || {}) as UUID[]
       const nextBySession = rooms.reduce(
         (acc, room) => {
           acc[room.id] = room
@@ -139,7 +153,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         {} as Record<UUID, Room>
       )
 
-      const nextMembers = { ...state.roomMembers }
+      const nextRoomIds = new Set(rooms.map((room) => room.id))
+      const removedRoomIds = previousRoomIds.filter((roomId) => !nextRoomIds.has(roomId))
+
+      const nextMembers = pruneRoomMembers(state, removedRoomIds)
       for (const room of rooms) {
         nextMembers[room.id] = nextMembers[room.id] || []
       }
@@ -196,6 +213,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     )
 
     set((state) => {
+      const previousRoomIds = Object.keys(state.rooms[sessionId] || {}) as UUID[]
       const nextBySession = rooms.reduce(
         (acc, room) => {
           acc[room.id] = room
@@ -204,7 +222,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         {} as Record<UUID, Room>
       )
 
-      const nextMembers = { ...state.roomMembers }
+      const nextRoomIds = new Set(rooms.map((room) => room.id))
+      const removedRoomIds = previousRoomIds.filter((roomId) => !nextRoomIds.has(roomId))
+
+      const nextMembers = pruneRoomMembers(state, removedRoomIds)
       for (const room of rooms) {
         nextMembers[room.id] = []
       }

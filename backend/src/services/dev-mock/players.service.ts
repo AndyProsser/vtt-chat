@@ -281,6 +281,38 @@ function normalizeRequestedRosterSize(value?: number): number | null {
   )
 }
 
+function sameRosterSet(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  const leftSorted = [...left].sort().join('|')
+  const rightSorted = [...right].sort().join('|')
+  return leftSorted === rightSorted
+}
+
+function pickRerollRosterSlugs(params: { size: number; avoidSlugs?: string[] }): string[] {
+  const avoidSlugs = new Set(params.avoidSlugs || [])
+  const pool = DND_ARCHETYPES.map((entry) => entry.slug)
+  const maxAttempts = 12
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidate = shuffle(pool).slice(0, params.size)
+    if (!sameRosterSet(candidate, params.avoidSlugs || [])) {
+      return candidate
+    }
+  }
+
+  const nonAvoided = pool.filter((slug) => !avoidSlugs.has(slug))
+  if (nonAvoided.length > 0) {
+    const base = shuffle(pool).slice(0, params.size)
+    base[base.length - 1] = nonAvoided[0]
+    return base
+  }
+
+  return shuffle(pool).slice(0, params.size)
+}
+
 function pickLevels(count: number): number[] {
   const base = 3 + Math.floor(Math.random() * 12)
   return Array.from({ length: count }, () => clamp(base + Math.floor(Math.random() * 3) - 1, 1, 20))
@@ -420,7 +452,8 @@ function ensureRosterMemory(
   sessionId: UUID,
   campaignId?: UUID | null,
   forceReroll = false,
-  requestedCount?: number
+  requestedCount?: number,
+  avoidSlugs?: string[]
 ): string[] {
   const normalizedRequestedCount = normalizeRequestedRosterSize(requestedCount)
 
@@ -435,9 +468,7 @@ function ensureRosterMemory(
     }
 
     const size = normalizedRequestedCount ?? pickRosterSize()
-    const slugs = shuffle(DND_ARCHETYPES)
-      .slice(0, size)
-      .map((entry) => entry.slug)
+    const slugs = pickRerollRosterSlugs({ size, avoidSlugs })
     const limitedSlugs = slugs.slice(0, MAX_DEV_MOCK_PLAYERS)
     campaignRosterByCampaignId.set(campaignId, limitedSlugs)
     return limitedSlugs
@@ -453,9 +484,7 @@ function ensureRosterMemory(
   }
 
   const size = normalizedRequestedCount ?? pickRosterSize()
-  const slugs = shuffle(DND_ARCHETYPES)
-    .slice(0, size)
-    .map((entry) => entry.slug)
+  const slugs = pickRerollRosterSlugs({ size, avoidSlugs })
   const limitedSlugs = slugs.slice(0, MAX_DEV_MOCK_PLAYERS)
   sessionRosterBySessionId.set(sessionId, limitedSlugs)
   return limitedSlugs
@@ -514,7 +543,7 @@ export async function listMockPlayers(): Promise<MockPlayerDef[]> {
 
 export async function ensureDevMockPlayersForSession(
   sessionId: UUID,
-  options?: { forceReroll?: boolean; requestedCount?: number }
+  options?: { forceReroll?: boolean; requestedCount?: number; avoidSlugs?: string[] }
 ): Promise<MockPlayerDef[]> {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -535,7 +564,8 @@ export async function ensureDevMockPlayersForSession(
     sessionId,
     session.campaignId as UUID | null,
     options?.forceReroll || false,
-    options?.requestedCount
+    options?.requestedCount,
+    options?.avoidSlugs
   )
   let selectedArchetypes = rememberedSlugs
     .map((slug) => DND_ARCHETYPES.find((entry) => entry.slug === slug))
@@ -664,6 +694,7 @@ export async function resetDevMockRoster(params: {
     // Snapshot presence before removal so we know which rooms to broadcast USER_LEFT for
     const presenceBefore = await getSessionPresence(resolvedSessionId)
     const mockPresenceBefore = presenceBefore.filter((p) => p.username?.startsWith(DEV_MOCK_PREFIX))
+    const removedSlugs = mockPresenceBefore.map((p) => p.username.replace(DEV_MOCK_PREFIX, ''))
     const removedUsers = mockPresenceBefore.map((p) => ({
       userId: p.userId,
       username: p.username,
@@ -680,6 +711,7 @@ export async function resetDevMockRoster(params: {
     const users = await ensureDevMockPlayersForSession(resolvedSessionId, {
       forceReroll: true,
       requestedCount: params.requestedCount,
+      avoidSlugs: removedSlugs,
     })
     // Snapshot presence after addition so we know which room the new players joined
     const presenceAfter = await getSessionPresence(resolvedSessionId)

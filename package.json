@@ -17,6 +17,7 @@
     "check": "npm run lint",
     "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update",
     "qa:voice-of-god": "node scripts/qa/verify-voice-of-god.cjs",
+    "qa:request-counts": "node scripts/qa/verify-request-counts.cjs",
     "qa:coverage-report": "node scripts/qa/coverage-report.cjs",
     "qa:coverage-report:json": "node scripts/qa/coverage-report.cjs --json",
     "qa:flaky-tests": "node scripts/qa/flaky-tests.cjs",

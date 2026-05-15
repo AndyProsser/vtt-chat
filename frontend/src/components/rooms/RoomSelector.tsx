@@ -48,6 +48,17 @@ export type {
   RoomSelectorRoom,
 } from '@/types/groupPanel'
 
+const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
+
+interface OptimisticRoomEntry {
+  room: GroupPanelGroupWithParticipants
+  createdAt: number
+}
+
+function buildRoomSignature(room: { name: string; type: RoomType }): string {
+  return `${room.type}:${room.name.trim().toLowerCase()}`
+}
+
 export function RoomSelector({
   apiUrl,
   token,
@@ -66,7 +77,7 @@ export function RoomSelector({
   const [isMobileExpanded] = useState(true)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
-  const [optimisticRooms, setOptimisticRooms] = useState<GroupPanelGroupWithParticipants[]>([])
+  const [optimisticRooms, setOptimisticRooms] = useState<OptimisticRoomEntry[]>([])
   const [pendingRoomDeletes, setPendingRoomDeletes] = useState<Record<UUID, true>>({})
   const [environmentPickerRoomId, setEnvironmentPickerRoomId] = useState<UUID | null>(null)
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
@@ -91,6 +102,35 @@ export function RoomSelector({
   )
 
   const confirmedRoomIds = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms])
+  const confirmedRoomSignatures = useMemo(
+    () => new Set(rooms.map((room) => buildRoomSignature(room))),
+    [rooms]
+  )
+
+  useEffect(() => {
+    setOptimisticRooms([])
+    setPendingRoomDeletes({})
+  }, [sessionId])
+
+  useEffect(() => {
+    if (optimisticRooms.length === 0) {
+      return
+    }
+
+    const pruneExpiredOptimisticRooms = () => {
+      const now = Date.now()
+      setOptimisticRooms((state) =>
+        state.filter((entry) => now - entry.createdAt < OPTIMISTIC_ROOM_MAX_AGE_MS)
+      )
+    }
+
+    pruneExpiredOptimisticRooms()
+    const intervalId = window.setInterval(pruneExpiredOptimisticRooms, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [optimisticRooms.length])
 
   const allRooms = useMemo(() => {
     const byId = new Map<UUID, GroupPanelGroupWithParticipants>()
@@ -99,14 +139,20 @@ export function RoomSelector({
       byId.set(room.id, room)
     }
 
-    for (const room of optimisticRooms) {
-      if (!confirmedRoomIds.has(room.id) && !byId.has(room.id)) {
+    for (const entry of optimisticRooms) {
+      const room = entry.room
+      const roomSignature = buildRoomSignature(room)
+      if (
+        !confirmedRoomIds.has(room.id) &&
+        !byId.has(room.id) &&
+        !confirmedRoomSignatures.has(roomSignature)
+      ) {
         byId.set(room.id, room)
       }
     }
 
     return [...byId.values()]
-  }, [confirmedRoomIds, optimisticRooms, rooms])
+  }, [confirmedRoomIds, confirmedRoomSignatures, optimisticRooms, rooms])
 
   const baseParticipants = useMemo<GroupParticipantWithGroupId[]>(
     () =>
@@ -906,7 +952,10 @@ export function RoomSelector({
       const tempId = crypto.randomUUID() as UUID
       setOptimisticRooms((state) => [
         ...state,
-        { id: tempId, name, type, memberCount: 0, participants: [] },
+        {
+          createdAt: Date.now(),
+          room: { id: tempId, name, type, memberCount: 0, participants: [] },
+        },
       ])
 
       try {
@@ -943,7 +992,7 @@ export function RoomSelector({
           onSelectRoom(payload.room.id)
         }
       } finally {
-        setOptimisticRooms((state) => state.filter((room) => room.id !== tempId))
+        setOptimisticRooms((state) => state.filter((entry) => entry.room.id !== tempId))
       }
     },
     [apiUrl, createRoom, dmUserId, isGreenroom, onSelectRoom, sessionId, token]

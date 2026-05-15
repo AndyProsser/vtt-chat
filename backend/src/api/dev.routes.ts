@@ -64,6 +64,83 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
+async function broadcastDevMockRosterChange(
+  req: Request,
+  result: {
+    sessionId?: UUID
+    removedUsers: Array<{ userId: UUID; username: string; primaryRoomId?: UUID }>
+    addedUsers: Array<{ userId: UUID; username: string; roomId?: UUID }>
+  }
+) {
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (!result.sessionId || !wsManager) {
+    return
+  }
+
+  const sid = result.sessionId
+  const now = Date.now()
+
+  for (const removed of result.removedUsers) {
+    if (!removed.primaryRoomId) {
+      continue
+    }
+
+    wsManager.broadcastEventToSession(sid, {
+      id: crypto.randomUUID() as UUID,
+      type: 'ROOM:USER_LEFT',
+      version: 1,
+      userId: removed.userId,
+      userRole: Role.PLAYER,
+      sessionId: sid,
+      roomId: removed.primaryRoomId,
+      timestamp: now,
+      payload: {
+        roomId: removed.primaryRoomId,
+        userId: removed.userId,
+        username: removed.username,
+        leftAt: now,
+        reason: 'dev_mock_reroll',
+      },
+    })
+  }
+
+  for (const added of result.addedUsers) {
+    if (!added.roomId) {
+      continue
+    }
+
+    wsManager.broadcastEventToSession(sid, {
+      id: crypto.randomUUID() as UUID,
+      type: 'ROOM:USER_JOINED',
+      version: 1,
+      userId: added.userId,
+      userRole: Role.PLAYER,
+      sessionId: sid,
+      roomId: added.roomId,
+      timestamp: now,
+      payload: {
+        roomId: added.roomId,
+        userId: added.userId,
+        username: added.username,
+        joinedAt: now,
+        reason: 'dev_mock_reroll',
+      },
+    })
+  }
+
+  const session = await getSession(sid)
+  const actorUserId =
+    session?.dmId || result.addedUsers[0]?.userId || result.removedUsers[0]?.userId || sid
+  const actorUserRole = session?.dmId ? Role.DM : Role.SYSTEM
+
+  await broadcastSessionStatsSnapshot({
+    wsManager,
+    sessionId: sid,
+    actorUserId,
+    actorUserRole,
+  })
+}
+
 async function resolveTakeoverActorAuthorization(params: {
   sessionId: UUID
   actorUserId: UUID
@@ -216,67 +293,7 @@ router.post('/reset', async (req: Request, res: Response) => {
   })
 
   // Broadcast WS events so all clients update without a page refresh
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (result.sessionId && wsManager) {
-    const sid = result.sessionId
-    const now = Date.now()
-
-    for (const removed of result.removedUsers) {
-      if (removed.primaryRoomId) {
-        wsManager.broadcastEventToSession(sid, {
-          id: crypto.randomUUID() as UUID,
-          type: 'ROOM:USER_LEFT',
-          version: 1,
-          userId: removed.userId,
-          userRole: Role.PLAYER,
-          sessionId: sid,
-          roomId: removed.primaryRoomId,
-          timestamp: now,
-          payload: {
-            roomId: removed.primaryRoomId,
-            userId: removed.userId,
-            username: removed.username,
-            leftAt: now,
-            reason: 'dev_mock_reroll',
-          },
-        })
-      }
-    }
-
-    for (const added of result.addedUsers) {
-      if (added.roomId) {
-        wsManager.broadcastEventToSession(sid, {
-          id: crypto.randomUUID() as UUID,
-          type: 'ROOM:USER_JOINED',
-          version: 1,
-          userId: added.userId,
-          userRole: Role.PLAYER,
-          sessionId: sid,
-          roomId: added.roomId,
-          timestamp: now,
-          payload: {
-            roomId: added.roomId,
-            userId: added.userId,
-            username: added.username,
-            joinedAt: now,
-            reason: 'dev_mock_reroll',
-          },
-        })
-      }
-    }
-
-    const session = await getSession(sid)
-    const actorUserId =
-      session?.dmId || result.addedUsers[0]?.userId || result.removedUsers[0]?.userId || sid
-    const actorUserRole = session?.dmId ? Role.DM : Role.SYSTEM
-
-    await broadcastSessionStatsSnapshot({
-      wsManager,
-      sessionId: sid,
-      actorUserId,
-      actorUserRole,
-    })
-  }
+  await broadcastDevMockRosterChange(req, result)
 
   return res.json({
     ok: true,
@@ -348,6 +365,9 @@ router.post('/reroll', requireAuth, async (req: Request, res: Response) => {
     sessionId: sessionId as UUID,
     requestedCount: typeof newPlayerCount === 'number' ? newPlayerCount : undefined,
   })
+
+  // Keep session roster UIs live in DEV without requiring full page rehydration.
+  await broadcastDevMockRosterChange(req, result)
 
   if (typeof newPlayerCount === 'number') {
     await updateMockSimulationConfig({

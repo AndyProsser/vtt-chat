@@ -667,19 +667,76 @@ export function useLiveKit(
 
       logger.info('useLiveKit', 'Audio track published')
     } catch (err) {
-      logger.error(
-        'useLiveKit',
-        `Audio publish failed: ${err instanceof Error ? err.message : String(err)}`
-      )
+      const message = err instanceof Error ? err.message : String(err)
+      const isPermissionError = /insufficient permissions|not authorized|permission/i.test(message)
+
+      if (isPermissionError) {
+        logger.warn(
+          'useLiveKit',
+          `Audio publish permission denied, retrying after reconnect: ${message}`
+        )
+        // One-shot recovery: refresh token/permissions by reconnecting and retry once.
+        const recoveryRoom = roomRef.current
+        if (recoveryRoom) {
+          await recoveryRoom.disconnect().catch(() => undefined)
+        }
+        roomRef.current = null
+        connectionKeyRef.current = null
+        setRoomState(null)
+        setLocalAudioTrackState(null)
+        if (typeof setLiveKitLocalInputTrack === 'function') {
+          setLiveKitLocalInputTrack(connectionKey, null)
+        }
+
+        await connect()
+
+        const recoveredRoom = roomRef.current as Room | null
+        if (!recoveredRoom) {
+          throw err
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: getLocalAudioConstraints(),
+        })
+
+        const inputTrack = stream.getAudioTracks()[0]
+        const retryTrack = new LocalAudioTrack(inputTrack)
+
+        await recoveredRoom.localParticipant.publishTrack(retryTrack, {
+          audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
+        })
+
+        setLocalAudioTrackState(retryTrack)
+        if (typeof setLiveKitLocalInputTrack === 'function') {
+          setLiveKitLocalInputTrack(connectionKey, inputTrack)
+        }
+        publishConnectionSnapshot({
+          connectionState: recoveredRoom.state,
+          isConnected: recoveredRoom.state === ConnectionState.Connected,
+          isConnecting:
+            recoveredRoom.state === ConnectionState.Connecting ||
+            recoveredRoom.state === ConnectionState.Reconnecting ||
+            recoveredRoom.state === ConnectionState.SignalReconnecting,
+          hasLocalPublication: getHasLocalPublication(recoveredRoom),
+          error: null,
+        })
+
+        logger.info('useLiveKit', 'Audio track published after permission recovery reconnect')
+        return
+      }
+
+      logger.error('useLiveKit', `Audio publish failed: ${message}`)
       throw err
     }
   }, [
+    connect,
     connectionKey,
     getHasLocalPublication,
     getLocalAudioConstraints,
     publishConnectionSnapshot,
     setLiveKitLocalInputTrack,
     setLocalAudioTrackState,
+    setRoomState,
   ])
 
   /**

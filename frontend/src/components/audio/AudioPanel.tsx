@@ -125,17 +125,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const handleGoLive = async () => {
     initializeAudio(true)
-    await livekit.publishAudio()
-    if (broadcastModeEnabled && effectiveRole === Role.DM) {
-      try {
-        await publishBroadcastAudio()
-      } catch {
-        // Broadcast channel publish can trail behind room publish while secondary channel connects.
-      }
-    }
-    setDevice({ microphoneOn: true })
 
-    // Notify backend that user unmuted themselves
+    // Ensure backend mute gate is cleared before attempting publish.
+    // LiveKit token issuance uses backend mute enforcement to set canPublish.
     try {
       const token = sessionStorage.getItem('authToken')
       if (token) {
@@ -152,9 +144,18 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         })
       }
     } catch (error) {
-      // Log but don't fail the unmute action if backend call fails
-      console.error('Failed to sync unmute state to backend:', error)
+      console.error('Failed to pre-sync unmute state to backend:', error)
     }
+
+    await livekit.publishAudio()
+    if (broadcastModeEnabled && effectiveRole === Role.DM) {
+      try {
+        await publishBroadcastAudio()
+      } catch {
+        // Broadcast channel publish can trail behind room publish while secondary channel connects.
+      }
+    }
+    setDevice({ microphoneOn: true })
   }
 
   const handleMute = async () => {

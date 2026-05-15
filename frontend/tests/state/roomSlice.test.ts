@@ -198,10 +198,13 @@ describe('roomSlice', () => {
   describe('replaceSessionRooms', () => {
     it('replaces rooms for a session', () => {
       useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().addRoomMember(ROOM_ID_1, SAMPLE_MEMBER)
       const newRoom: Room = { ...SAMPLE_ROOM, id: ROOM_ID_2, name: 'New Room' }
       useStore.getState().replaceSessionRooms(SESSION_A, [newRoom])
       expect(useStore.getState().rooms[SESSION_A]![ROOM_ID_1]).toBeUndefined()
       expect(useStore.getState().rooms[SESSION_A]![ROOM_ID_2]).toBeDefined()
+      expect(useStore.getState().roomMembers[ROOM_ID_1]).toBeUndefined()
+      expect(useStore.getState().roomMembers[ROOM_ID_2]).toEqual([])
     })
 
     it('does not affect other sessions', () => {

@@ -127,4 +127,60 @@ describe('dev-mock-players service', () => {
     expect(mocks.mockRemoveUserFromSession).toHaveBeenCalledWith(SESSION_ID, GHOST_USER_ID)
     expect(mocks.mockJoinRoom).toHaveBeenCalled()
   })
+
+  it('rerolls to a different mock roster when forceReroll is requested', async () => {
+    ;(
+      mocks.prismaClient.sessionMember.findMany as unknown as {
+        mockResolvedValueOnce: (value: unknown) => unknown
+      }
+    ).mockResolvedValueOnce([
+      {
+        userId: 'aaaa1111-1111-4111-8111-111111111111',
+        username: 'dev_mock_alric',
+      },
+      {
+        userId: 'bbbb2222-2222-4222-8222-222222222222',
+        username: 'dev_mock_lyra',
+      },
+    ])
+
+    const randomValues = [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0, // first draw
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9, // second draw
+    ]
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockImplementation(() => randomValues.shift() ?? 0.99)
+
+    try {
+      const users = await ensureDevMockPlayersForSession(SESSION_ID as any, {
+        forceReroll: true,
+        avoidSlugs: ['alric', 'lyra'],
+        requestedCount: 2,
+      })
+
+      expect(users.map((user) => user.username)).not.toEqual(['dev_mock_alric', 'dev_mock_lyra'])
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
 })
