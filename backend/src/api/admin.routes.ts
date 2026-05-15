@@ -1,14 +1,10 @@
 import { Router, Request, Response } from 'express'
-import { logger } from '@/utils/logger'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { getPrismaClient } from '@/infra/db'
 import {
-  findDiagnosticEventById,
-  findTelemetryEventById,
   loadDiagnosticEvents,
   loadLogRetentionSettings,
   loadTelemetryEvents,
-  persistDiagnosticEvents,
   updateLogRetentionSettings,
 } from '@/infra/telemetry-store'
 import {
@@ -42,8 +38,16 @@ import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
 import {
   buildAdminTelemetryDashboardPayload,
+  buildAdminTelemetryLogsListPayload,
   buildAdminTelemetryStatusPayload,
+  resolveAdminTelemetryLogById,
 } from '@/services/admin-telemetry.service'
+import {
+  buildLogRetentionPatch,
+  getRuntimeAdminSettingsState,
+  mergeAdminSettingsWithRetention,
+  updateRuntimeAdminSettingsFromBody,
+} from '@/services/admin-settings.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -83,26 +87,6 @@ async function writeAudit(params: {
       metadata: params.metadata,
     },
   })
-}
-
-const runtimeSettingsDefaults = {
-  primaryRegion: 'us-east-1',
-  maintenanceMode: 'off',
-  chatPipelineEnabled: true,
-  audioOverridesEnabled: true,
-  logRetentionDays: 30,
-  telemetryRetentionDays: 30,
-  telemetryMaxFileSizeMb: 10,
-  telemetryMaxFiles: 7,
-  diagnosticRetentionDays: 14,
-  diagnosticMaxFileSizeMb: 10,
-  diagnosticMaxFiles: 7,
-  backupWindow: '02:00 UTC',
-}
-
-let runtimeSettingsState = {
-  ...runtimeSettingsDefaults,
-  updatedAt: new Date().toISOString(),
 }
 
 registerAdminAccessRoutes(router, {
@@ -1197,17 +1181,13 @@ router.get('/settings', adminAuthMiddleware, async (req: Request, res: Response)
     }
 
     const retention = await loadLogRetentionSettings()
+    const mergedSettings = mergeAdminSettingsWithRetention(
+      getRuntimeAdminSettingsState(),
+      retention
+    )
 
     res.status(200).json({
-      settings: {
-        ...runtimeSettingsState,
-        telemetryRetentionDays: retention.telemetryRetentionDays,
-        telemetryMaxFileSizeMb: retention.telemetryMaxFileSizeMb,
-        telemetryMaxFiles: retention.telemetryMaxFiles,
-        diagnosticRetentionDays: retention.diagnosticRetentionDays,
-        diagnosticMaxFileSizeMb: retention.diagnosticMaxFileSizeMb,
-        diagnosticMaxFiles: retention.diagnosticMaxFiles,
-      },
+      settings: mergedSettings,
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
@@ -1227,57 +1207,13 @@ router.put('/settings', adminAuthMiddleware, async (req: Request, res: Response)
       return
     }
 
-    const body = req.body || {}
+    const body = (req.body || {}) as Record<string, unknown>
 
-    runtimeSettingsState = {
-      ...runtimeSettingsState,
-      primaryRegion:
-        typeof body.primaryRegion === 'string' && body.primaryRegion.trim()
-          ? body.primaryRegion.trim()
-          : runtimeSettingsState.primaryRegion,
-      maintenanceMode:
-        body.maintenanceMode === 'off' ||
-        body.maintenanceMode === 'read-only' ||
-        body.maintenanceMode === 'full'
-          ? body.maintenanceMode
-          : runtimeSettingsState.maintenanceMode,
-      chatPipelineEnabled:
-        typeof body.chatPipelineEnabled === 'boolean'
-          ? body.chatPipelineEnabled
-          : runtimeSettingsState.chatPipelineEnabled,
-      audioOverridesEnabled:
-        typeof body.audioOverridesEnabled === 'boolean'
-          ? body.audioOverridesEnabled
-          : runtimeSettingsState.audioOverridesEnabled,
-      logRetentionDays:
-        typeof body.logRetentionDays === 'number' && body.logRetentionDays >= 1
-          ? Math.round(body.logRetentionDays)
-          : runtimeSettingsState.logRetentionDays,
-      backupWindow:
-        typeof body.backupWindow === 'string' && body.backupWindow.trim()
-          ? body.backupWindow.trim()
-          : runtimeSettingsState.backupWindow,
-      updatedAt: new Date().toISOString(),
-    }
+    const runtimeSettingsState = updateRuntimeAdminSettingsFromBody(body)
 
-    const retention = await updateLogRetentionSettings({
-      telemetryRetentionDays: body.telemetryRetentionDays,
-      telemetryMaxFileSizeMb: body.telemetryMaxFileSizeMb,
-      telemetryMaxFiles: body.telemetryMaxFiles,
-      diagnosticRetentionDays: body.diagnosticRetentionDays,
-      diagnosticMaxFileSizeMb: body.diagnosticMaxFileSizeMb,
-      diagnosticMaxFiles: body.diagnosticMaxFiles,
-    })
+    const retention = await updateLogRetentionSettings(buildLogRetentionPatch(body))
 
-    const mergedSettings = {
-      ...runtimeSettingsState,
-      telemetryRetentionDays: retention.telemetryRetentionDays,
-      telemetryMaxFileSizeMb: retention.telemetryMaxFileSizeMb,
-      telemetryMaxFiles: retention.telemetryMaxFiles,
-      diagnosticRetentionDays: retention.diagnosticRetentionDays,
-      diagnosticMaxFileSizeMb: retention.diagnosticMaxFileSizeMb,
-      diagnosticMaxFiles: retention.diagnosticMaxFiles,
-    }
+    const mergedSettings = mergeAdminSettingsWithRetention(runtimeSettingsState, retention)
 
     await writeAudit({
       actor,
@@ -1366,7 +1302,7 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
     const exported = await createOperationalExportArtifact(
       prisma,
       actor.userId,
-      runtimeSettingsState,
+      getRuntimeAdminSettingsState(),
       telemetry.map((entry) => ({ ...entry })),
       diagnostics.map((entry) => ({ ...entry })),
       auditLog.map((entry) => ({
@@ -1579,17 +1515,6 @@ router.patch(
  * ============================================================================
  */
 
-function parseTimeRange(value: string | undefined): number {
-  switch (value) {
-    case '1h':
-      return 60 * 60 * 1000
-    case '7d':
-      return 7 * 24 * 60 * 60 * 1000
-    default:
-      return 24 * 60 * 60 * 1000
-  }
-}
-
 router.get('/telemetry/dashboard', async (_req: Request, res: Response) => {
   const wsManager = _req.app.locals.wsManager as { getConnectionCount?: () => number } | undefined
   const payload = await buildAdminTelemetryDashboardPayload({
@@ -1604,259 +1529,15 @@ router.get('/telemetry/status', async (_req: Request, res: Response) => {
 })
 
 router.get('/telemetry/logs/:logId', async (req: Request, res: Response) => {
-  const logId = String(req.params.logId || '').trim()
-
-  if (!logId) {
-    res.status(400).json({ error: 'logId is required', code: 'INVALID_LOG_ID' })
-    return
-  }
-
-  if (logId.startsWith('diagnostic-')) {
-    const diagnosticId = logId.slice('diagnostic-'.length)
-    const row = await findDiagnosticEventById(diagnosticId)
-
-    if (!row) {
-      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
-      return
-    }
-
-    res.status(200).json({
-      log: {
-        id: `diagnostic-${row.id}`,
-        timestamp: row.timestamp,
-        severity: row.severity,
-        source: row.source,
-        message: row.message,
-        details: row.details,
-      },
-    })
-    return
-  }
-
-  if (logId.startsWith('audit-')) {
-    const auditId = logId.slice('audit-'.length)
-    const row = await prisma.adminAuditLog.findUnique({ where: { id: auditId } })
-
-    if (!row) {
-      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
-      return
-    }
-
-    res.status(200).json({
-      log: {
-        id: `audit-${row.id}`,
-        timestamp: row.createdAt.toISOString(),
-        severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
-        source: 'admin-audit',
-        message: `${row.action} ${row.outcome}`,
-        details: {
-          actorUserId: row.actorUserId,
-          actorName: row.actorName,
-          actorRole: row.actorRole,
-          targetType: row.targetType,
-          targetId: row.targetId,
-          reason: row.reason,
-          metadata: row.metadata,
-        },
-      },
-    })
-    return
-  }
-
-  if (logId.startsWith('telemetry-')) {
-    const telemetryId = logId.slice('telemetry-'.length)
-    const row = await findTelemetryEventById(telemetryId)
-
-    if (!row) {
-      res.status(404).json({ error: 'Log entry not found', code: 'NOT_FOUND' })
-      return
-    }
-
-    res.status(200).json({
-      log: {
-        id: `telemetry-${row.id}`,
-        timestamp: row.timestamp,
-        severity: row.severity,
-        source: row.source,
-        message: row.message,
-        details: row.details,
-      },
-    })
-    return
-  }
-
-  res.status(400).json({
-    error: 'This log source does not support durable drill-down',
-    code: 'DRILLDOWN_NOT_SUPPORTED',
-  })
+  const result = await resolveAdminTelemetryLogById(String(req.params.logId || ''))
+  res.status(result.status).json(result.body)
 })
 
 router.get('/telemetry/logs', async (req: Request, res: Response) => {
-  const timeRange = parseTimeRange(req.query.timeRange as string | undefined)
-  const severity = (req.query.severity as string | undefined)?.toUpperCase()
-  const source = (req.query.source as string | undefined)?.toLowerCase()
-  const userId = (req.query.userId as string | undefined)?.trim()
-  const roomId = (req.query.roomId as string | undefined)?.trim()
-  const page = Math.max(1, Number(req.query.page || 1))
-  const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize || 25)))
-  const sortByRaw = (req.query.sortBy as string | undefined) || 'timestamp'
-  const sortDirRaw = ((req.query.sortDir as string | undefined) || 'desc').toLowerCase()
-
-  const sortBy: 'timestamp' | 'severity' | 'source' | 'message' = [
-    'timestamp',
-    'severity',
-    'source',
-    'message',
-  ].includes(sortByRaw)
-    ? (sortByRaw as 'timestamp' | 'severity' | 'source' | 'message')
-    : 'timestamp'
-  const sortDir: 'asc' | 'desc' = sortDirRaw === 'asc' ? 'asc' : 'desc'
-
-  const now = Date.now()
-  const minTs = now - timeRange
-
-  const severityRank: Record<string, number> = {
-    DEBUG: 0,
-    INFO: 1,
-    WARN: 2,
-    ERROR: 3,
-  }
-
-  const runtimeHistory = logger.getHistory().map((entry) => ({
-    timestamp: entry.timestamp,
-    severity: entry.level,
-    source: entry.context,
-    message: entry.message,
-    details: (entry.meta || {}) as Record<string, unknown>,
-  }))
-
-  await persistDiagnosticEvents(runtimeHistory)
-
-  const runtimeLogs = (await loadDiagnosticEvents())
-    .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
-    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
-    .filter((entry) =>
-      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
-    )
-    .filter((entry) => {
-      if (!userId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(userId.toLowerCase())
-    })
-    .filter((entry) => {
-      if (!roomId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(roomId.toLowerCase())
-    })
-    .map((entry) => ({
-      id: `diagnostic-${entry.id}`,
-      timestamp: entry.timestamp,
-      severity: entry.severity,
-      source: entry.source,
-      message: entry.message,
-      details: entry.details,
-    }))
-
-  const auditRows = await prisma.adminAuditLog.findMany({
-    where: {
-      createdAt: { gte: new Date(minTs) },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 1000,
+  const payload = await buildAdminTelemetryLogsListPayload({
+    query: req.query as Record<string, unknown>,
   })
-
-  const auditLogs = auditRows
-    .map((row) => ({
-      id: `audit-${row.id}`,
-      timestamp: row.createdAt.toISOString(),
-      severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
-      source: 'admin-audit',
-      message: `${row.action} ${row.outcome}`,
-      details: {
-        actorUserId: row.actorUserId,
-        actorName: row.actorName,
-        actorRole: row.actorRole,
-        targetType: row.targetType,
-        targetId: row.targetId,
-        reason: row.reason,
-        metadata: row.metadata,
-      },
-    }))
-    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
-    .filter((entry) =>
-      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
-    )
-    .filter((entry) => {
-      if (!userId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(userId.toLowerCase())
-    })
-    .filter((entry) => {
-      if (!roomId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(roomId.toLowerCase())
-    })
-
-  const telemetryLogs = (await loadTelemetryEvents())
-    .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
-    .map((entry) => ({
-      id: `telemetry-${entry.id}`,
-      timestamp: entry.timestamp,
-      severity: entry.severity,
-      source: entry.source,
-      message: entry.message,
-      details: entry.details,
-    }))
-    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
-    .filter((entry) =>
-      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
-    )
-    .filter((entry) => {
-      if (!userId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(userId.toLowerCase())
-    })
-    .filter((entry) => {
-      if (!roomId) return true
-      return JSON.stringify(entry.details || {})
-        .toLowerCase()
-        .includes(roomId.toLowerCase())
-    })
-
-  const filtered = [...runtimeLogs, ...auditLogs, ...telemetryLogs]
-
-  const sorted = [...filtered].sort((a, b) => {
-    let cmp = 0
-    if (sortBy === 'timestamp') {
-      cmp = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    } else if (sortBy === 'severity') {
-      cmp = (severityRank[a.severity] ?? 0) - (severityRank[b.severity] ?? 0)
-    } else if (sortBy === 'source') {
-      cmp = a.source.localeCompare(b.source)
-    } else {
-      cmp = a.message.localeCompare(b.message)
-    }
-    return sortDir === 'asc' ? cmp : -cmp
-  })
-
-  const total = sorted.length
-  const start = (page - 1) * pageSize
-  const logs = sorted.slice(start, start + pageSize)
-
-  res.status(200).json({
-    logs,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    sortBy,
-    sortDir,
-  })
+  res.status(200).json(payload)
 })
 
 export default router

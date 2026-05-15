@@ -90,6 +90,12 @@ High-priority route hotspots checklist:
     - Telemetry dashboard payload construction extracted to service:
       - backend/src/services/admin-telemetry.service.ts
       - backend/src/api/admin.routes.ts (`/telemetry/dashboard` delegates to service)
+    - Telemetry logs list/drill-down payload construction extracted to service:
+      - backend/src/services/admin-telemetry.service.ts
+      - backend/src/api/admin.routes.ts (`/telemetry/logs` and `/telemetry/logs/:logId` delegate to service)
+    - Settings state/update/merge logic extracted to service:
+      - backend/src/services/admin-settings.service.ts
+      - backend/src/api/admin.routes.ts (`/settings` and `/settings` PUT delegate to service helpers)
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts

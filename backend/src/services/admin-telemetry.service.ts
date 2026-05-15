@@ -1,7 +1,13 @@
 import os from 'node:os'
 import { getAllSessions } from '@/services/session/core.service'
 import { getChatTelemetrySnapshot } from '@/services/chat.service'
-import { loadTelemetryEvents } from '@/infra/telemetry-store'
+import {
+  findDiagnosticEventById,
+  findTelemetryEventById,
+  loadDiagnosticEvents,
+  loadTelemetryEvents,
+  persistDiagnosticEvents,
+} from '@/infra/telemetry-store'
 import { logger } from '@/utils/logger'
 import { getPrismaClient } from '@/infra/db'
 
@@ -134,5 +140,323 @@ export async function buildAdminTelemetryStatusPayload(): Promise<{
     },
     uptimeSec,
     clientTelemetryEventsLastHour: clientTelemetryLastHour.length,
+  }
+}
+
+function parseTimeRange(value: string | undefined): number {
+  switch (value) {
+    case '1h':
+      return 60 * 60 * 1000
+    case '7d':
+      return 7 * 24 * 60 * 60 * 1000
+    default:
+      return 24 * 60 * 60 * 1000
+  }
+}
+
+type TelemetrySortBy = 'timestamp' | 'severity' | 'source' | 'message'
+type TelemetrySortDir = 'asc' | 'desc'
+
+function parseSortBy(value: string | undefined): TelemetrySortBy {
+  if (value === 'severity' || value === 'source' || value === 'message') {
+    return value
+  }
+  return 'timestamp'
+}
+
+function parseSortDir(value: string | undefined): TelemetrySortDir {
+  return value === 'asc' ? 'asc' : 'desc'
+}
+
+type TelemetryLogEntry = {
+  id: string
+  timestamp: string
+  severity: string
+  source: string
+  message: string
+  details: unknown
+}
+
+export async function buildAdminTelemetryLogsListPayload(params: {
+  query: Record<string, unknown>
+}): Promise<{
+  logs: TelemetryLogEntry[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  sortBy: TelemetrySortBy
+  sortDir: TelemetrySortDir
+}> {
+  const timeRange = parseTimeRange(
+    typeof params.query.timeRange === 'string' ? params.query.timeRange : undefined
+  )
+  const severity =
+    typeof params.query.severity === 'string' ? params.query.severity.toUpperCase() : undefined
+  const source =
+    typeof params.query.source === 'string' ? params.query.source.toLowerCase() : undefined
+  const userId = typeof params.query.userId === 'string' ? params.query.userId.trim() : undefined
+  const roomId = typeof params.query.roomId === 'string' ? params.query.roomId.trim() : undefined
+  const page = Math.max(1, Number(params.query.page || 1))
+  const pageSize = Math.min(200, Math.max(1, Number(params.query.pageSize || 25)))
+  const sortBy = parseSortBy(
+    typeof params.query.sortBy === 'string' ? params.query.sortBy : undefined
+  )
+  const sortDir = parseSortDir(
+    typeof params.query.sortDir === 'string' ? params.query.sortDir.toLowerCase() : undefined
+  )
+
+  const now = Date.now()
+  const minTs = now - timeRange
+
+  const severityRank: Record<string, number> = {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3,
+  }
+
+  const runtimeHistory = logger.getHistory().map((entry) => ({
+    timestamp: entry.timestamp,
+    severity: entry.level,
+    source: entry.context,
+    message: entry.message,
+    details: (entry.meta || {}) as Record<string, unknown>,
+  }))
+
+  await persistDiagnosticEvents(runtimeHistory)
+
+  const runtimeLogs = (await loadDiagnosticEvents())
+    .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
+    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
+    .filter((entry) =>
+      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
+    )
+    .filter((entry) => {
+      if (!userId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(userId.toLowerCase())
+    })
+    .filter((entry) => {
+      if (!roomId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(roomId.toLowerCase())
+    })
+    .map((entry) => ({
+      id: `diagnostic-${entry.id}`,
+      timestamp: entry.timestamp,
+      severity: entry.severity,
+      source: entry.source,
+      message: entry.message,
+      details: entry.details,
+    }))
+
+  const auditRows = await prisma.adminAuditLog.findMany({
+    where: {
+      createdAt: { gte: new Date(minTs) },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 1000,
+  })
+
+  const auditLogs = auditRows
+    .map((row) => ({
+      id: `audit-${row.id}`,
+      timestamp: row.createdAt.toISOString(),
+      severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
+      source: 'admin-audit',
+      message: `${row.action} ${row.outcome}`,
+      details: {
+        actorUserId: row.actorUserId,
+        actorName: row.actorName,
+        actorRole: row.actorRole,
+        targetType: row.targetType,
+        targetId: row.targetId,
+        reason: row.reason,
+        metadata: row.metadata,
+      },
+    }))
+    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
+    .filter((entry) =>
+      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
+    )
+    .filter((entry) => {
+      if (!userId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(userId.toLowerCase())
+    })
+    .filter((entry) => {
+      if (!roomId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(roomId.toLowerCase())
+    })
+
+  const telemetryLogs = (await loadTelemetryEvents())
+    .filter((entry) => new Date(entry.timestamp).getTime() >= minTs)
+    .map((entry) => ({
+      id: `telemetry-${entry.id}`,
+      timestamp: entry.timestamp,
+      severity: entry.severity,
+      source: entry.source,
+      message: entry.message,
+      details: entry.details,
+    }))
+    .filter((entry) => (severity && severity !== 'ALL' ? entry.severity === severity : true))
+    .filter((entry) =>
+      source && source !== 'all' ? entry.source.toLowerCase().includes(source) : true
+    )
+    .filter((entry) => {
+      if (!userId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(userId.toLowerCase())
+    })
+    .filter((entry) => {
+      if (!roomId) return true
+      return JSON.stringify(entry.details || {})
+        .toLowerCase()
+        .includes(roomId.toLowerCase())
+    })
+
+  const filtered = [...runtimeLogs, ...auditLogs, ...telemetryLogs]
+
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0
+    if (sortBy === 'timestamp') {
+      cmp = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    } else if (sortBy === 'severity') {
+      cmp = (severityRank[a.severity] ?? 0) - (severityRank[b.severity] ?? 0)
+    } else if (sortBy === 'source') {
+      cmp = a.source.localeCompare(b.source)
+    } else {
+      cmp = a.message.localeCompare(b.message)
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const total = sorted.length
+  const start = (page - 1) * pageSize
+  const logs = sorted.slice(start, start + pageSize)
+
+  return {
+    logs,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    sortBy,
+    sortDir,
+  }
+}
+
+export async function resolveAdminTelemetryLogById(logId: string): Promise<{
+  status: number
+  body: Record<string, unknown>
+}> {
+  const normalizedLogId = logId.trim()
+
+  if (!normalizedLogId) {
+    return {
+      status: 400,
+      body: { error: 'logId is required', code: 'INVALID_LOG_ID' },
+    }
+  }
+
+  if (normalizedLogId.startsWith('diagnostic-')) {
+    const diagnosticId = normalizedLogId.slice('diagnostic-'.length)
+    const row = await findDiagnosticEventById(diagnosticId)
+
+    if (!row) {
+      return {
+        status: 404,
+        body: { error: 'Log entry not found', code: 'NOT_FOUND' },
+      }
+    }
+
+    return {
+      status: 200,
+      body: {
+        log: {
+          id: `diagnostic-${row.id}`,
+          timestamp: row.timestamp,
+          severity: row.severity,
+          source: row.source,
+          message: row.message,
+          details: row.details,
+        },
+      },
+    }
+  }
+
+  if (normalizedLogId.startsWith('audit-')) {
+    const auditId = normalizedLogId.slice('audit-'.length)
+    const row = await prisma.adminAuditLog.findUnique({ where: { id: auditId } })
+
+    if (!row) {
+      return {
+        status: 404,
+        body: { error: 'Log entry not found', code: 'NOT_FOUND' },
+      }
+    }
+
+    return {
+      status: 200,
+      body: {
+        log: {
+          id: `audit-${row.id}`,
+          timestamp: row.createdAt.toISOString(),
+          severity: row.outcome === 'FAILED' || row.outcome === 'DENIED' ? 'WARN' : 'INFO',
+          source: 'admin-audit',
+          message: `${row.action} ${row.outcome}`,
+          details: {
+            actorUserId: row.actorUserId,
+            actorName: row.actorName,
+            actorRole: row.actorRole,
+            targetType: row.targetType,
+            targetId: row.targetId,
+            reason: row.reason,
+            metadata: row.metadata,
+          },
+        },
+      },
+    }
+  }
+
+  if (normalizedLogId.startsWith('telemetry-')) {
+    const telemetryId = normalizedLogId.slice('telemetry-'.length)
+    const row = await findTelemetryEventById(telemetryId)
+
+    if (!row) {
+      return {
+        status: 404,
+        body: { error: 'Log entry not found', code: 'NOT_FOUND' },
+      }
+    }
+
+    return {
+      status: 200,
+      body: {
+        log: {
+          id: `telemetry-${row.id}`,
+          timestamp: row.timestamp,
+          severity: row.severity,
+          source: row.source,
+          message: row.message,
+          details: row.details,
+        },
+      },
+    }
+  }
+
+  return {
+    status: 400,
+    body: {
+      error: 'This log source does not support durable drill-down',
+      code: 'DRILLDOWN_NOT_SUPPORTED',
+    },
   }
 }
