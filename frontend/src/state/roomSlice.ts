@@ -455,7 +455,8 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           level: existingMember?.level ?? existingPresence?.level,
           characterStats: existingMember?.characterStats ?? existingPresence?.characterStats,
           presenceState: nextPresence,
-          ghost: existingMember?.ghost ?? existingPresence?.ghost,
+          // Presence slice is authoritative for ghost mode; prefer it over stale room-member cache.
+          ghost: existingPresence?.ghost ?? existingMember?.ghost,
           previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
           joinedAt: existingMember?.joinedAt || changedAt,
         }
@@ -491,6 +492,24 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const changedAt = payload.changedAt || event.timestamp
     const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
     const roomId = payload.roomId || existingPresence?.primaryRoomId
+
+    set((state) => {
+      const nextRoomMembers: Record<UUID, RoomUser[]> = {}
+      for (const [memberRoomId, members] of Object.entries(state.roomMembers)) {
+        nextRoomMembers[memberRoomId as UUID] = members.map((member) =>
+          member.userId === payload.userId
+            ? {
+                ...member,
+                ghost: payload.ghostMode || false,
+              }
+            : member
+        )
+      }
+
+      return {
+        roomMembers: nextRoomMembers,
+      }
+    })
 
     get().applySessionPresenceStateChange({
       sessionId: event.sessionId,

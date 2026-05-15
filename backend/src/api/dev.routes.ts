@@ -24,6 +24,7 @@ import {
   getSessionMockPlayerById,
 } from '@/services/dev-mock/players.service'
 import {
+  getMockDisconnectRealismProfiles,
   getMockSimulationBounds,
   getMockSimulationPlayerCount,
   getMockSimulationStatus,
@@ -338,10 +339,12 @@ router.get('/simulation/status/:sessionId', requireAuth, async (req: Request, re
 
   const status = await getMockSimulationStatus(sessionId as UUID)
   const bounds = getMockSimulationBounds()
+  const disconnectProfiles = getMockDisconnectRealismProfiles()
 
   return res.json({
     ...status,
     bounds,
+    disconnectProfiles,
   })
 })
 
@@ -359,6 +362,10 @@ router.post('/simulation/settings', requireAuth, async (req: Request, res: Respo
           chatSimulatorEnabled?: boolean
           disconnectSimulatorEnabled?: boolean
           playerCount?: number
+          disconnectRealismProfile?: 'SHORT_BLIPS' | 'BALANCED' | 'NETWORK_CHURN'
+          disconnectChancePerTick?: number
+          ghostMinDurationMs?: number
+          ghostMaxDurationMs?: number
         })
       : {}
 

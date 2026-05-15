@@ -12,7 +12,11 @@ import {
 } from '@/services/audio/audio-state'
 import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/ws/event-broadcaster'
-import { AUDIO_EVENT_TYPES, AUDIO_PRESETS } from '@/constants/audio.constants'
+import {
+  AUDIO_DM_OVERRIDE_TYPES,
+  AUDIO_EVENT_TYPES,
+  AUDIO_PRESETS,
+} from '@/constants/audio.constants'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
@@ -502,6 +506,31 @@ async function handleSetUserMute(req: Request, res: Response) {
   const authz = await validateSessionAccess(sessionId as UUID, user)
   if (!authz.ok) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  if (!muted) {
+    await removeDMOverrideState({
+      sessionId: sessionId as UUID,
+      targetUserId: user.userId as UUID,
+      overrideType: AUDIO_DM_OVERRIDE_TYPES.MUTE,
+    })
+
+    const removedAt = Date.now()
+    const overrideRemovedEvent = createEvent({
+      type: AUDIO_EVENT_TYPES.DM_OVERRIDE_REMOVED,
+      user,
+      userRole: authz.role,
+      sessionId: sessionId as UUID,
+      roomId: null,
+      payload: {
+        targetUserId: user.userId as UUID,
+        dmId: user.userId as UUID,
+        overrideType: AUDIO_DM_OVERRIDE_TYPES.MUTE,
+        removedAt,
+      },
+    })
+
+    eventBroadcaster.broadcastToSession(sessionId as UUID, overrideRemovedEvent)
   }
 
   const mutedAt = Date.now()

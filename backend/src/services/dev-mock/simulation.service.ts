@@ -8,26 +8,32 @@ import {
   MIN_DEV_MOCK_SIMULATOR_COUNT,
 } from '@/constants/dev-mock.constants'
 import { getSession } from '@/services/session/core.service'
-import {
-  getSessionPresence,
-  getRooms,
-  joinRoom,
-  leaveRoom,
-  updatePresenceState,
-} from '@/services/room.service'
+import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
 import { MessageType, PresenceState, Role, RoomType } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import type { StoredMessage } from '@/types/chat.types'
 import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
-import { setUserMuteState } from '@/services/audio/effects.service'
-import { AUDIO_DM_OVERRIDE_TYPES } from '@/constants/audio.constants'
+import { removeDMOverrideState, setUserMuteState } from '@/services/audio/effects.service'
+import { AUDIO_DM_OVERRIDE_TYPES, AUDIO_EVENT_TYPES } from '@/constants/audio.constants'
+
+type DisconnectRealismProfile = 'SHORT_BLIPS' | 'BALANCED' | 'NETWORK_CHURN'
+
+interface DisconnectRealismPreset {
+  disconnectChancePerTick: number
+  ghostMinDurationMs: number
+  ghostMaxDurationMs: number
+}
 
 export interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean
   chatSimulatorEnabled: boolean
   disconnectSimulatorEnabled: boolean
   playerCount: number
+  disconnectRealismProfile: DisconnectRealismProfile
+  disconnectChancePerTick: number
+  ghostMinDurationMs: number
+  ghostMaxDurationMs: number
 }
 
 interface MockSimulationRuntime {
@@ -58,14 +64,142 @@ interface DisconnectedMockState {
   reconnectAt: number
 }
 
+const DISCONNECT_REALISM_PRESETS: Record<DisconnectRealismProfile, DisconnectRealismPreset> = {
+  SHORT_BLIPS: {
+    disconnectChancePerTick: 0.08,
+    ghostMinDurationMs: 1200,
+    ghostMaxDurationMs: 3200,
+  },
+  BALANCED: {
+    disconnectChancePerTick: 0.18,
+    ghostMinDurationMs: 2500,
+    ghostMaxDurationMs: 7000,
+  },
+  NETWORK_CHURN: {
+    disconnectChancePerTick: 0.34,
+    ghostMinDurationMs: 4500,
+    ghostMaxDurationMs: 14000,
+  },
+}
+
+const MIN_DISCONNECT_CHANCE_PER_TICK = 0
+const MAX_DISCONNECT_CHANCE_PER_TICK = 0.95
+const MIN_GHOST_DURATION_MS = 500
+const MAX_GHOST_DURATION_MS = 60000
+const DEFAULT_DISCONNECT_PROFILE: DisconnectRealismProfile = 'BALANCED'
+
 const runtimeBySession = new Map<UUID, MockSimulationRuntime>()
 
+function isMockUsername(username: string): boolean {
+  return username.startsWith(DEV_MOCK_PREFIX)
+}
+
+function clampDisconnectChancePerTick(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback
+  }
+
+  return Math.max(
+    MIN_DISCONNECT_CHANCE_PER_TICK,
+    Math.min(MAX_DISCONNECT_CHANCE_PER_TICK, Number(value))
+  )
+}
+
+function clampGhostDurationMs(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback
+  }
+
+  return Math.max(MIN_GHOST_DURATION_MS, Math.min(MAX_GHOST_DURATION_MS, Math.floor(value)))
+}
+
+function toDisconnectProfile(value: unknown): DisconnectRealismProfile | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalized = value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+  if (normalized === 'BLIPS') {
+    return 'SHORT_BLIPS'
+  }
+  if (normalized === 'CHURN') {
+    return 'NETWORK_CHURN'
+  }
+
+  if (normalized === 'SHORT_BLIPS' || normalized === 'BALANCED' || normalized === 'NETWORK_CHURN') {
+    return normalized
+  }
+
+  return undefined
+}
+
+function normalizeDisconnectConfig(
+  previous: MockSimulationConfig,
+  requested: Partial<MockSimulationConfig>
+): Pick<
+  MockSimulationConfig,
+  | 'disconnectRealismProfile'
+  | 'disconnectChancePerTick'
+  | 'ghostMinDurationMs'
+  | 'ghostMaxDurationMs'
+> {
+  const requestedProfile = toDisconnectProfile(requested.disconnectRealismProfile)
+  const baseProfile = requestedProfile || previous.disconnectRealismProfile
+  const preset = DISCONNECT_REALISM_PRESETS[baseProfile]
+
+  const chance =
+    requested.disconnectChancePerTick !== undefined
+      ? clampDisconnectChancePerTick(
+          requested.disconnectChancePerTick,
+          preset.disconnectChancePerTick
+        )
+      : requestedProfile
+        ? preset.disconnectChancePerTick
+        : previous.disconnectChancePerTick
+
+  let ghostMin =
+    requested.ghostMinDurationMs !== undefined
+      ? clampGhostDurationMs(requested.ghostMinDurationMs, preset.ghostMinDurationMs)
+      : requestedProfile
+        ? preset.ghostMinDurationMs
+        : previous.ghostMinDurationMs
+
+  let ghostMax =
+    requested.ghostMaxDurationMs !== undefined
+      ? clampGhostDurationMs(requested.ghostMaxDurationMs, preset.ghostMaxDurationMs)
+      : requestedProfile
+        ? preset.ghostMaxDurationMs
+        : previous.ghostMaxDurationMs
+
+  if (ghostMin > ghostMax) {
+    const tmp = ghostMin
+    ghostMin = ghostMax
+    ghostMax = tmp
+  }
+
+  return {
+    disconnectRealismProfile: baseProfile,
+    disconnectChancePerTick: chance,
+    ghostMinDurationMs: ghostMin,
+    ghostMaxDurationMs: ghostMax,
+  }
+}
+
 function defaultConfig(): MockSimulationConfig {
+  const preset = DISCONNECT_REALISM_PRESETS[DEFAULT_DISCONNECT_PROFILE]
+
   return {
     speakingSimulatorEnabled: true,
     chatSimulatorEnabled: false,
     disconnectSimulatorEnabled: false,
     playerCount: 8,
+    disconnectRealismProfile: DEFAULT_DISCONNECT_PROFILE,
+    disconnectChancePerTick: preset.disconnectChancePerTick,
+    ghostMinDurationMs: preset.ghostMinDurationMs,
+    ghostMaxDurationMs: preset.ghostMaxDurationMs,
   }
 }
 
@@ -243,7 +377,7 @@ async function broadcastPresenceState(
 async function listSessionMockUsers(sessionId: UUID): Promise<MockPresenceUser[]> {
   const presence = await getSessionPresence(sessionId)
   return presence
-    .filter((entry) => entry.username?.startsWith(DEV_MOCK_PREFIX))
+    .filter((entry) => isMockUsername(entry.username || ''))
     .map((entry) => ({
       userId: entry.userId,
       username: entry.username,
@@ -252,44 +386,37 @@ async function listSessionMockUsers(sessionId: UUID): Promise<MockPresenceUser[]
     }))
 }
 
-function pickRoomForReconnect(
-  preferredRoomId: UUID | undefined,
-  rooms: Array<{ id: UUID; type: RoomType }>
-): UUID | undefined {
-  if (preferredRoomId && rooms.some((room) => room.id === preferredRoomId)) {
-    return preferredRoomId
-  }
-
-  const main = rooms.find((room) => room.type === RoomType.MAIN)
-  if (main) {
-    return main.id
-  }
-
-  return rooms[0]?.id
-}
-
 async function disconnectMockUser(params: {
   sessionId: UUID
   runtime: MockSimulationRuntime
   user: MockPresenceUser
   now: number
 }) {
-  if (!params.user.primaryRoomId) {
+  if (!params.user.primaryRoomId || !isMockUsername(params.user.username)) {
     return
   }
 
   const roomId = params.user.primaryRoomId
-  await leaveRoom({
+  const reconnectDelayMs =
+    params.runtime.config.ghostMinDurationMs +
+    Math.floor(
+      Math.random() *
+        (params.runtime.config.ghostMaxDurationMs - params.runtime.config.ghostMinDurationMs + 1)
+    )
+
+  const disconnectedPresence = await updatePresenceState({
     sessionId: params.sessionId,
-    roomId,
     userId: params.user.userId,
+    username: params.user.username,
     state: PresenceState.OFFLINE,
+    primaryRoomId: roomId,
+    ghost: true,
   })
 
   params.runtime.disconnectedByUserId.set(params.user.userId, {
     username: params.user.username,
     previousRoomId: roomId,
-    reconnectAt: params.now + 2000,
+    reconnectAt: params.now + reconnectDelayMs,
   })
   params.runtime.speakingNow.delete(params.user.userId)
 
@@ -300,84 +427,115 @@ async function disconnectMockUser(params: {
 
   broadcastEvent(params.sessionId, {
     id: randomUUID() as UUID,
-    type: 'ROOM:USER_LEFT',
+    type: 'PRESENCE:USER_GHOST_MODE_CHANGED',
     version: 1,
     userId: params.user.userId,
     userRole: Role.PLAYER,
     sessionId: params.sessionId,
     roomId,
-    timestamp: params.now,
+    timestamp: disconnectedPresence.lastSeenAt,
     payload: {
-      roomId,
-      userId: params.user.userId,
-      username: params.user.username,
-      leftAt: params.now,
-      reason: 'dev_mock_disconnect',
+      userId: disconnectedPresence.userId,
+      username: disconnectedPresence.username,
+      roomId: disconnectedPresence.primaryRoomId || null,
+      ghostMode: true,
+      changedAt: disconnectedPresence.lastSeenAt,
+      previousGroupId: disconnectedPresence.previousGroupId || null,
     },
   })
 
-  await broadcastPresenceState(params.sessionId, params.user, PresenceState.OFFLINE)
+  broadcastEvent(params.sessionId, {
+    id: randomUUID() as UUID,
+    type: 'PRESENCE:STATE_CHANGED',
+    version: 1,
+    userId: params.user.userId,
+    userRole: Role.PLAYER,
+    sessionId: params.sessionId,
+    roomId,
+    timestamp: disconnectedPresence.lastSeenAt,
+    payload: {
+      userId: disconnectedPresence.userId,
+      username: disconnectedPresence.username,
+      roomId: disconnectedPresence.primaryRoomId || null,
+      presence: PresenceState.OFFLINE,
+      newState: PresenceState.OFFLINE,
+      changedAt: disconnectedPresence.lastSeenAt,
+      previousGroupId: disconnectedPresence.previousGroupId || null,
+    },
+  })
 }
 
 async function reconnectMockUser(params: {
   sessionId: UUID
   userId: UUID
   runtime: MockSimulationRuntime
-  rooms: Array<{ id: UUID; type: RoomType }>
 }) {
   const disconnected = params.runtime.disconnectedByUserId.get(params.userId)
   if (!disconnected) {
     return
   }
 
-  const roomId = pickRoomForReconnect(disconnected.previousRoomId, params.rooms)
-  if (!roomId) {
+  if (!isMockUsername(disconnected.username)) {
+    params.runtime.disconnectedByUserId.delete(params.userId)
     return
   }
 
-  const joined = await joinRoom({
+  const currentPresence = await getSessionPresence(params.sessionId)
+  const current = currentPresence.find((entry) => entry.userId === params.userId)
+  if (current && !isMockUsername(current.username || '')) {
+    params.runtime.disconnectedByUserId.delete(params.userId)
+    return
+  }
+
+  const reconnectedPresence = await updatePresenceState({
     sessionId: params.sessionId,
-    roomId,
     userId: params.userId,
     username: disconnected.username,
     state: PresenceState.ONLINE,
+    primaryRoomId: disconnected.previousRoomId,
+    ghost: false,
   })
 
-  if (!joined) {
-    return
-  }
-
   params.runtime.disconnectedByUserId.delete(params.userId)
-  const now = Date.now()
 
   broadcastEvent(params.sessionId, {
     id: randomUUID() as UUID,
-    type: 'ROOM:USER_JOINED',
+    type: 'PRESENCE:USER_GHOST_MODE_CHANGED',
     version: 1,
     userId: params.userId,
     userRole: Role.PLAYER,
     sessionId: params.sessionId,
-    roomId,
-    timestamp: now,
+    roomId: reconnectedPresence.primaryRoomId || null,
+    timestamp: reconnectedPresence.lastSeenAt,
     payload: {
-      roomId,
-      userId: params.userId,
-      username: disconnected.username,
-      joinedAt: now,
-      reason: 'dev_mock_reconnect',
+      userId: reconnectedPresence.userId,
+      username: reconnectedPresence.username,
+      roomId: reconnectedPresence.primaryRoomId || null,
+      ghostMode: false,
+      changedAt: reconnectedPresence.lastSeenAt,
+      previousGroupId: reconnectedPresence.previousGroupId || null,
     },
   })
 
-  await broadcastPresenceState(
-    params.sessionId,
-    {
-      userId: params.userId,
-      username: disconnected.username,
-      primaryRoomId: roomId,
-      state: PresenceState.ONLINE,
+  broadcastEvent(params.sessionId, {
+    id: randomUUID() as UUID,
+    type: 'PRESENCE:STATE_CHANGED',
+    version: 1,
+    userId: params.userId,
+    userRole: Role.PLAYER,
+    sessionId: params.sessionId,
+    roomId: reconnectedPresence.primaryRoomId || null,
+    timestamp: reconnectedPresence.lastSeenAt,
+    payload: {
+      userId: reconnectedPresence.userId,
+      username: reconnectedPresence.username,
+      roomId: reconnectedPresence.primaryRoomId || null,
+      presence: PresenceState.ONLINE,
+      newState: PresenceState.ONLINE,
+      changedAt: reconnectedPresence.lastSeenAt,
+      previousGroupId: reconnectedPresence.previousGroupId || null,
     },
-    PresenceState.ONLINE
-  )
+  })
 }
 
 function pickTemplate(type: MessageType): string {
@@ -551,6 +709,30 @@ async function listDmMutedMockUsers(
 }
 
 async function emitMockSelfUnmute(sessionId: UUID, user: MockPresenceUser): Promise<void> {
+  const removedAt = Date.now()
+  await removeDMOverrideState({
+    sessionId,
+    targetUserId: user.userId,
+    overrideType: AUDIO_DM_OVERRIDE_TYPES.MUTE,
+  })
+
+  broadcastEvent(sessionId, {
+    id: randomUUID() as UUID,
+    type: AUDIO_EVENT_TYPES.DM_OVERRIDE_REMOVED,
+    version: 1,
+    userId: user.userId,
+    userRole: Role.PLAYER,
+    sessionId,
+    roomId: null,
+    timestamp: removedAt,
+    payload: {
+      targetUserId: user.userId,
+      dmId: user.userId,
+      overrideType: AUDIO_DM_OVERRIDE_TYPES.MUTE,
+      removedAt,
+    },
+  })
+
   const mutedAt = Date.now()
   const nextMuteState = await setUserMuteState({
     sessionId,
@@ -581,8 +763,8 @@ async function maybeEmitMockSelfUnmute(
   runtime: MockSimulationRuntime,
   users: MockPresenceUser[]
 ): Promise<void> {
-  // Intentionally mirrors a real player action: a user can try to unmute
-  // while DM-muted; DM override still remains authoritative for audibility.
+  // Intentionally mirrors a real player action: a user can unmute themselves
+  // after a DM mute, which clears the mute override and updates mute state.
   if (!runtime.config.speakingSimulatorEnabled) {
     return
   }
@@ -633,7 +815,6 @@ async function runTick(sessionId: UUID): Promise<void> {
         sessionId,
         userId,
         runtime,
-        rooms,
       })
     }
   }
@@ -644,14 +825,13 @@ async function runTick(sessionId: UUID): Promise<void> {
         sessionId,
         userId,
         runtime,
-        rooms,
       })
     }
   } else {
     const connectedUsers = users.filter(
       (user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId)
     )
-    if (connectedUsers.length > 0 && Math.random() > 0.82) {
+    if (connectedUsers.length > 0 && Math.random() < runtime.config.disconnectChancePerTick) {
       const [target] = pickRandomUsers(
         connectedUsers.map((user) => user.userId),
         1
@@ -770,7 +950,6 @@ async function clearRuntimeState(sessionId: UUID, runtime: MockSimulationRuntime
       sessionId,
       userId,
       runtime,
-      rooms,
     })
   }
 
@@ -850,11 +1029,16 @@ export async function updateMockSimulationConfig(params: {
   config: Partial<MockSimulationConfig>
 }): Promise<MockSimulationConfig> {
   const runtime = getOrCreateRuntime(params.sessionId)
+  const disconnectConfig = normalizeDisconnectConfig(runtime.config, params.config)
 
   runtime.config = {
-    ...runtime.config,
-    ...params.config,
+    speakingSimulatorEnabled:
+      params.config.speakingSimulatorEnabled ?? runtime.config.speakingSimulatorEnabled,
+    chatSimulatorEnabled: params.config.chatSimulatorEnabled ?? runtime.config.chatSimulatorEnabled,
+    disconnectSimulatorEnabled:
+      params.config.disconnectSimulatorEnabled ?? runtime.config.disconnectSimulatorEnabled,
     playerCount: clampPlayerCount(params.config.playerCount ?? runtime.config.playerCount),
+    ...disconnectConfig,
   }
 
   if (shouldRun(runtime.config)) {
@@ -880,4 +1064,11 @@ export function getMockSimulationBounds(): { min: number; max: number } {
     min: MIN_DEV_MOCK_SIMULATOR_COUNT,
     max: MAX_DEV_MOCK_SIMULATOR_COUNT,
   }
+}
+
+export function getMockDisconnectRealismProfiles(): Record<
+  DisconnectRealismProfile,
+  DisconnectRealismPreset
+> {
+  return DISCONNECT_REALISM_PRESETS
 }

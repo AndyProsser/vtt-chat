@@ -253,6 +253,7 @@ export function SessionLeftRailPanel({
                         ? ROOM_ROLE_LABELS.spectator
                         : ROOM_ROLE_LABELS.player,
                   presenceState: member.presenceState,
+                  ghost: member.ghost,
                   isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
                   isSpeaking: isActivelySpeaking,
                   distanceLabel: isGreenroom ? undefined : overrideDistance,
