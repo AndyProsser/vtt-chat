@@ -605,19 +605,44 @@ export function SessionInit({
     onAuthFailure: handleWebSocketAuthFailure,
   })
 
-  // Controllers for API orchestration
-  const campaignSettingsController = useMemo(
-    () => createCampaignSettingsController({ apiUrl, token, fetchWithAuthGuard }),
-    [apiUrl, token, fetchWithAuthGuard]
-  )
-  const characterSettingsController = useMemo(
-    () => createCharacterSettingsController({ apiUrl, token, fetchWithAuthGuard }),
-    [apiUrl, token, fetchWithAuthGuard]
-  )
-  const sessionMembershipController = useMemo(
-    () => createSessionMembershipController({ apiUrl, token, fetchWithAuthGuard }),
-    [apiUrl, token, fetchWithAuthGuard]
-  )
+  // Controllers for API orchestration (lazy-initialized in effect to avoid ref access during render)
+  const campaignSettingsControllerRef = useRef<ReturnType<
+    typeof createCampaignSettingsController
+  > | null>(null)
+  const characterSettingsControllerRef = useRef<ReturnType<
+    typeof createCharacterSettingsController
+  > | null>(null)
+  const sessionMembershipControllerRef = useRef<ReturnType<
+    typeof createSessionMembershipController
+  > | null>(null)
+
+  useEffect(() => {
+    if (!campaignSettingsControllerRef.current) {
+      campaignSettingsControllerRef.current = createCampaignSettingsController({
+        apiUrl,
+        token,
+        fetchWithAuthGuard,
+      })
+    }
+    if (!characterSettingsControllerRef.current) {
+      characterSettingsControllerRef.current = createCharacterSettingsController({
+        apiUrl,
+        token,
+        fetchWithAuthGuard,
+      })
+    }
+    if (!sessionMembershipControllerRef.current) {
+      sessionMembershipControllerRef.current = createSessionMembershipController({
+        apiUrl,
+        token,
+        fetchWithAuthGuard,
+      })
+    }
+  }, [apiUrl, token, fetchWithAuthGuard])
+
+  const campaignSettingsController = campaignSettingsControllerRef.current!
+  const characterSettingsController = characterSettingsControllerRef.current!
+  const sessionMembershipController = sessionMembershipControllerRef.current!
 
   // Helper to fetch campaign sessions
   const fetchCampaignSessionsData = useCallback(
@@ -1598,7 +1623,7 @@ export function SessionInit({
     }
 
     wsTelemetryPrevRef.current = wsState
-  }, [wsState, currentSession?.id])
+  }, [wsState, currentSession?.id, wsTelemetryPrevRef])
 
   useEffect(() => {
     const prev = prevWsStateRef.current
@@ -1795,6 +1820,8 @@ export function SessionInit({
     replaceDMOverrides,
     resetSessionAudioState,
     clearActiveEffects,
+    lastHydratedSessionFingerprintRef,
+    prevWsStateRef,
   ])
 
   useEffect(() => {
@@ -2984,7 +3011,7 @@ export function SessionInit({
 
   useEffect(() => {
     wsErrorMessageRef.current = wsError?.message || null
-  }, [wsError])
+  }, [wsError, wsErrorMessageRef])
 
   useEffect(() => {
     if (wsState === 'connected') {
@@ -3029,7 +3056,7 @@ export function SessionInit({
         wsRetryToastTimerRef.current = null
       }
     }
-  }, [wsState, sessionLifecycleActions])
+  }, [wsState, sessionLifecycleActions, wsRetryToastTimerRef, wsRetryWindowStartRef])
 
   useEffect(() => {
     if (wsState === 'connected' || wsRetryWindowExpired || wsRetryWindowStartRef.current === null) {
@@ -3055,7 +3082,7 @@ export function SessionInit({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [wsRetryWindowExpired, wsState, sessionLifecycleActions])
+  }, [wsRetryWindowExpired, wsState, sessionLifecycleActions, wsRetryWindowStartRef])
 
   useEffect(() => {
     if (!wsRetryWindowExpired || wsState === 'connected') {
@@ -3086,7 +3113,15 @@ export function SessionInit({
       },
       durationMs: null,
     })
-  }, [retryConnection, showToast, wsRetryWindowExpired, wsState])
+  }, [
+    retryConnection,
+    showToast,
+    wsRetryWindowExpired,
+    wsState,
+    sessionLifecycleActions,
+    wsErrorMessageRef,
+    wsRetryWindowStartRef,
+  ])
 
   return (
     <>
@@ -3102,7 +3137,14 @@ export function SessionInit({
             isCreatingCampaign={isCreatingCampaign}
             isJoiningCampaign={isJoiningCampaign}
             themeMode={themeMode}
-            connectionStatus={connectionStatus}
+            connectionStatus={{
+              statusColorKey: connectionStatus.statusColorKey,
+              label: connectionStatus.label,
+              coreWsState: connectionStatus.coreWsState as
+                | 'CONNECTED'
+                | 'CONNECTING'
+                | 'DISCONNECTED',
+            }}
             onSelectCampaign={setSelectedCampaignId}
             onCreateCampaign={() => setShowCreateCampaignModal(true)}
             onJoinCampaign={() => setShowJoinCampaignModal(true)}
