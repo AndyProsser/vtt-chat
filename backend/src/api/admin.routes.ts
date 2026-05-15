@@ -18,15 +18,23 @@ import {
   previewAdminUsersImport,
 } from '@/services/admin-users.service'
 import {
-  applyArchivedMarker,
-  isCampaignArchived,
   listAdminCampaignsForRequest,
   parseAdminCampaignsListRequest,
-  removeArchivedMarker,
 } from '@/services/admin-campaigns.service'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
-import { listExternalSystems, updateExternalSystem } from '@/services/integrations.service'
+import {
+  authorizeAdminIntegrationSystem,
+  blockAdminIntegrationSystem,
+  listAdminIntegrationSystemsPayload,
+  updateAdminIntegrationSystem,
+} from '@/services/admin-integrations.service'
+import {
+  archiveAdminCampaign,
+  endAdminCampaignSession,
+  getAdminCampaignRoomsPayload,
+  restoreAdminCampaign,
+} from '@/services/admin-campaign-operations.service'
 import { randomBytes } from 'node:crypto'
 import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
@@ -227,138 +235,13 @@ router.get(
       const campaignId = String(req.params.campaignId || '').trim()
       const requestedSessionId = String(req.query.sessionId || '').trim() || null
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: {
-          id: true,
-          name: true,
-          currentDmId: true,
-        },
+      const result = await getAdminCampaignRoomsPayload({
+        actor,
+        campaignId,
+        requestedSessionId,
       })
 
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      const session = requestedSessionId
-        ? await prisma.session.findFirst({
-            where: {
-              id: requestedSessionId,
-              campaignId,
-            },
-            select: {
-              id: true,
-              name: true,
-              state: true,
-              updatedAt: true,
-            },
-          })
-        : await prisma.session.findFirst({
-            where: {
-              campaignId,
-            },
-            orderBy: { updatedAt: 'desc' },
-            select: {
-              id: true,
-              name: true,
-              state: true,
-              updatedAt: true,
-            },
-          })
-
-      if (!session) {
-        res.status(200).json({
-          campaign,
-          session: null,
-          rooms: [],
-        })
-        return
-      }
-
-      const [rooms, roomPresenceCounts] = await Promise.all([
-        prisma.room.findMany({
-          where: {
-            sessionId: session.id,
-          },
-          orderBy: [{ type: 'asc' }, { name: 'asc' }],
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        }),
-        prisma.presenceSnapshot.groupBy({
-          by: ['primaryRoomId'],
-          where: {
-            sessionId: session.id,
-            primaryRoomId: { not: null },
-            state: { not: 'OFFLINE' },
-          },
-          _count: {
-            _all: true,
-          },
-        }),
-      ])
-
-      const sessionMembers = await prisma.sessionMember.findMany({
-        where: { sessionId: session.id },
-        orderBy: [{ role: 'asc' }, { username: 'asc' }],
-        select: {
-          userId: true,
-          username: true,
-          role: true,
-        },
-      })
-
-      const presenceRows = await prisma.presenceSnapshot.findMany({
-        where: { sessionId: session.id },
-        select: {
-          userId: true,
-          primaryRoomId: true,
-          state: true,
-        },
-      })
-
-      const presenceByUser = new Map(
-        presenceRows.map((row) => [
-          row.userId,
-          { primaryRoomId: row.primaryRoomId, state: row.state },
-        ])
-      )
-
-      const roomOccupancy = new Map<string, number>()
-      roomPresenceCounts.forEach((entry) => {
-        if (entry.primaryRoomId) {
-          roomOccupancy.set(entry.primaryRoomId, entry._count._all)
-        }
-      })
-
-      res.status(200).json({
-        campaign,
-        session,
-        rooms: rooms.map((room) => ({
-          ...room,
-          occupantCount: roomOccupancy.get(room.id) || 0,
-        })),
-        members: sessionMembers.map((member) => {
-          const presence = presenceByUser.get(member.userId)
-          return {
-            userId: member.userId,
-            username: member.username,
-            role: member.role,
-            primaryRoomId: presence?.primaryRoomId || null,
-            presenceState: presence?.state || 'OFFLINE',
-          }
-        }),
-      })
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -385,80 +268,25 @@ router.post(
       const sessionId = String(req.params.sessionId || '').trim()
       const reason = String(req.body?.reason || '').trim() || undefined
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: { id: true, currentDmId: true, name: true },
-      })
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      const existingSession = await prisma.session.findUnique({
-        where: { id: sessionId },
-        select: {
-          id: true,
-          campaignId: true,
-          name: true,
-          state: true,
-          endedAt: true,
-        },
-      })
-
-      if (!existingSession || existingSession.campaignId !== campaign.id) {
-        res.status(404).json({ error: 'Session not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (existingSession.state === 'ENDED') {
-        res.status(200).json({
-          message: 'Session is already ended',
-          session: existingSession,
-        })
-        return
-      }
-
-      const updatedSession = await prisma.session.update({
-        where: { id: existingSession.id },
-        data: {
-          state: 'ENDED',
-          endedAt: new Date(),
-        },
-        select: {
-          id: true,
-          name: true,
-          state: true,
-          endedAt: true,
-          updatedAt: true,
-          campaignId: true,
-        },
-      })
-
-      await writeAudit({
+      const result = await endAdminCampaignSession({
         actor,
-        action: 'SESSION_FORCE_END',
-        targetType: 'SESSION',
-        targetId: updatedSession.id,
+        campaignId,
+        sessionId,
         reason,
-        metadata: {
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          sessionName: updatedSession.name,
-          previousState: existingSession.state,
-          nextState: updatedSession.state,
-        },
       })
 
-      res.status(200).json({
-        message: 'Session ended successfully',
-        session: updatedSession,
-      })
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          reason: result.audit.reason,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
+      }
+
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -484,83 +312,24 @@ router.post(
       const campaignId = String(req.params.campaignId || '').trim()
       const reason = String(req.body?.reason || '').trim() || undefined
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          currentDmId: true,
-        },
-      })
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      if (isCampaignArchived(campaign.description)) {
-        res.status(200).json({
-          message: 'Campaign is already archived',
-          campaign: {
-            ...campaign,
-            isArchived: true,
-          },
-        })
-        return
-      }
-
-      const [updatedCampaign, endedSessions] = await Promise.all([
-        prisma.campaign.update({
-          where: { id: campaign.id },
-          data: {
-            description: applyArchivedMarker(campaign.description),
-          },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            currentDmId: true,
-            updatedAt: true,
-          },
-        }),
-        prisma.session.updateMany({
-          where: {
-            campaignId: campaign.id,
-            state: { not: 'ENDED' },
-          },
-          data: {
-            state: 'ENDED',
-            endedAt: new Date(),
-          },
-        }),
-      ])
-
-      await writeAudit({
+      const result = await archiveAdminCampaign({
         actor,
-        action: 'CAMPAIGN_ARCHIVE',
-        targetType: 'CAMPAIGN',
-        targetId: campaign.id,
+        campaignId,
         reason,
-        metadata: {
-          campaignName: campaign.name,
-          endedSessionsCount: endedSessions.count,
-        },
       })
 
-      res.status(200).json({
-        message: 'Campaign archived successfully',
-        campaign: {
-          ...updatedCampaign,
-          isArchived: true,
-        },
-        endedSessionsCount: endedSessions.count,
-      })
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          reason: result.audit.reason,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
+      }
+
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -586,69 +355,24 @@ router.post(
       const campaignId = String(req.params.campaignId || '').trim()
       const reason = String(req.body?.reason || '').trim() || undefined
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          currentDmId: true,
-        },
-      })
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      if (!isCampaignArchived(campaign.description)) {
-        res.status(200).json({
-          message: 'Campaign is not archived',
-          campaign: {
-            ...campaign,
-            isArchived: false,
-          },
-        })
-        return
-      }
-
-      const updatedCampaign = await prisma.campaign.update({
-        where: { id: campaign.id },
-        data: {
-          description: removeArchivedMarker(campaign.description),
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          currentDmId: true,
-          updatedAt: true,
-        },
-      })
-
-      await writeAudit({
+      const result = await restoreAdminCampaign({
         actor,
-        action: 'CAMPAIGN_RESTORE',
-        targetType: 'CAMPAIGN',
-        targetId: campaign.id,
+        campaignId,
         reason,
-        metadata: {
-          campaignName: campaign.name,
-        },
       })
 
-      res.status(200).json({
-        message: 'Campaign restored successfully',
-        campaign: {
-          ...updatedCampaign,
-          isArchived: false,
-        },
-      })
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          reason: result.audit.reason,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
+      }
+
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -1217,7 +941,7 @@ router.put('/settings', adminAuthMiddleware, async (req: Request, res: Response)
       actor,
       action: 'SETTINGS_UPDATE',
       targetType: 'ADMIN_SETTINGS',
-      metadata: mergedSettings,
+      metadata: mergedSettings as unknown as Prisma.InputJsonValue,
     })
 
     res.status(200).json({
@@ -1297,16 +1021,7 @@ router.get('/integrations/systems', adminAuthMiddleware, async (req: Request, re
       return
     }
 
-    res.status(200).json({
-      systems: listExternalSystems().map((system) => ({
-        ...system,
-        metrics: {
-          linkedUsers: 0,
-          requests24h: 0,
-          lastSeenAt: null,
-        },
-      })),
-    })
+    res.status(200).json(listAdminIntegrationSystemsPayload())
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }
@@ -1328,30 +1043,24 @@ router.post(
         return
       }
 
-      const result = updateExternalSystem(String(req.params.system || ''), {
-        authorizationState: 'AUTHORIZED',
-      })
+      const result = authorizeAdminIntegrationSystem(String(req.params.system || ''))
 
-      if (!result) {
-        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+      if (!result.ok) {
+        res.status(404).json({ error: result.message, code: result.code })
         return
       }
 
       await writeAudit({
         actor,
-        action: 'INTEGRATION_SYSTEM_AUTHORIZE',
-        targetType: 'EXTERNAL_SYSTEM',
-        targetId: result.next.system,
-        metadata: {
-          previousState: result.previous.authorizationState,
-          nextState: result.next.authorizationState,
-          allowedScopes: result.next.allowedScopes,
-        },
+        action: result.audit.action,
+        targetType: result.audit.targetType,
+        targetId: result.audit.targetId,
+        metadata: result.audit.metadata as Prisma.InputJsonValue,
       })
 
       res.status(200).json({
-        message: 'External system authorized',
-        system: result.next,
+        message: result.message,
+        system: result.system,
       })
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
@@ -1375,30 +1084,24 @@ router.post(
         return
       }
 
-      const result = updateExternalSystem(String(req.params.system || ''), {
-        authorizationState: 'BLOCKED',
-      })
+      const result = blockAdminIntegrationSystem(String(req.params.system || ''))
 
-      if (!result) {
-        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+      if (!result.ok) {
+        res.status(404).json({ error: result.message, code: result.code })
         return
       }
 
       await writeAudit({
         actor,
-        action: 'INTEGRATION_SYSTEM_BLOCK',
-        targetType: 'EXTERNAL_SYSTEM',
-        targetId: result.next.system,
-        metadata: {
-          previousState: result.previous.authorizationState,
-          nextState: result.next.authorizationState,
-          allowedScopes: result.next.allowedScopes,
-        },
+        action: result.audit.action,
+        targetType: result.audit.targetType,
+        targetId: result.audit.targetId,
+        metadata: result.audit.metadata as Prisma.InputJsonValue,
       })
 
       res.status(200).json({
-        message: 'External system blocked',
-        system: result.next,
+        message: result.message,
+        system: result.system,
       })
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
@@ -1422,42 +1125,27 @@ router.patch(
         return
       }
 
-      const state = String(req.body?.authorizationState || '')
-        .trim()
-        .toUpperCase()
-      const authorizationState =
-        state === 'AUTHORIZED' || state === 'LOG_ONLY' || state === 'BLOCKED' ? state : undefined
-
-      const result = updateExternalSystem(String(req.params.system || ''), {
-        authorizationState,
-        displayName: req.body?.displayName,
-        notes: req.body?.notes,
-        allowedScopes: req.body?.allowedScopes,
+      const result = updateAdminIntegrationSystem({
+        system: String(req.params.system || ''),
+        body: (req.body || {}) as Record<string, unknown>,
       })
 
-      if (!result) {
-        res.status(404).json({ error: 'External system not found', code: 'NOT_FOUND' })
+      if (!result.ok) {
+        res.status(404).json({ error: result.message, code: result.code })
         return
       }
 
       await writeAudit({
         actor,
-        action: 'INTEGRATION_SYSTEM_UPDATE',
-        targetType: 'EXTERNAL_SYSTEM',
-        targetId: result.next.system,
-        metadata: {
-          previousState: result.previous.authorizationState,
-          nextState: result.next.authorizationState,
-          previousScopes: result.previous.allowedScopes,
-          nextScopes: result.next.allowedScopes,
-          previousDisplayName: result.previous.displayName,
-          nextDisplayName: result.next.displayName,
-        },
+        action: result.audit.action,
+        targetType: result.audit.targetType,
+        targetId: result.audit.targetId,
+        metadata: result.audit.metadata as Prisma.InputJsonValue,
       })
 
       res.status(200).json({
-        message: 'External system updated',
-        system: result.next,
+        message: result.message,
+        system: result.system,
       })
     } catch (error) {
       errorHandler(error as any, req, res, () => {})

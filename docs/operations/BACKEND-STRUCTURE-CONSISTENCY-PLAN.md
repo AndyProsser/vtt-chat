@@ -99,6 +99,12 @@ High-priority route hotspots checklist:
     - Settings backup/export orchestration extracted to service:
       - backend/src/services/admin-settings-backup.service.ts
       - backend/src/api/admin.routes.ts (`/settings/backup` and `/settings/backup/export` delegate to service helpers)
+    - Integrations systems list/mutation orchestration extracted to service:
+      - backend/src/services/admin-integrations.service.ts
+      - backend/src/api/admin.routes.ts (`/integrations/systems`, `/integrations/systems/:system/authorize`, `/integrations/systems/:system/block`, `/integrations/systems/:system` delegate to service helpers)
+    - Campaign operations Prisma cluster extracted to service:
+      - backend/src/services/admin-campaign-operations.service.ts
+      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/rooms`, `/campaigns/:campaignId/sessions/:sessionId/end`, `/campaigns/:campaignId/archive`, `/campaigns/:campaignId/restore` delegate to service helpers)
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts
