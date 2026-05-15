@@ -1,0 +1,249 @@
+import { PresenceState, RoomType, SessionState } from '@shared'
+import type { UUID } from '@shared'
+import {
+  listAudioRoomStateBySession,
+  removeAudioRoomStateRecord,
+  upsertAudioRoomStateRecord,
+} from '@/repositories/audio.repository'
+import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
+import {
+  getSessionPresence,
+  getRooms,
+  createRoom,
+  joinRoom,
+  updatePresenceState,
+} from './membership.service'
+import {
+  GREEN_ROOM_NAME,
+  MAIN_ROOM_NAME,
+  isCampaignPersistentRoom,
+  isGreenRoomStored,
+  normalizeRoomName,
+  toStoredRoom,
+} from './shared'
+
+async function restoreCampaignRoomsForSession(params: {
+  sessionId: UUID
+  dmId: UUID
+  existingRooms: Array<{ id: UUID; name: string; type: RoomType }>
+}): Promise<void> {
+  const session = await findSessionById(params.sessionId)
+  if (!session?.campaignId) {
+    return
+  }
+
+  const existingNames = new Set(
+    params.existingRooms
+      .filter(isCampaignPersistentRoom)
+      .map((room) => normalizeRoomName(room.name))
+  )
+
+  const campaignSessions = await listSessionsByCampaign(session.campaignId)
+  const previousSession = campaignSessions.find((entry) => entry.id !== params.sessionId)
+  if (!previousSession) {
+    return
+  }
+
+  const [previousRooms, previousEnvironmentStates] = await Promise.all([
+    getRooms(previousSession.id as UUID),
+    listAudioRoomStateBySession(previousSession.id),
+  ])
+
+  const previousEnvironmentByRoomId = new Map(
+    previousEnvironmentStates.map((entry) => [entry.roomId, entry])
+  )
+
+  for (const previousRoom of previousRooms) {
+    if (!isCampaignPersistentRoom(previousRoom)) {
+      continue
+    }
+
+    const normalizedName = normalizeRoomName(previousRoom.name)
+    if (existingNames.has(normalizedName)) {
+      continue
+    }
+
+    const restoredRoom = await createRoom({
+      sessionId: params.sessionId,
+      name: previousRoom.name,
+      type: previousRoom.type,
+      createdBy: params.dmId,
+    })
+    existingNames.add(normalizedName)
+
+    const previousEnvironment = previousEnvironmentByRoomId.get(previousRoom.id)
+    if (!previousEnvironment) {
+      continue
+    }
+
+    await upsertAudioRoomStateRecord({
+      sessionId: params.sessionId,
+      roomId: restoredRoom.id,
+      environmentName: previousEnvironment.environmentName,
+      environmentId: previousEnvironment.environmentId,
+      parameters:
+        previousEnvironment.parameters && typeof previousEnvironment.parameters === 'object'
+          ? (previousEnvironment.parameters as Record<string, unknown>)
+          : {},
+      setBy: previousEnvironment.setBy,
+      setAt: previousEnvironment.setAt,
+    })
+  }
+}
+
+async function ensureSessionDefaultRooms(params: {
+  sessionId: UUID
+  dmId: UUID
+}): Promise<{
+  mainRoom: Awaited<ReturnType<typeof createRoom>>
+  greenRoom: Awaited<ReturnType<typeof createRoom>>
+}> {
+  let existingRooms = await getRooms(params.sessionId)
+
+  let mainRoom =
+    existingRooms.find((room) => room.type === RoomType.MAIN) ||
+    existingRooms.find((room) => normalizeRoomName(room.name) === normalizeRoomName(MAIN_ROOM_NAME))
+
+  if (!mainRoom) {
+    mainRoom = await createRoom({
+      sessionId: params.sessionId,
+      name: MAIN_ROOM_NAME,
+      type: RoomType.MAIN,
+      createdBy: params.dmId,
+    })
+    existingRooms = [...existingRooms, mainRoom]
+  }
+
+  let greenRoom = existingRooms.find((room) => isGreenRoomStored(room))
+
+  if (!greenRoom) {
+    greenRoom = await createRoom({
+      sessionId: params.sessionId,
+      name: GREEN_ROOM_NAME,
+      type: RoomType.GROUP,
+      createdBy: params.dmId,
+    })
+    existingRooms = [...existingRooms, greenRoom]
+  }
+
+  await restoreCampaignRoomsForSession({
+    sessionId: params.sessionId,
+    dmId: params.dmId,
+    existingRooms,
+  })
+
+  const hydratedRooms = await getRooms(params.sessionId)
+  return {
+    mainRoom:
+      hydratedRooms.find((room) => room.type === RoomType.MAIN) ||
+      hydratedRooms.find(
+        (room) => normalizeRoomName(room.name) === normalizeRoomName(MAIN_ROOM_NAME)
+      ) ||
+      mainRoom,
+    greenRoom: hydratedRooms.find((room) => isGreenRoomStored(room)) || greenRoom,
+  }
+}
+
+export async function ensureSessionDefaultRoomsForSession(
+  sessionId: UUID,
+  dmId: UUID
+): Promise<void> {
+  await ensureSessionDefaultRooms({ sessionId, dmId })
+}
+
+export async function ensureSessionWhisperRoomForSession(sessionId: UUID, dmId: UUID) {
+  const rooms = await getRooms(sessionId)
+  const existingPrivate = rooms.find((room) => room.type === RoomType.PRIVATE)
+  if (existingPrivate) {
+    return existingPrivate
+  }
+
+  return createRoom({
+    sessionId,
+    name: 'Whisper',
+    type: RoomType.PRIVATE,
+    createdBy: dmId,
+  })
+}
+
+export async function deletePrivateRoomsForEndedSession(sessionId: UUID) {
+  const rooms = await getRooms(sessionId)
+  const privateRooms = rooms.filter((room) => room.type === RoomType.PRIVATE)
+  if (!privateRooms.length) {
+    return []
+  }
+
+  const redis = (await import('@/infra/redis')).getRedisClient
+    ? await (await import('@/infra/redis')).getRedisClient()
+    : null
+  for (const room of privateRooms) {
+    if (redis) {
+      await redis.del(`room:session:${sessionId}:${room.id}:members`)
+    }
+    await removeAudioRoomStateRecord({ sessionId, roomId: room.id })
+    await (await import('@/repositories/room.repository')).deleteRoomRecord(room.id)
+  }
+
+  return privateRooms
+}
+
+export async function applySessionStateRoomTransition(params: {
+  sessionId: UUID
+  dmId: UUID
+  nextState: SessionState
+  users: Array<{ id: UUID; username: string }>
+}) {
+  const { mainRoom, greenRoom } = await ensureSessionDefaultRooms({
+    sessionId: params.sessionId,
+    dmId: params.dmId,
+  })
+
+  if (params.nextState === SessionState.ACTIVE || params.nextState === SessionState.PAUSED) {
+    await ensureSessionWhisperRoomForSession(params.sessionId, params.dmId)
+  }
+
+  const toMainRoom =
+    params.nextState === SessionState.ACTIVE || params.nextState === SessionState.PAUSED
+  const targetRoom = toMainRoom ? mainRoom : greenRoom
+  const targetState =
+    params.nextState === SessionState.ENDED
+      ? PresenceState.OFFLINE
+      : toMainRoom
+        ? PresenceState.ONLINE
+        : PresenceState.IDLE
+
+  let movedUsers = 0
+  for (const user of params.users) {
+    const result = await joinRoom({
+      sessionId: params.sessionId,
+      roomId: targetRoom.id,
+      userId: user.id,
+      username: user.username,
+      state: targetState,
+    })
+
+    if (result) {
+      await updatePresenceState({
+        sessionId: params.sessionId,
+        userId: user.id,
+        username: user.username,
+        state: targetState,
+        primaryRoomId: targetRoom.id,
+        privateRoomId: null,
+        campaignId: result.campaignId,
+      })
+      movedUsers += 1
+    }
+  }
+
+  return {
+    mainRoomId: mainRoom.id,
+    mainRoomName: mainRoom.name,
+    greenRoomId: greenRoom.id,
+    greenRoomName: greenRoom.name,
+    targetRoomId: targetRoom.id,
+    targetRoomName: targetRoom.name,
+    movedUsers,
+    targetState,
+  }
+}

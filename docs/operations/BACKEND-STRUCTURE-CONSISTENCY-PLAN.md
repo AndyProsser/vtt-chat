@@ -52,23 +52,30 @@ Checklist:
   - backend/src/services/session/access.service.ts
   - backend/src/api/session.routes.ts
 
+Completed service modularization waves:
+
+- [x] Admin users slice split into DTOs, constants, repository, and subfolder services.
+  - backend/src/constants/admin-users.constants.ts
+  - backend/src/types/admin-users.types.ts
+  - backend/src/repositories/admin-users.repository.ts
+  - backend/src/services/admin-users/
+  - backend/src/services/admin-users.service.ts (compat re-export)
+- [x] Admin campaigns list slice split into DTOs, constants, repository, and service.
+  - backend/src/constants/admin-campaigns.constants.ts
+  - backend/src/types/admin-campaigns.types.ts
+  - backend/src/repositories/admin-campaigns.repository.ts
+  - backend/src/services/admin-campaigns.service.ts
+- [x] Admin portability split into feature modules with compatibility exports.
+  - backend/src/constants/admin-portability.constants.ts
+  - backend/src/services/admin-portability/
+  - backend/src/services/admin-portability.service.ts (compat re-export)
+- [x] Room service split into membership, lifecycle, and whisper modules with compatibility exports.
+  - backend/src/services/room/
+  - backend/src/services/room.service.ts (compat re-export)
+
 High-priority route hotspots checklist:
 
-- [ ] backend/src/api/admin.routes.ts
-  - Progress in this batch:
-    - Extracted users list/export Prisma access into repository:
-      - backend/src/repositories/admin-users.repository.ts
-    - Extracted users list/export DTO + response mapping into service:
-      - backend/src/services/admin-users/
-      - backend/src/services/admin-users.service.ts (compat re-export)
-      - backend/src/types/admin-users.types.ts
-      - backend/src/constants/admin-users.constants.ts
-    - Route now delegates users list/export orchestration to service layer:
-      - backend/src/api/admin.routes.ts
-    - Extracted users import preview DTO validation + conflict shaping into service/repository:
-      - backend/src/services/admin-users/import-preview.service.ts
-      - backend/src/repositories/admin-users.repository.ts
-      - backend/src/api/admin.routes.ts
+- [~] backend/src/api/admin.routes.ts
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts
@@ -94,7 +101,9 @@ Checklist:
     - backend/src/types/pagination.types.ts
   - Additional domain modules also exist (metadata, notes, room, session, audio, integrations, etc.).
 - [x] Preserved backward compatibility via barrel exports in backend/src/types/index.ts.
-- [~] Move route-local DTOs into domain type modules where reused.
+- [x] Move route-local DTOs into domain type modules where reused.
+  - backend/src/types/admin-users.types.ts
+  - backend/src/types/admin-campaigns.types.ts
 - [~] Remove stale legacy type contracts that no longer match runtime events.
 
 ## Refactor Rules (Apply to Every Route)
