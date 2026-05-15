@@ -22,6 +22,21 @@ import {
   isValidTransferBundle,
   listRecordingMetadata,
 } from '@/services/admin-portability.service'
+import {
+  createAdminUsersCsv,
+  getAdminUsersExportRows,
+  listAdminUsersForRequest,
+  parseAdminUsersExportFormat,
+  parseAdminUsersListRequest,
+  previewAdminUsersImport,
+} from '@/services/admin-users.service'
+import {
+  applyArchivedMarker,
+  isCampaignArchived,
+  listAdminCampaignsForRequest,
+  parseAdminCampaignsListRequest,
+  removeArchivedMarker,
+} from '@/services/admin-campaigns.service'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
 import { listExternalSystems, updateExternalSystem } from '@/services/integrations.service'
@@ -69,31 +84,6 @@ async function writeAudit(params: {
   })
 }
 
-const ARCHIVED_MARKER = '[ARCHIVED] '
-
-function isCampaignArchived(description?: string | null): boolean {
-  return Boolean(description && description.startsWith(ARCHIVED_MARKER))
-}
-
-function applyArchivedMarker(description?: string | null): string {
-  const normalized = String(description || '').trim()
-  if (!normalized) {
-    return `${ARCHIVED_MARKER}Archived campaign`
-  }
-  if (normalized.startsWith(ARCHIVED_MARKER)) {
-    return normalized
-  }
-  return `${ARCHIVED_MARKER}${normalized}`
-}
-
-function removeArchivedMarker(description?: string | null): string {
-  const normalized = String(description || '')
-  if (!normalized.startsWith(ARCHIVED_MARKER)) {
-    return normalized.trim()
-  }
-  return normalized.slice(ARCHIVED_MARKER.length).trim()
-}
-
 const runtimeSettingsDefaults = {
   primaryRegion: 'us-east-1',
   maintenanceMode: 'off',
@@ -134,74 +124,16 @@ router.get('/users', adminAuthMiddleware, async (req: Request, res: Response) =>
       return
     }
 
-    const search = String(req.query.search || '').trim()
-    const roleFilter = String(req.query.role || 'all').toLowerCase()
-    const statusFilter = String(req.query.status || 'all').toLowerCase()
-    const page = Math.max(1, Number(req.query.page || 1))
-    const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize || 25)))
-
-    const andClauses: any[] = []
-
-    if (search) {
-      andClauses.push({
-        OR: [
-          { username: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { displayName: { contains: search, mode: 'insensitive' } },
-        ],
-      })
-    }
-
-    if (statusFilter === 'active') {
-      andClauses.push({ isActive: true })
-    } else if (statusFilter === 'suspended') {
-      andClauses.push({ isActive: false })
-    }
-
-    if (roleFilter === 'dm') {
-      andClauses.push({ role: 'DM' })
-    } else if (roleFilter === 'player') {
-      andClauses.push({ role: 'PLAYER' })
-    } else if (roleFilter === 'spectator') {
-      andClauses.push({ role: 'SPECTATOR' })
-    } else if (roleFilter === 'admin') {
-      andClauses.push({ OR: [{ adminRole: { not: null } }, { role: 'DM' }] })
-    }
-
-    const where = andClauses.length > 0 ? { AND: andClauses } : undefined
-
-    const [total, users] = await Promise.all([
-      prisma.user.count({ where }),
-      prisma.user.findMany({
-        where,
-        orderBy: { updatedAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          displayName: true,
-          role: true,
-          adminRole: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-          tokenInvalidBefore: true,
-        },
-      }),
-    ])
-
-    res.status(200).json({
-      users: users.map((u) => ({
-        ...u,
-        effectiveAdminRole: u.adminRole || (u.role === 'DM' ? 'CAMPAIGN_DM' : null),
-      })),
-      total,
-      page,
-      pageSize,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    const request = parseAdminUsersListRequest({
+      search: req.query.search,
+      role: req.query.role,
+      status: req.query.status,
+      page: req.query.page,
+      pageSize: req.query.pageSize,
     })
+
+    const result = await listAdminUsersForRequest(request)
+    res.status(200).json(result)
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }
@@ -219,33 +151,8 @@ router.get('/users/export', adminAuthMiddleware, async (req: Request, res: Respo
       return
     }
 
-    const format = String(req.query.format || 'json').toLowerCase()
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        displayName: true,
-        role: true,
-        adminRole: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
-
-    const rows = users.map((u) => ({
-      id: u.id,
-      username: u.username,
-      email: u.email ?? '',
-      displayName: u.displayName,
-      role: u.role,
-      adminRole: u.adminRole ?? '',
-      isActive: u.isActive,
-      createdAt: u.createdAt.toISOString(),
-      updatedAt: u.updatedAt.toISOString(),
-    }))
+    const format = parseAdminUsersExportFormat(req.query.format)
+    const rows = await getAdminUsersExportRows()
 
     await writeAudit({
       actor,
@@ -256,27 +163,7 @@ router.get('/users/export', adminAuthMiddleware, async (req: Request, res: Respo
     })
 
     if (format === 'csv') {
-      const headers = [
-        'id',
-        'username',
-        'email',
-        'displayName',
-        'role',
-        'adminRole',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-      ]
-      const escape = (v: string | boolean) => {
-        const s = String(v)
-        return s.includes(',') || s.includes('"') || s.includes('\n')
-          ? `"${s.replace(/"/g, '""')}"`
-          : s
-      }
-      const csv = [
-        headers.join(','),
-        ...rows.map((r) => headers.map((h) => escape((r as any)[h])).join(',')),
-      ].join('\n')
+      const csv = createAdminUsersCsv(rows)
       res.setHeader('Content-Type', 'text/csv')
       res.setHeader('Content-Disposition', 'attachment; filename="users-export.csv"')
       res.status(200).send(csv)
@@ -306,41 +193,13 @@ router.post('/users/import/preview', adminAuthMiddleware, async (req: Request, r
       return
     }
 
-    const { users } = req.body as {
-      users: Array<{ username?: string; email?: string; displayName?: string; role?: string }>
-    }
-    if (!Array.isArray(users) || users.length === 0) {
-      res
-        .status(400)
-        .json({ error: 'Body must contain a non-empty users array', code: 'INVALID_BODY' })
-      return
-    }
-    if (users.length > 500) {
-      res
-        .status(400)
-        .json({ error: 'Import preview limited to 500 rows per batch', code: 'TOO_MANY_ROWS' })
+    const result = await previewAdminUsersImport({ body: req.body })
+    if (!result.ok) {
+      res.status(400).json({ error: result.message, code: result.code })
       return
     }
 
-    const usernames = users.map((u) => u.username).filter(Boolean) as string[]
-    const existing = await prisma.user.findMany({
-      where: { username: { in: usernames } },
-      select: { username: true },
-    })
-    const existingSet = new Set(existing.map((u) => u.username))
-
-    const preview = users.map((u, idx) => ({
-      index: idx,
-      username: u.username ?? '',
-      email: u.email ?? '',
-      displayName: u.displayName ?? u.username ?? '',
-      role: u.role ?? 'PLAYER',
-      conflict: existingSet.has(u.username ?? ''),
-      valid: Boolean(u.username && u.username.trim().length >= 2),
-    }))
-
-    const importable = preview.filter((r) => r.valid && !r.conflict).length
-    res.status(200).json({ preview, importable, total: users.length })
+    res.status(200).json(result.data)
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }
@@ -357,111 +216,15 @@ router.get('/campaigns', adminAuthMiddleware, async (req: Request, res: Response
       return
     }
 
-    const search = String(req.query.search || '').trim()
-    const statusFilter = String(req.query.status || 'all')
-      .trim()
-      .toLowerCase()
-    const page = Math.max(1, Number(req.query.page || 1))
-    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize || 20)))
-
-    const andClauses: Prisma.CampaignWhereInput[] = []
-
-    if (search) {
-      andClauses.push({
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { inviteCode: { contains: search, mode: 'insensitive' } },
-          { currentDm: { username: { contains: search, mode: 'insensitive' } } },
-        ],
-      })
-    }
-
-    if (statusFilter === 'active') {
-      andClauses.push({ sessions: { some: { state: 'ACTIVE' } } })
-    } else if (statusFilter === 'idle') {
-      andClauses.push({ sessions: { some: { state: { in: ['IDLE', 'PAUSED'] } } } })
-    } else if (statusFilter === 'ended') {
-      andClauses.push({ sessions: { some: { state: 'ENDED' } } })
-    } else if (statusFilter === 'no_session') {
-      andClauses.push({ sessions: { none: {} } })
-    }
-
-    const where = andClauses.length > 0 ? { AND: andClauses } : undefined
-
-    const [total, campaigns] = await Promise.all([
-      prisma.campaign.count({ where }),
-      prisma.campaign.findMany({
-        where,
-        orderBy: { updatedAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          inviteCode: true,
-          currentDmId: true,
-          createdAt: true,
-          updatedAt: true,
-          currentDm: {
-            select: {
-              id: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              members: true,
-              sessions: true,
-            },
-          },
-          sessions: {
-            orderBy: { updatedAt: 'desc' },
-            take: 1,
-            select: {
-              id: true,
-              name: true,
-              state: true,
-              createdAt: true,
-              startedAt: true,
-              endedAt: true,
-              updatedAt: true,
-              _count: {
-                select: {
-                  rooms: true,
-                  members: true,
-                },
-              },
-            },
-          },
-        },
-      }),
-    ])
-
-    res.status(200).json({
-      campaigns: campaigns.map((campaign) => {
-        const latestSession = campaign.sessions[0] || null
-        return {
-          id: campaign.id,
-          name: campaign.name,
-          description: campaign.description,
-          isArchived: isCampaignArchived(campaign.description),
-          inviteCode: campaign.inviteCode,
-          currentDm: campaign.currentDm,
-          currentDmId: campaign.currentDmId,
-          memberCount: campaign._count.members,
-          sessionCount: campaign._count.sessions,
-          latestSession,
-          createdAt: campaign.createdAt,
-          updatedAt: campaign.updatedAt,
-        }
-      }),
-      total,
-      page,
-      pageSize,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    const request = parseAdminCampaignsListRequest({
+      search: req.query.search,
+      status: req.query.status,
+      page: req.query.page,
+      pageSize: req.query.pageSize,
     })
+
+    const result = await listAdminCampaignsForRequest(request)
+    res.status(200).json(result)
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }

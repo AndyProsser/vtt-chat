@@ -1,6 +1,6 @@
 # Backend Structure Consistency Plan
 
-Last updated: 2026-05-02
+Last updated: 2026-05-15
 
 ## Goals
 
@@ -21,53 +21,81 @@ Last updated: 2026-05-02
 
 ## Route Refactor Status
 
-Completed extraction waves:
+Legend:
 
-- campaign external links moved from route into service:
+- [x] Completed
+- [~] Partially completed / in progress
+- [ ] Not completed
+
+Checklist:
+
+- [x] Campaign external links moved from route into service.
   - backend/src/services/campaign-external-links.service.ts
   - backend/src/api/campaign.routes.ts
-- integration sync moved from route into service:
+- [x] Integration sync moved from route into service.
   - backend/src/services/integration-sync.service.ts
   - backend/src/api/integrations.routes.ts
-- metadata runtime closure implemented with route + core split:
-  - backend/src/api/metadata.routes.ts
-  - backend/src/core/metadata/\*
-- auth/user auth-context lookups moved from routes into service:
-  - backend/src/services/auth-user-context.service.ts
+- [~] Metadata runtime closure extracted from route, but not into backend/src/core/metadata/\* as originally planned.
+  - Implemented at:
+    - backend/src/api/metadata.routes.ts
+    - backend/src/services/metadata.service.ts
+  - Planned path not present:
+    - backend/src/core/metadata/\*
+- [x] Auth/user auth-context lookups moved from routes into service layer.
+  - backend/src/services/auth/user-context.service.ts
   - backend/src/api/auth.routes.ts
   - backend/src/api/users.routes.ts
-- shared auth-state validation moved into service and reused by infra middleware:
-  - backend/src/services/auth-user-context.service.ts
+- [x] Shared auth-state validation moved into service and reused by infra middleware.
+  - backend/src/services/auth/user-context.service.ts
   - backend/src/infra/http/middleware.ts
-- session read-access logic extracted for users/logs endpoints:
-  - backend/src/services/session-access.service.ts
+- [x] Session read-access logic extracted for users/logs endpoints.
+  - backend/src/services/session/access.service.ts
   - backend/src/api/session.routes.ts
 
-Remaining high-priority route hotspots:
+High-priority route hotspots checklist:
 
-1. backend/src/api/admin.routes.ts
-2. backend/src/api/notes.routes.ts
-3. backend/src/api/rooms.routes.ts
-4. backend/src/api/audio.routes.ts
-5. backend/src/api/session.routes.ts
+- [ ] backend/src/api/admin.routes.ts
+  - Progress in this batch:
+    - Extracted users list/export Prisma access into repository:
+      - backend/src/repositories/admin-users.repository.ts
+    - Extracted users list/export DTO + response mapping into service:
+      - backend/src/services/admin-users/
+      - backend/src/services/admin-users.service.ts (compat re-export)
+      - backend/src/types/admin-users.types.ts
+      - backend/src/constants/admin-users.constants.ts
+    - Route now delegates users list/export orchestration to service layer:
+      - backend/src/api/admin.routes.ts
+    - Extracted users import preview DTO validation + conflict shaping into service/repository:
+      - backend/src/services/admin-users/import-preview.service.ts
+      - backend/src/repositories/admin-users.repository.ts
+      - backend/src/api/admin.routes.ts
+  - Remaining:
+    - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
+- [~] backend/src/api/notes.routes.ts
+  - Uses services, but still contains notable policy/visibility/event shaping logic in route layer.
+- [~] backend/src/api/rooms.routes.ts
+  - Uses services, but still contains room reconciliation and event orchestration in route layer.
+- [~] backend/src/api/audio.routes.ts
+  - Uses services, but still contains authz/control/event assembly logic in route layer.
+- [~] backend/src/api/session.routes.ts
+  - Contains extracted access service usage, but remains a large orchestrator route file.
 
 ## Types Normalization Status
 
-Completed:
+Checklist:
 
-- Split backend/src/types/index.ts into focused modules:
-  - backend/src/types/ws.types.ts
-  - backend/src/types/api.types.ts
-  - backend/src/types/auth.types.ts
-  - backend/src/types/service.types.ts
-  - backend/src/types/errors.types.ts
-  - backend/src/types/pagination.types.ts
-- Preserved backward compatibility via barrel exports in backend/src/types/index.ts.
-
-Next steps:
-
-- Move route-local DTOs into domain type modules where reused.
-- Remove stale legacy type contracts that no longer match runtime events.
+- [x] Split backend/src/types/index.ts into focused modules.
+  - Baseline modules from plan are present:
+    - backend/src/types/ws.types.ts
+    - backend/src/types/api.types.ts
+    - backend/src/types/auth.types.ts
+    - backend/src/types/service.types.ts
+    - backend/src/types/errors.types.ts
+    - backend/src/types/pagination.types.ts
+  - Additional domain modules also exist (metadata, notes, room, session, audio, integrations, etc.).
+- [x] Preserved backward compatibility via barrel exports in backend/src/types/index.ts.
+- [~] Move route-local DTOs into domain type modules where reused.
+- [~] Remove stale legacy type contracts that no longer match runtime events.
 
 ## Refactor Rules (Apply to Every Route)
 
