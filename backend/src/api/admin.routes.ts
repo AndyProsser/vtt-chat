@@ -43,6 +43,7 @@ import { listExternalSystems, updateExternalSystem } from '@/services/integratio
 import { randomBytes } from 'node:crypto'
 import type { WebSocketManager } from '@/ws'
 import { registerAdminAccessRoutes } from './admin-access.routes'
+import { buildAdminTelemetryStatusPayload } from '@/services/admin-telemetry.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1654,40 +1655,8 @@ router.get('/telemetry/dashboard', async (_req: Request, res: Response) => {
 })
 
 router.get('/telemetry/status', async (_req: Request, res: Response) => {
-  const memory = process.memoryUsage()
-  const load = os.loadavg()
-  const uptimeSec = process.uptime()
-  const chat = await getChatTelemetrySnapshot()
-  const telemetryEvents = await loadTelemetryEvents()
-  const clientTelemetryLastHour = telemetryEvents.filter(
-    (entry) => Date.now() - new Date(entry.timestamp).getTime() <= 60 * 60 * 1000
-  )
-
-  res.status(200).json({
-    cards: {
-      cpuPercent: Math.min(100, Math.round((load[0] / 4) * 100)),
-      memoryPercent: Math.min(
-        100,
-        Math.round((memory.heapUsed / Math.max(memory.heapTotal, 1)) * 100)
-      ),
-      diskPercent: 72,
-      networkLatencyMs: 35,
-      livekitStatus: 'Online',
-      databaseStatus: 'Online',
-    },
-    charts: {
-      cpuLoad24h: Array.from({ length: 12 }, (_, idx) => ({
-        x: idx,
-        y: Math.min(100, Math.round((load[0] / 4) * 100) + ((idx % 3) - 1) * 3),
-      })),
-      messageThroughput24h: Array.from({ length: 12 }, (_, idx) => ({
-        x: idx,
-        y: Math.max(0, chat.messagesLastMinute + ((idx % 4) - 1) * 2),
-      })),
-    },
-    uptimeSec,
-    clientTelemetryEventsLastHour: clientTelemetryLastHour.length,
-  })
+  const payload = await buildAdminTelemetryStatusPayload()
+  res.status(200).json(payload)
 })
 
 router.get('/telemetry/logs/:logId', async (req: Request, res: Response) => {

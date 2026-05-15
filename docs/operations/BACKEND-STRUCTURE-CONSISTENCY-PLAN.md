@@ -76,10 +76,17 @@ Completed service modularization waves:
   - backend/src/constants/notes.constants.ts
   - backend/src/types/notes-route.types.ts
   - backend/src/services/notes/route-helpers.service.ts
+- [x] Notes service split into feature modules with compatibility exports.
+  - backend/src/services/notes/
+  - backend/src/services/notes.service.ts (compat re-export)
 
 High-priority route hotspots checklist:
 
 - [~] backend/src/api/admin.routes.ts
+  - Progress in this batch:
+    - Telemetry status payload construction extracted to service:
+      - backend/src/services/admin-telemetry.service.ts
+      - backend/src/api/admin.routes.ts (`/telemetry/status` delegates to service)
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts
