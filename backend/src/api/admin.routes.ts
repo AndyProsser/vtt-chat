@@ -1,15 +1,9 @@
 import { Router, Request, Response } from 'express'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { getPrismaClient } from '@/infra/db'
-import {
-  loadDiagnosticEvents,
-  loadLogRetentionSettings,
-  loadTelemetryEvents,
-  updateLogRetentionSettings,
-} from '@/infra/telemetry-store'
+import { loadLogRetentionSettings, updateLogRetentionSettings } from '@/infra/telemetry-store'
 import {
   buildCampaignExport,
-  createOperationalExportArtifact,
   createRecordingMetadata,
   importCampaignBundle,
   isValidTransferBundle,
@@ -48,6 +42,10 @@ import {
   mergeAdminSettingsWithRetention,
   updateRuntimeAdminSettingsFromBody,
 } from '@/services/admin-settings.service'
+import {
+  buildSettingsBackupQueuedPayload,
+  buildSettingsOperationsExportPayload,
+} from '@/services/admin-settings-backup.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1244,21 +1242,16 @@ router.post('/settings/backup', adminAuthMiddleware, async (req: Request, res: R
       return
     }
 
-    const now = new Date().toISOString()
+    const payload = buildSettingsBackupQueuedPayload()
 
     await writeAudit({
       actor,
       action: 'SETTINGS_BACKUP_TRIGGER',
       targetType: 'ADMIN_SETTINGS',
-      metadata: {
-        triggeredAt: now,
-      },
+      metadata: payload.auditMetadata,
     })
 
-    res.status(200).json({
-      message: 'Backup queued successfully',
-      queuedAt: now,
-    })
+    res.status(200).json({ message: payload.message, queuedAt: payload.queuedAt })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})
   }
@@ -1277,56 +1270,19 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
       return
     }
 
-    const [telemetry, diagnostics, auditLog] = await Promise.all([
-      loadTelemetryEvents(),
-      loadDiagnosticEvents(),
-      prisma.adminAuditLog.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 250,
-        select: {
-          id: true,
-          actorUserId: true,
-          actorName: true,
-          actorRole: true,
-          action: true,
-          targetType: true,
-          targetId: true,
-          outcome: true,
-          reason: true,
-          metadata: true,
-          createdAt: true,
-        },
-      }),
-    ])
-
-    const exported = await createOperationalExportArtifact(
-      prisma,
-      actor.userId,
-      getRuntimeAdminSettingsState(),
-      telemetry.map((entry) => ({ ...entry })),
-      diagnostics.map((entry) => ({ ...entry })),
-      auditLog.map((entry) => ({
-        ...entry,
-        createdAt: entry.createdAt.toISOString(),
-      })) as Array<Record<string, unknown>>
-    )
+    const payload = await buildSettingsOperationsExportPayload(actor.userId)
 
     await writeAudit({
       actor,
       action: 'SETTINGS_OPERATIONS_EXPORT',
       targetType: 'ADMIN_SETTINGS',
-      metadata: {
-        artifactId: exported.artifactId,
-        telemetryCount: telemetry.length,
-        diagnosticCount: diagnostics.length,
-        auditCount: auditLog.length,
-      },
+      metadata: payload.auditMetadata,
     })
 
     res.status(200).json({
-      message: 'Operations export created successfully',
-      artifactId: exported.artifactId,
-      bundle: exported.bundle,
+      message: payload.message,
+      artifactId: payload.artifactId,
+      bundle: payload.bundle,
     })
   } catch (error) {
     errorHandler(error as any, req, res, () => {})

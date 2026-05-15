@@ -96,6 +96,9 @@ High-priority route hotspots checklist:
     - Settings state/update/merge logic extracted to service:
       - backend/src/services/admin-settings.service.ts
       - backend/src/api/admin.routes.ts (`/settings` and `/settings` PUT delegate to service helpers)
+    - Settings backup/export orchestration extracted to service:
+      - backend/src/services/admin-settings-backup.service.ts
+      - backend/src/api/admin.routes.ts (`/settings/backup` and `/settings/backup/export` delegate to service helpers)
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts
