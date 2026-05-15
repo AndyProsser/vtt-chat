@@ -62,7 +62,7 @@ Rules:
 
 ## 7. Security and Content Policy
 
-- Persisted map.image uses attachment tokens only: attachment://<token>.
+- Persisted map.image uses attachment tokens only: attachment://`<token>`.
 - Persisted inline data URI images are rejected.
 - Allowed URI schemes for DMDX links are explicit allowlist: https, http, attachment.
 - Rendering must sanitize markdown HTML output.

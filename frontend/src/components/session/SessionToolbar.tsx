@@ -437,29 +437,41 @@ export function SessionToolbar({
                     aria-label="Stop or pause"
                   >
                     {canStopSession ? (
-                      <button
-                        type="button"
-                        onClick={onStopSession}
-                        className="session-toolbar__split-btn session-toolbar__split-btn--stop"
-                        aria-label="End session"
-                        title="End session"
-                      >
-                        <Icon name="stop" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={onStopSession}
+                            className="session-toolbar__split-btn session-toolbar__split-btn--stop"
+                            aria-label="End session"
+                          >
+                            <Icon name="stop" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="end">
+                          End session
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
                     )}
 
                     {canPauseSession ? (
-                      <button
-                        type="button"
-                        onClick={onPauseSession}
-                        className="session-toolbar__split-btn session-toolbar__split-btn--pause"
-                        aria-label={pauseLabel}
-                        title={pauseLabel}
-                      >
-                        <Icon name={pauseIcon} />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={onPauseSession}
+                            className="session-toolbar__split-btn session-toolbar__split-btn--pause"
+                            aria-label={pauseLabel}
+                          >
+                            <Icon name={pauseIcon} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="end">
+                          {pauseLabel}
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
                     )}

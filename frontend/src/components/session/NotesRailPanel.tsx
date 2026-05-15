@@ -4,6 +4,7 @@ import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import type { Note } from '@/types/notes'
+import { fetchSessionNotesOnce } from '@/utils/notesFetch'
 import '../../styles/components/session/KnowledgePanels.css'
 
 interface NotesRailPanelProps {
@@ -57,28 +58,7 @@ export function NotesRailPanel({
       setError(null)
 
       try {
-        const response = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-
-        const data = await response.json()
-        const fetchedNotes: Note[] = (data.notes || []).map((note: any) => ({
-          id: note.id,
-          ownerId: note.authorId,
-          ownerUsername: note.authorUsername,
-          title: note.title,
-          content: note.content,
-          visibility: note.visibility,
-          tags: note.tags || [],
-          allowedUsers: note.allowedUsers || [],
-          publishedAt: note.publishedAt,
-          createdAt: note.createdAt,
-          updatedAt: note.updatedAt,
-        }))
+        const fetchedNotes: Note[] = await fetchSessionNotesOnce(apiUrl, sessionId, token)
 
         if (!cancelled) {
           for (const note of fetchedNotes) {

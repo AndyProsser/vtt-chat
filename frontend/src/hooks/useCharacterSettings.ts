@@ -4,7 +4,7 @@
  * Handles character selection, validation, and field mutations.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
 import type { CharacterSettingsDraft } from '@/components/session/CampaignRightbarSettings'
 
@@ -61,21 +61,33 @@ export function useCharacterSettings(): [UseCharacterSettingsState, UseCharacter
     DEFAULT_CHARACTER_SETTINGS
   )
 
-  const state: UseCharacterSettingsState = {
-    isCharacterSettingsLoading,
-    isCharacterSettingsSaving,
-    userCharacters,
-    selectedCharacterId,
-    characterSettingsDraft,
-  }
+  const state: UseCharacterSettingsState = useMemo(
+    () => ({
+      isCharacterSettingsLoading,
+      isCharacterSettingsSaving,
+      userCharacters,
+      selectedCharacterId,
+      characterSettingsDraft,
+    }),
+    [
+      isCharacterSettingsLoading,
+      isCharacterSettingsSaving,
+      userCharacters,
+      selectedCharacterId,
+      characterSettingsDraft,
+    ]
+  )
 
-  const actions: UseCharacterSettingsActions = {
-    setIsCharacterSettingsLoading,
-    setIsCharacterSettingsSaving,
-    setUserCharacters,
-    setSelectedCharacterId,
-    setCharacterSettingsDraft,
-  }
+  const actions: UseCharacterSettingsActions = useMemo(
+    () => ({
+      setIsCharacterSettingsLoading,
+      setIsCharacterSettingsSaving,
+      setUserCharacters,
+      setSelectedCharacterId,
+      setCharacterSettingsDraft,
+    }),
+    []
+  )
 
   return [state, actions]
 }

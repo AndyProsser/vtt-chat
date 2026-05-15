@@ -211,11 +211,6 @@ export function RoomGroupCard({
                       aria-label="Change group environment"
                       data-room-env-trigger={room.id}
                       disabled={isGreenroom}
-                      title={
-                        isGreenroom
-                          ? 'Environment controls are disabled in greenroom'
-                          : 'Change group environment'
-                      }
                       onClick={() => onToggleEnvironmentPicker(room.id)}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">

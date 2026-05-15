@@ -2,6 +2,7 @@ import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { PolicyNotice } from './PolicyNotice'
 import {
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
@@ -573,23 +574,31 @@ export function InviteJoinPage({
                   }}
                   autoComplete="email"
                 />
-                <span
-                  className={`invite-join-email-status status-${
-                    emailCheckStatus === 'guest' || emailCheckStatus === 'full'
-                      ? emailCheckStatus
-                      : emailCheckStatus === 'checking'
-                        ? 'checking'
-                        : emailCheckStatus === 'invalid' || emailCheckStatus === 'error'
-                          ? 'error'
-                          : 'none'
-                  }`}
-                  aria-label={getEmailStatusLabel(emailCheckStatus)}
-                  title={getEmailStatusLabel(emailCheckStatus)}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {getEmailStatusIcon(emailCheckStatus)}
-                  </span>
-                </span>
+                <TooltipProvider delayDuration={140}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={`invite-join-email-status status-${
+                          emailCheckStatus === 'guest' || emailCheckStatus === 'full'
+                            ? emailCheckStatus
+                            : emailCheckStatus === 'checking'
+                              ? 'checking'
+                              : emailCheckStatus === 'invalid' || emailCheckStatus === 'error'
+                                ? 'error'
+                                : 'none'
+                        }`}
+                        aria-label={getEmailStatusLabel(emailCheckStatus)}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {getEmailStatusIcon(emailCheckStatus)}
+                        </span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {getEmailStatusLabel(emailCheckStatus)}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
 
               {precheckLoading && <p className="invite-join-status">Checking email…</p>}

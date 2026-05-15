@@ -33,33 +33,31 @@ type SessionLobbyViewProps = {
 
 export function SessionLobbyView(props: SessionLobbyViewProps) {
   return (
-    <>
-      <div className="session-toolbar session-toolbar--lobby" data-testid="session-lobby-toolbar">
-        <div className="session-toolbar__zone session-toolbar__zone--left">
-          <div className="session-toolbar__brand" aria-label="Lobby toolbar">
-            <span className="session-toolbar__brand-mark" aria-hidden="true">
-              <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
-            </span>
-            <strong className="session-toolbar__brand-title">VTT Chat</strong>
+    <TooltipProvider delayDuration={140}>
+      <>
+        <div className="session-toolbar session-toolbar--lobby" data-testid="session-lobby-toolbar">
+          <div className="session-toolbar__zone session-toolbar__zone--left">
+            <div className="session-toolbar__brand" aria-label="Lobby toolbar">
+              <span className="session-toolbar__brand-mark" aria-hidden="true">
+                <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
+              </span>
+              <strong className="session-toolbar__brand-title">VTT Chat</strong>
+            </div>
           </div>
-        </div>
 
-        <div className="session-toolbar__zone session-toolbar__zone--right">
-          <TooltipProvider delayDuration={140}>
+          <div className="session-toolbar__zone session-toolbar__zone--right">
             <div className="session-toolbar__extra-buttons" aria-label="Campaign actions">
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="session-toolbar__icon-btn"
-                    onClick={props.onCreateCampaign}
-                    disabled={props.isCreatingCampaign}
-                    aria-label="Create campaign"
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      add_circle
-                    </span>
-                  </button>
+                <TooltipTrigger
+                  type="button"
+                  className="session-toolbar__icon-btn"
+                  onClick={props.onCreateCampaign}
+                  disabled={props.isCreatingCampaign}
+                  aria-label="Create campaign"
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    add_circle
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end">
                   Create Campaign
@@ -67,18 +65,16 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
               </Tooltip>
 
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="session-toolbar__icon-btn"
-                    onClick={props.onJoinCampaign}
-                    disabled={props.isJoiningCampaign}
-                    aria-label="Join campaign"
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      group_add
-                    </span>
-                  </button>
+                <TooltipTrigger
+                  type="button"
+                  className="session-toolbar__icon-btn"
+                  onClick={props.onJoinCampaign}
+                  disabled={props.isJoiningCampaign}
+                  aria-label="Join campaign"
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    group_add
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end">
                   Join Campaign
@@ -89,15 +85,13 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
             <span className="session-toolbar__separator" aria-hidden="true" />
 
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={props.onToggleTheme}
-                  aria-label="Theme"
-                >
-                  <Icon name={props.themeMode === 'dark' ? 'sun' : 'moon'} />
-                </button>
+              <TooltipTrigger
+                type="button"
+                className="session-toolbar__icon-btn"
+                onClick={props.onToggleTheme}
+                aria-label="Theme"
+              >
+                <Icon name={props.themeMode === 'dark' ? 'sun' : 'moon'} />
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end">
                 Theme
@@ -105,15 +99,13 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
             </Tooltip>
 
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={props.onOpenUserSettings}
-                  aria-label="Settings"
-                >
-                  <Icon name="settings" />
-                </button>
+              <TooltipTrigger
+                type="button"
+                className="session-toolbar__icon-btn"
+                onClick={props.onOpenUserSettings}
+                aria-label="Settings"
+              >
+                <Icon name="settings" />
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end">
                 Settings
@@ -121,15 +113,13 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
             </Tooltip>
 
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                  onClick={props.onLogoff}
-                  aria-label="Logoff"
-                >
-                  <Icon name="logout" />
-                </button>
+              <TooltipTrigger
+                type="button"
+                className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
+                onClick={props.onLogoff}
+                aria-label="Logoff"
+              >
+                <Icon name="logout" />
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end">
                 Logoff
@@ -137,15 +127,13 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
             </Tooltip>
 
             <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="session-toolbar__connection"
-                  data-status-color={props.connectionStatus.statusColorKey}
-                  aria-label={`Connection: ${props.connectionStatus.label}`}
-                  role="status"
-                >
-                  <span className="session-toolbar__connection-dot" aria-hidden="true" />
-                </span>
+              <TooltipTrigger
+                type="button"
+                className="session-toolbar__connection"
+                data-status-color={props.connectionStatus.statusColorKey}
+                aria-label={`Connection: ${props.connectionStatus.label}`}
+              >
+                <span className="session-toolbar__connection-dot" aria-hidden="true" />
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
@@ -169,157 +157,179 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                 </div>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-
-      <div className="session-card">
-        <div className="session-card-header">
-          <div>
-            <h3 className="session-card-title">Campaigns</h3>
           </div>
         </div>
 
-        {props.isLoadingCampaigns ? (
-          <div className="session-status-message">Loading campaigns...</div>
-        ) : props.campaigns.length === 0 ? (
-          <div className="session-status-message">No campaigns available yet.</div>
-        ) : (
-          <div className="session-campaign-grid" role="list" aria-label="Campaign list">
-            {props.campaigns.map((campaign) => {
-              const isSelected = props.selectedCampaignId === campaign.id
-              const state = getCampaignDisplayState(campaign)
-              const entryAction = getCampaignEntryAction(campaign)
-              const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
-              const playersLabel = getPrivacyCounterLabel(
-                campaign.connectedPlayersLabel,
-                campaign.connectedPlayersRounded
-              )
-              const spectatorsLabel = getPrivacyCounterLabel(
-                campaign.connectedSpectatorsLabel,
-                campaign.connectedSpectatorsRounded
-              )
-              const isCampaignDm = campaign.currentDmId === props.currentUserId
-              const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
-              const dmInitial = dmDisplayName.charAt(0).toUpperCase()
-              const cardPosterUrl = campaign.posterUrl || undefined
+        <div className="session-card">
+          <div className="session-card-header">
+            <div>
+              <h3 className="session-card-title">Campaigns</h3>
+            </div>
+          </div>
 
-              return (
-                <div
-                  key={campaign.id}
-                  role="listitem"
-                  tabIndex={0}
-                  onClick={() => props.onSelectCampaign(campaign.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      props.onSelectCampaign(campaign.id)
+          {props.isLoadingCampaigns ? (
+            <div className="session-status-message">Loading campaigns...</div>
+          ) : props.campaigns.length === 0 ? (
+            <div className="session-status-message">No campaigns available yet.</div>
+          ) : (
+            <div className="session-campaign-grid" role="list" aria-label="Campaign list">
+              {props.campaigns.map((campaign) => {
+                const isSelected = props.selectedCampaignId === campaign.id
+                const state = getCampaignDisplayState(campaign)
+                const entryAction = getCampaignEntryAction(campaign)
+                const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
+                const playersLabel = getPrivacyCounterLabel(
+                  campaign.connectedPlayersLabel,
+                  campaign.connectedPlayersRounded
+                )
+                const spectatorsLabel = getPrivacyCounterLabel(
+                  campaign.connectedSpectatorsLabel,
+                  campaign.connectedSpectatorsRounded
+                )
+                const isCampaignDm = campaign.currentDmId === props.currentUserId
+                const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
+                const dmInitial = dmDisplayName.charAt(0).toUpperCase()
+                const cardPosterUrl = campaign.posterUrl || undefined
+
+                return (
+                  <div
+                    key={campaign.id}
+                    role="listitem"
+                    tabIndex={0}
+                    onClick={() => props.onSelectCampaign(campaign.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        props.onSelectCampaign(campaign.id)
+                      }
+                    }}
+                    className={`session-campaign-card ${isSelected ? 'is-selected' : ''} ${cardPosterUrl ? 'has-poster' : ''}`}
+                    style={
+                      cardPosterUrl
+                        ? {
+                            backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
+                          }
+                        : undefined
                     }
-                  }}
-                  className={`session-campaign-card ${isSelected ? 'is-selected' : ''} ${cardPosterUrl ? 'has-poster' : ''}`}
-                  style={
-                    cardPosterUrl
-                      ? {
-                          backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
-                        }
-                      : undefined
-                  }
-                >
-                  <span className="session-campaign-card__header">
-                    <span className="session-campaign-card__title">
+                  >
+                    <span className="session-campaign-card__header">
+                      <span className="session-campaign-card__title">
+                        <span
+                          className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
+                          aria-label={`Campaign ${state.toLowerCase()}`}
+                        />
+                        <span>{campaign.name}</span>
+                      </span>
                       <span
-                        className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
-                        aria-label={`Campaign ${state.toLowerCase()}`}
-                      />
-                      <span>{campaign.name}</span>
+                        className="session-campaign-card__stats"
+                        aria-label="Campaign activity stats"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="session-campaign-card__stat">
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                groups
+                              </span>
+                              <span>{playersLabel}</span>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Connected players</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="session-campaign-card__stat">
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                visibility
+                              </span>
+                              <span>{spectatorsLabel}</span>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Connected spectators</TooltipContent>
+                        </Tooltip>
+                      </span>
                     </span>
                     <span
-                      className="session-campaign-card__stats"
-                      aria-label="Campaign activity stats"
+                      className={`session-campaign-card__dm session-campaign-card__dm--${campaign.dmOnline ? 'online' : 'offline'}`}
                     >
-                      <span className="session-campaign-card__stat" title="Connected players">
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          groups
+                      {campaign.dmAvatarUrl ? (
+                        <img
+                          src={campaign.dmAvatarUrl}
+                          alt={`${dmDisplayName} avatar`}
+                          className="session-campaign-card__dm-avatar"
+                        />
+                      ) : (
+                        <span className="session-campaign-card__dm-avatar session-campaign-card__dm-avatar--fallback">
+                          {dmInitial}
                         </span>
-                        <span>{playersLabel}</span>
-                      </span>
-                      <span className="session-campaign-card__stat" title="Connected spectators">
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          visibility
-                        </span>
-                        <span>{spectatorsLabel}</span>
-                      </span>
+                      )}
+                      <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
+                      <span className="session-campaign-card__dm-status">{dmStatus}</span>
                     </span>
-                  </span>
-                  <span
-                    className={`session-campaign-card__dm session-campaign-card__dm--${campaign.dmOnline ? 'online' : 'offline'}`}
-                  >
-                    {campaign.dmAvatarUrl ? (
-                      <img
-                        src={campaign.dmAvatarUrl}
-                        alt={`${dmDisplayName} avatar`}
-                        className="session-campaign-card__dm-avatar"
-                      />
-                    ) : (
-                      <span className="session-campaign-card__dm-avatar session-campaign-card__dm-avatar--fallback">
-                        {dmInitial}
-                      </span>
-                    )}
-                    <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
-                    <span className="session-campaign-card__dm-status">{dmStatus}</span>
-                  </span>
-                  <span className="session-campaign-card__description">
-                    {campaign.description || 'No description provided.'}
-                  </span>
-                  <span className="session-campaign-card__actions">
-                    {isCampaignDm ? (
-                      <button
-                        type="button"
-                        className="session-card-action-button"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          props.onOpenCampaignSettings(campaign.id)
-                        }}
-                        title="Campaign settings"
-                        aria-label="Campaign settings"
-                      >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          tune
-                        </span>
-                        <span>Settings</span>
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="session-card-action-button session-card-action-button-launch"
-                      onClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        if (entryAction.disabled) {
-                          if (entryAction.reason) {
-                            props.onError(entryAction.reason)
-                          }
-                          return
-                        }
-                        props.onEnterCampaign(campaign.id)
-                      }}
-                      title={entryAction.reason || `${entryAction.label} campaign`}
-                      aria-label={entryAction.reason || `${entryAction.label} campaign`}
-                      disabled={entryAction.disabled}
-                    >
-                      <span>{entryAction.label}</span>
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        {entryAction.icon}
-                      </span>
-                    </button>
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </>
+                    <span className="session-campaign-card__description">
+                      {campaign.description || 'No description provided.'}
+                    </span>
+                    <span className="session-campaign-card__actions">
+                      {isCampaignDm ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="session-card-action-button"
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                props.onOpenCampaignSettings(campaign.id)
+                              }}
+                              aria-label="Campaign settings"
+                            >
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                tune
+                              </span>
+                              <span>Settings</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Campaign settings</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <button
+                              type="button"
+                              className="session-card-action-button session-card-action-button-launch"
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                if (entryAction.disabled) {
+                                  if (entryAction.reason) {
+                                    props.onError(entryAction.reason)
+                                  }
+                                  return
+                                }
+                                props.onEnterCampaign(campaign.id)
+                              }}
+                              aria-label={entryAction.reason || `${entryAction.label} campaign`}
+                              disabled={entryAction.disabled}
+                            >
+                              <span>{entryAction.label}</span>
+                              <span className="material-symbols-outlined" aria-hidden="true">
+                                {entryAction.icon}
+                              </span>
+                            </button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {entryAction.reason || `${entryAction.label} campaign`}
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </>
+    </TooltipProvider>
   )
 }

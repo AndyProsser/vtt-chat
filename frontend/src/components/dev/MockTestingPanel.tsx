@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { UUID } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '@/styles/components/dev/MockTestingPanel.css'
 
 interface MockSimulationConfig {
@@ -274,17 +275,23 @@ export function MockTestingPanel({
               disabled={isLoading}
             />
             <span className="mock-testing-panel__value">{playerCount}</span>
-            <button
-              className="mock-testing-panel__icon-button"
-              onClick={handleReroll}
-              disabled={isLoading}
-              title="Reroll with current count"
-              aria-label="Reroll mock players"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                refresh
-              </span>
-            </button>
+            <TooltipProvider delayDuration={140}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="mock-testing-panel__icon-button"
+                    onClick={handleReroll}
+                    disabled={isLoading}
+                    aria-label="Reroll mock players"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      refresh
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Reroll with current count</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 

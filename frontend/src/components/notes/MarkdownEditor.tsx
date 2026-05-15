@@ -21,6 +21,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useState, useCallback } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '../../styles/components/notes/MarkdownEditor.css'
 
 export type MarkdownEditorVariant = 'full' | 'restricted'
@@ -132,124 +133,156 @@ export function MarkdownEditor({
     editor?.isActive(name, attrs) ?? false
 
   const toolbar = !readOnly && (
-    <div className="md-editor__toolbar" role="toolbar" aria-label="Formatting">
-      <button
-        type="button"
-        className={`md-editor__tool ${isActive('bold') ? 'is-active' : ''}`}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          if (mode === 'rich') editor?.chain().focus().toggleBold().run()
-        }}
-        disabled={mode === 'raw'}
-        title="Bold"
-        aria-label="Bold"
-        aria-pressed={isActive('bold')}
-      >
-        <strong>B</strong>
-      </button>
+    <TooltipProvider delayDuration={140}>
+      <div className="md-editor__toolbar" role="toolbar" aria-label="Formatting">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${isActive('bold') ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                if (mode === 'rich') editor?.chain().focus().toggleBold().run()
+              }}
+              disabled={mode === 'raw'}
+              aria-label="Bold"
+              aria-pressed={isActive('bold')}
+            >
+              <strong>B</strong>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Bold</TooltipContent>
+        </Tooltip>
 
-      <button
-        type="button"
-        className={`md-editor__tool ${isActive('italic') ? 'is-active' : ''}`}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          if (mode === 'rich') editor?.chain().focus().toggleItalic().run()
-        }}
-        disabled={mode === 'raw'}
-        title="Italic"
-        aria-label="Italic"
-        aria-pressed={isActive('italic')}
-      >
-        <em>I</em>
-      </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${isActive('italic') ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                if (mode === 'rich') editor?.chain().focus().toggleItalic().run()
+              }}
+              disabled={mode === 'raw'}
+              aria-label="Italic"
+              aria-pressed={isActive('italic')}
+            >
+              <em>I</em>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Italic</TooltipContent>
+        </Tooltip>
 
-      <button
-        type="button"
-        className={`md-editor__tool ${isActive('bulletList') ? 'is-active' : ''}`}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          if (mode === 'rich') editor?.chain().focus().toggleBulletList().run()
-        }}
-        disabled={mode === 'raw'}
-        title="Bullet list"
-        aria-label="Bullet list"
-        aria-pressed={isActive('bulletList')}
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          format_list_bulleted
-        </span>
-      </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${isActive('bulletList') ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                if (mode === 'rich') editor?.chain().focus().toggleBulletList().run()
+              }}
+              disabled={mode === 'raw'}
+              aria-label="Bullet list"
+              aria-pressed={isActive('bulletList')}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                format_list_bulleted
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Bullet list</TooltipContent>
+        </Tooltip>
 
-      <button
-        type="button"
-        className={`md-editor__tool ${isActive('orderedList') ? 'is-active' : ''}`}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          if (mode === 'rich') editor?.chain().focus().toggleOrderedList().run()
-        }}
-        disabled={mode === 'raw'}
-        title="Ordered list"
-        aria-label="Ordered list"
-        aria-pressed={isActive('orderedList')}
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          format_list_numbered
-        </span>
-      </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${isActive('orderedList') ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                if (mode === 'rich') editor?.chain().focus().toggleOrderedList().run()
+              }}
+              disabled={mode === 'raw'}
+              aria-label="Ordered list"
+              aria-pressed={isActive('orderedList')}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                format_list_numbered
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Ordered list</TooltipContent>
+        </Tooltip>
 
-      {variant === 'full' && (
-        <>
-          <button
-            type="button"
-            className={`md-editor__tool ${isActive('code') ? 'is-active' : ''}`}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              if (mode === 'rich') editor?.chain().focus().toggleCode().run()
-            }}
-            disabled={mode === 'raw'}
-            title="Inline code"
-            aria-label="Inline code"
-            aria-pressed={isActive('code')}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              code
-            </span>
-          </button>
+        {variant === 'full' && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={`md-editor__tool ${isActive('code') ? 'is-active' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    if (mode === 'rich') editor?.chain().focus().toggleCode().run()
+                  }}
+                  disabled={mode === 'raw'}
+                  aria-label="Inline code"
+                  aria-pressed={isActive('code')}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    code
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Inline code</TooltipContent>
+            </Tooltip>
 
-          <button
-            type="button"
-            className={`md-editor__tool ${isActive('blockquote') ? 'is-active' : ''}`}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              if (mode === 'rich') editor?.chain().focus().toggleBlockquote().run()
-            }}
-            disabled={mode === 'raw'}
-            title="Blockquote"
-            aria-label="Blockquote"
-            aria-pressed={isActive('blockquote')}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              format_quote
-            </span>
-          </button>
-        </>
-      )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={`md-editor__tool ${isActive('blockquote') ? 'is-active' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    if (mode === 'rich') editor?.chain().focus().toggleBlockquote().run()
+                  }}
+                  disabled={mode === 'raw'}
+                  aria-label="Blockquote"
+                  aria-pressed={isActive('blockquote')}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    format_quote
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Blockquote</TooltipContent>
+            </Tooltip>
+          </>
+        )}
 
-      <span className="md-editor__toolbar-sep" aria-hidden="true" />
+        <span className="md-editor__toolbar-sep" aria-hidden="true" />
 
-      <button
-        type="button"
-        className={`md-editor__tool md-editor__tool--mode ${mode === 'raw' ? 'is-active' : ''}`}
-        onClick={mode === 'rich' ? handleSwitchToRaw : handleSwitchToRich}
-        title={mode === 'rich' ? 'View raw markdown' : 'View formatted'}
-        aria-label={mode === 'rich' ? 'View raw markdown' : 'View formatted'}
-        aria-pressed={mode === 'raw'}
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          {mode === 'rich' ? 'code_blocks' : 'wysiwyg'}
-        </span>
-      </button>
-    </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool md-editor__tool--mode ${mode === 'raw' ? 'is-active' : ''}`}
+              onClick={mode === 'rich' ? handleSwitchToRaw : handleSwitchToRich}
+              aria-label={mode === 'rich' ? 'View raw markdown' : 'View formatted'}
+              aria-pressed={mode === 'raw'}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {mode === 'rich' ? 'code_blocks' : 'wysiwyg'}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {mode === 'rich' ? 'View raw markdown' : 'View formatted'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
   )
 
   const rootClass = [

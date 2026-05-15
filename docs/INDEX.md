@@ -106,7 +106,7 @@ Developer guide for D&D markdown blocks in Notes/Journal with AI-assisted genera
 
 1. Start backend: `npm run dev` (backend folder)
 2. Start frontend: `npm run dev` (frontend folder)
-3. Open http://localhost:5173
+3. Open <http://localhost:5173>
 4. Mock players automatically seed (5–9 random D&D characters)
 5. Create a session → observe mock avatars in Groups panel
 6. Test features:
@@ -140,7 +140,7 @@ See endpoints in [Mute & Speaking Indicator Architecture](guides/dev/mute-speaki
 
 ## Document Structure
 
-```
+```text
 docs/
 ├── guides/
 │   ├── admin/

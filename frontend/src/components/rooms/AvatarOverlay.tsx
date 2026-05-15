@@ -5,7 +5,7 @@ import '../../styles/components/rooms/AvatarOverlay.css'
 interface AvatarOverlayProps {
   username: string
   avatarUrl?: string | null
-  roleLabel?: 'DM' | 'PLAYER'
+  roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   metaLine?: string
   presenceState?: PresenceState
   isSpeaking?: boolean

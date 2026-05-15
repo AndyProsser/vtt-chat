@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '../../ui/Icon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../core-ui'
 import type { AudioDeviceState } from '@/types/audio'
 import {
   AUDIO_CONNECTION_STATUS_TITLES,
@@ -143,128 +144,156 @@ export function AudioDevicePanel({
   })
 
   return (
-    <footer className="audio-panel__controls">
-      {/* Connection status indicator */}
-      <span
-        className="audio-panel__status-dot"
-        data-state={statusState}
-        title={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
-        aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
-      />
+    <TooltipProvider delayDuration={140}>
+      <footer className="audio-panel__controls">
+        {/* Connection status indicator */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="audio-panel__status-dot"
+              data-state={statusState}
+              aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="top">{AUDIO_CONNECTION_STATUS_TITLES[statusState]}</TooltipContent>
+        </Tooltip>
 
-      {/* Mic toggle: go live / mute / unmute */}
-      <button
-        onMouseDown={handlePrimaryDown}
-        onMouseUp={handlePrimaryUp}
-        onMouseLeave={handlePrimaryUp}
-        onTouchStart={handlePrimaryDown}
-        onTouchEnd={handlePrimaryUp}
-        onKeyDown={(event) => {
-          if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
-            event.preventDefault()
-            handlePrimaryDown()
-          }
-        }}
-        onKeyUp={(event) => {
-          if (event.key === ' ' || event.key === 'Enter') {
-            event.preventDefault()
-            handlePrimaryUp()
-          }
-        }}
-        onBlur={handlePrimaryUp}
-        className={primaryControlClass}
-        title={device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalkHold : micTitle}
-        aria-label={device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalk : micTitle}
-        aria-pressed={device.pttEnabled ? pttActive : undefined}
-        disabled={!device.microphoneOn && !isVoiceConnected}
-      >
-        {device.pttEnabled ? (
-          <Icon name="voice" />
-        ) : (
-          <Icon name={device.microphoneOn ? 'mic' : 'mic_off'} />
-        )}
-      </button>
+        {/* Mic toggle: go live / mute / unmute */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onMouseDown={handlePrimaryDown}
+              onMouseUp={handlePrimaryUp}
+              onMouseLeave={handlePrimaryUp}
+              onTouchStart={handlePrimaryDown}
+              onTouchEnd={handlePrimaryUp}
+              onKeyDown={(event) => {
+                if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
+                  event.preventDefault()
+                  handlePrimaryDown()
+                }
+              }}
+              onKeyUp={(event) => {
+                if (event.key === ' ' || event.key === 'Enter') {
+                  event.preventDefault()
+                  handlePrimaryUp()
+                }
+              }}
+              onBlur={handlePrimaryUp}
+              className={primaryControlClass}
+              aria-label={device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalk : micTitle}
+              aria-pressed={device.pttEnabled ? pttActive : undefined}
+              disabled={!device.microphoneOn && !isVoiceConnected}
+            >
+              {device.pttEnabled ? (
+                <Icon name="voice" />
+              ) : (
+                <Icon name={device.microphoneOn ? 'mic' : 'mic_off'} />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {device.pttEnabled ? AUDIO_CONTROL_COPY.pushToTalkHold : micTitle}
+          </TooltipContent>
+        </Tooltip>
 
-      <span
-        className="audio-panel__tx-meter"
-        aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
-      >
         <span
-          className="audio-panel__tx-meter-fill"
-          style={{ height: `${Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)}%` }}
-        />
-      </span>
-
-      <span className={`audio-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
-        {mutedLabel}
-        <span
-          className="audio-panel__mode-pill-badge"
-          data-state={lkBadgeState}
-          title={liveKitBadgeLabel}
-          aria-label={liveKitBadgeLabel}
-        />
-      </span>
-
-      {/* Spacer pushes right-side controls to the edge */}
-      <span className="audio-panel__controls-spacer" aria-hidden="true" />
-
-      {/* Effects indicator */}
-      <div
-        className="audio-panel__control-group"
-        onMouseEnter={() => setEffectsHovered(true)}
-        onMouseLeave={() => setEffectsHovered(false)}
-      >
-        <button
-          className={`audio-panel__control audio-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
-          title={getAudioQuickPanelCountLabel(activeEffectsCount)}
-          aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
-          aria-expanded={effectsOpen}
-          type="button"
+          className="audio-panel__tx-meter"
+          aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
         >
-          <Icon name="effects" />
-          {activeEffectsCount > 0 ? (
-            <span className="audio-panel__pip" aria-hidden="true">
-              {activeEffectsCount}
-            </span>
-          ) : null}
-        </button>
-        {effectsOpen && (
-          <div
-            className="audio-panel__quick-panel"
-            role="dialog"
-            aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
-          >
-            <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
-            {effectItems.length === 0 ? (
-              <p className="audio-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
-            ) : (
-              <ul className="audio-panel__quick-list">
-                {effectItems.map((item) => (
-                  <li key={`${item.kind}-${item.name}`} className="audio-panel__quick-item">
-                    {renderItemIcon(item.kind)}
-                    <span className="audio-panel__quick-main">
-                      <span className="audio-panel__quick-name">{item.name}</span>
-                      <span className="audio-panel__quick-desc">{item.description}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
+          <span
+            className="audio-panel__tx-meter-fill"
+            style={{
+              height: `${Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)}%`,
+            }}
+          />
+        </span>
 
-      {/* Audio settings */}
-      <button
-        onClick={onToggleSettings}
-        className={`audio-panel__control audio-panel__control--icon ${settingsOpen ? 'is-active' : ''}`}
-        title={AUDIO_CONTROL_COPY.audioSettings}
-        aria-label={AUDIO_CONTROL_COPY.audioSettings}
-        aria-expanded={settingsOpen}
-        data-audio-settings-trigger="true"
-      >
-        <Icon name="settings" />
-      </button>
-    </footer>
+        <span className={`audio-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
+          {mutedLabel}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="audio-panel__mode-pill-badge"
+                data-state={lkBadgeState}
+                aria-label={liveKitBadgeLabel}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top">{liveKitBadgeLabel}</TooltipContent>
+          </Tooltip>
+        </span>
+
+        {/* Spacer pushes right-side controls to the edge */}
+        <span className="audio-panel__controls-spacer" aria-hidden="true" />
+
+        {/* Effects indicator */}
+        <div
+          className="audio-panel__control-group"
+          onMouseEnter={() => setEffectsHovered(true)}
+          onMouseLeave={() => setEffectsHovered(false)}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={`audio-panel__control audio-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
+                aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
+                aria-expanded={effectsOpen}
+                type="button"
+              >
+                <Icon name="effects" />
+                {activeEffectsCount > 0 ? (
+                  <span className="audio-panel__pip" aria-hidden="true">
+                    {activeEffectsCount}
+                  </span>
+                ) : null}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {getAudioQuickPanelCountLabel(activeEffectsCount)}
+            </TooltipContent>
+          </Tooltip>
+          {effectsOpen && (
+            <div
+              className="audio-panel__quick-panel"
+              role="dialog"
+              aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
+            >
+              <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
+              {effectItems.length === 0 ? (
+                <p className="audio-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
+              ) : (
+                <ul className="audio-panel__quick-list">
+                  {effectItems.map((item) => (
+                    <li key={`${item.kind}-${item.name}`} className="audio-panel__quick-item">
+                      {renderItemIcon(item.kind)}
+                      <span className="audio-panel__quick-main">
+                        <span className="audio-panel__quick-name">{item.name}</span>
+                        <span className="audio-panel__quick-desc">{item.description}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Audio settings */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onToggleSettings}
+              className={`audio-panel__control audio-panel__control--icon ${settingsOpen ? 'is-active' : ''}`}
+              aria-label={AUDIO_CONTROL_COPY.audioSettings}
+              aria-expanded={settingsOpen}
+              data-audio-settings-trigger="true"
+            >
+              <Icon name="settings" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{AUDIO_CONTROL_COPY.audioSettings}</TooltipContent>
+        </Tooltip>
+      </footer>
+    </TooltipProvider>
   )
 }

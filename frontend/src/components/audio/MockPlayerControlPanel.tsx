@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { UUID } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '@/styles/components/audio/MockPlayerControlPanel.css'
 
 interface MockSimulationConfig {
@@ -211,16 +212,23 @@ export function MockPlayerControlPanel({
             disabled={isLoading}
           />
           <span className="mock-player-control-panel__count">{playerCount}</span>
-          <button
-            className="mock-player-control-panel__button mock-player-control-panel__button--icon"
-            onClick={handleReroll}
-            disabled={isLoading}
-            title="Reroll with same player count"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              refresh
-            </span>
-          </button>
+          <TooltipProvider delayDuration={140}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="mock-player-control-panel__button mock-player-control-panel__button--icon"
+                  onClick={handleReroll}
+                  disabled={isLoading}
+                  aria-label="Reroll with same player count"
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    refresh
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Reroll with same player count</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Simulator Toggles */}

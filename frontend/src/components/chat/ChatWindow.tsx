@@ -9,6 +9,7 @@ import type { UUID, Role } from '@shared'
 import { MessageType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { ROOM_NAMES } from '../../constants/roomPresence.constants'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import type { OutgoingChatMessage } from '../../state/chatSlice'
@@ -372,18 +373,24 @@ export function ChatWindow({
       )}
 
       {!isLoading && visibleMessages.length > 0 && !isUserPinnedToBottom ? (
-        <button
-          type="button"
-          className="chat-window__jump-to-latest"
-          onClick={() => {
-            scrollToLatest('smooth')
-            setIsUserPinnedToBottom(true)
-          }}
-          aria-label="Jump to latest message"
-          title="Jump to latest"
-        >
-          ↓
-        </button>
+        <TooltipProvider delayDuration={140}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="chat-window__jump-to-latest"
+                onClick={() => {
+                  scrollToLatest('smooth')
+                  setIsUserPinnedToBottom(true)
+                }}
+                aria-label="Jump to latest message"
+              >
+                ↓
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Jump to latest</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ) : null}
 
       {/* Input */}

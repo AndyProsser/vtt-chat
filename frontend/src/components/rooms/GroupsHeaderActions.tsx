@@ -156,11 +156,6 @@ export function GroupsHeaderActions({
               onClick={onEndWhisper}
               disabled={whisperEndBlockedByPendingMoves}
               aria-label="End whisper"
-              title={
-                whisperEndBlockedByPendingMoves
-                  ? 'Waiting for whisper moves to finish'
-                  : 'End whisper'
-              }
             >
               <span className="material-symbols-outlined" aria-hidden="true">
                 exit_to_app

@@ -23,6 +23,10 @@ Options:
   --prompt-overwrite
             Prompt before overwriting existing generated config files
 
+Environment flags:
+  SKIP_DEV_NPM_INSTALL=1
+            Skip automatic npm install sync for DEV start/restart
+
 Commands:
   build     Validate mode files, prepare env files, and build the Docker stack
   start     Start the Docker stack
@@ -541,10 +545,35 @@ function build() {
   echo "Build complete. Run '$0 start' to start the server."
 }
 
+function sync_dev_workspace_dependencies() {
+  if [[ "$DEV_MODE" != "true" ]]; then
+    return
+  fi
+
+  if [[ "${SKIP_DEV_NPM_INSTALL:-0}" == "1" ]]; then
+    echo "Skipping DEV dependency sync (SKIP_DEV_NPM_INSTALL=1)."
+    return
+  fi
+
+  local compose_file
+  compose_file="$(get_compose_file)"
+
+  echo "Syncing DEV workspace npm dependencies (backend, frontend, admin)..."
+
+  # DEV uses persistent node_modules volumes. Reinstalling on start/restart keeps
+  # workspace volumes aligned with newly added packages.
+  docker compose -f "$compose_file" run --rm --no-deps backend npm install
+  docker compose -f "$compose_file" run --rm --no-deps frontend npm install
+  docker compose -f "$compose_file" run --rm --no-deps admin npm install
+
+  echo "DEV dependency sync complete."
+}
+
 function start() {
   check_conflicts
   local stack_name=$(get_stack_name)
   cd "$INSTALL_DIR"
+  sync_dev_workspace_dependencies
   docker compose -f "$(get_compose_file)" up -d --build
   load_config
   echo "VTT-Chat $stack_name stack started. Access the app at https://<server-ip>:${HTTPS_PORT}"
@@ -554,6 +583,7 @@ function restart() {
   check_conflicts
   local stack_name=$(get_stack_name)
   cd "$INSTALL_DIR"
+  sync_dev_workspace_dependencies
   docker compose -f "$(get_compose_file)" up -d --build
   load_config
   echo "VTT-Chat $stack_name stack restarted."

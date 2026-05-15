@@ -170,27 +170,32 @@ export function RoomMemberList({
           </button>
         )
 
+        if (isPlayerTarget && !isGreenroom) {
+          return (
+            <PlayerContextMenu
+              key={member.userId}
+              enabled
+              canManageRooms={canManageRooms}
+              memberIsMuted={isMuted}
+              distanceTargets={distanceTargets}
+              conditionTargets={conditionTargets}
+              onDistanceSelect={(distanceName) =>
+                onApplyDistanceOverride(member.userId, distanceName)
+              }
+              onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
+              onClearEffects={() => onClearMemberEffects(member.userId)}
+              onConditionSelect={(conditionName) =>
+                onApplyConditionOverride(member.userId, conditionName)
+              }
+            >
+              {memberButton}
+            </PlayerContextMenu>
+          )
+        }
+
         return (
           <Tooltip key={member.userId}>
-            <TooltipTrigger asChild>
-              <PlayerContextMenu
-                enabled={isPlayerTarget && !isGreenroom}
-                canManageRooms={canManageRooms}
-                memberIsMuted={isMuted}
-                distanceTargets={distanceTargets}
-                conditionTargets={conditionTargets}
-                onDistanceSelect={(distanceName) =>
-                  onApplyDistanceOverride(member.userId, distanceName)
-                }
-                onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
-                onClearEffects={() => onClearMemberEffects(member.userId)}
-                onConditionSelect={(conditionName) =>
-                  onApplyConditionOverride(member.userId, conditionName)
-                }
-              >
-                {memberButton}
-              </PlayerContextMenu>
-            </TooltipTrigger>
+            <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
             <TooltipContent side="right" className="room-selector-profile-tooltip">
               <div className="room-selector-profile">
                 <div className="room-selector-profile__avatar" aria-hidden="true">

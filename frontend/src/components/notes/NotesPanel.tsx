@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
 import { useStore } from '../../hooks/useStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import type { Note } from '@/types/notes'
+import { fetchSessionNotesOnce } from '@/utils/notesFetch'
 import { NoteCard } from './NoteCard'
 
 interface NotesPanelProps {
@@ -58,31 +60,11 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       setIsLoading(true)
       setError(null)
       try {
-        const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body.message ?? `HTTP ${res.status}`)
-        }
-
-        const data = await res.json()
+        const notes = await fetchSessionNotesOnce(apiUrl, sessionId, token)
         if (!cancelled) {
           clearNotes(sessionId)
-          for (const note of data.notes || []) {
-            addNote(sessionId, {
-              id: note.id,
-              ownerId: note.authorId,
-              ownerUsername: note.authorUsername,
-              title: note.title,
-              content: note.content,
-              visibility: note.visibility,
-              tags: note.tags || [],
-              allowedUsers: note.allowedUsers || [],
-              publishedAt: note.publishedAt,
-              createdAt: note.createdAt,
-              updatedAt: note.updatedAt,
-            })
+          for (const note of notes) {
+            addNote(sessionId, note)
           }
         }
       } catch (err) {
@@ -341,19 +323,24 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
                 No session users available yet. Users appear here after joining the session.
               </p>
             )}
-            <div className="flex flex-wrap gap-1.5">
-              {allowedUsers.map((userId) => (
-                <button
-                  key={userId}
-                  type="button"
-                  onClick={() => removeAllowedUser(userId)}
-                  className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
-                  title="Click to remove"
-                >
-                  {shareUsers.find((u) => u.id === userId)?.username || userId} x
-                </button>
-              ))}
-            </div>
+            <TooltipProvider delayDuration={140}>
+              <div className="flex flex-wrap gap-1.5">
+                {allowedUsers.map((userId) => (
+                  <Tooltip key={userId}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => removeAllowedUser(userId)}
+                        className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
+                      >
+                        {shareUsers.find((u) => u.id === userId)?.username || userId} x
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Click to remove</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </TooltipProvider>
           </div>
         )}
         <button

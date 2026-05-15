@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '../../styles/components/session/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
@@ -353,35 +354,56 @@ export function CampaignInformationPanel({
         </div>
       ) : null}
 
-      <div className="cip-stats" role="list" aria-label="Campaign stats">
-        <div className="cip-stat" role="listitem">
-          <span className="cip-stat__value">{sessionCount}</span>
-          <span className="cip-stat__label" title="Total sessions created in this campaign.">
-            Sessions <span className="cip-stat__hint">?</span>
-          </span>
+      <TooltipProvider delayDuration={140}>
+        <div className="cip-stats" role="list" aria-label="Campaign stats">
+          <div className="cip-stat" role="listitem">
+            <span className="cip-stat__value">{sessionCount}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cip-stat__label">
+                  Sessions <span className="cip-stat__hint">?</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">Total sessions created in this campaign.</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="cip-stat" role="listitem">
+            <span className="cip-stat__value">{formatDuration(totalSessionDurationMs)}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cip-stat__label">
+                  Total length <span className="cip-stat__hint">?</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Sum of active session durations across this campaign.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="cip-stat" role="listitem">
+            <span className="cip-stat__value">{campaign.connectedPlayersRounded ?? 0}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cip-stat__label">
+                  Players <span className="cip-stat__hint">?</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">Connected campaign players.</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="cip-stat" role="listitem">
+            <span className="cip-stat__value">{campaign.connectedSpectatorsRounded ?? 0}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cip-stat__label">
+                  Spectators <span className="cip-stat__hint">?</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">Connected campaign spectators.</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-        <div className="cip-stat" role="listitem">
-          <span className="cip-stat__value">{formatDuration(totalSessionDurationMs)}</span>
-          <span
-            className="cip-stat__label"
-            title="Sum of active session durations across this campaign."
-          >
-            Total length <span className="cip-stat__hint">?</span>
-          </span>
-        </div>
-        <div className="cip-stat" role="listitem">
-          <span className="cip-stat__value">{campaign.connectedPlayersRounded ?? 0}</span>
-          <span className="cip-stat__label" title="Connected campaign players.">
-            Players <span className="cip-stat__hint">?</span>
-          </span>
-        </div>
-        <div className="cip-stat" role="listitem">
-          <span className="cip-stat__value">{campaign.connectedSpectatorsRounded ?? 0}</span>
-          <span className="cip-stat__label" title="Connected campaign spectators.">
-            Spectators <span className="cip-stat__hint">?</span>
-          </span>
-        </div>
-      </div>
+      </TooltipProvider>
 
       <div className="cip-meta">
         <div className="cip-meta__row">
