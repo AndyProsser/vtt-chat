@@ -229,6 +229,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
             payload.state === 'ENDED' ? event.timestamp : state.sessions[event.sessionId]?.endedAt,
         },
       }
+      // Guard: only update if session exists (prevent partial shapes from unknown WS events)
+      if (!state.sessions[event.sessionId]) {
+        return state
+      }
       const currentSession = state.currentSessionId ? nextSessions[state.currentSessionId] : null
 
       // Accumulate pause stats client-side for server-synchronized timer

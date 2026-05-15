@@ -184,6 +184,47 @@ If the DM or API attempts a transition not listed in the valid transitions table
 - **UI layer:** disable the triggering control before the request is made. If the API rejects it anyway, display a toast: `"That action isn't available while the session is {currentState}."` — never a generic error.
 - Never silently ignore an invalid transition. Always surface the reason and the allowed alternatives.
 
+### State Machine Regression Prevention (CRITICAL)
+
+**RECURRING ISSUE PATTERN:** "Chats and speaking stopped reacting" after session transitions (ENDED → ACTIVE). Root cause: frontend state machine gets out of sync when WS client doesn't properly rebind to new session.
+
+**Multi-Session Transition Flow:** `IDLE → ACTIVE → ENDED → IDLE → (create new session) → ACTIVE`
+
+When this flow occurs, the following MUST happen in order or state machine breaks:
+1. `currentSessionId` changes in Zustand (via `setCurrentSession()`)
+2. `useWebSocket` hook dependency array includes `sessionId` → old WS client disconnects
+3. New WS client connects with new `sessionId` in auth payload
+4. WS events arrive and handlers fire properly
+
+**Common Break Points (prevent these):**
+
+| Break Point | Symptom | Fix |
+| --- | --- | --- |
+| **currentSessionId doesn't update when WS SESSION:STATE_CHANGED to ACTIVE arrives** | Messages arrive but aren't routed to handlers | Auto-rebind: `handleSessionStateChanged` must call `setCurrentSession(event.sessionId)` when `state === 'ACTIVE'` and `currentSessionId !== event.sessionId` |
+| **Room members duplicated on event replay** | Player count inflates (DM count, player count, mock count all wrong) | Deduplication: Check if user already in room before appending in `ROOM:SESSION_TRANSITION_APPLIED` handler |
+| **WS event creates partial session shape** | Selectors break; downstream UI assumes fields exist | Guard before update: Check `state.sessions[event.sessionId]` exists before spreading into it; return early if missing |
+| **Old WS client still processing events** | New session messages match old client's sessionId | Ensure cleanup: `useWebSocket` cleanup must call `disconnect()` and set `manualDisconnect = true` before exiting effect |
+| **sessionId dependency missing from useWebSocket** | Session changes don't trigger WS client recreation | Verify dependency array includes `[enabled, onAuthFailure, sessionId, token, url]` |
+
+**Testing Multi-Session Transitions:**
+
+When testing session lifecycle, always cover:
+1. Start session (IDLE → ACTIVE)
+2. End session (ACTIVE → ENDED)
+3. Return to lobby (ENDED → IDLE or skip to step 4)
+4. Create NEW session (new session ID)
+5. Start new session (IDLE → ACTIVE)
+6. Verify: messages send/receive, audio works, player counts match (DM + players + mocks)
+
+**Debugging Checklist:**
+
+- [ ] WS messages arriving? Check browser DevTools → Network → WS → Messages
+- [ ] Handlers firing? Add `logger.debug()` to dispatcher.register handlers
+- [ ] Zustand updating? Add `logger.debug(state)` to handlers
+- [ ] Components re-rendering? React DevTools → check if selector deps stable
+- [ ] Player count wrong? Check `roomMembers[roomId]` in Zustand — look for duplicates
+- [ ] Session binding stale? Check WS auth payload — is sessionId in it correct?
+
 ---
 
 ### Recording Policy (Contract)
