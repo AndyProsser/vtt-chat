@@ -105,6 +105,12 @@ High-priority route hotspots checklist:
     - Campaign operations Prisma cluster extracted to service:
       - backend/src/services/admin-campaign-operations.service.ts
       - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/rooms`, `/campaigns/:campaignId/sessions/:sessionId/end`, `/campaigns/:campaignId/archive`, `/campaigns/:campaignId/restore` delegate to service helpers)
+    - Campaign export/read recording/create recording Prisma clusters extracted to service:
+      - backend/src/services/admin-campaign-operations.service.ts
+      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/export`, `/campaigns/:campaignId/recordings` GET/POST delegate to service helpers)
+    - Room move-player Prisma validation/persistence cluster extracted to service:
+      - backend/src/services/admin-campaign-operations.service.ts
+      - backend/src/api/admin.routes.ts (`/campaigns/:campaignId/sessions/:sessionId/rooms/:roomId/move-player` delegates DB orchestration to service; route retains WS event emission + HTTP mapping)
   - Remaining:
     - Other admin endpoints still contain direct Prisma usage and route-level orchestration.
 - [~] backend/src/api/notes.routes.ts

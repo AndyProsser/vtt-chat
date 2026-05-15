@@ -2,13 +2,7 @@ import { Router, Request, Response } from 'express'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import { getPrismaClient } from '@/infra/db'
 import { loadLogRetentionSettings, updateLogRetentionSettings } from '@/infra/telemetry-store'
-import {
-  buildCampaignExport,
-  createRecordingMetadata,
-  importCampaignBundle,
-  isValidTransferBundle,
-  listRecordingMetadata,
-} from '@/services/admin-portability.service'
+import { importCampaignBundle, isValidTransferBundle } from '@/services/admin-portability.service'
 import {
   createAdminUsersCsv,
   getAdminUsersExportRows,
@@ -31,8 +25,12 @@ import {
 } from '@/services/admin-integrations.service'
 import {
   archiveAdminCampaign,
+  createAdminCampaignRecordingPayload,
   endAdminCampaignSession,
+  getAdminCampaignExportPayload,
+  getAdminCampaignRecordingsPayload,
   getAdminCampaignRoomsPayload,
+  moveAdminCampaignPlayerPayload,
   restoreAdminCampaign,
 } from '@/services/admin-campaign-operations.service'
 import { randomBytes } from 'node:crypto'
@@ -397,48 +395,19 @@ router.get(
 
       const campaignId = String(req.params.campaignId || '').trim()
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: {
-          id: true,
-          name: true,
-          currentDmId: true,
-        },
-      })
+      const result = await getAdminCampaignExportPayload({ actor, campaignId })
 
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
       }
 
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      const exported = await buildCampaignExport(prisma, campaign.id, actor.userId)
-      if (!exported) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      await writeAudit({
-        actor,
-        action: 'CAMPAIGN_EXPORT',
-        targetType: 'CAMPAIGN',
-        targetId: campaign.id,
-        metadata: {
-          artifactId: exported.artifactId,
-          ...exported.counts,
-        },
-      })
-
-      res.status(200).json({
-        message: 'Campaign export created successfully',
-        artifactId: exported.artifactId,
-        counts: exported.counts,
-        bundle: exported.bundle,
-      })
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -520,33 +489,8 @@ router.get(
 
       const campaignId = String(req.params.campaignId || '').trim()
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: { id: true, name: true, currentDmId: true },
-      })
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      const recordings = await listRecordingMetadata(prisma, campaign.id)
-
-      res.status(200).json({
-        campaign,
-        recordings: recordings.map((recording) => ({
-          ...recording,
-          startedAt: recording.startedAt?.toISOString() || null,
-          endedAt: recording.endedAt?.toISOString() || null,
-          createdAt: recording.createdAt.toISOString(),
-          updatedAt: recording.updatedAt.toISOString(),
-        })),
-      })
+      const result = await getAdminCampaignRecordingsPayload({ actor, campaignId })
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -570,116 +514,24 @@ router.post(
       }
 
       const campaignId = String(req.params.campaignId || '').trim()
-      const title = String(req.body?.title || '').trim()
-      const sessionId = String(req.body?.sessionId || '').trim() || null
-      const roomId = String(req.body?.roomId || '').trim() || null
-      const storageKey = String(req.body?.storageKey || '').trim() || null
-      const sourceUrl = String(req.body?.sourceUrl || '').trim() || null
-      const journalSummary = String(req.body?.journalSummary || '').trim() || null
-      const startedAt = String(req.body?.startedAt || '').trim() || null
-      const endedAt = String(req.body?.endedAt || '').trim() || null
-      const durationValue = Number(req.body?.durationSeconds)
-      const durationSeconds =
-        Number.isFinite(durationValue) && durationValue >= 0 ? Math.round(durationValue) : null
-      const metadata =
-        req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : null
 
-      if (!title) {
-        res.status(400).json({
-          error: 'title is required',
-          code: 'MISSING_TITLE',
-          field: 'title',
-        })
-        return
-      }
-
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: { id: true, name: true, currentDmId: true },
-      })
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      if (sessionId) {
-        const session = await prisma.session.findFirst({
-          where: { id: sessionId, campaignId: campaign.id },
-          select: { id: true },
-        })
-
-        if (!session) {
-          res.status(400).json({
-            error: 'sessionId must belong to the selected campaign',
-            code: 'INVALID_SESSION',
-            field: 'sessionId',
-          })
-          return
-        }
-      }
-
-      if (roomId) {
-        const room = await prisma.room.findFirst({
-          where: {
-            id: roomId,
-            ...(sessionId ? { sessionId } : { session: { campaignId: campaign.id } }),
-          },
-          select: { id: true },
-        })
-
-        if (!room) {
-          res.status(400).json({
-            error: 'roomId must belong to the selected campaign/session',
-            code: 'INVALID_ROOM',
-            field: 'roomId',
-          })
-          return
-        }
-      }
-
-      const recording = await createRecordingMetadata(prisma, {
-        campaignId: campaign.id,
-        sessionId,
-        roomId,
-        title,
-        storageKey,
-        sourceUrl,
-        durationSeconds,
-        startedAt,
-        endedAt,
-        journalSummary,
-        metadata: metadata as Prisma.InputJsonValue | null,
-      })
-
-      await writeAudit({
+      const result = await createAdminCampaignRecordingPayload({
         actor,
-        action: 'RECORDING_METADATA_CREATE',
-        targetType: 'CAMPAIGN',
-        targetId: campaign.id,
-        metadata: {
-          recordingId: recording.id,
-          title: recording.title,
-          sessionId: recording.sessionId,
-          roomId: recording.roomId,
-        },
+        campaignId,
+        body: (req.body || {}) as Record<string, unknown>,
       })
 
-      res.status(201).json({
-        message: 'Recording metadata saved successfully',
-        recording: {
-          ...recording,
-          startedAt: recording.startedAt?.toISOString() || null,
-          endedAt: recording.endedAt?.toISOString() || null,
-          createdAt: recording.createdAt.toISOString(),
-          updatedAt: recording.updatedAt.toISOString(),
-        },
-      })
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
+      }
+
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
@@ -713,181 +565,83 @@ router.post(
         return
       }
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: { id: true, name: true, currentDmId: true },
+      const result = await moveAdminCampaignPlayerPayload({
+        actor,
+        campaignId,
+        sessionId,
+        roomId,
+        targetUserId,
+        reason,
       })
 
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found', code: 'NOT_FOUND' })
+      if (result.status !== 200 || !result.event) {
+        res.status(result.status).json(result.body)
         return
       }
-
-      if (actor.adminRole === 'CAMPAIGN_DM' && actor.userId !== campaign.currentDmId) {
-        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
-        return
-      }
-
-      const session = await prisma.session.findUnique({
-        where: { id: sessionId },
-        select: {
-          id: true,
-          campaignId: true,
-          name: true,
-        },
-      })
-
-      if (!session || session.campaignId !== campaign.id) {
-        res.status(404).json({ error: 'Session not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        select: {
-          id: true,
-          sessionId: true,
-          name: true,
-        },
-      })
-
-      if (!room || room.sessionId !== session.id) {
-        res.status(404).json({ error: 'Room not found', code: 'NOT_FOUND' })
-        return
-      }
-
-      const sessionMember = await prisma.sessionMember.findUnique({
-        where: {
-          sessionId_userId: {
-            sessionId: session.id,
-            userId: targetUserId,
-          },
-        },
-        select: {
-          userId: true,
-          username: true,
-          role: true,
-        },
-      })
-
-      if (!sessionMember) {
-        res.status(404).json({ error: 'Target user not in session', code: 'NOT_FOUND' })
-        return
-      }
-
-      const previousPresence = await prisma.presenceSnapshot.findUnique({
-        where: {
-          sessionId_userId: {
-            sessionId: session.id,
-            userId: targetUserId,
-          },
-        },
-        select: {
-          primaryRoomId: true,
-        },
-      })
-
-      await prisma.presenceSnapshot.upsert({
-        where: {
-          sessionId_userId: {
-            sessionId: session.id,
-            userId: targetUserId,
-          },
-        },
-        create: {
-          sessionId: session.id,
-          campaignId: campaign.id,
-          userId: targetUserId,
-          username: sessionMember.username,
-          primaryRoomId: room.id,
-          state: 'ONLINE',
-          lastSeenAt: new Date(),
-        },
-        update: {
-          username: sessionMember.username,
-          campaignId: campaign.id,
-          primaryRoomId: room.id,
-          state: 'ONLINE',
-          lastSeenAt: new Date(),
-        },
-      })
 
       const wsManager = req.app.locals.wsManager as WebSocketManager | undefined
       if (wsManager) {
         const timestamp = Date.now()
+        const event = result.event
 
-        if (previousPresence?.primaryRoomId && previousPresence.primaryRoomId !== room.id) {
+        if (event.previousRoomId && event.previousRoomId !== event.roomId) {
           wsManager.broadcastEventToSession(
-            session.id as any,
+            event.sessionId as any,
             {
               id: randomBytes(16).toString('hex'),
               type: 'ROOM:USER_LEFT',
               version: 1,
-              userId: actor.userId,
+              userId: event.actorUserId,
               userRole: 'SYSTEM',
-              sessionId: session.id,
-              roomId: previousPresence.primaryRoomId,
+              sessionId: event.sessionId,
+              roomId: event.previousRoomId,
               timestamp,
               payload: {
-                roomId: previousPresence.primaryRoomId,
-                userId: sessionMember.userId,
-                username: sessionMember.username,
+                roomId: event.previousRoomId,
+                userId: event.targetUserId,
+                username: event.targetUsername,
                 leftAt: timestamp,
                 reason: 'ADMIN_MOVE',
-                movedBy: actor.userId,
+                movedBy: event.actorUserId,
               },
             } as any
           )
         }
 
         wsManager.broadcastEventToSession(
-          session.id as any,
+          event.sessionId as any,
           {
             id: randomBytes(16).toString('hex'),
             type: 'ROOM:USER_JOINED',
             version: 1,
-            userId: actor.userId,
+            userId: event.actorUserId,
             userRole: 'SYSTEM',
-            sessionId: session.id,
-            roomId: room.id,
+            sessionId: event.sessionId,
+            roomId: event.roomId,
             timestamp,
             payload: {
-              roomId: room.id,
-              userId: sessionMember.userId,
-              username: sessionMember.username,
+              roomId: event.roomId,
+              userId: event.targetUserId,
+              username: event.targetUsername,
               joinedAt: timestamp,
-              movedBy: actor.userId,
+              movedBy: event.actorUserId,
             },
           } as any
         )
       }
 
-      await writeAudit({
-        actor,
-        action: 'ROOM_MOVE_PLAYER',
-        targetType: 'SESSION',
-        targetId: session.id,
-        reason,
-        metadata: {
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          sessionName: session.name,
-          targetUserId: sessionMember.userId,
-          targetUsername: sessionMember.username,
-          previousRoomId: previousPresence?.primaryRoomId || null,
-          newRoomId: room.id,
-          newRoomName: room.name,
-        },
-      })
+      if (result.audit) {
+        await writeAudit({
+          actor,
+          action: result.audit.action,
+          targetType: result.audit.targetType,
+          targetId: result.audit.targetId,
+          reason: result.audit.reason,
+          metadata: result.audit.metadata as Prisma.InputJsonValue,
+        })
+      }
 
-      res.status(200).json({
-        message: 'Player moved successfully',
-        movedBy: actor.userId,
-        targetUserId: sessionMember.userId,
-        targetUsername: sessionMember.username,
-        movedFromRoomId: previousPresence?.primaryRoomId || null,
-        movedToRoomId: room.id,
-      })
+      res.status(result.status).json(result.body)
     } catch (error) {
       errorHandler(error as any, req, res, () => {})
     }
