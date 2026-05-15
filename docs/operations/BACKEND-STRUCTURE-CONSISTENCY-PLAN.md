@@ -120,6 +120,15 @@ High-priority route hotspots checklist:
     - Setup/onboarding and admin-access Prisma clusters extracted from route module:
       - backend/src/services/admin-access.service.ts
       - backend/src/api/admin-access.routes.ts (`/invites`, `/invites/validate`, `/invites/redeem`, `/auth/handoff/exchange`, `/users/:userId/suspend`, `/users/:userId/restore`, `/users/:userId/force-logout` use service helpers instead of route-level Prisma)
+    - Admin services consolidated under `services/admin` with a conductor:
+      - backend/src/services/admin/admin.services.ts (tiny compatibility barrel; re-exports only the unified admin access implementation)
+      - backend/src/services/admin/admin-access.service.ts (single admin access/audit implementation)
+      - compatibility re-exports preserved at:
+        - backend/src/services/admin-access.service.ts
+        - backend/src/services/admin-audit.service.ts
+    - Remaining admin-access route orchestration extracted to domain services:
+      - backend/src/services/admin/admin-access.service.ts
+      - backend/src/api/admin-access.routes.ts (`/setup-status`, `/setup`, `/login`, `/invites`, `/invites/validate`, `/invites/redeem`, `/users/:userId/suspend`, `/users/:userId/restore`, `/users/:userId/force-logout`, `/handoff/app`, `/auth/handoff/exchange` delegate orchestration to service helpers)
   - Remaining:
     - `backend/src/api/admin.routes.ts` no longer uses direct Prisma access.
     - `backend/src/api/admin-access.routes.ts` no longer uses direct Prisma access.

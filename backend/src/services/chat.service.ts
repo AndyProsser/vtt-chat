@@ -132,7 +132,17 @@ export async function sendMessage(params: {
   recipientId?: UUID
   isOffTheRecord?: boolean
 }): Promise<StoredMessage> {
-  const { sessionId, roomId, authorId, authorUsername, dmId, content, type, recipientId, isOffTheRecord } = params
+  const {
+    sessionId,
+    roomId,
+    authorId,
+    authorUsername,
+    dmId,
+    content,
+    type,
+    recipientId,
+    isOffTheRecord,
+  } = params
   const resolvedAuthorId = type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_ID : authorId
   const resolvedAuthorUsername =
     type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_USERNAME : authorUsername
