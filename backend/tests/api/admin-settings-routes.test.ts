@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockLoadTelemetryEvents: vi.fn(),
   mockLoadDiagnosticEvents: vi.fn(),
   mockCreateOperationalExportArtifact: vi.fn(),
+  mockImportExportArtifactCreate: vi.fn(),
 }))
 
 vi.mock('@/utils', () => ({
@@ -113,7 +114,7 @@ vi.mock('@/infra/db', () => ({
       update: vi.fn(),
     },
     importExportArtifact: {
-      create: vi.fn(),
+      create: mocks.mockImportExportArtifactCreate,
       findUnique: vi.fn(),
     },
     recordingMetadata: {
@@ -389,6 +390,7 @@ describe('admin settings routes — GET /settings/backup/export', () => {
       },
     })
     mocks.mockAdminAuditCreate.mockResolvedValue({ id: 'audit-1' })
+    mocks.mockImportExportArtifactCreate.mockResolvedValue({ id: 'artifact-export-1' })
   })
 
   it('creates and returns operational export bundle', async () => {
