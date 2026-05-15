@@ -29,6 +29,15 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
+
+function isIntermissionBookend(content: string, type: MessageType): boolean {
+  return (
+    type === MessageType.SYSTEM &&
+    INTERMISSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
+  )
+}
+
 export function ChatWindow({
   apiUrl,
   token,
@@ -174,6 +183,11 @@ export function ChatWindow({
       return
     }
 
+    if (typeof scrollContainer.scrollTo !== 'function') {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
+      return
+    }
+
     scrollContainer.scrollTo({
       top: scrollContainer.scrollHeight,
       behavior,
@@ -192,7 +206,27 @@ export function ChatWindow({
     setIsUserPinnedToBottom(isNearBottom)
   }, [])
 
-  const visibleMessages = messageList
+  const visibleMessages = useMemo(
+    () =>
+      messageList.filter((message) => {
+        if (!isGreenroomMode) {
+          return true
+        }
+
+        return !isIntermissionBookend(message.content, message.type)
+      }),
+    [isGreenroomMode, messageList]
+  )
+
+  const visibleRoomCount = useMemo(
+    () => new Set(visibleMessages.map((message) => message.roomId).filter(Boolean)).size,
+    [visibleMessages]
+  )
+
+  const offFocusMessageCount = useMemo(
+    () => visibleMessages.filter((message) => message.roomId && message.roomId !== roomId).length,
+    [roomId, visibleMessages]
+  )
 
   const typingUsers = useMemo(() => {
     return (sessionTypingIndicators ?? [])
@@ -243,6 +277,31 @@ export function ChatWindow({
         .sort((a, b) => b.createdAt - a.createdAt),
     [roomId, sessionOutgoingQueue]
   )
+
+  const timelineSummary = useMemo(() => {
+    if (isLoading) {
+      return 'Rehydrating remembered timeline'
+    }
+
+    if (visibleMessages.length === 0) {
+      return isGreenroomMode
+        ? 'Greenroom stays quiet until someone breaks the silence'
+        : 'No witnessed chat yet in this session'
+    }
+
+    if (offFocusMessageCount > 0) {
+      return `${offFocusMessageCount} remembered ${offFocusMessageCount === 1 ? 'moment' : 'moments'} from other rooms`
+    }
+
+    return isGreenroomMode
+      ? 'Greenroom shows only chatter that matters before the curtain rises'
+      : 'Everything here is happening in your current room'
+  }, [isGreenroomMode, isLoading, offFocusMessageCount, visibleMessages.length])
+
+  const typingSummary =
+    typingUsers.length === 1
+      ? `${typingUsers[0]?.username} is typing…`
+      : `${typingUsers.length} people are typing…`
 
   // Auto-scroll to newest message only while user stays pinned at bottom.
   useEffect(() => {
@@ -357,11 +416,40 @@ export function ChatWindow({
   return (
     <section className="chat-window">
       <header className="chat-window__header">
-        <div>
+        <div className="chat-window__header-copy">
           <h3 className="chat-window__title">{headerTitle}</h3>
           <p className="chat-window__subtitle">{headerSubtitle}</p>
         </div>
+        <div className="chat-window__header-pills" aria-label="Timeline context">
+          <span className="chat-window__pill chat-window__pill--accent">Unified Timeline</span>
+          <span className="chat-window__pill">{visibleRoomCount || 1} room focus</span>
+          <span className="chat-window__pill">
+            {visibleMessages.length} {visibleMessages.length === 1 ? 'entry' : 'entries'}
+          </span>
+        </div>
       </header>
+
+      <section className="chat-window__timeline-bar" aria-label="Timeline status">
+        <div>
+          <p className="chat-window__timeline-kicker">
+            {isGreenroomMode ? 'Greenroom relay' : 'Live room focus'}
+          </p>
+          <p className="chat-window__timeline-summary">{timelineSummary}</p>
+        </div>
+        <div className="chat-window__timeline-badges">
+          <span className="chat-window__timeline-badge chat-window__timeline-badge--focus">
+            Now viewing {resolvedRoomName}
+          </span>
+          {typingUsers.length > 0 ? (
+            <span
+              className="chat-window__timeline-badge chat-window__timeline-badge--typing"
+              aria-live="polite"
+            >
+              {typingSummary}
+            </span>
+          ) : null}
+        </div>
+      </section>
 
       {/* Error banner */}
       {error && <div className="chat-window__error">{error}</div>}
@@ -418,16 +506,10 @@ export function ChatWindow({
           onListScroll={handleListScroll}
           participantDirectory={participantDirectory}
           roomDirectory={roomDirectory}
+          activeRoomId={roomId}
+          hideIntermissionMarkers={isGreenroomMode}
         />
       )}
-
-      {typingUsers.length > 0 ? (
-        <div className="chat-window__subtitle" aria-live="polite">
-          {typingUsers.length === 1
-            ? `${typingUsers[0]?.username} is typing...`
-            : `${typingUsers.length} people are typing...`}
-        </div>
-      ) : null}
 
       {!isLoading && visibleMessages.length > 0 && !isUserPinnedToBottom ? (
         <TooltipProvider delayDuration={140}>

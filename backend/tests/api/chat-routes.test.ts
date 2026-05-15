@@ -56,6 +56,7 @@ const MESSAGE_ID = '22222222-2222-4222-8222-222222222222'
 const USER_ID = '33333333-3333-4333-8333-333333333333'
 const DM_ID = '44444444-4444-4444-8444-444444444444'
 const ROOM_ID = '55555555-5555-4555-8555-555555555555'
+const RECIPIENT_ID = '66666666-6666-4666-8666-666666666666'
 
 function buildApp() {
   const app = express()
@@ -87,6 +88,7 @@ describe('chat routes', () => {
     mocks.getSessionUsers.mockResolvedValue([
       { id: USER_ID, username: 'alice', role: 'PLAYER', createdAt: Date.now() },
       { id: DM_ID, username: 'morgan', role: 'DM', createdAt: Date.now() },
+      { id: RECIPIENT_ID, username: 'bea', role: 'PLAYER', createdAt: Date.now() },
     ])
 
     mocks.getRoom.mockResolvedValue({
@@ -100,6 +102,14 @@ describe('chat routes', () => {
       {
         userId: USER_ID,
         username: 'alice',
+        state: 'ONLINE',
+        primaryRoomId: ROOM_ID,
+        privateRoomId: undefined,
+        lastSeenAt: Date.now(),
+      },
+      {
+        userId: RECIPIENT_ID,
+        username: 'bea',
         state: 'ONLINE',
         primaryRoomId: ROOM_ID,
         privateRoomId: undefined,
@@ -236,7 +246,7 @@ describe('chat routes', () => {
     expect(response.status).toBe(201)
     expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
     expect(mocks.broadcastEventToSession).toHaveBeenCalledTimes(1)
-    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual([DM_ID, USER_ID])
+    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual([DM_ID, USER_ID, RECIPIENT_ID])
 
     const [sessionIdArg, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
     expect(sessionIdArg).toBe(SESSION_ID)
@@ -255,6 +265,44 @@ describe('chat routes', () => {
     expect(response.status).toBe(200)
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
     expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
+  })
+
+  it('restricts whisper delivery to sender, recipient, and DM', async () => {
+    const app = buildApp()
+
+    mocks.sendMessage.mockResolvedValueOnce({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
+      authorId: USER_ID,
+      authorUsername: 'alice',
+      content: 'psst',
+      type: MessageType.WHISPER,
+      isDmOnly: true,
+      isOffTheRecord: false,
+      visibleTo: [USER_ID, DM_ID, RECIPIENT_ID],
+      targetIds: [RECIPIENT_ID],
+      createdAt: 1700000000000,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'psst',
+        type: MessageType.WHISPER,
+        recipientId: RECIPIENT_ID,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual([USER_ID, DM_ID, RECIPIENT_ID])
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledWith(
+      SESSION_ID,
+      expect.objectContaining({ type: 'CHAT:MESSAGE_SENT' }),
+      [USER_ID, DM_ID, RECIPIENT_ID]
+    )
   })
 
   it('allows the session owner to send chat even when auth role is not DM', async () => {

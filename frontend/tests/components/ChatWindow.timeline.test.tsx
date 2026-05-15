@@ -1,0 +1,126 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MessageType, Role, RoomType } from '@shared'
+import type { UUID } from '@shared'
+import { ChatWindow } from '../../src/components/chat/ChatWindow'
+import { useStore } from '../../src/state/store'
+
+const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
+const USER_ID = '22222222-2222-4222-8222-222222222222' as UUID
+const MAIN_ROOM_ID = '33333333-3333-4333-8333-333333333333' as UUID
+const GREEN_ROOM_ID = '44444444-4444-4444-8444-444444444444' as UUID
+
+describe('ChatWindow timeline behavior', () => {
+  beforeEach(() => {
+    const store = useStore.getState()
+    store.clearMessages()
+    store.clearRooms()
+    store.reset()
+    store.replaceSessionTopology(
+      SESSION_ID,
+      [
+        {
+          id: MAIN_ROOM_ID,
+          sessionId: SESSION_ID,
+          name: 'Main Room',
+          type: RoomType.MAIN,
+          createdAt: 1,
+          createdBy: USER_ID,
+        },
+        {
+          id: GREEN_ROOM_ID,
+          sessionId: SESSION_ID,
+          name: 'Green Room',
+          type: RoomType.GROUP,
+          createdAt: 2,
+          createdBy: USER_ID,
+        },
+      ],
+      [
+        {
+          userId: USER_ID,
+          username: 'Morgan',
+          state: 'ONLINE' as any,
+          primaryRoomId: GREEN_ROOM_ID,
+          lastSeenAt: Date.now(),
+        },
+      ]
+    )
+  })
+
+  it('hides pause/resume bookends in greenroom while preserving the rest of the unified timeline', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        messages: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 100,
+          },
+          {
+            id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Paused] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 200,
+          },
+          {
+            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Resumed] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 300,
+          },
+          {
+            id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Greenroom table talk',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: 400,
+          },
+        ],
+      }),
+    }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/chat/messages/11111111-1111-4111-8111-111111111111',
+        expect.anything()
+      )
+    })
+
+    expect(await screen.findByText('[Session Started] Session Alpha')).toBeTruthy()
+    expect(screen.getByText('Greenroom table talk')).toBeTruthy()
+    expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
+    expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
+  })
+})

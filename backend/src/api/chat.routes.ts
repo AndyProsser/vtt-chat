@@ -9,6 +9,7 @@ import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { sendMessage, editMessage, deleteMessage, getMessages } from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
+import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
 import type { StoredMessage } from '@/types/chat.types'
 import { isValidUUID, isValidMessageContent, isValidMessageType } from '@shared'
 import { ErrorCode } from '@shared'
@@ -50,24 +51,6 @@ function internalErrorResponse(res: Response) {
 function isGreenRoomName(name: string): boolean {
   const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
   return normalized === 'green room' || normalized === 'green-room'
-}
-
-function uniqueVisibleAudience(userIds: Array<UUID | undefined | null>): UUID[] {
-  return Array.from(new Set(userIds.filter((userId): userId is UUID => Boolean(userId))))
-}
-
-async function resolveRoomAudience(params: {
-  sessionId: UUID
-  roomId: UUID
-  dmId: UUID
-}): Promise<UUID[]> {
-  const presence = await getSessionPresence(params.sessionId)
-  return uniqueVisibleAudience([
-    params.dmId,
-    ...presence
-      .filter((entry) => entry.primaryRoomId === params.roomId)
-      .map((entry) => entry.userId as UUID),
-  ])
 }
 
 /**

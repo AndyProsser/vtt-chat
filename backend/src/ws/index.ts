@@ -24,6 +24,8 @@ import { PresenceState } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
+import { getSession } from '@/services/session/core.service'
+import { resolveTypingAudience } from '@/services/chat-visibility.service'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
@@ -339,7 +341,8 @@ export class WebSocketManager {
       )
 
       // Broadcast to other clients in same session (simple implementation)
-      this.broadcastToSession(event.sessionId, event, ws)
+      const visibleTo = await this.resolveClientEventAudience(event)
+      this.broadcastToSession(event.sessionId, event, ws, visibleTo)
     } catch (err: any) {
       logger.warn('ws', 'Error processing message', {
         code: err.code || ErrorCode.INTERNAL_ERROR,
@@ -361,7 +364,8 @@ export class WebSocketManager {
   private broadcastToSession(
     sessionId: UUID,
     event: EventEnvelope,
-    sender: ExtendedWebSocket
+    sender: ExtendedWebSocket,
+    visibleTo?: UUID[]
   ): void {
     const OPEN_STATE = 1 // WebSocket.OPEN
     this.wss.clients.forEach((client: any) => {
@@ -371,6 +375,10 @@ export class WebSocketManager {
         client.connectionState?.sessionId === sessionId &&
         client !== sender
       ) {
+        if (visibleTo && !visibleTo.includes(client.authPayload.userId as UUID)) {
+          return
+        }
+
         client.send(
           JSON.stringify({
             type: 'WS:EVENT',
@@ -378,6 +386,40 @@ export class WebSocketManager {
           })
         )
       }
+    })
+  }
+
+  private async resolveClientEventAudience(event: EventEnvelope): Promise<UUID[] | undefined> {
+    if (event.type !== 'CHAT:TYPING_STARTED' && event.type !== 'CHAT:TYPING_STOPPED') {
+      return undefined
+    }
+
+    if (!event.roomId) {
+      logger.warn('ws', 'Dropping roomless typing broadcast', {
+        sessionId: event.sessionId,
+        userId: event.userId,
+        eventType: event.type,
+      })
+      return [event.userId as UUID]
+    }
+
+    const session = await getSession(event.sessionId)
+    if (!session) {
+      logger.warn('ws', 'Unable to resolve session for typing audience', {
+        sessionId: event.sessionId,
+        userId: event.userId,
+        roomId: event.roomId,
+        eventType: event.type,
+      })
+      return [event.userId as UUID]
+    }
+
+    return resolveTypingAudience({
+      sessionId: event.sessionId,
+      roomId: event.roomId as UUID,
+      dmId: session.dmId as UUID,
+      requesterId: event.userId as UUID,
+      requesterRole: String(event.userRole),
     })
   }
 

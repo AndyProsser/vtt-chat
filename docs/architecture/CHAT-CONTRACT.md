@@ -129,8 +129,8 @@ Typing indicators are live-presence affordances, not durable chat records.
 For this pass:
 
 - Incoming typing WS events must update the UI.
-- Typing state is room-scoped in payload and session-scoped in transport.
-- Clients may emit typing events, but the payload room scope is the UI gate for whether an indicator is shown.
+- Typing state is room-scoped in payload and room-filtered in transport.
+- Clients may emit typing events, but the server must broadcast them only to the sender's room audience plus DM.
 
 ---
 
@@ -149,7 +149,8 @@ Rules:
 - Backend broadcasts them via `CHAT:MESSAGE_SENT`.
 - Frontend renders them as bookends, not as ordinary bubbles.
 - They remain visible in the unified session timeline.
-- They may appear in both session and Greenroom views, but styling may differ by context.
+- `[Session Paused]` and `[Session Resumed]` stay durable in session history but are suppressed in Greenroom views.
+- `[Session Started]` and `[Session Ended]` may still appear in Greenroom when relevant to the remembered session timeline.
 - Frontend must never invent or locally synthesize canonical boundary markers.
 
 ---
@@ -205,8 +206,9 @@ Live-session chat write path:
 Typing write path:
 
 1. Accept transient typing event.
-2. Broadcast the event with room-scoped payload.
-3. Do not persist it as chat history.
+2. Resolve the sender's room-scoped audience.
+3. Broadcast the event only to that audience plus DM.
+4. Do not persist it as chat history.
 
 ---
 
