@@ -15,6 +15,7 @@ export type SessionEventType =
   | 'SESSION:STARTED'
   | 'SESSION:PAUSED'
   | 'SESSION:RESUMED'
+  | 'SESSION:COOLDOWN_STARTED'
   | 'SESSION:ENDED'
   | 'SESSION:ARCHIVED'
   | 'SESSION:STATS_UPDATED'
@@ -79,16 +80,29 @@ export interface SessionResumed {
 export type SessionResumedEvent = EventEnvelope<SessionResumed>
 
 /**
+ * SESSION:COOLDOWN_STARTED
+ * DM ends the session, entering the post-game cooldown window (ACTIVE/PAUSED → COOLDOWN).
+ * OOC chat is enabled; DM audio effects are frozen; no group changes allowed.
+ * Topbar shows cooldown countdown timer.
+ */
+export interface SessionCooldownStarted {
+  sessionId: UUID
+  dmId: UUID
+  cooldownStartedAt: number
+  /** Timestamp when the cooldown will auto-expire and transition to ENDED. */
+  cooldownExpiresAt: number
+}
+
+export type SessionCooldownStartedEvent = EventEnvelope<SessionCooldownStarted>
+
+/**
  * SESSION:ENDED
- * DM ends the session (ACTIVE → ENDED).
- * Chat freezes, no more state changes allowed.
- * Session becomes read-only for all participants.
+ * Cooldown has expired; the session is now archive-locked (COOLDOWN → ENDED).
+ * No new activities are possible. Session remains in ENDED until all participants disconnect.
  */
 export interface SessionEnded {
   sessionId: UUID
-  dmId: UUID
   endedAt: number
-  summary?: string
 }
 
 export type SessionEndedEvent = EventEnvelope<SessionEnded>
@@ -158,6 +172,7 @@ export type SessionEvent =
   | SessionStartedEvent
   | SessionPausedEvent
   | SessionResumedEvent
+  | SessionCooldownStartedEvent
   | SessionEndedEvent
   | SessionArchivedEvent
   | SessionStatsUpdatedEvent

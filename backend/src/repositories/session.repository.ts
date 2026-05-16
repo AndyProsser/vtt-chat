@@ -23,7 +23,7 @@ export async function createSessionRecord(params: {
   description?: string
   plannedDurationMinutes?: number
   dmId: string
-  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
   createdAt: Date
 }): Promise<void> {
   await prisma.session.create({
@@ -51,7 +51,7 @@ export async function listSessionsByCampaign(campaignId: string): Promise<
     pauseCount: number
     pauseStartedAt: Date | null
     dmId: string
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
     createdAt: Date
     startedAt: Date | null
     endedAt: Date | null
@@ -89,7 +89,7 @@ export async function listSessions(): Promise<
     pauseCount: number
     pauseStartedAt: Date | null
     dmId: string
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
     createdAt: Date
     startedAt: Date | null
     endedAt: Date | null
@@ -120,7 +120,7 @@ export async function listCleanupCandidateSessions(cutoff: Date): Promise<
     id: string
     dmId: string
     name: string
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
     updatedAt: Date
   }>
 > {
@@ -151,7 +151,8 @@ export async function listCleanupCandidateSessions(cutoff: Date): Promise<
 
 /**
  * Returns all ENDED sessions with their campaign's post-session chat settings.
- * Used by the cleanup job to determine when a session's cooldown has expired.
+ * Used by the cleanup job to determine when all participants have disconnected
+ * and the session is eligible for CLEANUP.
  */
 export async function listEndedSessionsWithCampaign(): Promise<
   Array<{
@@ -168,6 +169,56 @@ export async function listEndedSessionsWithCampaign(): Promise<
 > {
   const rows = await prisma.session.findMany({
     where: { state: 'ENDED' },
+    select: {
+      id: true,
+      dmId: true,
+      name: true,
+      campaignId: true,
+      endedAt: true,
+      campaign: {
+        select: {
+          postSessionChatEnabled: true,
+          postSessionChatDurationMs: true,
+        },
+      },
+    },
+  })
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    dmId: row.dmId,
+    name: row.name,
+    campaignId: row.campaignId ?? null,
+    endedAt: row.endedAt ?? null,
+    campaign: row.campaign
+      ? {
+          postSessionChatEnabled: row.campaign.postSessionChatEnabled,
+          postSessionChatDurationMs: row.campaign.postSessionChatDurationMs,
+        }
+      : null,
+  }))
+}
+
+/**
+ * Returns all COOLDOWN sessions with their campaign's post-session chat settings.
+ * Used by the cleanup job to determine when the cooldown timer has expired
+ * and the session should transition to ENDED.
+ */
+export async function listCooldownSessionsWithCampaign(): Promise<
+  Array<{
+    id: string
+    dmId: string
+    name: string
+    campaignId: string | null
+    endedAt: Date | null
+    campaign: {
+      postSessionChatEnabled: boolean
+      postSessionChatDurationMs: number
+    } | null
+  }>
+> {
+  const rows = await prisma.session.findMany({
+    where: { state: 'COOLDOWN' },
     select: {
       id: true,
       dmId: true,
@@ -248,7 +299,7 @@ export async function findSessionById(sessionId: string): Promise<{
   pauseCount: number
   pauseStartedAt: Date | null
   dmId: string
-  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+  state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
   createdAt: Date
   startedAt: Date | null
   endedAt: Date | null
@@ -293,7 +344,7 @@ export async function findSessionById(sessionId: string): Promise<{
 
 export async function updateSessionStateRecord(params: {
   sessionId: string
-  newState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+  newState: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
   startedAt?: Date
   endedAt?: Date
   cumulativePauseMs?: number
@@ -301,7 +352,7 @@ export async function updateSessionStateRecord(params: {
   pauseStartedAt?: Date | null | undefined
 }): Promise<void> {
   const data: {
-    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+    state: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
     startedAt?: Date
     endedAt?: Date
     cumulativePauseMs?: number

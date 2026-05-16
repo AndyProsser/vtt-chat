@@ -215,8 +215,10 @@ export function updateSessionState(
       requestedState === SessionStateEnum.ACTIVE && !session.startedAt
         ? new Date(now)
         : session.startedAt || undefined
+    // endedAt records when the post-game cooldown window begins (ACTIVE/PAUSED → COOLDOWN).
+    // The cleanup job uses this timestamp to compute cooldown expiry.
     const endedAt =
-      requestedState === SessionStateEnum.ENDED ? new Date(now) : session.endedAt || undefined
+      requestedState === SessionStateEnum.COOLDOWN ? new Date(now) : session.endedAt || undefined
 
     // Pause stats tracking
     let cumulativePauseMs = session.cumulativePauseMs ?? 0
@@ -237,9 +239,9 @@ export function updateSessionState(
       cumulativePauseMs += now - pauseStartedAt.getTime()
       pauseStartedAt = null
     }
-    // When transitioning to ENDED: finalize any pending pause
+    // When transitioning to COOLDOWN: finalize any pending pause
     else if (
-      requestedState === SessionStateEnum.ENDED &&
+      requestedState === SessionStateEnum.COOLDOWN &&
       currentState === SessionStateEnum.PAUSED &&
       pauseStartedAt
     ) {
@@ -278,9 +280,9 @@ export function extendSessionCooldown(
       })
     }
 
-    if (session.state !== SessionStateEnum.ENDED) {
+    if (session.state !== SessionStateEnum.COOLDOWN) {
       throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
-        message: 'Cooldown can only be extended while session is ENDED',
+        message: 'Cooldown can only be extended while session is in COOLDOWN',
       })
     }
 
@@ -322,9 +324,9 @@ export function endSessionCooldown(sessionId: UUID, dmId: UUID): Promise<Session
       })
     }
 
-    if (session.state !== SessionStateEnum.ENDED) {
+    if (session.state !== SessionStateEnum.COOLDOWN) {
       throw createError(ErrorCode.INVALID_STATE_TRANSITION, {
-        message: 'Cooldown can only be ended while session is ENDED',
+        message: 'Cooldown can only be ended while session is in COOLDOWN',
       })
     }
 

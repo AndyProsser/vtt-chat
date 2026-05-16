@@ -16,6 +16,7 @@ export enum SessionState {
   IDLE = 'IDLE',
   ACTIVE = 'ACTIVE',
   PAUSED = 'PAUSED',
+  COOLDOWN = 'COOLDOWN',
   ENDED = 'ENDED',
   CLEANUP = 'CLEANUP',
 }

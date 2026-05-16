@@ -787,7 +787,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     let transitionActorUserId = user.userId as UUID
     if (previousSession.dmId !== (user.userId as UUID)) {
       const requestingCooldownCancel =
-        previousSession.state === 'ENDED' && requestedState === 'IDLE'
+        previousSession.state === 'COOLDOWN' && requestedState === 'IDLE'
 
       if (!requestingCooldownCancel) {
         return res.status(403).json({
@@ -834,17 +834,18 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     await clearSessionDMOverrideState(session.id)
 
     // Only clear environment for the neutral room (main or greenroom), not other groups.
-    // ACTIVE + PAUSED are both staged in Main Room.
-    const neutralRoomId = isSessionActiveOrPaused(requestedState)
-      ? transition.mainRoomId
-      : transition.greenRoomId
+    // ACTIVE, PAUSED, and COOLDOWN are all staged in Main Room.
+    const neutralRoomId =
+      isSessionActiveOrPaused(requestedState) || requestedState === 'COOLDOWN'
+        ? transition.mainRoomId
+        : transition.greenRoomId
 
     await clearRoomEnvironmentState({
       sessionId: session.id,
       roomId: neutralRoomId,
     })
 
-    if (requestedState === 'ENDED') {
+    if (requestedState === 'COOLDOWN') {
       await deletePrivateRoomsForEndedSession(session.id)
     }
 
@@ -961,7 +962,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           : 'SESSION_STARTED'
         : requestedState === 'PAUSED'
           ? 'SESSION_PAUSED'
-          : requestedState === 'ENDED'
+          : requestedState === 'COOLDOWN'
             ? 'SESSION_ENDED'
             : null
 

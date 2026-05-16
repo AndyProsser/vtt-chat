@@ -3,8 +3,9 @@ import type { SessionState } from '@shared'
 
 export const SESSION_STATE_TRANSITIONS: Readonly<Record<SessionState, readonly SessionState[]>> = {
   [SessionStateEnum.IDLE]: [SessionStateEnum.ACTIVE],
-  [SessionStateEnum.ACTIVE]: [SessionStateEnum.PAUSED, SessionStateEnum.ENDED],
-  [SessionStateEnum.PAUSED]: [SessionStateEnum.ACTIVE, SessionStateEnum.ENDED],
+  [SessionStateEnum.ACTIVE]: [SessionStateEnum.PAUSED, SessionStateEnum.COOLDOWN],
+  [SessionStateEnum.PAUSED]: [SessionStateEnum.ACTIVE, SessionStateEnum.COOLDOWN],
+  [SessionStateEnum.COOLDOWN]: [SessionStateEnum.ENDED],
   [SessionStateEnum.ENDED]: [SessionStateEnum.CLEANUP],
   [SessionStateEnum.CLEANUP]: [],
 }

@@ -475,6 +475,7 @@ enum SessionState {
   IDLE
   ACTIVE
   PAUSED
+  COOLDOWN
   ENDED
   CLEANUP
 }

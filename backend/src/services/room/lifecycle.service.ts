@@ -197,8 +197,13 @@ export async function applySessionStateRoomTransition(params: {
     await ensureSessionWhisperRoomForSession(params.sessionId, params.dmId)
   }
 
+  // ACTIVE and PAUSED: users move to MAIN room (live session).
+  // COOLDOWN: users stay in MAIN room (post-game wind-down; OOC chat enabled).
+  // All other states (ENDED, CLEANUP, IDLE): users move to greenroom.
   const toMainRoom =
-    params.nextState === SessionState.ACTIVE || params.nextState === SessionState.PAUSED
+    params.nextState === SessionState.ACTIVE ||
+    params.nextState === SessionState.PAUSED ||
+    params.nextState === SessionState.COOLDOWN
   const targetRoom = toMainRoom ? mainRoom : greenRoom
   const targetState =
     params.nextState === SessionState.ENDED

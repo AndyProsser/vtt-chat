@@ -3,6 +3,7 @@ import type { UUID } from '@shared'
 import { config } from '@/infra/config'
 import {
   listCleanupCandidateSessions,
+  listCooldownSessionsWithCampaign,
   listEndedSessionsWithCampaign,
   campaignHasActiveSessions,
   listEndedSessionIdsByCampaign,
@@ -58,6 +59,23 @@ async function purgeGreenroomChat(sessionId: UUID): Promise<void> {
 }
 
 /**
+ * Transitions a session from COOLDOWN to ENDED once the cooldown timer expires.
+ * Uses the session's own dmId for authorization — the job acts on behalf of the DM.
+ */
+async function transitionCooldownToEnded(session: {
+  id: string
+  dmId: string
+  name: string
+}): Promise<void> {
+  await updateSessionState(session.id as UUID, SessionState.ENDED, session.dmId as UUID)
+
+  logger.info('session-cleanup-job', 'Transitioned session COOLDOWN → ENDED (cooldown expired)', {
+    sessionId: session.id,
+    sessionName: session.name,
+  })
+}
+
+/**
  * Transitions a session from ENDED to CLEANUP and purges its greenroom chat.
  * Uses the session's own dmId for authorization — the job acts on behalf of the DM.
  */
@@ -104,20 +122,70 @@ export class SessionCleanupJobService {
   }
 
   async runOnce(): Promise<void> {
+    await this.phaseCooldownToEnded()
     await this.phaseEndedToCleanup()
     await this.phaseCleanupArchiveLock()
   }
 
   /**
+   * Phase 0: COOLDOWN → ENDED
+   *
+   * Scans all COOLDOWN sessions. For each:
+   *  1. Checks whether the post-session cooldown timer has expired (now >= endedAt + cooldownMs).
+   *  2. Transitions the session to ENDED if the timer has elapsed.
+   *
+   * No WS broadcast is emitted — the SESSION:ENDED event is authoritative only after the
+   * timer expires; clients that poll or reconnect will see the new ENDED state.
+   */
+  private async phaseCooldownToEnded(): Promise<void> {
+    const cooldownSessions = await listCooldownSessionsWithCampaign()
+
+    if (cooldownSessions.length === 0) {
+      return
+    }
+
+    const now = Date.now()
+
+    for (const session of cooldownSessions) {
+      const sessionId = session.id as UUID
+
+      try {
+        const cooldownMs =
+          session.campaign?.postSessionChatEnabled === false
+            ? 0
+            : (session.campaign?.postSessionChatDurationMs ?? STANDALONE_SESSION_COOLDOWN_MS)
+
+        const cooldownStartedAtMs = session.endedAt?.getTime() ?? 0
+        const cooldownExpiresAt = cooldownStartedAtMs + cooldownMs
+
+        if (now < cooldownExpiresAt) {
+          // Timer still running — check back later.
+          continue
+        }
+
+        await transitionCooldownToEnded(session)
+      } catch (error) {
+        logger.warn(
+          'session-cleanup-job',
+          'Error processing COOLDOWN session in phaseCooldownToEnded',
+          {
+            sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        )
+      }
+    }
+  }
+
+  /**
    * Phase 1: ENDED → CLEANUP
    *
-   * Scans all ENDED sessions. For each:
-   *  1. Checks whether the post-session cooldown window has expired.
-   *  2. Verifies all DM/PLAYER table members are disconnected.
-   *  3. For campaign sessions: checks whether this is the final session
+   * Scans all ENDED sessions (cooldown has already expired). For each:
+   *  1. Verifies all DM/PLAYER table members are disconnected.
+   *  2. For campaign sessions: checks whether this is the final session
    *     (no siblings in ACTIVE or PAUSED state). If final, batch-transitions
    *     ALL ENDED sessions for that campaign to CLEANUP simultaneously.
-   *  4. For standalone sessions (no campaignId): transitions directly.
+   *  3. For standalone sessions (no campaignId): transitions directly.
    *
    * Greenroom chat is purged for every session that transitions.
    * No WS broadcast is emitted because all users are disconnected by definition.
@@ -129,8 +197,6 @@ export class SessionCleanupJobService {
       return
     }
 
-    const now = Date.now()
-
     // Track which campaignIds we've already batch-processed so we don't double-transition.
     const processedCampaigns = new Set<string>()
 
@@ -138,27 +204,15 @@ export class SessionCleanupJobService {
       const sessionId = session.id as UUID
 
       try {
-        // --- 1. Check cooldown expiry ---
-        const cooldownMs =
-          session.campaign?.postSessionChatEnabled === false
-            ? 0
-            : (session.campaign?.postSessionChatDurationMs ?? STANDALONE_SESSION_COOLDOWN_MS)
-
-        const endedAtMs = session.endedAt?.getTime() ?? 0
-        const cooldownExpiresAt = endedAtMs + cooldownMs
-
-        if (now < cooldownExpiresAt) {
-          // Cooldown still active — check back later.
-          continue
-        }
-
-        // --- 2. Check all table members are disconnected ---
+        // --- 1. Check all table members are disconnected ---
+        // ENDED means the cooldown window has already expired (handled in phaseCooldownToEnded).
+        // We only need to wait for all participants to disconnect before archiving.
         const tableStillConnected = await hasConnectedTableMembers(sessionId)
         if (tableStillConnected) {
           continue
         }
 
-        // --- 3. Campaign vs standalone ---
+        // --- 2. Campaign vs standalone ---
         if (session.campaignId) {
           const campaignId = session.campaignId
 

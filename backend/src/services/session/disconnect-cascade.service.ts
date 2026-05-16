@@ -334,7 +334,7 @@ export class SessionDisconnectCascadeService {
     const users = await getSessionUsers(context.sessionId)
     const session = await updateSessionState(
       context.sessionId,
-      SessionState.ENDED,
+      SessionState.COOLDOWN,
       previousSession.dmId
     )
 
@@ -346,7 +346,7 @@ export class SessionDisconnectCascadeService {
     const transition = await applySessionStateRoomTransition({
       sessionId: session.id,
       dmId: session.dmId,
-      nextState: SessionState.ENDED,
+      nextState: SessionState.COOLDOWN,
       users: users.map((member) => ({ id: member.id, username: member.username })),
     })
 
@@ -369,7 +369,7 @@ export class SessionDisconnectCascadeService {
       timestamp: Date.now(),
       payload: {
         previousState: previousSession.state,
-        nextState: SessionState.ENDED,
+        nextState: SessionState.COOLDOWN,
         movedUsers: transition.movedUsers,
         targetState: transition.targetState,
         mainRoom: {

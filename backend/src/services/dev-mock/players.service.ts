@@ -447,7 +447,7 @@ async function ensureCampaignCharacter(params: {
 
 function pickTargetRoom(
   rooms: Array<{ id: UUID; name: string; type: RoomType }>,
-  sessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'CLEANUP'
+  sessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
 ) {
   const main = rooms.find((room) => room.type === RoomType.MAIN)
   const green = rooms.find((room) => {
@@ -455,7 +455,7 @@ function pickTargetRoom(
     return normalized === 'green room' || normalized === 'green-room'
   })
 
-  if (sessionState === 'ACTIVE' || sessionState === 'PAUSED') {
+  if (sessionState === 'ACTIVE' || sessionState === 'PAUSED' || sessionState === 'COOLDOWN') {
     return main || green
   }
 
