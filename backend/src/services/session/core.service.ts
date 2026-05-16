@@ -171,10 +171,30 @@ export function updateSessionState(
     const requestedState = toStoredSessionState(newState)
     const currentState = session.state as SessionState
 
+    const hasEverStarted = Boolean(session.startedAt)
+    const hasEverEnded = Boolean(session.endedAt)
+
     // DM-only check
     if (session.dmId !== dmId) {
       throw createError(ErrorCode.FORBIDDEN, {
         message: 'Only DM can change session state',
+      })
+    }
+
+    if (
+      requestedState === SessionStateEnum.ACTIVE &&
+      currentState === SessionStateEnum.IDLE &&
+      (hasEverStarted || hasEverEnded)
+    ) {
+      throw createError(ErrorCode.SESSION_ALREADY_ENDED, {
+        message:
+          'This session is archived and cannot be restarted. Create a new session to begin again.',
+        context: {
+          currentState: toPublicSessionState(currentState) ?? currentState,
+          requestedState: toPublicSessionState(requestedState) ?? requestedState,
+          startedAt: session.startedAt?.toISOString() ?? null,
+          endedAt: session.endedAt?.toISOString() ?? null,
+        },
       })
     }
 

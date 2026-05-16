@@ -129,8 +129,8 @@ Until a contract re-lock, runtime authorization still resolves to the locked rol
 SessionState.IDLE // Not yet started; greenroom mode
 SessionState.ACTIVE // Players can join and act; session running
 SessionState.PAUSED // DM control; state frozen, off-the-record runtime
-SessionState.ENDED // Session stopped; recording/summary work triggered; new session cannot begin yet
-SessionState.CLEANUP // Post-session terminal state; no users connected; background cleanup job purges greenroom chat
+SessionState.ENDED // Session stopped; cooldown/archive lock active; this session can never be restarted
+SessionState.CLEANUP // Post-session terminal archive state; no users connected; background cleanup job purges greenroom chat
 ```
 
 GREENROOM is a calculated runtime state, not an enum member:
@@ -140,13 +140,18 @@ GREENROOM is a calculated runtime state, not an enum member:
 
 **State transitions and authority:**
 
-- `IDLE` → `ACTIVE`: DM explicit action (start session)
+- `IDLE` → `ACTIVE`: DM explicit action (start session) for a never-started draft session only
 - `ACTIVE` → `PAUSED`: DM explicit action OR automatic on DM disconnect
 - `ACTIVE` → `ENDED`: DM explicit action (stop session)
 - `PAUSED` → `ACTIVE`: DM explicit action (resume session)
 - `PAUSED` → `ENDED`: DM explicit action (stop session)
 - `ENDED` → `CLEANUP`: Automatic when all users disconnect (background scheduled job detects and transitions)
-- `CLEANUP` → `IDLE`: Background cleanup job completes (greenroom chat purged; session ready for fresh start)
+
+Archive lock rules:
+
+- A session that has ever transitioned to `ENDED` is archive-locked and can never be restarted.
+- Starting after an ended session must create a new session record.
+- Only a session that is currently `IDLE` and has never started is eligible to be activated.
 
 **Multi-session campaigns:**
 
@@ -154,7 +159,7 @@ GREENROOM is a calculated runtime state, not an enum member:
 - On `IDLE` → `ACTIVE`: do not carry prior session chat or prior Greenroom chat into the new session timeline.
 - GREENROOM runtime context is session-scoped for chat visibility and starts empty for each new session.
 - On final session `ENDED` + all users disconnect: ALL previously ENDED sessions (from same campaign) transition to `CLEANUP` simultaneously
-- Cleanup job runs once per campaign, purges greenroom for all transitioned sessions
+- Cleanup job runs once per campaign, purges greenroom for all transitioned sessions, and leaves them archived.
 - Chat hydration supports lazy paging for late-join and long timelines: `limit` (default `20`, max `100`) and `before` (unix ms cursor). Response includes `pagination.hasMore` and `pagination.nextBefore` so clients can continuously load older messages while scrolling.
 
 **Post-session cooldown:**

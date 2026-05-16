@@ -286,8 +286,13 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   const paused = sessions.find((session) => session.state === SessionState.PAUSED)
   if (paused) return paused
 
-  const greenroom = sessions.find((session) => isGreenroomSessionState(session.state))
-  if (greenroom) return greenroom
+  const draftIdle = sessions.find(
+    (session) =>
+      session.state === SessionState.IDLE &&
+      session.startedAt === undefined &&
+      session.endedAt === undefined
+  )
+  if (draftIdle) return draftIdle
 
   return null
 }
@@ -918,12 +923,8 @@ export function SessionInit({
     setEnvironment,
   ])
 
-  const scheduleGreenroomCarry = useCallback((fromSessionId: UUID, toSessionId: UUID) => {
-    if (fromSessionId === toSessionId) {
-      return
-    }
-
-    pendingGreenroomCarryBySessionIdRef.current.set(toSessionId, fromSessionId)
+  const scheduleGreenroomCarry = useCallback((_fromSessionId: UUID, _toSessionId: UUID) => {
+    // New sessions always start clean; carry-over is intentionally disabled.
   }, [])
 
   const restoreSessionBookendsFromHistory = useCallback(
@@ -2491,7 +2492,7 @@ export function SessionInit({
     async (
       campaignId: UUID,
       existingSessions: SessionRecord[],
-      options?: { autoActivate?: boolean; carryFromSessionId?: UUID }
+      options?: { autoActivate?: boolean }
     ): Promise<UUID | null> => {
       try {
         const response = await fetchWithAuthGuard(
@@ -2516,9 +2517,6 @@ export function SessionInit({
         const payload = (await response.json()) as { session: SessionRecord }
         await ensureSessionMembership(payload.session.id)
         replaceSessions([normalizeSessionRecord(payload.session), ...existingSessions])
-        if (options?.carryFromSessionId) {
-          scheduleGreenroomCarry(options.carryFromSessionId, payload.session.id)
-        }
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
 
@@ -2557,7 +2555,6 @@ export function SessionInit({
       fetchWithAuthGuard,
       onSessionCreated,
       replaceSessions,
-      scheduleGreenroomCarry,
       setCurrentSession,
       token,
       updateSession,
@@ -2573,7 +2570,6 @@ export function SessionInit({
 
       await startCampaignSession(selectedCampaignId, sessionList, {
         autoActivate: true,
-        carryFromSessionId: sessionId,
       })
       return
     }

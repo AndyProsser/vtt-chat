@@ -105,7 +105,7 @@ export class SessionCleanupJobService {
 
   async runOnce(): Promise<void> {
     await this.phaseEndedToCleanup()
-    await this.phaseCleanupToIdle()
+    await this.phaseCleanupArchiveLock()
   }
 
   /**
@@ -212,15 +212,13 @@ export class SessionCleanupJobService {
   }
 
   /**
-   * Phase 2: CLEANUP → IDLE
+   * Phase 2: CLEANUP archive lock verification.
    *
-   * Scans sessions that have been in CLEANUP state for longer than minCleanupAgeMinutes.
-   * Verifies no table members are still connected (belt-and-suspenders guard), then
-   * resets the session to IDLE so the DM can start a fresh session.
-   *
-   * Greenroom purge is a no-op here for sessions already purged in Phase 1 (ENDED → CLEANUP).
+   * CLEANUP is terminal for archived sessions. This phase only belt-and-suspenders
+   * verifies the greenroom has been purged for aged cleanup sessions and leaves
+   * the session archived in CLEANUP.
    */
-  private async phaseCleanupToIdle(): Promise<void> {
+  private async phaseCleanupArchiveLock(): Promise<void> {
     const cutoff = new Date(Date.now() - config.sessionCleanup.minCleanupAgeMinutes * 60_000)
     const candidates = await listCleanupCandidateSessions(cutoff)
 
@@ -237,18 +235,15 @@ export class SessionCleanupJobService {
           continue
         }
 
-        // Purge greenroom in case Phase 1 was skipped (e.g., session was manually set to CLEANUP).
         await purgeGreenroomChat(sessionId)
 
-        await updateSessionState(sessionId, SessionState.IDLE, candidate.dmId as UUID)
-
-        logger.info('session-cleanup-job', 'Reset session CLEANUP → IDLE', {
+        logger.info('session-cleanup-job', 'Verified archived cleanup session', {
           sessionId,
-          previousState: candidate.state,
+          state: candidate.state,
           updatedAt: candidate.updatedAt,
         })
       } catch (error) {
-        logger.warn('session-cleanup-job', 'Failed to reset session in phaseCleanupToIdle', {
+        logger.warn('session-cleanup-job', 'Failed cleanup archive verification', {
           sessionId,
           error: error instanceof Error ? error.message : String(error),
         })

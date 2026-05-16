@@ -57,12 +57,16 @@ stateDiagram-v2
     active --> ended: session.end
     paused --> ended: session.end
 
-    ended --> [*]
+  ended --> cleanup: cooldown expired + cleanup
+  cleanup --> [*]
 ```
 
 ### **2.1 inactive (idle in current codebase)**
 
 The table is in greenroom mode and no live session is running.
+
+- `IDLE` is reusable only for a never-started draft session.
+- If a session has previously reached `ENDED`, it is no longer eligible to return to active use.
 
 - The INACTIVE timer starts at `00:00` when the first DM/player joins greenroom membership.
 - This timer represents readiness time for the next session, not time since the previous session ended.
@@ -131,6 +135,18 @@ The live session has concluded and cooldown is active.
   - the timer state label remains `ENDED` and the ended-state timer continues counting from cooldown expiry.
 - DM cannot start a new session while cooldown is active.
 - New session start is unblocked only after cooldown reaches zero or is explicitly ended early.
+- Once a session reaches `ENDED`, it is archive-locked and can never be restarted.
+- The next start after an ended session must create a new session.
+
+---
+
+### **2.5 cleanup**
+
+The session is archived and no longer reusable.
+
+- Cleanup purges remaining session-scoped runtime context such as Greenroom chat.
+- Cleanup is terminal for that session record.
+- Starting again after cleanup always creates a new session record.
 
 ---
 
@@ -138,12 +154,12 @@ The live session has concluded and cooldown is active.
 
 All session transitions are triggered by events.
 
-| Event            | Description               | Actor |
-| ---------------- | ------------------------- | ----- |
-| `session.start`  | Begin a new session       | DM    |
-| `session.pause`  | Pause the running session | DM    |
-| `session.resume` | Resume a paused session   | DM    |
-| `session.end`    | End the session           | DM    |
+| Event            | Description                                                   | Actor |
+| ---------------- | ------------------------------------------------------------- | ----- |
+| `session.start`  | Begin a new session or activate a never-started draft session | DM    |
+| `session.pause`  | Pause the running session                                     | DM    |
+| `session.resume` | Resume a paused session                                       | DM    |
+| `session.end`    | End the session                                               | DM    |
 
 Events are validated by:
 

@@ -86,7 +86,7 @@ POST /api/campaigns/:campaignId/sessions/start
 
 ### Server Actions
 
-1. Create a new session record
+1. Use the existing draft session if it is `IDLE` and has never started; otherwise create a new session record
 2. Generate recap (manual + AI)
 3. Move all users from green room → main room
 4. Issue LiveKit tokens for main room
@@ -102,6 +102,11 @@ POST /api/campaigns/:campaignId/sessions/start
 - Show recap modal
 - Reset audio effects
 - Initialize session state
+
+Archive rule:
+
+- Once a session has been ended, it is locked as archive/history and cannot be restarted.
+- Starting again after an ended session always targets a newly created session.
 
 ---
 
