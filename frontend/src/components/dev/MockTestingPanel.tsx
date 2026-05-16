@@ -40,6 +40,7 @@ export function MockTestingPanel({
   sessionId,
   activeTakeoverUserId,
   onReturnToUser,
+  onClose,
 }: MockTestingPanelProps) {
   const STATUS_POLL_ACTIVE_MS = 2500
   const STATUS_POLL_IDLE_MS = 8000
@@ -287,6 +288,8 @@ export function MockTestingPanel({
         return
       }
 
+      onClose?.()
+
       try {
         const latest = await fetchStatus()
         applyStatusSnapshot(latest, { forcePlayerCountSync: true })
@@ -298,7 +301,7 @@ export function MockTestingPanel({
     } finally {
       setIsLoading(false)
     }
-  }, [apiUrl, token, sessionId, fetchStatus, applyStatusSnapshot])
+  }, [apiUrl, token, sessionId, fetchStatus, applyStatusSnapshot, onClose])
 
   const statusText = useMemo(() => {
     if (!status) return 'Loading...'

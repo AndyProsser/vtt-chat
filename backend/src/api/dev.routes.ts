@@ -44,6 +44,7 @@ import {
 import { logger } from '@/utils/logger'
 import type { WebSocketManager } from '@/ws'
 import type { UUID } from '@shared'
+import { DEV_MOCK_PREFIX } from '@/constants/dev-mock.constants'
 
 const router = Router()
 
@@ -432,12 +433,28 @@ router.post('/disconnect-all', requireAuth, async (req: Request, res: Response) 
     return res.status(400).json({ error: 'sessionId is required and must be a valid UUID' })
   }
 
-  await stopMockSimulation(sessionId as UUID)
-  await removeMockPlayersFromSession(sessionId as UUID)
+  const resolvedSessionId = sessionId as UUID
+  const presenceBefore = await getSessionPresence(resolvedSessionId)
+  const removedUsers = presenceBefore
+    .filter((entry) => entry.username?.startsWith(DEV_MOCK_PREFIX))
+    .map((entry) => ({
+      userId: entry.userId,
+      username: entry.username,
+      primaryRoomId: entry.primaryRoomId,
+    }))
+
+  await stopMockSimulation(resolvedSessionId)
+  await removeMockPlayersFromSession(resolvedSessionId)
+
+  await broadcastDevMockRosterChange(req, {
+    sessionId: resolvedSessionId,
+    removedUsers,
+    addedUsers: [],
+  })
 
   return res.json({
     ok: true,
-    sessionId,
+    sessionId: resolvedSessionId,
     removed: true,
   })
 })

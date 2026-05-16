@@ -3,6 +3,8 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const SESSION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+const MOCK_USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const ROOM_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 
 const mocks = vi.hoisted(() => ({
   extractTokenFromHeader: vi.fn(),
@@ -10,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   getMockSimulationStatus: vi.fn(),
   getMockSimulationBounds: vi.fn(),
   getMockDisconnectRealismProfiles: vi.fn(),
+  stopMockSimulation: vi.fn(),
+  removeMockPlayersFromSession: vi.fn(),
+  broadcastSessionStatsSnapshot: vi.fn(),
   getSession: vi.fn(),
   getSessionPresence: vi.fn(),
   loggerError: vi.fn(),
@@ -25,7 +30,7 @@ vi.mock('@/services/dev-mock/simulation.service', () => ({
   getMockSimulationBounds: mocks.getMockSimulationBounds,
   getMockSimulationPlayerCount: vi.fn(),
   getMockSimulationStatus: mocks.getMockSimulationStatus,
-  stopMockSimulation: vi.fn(),
+  stopMockSimulation: mocks.stopMockSimulation,
   updateMockSimulationConfig: vi.fn(),
 }))
 
@@ -33,7 +38,7 @@ vi.mock('@/services/dev-mock/players.service', () => ({
   listMockPlayers: vi.fn().mockResolvedValue([]),
   getMockPlayerTokens: vi.fn().mockResolvedValue([]),
   joinMockPlayersToSession: vi.fn().mockResolvedValue(undefined),
-  removeMockPlayersFromSession: vi.fn().mockResolvedValue(undefined),
+  removeMockPlayersFromSession: mocks.removeMockPlayersFromSession,
   resetDevMockRoster: vi.fn().mockResolvedValue({ count: 0, removedUsers: [], addedUsers: [] }),
   getSessionMockPlayerById: vi.fn(),
 }))
@@ -51,7 +56,7 @@ vi.mock('@/services/room.service', () => ({
 }))
 
 vi.mock('@/services/session/stats.service', () => ({
-  broadcastSessionStatsSnapshot: vi.fn().mockResolvedValue(undefined),
+  broadcastSessionStatsSnapshot: mocks.broadcastSessionStatsSnapshot,
 }))
 
 vi.mock('@/services/dev-mock/takeover.service', () => ({
@@ -92,6 +97,9 @@ describe('GET /dev/mock-players/simulation/status/:sessionId', () => {
         ghostMaxDurationMs: 7000,
       },
     })
+    mocks.stopMockSimulation.mockResolvedValue(undefined)
+    mocks.removeMockPlayersFromSession.mockResolvedValue(undefined)
+    mocks.broadcastSessionStatsSnapshot.mockResolvedValue(undefined)
   })
 
   it('returns status payload when simulation service resolves', async () => {
@@ -135,5 +143,57 @@ describe('GET /dev/mock-players/simulation/status/:sessionId', () => {
       error: 'Mock simulation status temporarily unavailable',
     })
     expect(mocks.loggerError).toHaveBeenCalled()
+  })
+})
+
+describe('POST /dev/mock-players/disconnect-all', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.extractTokenFromHeader.mockReturnValue('token')
+    mocks.verifyToken.mockReturnValue({
+      userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      username: 'alice',
+      role: 'DM',
+    })
+    mocks.stopMockSimulation.mockResolvedValue(undefined)
+    mocks.removeMockPlayersFromSession.mockResolvedValue(undefined)
+    mocks.broadcastSessionStatsSnapshot.mockResolvedValue(undefined)
+    mocks.getSession.mockResolvedValue({ dmId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' })
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        userId: MOCK_USER_ID,
+        username: 'dev_mock_alpha',
+        primaryRoomId: ROOM_ID,
+      },
+      {
+        userId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        username: 'real_player',
+        primaryRoomId: ROOM_ID,
+      },
+    ])
+  })
+
+  it('broadcasts ROOM:USER_LEFT for removed mock users when wsManager is attached', async () => {
+    const app = buildApp()
+    app.locals.wsManager = { broadcastEventToSession: vi.fn() }
+
+    const res = await request(app)
+      .post('/dev/mock-players/disconnect-all')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
+
+    expect(res.status).toBe(200)
+    expect(mocks.stopMockSimulation).toHaveBeenCalledWith(SESSION_ID)
+    expect(mocks.removeMockPlayersFromSession).toHaveBeenCalledWith(SESSION_ID)
+
+    const wsCalls = app.locals.wsManager.broadcastEventToSession.mock.calls as Array<
+      [string, { type: string; payload?: { userId?: string; reason?: string } }]
+    >
+
+    const roomLeftCall = wsCalls.find(([, event]) => event.type === 'ROOM:USER_LEFT')
+    expect(roomLeftCall).toBeDefined()
+    expect(roomLeftCall?.[0]).toBe(SESSION_ID)
+    expect(roomLeftCall?.[1]?.payload?.userId).toBe(MOCK_USER_ID)
+    expect(roomLeftCall?.[1]?.payload?.reason).toBe('dev_mock_reroll')
   })
 })

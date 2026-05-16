@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { PasswordResetConfirmForm } from '@/components/auth/PasswordResetConfirmForm'
 import { PasswordResetRequestForm } from '@/components/auth/PasswordResetRequestForm'
@@ -9,12 +9,8 @@ import type { AuthState } from '@/hooks/useAuthSession'
 import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
+import { SessionInit } from '@/components/session/SessionInit'
 import '@/styles/components/auth/AuthSurface.css'
-
-const SessionInit = lazy(async () => {
-  const module = await import('@/components/session/SessionInit')
-  return { default: module.SessionInit }
-})
 
 type AppMainRouteViewProps = {
   apiUrl: string
@@ -93,18 +89,16 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
         resetKey={props.auth.user?.id || 'anonymous'}
       />
 
-      <Suspense fallback={<div className="h-full w-full" />}>
-        <SessionInit
-          apiUrl={props.apiUrl}
-          wsUrl={props.wsUrl}
-          token={props.auth.token}
-          user={props.auth.user}
-          onReady={handleSessionSurfaceReady}
-          onSessionCreated={(sessionId) => {
-            void sessionId
-          }}
-        />
-      </Suspense>
+      <SessionInit
+        apiUrl={props.apiUrl}
+        wsUrl={props.wsUrl}
+        token={props.auth.token}
+        user={props.auth.user}
+        onReady={handleSessionSurfaceReady}
+        onSessionCreated={(sessionId) => {
+          void sessionId
+        }}
+      />
     </>
   )
 }

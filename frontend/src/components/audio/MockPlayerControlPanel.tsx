@@ -255,6 +255,8 @@ export function MockPlayerControlPanel({
         return
       }
 
+      onClose?.()
+
       try {
         const latest = await fetchStatus()
         applyStatusSnapshot(latest, { forcePlayerCountSync: true })

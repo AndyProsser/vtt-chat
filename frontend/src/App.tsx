@@ -32,14 +32,37 @@ export default function App() {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
   const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
   const configuredAdminUrl = import.meta.env.VITE_ADMIN_URL?.trim()
-  const isStaleHttpDevProxy =
-    browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
 
   const isLoopbackHost = (host: string) =>
     host === 'localhost' || host === '127.0.0.1' || host === '::1'
 
+  const parsedConfiguredApiUrl = (() => {
+    if (!configuredApiUrl) {
+      return null
+    }
+
+    try {
+      return new URL(configuredApiUrl)
+    } catch {
+      return null
+    }
+  })()
+
+  const parsedBrowserOrigin = new URL(browserOrigin)
+  const isConfiguredApiCaddyLoopbackTarget =
+    Boolean(parsedConfiguredApiUrl) &&
+    isLoopbackHost(parsedConfiguredApiUrl!.hostname) &&
+    parsedConfiguredApiUrl!.port === '8080'
+  const isBrowserOnDifferentLoopbackDevPort =
+    isLoopbackHost(parsedBrowserOrigin.hostname) && parsedBrowserOrigin.port !== '8080'
+  const isStaleHttpDevProxy =
+    browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
+  const shouldUseBrowserProxyOrigin =
+    isStaleHttpDevProxy ||
+    (isConfiguredApiCaddyLoopbackTarget && isBrowserOnDifferentLoopbackDevPort)
+
   const shouldPreferBrowserWsOrigin = (() => {
-    if (isStaleHttpDevProxy || !configuredWsUrl) {
+    if (shouldUseBrowserProxyOrigin || !configuredWsUrl) {
       return true
     }
 
@@ -52,7 +75,7 @@ export default function App() {
     }
   })()
 
-  const apiUrl = isStaleHttpDevProxy ? browserOrigin : configuredApiUrl || browserOrigin
+  const apiUrl = shouldUseBrowserProxyOrigin ? browserOrigin : configuredApiUrl || browserOrigin
   const wsUrlBase = shouldPreferBrowserWsOrigin
     ? `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}`
     : configuredWsUrl
