@@ -10,6 +10,40 @@ import { logger } from '../utils/logger'
 import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { ConnectionState, ConnectionOptions } from '@/types/ws'
 
+const WS_CLIENT_LOGS_ENABLED = false
+
+function wsClientLogDebug(message: string, meta?: unknown): void {
+  if (!WS_CLIENT_LOGS_ENABLED) {
+    return
+  }
+
+  logger.debug('ws.client', message, meta)
+}
+
+function wsClientLogInfo(message: string, meta?: unknown): void {
+  if (!WS_CLIENT_LOGS_ENABLED) {
+    return
+  }
+
+  logger.info('ws.client', message, meta)
+}
+
+function wsClientLogWarn(message: string, meta?: unknown): void {
+  if (!WS_CLIENT_LOGS_ENABLED) {
+    return
+  }
+
+  logger.warn('ws.client', message, meta)
+}
+
+function wsClientLogError(message: string, meta?: unknown): void {
+  if (!WS_CLIENT_LOGS_ENABLED) {
+    return
+  }
+
+  logger.error('ws.client', message, meta)
+}
+
 export type { ConnectionState, ConnectionOptions } from '@/types/ws'
 type IncomingWsMessage =
   | EventEnvelope
@@ -88,7 +122,7 @@ export class WebSocketClient {
    */
   async connect(): Promise<void> {
     if (this.state !== 'disconnected' && this.state !== 'reconnecting') {
-      logger.warn('ws.client', `Cannot connect: already in state ${this.state}`)
+      wsClientLogWarn(`Cannot connect: already in state ${this.state}`)
       return
     }
 
@@ -96,7 +130,7 @@ export class WebSocketClient {
     this.clearReconnectTimeout()
 
     this.setState('connecting')
-    logger.debug('ws.client', 'Opening WebSocket connection', { url: this.url })
+    wsClientLogDebug('Opening WebSocket connection', { url: this.url })
 
     return new Promise((resolve, reject) => {
       try {
@@ -108,7 +142,7 @@ export class WebSocketClient {
           if (socket !== this.socket || this.manualDisconnect) {
             return
           }
-          logger.debug('ws.client', 'Socket opened; sending auth payload')
+          wsClientLogDebug('Socket opened; sending auth payload')
           socket.send(
             JSON.stringify({
               type: 'WS:AUTH',
@@ -127,7 +161,7 @@ export class WebSocketClient {
           if (socket !== this.socket) {
             return
           }
-          logger.debug('ws.client', 'Raw message received', { data: event.data })
+          wsClientLogDebug('Raw message received', { data: event.data })
           this.handleMessage(event.data)
         }
 
@@ -157,7 +191,7 @@ export class WebSocketClient {
           this.setState('disconnected')
 
           if (this.manualDisconnect) {
-            logger.debug('ws.client', 'Socket closed after manual disconnect')
+            wsClientLogDebug('Socket closed after manual disconnect')
             if (!settled) {
               settled = true
               resolve()
@@ -167,7 +201,7 @@ export class WebSocketClient {
 
           if (this.isAuthFailureClose(closeCode, closeReason)) {
             const reason = closeReason || 'Authentication rejected by WebSocket server'
-            logger.warn('ws.client', 'Auth failure while connecting websocket', {
+            wsClientLogWarn('Auth failure while connecting websocket', {
               code: closeCode,
               reason,
             })
@@ -183,7 +217,7 @@ export class WebSocketClient {
             return
           }
 
-          logger.debug('ws.client', 'Socket closed; scheduling reconnect', {
+          wsClientLogDebug('Socket closed; scheduling reconnect', {
             reconnectAttempts: this.reconnectAttempts,
             code: closeCode,
             reason: closeReason,
@@ -237,7 +271,7 @@ export class WebSocketClient {
     if (this.state === 'connected' && this.socket) {
       try {
         bumpLoopCounter(`ws.outgoing.sent.${event.type}`)
-        logger.debug('ws.client', `Sending event ${event.type}`, {
+        wsClientLogDebug(`Sending event ${event.type}`, {
           eventId: event.id,
           sessionId: event.sessionId,
         })
@@ -245,7 +279,7 @@ export class WebSocketClient {
       } catch (error) {
         bumpLoopCounter(`ws.outgoing.send-error.${event.type}`)
         const err = error instanceof Error ? error : new Error(String(error))
-        logger.error('ws.client', 'Failed to send event', err)
+        wsClientLogError('Failed to send event', err)
         this.callbacks.onError?.(err)
         // Queue for retry
         this.eventQueue.push(event)
@@ -254,7 +288,7 @@ export class WebSocketClient {
       // Queue if not connected
       bumpLoopCounter(`ws.outgoing.queued.${event.type}`)
       this.eventQueue.push(event)
-      logger.debug('ws.client', `Queued event ${event.type}`, {
+      wsClientLogDebug(`Queued event ${event.type}`, {
         eventId: event.id,
         queuedCount: this.eventQueue.length,
       })
@@ -301,13 +335,11 @@ export class WebSocketClient {
         const wsEvent = (incoming as any).event as EventEnvelope
         bumpLoopCounter('ws.incoming.type.WS:EVENT')
         bumpLoopCounter(`ws.incoming.event.${wsEvent.type}`)
-        if (import.meta.env.DEV) {
-          logger.info('ws.client', `Received WS event ${wsEvent.type}`, {
-            eventId: wsEvent.id,
-            sessionId: wsEvent.sessionId,
-            roomId: wsEvent.roomId,
-          })
-        }
+        wsClientLogInfo(`Received WS event ${wsEvent.type}`, {
+          eventId: wsEvent.id,
+          sessionId: wsEvent.sessionId,
+          roomId: wsEvent.roomId,
+        })
         this.callbacks.onEvent?.((incoming as any).event)
         return
       }
@@ -342,16 +374,14 @@ export class WebSocketClient {
             connectionId: msg.connectionId,
           },
         }
-        if (import.meta.env.DEV) {
-          logger.info('ws.client', 'Received WS:CONNECTED', {
-            connectionId: msg.connectionId,
-            userId: msg.userId,
-            username: msg.username,
-            role: msg.role,
-          })
-        }
+        wsClientLogInfo('Received WS:CONNECTED', {
+          connectionId: msg.connectionId,
+          userId: msg.userId,
+          username: msg.username,
+          role: msg.role,
+        })
         this.callbacks.onEvent?.(normalized)
-        logger.debug('ws.client', 'Server confirmed WS connection', {
+        wsClientLogDebug('Server confirmed WS connection', {
           userId: msg.userId,
           connectionId: msg.connectionId,
         })
@@ -360,16 +390,13 @@ export class WebSocketClient {
 
       if ((incoming as any).type === 'WS:ACK') {
         bumpLoopCounter('ws.incoming.type.WS:ACK')
-        logger.debug('ws.client', 'Received server ACK', incoming)
+        wsClientLogDebug('Received server ACK', incoming)
         return
       }
 
       if ((incoming as any).type === 'WS:ERROR') {
         bumpLoopCounter('ws.incoming.type.WS:ERROR')
         const msg = incoming as { type: 'WS:ERROR'; message: string }
-        if (import.meta.env.DEV) {
-          logger.warn('ws.client', 'Received WS:ERROR', msg)
-        }
         this.callbacks.onError?.(new Error(msg.message || 'WebSocket server error'))
         return
       }
@@ -381,29 +408,28 @@ export class WebSocketClient {
     } catch (error) {
       bumpLoopCounter('ws.incoming.parse-error')
       const err = error instanceof Error ? error : new Error(String(error))
-      logger.error('ws.client', 'Failed to parse message', err)
+      wsClientLogError('Failed to parse message', err)
       this.callbacks.onError?.(err)
     }
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.error('ws.client', `Max reconnection attempts (${this.maxReconnectAttempts}) reached`)
+      wsClientLogError(`Max reconnection attempts (${this.maxReconnectAttempts}) reached`)
       return
     }
 
     this.reconnectAttempts += 1
     const delay = this.reconnectDelayMs * Math.pow(2, this.reconnectAttempts - 1)
 
-    logger.info(
-      'ws.client',
+    wsClientLogInfo(
       `Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
     )
 
     this.setState('reconnecting')
     this.reconnectTimeoutId = setTimeout(() => {
       this.connect().catch((error) => {
-        logger.error('ws.client', 'Reconnection failed', error)
+        wsClientLogError('Reconnection failed', error)
       })
     }, delay)
   }

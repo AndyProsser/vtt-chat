@@ -25,6 +25,12 @@ This is the governing rule for the live timeline:
 
 That means players do not lose earlier Group A messages when they move to Group B. The user remembers what they witnessed.
 
+Session reset rule:
+
+- A newly started session always begins with a clean live chat timeline.
+- No prior session chat messages are carried into the new session timeline.
+- No prior-session Greenroom chat is carried into the new session timeline.
+
 ---
 
 ## 2. Message Classes
@@ -42,7 +48,8 @@ Context is not encoded as a separate message type. Context is carried by room me
 
 - `IC`: room-scoped, durable, remembered by everyone who could see it when sent.
 - `OOC`: room-scoped by default, durable, remembered by everyone who could see it when sent.
-- `WHISPER`: sender + target(s) + DM only, durable unless explicitly off-the-record by context.
+- `WHISPER`: sender + single recipient + DM only, durable unless explicitly off-the-record by context.
+- DM-private messages are modeled as whisper semantics (no separate durable message type).
 - `SYSTEM`: durable by default; may be room-scoped or global depending on payload.
 
 ### 2.2 Special contexts
@@ -50,12 +57,21 @@ Context is not encoded as a separate message type. Context is carried by room me
 - Greenroom:
   - OOC only.
   - Always ephemeral.
-  - Greenroom views render only Greenroom-room chat (no cross-room timeline entries).
+  - Greenroom views render Greenroom-room chat plus `[Session Started]` and `[Session Ended]` bookends for timeline anchoring.
+  - Greenroom views suppress `[Session Paused]` and `[Session Resumed]` markers.
   - Never promoted to campaign history automatically.
+  - On new-session start, Greenroom chat context is reset and starts empty.
+- PAUSED runtime:
+  - Default: ephemeral-only runtime chat while paused.
+  - Campaign setting may enable persisted paused-chat runtime behavior.
 - Whisper Bubble:
   - Off-the-record by default.
   - Visibility restricted to bubble occupants and DM.
   - Persistence policy is campaign-configurable, but the default contract is non-persistent.
+  - Composer mode inside Whisper Bubble is whisper-only:
+    - IC/OOC/DM-mode toggles are disabled.
+    - all sent messages are treated as whisper-context messages.
+    - targets are auto-resolved to current bubble participant set.
 - ENDED cooldown:
   - Still live-session runtime.
   - Spectators may chat only during the cooldown window.
@@ -84,7 +100,7 @@ Without send-time audience capture, the system cannot distinguish:
   - visible to current room occupants at send time
   - plus DM
 - `WHISPER`:
-  - visible to sender, target user(s), and DM
+  - visible to sender, a single explicit target user, and DM
 - room-scoped `SYSTEM`:
   - visible to room occupants at send time
   - plus DM if not already included
@@ -93,7 +109,7 @@ Without send-time audience capture, the system cannot distinguish:
 - Greenroom OOC:
   - visible to Greenroom occupants at send time
 - Whisper Bubble messages:
-  - visible to bubble occupants at send time
+  - visible to bubble occupants at send time (auto-targeted multi-recipient whisper semantics)
   - plus DM
 
 ### 3.3 Frontend rendering rule
@@ -151,7 +167,7 @@ Rules:
 - Frontend renders them as bookends, not as ordinary bubbles.
 - They remain visible in the unified session timeline.
 - `[Session Paused]` and `[Session Resumed]` stay durable in session history but are suppressed in Greenroom views.
-- `[Session Started]` and `[Session Ended]` may still appear in Greenroom when relevant to the remembered session timeline.
+- `[Session Started]` and `[Session Ended]` are always shown in Greenroom views.
 - Frontend must never invent or locally synthesize canonical boundary markers.
 
 ---
@@ -171,7 +187,12 @@ Required payload fields:
 - `isDmOnly`
 - `isOffTheRecord`
 - `visibleTo` when visibility is restricted
-- `targetIds` for whispers
+- `targetIds` for whisper delivery metadata
+
+Whisper target cardinality rules:
+
+- Standard whisper send path: exactly one explicit recipient must be present.
+- Whisper Bubble send path: backend may include multiple auto-resolved recipients based on active bubble participants.
 
 ### 6.2 `CHAT:TYPING_STARTED`
 

@@ -45,7 +45,7 @@ Green Room
    ↓ DM starts session
 Session Active
    ↓ DM ends session
-Green Room (restored)
+Green Room (fresh runtime chat context)
 ```
 
 Sessions are **explicit** — they do not start automatically.
@@ -58,15 +58,15 @@ The **green room** is the pre/post session lobby.
 
 ### Green Room Characteristics
 
-| Feature       | Behavior                                |
-| ------------- | --------------------------------------- |
-| Chat          | Persistent across sessions              |
-| Audio         | No effects, no environment, no distance |
-| Rooms         | Only one room: `green-room`             |
-| Presence      | All users join here first               |
-| Recording     | Never recorded                          |
-| Notes         | Fully accessible                        |
-| Private rooms | Disabled                                |
+| Feature       | Behavior                                            |
+| ------------- | --------------------------------------------------- |
+| Chat          | Session-scoped runtime (clean on new session start) |
+| Audio         | No effects, no environment, no distance             |
+| Rooms         | Only one room: `green-room`                         |
+| Presence      | All users join here first                           |
+| Recording     | Never recorded                                      |
+| Notes         | Fully accessible                                    |
+| Private rooms | Disabled                                            |
 
 ### When users join a campaign
 
@@ -350,7 +350,7 @@ Session start:
 
 Session end:
 
-- Green room chat restored
+- Green room becomes active for post-session runtime chat
 - Session chat archived
 
 Private rooms:

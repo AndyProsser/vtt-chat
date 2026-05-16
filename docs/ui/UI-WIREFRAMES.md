@@ -114,7 +114,7 @@ Read‑only chat, read‑only notes, no composer, no audio controls.
 │ TOOLBAR: [Logo & Title] [Audio Devices] [Theme] [Settings] [Information] [Connection Status ●] │
 ├────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ CAMPAIGN: Spectator Mode | Session 12 | 02:14:33 | [Session Cog]                               │
-│ TOASTS: [Session Started] [×]                                                                  │
+│ LIFECYCLE: [Session Started] marker appears in chat stream                                     │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────┬─────────────────────────────────────────────────────────────┬─────────────────┐

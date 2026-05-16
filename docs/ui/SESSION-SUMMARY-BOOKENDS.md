@@ -53,7 +53,9 @@ Rendering requirements:
 
 - Marker style is a light horizontal line with centered text.
 - The line should not be visible behind the text.
-- Markers are visible in both Greenroom and active session chat streams.
+- `[Session Started]` and `[Session Ended]` are visible in both Greenroom and active session chat streams.
+- `[Session Paused]` and `[Session Resumed]` are shown in active session chat streams and suppressed in Greenroom.
+- No success popup notifications are shown for start/pause/resume/end; bookends and in-surface state are the canonical UX.
 
 Lifecycle requirements:
 
@@ -61,21 +63,20 @@ Lifecycle requirements:
 - Every transition to `ENDED` must create a new `[Session Ended]` marker for that session immediately.
 - Every transition to `PAUSED` must create a `Session Paused` marker immediately.
 - Every resume transition back to `ACTIVE` must create a `Session Resumed` marker immediately.
-- In repeated cycles (`Greenroom -> Session -> Greenroom -> Session Restart`), Greenroom retains prior start/end markers in chronological order so returning players can reconstruct the sequence.
-- A restarted session must not rely on the next restart cycle to surface its own `[Session Started]` marker.
+- Every new session starts with a clean live chat context.
+- On session restart, do not carry prior session chat or prior-session Greenroom chat into the new session timeline.
 
 Implementation note (2026-05-08 runtime fix):
 
 - Frontend state may know that a new session exists before its room topology has hydrated.
 - Bookend writes therefore must target the new session's actual `MAIN` and Greenroom room IDs only after that topology is available.
 - If topology is not ready yet, the frontend queues pending bookend writes and flushes them once the session rooms have been loaded into state.
-- This fixes the specific bug where a restarted session could appear to miss its start marker until the next start/stop cycle.
+- This ensures restarted sessions get their own immediate boundary markers in a clean timeline.
 
 Regression coverage:
 
-- Integration tests verify that repeated start/stop cycles preserve both `Session Start` and `Session End` markers in Greenroom.
-- Integration tests verify marker chronology (`Session Start` before `Session End`) in the carried Greenroom timeline.
-- Integration tests verify restarted sessions get their own immediate `Session Start` marker without waiting for a later cycle.
+- Integration tests verify each restarted session gets its own immediate `Session Start` marker.
+- Integration tests verify session boundary markers are correctly scoped to the current session timeline only.
 
 ## Future Placement in Campaign Settings
 

@@ -20,7 +20,7 @@ import {
   audioHandlers,
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
-import { PresenceState } from '@shared'
+import { PresenceState, Role } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
@@ -311,38 +311,40 @@ export class WebSocketManager {
       const event = message as EventEnvelope
 
       // Never trust client-supplied identity data.
-      if (event.userId !== ws.authPayload.userId || event.userRole !== ws.authPayload.role) {
-        throw createError(ErrorCode.PERMISSION_DENIED, {
-          message: 'Event identity does not match authenticated user',
-        })
+      // Normalize identity from authenticated WS payload instead of rejecting
+      // mismatched client envelopes (e.g. stale role/user during UI transitions).
+      const normalizedEvent: EventEnvelope = {
+        ...event,
+        userId: ws.authPayload.userId as UUID,
+        userRole: ws.authPayload.role as Role,
       }
 
       if (ws.connectionState && ws.connectionState.sessionId === UNASSIGNED_SESSION_ID) {
-        ws.connectionState.sessionId = event.sessionId
-        void this.recoverAndMarkConnected(event.sessionId, ws.authPayload)
+        ws.connectionState.sessionId = normalizedEvent.sessionId
+        void this.recoverAndMarkConnected(normalizedEvent.sessionId, ws.authPayload)
       }
 
       // Dispatch event
-      await this.dispatcher.dispatch(event)
+      await this.dispatcher.dispatch(normalizedEvent)
 
       // Log event for recovery
       if (ws.connectionState) {
-        registerEventForRecovery(ws.connectionState.sessionId, event)
-        updateConnectionState(ws.connectionState, event.id)
+        registerEventForRecovery(ws.connectionState.sessionId, normalizedEvent)
+        updateConnectionState(ws.connectionState, normalizedEvent.id)
       }
 
       // Send acknowledgment
       ws.send(
         JSON.stringify({
           type: 'WS:ACK',
-          eventId: event.id,
+          eventId: normalizedEvent.id,
           status: 'processed',
         })
       )
 
       // Broadcast to other clients in same session (simple implementation)
-      const visibleTo = await this.resolveClientEventAudience(event)
-      this.broadcastToSession(event.sessionId, event, ws, visibleTo)
+      const visibleTo = await this.resolveClientEventAudience(normalizedEvent)
+      this.broadcastToSession(normalizedEvent.sessionId, normalizedEvent, ws, visibleTo)
     } catch (err: any) {
       logger.warn('ws', 'Error processing message', {
         code: err.code || ErrorCode.INTERNAL_ERROR,

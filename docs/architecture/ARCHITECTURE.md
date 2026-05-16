@@ -203,7 +203,7 @@ Session lifecycle:
 - DM starts session → recap shown
 - Private groups, group channels, whispers
 - Session ends → return to greenroom
-- Greenroom messages restored
+- Greenroom runtime chat is scoped to the active session timeline
 - Cleanup when last user leaves
 
 **See:** `SESSIONS.md`

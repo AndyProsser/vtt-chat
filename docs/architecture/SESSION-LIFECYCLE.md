@@ -78,6 +78,7 @@ The table is in greenroom mode and no live session is running.
 A session is currently running.
 
 - On `INACTIVE -> ACTIVE`, the active session timer resets to `00:00`.
+- On `INACTIVE -> ACTIVE` for a new session, chat starts clean: no prior session chat and no prior Greenroom chat are carried into the new live session timeline.
 - Active elapsed time is backend-authoritative and shared across all clients.
 - Active elapsed time must survive disconnects and page refreshes.
 - Presence indicators are active.
@@ -97,7 +98,11 @@ The session is temporarily halted.
 - Presence indicators remain active.
 - UI displays a paused banner.
 - Players cannot trigger session‑critical actions.
-- Pause runtime content is off-the-record (no persisted pause chat/voice transcript).
+- Pause runtime content defaults to off-the-record (no persisted pause chat/voice transcript).
+- DM can toggle pause-runtime chat persistence at campaign level.
+  - Default: ephemeral-only runtime content during `PAUSED`.
+  - Optional override: persist pause-runtime chat to session history.
+  - Voice/transcript recording rules remain governed by recording policy.
 
 The pause reason is **DM‑private**.
 
@@ -111,6 +116,10 @@ The live session has concluded and cooldown is active.
 - Default cooldown is 1 minute; configurable range is 1 to 60 minutes.
 - Timer popper remains available and shows details from the just-closed session.
 - DM can extend cooldown (adds one more configured cooldown block) or cancel it early.
+- Cooldown extension limits:
+  - maximum of 3 extensions per ended session.
+  - each extension adds exactly one configured cooldown block.
+  - no absolute max cooldown duration cap beyond the extension-count limit.
 - If DM disconnects during cooldown, connected players gain extend/cancel control.
 - While cooldown is active, connected spectators are temporarily elevated into post-session interaction mode:
   - they can speak/chat with the table,
@@ -120,7 +129,8 @@ The live session has concluded and cooldown is active.
   - spectators are hidden from the greenroom participant list,
   - spectator voice input is disabled for post-session interaction,
   - the timer state label remains `ENDED` and the ended-state timer continues counting from cooldown expiry.
-- DM may immediately start a new session from this state; new session start semantics are unchanged.
+- DM cannot start a new session while cooldown is active.
+- New session start is unblocked only after cooldown reaches zero or is explicitly ended early.
 
 ---
 
@@ -202,7 +212,16 @@ Key points:
 - Topbar timer shows cooldown countdown, then transitions into elapsed-ended timing while remaining in `ENDED`.
 - Timer popper remains available and shows final session timing summary (start, end, pause totals).
 - DM can extend/cancel cooldown; players can extend/cancel only if DM disconnects.
+- Starting a new session is disabled while cooldown is active.
 - Cooldown completion ends spectator post-session interaction visibility; cancellation transitions to `INACTIVE`.
+
+---
+
+## 5.3 Lifecycle Notifications
+
+- Do not show success popups for session lifecycle transitions (`start`, `pause`, `resume`, `end`).
+- Lifecycle state changes are communicated via chat bookends and persistent in-surface visual state.
+- Error and warning toasts remain enabled for failed actions, degraded sync, and recovery prompts.
 
 ---
 

@@ -185,7 +185,6 @@ export function ChatWindow({
         }
         if (isGreenroomMode) {
           params.set('roomId', roomId)
-          params.set('includeCampaignGreenroom', '1')
         }
 
         const historyUrl = `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`

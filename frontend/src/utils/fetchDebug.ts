@@ -1,6 +1,7 @@
 import { logger } from './logger'
 
 const MAX_LOGGED_BODY_LENGTH = 240
+const HTTP_CLIENT_DEBUG_ENABLED = false
 
 let installed = false
 
@@ -72,27 +73,31 @@ export function installFetchDebugLogging(): void {
     const requestId = crypto.randomUUID()
     const startedAt = performance.now()
 
-    logger.debug('http.client', 'Request start', {
-      requestId,
-      method,
-      url,
-      headers: sanitizeHeaders(init?.headers),
-      body: summarizeBody(init?.body),
-    })
+    if (HTTP_CLIENT_DEBUG_ENABLED) {
+      logger.debug('http.client', 'Request start', {
+        requestId,
+        method,
+        url,
+        headers: sanitizeHeaders(init?.headers),
+        body: summarizeBody(init?.body),
+      })
+    }
 
     try {
       const response = await originalFetch(input, init)
       const durationMs = Math.round(performance.now() - startedAt)
 
-      logger.debug('http.client', 'Response received', {
-        requestId,
-        method,
-        url,
-        status: response.status,
-        ok: response.ok,
-        durationMs,
-        contentType: response.headers.get('content-type') || undefined,
-      })
+      if (HTTP_CLIENT_DEBUG_ENABLED) {
+        logger.debug('http.client', 'Response received', {
+          requestId,
+          method,
+          url,
+          status: response.status,
+          ok: response.ok,
+          durationMs,
+          contentType: response.headers.get('content-type') || undefined,
+        })
+      }
 
       return response
     } catch (error) {
@@ -111,5 +116,7 @@ export function installFetchDebugLogging(): void {
   }
 
   installed = true
-  logger.debug('http.client', 'Fetch debug logging enabled')
+  if (HTTP_CLIENT_DEBUG_ENABLED) {
+    logger.debug('http.client', 'Fetch debug logging enabled')
+  }
 }

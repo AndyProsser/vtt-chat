@@ -9,6 +9,8 @@ import { logger } from '../utils/logger'
 import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { EventHandler } from '@/types/ws'
 
+const WS_DISPATCHER_DEBUG_ENABLED = false
+
 export type { EventHandler } from '@/types/ws'
 
 /**
@@ -30,7 +32,9 @@ export class EventDispatcher {
       this.handlers.set(eventType, [])
     }
     this.handlers.get(eventType)!.push(handler)
-    logger.debug('ws.dispatcher', `Registered handler for event type: ${eventType}`)
+    if (WS_DISPATCHER_DEBUG_ENABLED) {
+      logger.debug('ws.dispatcher', `Registered handler for event type: ${eventType}`)
+    }
   }
 
   /**
@@ -84,11 +88,13 @@ export class EventDispatcher {
       handlersToInvoke.push(...this.handlers.get('*')!)
     }
 
-    logger.debug('ws.dispatcher', `Dispatching event ${event.type}`, {
-      eventId: event.id,
-      sessionId: event.sessionId,
-      handlerCount: handlersToInvoke.length,
-    })
+    if (WS_DISPATCHER_DEBUG_ENABLED) {
+      logger.debug('ws.dispatcher', `Dispatching event ${event.type}`, {
+        eventId: event.id,
+        sessionId: event.sessionId,
+        handlerCount: handlersToInvoke.length,
+      })
+    }
 
     // Invoke handlers
     for (const handler of handlersToInvoke) {
