@@ -13,10 +13,15 @@ import {
   deleteSessionMessages,
   findMessageById,
   getChatCounts,
+  listMessagesBySessionIdsPage,
+  listMessagesBySessionIds,
+  listSessionMessagesPage,
   listSessionMessages,
   softDeleteMessageRecord,
   updateMessageRecord,
 } from '@/repositories/chat.repository'
+import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
+import { listCampaignGroupRooms } from '@/repositories/room.repository'
 
 const SYSTEM_CHAT_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SYSTEM_CHAT_AUTHOR_USERNAME = 'SYSTEM'
@@ -79,6 +84,30 @@ function computeVisibility(
   visibility.targetIds = recipientId ? [recipientId] : undefined
 
   return visibility
+}
+
+function isGreenRoomName(name: string): boolean {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
+  return normalized === 'green room' || normalized === 'green-room'
+}
+
+export interface ChatHistoryPageOptions {
+  before?: number
+  limit?: number
+}
+
+export interface ChatHistoryPageResult {
+  messages: StoredMessage[]
+  hasMore: boolean
+  nextBefore?: number
+}
+
+function normalizeHistoryLimit(limit?: number): number {
+  if (!Number.isFinite(limit) || !limit) {
+    return 20
+  }
+
+  return Math.max(1, Math.min(100, Math.floor(limit)))
 }
 
 function mapStoredMessage(row: {
@@ -207,6 +236,162 @@ export async function getMessages(
     if (m.isOffTheRecord) return false
     return canSeeMessage(m, requesterId, requesterRole, roomId)
   })
+}
+
+export async function getMessagesPage(
+  sessionId: UUID,
+  requesterId: UUID,
+  requesterRole: string,
+  roomId?: UUID,
+  options?: ChatHistoryPageOptions
+): Promise<ChatHistoryPageResult> {
+  if (options?.limit === undefined) {
+    const allMessages = await getMessages(sessionId, requesterId, requesterRole, roomId)
+    return {
+      messages: allMessages,
+      hasMore: false,
+      nextBefore: allMessages.length > 0 ? allMessages[0]?.createdAt : undefined,
+    }
+  }
+
+  const page = await listSessionMessagesPage({
+    sessionId,
+    before: options?.before ? new Date(options.before) : undefined,
+    limit: normalizeHistoryLimit(options?.limit),
+  })
+
+  const messages = page.rows.map(mapStoredMessage).filter((m) => {
+    if (requesterRole === 'DM') return canSeeMessage(m, requesterId, requesterRole, roomId)
+    if (m.isOffTheRecord) return false
+    return canSeeMessage(m, requesterId, requesterRole, roomId)
+  })
+
+  const nextBefore = messages.length > 0 ? messages[0]?.createdAt : options?.before
+  return {
+    messages,
+    hasMore: page.hasMore,
+    nextBefore,
+  }
+}
+
+/**
+ * Retrieves merged greenroom chat across all sessions in the same campaign.
+ * If the session is standalone (no campaign), this falls back to the session-scoped query.
+ */
+export async function getCampaignGreenroomMessages(
+  sessionId: UUID,
+  requesterId: UUID,
+  requesterRole: string,
+  roomId: UUID
+): Promise<StoredMessage[]> {
+  const session = await findSessionById(sessionId)
+  if (!session?.campaignId) {
+    return getMessages(sessionId, requesterId, requesterRole, roomId)
+  }
+
+  const [campaignSessions, campaignGroupRooms] = await Promise.all([
+    listSessionsByCampaign(session.campaignId),
+    listCampaignGroupRooms(session.campaignId),
+  ])
+
+  const greenroomRoomIds = new Set(
+    campaignGroupRooms.filter((room) => isGreenRoomName(room.name)).map((room) => room.id as UUID)
+  )
+
+  if (!greenroomRoomIds.has(roomId)) {
+    return getMessages(sessionId, requesterId, requesterRole, roomId)
+  }
+
+  if (greenroomRoomIds.size === 0) {
+    return []
+  }
+
+  const campaignSessionIds = Array.from(new Set(campaignSessions.map((item) => item.id)))
+  const rows = await listMessagesBySessionIds(campaignSessionIds)
+  const messages = rows
+    .map(mapStoredMessage)
+    .filter((message) => message.roomId && greenroomRoomIds.has(message.roomId))
+
+  return messages.filter((message) => {
+    if (requesterRole === 'DM') {
+      return canSeeMessage(message, requesterId, requesterRole)
+    }
+    if (message.isOffTheRecord) {
+      return false
+    }
+    return canSeeMessage(message, requesterId, requesterRole)
+  })
+}
+
+export async function getCampaignGreenroomMessagesPage(
+  sessionId: UUID,
+  requesterId: UUID,
+  requesterRole: string,
+  roomId: UUID,
+  options?: ChatHistoryPageOptions
+): Promise<ChatHistoryPageResult> {
+  if (options?.limit === undefined) {
+    const allMessages = await getCampaignGreenroomMessages(
+      sessionId,
+      requesterId,
+      requesterRole,
+      roomId
+    )
+    return {
+      messages: allMessages,
+      hasMore: false,
+      nextBefore: allMessages.length > 0 ? allMessages[0]?.createdAt : undefined,
+    }
+  }
+
+  const session = await findSessionById(sessionId)
+  if (!session?.campaignId) {
+    return getMessagesPage(sessionId, requesterId, requesterRole, roomId, options)
+  }
+
+  const [campaignSessions, campaignGroupRooms] = await Promise.all([
+    listSessionsByCampaign(session.campaignId),
+    listCampaignGroupRooms(session.campaignId),
+  ])
+
+  const greenroomRoomIds = new Set(
+    campaignGroupRooms.filter((room) => isGreenRoomName(room.name)).map((room) => room.id as UUID)
+  )
+
+  if (!greenroomRoomIds.has(roomId)) {
+    return getMessagesPage(sessionId, requesterId, requesterRole, roomId, options)
+  }
+
+  if (greenroomRoomIds.size === 0) {
+    return { messages: [], hasMore: false }
+  }
+
+  const campaignSessionIds = Array.from(new Set(campaignSessions.map((item) => item.id)))
+  const page = await listMessagesBySessionIdsPage({
+    sessionIds: campaignSessionIds,
+    before: options?.before ? new Date(options.before) : undefined,
+    limit: normalizeHistoryLimit(options?.limit),
+  })
+
+  const messages = page.rows
+    .map(mapStoredMessage)
+    .filter((message) => message.roomId && greenroomRoomIds.has(message.roomId))
+    .filter((message) => {
+      if (requesterRole === 'DM') {
+        return canSeeMessage(message, requesterId, requesterRole)
+      }
+      if (message.isOffTheRecord) {
+        return false
+      }
+      return canSeeMessage(message, requesterId, requesterRole)
+    })
+
+  const nextBefore = messages.length > 0 ? messages[0]?.createdAt : options?.before
+  return {
+    messages,
+    hasMore: page.hasMore,
+    nextBefore,
+  }
 }
 
 export async function editMessage(

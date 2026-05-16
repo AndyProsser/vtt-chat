@@ -75,6 +75,37 @@ export async function listRoomsBySession(sessionId: string): Promise<
   }))
 }
 
+export async function listCampaignGroupRooms(campaignId: string): Promise<
+  Array<{
+    id: string
+    sessionId: string
+    name: string
+    type: 'MAIN' | 'GROUP' | 'PRIVATE'
+  }>
+> {
+  const rows = await prisma.room.findMany({
+    where: {
+      session: {
+        campaignId,
+      },
+      type: 'GROUP',
+    },
+    select: {
+      id: true,
+      sessionId: true,
+      name: true,
+      type: true,
+    },
+  })
+
+  return rows.map((row) => ({
+    id: row.id,
+    sessionId: row.sessionId,
+    name: row.name,
+    type: row.type,
+  }))
+}
+
 export async function deleteRoomRecord(roomId: string): Promise<void> {
   await prisma.room.delete({
     where: { id: roomId },

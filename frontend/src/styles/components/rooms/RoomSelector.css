@@ -671,6 +671,7 @@
 
 .room-selector-members-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.22rem;
   min-height: 0;
 }
@@ -688,10 +689,16 @@
 .room-selector-member {
   display: grid;
   gap: 0.2rem;
+  width: 100%;
   border: 0;
   background: transparent;
   padding: 0;
   text-align: left;
+}
+
+.room-selector-member-context-anchor {
+  display: block;
+  width: 100%;
 }
 
 .room-selector-member--draggable {

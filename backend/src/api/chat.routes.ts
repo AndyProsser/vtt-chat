@@ -7,7 +7,13 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
-import { sendMessage, editMessage, deleteMessage, getMessages } from '@/services/chat.service'
+import {
+  sendMessage,
+  editMessage,
+  deleteMessage,
+  getMessagesPage,
+  getCampaignGreenroomMessagesPage,
+} from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
 import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
 import type { StoredMessage } from '@/types/chat.types'
@@ -316,6 +322,9 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const user = (req as any).user
     const { sessionId } = req.params
     const roomId = req.query.roomId
+    const includeCampaignGreenroom = req.query.includeCampaignGreenroom === '1'
+    const limitRaw = req.query.limit
+    const beforeRaw = req.query.before
 
     if (!isValidUUID(sessionId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -323,6 +332,14 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
 
     if (roomId !== undefined && !isValidUUID(roomId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
+    }
+
+    if (limitRaw !== undefined && Number.isNaN(Number(limitRaw))) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid limit' })
+    }
+
+    if (beforeRaw !== undefined && Number.isNaN(Number(beforeRaw))) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid before' })
     }
 
     const session = await getSession(sessionId as UUID)
@@ -364,13 +381,40 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       }
     }
 
-    const messages = await getMessages(
-      sessionId as UUID,
-      user.userId as UUID,
-      requesterRole,
-      roomId !== undefined ? (roomId as UUID) : undefined
-    )
-    return res.status(200).json({ messages })
+    const parsedLimit = limitRaw !== undefined ? Number(limitRaw) : undefined
+    const parsedBefore = beforeRaw !== undefined ? Number(beforeRaw) : undefined
+
+    let page
+    if (includeCampaignGreenroom && roomId !== undefined) {
+      page = await getCampaignGreenroomMessagesPage(
+        sessionId as UUID,
+        user.userId as UUID,
+        requesterRole,
+        roomId as UUID,
+        {
+          limit: parsedLimit,
+          before: parsedBefore,
+        }
+      )
+    } else {
+      page = await getMessagesPage(
+        sessionId as UUID,
+        user.userId as UUID,
+        requesterRole,
+        roomId !== undefined ? (roomId as UUID) : undefined,
+        {
+          limit: parsedLimit,
+          before: parsedBefore,
+        }
+      )
+    }
+    return res.status(200).json({
+      messages: page.messages,
+      pagination: {
+        hasMore: page.hasMore,
+        nextBefore: page.nextBefore,
+      },
+    })
   } catch {
     return internalErrorResponse(res)
   }

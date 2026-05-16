@@ -6,7 +6,11 @@ const mocks = vi.hoisted(() => ({
   deleteSessionMessages: vi.fn(),
   findMessageById: vi.fn(),
   getChatCounts: vi.fn(),
+  listCampaignGroupRooms: vi.fn(),
+  listMessagesBySessionIds: vi.fn(),
   listSessionMessages: vi.fn(),
+  findSessionById: vi.fn(),
+  listSessionsByCampaign: vi.fn(),
   softDeleteMessageRecord: vi.fn(),
   updateMessageRecord: vi.fn(),
 }))
@@ -16,9 +20,19 @@ vi.mock('@/repositories/chat.repository', () => ({
   deleteSessionMessages: mocks.deleteSessionMessages,
   findMessageById: mocks.findMessageById,
   getChatCounts: mocks.getChatCounts,
+  listMessagesBySessionIds: mocks.listMessagesBySessionIds,
   listSessionMessages: mocks.listSessionMessages,
   softDeleteMessageRecord: mocks.softDeleteMessageRecord,
   updateMessageRecord: mocks.updateMessageRecord,
+}))
+
+vi.mock('@/repositories/room.repository', () => ({
+  listCampaignGroupRooms: mocks.listCampaignGroupRooms,
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  findSessionById: mocks.findSessionById,
+  listSessionsByCampaign: mocks.listSessionsByCampaign,
 }))
 
 import {
@@ -28,6 +42,7 @@ import {
   editMessage,
   getChatTelemetrySnapshot,
   getMessages,
+  getCampaignGreenroomMessages,
   sendMessage,
 } from '@/services/chat.service'
 
@@ -56,6 +71,30 @@ function makeRepoRow(overrides: Record<string, unknown> = {}) {
 describe('chat.service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    mocks.findSessionById.mockResolvedValue({
+      id: SESSION_ID,
+      campaignId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    })
+    mocks.listSessionsByCampaign.mockResolvedValue([
+      { id: SESSION_ID },
+      { id: '88888888-8888-4888-8888-888888888888' },
+    ])
+    mocks.listCampaignGroupRooms.mockResolvedValue([
+      {
+        id: '99999999-9999-4999-8999-999999999999',
+        sessionId: SESSION_ID,
+        name: 'Green Room',
+        type: 'GROUP',
+      },
+      {
+        id: '77777777-7777-4777-8777-777777777777',
+        sessionId: '88888888-8888-4888-8888-888888888888',
+        name: 'green-room',
+        type: 'GROUP',
+      },
+    ])
+    mocks.listMessagesBySessionIds.mockResolvedValue([])
   })
 
   it('creates whisper visibility list and persists message', async () => {
@@ -176,5 +215,48 @@ describe('chat.service', () => {
 
     const snapshot = await getChatTelemetrySnapshot()
     expect(snapshot.totalMessages).toBe(10)
+  })
+
+  it('merges greenroom messages across campaign sessions', async () => {
+    mocks.listMessagesBySessionIds.mockResolvedValue([
+      makeRepoRow({
+        id: '12121212-1212-4121-8121-121212121212',
+        sessionId: SESSION_ID,
+        type: MessageType.OOC,
+        visibleTo: { roomId: '99999999-9999-4999-8999-999999999999' },
+        createdAt: new Date(1700000000000),
+      }),
+      makeRepoRow({
+        id: '13131313-1313-4131-8131-131313131313',
+        sessionId: '88888888-8888-4888-8888-888888888888',
+        type: MessageType.SYSTEM,
+        content: '[Session Ended] Chapter One',
+        visibleTo: { roomId: '77777777-7777-4777-8777-777777777777' },
+        createdAt: new Date(1700000001000),
+      }),
+      makeRepoRow({
+        id: '14141414-1414-4141-8141-141414141414',
+        sessionId: '88888888-8888-4888-8888-888888888888',
+        type: MessageType.OOC,
+        visibleTo: { roomId: '16161616-1616-4161-8161-161616161616' },
+        createdAt: new Date(1700000002000),
+      }),
+    ])
+
+    const result = await getCampaignGreenroomMessages(
+      SESSION_ID,
+      AUTHOR_ID,
+      'PLAYER',
+      '99999999-9999-4999-8999-999999999999' as any
+    )
+
+    expect(result.map((message) => message.id)).toEqual([
+      '12121212-1212-4121-8121-121212121212',
+      '13131313-1313-4131-8131-131313131313',
+    ])
+    expect(mocks.listMessagesBySessionIds).toHaveBeenCalledWith([
+      SESSION_ID,
+      '88888888-8888-4888-8888-888888888888',
+    ])
   })
 })

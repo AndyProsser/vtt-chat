@@ -176,35 +176,8 @@ export function GroupMemberList({
           </button>
         )
 
-        if (isPlayerTarget) {
-          return (
-            <PlayerContextMenu
-              key={member.userId}
-              enabled
-              canManageRooms={canManageRooms}
-              isGreenroom={isGreenroom}
-              memberIsMuted={isMuted}
-              distanceTargets={distanceTargets}
-              conditionTargets={conditionTargets}
-              onDistanceSelect={(distanceName) =>
-                onApplyDistanceOverride(member.userId, distanceName)
-              }
-              onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
-              onClearEffects={() => onClearMemberEffects(member.userId)}
-              onConditionSelect={(conditionName) =>
-                onApplyConditionOverride(member.userId, conditionName)
-              }
-              canTakeOver={isTakeoverEligible}
-              isTakeoverActive={isTakeoverActive}
-              onTakeOver={() => onTakeOverPlayer?.(member.userId)}
-            >
-              {memberButton}
-            </PlayerContextMenu>
-          )
-        }
-
-        return (
-          <Tooltip key={member.userId}>
+        const memberTooltip = (
+          <Tooltip>
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
             <TooltipContent side="right" className="room-selector-profile-tooltip">
               <div className="room-selector-profile">
@@ -306,6 +279,39 @@ export function GroupMemberList({
               </div>
             </TooltipContent>
           </Tooltip>
+        )
+
+        if (isPlayerTarget) {
+          return (
+            <PlayerContextMenu
+              key={member.userId}
+              enabled
+              canManageRooms={canManageRooms}
+              isGreenroom={isGreenroom}
+              memberIsMuted={isMuted}
+              distanceTargets={distanceTargets}
+              conditionTargets={conditionTargets}
+              onDistanceSelect={(distanceName) =>
+                onApplyDistanceOverride(member.userId, distanceName)
+              }
+              onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
+              onClearEffects={() => onClearMemberEffects(member.userId)}
+              onConditionSelect={(conditionName) =>
+                onApplyConditionOverride(member.userId, conditionName)
+              }
+              canTakeOver={isTakeoverEligible}
+              isTakeoverActive={isTakeoverActive}
+              onTakeOver={() => onTakeOverPlayer?.(member.userId)}
+            >
+              <span className="room-selector-member-context-anchor">{memberTooltip}</span>
+            </PlayerContextMenu>
+          )
+        }
+
+        return (
+          <span key={member.userId} className="room-selector-member-context-anchor">
+            {memberTooltip}
+          </span>
         )
       })}
     </>

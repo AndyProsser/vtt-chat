@@ -13,6 +13,7 @@ interface MessageListProps {
   currentUserId: string
   groupingWindowMs?: number
   listRef?: RefObject<HTMLDivElement | null>
+  topSentinelRef?: RefObject<HTMLDivElement | null>
   onListScroll?: UIEventHandler<HTMLDivElement>
   participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
   roomDirectory?: Record<string, { name: string }>
@@ -113,6 +114,7 @@ export function MessageList({
   currentUserId,
   groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
   listRef,
+  topSentinelRef,
   onListScroll,
   participantDirectory,
   roomDirectory,
@@ -125,6 +127,8 @@ export function MessageList({
 
   return (
     <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
+      {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
+      <div ref={topSentinelRef} aria-hidden="true" style={{ blockSize: 1 }} />
       {messages.map((msg, index) => {
         const previous = index > 0 ? messages[index - 1] : undefined
         const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
@@ -248,13 +252,6 @@ export function MessageList({
                   {!isGroupedWithPrevious ? (
                     <div className="chat-message__meta">
                       <span className="chat-message__author">{authorName}</span>
-                      {roomName ? (
-                        <span
-                          className={`chat-message__room-pill ${msg.roomId === activeRoomId ? 'chat-message__room-pill--active' : ''}`}
-                        >
-                          {roomName}
-                        </span>
-                      ) : null}
                       {whisperAudience ? (
                         <span className="chat-message__whisper-pill">To {whisperAudience}</span>
                       ) : null}
@@ -262,20 +259,20 @@ export function MessageList({
                   ) : null}
 
                   <div
-                    className={`chat-message__bubble ${isSelf ? 'chat-message__bubble--self' : ''}`}
+                    className={`chat-message__bubble chat-message__bubble--${variant} ${isSelf ? 'chat-message__bubble--self' : ''}`}
                   >
                     <span
-                      className={`chat-message__type chat-message__type--${variant}`}
+                      className={`chat-message__type-badge chat-message__type-badge--${variant}`}
                       aria-label={msg.type}
                     >
                       <span
-                        className={`material-symbols-outlined chat-message__type-icon chat-message__type-icon--${variant}`}
+                        className="material-symbols-outlined chat-message__type-icon"
                         aria-hidden="true"
                       >
                         {TYPE_ICONS[msg.type] ?? 'chat'}
                       </span>
-                    </span>{' '}
-                    {msg.content}
+                    </span>
+                    <span className="chat-message__bubble-text">{msg.content}</span>
                   </div>
 
                   <div className="chat-message__timestamp">

@@ -154,6 +154,8 @@ GREENROOM is a calculated runtime state, not an enum member:
 - On `IDLE` → `ACTIVE`: existing GREENROOM remains; if no prior session, create new GREENROOM
 - On final session `ENDED` + all users disconnect: ALL previously ENDED sessions (from same campaign) transition to `CLEANUP` simultaneously
 - Cleanup job runs once per campaign, purges greenroom for all transitioned sessions
+- Chat hydration contract for merged Greenroom timeline: `GET /api/chat/messages/:sessionId?roomId={greenroomId}&includeCampaignGreenroom=1` returns visible Greenroom messages across campaign sessions, ordered by `createdAt`, so session bookends render as continuous timeline anchors.
+- Chat hydration supports lazy paging for late-join and long timelines: `limit` (default `20`, max `100`) and `before` (unix ms cursor). Response includes `pagination.hasMore` and `pagination.nextBefore` so clients can continuously load older messages while scrolling.
 
 **Post-session cooldown:**
 

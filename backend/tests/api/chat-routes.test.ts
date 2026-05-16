@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
-  getMessages: vi.fn(),
+  getMessagesPage: vi.fn(),
+  getCampaignGreenroomMessagesPage: vi.fn(),
   broadcastEventToSession: vi.fn(),
 }))
 
@@ -33,7 +34,8 @@ vi.mock('@/services/chat.service', () => ({
   sendMessage: mocks.sendMessage,
   editMessage: mocks.editMessage,
   deleteMessage: mocks.deleteMessage,
-  getMessages: mocks.getMessages,
+  getMessagesPage: mocks.getMessagesPage,
+  getCampaignGreenroomMessagesPage: mocks.getCampaignGreenroomMessagesPage,
 }))
 
 vi.mock('@/services/room.service', () => ({
@@ -155,7 +157,8 @@ describe('chat routes', () => {
       deletedAt: 1700000000200,
     })
 
-    mocks.getMessages.mockResolvedValue([])
+    mocks.getMessagesPage.mockResolvedValue({ messages: [], hasMore: false })
+    mocks.getCampaignGreenroomMessagesPage.mockResolvedValue({ messages: [], hasMore: false })
   })
 
   it('returns 401 when auth header is missing', async () => {
@@ -255,7 +258,11 @@ describe('chat routes', () => {
 
   it('returns session messages for authenticated user', async () => {
     const app = buildApp()
-    mocks.getMessages.mockResolvedValue([{ id: MESSAGE_ID }])
+    mocks.getMessagesPage.mockResolvedValue({
+      messages: [{ id: MESSAGE_ID }],
+      hasMore: false,
+      nextBefore: 1700000000000,
+    })
 
     const response = await request(app)
       .get(`/api/chat/messages/${SESSION_ID}`)
@@ -264,7 +271,52 @@ describe('chat routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
-    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
+    expect(response.body.pagination).toEqual({
+      hasMore: false,
+      nextBefore: 1700000000000,
+    })
+    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID, {
+      limit: undefined,
+      before: undefined,
+    })
+  })
+
+  it('returns merged campaign greenroom messages when requested', async () => {
+    const app = buildApp()
+    mocks.getRoom.mockResolvedValueOnce({
+      id: ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Green Room',
+      type: 'GROUP',
+    })
+    mocks.getCampaignGreenroomMessagesPage.mockResolvedValueOnce({
+      messages: [{ id: MESSAGE_ID }],
+      hasMore: true,
+      nextBefore: 1700000000000,
+    })
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .query({ roomId: ROOM_ID, includeCampaignGreenroom: '1' })
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
+    expect(response.body.pagination).toEqual({
+      hasMore: true,
+      nextBefore: 1700000000000,
+    })
+    expect(mocks.getCampaignGreenroomMessagesPage).toHaveBeenCalledWith(
+      SESSION_ID,
+      USER_ID,
+      'PLAYER',
+      ROOM_ID,
+      {
+        limit: undefined,
+        before: undefined,
+      }
+    )
+    expect(mocks.getMessagesPage).not.toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
   })
 
   it('restricts whisper delivery to sender, recipient, and DM', async () => {
@@ -356,7 +408,7 @@ describe('chat routes', () => {
       role: 'PLAYER',
     })
     mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'DM' })
-    mocks.getMessages.mockResolvedValueOnce([{ id: MESSAGE_ID }])
+    mocks.getMessagesPage.mockResolvedValueOnce({ messages: [{ id: MESSAGE_ID }], hasMore: false })
 
     const response = await request(app)
       .get(`/api/chat/messages/${SESSION_ID}`)
@@ -365,20 +417,31 @@ describe('chat routes', () => {
 
     expect(response.status).toBe(200)
     expect(mocks.getSessionPresence).not.toHaveBeenCalled()
-    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, DM_ID, 'DM', ROOM_ID)
+    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, DM_ID, 'DM', ROOM_ID, {
+      limit: undefined,
+      before: undefined,
+    })
   })
 
   it('returns the visible session timeline when roomId is omitted', async () => {
     const app = buildApp()
-    mocks.getMessages.mockResolvedValueOnce([{ id: MESSAGE_ID }])
+    mocks.getMessagesPage.mockResolvedValueOnce({
+      messages: [{ id: MESSAGE_ID }],
+      hasMore: false,
+      nextBefore: 1700000000000,
+    })
 
     const response = await request(app)
       .get(`/api/chat/messages/${SESSION_ID}`)
       .set('Authorization', 'Bearer token')
 
     expect(response.status).toBe(200)
-    expect(mocks.getMessages).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', undefined)
+    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', undefined, {
+      limit: undefined,
+      before: undefined,
+    })
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
+    expect(response.body.pagination).toEqual({ hasMore: false, nextBefore: 1700000000000 })
   })
 
   it('edits a message and broadcasts update', async () => {

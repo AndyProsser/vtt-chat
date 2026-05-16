@@ -29,6 +29,7 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const CHAT_HISTORY_PAGE_SIZE = 20
 const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
 
 function isIntermissionBookend(content: string, type: MessageType): boolean {
@@ -50,9 +51,17 @@ export function ChatWindow({
   sendWsEvent,
 }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false)
+  const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
   const messageListRef = useRef<HTMLDivElement>(null)
+  const topSentinelRef = useRef<HTMLDivElement>(null)
+  const isLoadingOlderRef = useRef(false)
+  const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
+  const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
+    null
+  )
   const isGreenroomMode = forceMessageType === MessageType.OOC
   const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
   const resolvedRoomName =
@@ -140,16 +149,34 @@ export function ChatWindow({
     }
   }, [sessionTypingIndicators])
 
-  // Load message history on mount
   useEffect(() => {
-    let cancelled = false
+    isLoadingOlderRef.current = isLoadingOlder
+  }, [isLoadingOlder])
 
-    const loadHistory = async () => {
-      setIsLoading(true)
+  const loadHistoryPage = useCallback(
+    async ({ before, older }: { before?: number; older: boolean }) => {
+      if (older) {
+        setIsLoadingOlder(true)
+      } else {
+        setIsLoading(true)
+        oldestLoadedTimestampRef.current = undefined
+      }
+
       setError(null)
 
       try {
-        const res = await fetch(`${apiUrl}/api/chat/messages/${sessionId}`, {
+        const params = new URLSearchParams()
+        params.set('limit', String(CHAT_HISTORY_PAGE_SIZE))
+        if (before && Number.isFinite(before)) {
+          params.set('before', String(before))
+        }
+        if (isGreenroomMode) {
+          params.set('roomId', roomId)
+          params.set('includeCampaignGreenroom', '1')
+        }
+
+        const historyUrl = `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`
+        const res = await fetch(historyUrl, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -171,23 +198,55 @@ export function ChatWindow({
           editedAt: m.editedAt as number | undefined,
         }))
 
-        if (!cancelled) {
-          for (const msg of msgs) {
-            addMessage(sessionId, msg)
-          }
+        for (const msg of msgs) {
+          addMessage(sessionId, msg)
+        }
+
+        const oldestInPage = msgs.length > 0 ? msgs[0]?.createdAt : undefined
+        if (oldestInPage && Number.isFinite(oldestInPage)) {
+          oldestLoadedTimestampRef.current = oldestInPage
+        }
+
+        const hasMore = Boolean(data.pagination?.hasMore)
+        setHasMoreHistory(hasMore)
+
+        if (older && pendingScrollRestoreRef.current && messageListRef.current) {
+          const { previousTop, previousHeight } = pendingScrollRestoreRef.current
+          pendingScrollRestoreRef.current = null
+
+          requestAnimationFrame(() => {
+            const container = messageListRef.current
+            if (!container) {
+              return
+            }
+
+            const nextHeight = container.scrollHeight
+            container.scrollTop = previousTop + (nextHeight - previousHeight)
+          })
         }
       } catch (err: any) {
-        if (!cancelled) setError(err.message ?? 'Failed to load messages')
+        setError(err.message ?? 'Failed to load messages')
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (older) {
+          setIsLoadingOlder(false)
+        } else {
+          setIsLoading(false)
+        }
       }
-    }
+    },
+    [addMessage, apiUrl, isGreenroomMode, roomId, sessionId, token]
+  )
 
-    void loadHistory()
+  // Load latest history page on mount/change.
+  useEffect(() => {
+    const bootstrapTimer = window.setTimeout(() => {
+      void loadHistoryPage({ older: false })
+    }, 0)
+
     return () => {
-      cancelled = true
+      window.clearTimeout(bootstrapTimer)
     }
-  }, [addMessage, apiUrl, sessionId, token])
+  }, [loadHistoryPage])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -217,6 +276,51 @@ export function ChatWindow({
     const isNearBottom = distanceFromBottom <= 24
     setIsUserPinnedToBottom(isNearBottom)
   }, [])
+
+  useEffect(() => {
+    if (isLoading || !hasMoreHistory) {
+      return
+    }
+
+    const root = messageListRef.current
+    const target = topSentinelRef.current
+
+    if (!root || !target || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry?.isIntersecting || isLoadingOlderRef.current) {
+          return
+        }
+
+        const before = oldestLoadedTimestampRef.current
+        if (!before) {
+          return
+        }
+
+        isLoadingOlderRef.current = true
+        pendingScrollRestoreRef.current = {
+          previousTop: root.scrollTop,
+          previousHeight: root.scrollHeight,
+        }
+
+        void loadHistoryPage({ before, older: true })
+      },
+      {
+        root,
+        rootMargin: '120px 0px 0px 0px',
+        threshold: 0,
+      }
+    )
+
+    observer.observe(target)
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
 
   const visibleMessages = useMemo(
     () =>
@@ -300,6 +404,14 @@ export function ChatWindow({
       .filter((indicator) => !indicator.roomId || indicator.roomId === roomId)
   }, [roomId, sessionTypingIndicators, typingClock, user.id])
 
+  const typingDisplayNames = useMemo(
+    () =>
+      typingUsers.map(
+        (indicator) => participantDirectory[indicator.userId]?.displayName || indicator.username
+      ),
+    [participantDirectory, typingUsers]
+  )
+
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
       if (!sendWsEvent) {
@@ -362,9 +474,9 @@ export function ChatWindow({
   }, [isGreenroomMode, isLoading, offFocusMessageCount, visibleMessages.length])
 
   const typingSummary =
-    typingUsers.length === 1
-      ? `${typingUsers[0]?.username} is typing…`
-      : `${typingUsers.length} people are typing…`
+    typingDisplayNames.length === 1
+      ? `${typingDisplayNames[0]} is typing`
+      : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
 
   // Auto-scroll to newest message only while user stays pinned at bottom.
   useEffect(() => {
@@ -494,17 +606,11 @@ export function ChatWindow({
       <section className="chat-window__timeline-bar" aria-label="Timeline status">
         <div>
           <p className="chat-window__timeline-summary">{timelineSummary}</p>
-        </div>
-        <div className="chat-window__timeline-badges">
-          {typingUsers.length > 0 ? (
-            <span
-              className="chat-window__timeline-badge chat-window__timeline-badge--typing"
-              aria-live="polite"
-            >
-              {typingSummary}
-            </span>
+          {isLoadingOlder ? (
+            <p className="chat-window__timeline-summary">Loading older messages…</p>
           ) : null}
         </div>
+        <div className="chat-window__timeline-badges" />
       </section>
 
       {/* Error banner */}
@@ -559,6 +665,7 @@ export function ChatWindow({
           currentUserId={user.id}
           groupingWindowMs={messageGroupingWindowMs}
           listRef={messageListRef}
+          topSentinelRef={topSentinelRef}
           onListScroll={handleListScroll}
           participantDirectory={participantDirectory}
           roomDirectory={roomDirectory}
@@ -586,6 +693,17 @@ export function ChatWindow({
             <TooltipContent side="left">Jump to latest</TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      ) : null}
+
+      {typingUsers.length > 0 ? (
+        <div className="chat-window__typing-overlay" aria-live="polite">
+          <span className="chat-window__typing-text">{typingSummary}</span>
+          <span className="chat-window__typing-dots" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+        </div>
       ) : null}
 
       {/* Input */}
