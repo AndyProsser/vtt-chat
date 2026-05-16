@@ -134,6 +134,34 @@
   filter: drop-shadow(1px 0 0 color-mix(in srgb, var(--color-border) 80%, transparent));
 }
 
+.command-center-right-rail-overlay--tab-0 {
+  --panel-pointer-top: 1.35rem;
+}
+
+.command-center-right-rail-overlay--tab-1 {
+  --panel-pointer-top: 3.75rem;
+}
+
+.command-center-right-rail-overlay--tab-2 {
+  --panel-pointer-top: 6.15rem;
+}
+
+.command-center-right-rail-overlay--tab-3 {
+  --panel-pointer-top: 8.55rem;
+}
+
+.command-center-right-rail-overlay--tab-4 {
+  --panel-pointer-top: 10.95rem;
+}
+
+.command-center-right-rail-overlay--tab-5 {
+  --panel-pointer-top: 13.35rem;
+}
+
+.command-center-right-rail-overlay--tab-6 {
+  --panel-pointer-top: 15.75rem;
+}
+
 .command-center-right-rail-overlay--closing {
   opacity: 0;
   transform: translateX(18px);

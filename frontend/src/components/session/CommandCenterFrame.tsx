@@ -148,6 +148,7 @@ export function CommandCenterFrame({
     ? selectedRightRailTab
     : tabs[0] || 'rooms'
   const activeTabIndex = Math.max(0, tabs.indexOf(activeRightRailTab))
+  const pointerTabIndex = Math.min(6, activeTabIndex)
 
   const placeholderActions: ToolbarPlaceholderAction[] = useMemo(
     () => [
@@ -286,10 +287,7 @@ export function CommandCenterFrame({
               data-testid="right-rail"
               className={`command-center-right-rail-overlay ${
                 isRightRailClosing ? 'command-center-right-rail-overlay--closing' : ''
-              }`}
-              style={{
-                ['--panel-pointer-top' as string]: `${1.35 + activeTabIndex * 2.4}rem`,
-              }}
+              } command-center-right-rail-overlay--tab-${pointerTabIndex}`}
               onClick={handleRightRailClickOutside}
             >
               <div className="command-center-right-rail-layout">

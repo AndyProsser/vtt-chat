@@ -1,15 +1,30 @@
 /* LoadingSpinner — accessible, theme-aware loading indicator.
-   Size is injected via the --spinner-size custom property on the element.
+   Size is controlled by size modifier classes.
    The spinner-spin keyframe is defined in theme.css. */
 
 .vtt-spinner {
   display: inline-block;
-  width: var(--spinner-size, 1.5rem);
-  height: var(--spinner-size, 1.5rem);
+  width: 1.5rem;
+  height: 1.5rem;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-brand);
   border-radius: 50%;
   animation: spinner-spin 0.75s linear infinite;
   vertical-align: middle;
   flex-shrink: 0;
+}
+
+.vtt-spinner--sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.vtt-spinner--md {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.vtt-spinner--lg {
+  width: 2rem;
+  height: 2rem;
 }
