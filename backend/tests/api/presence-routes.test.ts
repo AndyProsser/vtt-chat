@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   mockUpdatePresenceState: vi.fn(),
   mockEnsurePresenceRecoveredFromSnapshots: vi.fn(),
   mockSnapshotSessionPresence: vi.fn(),
+  mockEnsureMockSimulationRunning: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -52,6 +53,10 @@ vi.mock('@/repositories/session.repository', () => ({
 
 vi.mock('@/services/dev-mock/takeover.service', () => ({
   getMockTakeoverSnapshot: mocks.mockGetMockTakeoverSnapshot,
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  ensureMockSimulationRunning: mocks.mockEnsureMockSimulationRunning,
 }))
 
 import presenceRoutes from '@/api/presence.routes'
@@ -103,6 +108,7 @@ describe('presence routes', () => {
       startedAt: null,
       staleRecovered: false,
     })
+    mocks.mockEnsureMockSimulationRunning.mockReturnValue(true)
   })
 
   // ── GET /:sessionId ──────────────────────────────────────────────────────────
@@ -158,6 +164,7 @@ describe('presence routes', () => {
         actorUserId: USER_ID,
         effectiveUserId: USER_ID,
       })
+      expect(mocks.mockEnsureMockSimulationRunning).toHaveBeenCalledWith(SESSION_ID)
     })
 
     it('projects active assumed identity snapshot when takeover is active', async () => {

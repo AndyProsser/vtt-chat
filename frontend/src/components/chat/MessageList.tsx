@@ -8,6 +8,7 @@ import { Fragment } from 'react'
 import type { RefObject, UIEventHandler } from 'react'
 import type { Message } from '@/types/chat'
 import { MessageType } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 interface MessageListProps {
   messages: Message[]
   currentUserId: string
@@ -30,6 +31,20 @@ const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'system'> = {
   [MessageType.SYSTEM]: 'system',
 }
 
+const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'system', string> = {
+  ic: 'swords',
+  ooc: 'chat_bubble',
+  whisper: 'visibility_off',
+  system: 'info',
+}
+
+const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'system', string> = {
+  ic: 'In Character',
+  ooc: 'Out of Character',
+  whisper: 'Whisper',
+  system: 'System',
+}
+
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
 const SESSION_BOOKEND_PREFIXES = [
   'Session Start:',
@@ -41,6 +56,7 @@ const SESSION_BOOKEND_PREFIXES = [
 ]
 const SESSION_NOTE_PREFIX = 'Session Note:'
 const SESSION_RECAP_PREFIX = '[Last Session]'
+const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]']
 
 function getAuthorInitial(username: string): string {
@@ -119,154 +135,172 @@ export function MessageList({
   }
 
   return (
-    <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
-      {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
-      <div ref={topSentinelRef} aria-hidden="true" style={{ blockSize: 1 }} />
-      {messages.map((msg, index) => {
-        const previous = index > 0 ? messages[index - 1] : undefined
-        const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
-        const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
-        const isSessionBookend =
-          isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
-        const isIntermissionBookend =
-          isSessionBookend &&
-          INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
-        const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
-        const isSessionRecap = isSystem && msg.content.startsWith(SESSION_RECAP_PREFIX)
-        const isSelf = !isSystem && msg.authorId === currentUserId
-        const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
-        const authorProfile = participantDirectory?.[msg.authorId]
-        const authorName = isSystem
-          ? 'SYSTEM'
-          : authorProfile?.displayName || msg.authorUsername || 'Unknown'
-        const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
-        const whisperAudience =
-          msg.type === MessageType.WHISPER &&
-          Array.isArray(msg.targetIds) &&
-          msg.targetIds.length > 0
-            ? msg.targetIds
-                .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
-                .join(', ')
-            : null
-        const isGroupedWithPrevious = Boolean(
-          groupingWindowMs > 0 &&
-          previous &&
-          previous.authorId === msg.authorId &&
-          msg.createdAt - previous.createdAt <= groupingWindowMs
-        )
-        const showRoomShift = Boolean(
-          !isSystem &&
-          roomName &&
-          (!previous || previous.roomId !== msg.roomId || previous.type === MessageType.SYSTEM)
-        )
-        const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
-
-        if (hideIntermissionMarkers && isIntermissionBookend) {
-          return null
-        }
-
-        if (isSessionRecap) {
-          const recapBody = msg.content.slice(SESSION_RECAP_PREFIX.length).trim()
-          return (
-            <article key={msg.id} className="chat-session-recap">
-              <span
-                className="chat-session-recap__icon material-symbols-outlined"
-                aria-hidden="true"
-              >
-                menu_book
-              </span>
-              <div className="chat-session-recap__body">
-                <span className="chat-session-recap__label">Last Session</span>
-                <p className="chat-session-recap__text">{recapBody}</p>
-              </div>
-            </article>
+    <TooltipProvider delayDuration={120}>
+      <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
+        {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
+        <div ref={topSentinelRef} aria-hidden="true" style={{ blockSize: 1 }} />
+        {messages.map((msg, index) => {
+          const previous = index > 0 ? messages[index - 1] : undefined
+          const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
+          const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
+          const isSessionBookend =
+            isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+          const isIntermissionBookend =
+            isSessionBookend &&
+            INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+          const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
+          const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
+            ? CAMPAIGN_BRIEF_PREFIX
+            : SESSION_RECAP_PREFIX
+          const isSessionRecap = isSystem && msg.content.startsWith(recapPrefix)
+          const isSelf = !isSystem && msg.authorId === currentUserId
+          const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
+          const authorProfile = participantDirectory?.[msg.authorId]
+          const authorName = isSystem
+            ? 'SYSTEM'
+            : authorProfile?.displayName || msg.authorUsername || 'Unknown'
+          const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
+          const whisperAudience =
+            msg.type === MessageType.WHISPER &&
+            Array.isArray(msg.targetIds) &&
+            msg.targetIds.length > 0
+              ? msg.targetIds
+                  .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
+                  .join(', ')
+              : null
+          const isGroupedWithPrevious = Boolean(
+            groupingWindowMs > 0 &&
+            previous &&
+            previous.authorId === msg.authorId &&
+            msg.createdAt - previous.createdAt <= groupingWindowMs
           )
-        }
-
-        if (isSessionBookend || isSessionNote) {
-          return (
-            <article
-              key={msg.id}
-              className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${isIntermissionBookend ? 'chat-session-marker--intermission' : ''}`}
-            >
-              <span className="chat-session-marker__text">{msg.content}</span>
-            </article>
+          const showRoomShift = Boolean(
+            !isSystem &&
+            roomName &&
+            (!previous || previous.roomId !== msg.roomId || previous.type === MessageType.SYSTEM)
           )
-        }
+          const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
 
-        return (
-          <Fragment key={msg.id}>
-            {showDaySeparator ? (
-              <div
-                className="chat-day-separator"
-                aria-label={`Messages from ${formatDayLabel(msg.createdAt)}`}
-              >
-                <span className="chat-day-separator__line" aria-hidden="true" />
-                <span className="chat-day-separator__pill">{formatDayLabel(msg.createdAt)}</span>
-                <span className="chat-day-separator__line" aria-hidden="true" />
-              </div>
-            ) : null}
+          if (hideIntermissionMarkers && isIntermissionBookend) {
+            return null
+          }
 
-            {showRoomShift ? (
-              <div className="chat-room-shift" aria-label={`Room shift to ${roomName}`}>
-                <span className="chat-room-shift__line" aria-hidden="true" />
+          if (isSessionRecap) {
+            const recapBody = msg.content.slice(recapPrefix.length).trim()
+            const recapLabel =
+              recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
+            return (
+              <article key={msg.id} className="chat-session-recap">
                 <span
-                  className={`chat-room-shift__pill ${msg.roomId === activeRoomId ? 'chat-room-shift__pill--active' : ''}`}
+                  className="chat-session-recap__icon material-symbols-outlined"
+                  aria-hidden="true"
                 >
-                  {msg.roomId === activeRoomId ? 'Live in ' : 'Remembered from '}
-                  {roomName}
+                  menu_book
                 </span>
-              </div>
-            ) : null}
+                <div className="chat-session-recap__body">
+                  <span className="chat-session-recap__label">{recapLabel}</span>
+                  <p className="chat-session-recap__text">{recapBody}</p>
+                </div>
+              </article>
+            )
+          }
 
-            <article
-              className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
-            >
-              <div className="chat-message__row">
-                {!isSelf && !isGroupedWithPrevious ? (
+          if (isSessionBookend || isSessionNote) {
+            return (
+              <article
+                key={msg.id}
+                className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${isIntermissionBookend ? 'chat-session-marker--intermission' : ''}`}
+              >
+                <span className="chat-session-marker__text">{msg.content}</span>
+              </article>
+            )
+          }
+
+          return (
+            <Fragment key={msg.id}>
+              {showDaySeparator ? (
+                <div
+                  className="chat-day-separator"
+                  aria-label={`Messages from ${formatDayLabel(msg.createdAt)}`}
+                >
+                  <span className="chat-day-separator__line" aria-hidden="true" />
+                  <span className="chat-day-separator__pill">{formatDayLabel(msg.createdAt)}</span>
+                  <span className="chat-day-separator__line" aria-hidden="true" />
+                </div>
+              ) : null}
+
+              {showRoomShift ? (
+                <div className="chat-room-shift" aria-label={`Room shift to ${roomName}`}>
+                  <span className="chat-room-shift__line" aria-hidden="true" />
                   <span
-                    className={`chat-message__avatar ${isSystem ? 'chat-message__avatar--system' : ''}`}
-                    aria-hidden="true"
+                    className={`chat-room-shift__pill ${msg.roomId === activeRoomId ? 'chat-room-shift__pill--active' : ''}`}
                   >
-                    {authorAvatarUrl ? (
-                      <img src={authorAvatarUrl} alt="" />
-                    ) : (
-                      getAuthorInitial(authorName)
-                    )}
+                    {msg.roomId === activeRoomId ? 'Live in ' : 'Remembered from '}
+                    {roomName}
                   </span>
-                ) : (
-                  <span
-                    className="chat-message__avatar chat-message__avatar--spacer"
-                    aria-hidden="true"
-                  />
-                )}
+                </div>
+              ) : null}
 
-                <div className="chat-message__content">
-                  {!isGroupedWithPrevious ? (
-                    <div className="chat-message__meta">
-                      <span className="chat-message__author">{authorName}</span>
-                      {whisperAudience ? (
-                        <span className="chat-message__whisper-pill">To {whisperAudience}</span>
-                      ) : null}
+              <article
+                className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
+              >
+                <div className="chat-message__row">
+                  {!isSelf && !isGroupedWithPrevious ? (
+                    <span
+                      className={`chat-message__avatar ${isSystem ? 'chat-message__avatar--system' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {authorAvatarUrl ? (
+                        <img src={authorAvatarUrl} alt="" />
+                      ) : (
+                        getAuthorInitial(authorName)
+                      )}
+                    </span>
+                  ) : (
+                    <span
+                      className="chat-message__avatar chat-message__avatar--spacer"
+                      aria-hidden="true"
+                    />
+                  )}
+
+                  <div className="chat-message__content">
+                    {!isGroupedWithPrevious ? (
+                      <div className="chat-message__meta">
+                        <span className="chat-message__author">{authorName}</span>
+                        {whisperAudience ? (
+                          <span className="chat-message__whisper-pill">To {whisperAudience}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div
+                      className={`chat-message__bubble chat-message__bubble--${variant} ${isSelf ? 'chat-message__bubble--self' : ''}`}
+                    >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`chat-message__type-icon chat-message__type-icon--${variant} material-symbols-outlined`}
+                            aria-hidden="true"
+                          >
+                            {TYPE_ICON_BY_VARIANT[variant]}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{TYPE_LABEL_BY_VARIANT[variant]}</TooltipContent>
+                      </Tooltip>
+                      <span className="chat-message__bubble-text">{msg.content}</span>
                     </div>
-                  ) : null}
 
-                  <div
-                    className={`chat-message__bubble chat-message__bubble--${variant} ${isSelf ? 'chat-message__bubble--self' : ''}`}
-                  >
-                    <span className="chat-message__bubble-text">{msg.content}</span>
-                  </div>
-
-                  <div className="chat-message__timestamp">
-                    {msg.editedAt ? 'edited · ' : ''}
-                    {formatRelativeTime(msg.createdAt)}
+                    <div className="chat-message__timestamp">
+                      {msg.editedAt ? 'edited · ' : ''}
+                      {formatRelativeTime(msg.createdAt)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          </Fragment>
-        )
-      })}
-    </div>
+              </article>
+            </Fragment>
+          )
+        })}
+      </div>
+    </TooltipProvider>
   )
 }

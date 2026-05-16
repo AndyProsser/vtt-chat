@@ -17,6 +17,7 @@ import {
   broadcastSessionStatsSnapshot,
   getSessionStatsSnapshot,
 } from '@/services/session/stats.service'
+import { ensureMockSimulationRunning } from '@/services/dev-mock/simulation.service'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
@@ -69,6 +70,8 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     if (!allowed) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
     }
+
+    ensureMockSimulationRunning(sessionId as UUID)
 
     const presence = await getSessionPresence(sessionId as UUID)
     const sessionUsers = await getSessionUsers(sessionId as UUID)

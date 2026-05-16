@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
@@ -57,9 +57,66 @@ export function GroupsHeaderActions({
   onEndWhisper,
 }: GroupsHeaderActionsProps) {
   void onDevReset
+  const MOCK_PANEL_ANIMATION_MS = 160
   const [showMockPanel, setShowMockPanel] = useState(false)
+  const [renderMockPanel, setRenderMockPanel] = useState(false)
+  const [mockPanelOpen, setMockPanelOpen] = useState(false)
   const mockPanelRef = useRef<HTMLDivElement | null>(null)
   const takeoverActive = Boolean(activeTakeoverUserId)
+
+  useEffect(() => {
+    if (showMockPanel) {
+      setRenderMockPanel(true)
+      const rafId = window.requestAnimationFrame(() => {
+        setMockPanelOpen(true)
+      })
+
+      return () => {
+        window.cancelAnimationFrame(rafId)
+      }
+    }
+
+    setMockPanelOpen(false)
+    const timeoutId = window.setTimeout(() => {
+      setRenderMockPanel(false)
+    }, MOCK_PANEL_ANIMATION_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [showMockPanel])
+
+  useEffect(() => {
+    if (!showMockPanel) {
+      return
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      if (mockPanelRef.current && !mockPanelRef.current.contains(target)) {
+        setShowMockPanel(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowMockPanel(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showMockPanel])
+
   return (
     <div className="room-selector-header__meta room-selector-header__meta--actions">
       {headerModeCopy ? <span>{headerModeCopy}</span> : null}
@@ -117,15 +174,17 @@ export function GroupsHeaderActions({
                 : 'DEV: Configure mock testing'}
             </TooltipContent>
           </Tooltip>
-          {showMockPanel && apiUrl && token && sessionId ? (
-            <MockTestingPanel
-              apiUrl={apiUrl}
-              token={token}
-              sessionId={sessionId}
-              activeTakeoverUserId={activeTakeoverUserId}
-              onReturnToUser={onReturnToUser}
-              onClose={() => setShowMockPanel(false)}
-            />
+          {renderMockPanel && apiUrl && token && sessionId ? (
+            <div className={`mock-testing-panel-shell ${mockPanelOpen ? 'is-open' : 'is-closing'}`}>
+              <MockTestingPanel
+                apiUrl={apiUrl}
+                token={token}
+                sessionId={sessionId}
+                activeTakeoverUserId={activeTakeoverUserId}
+                onReturnToUser={onReturnToUser}
+                onClose={() => setShowMockPanel(false)}
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -9,13 +9,14 @@ import {
 } from '@/constants/dev-mock.constants'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
-import { MessageType, PresenceState, Role, RoomType } from '@shared'
+import { MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import type { StoredMessage } from '@/types/chat.types'
 import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
 import { removeDMOverrideState, setUserMuteState } from '@/services/audio/effects.service'
 import { AUDIO_DM_OVERRIDE_TYPES, AUDIO_EVENT_TYPES } from '@/constants/audio.constants'
+import { logger } from '@/utils/logger'
 
 type DisconnectRealismProfile = 'SHORT_BLIPS' | 'BALANCED' | 'NETWORK_CHURN'
 
@@ -583,19 +584,20 @@ function pickWhisperRecipient(
   author: MockPresenceUser,
   users: MockPresenceUser[]
 ): MockPresenceUser | undefined {
-  const onlineOthers = users.filter(
-    (entry) => entry.userId !== author.userId && entry.state !== PresenceState.OFFLINE
+  const sameRoom = users.filter(
+    (entry) =>
+      entry.userId !== author.userId &&
+      entry.state !== PresenceState.OFFLINE &&
+      entry.primaryRoomId &&
+      entry.primaryRoomId === author.primaryRoomId
   )
-  if (onlineOthers.length === 0) {
+
+  if (sameRoom.length === 0) {
     return undefined
   }
 
-  const sameRoom = onlineOthers.filter(
-    (entry) => entry.primaryRoomId && entry.primaryRoomId === author.primaryRoomId
-  )
-  const candidates = sameRoom.length > 0 ? sameRoom : onlineOthers
-  const index = Math.floor(Math.random() * candidates.length)
-  return candidates[index]
+  const index = Math.floor(Math.random() * sameRoom.length)
+  return sameRoom[index]
 }
 
 async function emitPersistedChatMessage(params: {
@@ -611,15 +613,32 @@ async function emitPersistedChatMessage(params: {
   }
 
   const room = params.roomsById.get(params.author.primaryRoomId)
-  let type = pickChatType(room)
+  const greenRoom = [...params.roomsById.values()].find(
+    (candidate) => candidate.type === RoomType.GROUP && isGreenRoomName(candidate.name)
+  )
+
+  const isActiveSession = session.state === SessionState.ACTIVE
+  let messageRoomId = params.author.primaryRoomId
+  let type: MessageType
   let recipientId: UUID | undefined
 
-  if (type === MessageType.WHISPER) {
-    const recipient = pickWhisperRecipient(params.author, params.users)
-    if (!recipient) {
-      type = MessageType.OOC
-    } else {
-      recipientId = recipient.userId
+  if (!isActiveSession) {
+    // Before/after active play, mock chat is constrained to Greenroom OOC only.
+    if (!greenRoom || params.author.primaryRoomId !== greenRoom.id) {
+      return
+    }
+    messageRoomId = greenRoom.id
+    type = MessageType.OOC
+  } else {
+    type = pickChatType(room)
+
+    if (type === MessageType.WHISPER) {
+      const recipient = pickWhisperRecipient(params.author, params.users)
+      if (!recipient) {
+        type = MessageType.OOC
+      } else {
+        recipientId = recipient.userId
+      }
     }
   }
 
@@ -630,7 +649,7 @@ async function emitPersistedChatMessage(params: {
 
   const stored = await sendMessage({
     sessionId: params.sessionId,
-    roomId: params.author.primaryRoomId,
+    roomId: messageRoomId,
     authorId: params.author.userId,
     authorUsername: params.author.username,
     dmId: session.dmId,
@@ -797,147 +816,155 @@ async function runTick(sessionId: UUID): Promise<void> {
     return
   }
 
-  pruneMessageWindow(runtime, Date.now())
+  try {
+    pruneMessageWindow(runtime, Date.now())
 
-  const now = Date.now()
-  const users = await listSessionMockUsers(sessionId)
-  const usersById = new Map(users.map((user) => [user.userId, user]))
-  const rooms = await getRooms(sessionId)
-  const roomsById = new Map(
-    rooms.map((room) => [room.id, { id: room.id, type: room.type, name: room.name }])
-  )
-
-  await maybeEmitMockSelfUnmute(sessionId, runtime, users)
-
-  for (const [userId, disconnected] of runtime.disconnectedByUserId.entries()) {
-    if (disconnected.reconnectAt <= now) {
-      await reconnectMockUser({
-        sessionId,
-        userId,
-        runtime,
-      })
-    }
-  }
-
-  if (!runtime.config.disconnectSimulatorEnabled) {
-    for (const userId of [...runtime.disconnectedByUserId.keys()]) {
-      await reconnectMockUser({
-        sessionId,
-        userId,
-        runtime,
-      })
-    }
-  } else {
-    const connectedUsers = users.filter(
-      (user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId)
+    const now = Date.now()
+    const users = await listSessionMockUsers(sessionId)
+    const usersById = new Map(users.map((user) => [user.userId, user]))
+    const rooms = await getRooms(sessionId)
+    const roomsById = new Map(
+      rooms.map((room) => [room.id, { id: room.id, type: room.type, name: room.name }])
     )
-    if (connectedUsers.length > 0 && Math.random() < runtime.config.disconnectChancePerTick) {
-      const [target] = pickRandomUsers(
-        connectedUsers.map((user) => user.userId),
-        1
+
+    await maybeEmitMockSelfUnmute(sessionId, runtime, users)
+
+    for (const [userId, disconnected] of runtime.disconnectedByUserId.entries()) {
+      if (disconnected.reconnectAt <= now) {
+        await reconnectMockUser({
+          sessionId,
+          userId,
+          runtime,
+        })
+      }
+    }
+
+    if (!runtime.config.disconnectSimulatorEnabled) {
+      for (const userId of [...runtime.disconnectedByUserId.keys()]) {
+        await reconnectMockUser({
+          sessionId,
+          userId,
+          runtime,
+        })
+      }
+    } else {
+      const connectedUsers = users.filter(
+        (user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId)
       )
-      if (target) {
-        const user = usersById.get(target)
-        if (user) {
-          await disconnectMockUser({
-            sessionId,
-            runtime,
-            user,
-            now,
-          })
+      if (connectedUsers.length > 0 && Math.random() < runtime.config.disconnectChancePerTick) {
+        const [target] = pickRandomUsers(
+          connectedUsers.map((user) => user.userId),
+          1
+        )
+        if (target) {
+          const user = usersById.get(target)
+          if (user) {
+            await disconnectMockUser({
+              sessionId,
+              runtime,
+              user,
+              now,
+            })
+          }
         }
       }
     }
-  }
 
-  const speakingEligibleUsers = users.filter(
-    (user) => user.primaryRoomId && user.state !== PresenceState.OFFLINE
-  )
-
-  if (!runtime.config.speakingSimulatorEnabled) {
-    await clearSpeaking(sessionId, runtime, users)
-  } else {
-    await clearSpeaking(sessionId, runtime, users)
-
-    const shouldSpeakThisTick = Math.random() > 0.35
-    const desiredCount = shouldSpeakThisTick ? Math.floor(Math.random() * 3) + 1 : 0
-    const nextSpeakingIds = pickRandomUsers(
-      speakingEligibleUsers.map((user) => user.userId),
-      desiredCount
+    const speakingEligibleUsers = users.filter(
+      (user) => user.primaryRoomId && user.state !== PresenceState.OFFLINE
     )
 
-    for (const userId of nextSpeakingIds) {
-      const user = usersById.get(userId)
-      if (!user) {
-        continue
-      }
-      runtime.speakingNow.add(userId)
-      await broadcastPresenceState(sessionId, user, PresenceState.SPEAKING)
-    }
-  }
+    if (!runtime.config.speakingSimulatorEnabled) {
+      await clearSpeaking(sessionId, runtime, users)
+    } else {
+      await clearSpeaking(sessionId, runtime, users)
 
-  if (!runtime.config.chatSimulatorEnabled) {
-    await clearTyping(sessionId, runtime, users)
-  } else {
-    const onlineUsers = users.filter(
-      (user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId)
-    )
+      const shouldSpeakThisTick = Math.random() > 0.35
+      const desiredCount = shouldSpeakThisTick ? Math.floor(Math.random() * 3) + 1 : 0
+      const nextSpeakingIds = pickRandomUsers(
+        speakingEligibleUsers.map((user) => user.userId),
+        desiredCount
+      )
 
-    if (runtime.typingNow.size > 0 && Math.random() > 0.4) {
-      const currentlyTyping = [...runtime.typingNow]
-      const toStop = pickRandomUsers(currentlyTyping, 1)
-      for (const userId of toStop) {
+      for (const userId of nextSpeakingIds) {
         const user = usersById.get(userId)
         if (!user) {
-          runtime.typingNow.delete(userId)
           continue
         }
-        runtime.typingNow.delete(userId)
-        broadcastTypingStopped(sessionId, user)
+        runtime.speakingNow.add(userId)
+        await broadcastPresenceState(sessionId, user, PresenceState.SPEAKING)
+      }
+    }
 
-        if (Math.random() > 0.28) {
+    if (!runtime.config.chatSimulatorEnabled) {
+      await clearTyping(sessionId, runtime, users)
+    } else {
+      const onlineUsers = users.filter(
+        (user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId)
+      )
+
+      if (runtime.typingNow.size > 0 && Math.random() > 0.4) {
+        const currentlyTyping = [...runtime.typingNow]
+        const toStop = pickRandomUsers(currentlyTyping, 1)
+        for (const userId of toStop) {
+          const user = usersById.get(userId)
+          if (!user) {
+            runtime.typingNow.delete(userId)
+            continue
+          }
+          runtime.typingNow.delete(userId)
+          broadcastTypingStopped(sessionId, user)
+
+          if (Math.random() > 0.28) {
+            await emitPersistedChatMessage({
+              sessionId,
+              runtime,
+              author: user,
+              users,
+              roomsById,
+            })
+          }
+        }
+      }
+
+      if (onlineUsers.length > 0 && Math.random() > 0.45) {
+        const available = onlineUsers.filter((user) => !runtime.typingNow.has(user.userId))
+        const [toStart] = pickRandomUsers(
+          available.map((user) => user.userId),
+          1
+        )
+        if (toStart) {
+          const user = usersById.get(toStart)
+          if (user) {
+            runtime.typingNow.add(toStart)
+            broadcastTypingStarted(sessionId, user)
+          }
+        }
+      }
+
+      if (onlineUsers.length > 0 && runtime.typingNow.size === 0 && Math.random() > 0.76) {
+        const [authorId] = pickRandomUsers(
+          onlineUsers.map((user) => user.userId),
+          1
+        )
+        const author = authorId ? usersById.get(authorId) : undefined
+        if (author) {
           await emitPersistedChatMessage({
             sessionId,
             runtime,
-            author: user,
+            author,
             users,
             roomsById,
           })
         }
       }
     }
-
-    if (onlineUsers.length > 0 && Math.random() > 0.45) {
-      const available = onlineUsers.filter((user) => !runtime.typingNow.has(user.userId))
-      const [toStart] = pickRandomUsers(
-        available.map((user) => user.userId),
-        1
-      )
-      if (toStart) {
-        const user = usersById.get(toStart)
-        if (user) {
-          runtime.typingNow.add(toStart)
-          broadcastTypingStarted(sessionId, user)
-        }
-      }
-    }
-
-    if (onlineUsers.length > 0 && runtime.typingNow.size === 0 && Math.random() > 0.76) {
-      const [authorId] = pickRandomUsers(
-        onlineUsers.map((user) => user.userId),
-        1
-      )
-      const author = authorId ? usersById.get(authorId) : undefined
-      if (author) {
-        await emitPersistedChatMessage({
-          sessionId,
-          runtime,
-          author,
-          users,
-          roomsById,
-        })
-      }
-    }
+  } catch (error) {
+    logger.error(
+      'dev-mock-simulation',
+      `Mock simulation tick failed for session ${sessionId}`,
+      error
+    )
   }
 }
 
@@ -972,6 +999,16 @@ function startRunner(sessionId: UUID): void {
   void runTick(sessionId)
 }
 
+export function ensureMockSimulationRunning(sessionId: UUID): boolean {
+  const runtime = getOrCreateRuntime(sessionId)
+
+  if (!runtime.isRunning && shouldRun(runtime.config)) {
+    startRunner(sessionId)
+  }
+
+  return runtime.isRunning
+}
+
 async function stopRunner(sessionId: UUID): Promise<void> {
   const runtime = runtimeBySession.get(sessionId)
   if (!runtime) {
@@ -1000,20 +1037,22 @@ export async function getMockSimulationStatus(sessionId: UUID): Promise<{
     WHISPER: number
   }
 }> {
+  ensureMockSimulationRunning(sessionId)
   const runtime = getOrCreateRuntime(sessionId)
-
-  if (!runtime.isRunning && shouldRun(runtime.config)) {
-    startRunner(sessionId)
-  }
 
   const users = await listSessionMockUsers(sessionId)
   pruneMessageWindow(runtime, Date.now())
+  const activeMockUserIds = new Set(
+    users
+      .filter((user) => user.state !== PresenceState.OFFLINE && Boolean(user.primaryRoomId))
+      .map((user) => user.userId)
+  )
 
   return {
     sessionId,
     config: runtime.config,
     isRunning: runtime.isRunning,
-    activeMockCount: users.length,
+    activeMockCount: activeMockUserIds.size,
     speakingNow: [...runtime.speakingNow],
     uptime: runtime.isRunning ? Math.max(0, Date.now() - runtime.startedAt) : 0,
     messagesSentLastMinuteByType: {
@@ -1077,4 +1116,16 @@ export function getMockDisconnectRealismProfiles(): Record<
   DisconnectRealismPreset
 > {
   return DISCONNECT_REALISM_PRESETS
+}
+
+export const __testOnly = {
+  emitPersistedChatMessage,
+  resetRuntime(sessionId?: UUID) {
+    if (sessionId) {
+      runtimeBySession.delete(sessionId)
+      return
+    }
+
+    runtimeBySession.clear()
+  },
 }

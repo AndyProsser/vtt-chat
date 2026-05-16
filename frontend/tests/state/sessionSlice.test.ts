@@ -182,6 +182,41 @@ describe('sessionSlice', () => {
       expect(session!.state).toBe('ENDED')
       expect(session!.endedAt).toBe(NOW)
     })
+
+    it('does not reset startedAt when resuming from PAUSED to ACTIVE', () => {
+      useStore.getState().createSession({
+        ...SAMPLE_SESSION,
+        state: 'PAUSED' as any,
+        startedAt: NOW - 5_000,
+      })
+
+      const event = makeEvent('SESSION:STATE_CHANGED', SESSION_ID_1, { state: 'ACTIVE' })
+      useStore.getState().handleSessionStateChanged(event)
+
+      const session = useStore.getState().sessions[SESSION_ID_1]
+      expect(session!.state).toBe('ACTIVE')
+      expect(session!.startedAt).toBe(NOW - 5_000)
+    })
+
+    it('resets pause stats on a fresh ACTIVE start from IDLE', () => {
+      useStore.getState().createSession(SAMPLE_SESSION)
+      useStore.getState().hydrateSessionPauseStats({
+        ...SAMPLE_SESSION,
+        cumulativePauseMs: 12_000,
+        pauseCount: 2,
+        pauseStartedAt: NOW - 3_000,
+      })
+
+      const event = makeEvent('SESSION:STATE_CHANGED', SESSION_ID_1, { state: 'ACTIVE' })
+      useStore.getState().handleSessionStateChanged(event)
+
+      const stats = useStore.getState().pauseStats[SESSION_ID_1]
+      expect(stats).toEqual({
+        cumulativePauseMs: 0,
+        pauseCount: 0,
+        pauseStartedAt: undefined,
+      })
+    })
   })
 
   describe('handleSessionCooldownExtended', () => {

@@ -41,6 +41,7 @@ import {
   startMockTakeover,
   stopMockTakeover,
 } from '@/services/dev-mock/takeover.service'
+import { logger } from '@/utils/logger'
 import type { WebSocketManager } from '@/ws'
 import type { UUID } from '@shared'
 
@@ -337,15 +338,28 @@ router.get('/simulation/status/:sessionId', requireAuth, async (req: Request, re
     return res.status(400).json({ error: 'Invalid sessionId' })
   }
 
-  const status = await getMockSimulationStatus(sessionId as UUID)
-  const bounds = getMockSimulationBounds()
-  const disconnectProfiles = getMockDisconnectRealismProfiles()
+  try {
+    const status = await getMockSimulationStatus(sessionId as UUID)
+    const bounds = getMockSimulationBounds()
+    const disconnectProfiles = getMockDisconnectRealismProfiles()
 
-  return res.json({
-    ...status,
-    bounds,
-    disconnectProfiles,
-  })
+    return res.json({
+      ...status,
+      bounds,
+      disconnectProfiles,
+    })
+  } catch (error) {
+    logger.error(
+      'dev-mock-routes',
+      `Failed to fetch simulation status for session ${sessionId}`,
+      error
+    )
+
+    return res.status(503).json({
+      code: ErrorCode.SERVICE_UNAVAILABLE,
+      error: 'Mock simulation status temporarily unavailable',
+    })
+  }
 })
 
 router.post('/simulation/settings', requireAuth, async (req: Request, res: Response) => {

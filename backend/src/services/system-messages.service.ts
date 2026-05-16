@@ -7,10 +7,11 @@ import { sendMessage } from './chat.service'
 import { getPrismaClient } from '@/infra/db'
 
 /**
- * Prefix used to identify session recap system messages in the chat timeline.
- * Frontend uses this to render a special styled recap card.
+ * Prefixes used to identify recap system messages in the chat timeline.
+ * Frontend uses these to render the recap card with the right context label.
  */
 export const SESSION_RECAP_PREFIX = '[Last Session]'
+export const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 
 /**
  * Sarcastic fallback recaps shown when the DM hasn't written a journal entry.
@@ -76,10 +77,18 @@ export async function emitSessionRecapMessage(params: {
 }): Promise<void> {
   const prisma = getPrismaClient()
 
-  // Step 1: Find the current session's campaignId
+  // Step 1: Find current session + campaign context.
   const currentSession = await prisma.session.findUnique({
     where: { id: params.sessionId },
-    select: { campaignId: true },
+    select: {
+      campaignId: true,
+      campaign: {
+        select: {
+          name: true,
+          description: true,
+        },
+      },
+    },
   })
   if (!currentSession?.campaignId) return
 
@@ -89,7 +98,33 @@ export async function emitSessionRecapMessage(params: {
     orderBy: { endedAt: 'desc' },
     select: { id: true },
   })
-  if (!previousSession) return
+  const campaignName = currentSession.campaign?.name?.trim() || 'This campaign'
+  const campaignDescription = currentSession.campaign?.description?.trim() || ''
+
+  if (!previousSession) {
+    const firstSessionRecapBody = campaignDescription
+      ? `${campaignName}: ${truncateJournalContent(campaignDescription)}`
+      : `${campaignName}: The DM left the campaign description blank, so we'll call this a bold commitment to improvisation.`
+
+    const content = `${CAMPAIGN_BRIEF_PREFIX} ${firstSessionRecapBody}`
+
+    const stored = await sendMessage({
+      sessionId: params.sessionId,
+      roomId: params.mainRoomId,
+      authorId: params.dmId,
+      authorUsername: params.dmUsername,
+      dmId: params.dmId,
+      content,
+      type: MessageType.SYSTEM,
+    })
+
+    if (params.wsManager) {
+      const event = buildSystemChatEvent(stored)
+      params.wsManager.broadcastEventToSession(params.sessionId, event)
+    }
+
+    return
+  }
 
   // Step 3: Find the journal note for that session
   const notes = await prisma.note.findMany({

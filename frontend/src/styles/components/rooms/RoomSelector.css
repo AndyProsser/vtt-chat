@@ -150,21 +150,42 @@
 }
 
 .room-selector-header__mock-wrap {
-  position: relative;
+  position: static;
   display: inline-flex;
 }
 
-.mock-testing-panel {
+.room-selector-header__mock-wrap .mock-testing-panel-shell {
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
   z-index: 100;
+  min-width: 280px;
+  max-width: 320px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  transition:
+    opacity 140ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+
+.room-selector-header__mock-wrap .mock-testing-panel-shell.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.room-selector-header__mock-wrap .mock-testing-panel-shell.is-closing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  pointer-events: none;
+}
+
+.room-selector-header__mock-wrap .mock-testing-panel-shell .mock-testing-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 280px;
-  max-width: 320px;
 }
 
 .room-selector-header__voice {

@@ -125,7 +125,7 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
   })
 
-  it('hides session-start marker and greenroom messages in active main-room mode', async () => {
+  it('shows session-start marker but hides ended/intermission markers and greenroom messages in active main-room mode', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -149,6 +149,36 @@ describe('ChatWindow timeline behavior', () => {
             type: MessageType.OOC,
             isDmOnly: false,
             createdAt: 200,
+          },
+          {
+            id: '23232323-ffff-4fff-8fff-ffffffffffff',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Paused] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 230,
+          },
+          {
+            id: '24242424-eeee-4eee-8eee-eeeeeeeeeeee',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Resumed] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 240,
+          },
+          {
+            id: '25252525-dddd-4ddd-8ddd-dddddddddddd',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Ended] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 250,
           },
           {
             id: '30303030-cccc-4ccc-8ccc-cccccccccccc',
@@ -185,8 +215,37 @@ describe('ChatWindow timeline behavior', () => {
     })
 
     expect(screen.getByText('Main room action')).toBeTruthy()
-    expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
+    expect(screen.getByText('[Session Started] Session Alpha')).toBeTruthy()
     expect(screen.queryByText('Greenroom aside')).toBeNull()
+    expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
+    expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
+    expect(screen.queryByText('[Session Ended] Session Alpha')).toBeNull()
+  })
+
+  it('renders campaign brief recap with explicit first-session label', () => {
+    render(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'abababab-abab-4aba-8aba-abababababab' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Campaign Brief] Shattered Crown: Heroes begin in the old watchtower.',
+              type: MessageType.SYSTEM,
+              isDmOnly: false,
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    expect(screen.getByText('Campaign Brief')).toBeTruthy()
+    expect(screen.getByText('Shattered Crown: Heroes begin in the old watchtower.')).toBeTruthy()
   })
 
   it('renders day separators for editorial timeline grouping', () => {

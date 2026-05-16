@@ -234,14 +234,31 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       }
 
       const existing = state.sessions[event.sessionId]
+      const isFreshSessionStart =
+        payload.state === 'ACTIVE' &&
+        (existing.state === 'IDLE' ||
+          existing.state === 'ENDED' ||
+          existing.state === 'CLEANUP' ||
+          existing.startedAt === undefined)
+
       const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
           ...existing,
           state: payload.state,
-          startedAt: payload.state === 'ACTIVE' ? event.timestamp : existing.startedAt,
-          pausedAt: payload.state === 'PAUSED' ? event.timestamp : existing.pausedAt,
-          endedAt: payload.state === 'ENDED' ? event.timestamp : existing.endedAt,
+          startedAt: isFreshSessionStart ? event.timestamp : existing.startedAt,
+          pausedAt:
+            payload.state === 'PAUSED'
+              ? event.timestamp
+              : payload.state === 'ACTIVE'
+                ? undefined
+                : existing.pausedAt,
+          endedAt:
+            payload.state === 'ENDED'
+              ? event.timestamp
+              : payload.state === 'ACTIVE'
+                ? undefined
+                : existing.endedAt,
         },
       }
       const currentSession = state.currentSessionId
@@ -256,7 +273,13 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       }
       let nextStats = prevStats
 
-      if (payload.state === 'PAUSED') {
+      if (isFreshSessionStart) {
+        nextStats = {
+          cumulativePauseMs: 0,
+          pauseCount: 0,
+          pauseStartedAt: undefined,
+        }
+      } else if (payload.state === 'PAUSED') {
         // Record when this pause began
         nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
       } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {

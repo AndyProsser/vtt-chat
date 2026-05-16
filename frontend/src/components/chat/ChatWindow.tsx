@@ -31,7 +31,19 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const CHAT_HISTORY_PAGE_SIZE = 20
 const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
-const SESSION_STARTED_PREFIXES = ['[Session Started]', 'Session Start:'] as const
+const SUPPRESSED_BOOKEND_PREFIXES = [
+  '[Session Paused]',
+  '[Session Resumed]',
+  '[Session Ended]',
+  'Session End:',
+] as const
+
+function isSuppressedBookend(content: string, type: MessageType): boolean {
+  return (
+    type === MessageType.SYSTEM &&
+    SUPPRESSED_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
+  )
+}
 
 function isIntermissionBookend(content: string, type: MessageType): boolean {
   return (
@@ -339,11 +351,7 @@ export function ChatWindow({
             return false
           }
 
-          const isSessionStartedMarker =
-            message.type === MessageType.SYSTEM &&
-            SESSION_STARTED_PREFIXES.some((prefix) => message.content.startsWith(prefix))
-
-          return !isSessionStartedMarker
+          return !isSuppressedBookend(message.content, message.type)
         }
 
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
@@ -352,6 +360,10 @@ export function ChatWindow({
           (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
 
         if (!isGreenroomMessage) {
+          return false
+        }
+
+        if (isSuppressedBookend(message.content, message.type)) {
           return false
         }
 
