@@ -17,7 +17,7 @@ VTT-Chat live chat must feel spatial in the moment and persistent in memory.
 - The DM sees all live-session chat.
 - Spectators are session-scoped only and have no campaign-history access.
 - Whisper Bubble runtime content is off-the-record by default.
-- Greenroom chat is always ephemeral.
+- Campaign Greenroom chat is campaign-scoped and persists across all sessions for that campaign.
 
 This is the governing rule for the live timeline:
 
@@ -27,9 +27,9 @@ That means players do not lose earlier Group A messages when they move to Group 
 
 Session reset rule:
 
-- A newly started session always begins with a clean live chat timeline.
-- No prior session chat messages are carried into the new session timeline.
-- No prior-session Greenroom chat is carried into the new session timeline.
+- A newly started session begins with a clean session-scoped chat timeline (no prior session chat).
+- Campaign Greenroom chat persists across session boundaries and is always visible as a separate context.
+- Players do not carry session chat from one session to the next, but Greenroom chat context remains shared at the campaign level.
 
 ---
 
@@ -54,28 +54,35 @@ Context is not encoded as a separate message type. Context is carried by room me
 
 ### 2.2 Special contexts
 
-- Greenroom:
+- Greenroom (campaign-scoped):
   - OOC only.
-  - Always ephemeral.
-  - Greenroom views render Greenroom-room chat plus `[Session Started]` and `[Session Ended]` bookends for timeline anchoring.
-  - Greenroom views suppress `[Session Paused]` and `[Session Resumed]` markers.
-  - Never promoted to campaign history automatically.
-  - On new-session start, Greenroom chat context is reset and starts empty.
+  - Campaign-scoped and persistent across all sessions for the campaign.
+  - Greenroom views render campaign Greenroom chat plus `[Session Started]` and `[Session Ended]` bookends for timeline anchoring.
+  - Greenroom views suppress `[Session Paused]` and `[Session Resumed]` markers (those remain in session-scoped history only).
+  - Bookends (`[Session Started]`, `[Session Ended]`) are inserted into Greenroom to mark session boundaries; players see when sessions occurred in the campaign timeline.
+  - Greenroom chat is always durable and persisted to campaign history (not ephemeral).
+  - Greenroom is always separate from session-scoped chat timelines; players never see session messages mixed with Greenroom in the Greenroom context.
+- Session-scoped chat (active/paused/cooldown runtime):
+  - IC and OOC messages sent during a session are scoped to that session only.
+  - Session-scoped messages are not visible in the campaign Greenroom context.
+  - Session chat includes a `[Session Started]` bookend when the session begins and a `[Session Ended]` bookend when the session ends (via COOLDOWN → ENDED transition).
+  - All session-scoped messages are archived after the session ENDED (as part of campaign history), unless marked ephemeral by policy.
 - PAUSED runtime:
-  - Default: ephemeral-only runtime chat while paused.
+  - Default: ephemeral-only runtime chat while paused (cleared during cleanup).
   - Campaign setting may enable persisted paused-chat runtime behavior.
+- Cooldown runtime (during COOLDOWN state):
+  - OOC-only chats.
+  - Default: ephemeral-only runtime chat (cleared during cleanup).
+  - Campaign setting may enable persisted cooldown-chat runtime behavior.
+  - Spectators can chat during COOLDOWN; all spectator chat is ephemeral by default (not persisted).
 - Whisper Bubble:
-  - Off-the-record by default.
+  - Off-the-record by default (ephemeral, cleared during cleanup).
   - Visibility restricted to bubble occupants and DM.
   - Persistence policy is campaign-configurable, but the default contract is non-persistent.
   - Composer mode inside Whisper Bubble is whisper-only:
     - IC/OOC/DM-mode toggles are disabled.
-    - all sent messages are treated as whisper-context messages.
-    - targets are auto-resolved to current bubble participant set.
-- ENDED cooldown:
-  - Still live-session runtime.
-  - Spectators may chat only during the cooldown window.
-  - Cooldown runtime content is not part of this implementation pass's archive contract.
+    - All sent messages are treated as whisper-context messages.
+    - Targets are auto-resolved to current bubble participant set.
 
 ---
 
@@ -96,7 +103,7 @@ Without send-time audience capture, the system cannot distinguish:
 
 ### 3.2 Send-time audience rules
 
-- `IC` and local `OOC`:
+- `IC` and local `OOC` (session-scoped):
   - visible to current room occupants at send time
   - plus DM
 - `WHISPER`:
@@ -106,8 +113,9 @@ Without send-time audience capture, the system cannot distinguish:
   - plus DM if not already included
 - global `SYSTEM`:
   - visible to all session members
-- Greenroom OOC:
-  - visible to Greenroom occupants at send time
+- Campaign Greenroom OOC:
+  - visible to all campaign members (campaign-scoped, not session-scoped)
+  - persists at campaign level across session boundaries
 - Whisper Bubble messages:
   - visible to bubble occupants at send time (auto-targeted multi-recipient whisper semantics)
   - plus DM

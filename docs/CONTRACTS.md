@@ -136,37 +136,55 @@ SessionState.CLEANUP // Post-session terminal archive state; no users connected;
 GREENROOM is a calculated runtime state, not an enum member:
 
 - `isGreenroomSessionState(state) := state !== SessionState.ACTIVE && state !== SessionState.PAUSED`
-- This evaluates true for `IDLE`, `ENDED`, and `CLEANUP`.
+- This evaluates true for `IDLE`, `COOLDOWN`, `ENDED`, and `CLEANUP`.
 
 **State transitions and authority:**
 
 - `IDLE` → `ACTIVE`: DM explicit action (start session) for a never-started draft session only
 - `ACTIVE` → `PAUSED`: DM explicit action OR automatic on DM disconnect
-- `ACTIVE` → `ENDED`: DM explicit action (stop session)
+- `ACTIVE` → `COOLDOWN`: DM explicit action (end session)
 - `PAUSED` → `ACTIVE`: DM explicit action (resume session)
-- `PAUSED` → `ENDED`: DM explicit action (stop session)
-- `ENDED` → `CLEANUP`: Automatic when all users disconnect (background scheduled job detects and transitions)
+- `PAUSED` → `COOLDOWN`: DM explicit action (end session from paused state)
+- `COOLDOWN` → `ENDED`: Automatic when cooldown timer expires (default 60 seconds, configurable per campaign, range 1-60 minutes)
+- `ENDED` → `CLEANUP`: Automatic when all players and DM disconnect (background scheduled job detects and transitions)
 
 Archive lock rules:
 
 - A session that has ever transitioned to `ENDED` is archive-locked and can never be restarted.
 - Starting after an ended session must create a new session record.
 - Only a session that is currently `IDLE` and has never started is eligible to be activated.
+- Once a session reaches `ENDED`, it remains in that state until all participants disconnect, triggering automatic transition to `CLEANUP`.
 
 **Multi-session campaigns:**
 
-- Every new session starts with a clean live chat surface.
-- On `IDLE` → `ACTIVE`: do not carry prior session chat or prior Greenroom chat into the new session timeline.
-- GREENROOM runtime context is session-scoped for chat visibility and starts empty for each new session.
-- On final session `ENDED` + all users disconnect: ALL previously ENDED sessions (from same campaign) transition to `CLEANUP` simultaneously
-- Cleanup job runs once per campaign, purges greenroom for all transitioned sessions, and leaves them archived.
+- Every new session starts with a clean session-scoped chat timeline (no prior session chat).
+- Campaign Greenroom chat persists across session boundaries at the campaign level and is always separate from session-scoped chat.
+- On `IDLE` → `ACTIVE`: session-scoped chat starts clean, but campaign Greenroom remains visible as a persistent context.
+- New IDLE sessions are created automatically when the first player reconnects to a campaign with an ENDED session in CLEANUP state.
+- Cleanup job runs once per campaign after all users disconnect from an ENDED session, purges ephemeral session-scoped data (Whisper, Paused runtime, Cooldown runtime), and archives the session record.
 - Chat hydration supports lazy paging for late-join and long timelines: `limit` (default `20`, max `100`) and `before` (unix ms cursor). Response includes `pagination.hasMore` and `pagination.nextBefore` so clients can continuously load older messages while scrolling.
 
-**Post-session cooldown:**
+**Cooldown state:**
 
-- If `postSessionChatEnabled` (campaign setting, default true): spectators remain connected until cooldown expires (default 300000 ms / 5 minutes)
-- During cooldown, players/DM/spectators can chat/speak; interaction never recorded
-- After cooldown expiry or DM early-end: all users disconnected; background job transitions `ENDED` → `CLEANUP`
+- Enters automatically when DM ends the session (ACTIVE or PAUSED → COOLDOWN).
+- All players remain in the MAIN room.
+- A `[Session Ended]` bookend is inserted into session chat.
+- OOC-only chat is allowed; IC chat is disabled.
+- Players can view full session chat history.
+- Spectators are elevated to post-session interaction mode: they can chat and speak with the table.
+- All cooldown chat is ephemeral by default (cleared during cleanup), but DM can toggle persistence per campaign.
+- DM audio effects are frozen; no new effects, conditions, or environment changes allowed.
+- DM cannot create, delete, or move groups during cooldown.
+- Default cooldown duration is 1 minute; configurable per campaign in range 1-60 minutes.
+- DM can extend cooldown (up to 3 times) to add more time, or dismiss early.
+- When cooldown timer expires, session auto-transitions to ENDED.
+
+**Post-session:**
+
+- ENDED is the archive-locked terminal state for that session record (session can never be restarted).
+- The session remains in ENDED until all players and DM disconnect.
+- Once all disconnect, the session transitions to CLEANUP (automatic, triggered by background job).
+- The next time a player reconnects to the campaign, a new IDLE session is created.
 
 ### Other Enums
 

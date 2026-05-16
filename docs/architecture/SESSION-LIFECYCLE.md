@@ -45,7 +45,7 @@ All participants can see the current session state, regardless of role.
 
 ## 2. Session States
 
-The session state machine consists of four primary states.
+The session state machine consists of six states.
 
 ```mermaid
 stateDiagram-v2
@@ -54,11 +54,12 @@ stateDiagram-v2
     idle --> active: session.start
     active --> paused: session.pause
     paused --> active: session.resume
-    active --> ended: session.end
-    paused --> ended: session.end
+    active --> cooldown: session.end
+    paused --> cooldown: session.end
 
-  ended --> cleanup: cooldown expired + cleanup
-  cleanup --> [*]
+    cooldown --> ended: cooldown expires
+    ended --> cleanup: all players + DM disconnect
+    cleanup --> [*]
 ```
 
 ### **2.1 inactive (idle in current codebase)**
@@ -81,10 +82,11 @@ The table is in greenroom mode and no live session is running.
 
 A session is currently running.
 
-- On `INACTIVE -> ACTIVE`, the active session timer resets to `00:00`.
-- On `INACTIVE -> ACTIVE` for a new session, chat starts clean: no prior session chat and no prior Greenroom chat are carried into the new live session timeline.
+- On `IDLE -> ACTIVE`, the active session timer resets to `00:00`.
 - Active elapsed time is backend-authoritative and shared across all clients.
 - Active elapsed time must survive disconnects and page refreshes.
+- Session chat is scoped to the session and includes only messages from this session.
+- Campaign Greenroom chat remains visible as a separate, persistent context (campaign-scoped, survives session boundaries).
 - Presence indicators are active.
 - Audio effects may be synchronized.
 - Session‑specific UI is enabled.
@@ -102,51 +104,63 @@ The session is temporarily halted.
 - Presence indicators remain active.
 - UI displays a paused banner.
 - Players cannot trigger session‑critical actions.
-- Pause runtime content defaults to off-the-record (no persisted pause chat/voice transcript).
-- DM can toggle pause-runtime chat persistence at campaign level.
+- Pause runtime content defaults to off-the-record (ephemeral; cleared during cleanup).
+- DM can toggle pause-runtime chat persistence at campaign level:
   - Default: ephemeral-only runtime content during `PAUSED`.
   - Optional override: persist pause-runtime chat to session history.
   - Voice/transcript recording rules remain governed by recording policy.
-
-The pause reason is **DM‑private**.
-
----
-
-### **2.4 ended**
-
-The live session has concluded and cooldown is active.
-
-- Topbar timer becomes a cooldown countdown (`remainingCooldown -> 00:00`).
-- Default cooldown is 1 minute; configurable range is 1 to 60 minutes.
-- Timer popper remains available and shows details from the just-closed session.
-- DM can extend cooldown (adds one more configured cooldown block) or cancel it early.
-- Cooldown extension limits:
-  - maximum of 3 extensions per ended session.
-  - each extension adds exactly one configured cooldown block.
-  - no absolute max cooldown duration cap beyond the extension-count limit.
-- If DM disconnects during cooldown, connected players gain extend/cancel control.
-- While cooldown is active, connected spectators are temporarily elevated into post-session interaction mode:
-  - they can speak/chat with the table,
-  - they are rendered in the greenroom participant list with a `SPECTATOR` pill,
-  - DM mute/unmute controls apply to them in that window.
-- When cooldown reaches zero, spectator post-session interaction mode ends:
-  - spectators are hidden from the greenroom participant list,
-  - spectator voice input is disabled for post-session interaction,
-  - the timer state label remains `ENDED` and the ended-state timer continues counting from cooldown expiry.
-- DM cannot start a new session while cooldown is active.
-- New session start is unblocked only after cooldown reaches zero or is explicitly ended early.
-- Once a session reaches `ENDED`, it is archive-locked and can never be restarted.
-- The next start after an ended session must create a new session.
+- Resume returns the session to `ACTIVE` with all effects and state restored.
 
 ---
 
-### **2.5 cleanup**
+### **2.4 cooldown**
 
-The session is archived and no longer reusable.
+The session has ended and players/DM are in a structured post-game cooldown window.
 
-- Cleanup purges remaining session-scoped runtime context such as Greenroom chat.
+- All players are in the `MAIN` room (same audio/presence space).
+- A session-end bookend (`[Session Ended]`) is inserted into chat.
+- Only OOC (out-of-character) chat is allowed; IC chat is disabled.
+- Players can view full session chat history and interact post-game.
+- Spectators can chat and speak with the table during cooldown (elevated post-session interaction mode).
+- All chat during cooldown is ephemeral by default and will be cleared during cleanup.
+  - DM can toggle: persist or clear cooldown chat per campaign.
+  - Default: ephemeral and not persisted to campaign history.
+- DM audio effects are frozen (no new effects, conditions, or environment changes allowed).
+- DM cannot create, delete, or move groups during cooldown.
+- Topbar timer displays a cooldown countdown (`remainingCooldown -> 00:00`).
+- Default cooldown is 1 minute; configurable range is 1 to 60 minutes per campaign.
+- DM can extend cooldown (adds one more configured block, up to 3 extensions per session).
+- When cooldown expires, the session auto-transitions to `ENDED`.
+
+---
+
+### **2.5 ended**
+
+The live session and cooldown have concluded.
+
+- The session is archive-locked and can never be restarted.
+- All participants remain connected but in a post-session state.
+- No new activities are possible (no chat, no audio effects, no group changes).
+- Participants are still rendered in the room state with presence indicators.
+- The session remains in `ENDED` state until all players and DM disconnect.
+- Once all participants have disconnected, the session transitions to `CLEANUP`.
+- The next time a player returns to this campaign, a new IDLE session is automatically created.
+
+---
+
+### **2.6 cleanup**
+
+The session is fully archived and all runtime session-scoped data is purged.
+
+- Cleanup runs after all players and DM have disconnected from the `ENDED` session.
+- Cleanup purges session-scoped runtime data:
+  - Whisper Bubble chat (ephemeral, off-the-record).
+  - Paused runtime chat (if marked ephemeral by DM).
+  - Cooldown runtime chat (if marked ephemeral by DM).
+  - Any other ephemeral session-scoped message context.
+- Campaign Greenroom chat is NOT purged (it is campaign-scoped, not session-scoped, and persists across sessions).
 - Cleanup is terminal for that session record.
-- Starting again after cleanup always creates a new session record.
+- A new IDLE session is created the next time a player reconnects to the campaign.
 
 ---
 
@@ -154,12 +168,13 @@ The session is archived and no longer reusable.
 
 All session transitions are triggered by events.
 
-| Event            | Description                                                   | Actor |
-| ---------------- | ------------------------------------------------------------- | ----- |
-| `session.start`  | Begin a new session or activate a never-started draft session | DM    |
-| `session.pause`  | Pause the running session                                     | DM    |
-| `session.resume` | Resume a paused session                                       | DM    |
-| `session.end`    | End the session                                               | DM    |
+| Event | Description | Actor |\n| ---------------- | --------------------------------------------------------------------- | ----- |
+| `session.start` | Begin a new session or activate a never-started draft session | DM |
+| `session.pause` | Pause the running session (ACTIVE → PAUSED) | DM |
+| `session.resume` | Resume a paused session (PAUSED → ACTIVE) | DM |
+| `session.end` | End the session and enter cooldown (ACTIVE or PAUSED → COOLDOWN) | DM |
+| (auto) | Cooldown timer expires, transition to ENDED (COOLDOWN → ENDED, auto) | System |
+| (auto) | All disconnect, transition to CLEANUP (ENDED → CLEANUP, auto) | System |
 
 Events are validated by:
 
