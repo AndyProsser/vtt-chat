@@ -138,7 +138,7 @@ export function MessageList({
     <TooltipProvider delayDuration={120}>
       <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
         {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
-        <div ref={topSentinelRef} aria-hidden="true" style={{ blockSize: 1 }} />
+        <div ref={topSentinelRef} aria-hidden="true" className="chat-message-list__sentinel" />
         {messages.map((msg, index) => {
           const previous = index > 0 ? messages[index - 1] : undefined
           const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]

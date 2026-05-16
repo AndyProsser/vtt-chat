@@ -1,0 +1,16 @@
+.app-shell {
+  height: 100dvh;
+}
+
+.app-shell__orb--brand {
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+}
+
+.app-shell__orb--info {
+  background: color-mix(in srgb, var(--color-info) 22%, transparent);
+}
+
+.app-shell__frame {
+  width: 100%;
+  max-width: 900px;
+}

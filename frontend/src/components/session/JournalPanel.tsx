@@ -246,7 +246,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
             <h3 className="knowledge-panel-title">{displayName || 'Session Journal'}</h3>
           )}
           {lastUpdated && !isEditing && (
-            <p className="knowledge-panel-copy" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
+            <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
               Last updated {lastUpdated}
             </p>
           )}
@@ -267,11 +267,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
         )}
       </header>
 
-      {saveError && (
-        <p className="knowledge-panel-copy" style={{ color: 'var(--color-error, #f87171)' }}>
-          {saveError}
-        </p>
-      )}
+      {saveError && <p className="knowledge-panel-copy knowledge-panel-copy--error">{saveError}</p>}
 
       <MarkdownEditor
         value={draft}

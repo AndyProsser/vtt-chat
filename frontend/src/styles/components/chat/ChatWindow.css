@@ -231,6 +231,10 @@
   font-size: 0.85rem;
 }
 
+.chat-message-list__sentinel {
+  block-size: 1px;
+}
+
 .chat-session-marker {
   position: relative;
   display: flex;

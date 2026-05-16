@@ -8,6 +8,7 @@ import { useAuthSession } from './hooks/useAuthSession'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { ToastViewport } from './components/ui/ToastViewport'
 import type { UUID } from '@shared'
+import './styles/components/app/AppShell.css'
 
 export default function App() {
   const normalizeWsUrl = (rawWsUrl: string): string => {
@@ -178,35 +179,20 @@ export default function App() {
   }
 
   return (
-    <div
-      className="relative h-screen overflow-hidden font-sans text-ui-primary"
-      style={{ height: '100dvh' }}
-    >
+    <div className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div
-          className="absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl"
-          style={{ background: 'color-mix(in srgb, var(--color-brand) 18%, transparent)' }}
-        />
-        <div
-          className="absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl"
-          style={{ background: 'color-mix(in srgb, var(--color-info) 22%, transparent)' }}
-        />
+        <div className="app-shell__orb--brand absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl" />
+        <div className="app-shell__orb--info absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl" />
       </div>
 
       <div className="relative flex h-full flex-col items-center">
         {authMessage && (
-          <div
-            className="mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm"
-            style={{ width: '100%', maxWidth: '900px' }}
-          >
+          <div className="app-shell__frame mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
             {authMessage}
           </div>
         )}
 
-        <main
-          className="font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0"
-          style={{ width: '100%', maxWidth: '900px', paddingBottom: '0px' }}
-        >
+        <main className="app-shell__frame font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0">
           <ToastViewport />
           <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
             {renderRouteView()}

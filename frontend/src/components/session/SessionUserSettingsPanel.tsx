@@ -187,7 +187,7 @@ export function SessionUserSettingsPanel({
         {/* ── Profile tab ─────────────────────────────────── */}
         <TabsPrimitive.Content value="profile" className="susp-tab-content">
           <form onSubmit={(e) => void handleProfileSave(e)} noValidate>
-            <div className="susp-avatar-row" style={{ marginBottom: '1rem' }}>
+            <div className="susp-avatar-row susp-avatar-row--spaced">
               {profile.avatarUrl ? (
                 <img
                   className="susp-avatar"
@@ -204,7 +204,7 @@ export function SessionUserSettingsPanel({
               </div>
             </div>
 
-            <div className="susp-field" style={{ marginBottom: '0.75rem' }}>
+            <div className="susp-field susp-field--spaced">
               <label htmlFor="susp-display-name" className="susp-field__label">
                 Display name
               </label>
@@ -223,7 +223,7 @@ export function SessionUserSettingsPanel({
               </p>
             </div>
 
-            <div className="susp-field" style={{ marginBottom: '0.75rem' }}>
+            <div className="susp-field susp-field--spaced">
               <label htmlFor="susp-avatar-url" className="susp-field__label">
                 Avatar URL
               </label>
@@ -266,10 +266,9 @@ export function SessionUserSettingsPanel({
             </label>
             <select
               id="susp-grouping-window"
-              className="susp-select"
+              className="susp-select susp-select--spaced"
               value={String(selectedOption.value)}
               onChange={handleGroupingWindowChange}
-              style={{ marginTop: '0.3rem' }}
             >
               {GROUPING_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -282,14 +281,7 @@ export function SessionUserSettingsPanel({
 
           <div>
             <p className="susp-section-heading">Audio</p>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.6rem',
-                marginTop: '0.1rem',
-              }}
-            >
+            <div className="susp-audio-stack">
               <div className="susp-range-row">
                 <span className="susp-range-label">
                   <span>Master volume</span>
