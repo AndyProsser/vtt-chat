@@ -481,6 +481,7 @@
 
 .chat-message__bubble {
   position: relative;
+  margin-top: 0;
   max-width: 100%;
   white-space: pre-wrap;
   word-break: break-word;
@@ -491,6 +492,10 @@
   padding: 0.6rem 0.75rem 0.52rem;
   line-height: 1.38;
   font-size: 0.84rem;
+}
+
+.chat-message:not(.chat-message--grouped) .chat-message__bubble {
+  margin-top: 0.16rem;
 }
 
 .chat-message__bubble-text {

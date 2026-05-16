@@ -439,6 +439,14 @@ export function ChatWindow({
         return
       }
 
+      if (user.role === Role.SPECTATOR || String(user.role) === 'SPECTATOR') {
+        return
+      }
+
+      if (!roomId) {
+        return
+      }
+
       const now = Date.now()
       sendWsEvent({
         id: crypto.randomUUID() as UUID,

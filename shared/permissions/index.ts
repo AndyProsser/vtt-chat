@@ -159,6 +159,18 @@ export const PERMISSION_MATRIX: PermissionRule[] = [
     allowedRoles: ['DM', 'PLAYER', 'SPECTATOR'],
     description: 'View role-filtered chat history (role-filtered for visibility)',
   },
+  {
+    domain: 'CHAT',
+    action: 'TYPING_STARTED',
+    allowedRoles: ['DM', 'PLAYER'],
+    description: 'Broadcast typing started indicator in current room',
+  },
+  {
+    domain: 'CHAT',
+    action: 'TYPING_STOPPED',
+    allowedRoles: ['DM', 'PLAYER'],
+    description: 'Broadcast typing stopped indicator in current room',
+  },
 
   // ============ NOTES ============
   {
