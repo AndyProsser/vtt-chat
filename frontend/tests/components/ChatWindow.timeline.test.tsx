@@ -125,6 +125,70 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
   })
 
+  it('hides session-start marker and greenroom messages in active main-room mode', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        messages: [
+          {
+            id: '10101010-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: 100,
+          },
+          {
+            id: '20202020-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Greenroom aside',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: 200,
+          },
+          {
+            id: '30303030-cccc-4ccc-8ccc-cccccccccccc',
+            roomId: MAIN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Main room action',
+            type: MessageType.IC,
+            isDmOnly: false,
+            createdAt: 300,
+          },
+        ],
+      }),
+    }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={MAIN_ROOM_ID}
+        roomName="Main Room"
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/chat/messages/11111111-1111-4111-8111-111111111111?limit=20',
+        expect.anything()
+      )
+    })
+
+    expect(screen.getByText('Main room action')).toBeTruthy()
+    expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
+    expect(screen.queryByText('Greenroom aside')).toBeNull()
+  })
+
   it('renders day separators for editorial timeline grouping', () => {
     const yesterday = Date.now() - 24 * 60 * 60 * 1000
 

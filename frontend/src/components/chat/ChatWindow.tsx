@@ -31,6 +31,7 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const CHAT_HISTORY_PAGE_SIZE = 20
 const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
+const SESSION_STARTED_PREFIXES = ['[Session Started]', 'Session Start:'] as const
 
 function isIntermissionBookend(content: string, type: MessageType): boolean {
   return (
@@ -326,7 +327,23 @@ export function ChatWindow({
     () =>
       messageList.filter((message) => {
         if (!isGreenroomMode) {
-          return true
+          const roomNameForMessage = message.roomId
+            ? roomDirectory[message.roomId]?.name
+            : undefined
+          const isGreenroomMessage =
+            message.roomId === roomId
+              ? isGreenRoomName(resolvedRoomName)
+              : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage)
+
+          if (isGreenroomMessage) {
+            return false
+          }
+
+          const isSessionStartedMarker =
+            message.type === MessageType.SYSTEM &&
+            SESSION_STARTED_PREFIXES.some((prefix) => message.content.startsWith(prefix))
+
+          return !isSessionStartedMarker
         }
 
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
@@ -340,7 +357,7 @@ export function ChatWindow({
 
         return !isIntermissionBookend(message.content, message.type)
       }),
-    [isGreenroomMode, messageList, roomDirectory, roomId]
+    [isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId]
   )
 
   const whisperRecipients = useMemo(() => {
@@ -387,14 +404,6 @@ export function ChatWindow({
   const visibleRoomCount = useMemo(
     () => new Set(visibleMessages.map((message) => message.roomId).filter(Boolean)).size,
     [visibleMessages]
-  )
-
-  const offFocusMessageCount = useMemo(
-    () =>
-      isGreenroomMode
-        ? 0
-        : visibleMessages.filter((message) => message.roomId && message.roomId !== roomId).length,
-    [isGreenroomMode, roomId, visibleMessages]
   )
 
   const typingUsers = useMemo(() => {
@@ -455,39 +464,32 @@ export function ChatWindow({
     [roomId, sessionOutgoingQueue]
   )
 
-  const timelineSummary = useMemo(() => {
-    if (isLoading) {
-      return 'Rehydrating remembered timeline'
-    }
-
-    if (visibleMessages.length === 0) {
-      return isGreenroomMode
-        ? 'Greenroom stays quiet until someone breaks the silence'
-        : 'No witnessed chat yet in this session'
-    }
-
-    if (offFocusMessageCount > 0) {
-      return `${offFocusMessageCount} remembered ${offFocusMessageCount === 1 ? 'moment' : 'moments'} from other rooms`
-    }
-
-    return 'Everything here is happening in your current room'
-  }, [isGreenroomMode, isLoading, offFocusMessageCount, visibleMessages.length])
-
   const typingSummary =
     typingDisplayNames.length === 1
       ? `${typingDisplayNames[0]} is typing`
       : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
 
-  // Auto-scroll to newest message only while user stays pinned at bottom.
+  const latestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
+
+  // After initial hydrate (or room/session switch), pin viewport to newest message.
   useEffect(() => {
-    if (!visibleMessages.length) {
+    if (isLoading || visibleMessages.length === 0) {
       return
     }
 
-    if (isUserPinnedToBottom) {
-      scrollToLatest('smooth')
+    requestAnimationFrame(() => {
+      scrollToLatest('auto')
+    })
+  }, [isLoading, roomId, scrollToLatest, sessionId, visibleMessages.length])
+
+  // Always follow newly appended messages to keep the latest content visible.
+  useEffect(() => {
+    if (!latestVisibleMessageCreatedAt) {
+      return
     }
-  }, [isUserPinnedToBottom, scrollToLatest, visibleMessages.length])
+
+    scrollToLatest('smooth')
+  }, [latestVisibleMessageCreatedAt, scrollToLatest])
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {
@@ -603,16 +605,6 @@ export function ChatWindow({
         </div>
       </header>
 
-      <section className="chat-window__timeline-bar" aria-label="Timeline status">
-        <div>
-          <p className="chat-window__timeline-summary">{timelineSummary}</p>
-          {isLoadingOlder ? (
-            <p className="chat-window__timeline-summary">Loading older messages…</p>
-          ) : null}
-        </div>
-        <div className="chat-window__timeline-badges" />
-      </section>
-
       {/* Error banner */}
       {error && <div className="chat-window__error">{error}</div>}
 
@@ -695,16 +687,21 @@ export function ChatWindow({
         </TooltipProvider>
       ) : null}
 
-      {typingUsers.length > 0 ? (
-        <div className="chat-window__typing-overlay" aria-live="polite">
-          <span className="chat-window__typing-text">{typingSummary}</span>
+      <div className="chat-window__typing-slot" aria-live="polite">
+        <div
+          className={`chat-window__typing-overlay ${typingUsers.length > 0 ? 'chat-window__typing-overlay--active' : ''}`}
+          aria-hidden={typingUsers.length === 0}
+        >
+          <span className="chat-window__typing-text">
+            {typingUsers.length > 0 ? typingSummary : ''}
+          </span>
           <span className="chat-window__typing-dots" aria-hidden="true">
             <span />
             <span />
             <span />
           </span>
         </div>
-      ) : null}
+      </div>
 
       {/* Input */}
       <MessageInput

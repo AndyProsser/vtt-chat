@@ -30,13 +30,6 @@ const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'system'> = {
   [MessageType.SYSTEM]: 'system',
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  [MessageType.IC]: 'theater_comedy',
-  [MessageType.OOC]: 'forum',
-  [MessageType.WHISPER]: 'record_voice_over',
-  [MessageType.SYSTEM]: 'memory',
-}
-
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
 const SESSION_BOOKEND_PREFIXES = [
   'Session Start:',
@@ -261,17 +254,6 @@ export function MessageList({
                   <div
                     className={`chat-message__bubble chat-message__bubble--${variant} ${isSelf ? 'chat-message__bubble--self' : ''}`}
                   >
-                    <span
-                      className={`chat-message__type-badge chat-message__type-badge--${variant}`}
-                      aria-label={msg.type}
-                    >
-                      <span
-                        className="material-symbols-outlined chat-message__type-icon"
-                        aria-hidden="true"
-                      >
-                        {TYPE_ICONS[msg.type] ?? 'chat'}
-                      </span>
-                    </span>
                     <span className="chat-message__bubble-text">{msg.content}</span>
                   </div>
 
