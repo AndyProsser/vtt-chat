@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
 import type { AudioDeviceState } from '@/types/audio'
 import {
@@ -38,6 +38,15 @@ export function AudioSettingsPanel({
 }: AudioSettingsPanelProps) {
   const [micDevices, setMicDevices] = useState<MediaDeviceOption[]>([])
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceOption[]>([])
+  const micMeterFillRef = useRef<HTMLSpanElement | null>(null)
+  const localMicLevelPercent = Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)
+
+  useEffect(() => {
+    micMeterFillRef.current?.style.setProperty(
+      '--audio-mic-level-width',
+      `${localMicLevelPercent}%`
+    )
+  }, [localMicLevelPercent])
 
   useEffect(() => {
     navigator.mediaDevices
@@ -127,12 +136,7 @@ export function AudioSettingsPanel({
             className="audio-settings-panel__mic-meter"
             aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneSignal}
           >
-            <span
-              className="audio-settings-panel__mic-meter-fill"
-              style={{
-                width: `${Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)}%`,
-              }}
-            />
+            <span ref={micMeterFillRef} className="audio-settings-panel__mic-meter-fill" />
           </div>
         </section>
 

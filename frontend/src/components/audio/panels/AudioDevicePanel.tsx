@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../core-ui'
 import type { AudioDeviceState } from '@/types/audio'
@@ -54,6 +54,15 @@ export function AudioDevicePanel({
   onToggleSettings,
 }: AudioDevicePanelProps) {
   const [effectsHovered, setEffectsHovered] = useState(false)
+  const txMeterFillRef = useRef<HTMLSpanElement | null>(null)
+  const transmittedMicLevelPercent = Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)
+
+  useEffect(() => {
+    txMeterFillRef.current?.style.setProperty(
+      '--audio-tx-level-height',
+      `${transmittedMicLevelPercent}%`
+    )
+  }, [transmittedMicLevelPercent])
 
   const micTitle = getMicrophoneControlLabel({
     microphoneOn: device.microphoneOn,
@@ -201,12 +210,7 @@ export function AudioDevicePanel({
           className="audio-panel__tx-meter"
           aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
         >
-          <span
-            className="audio-panel__tx-meter-fill"
-            style={{
-              height: `${Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)}%`,
-            }}
-          />
+          <span ref={txMeterFillRef} className="audio-panel__tx-meter-fill" />
         </span>
 
         <span className={`audio-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
