@@ -39,6 +39,37 @@ async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
   )
 }
 
+async function getLatestTableMemberLastSeenAt(sessionId: UUID): Promise<number | null> {
+  const [members, presence] = await Promise.all([
+    getSessionUsers(sessionId),
+    getSessionPresence(sessionId),
+  ])
+
+  const tableMemberIds = new Set(
+    members
+      .filter((member) => member.role === Role.DM || member.role === Role.PLAYER)
+      .map((member) => member.id)
+  )
+
+  if (tableMemberIds.size === 0) {
+    return null
+  }
+
+  let latestSeenAt: number | null = null
+  for (const entry of presence) {
+    if (!tableMemberIds.has(entry.userId)) {
+      continue
+    }
+
+    if (typeof entry.lastSeenAt === 'number' && Number.isFinite(entry.lastSeenAt)) {
+      latestSeenAt =
+        latestSeenAt === null ? entry.lastSeenAt : Math.max(latestSeenAt, entry.lastSeenAt)
+    }
+  }
+
+  return latestSeenAt
+}
+
 /**
  * Purges greenroom chat messages for a session.
  * This is safe to call more than once — calling on an already-purged session is a no-op.
@@ -93,37 +124,78 @@ async function transitionToCleanup(session: {
 }
 
 export class SessionCleanupJobService {
-  private intervalId: ReturnType<typeof setInterval> | null = null
+  private lifecycleIntervalId: ReturnType<typeof setInterval> | null = null
+  private archiveIntervalId: ReturnType<typeof setInterval> | null = null
+  private lifecycleWorkerRunning = false
+  private archiveWorkerRunning = false
 
   start(): void {
-    if (this.intervalId !== null) {
+    if (this.lifecycleIntervalId !== null || this.archiveIntervalId !== null) {
       return
     }
 
     const intervalMs = config.sessionCleanup.jobIntervalMinutes * 60_000
-    this.intervalId = setInterval(() => {
-      void this.runOnce()
+    this.lifecycleIntervalId = setInterval(() => {
+      void this.runLifecycleWorkerOnce()
     }, intervalMs)
 
-    logger.info('session-cleanup-job', 'Scheduled cleanup job started', {
+    this.archiveIntervalId = setInterval(() => {
+      void this.runArchiveWorkerOnce()
+    }, intervalMs)
+
+    logger.info('session-cleanup-job', 'Scheduled lifecycle cleanup worker started', {
+      intervalMinutes: config.sessionCleanup.jobIntervalMinutes,
+      endedDisconnectGraceMs: config.sessionCleanup.endedDisconnectGraceMs,
+    })
+
+    logger.info('session-cleanup-job', 'Scheduled archive verification worker started', {
       intervalMinutes: config.sessionCleanup.jobIntervalMinutes,
       minCleanupAgeMinutes: config.sessionCleanup.minCleanupAgeMinutes,
     })
   }
 
   stop(): void {
-    if (this.intervalId === null) {
-      return
+    if (this.lifecycleIntervalId !== null) {
+      clearInterval(this.lifecycleIntervalId)
+      this.lifecycleIntervalId = null
     }
 
-    clearInterval(this.intervalId)
-    this.intervalId = null
+    if (this.archiveIntervalId !== null) {
+      clearInterval(this.archiveIntervalId)
+      this.archiveIntervalId = null
+    }
   }
 
   async runOnce(): Promise<void> {
-    await this.phaseCooldownToEnded()
-    await this.phaseEndedToCleanup()
-    await this.phaseCleanupArchiveLock()
+    await this.runLifecycleWorkerOnce()
+    await this.runArchiveWorkerOnce()
+  }
+
+  async runLifecycleWorkerOnce(): Promise<void> {
+    if (this.lifecycleWorkerRunning) {
+      return
+    }
+
+    this.lifecycleWorkerRunning = true
+    try {
+      await this.phaseCooldownToEnded()
+      await this.phaseEndedToCleanup()
+    } finally {
+      this.lifecycleWorkerRunning = false
+    }
+  }
+
+  async runArchiveWorkerOnce(): Promise<void> {
+    if (this.archiveWorkerRunning) {
+      return
+    }
+
+    this.archiveWorkerRunning = true
+    try {
+      await this.phaseCleanupArchiveLock()
+    } finally {
+      this.archiveWorkerRunning = false
+    }
   }
 
   /**
@@ -209,11 +281,22 @@ export class SessionCleanupJobService {
       const sessionId = session.id as UUID
 
       try {
+        const now = Date.now()
+
         // --- 1. Check all table members are disconnected ---
         // ENDED means the cooldown window has already expired (handled in phaseCooldownToEnded).
         // We only need to wait for all participants to disconnect before archiving.
         const tableStillConnected = await hasConnectedTableMembers(sessionId)
         if (tableStillConnected) {
+          continue
+        }
+
+        // --- 1b. Enforce disconnect grace to avoid refresh races ---
+        const latestSeenAt = await getLatestTableMemberLastSeenAt(sessionId)
+        const fallbackSeenAt = session.endedAt?.getTime() ?? now
+        const disconnectedSinceMs = now - (latestSeenAt ?? fallbackSeenAt)
+
+        if (disconnectedSinceMs < config.sessionCleanup.endedDisconnectGraceMs) {
           continue
         }
 

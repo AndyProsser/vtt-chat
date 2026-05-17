@@ -225,8 +225,15 @@ export function GroupMemberList({
                   {getStatEntries(member).length > 0 ? (
                     <div className="room-selector-profile__stats">
                       {getStatEntries(member).map(([key, value]) => (
-                        <span key={key}>
-                          {key}: {String(value)}
+                        <span
+                          key={key}
+                          className="room-selector-profile__stat"
+                          aria-label={`${key} ${String(value)}`}
+                        >
+                          <strong className="room-selector-profile__stat-value">
+                            {String(value)}
+                          </strong>
+                          <span className="room-selector-profile__stat-label">{key}</span>
                         </span>
                       ))}
                     </div>

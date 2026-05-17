@@ -20,6 +20,11 @@ export type { EventHandler } from '@/types/ws'
 export class EventDispatcher {
   private handlers: Map<string, EventHandler[]> = new Map()
 
+  private isSessionlessEventAllowed(event: EventEnvelope): boolean {
+    // Campaign-scoped greenroom chat events may intentionally omit sessionId.
+    return event.type === 'CHAT:MESSAGE_SENT'
+  }
+
   /**
    * Register a handler for a specific event type.
    * Multiple handlers can be registered for the same event type.
@@ -136,7 +141,10 @@ export class EventDispatcher {
       errors.push('Event must have a userRole')
     }
 
-    if (!event.sessionId || typeof event.sessionId !== 'string') {
+    if (
+      (!event.sessionId || typeof event.sessionId !== 'string') &&
+      !this.isSessionlessEventAllowed(event)
+    ) {
       errors.push('Event must have a sessionId')
     }
 

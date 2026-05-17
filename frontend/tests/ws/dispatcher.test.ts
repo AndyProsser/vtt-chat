@@ -169,6 +169,16 @@ describe('EventDispatcher', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
+  it('accepts campaign-scoped CHAT:MESSAGE_SENT without sessionId', () => {
+    const dispatcher = new EventDispatcher()
+    const handler = vi.fn()
+    dispatcher.register('CHAT:MESSAGE_SENT', handler)
+
+    dispatcher.dispatch(makeEvent({ sessionId: null as any, roomId: null as any }))
+
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
   // ── Error isolation ────────────────────────────────────────────────────────
 
   it('continues dispatching to remaining handlers if one throws', () => {

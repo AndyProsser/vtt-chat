@@ -20,9 +20,10 @@ The lifecycle is intentionally simple, predictable, and resilient to reconnectio
 
 A session always exists in exactly one state.
 
-### **1.2 Only the DM can change session state**
+### **1.2 DM owns lifecycle transitions (with cooldown fallback controls)**
 
 Players and spectators cannot start, pause, resume, or end sessions.
+During `COOLDOWN`, players may control cooldown (`extend` / `end`) only when the DM is disconnected.
 
 ### **1.3 State transitions are event‑driven**
 
@@ -32,6 +33,8 @@ All transitions occur through events such as:
 - `session.pause`
 - `session.resume`
 - `session.end`
+- `session.cooldown.extend`
+- `session.cooldown.end`
 
 ### **1.4 State is recoverable**
 
@@ -128,7 +131,7 @@ The session has ended and players/DM are in a structured post-game cooldown wind
 - DM audio effects are frozen (no new effects, conditions, or environment changes allowed).
 - DM cannot create, delete, or move groups during cooldown.
 - Topbar timer displays a cooldown countdown (`remainingCooldown -> 00:00`).
-- Default cooldown is 1 minute; configurable range is 1 to 60 minutes per campaign.
+- Default cooldown is 1 minute; configurable range is 1 to 15 minutes per campaign.
 - DM can extend cooldown (adds one more configured block, up to 3 extensions per session).
 - When cooldown expires, the session auto-transitions to `ENDED`.
 
@@ -139,6 +142,7 @@ The session has ended and players/DM are in a structured post-game cooldown wind
 The live session and cooldown have concluded.
 
 - The session is archive-locked and can never be restarted.
+- On `COOLDOWN -> ENDED`, participants are transitioned back to Greenroom membership via room transition orchestration.
 - All participants remain connected but in a post-session state.
 - No new activities are possible (no chat, no audio effects, no group changes).
 - Participants are still rendered in the room state with presence indicators.
@@ -168,13 +172,16 @@ The session is fully archived and all runtime session-scoped data is purged.
 
 All session transitions are triggered by events.
 
-| Event | Description | Actor |\n| ---------------- | --------------------------------------------------------------------- | ----- |
-| `session.start` | Begin a new session or activate a never-started draft session | DM |
-| `session.pause` | Pause the running session (ACTIVE → PAUSED) | DM |
-| `session.resume` | Resume a paused session (PAUSED → ACTIVE) | DM |
-| `session.end` | End the session and enter cooldown (ACTIVE or PAUSED → COOLDOWN) | DM |
-| (auto) | Cooldown timer expires, transition to ENDED (COOLDOWN → ENDED, auto) | System |
-| (auto) | All disconnect, transition to CLEANUP (ENDED → CLEANUP, auto) | System |
+| Event                     | Description                                                          | Actor                                 |
+| ------------------------- | -------------------------------------------------------------------- | ------------------------------------- |
+| `session.start`           | Begin a new session or activate a never-started draft session        | DM                                    |
+| `session.pause`           | Pause the running session (ACTIVE → PAUSED)                          | DM                                    |
+| `session.resume`          | Resume a paused session (PAUSED → ACTIVE)                            | DM                                    |
+| `session.end`             | End the session and enter cooldown (ACTIVE or PAUSED → COOLDOWN)     | DM                                    |
+| `session.cooldown.extend` | Extend cooldown by one configured block                              | DM; PLAYER only if DM is disconnected |
+| `session.cooldown.end`    | End cooldown early (COOLDOWN → ENDED)                                | DM; PLAYER only if DM is disconnected |
+| (auto)                    | Cooldown timer expires, transition to ENDED (COOLDOWN → ENDED, auto) | System                                |
+| (auto)                    | All disconnect, transition to CLEANUP (ENDED → CLEANUP, auto)        | System                                |
 
 Events are validated by:
 
@@ -240,11 +247,18 @@ Key points:
 
 ### **ended**
 
-- Topbar timer shows cooldown countdown, then transitions into elapsed-ended timing while remaining in `ENDED`.
+- Topbar timer shows elapsed-ended timing while remaining in `ENDED`.
+- State pill displays canonical session state (`ENDED`) without aliasing.
 - Timer popper remains available and shows final session timing summary (start, end, pause totals).
-- DM can extend/cancel cooldown; players can extend/cancel only if DM disconnects.
-- Starting a new session is disabled while cooldown is active.
-- Cooldown completion ends spectator post-session interaction visibility; cancellation transitions to `INACTIVE`.
+- Cooldown controls are not shown in `ENDED` (they are only available during `COOLDOWN`).
+- Starting a new session is disabled while this session remains in `ENDED`.
+
+### **cooldown**
+
+- Topbar timer shows cooldown countdown (`remainingCooldown -> 00:00`).
+- Cooldown controls are visible for DM.
+- Player cooldown controls unlock only when DM is disconnected.
+- Cooldown completion auto-transitions to `ENDED`; manual cooldown end follows the same transition.
 
 ---
 
@@ -267,7 +281,8 @@ Key points:
 - Eligibility rule:
   - only sessions that have remained in `CLEANUP` for at least a configurable minimum age are processed (default: 20 minutes).
 - Processing result:
-  - cleanup job purges greenroom runtime context and transitions the session to `INACTIVE` (`IDLE` in persisted state).
+  - cleanup job purges ephemeral session-scoped runtime context and finalizes cleanup for that ENDED session.
+  - the next playable session is a new session record created on next campaign re-entry (not a restart of the cleaned-up session).
 
 Configuration:
 
@@ -276,17 +291,17 @@ Configuration:
 
 ### **5.1 Timer popper contract**
 
-The timer popper is available in `ACTIVE`, `PAUSED`, and `ENDED`, and disabled in `INACTIVE`.
+The timer popper is available in `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, and `CLEANUP`, and disabled in `INACTIVE` (`IDLE`).
 
 When open, values update live and include:
 
-- Session state (`ACTIVE | PAUSED | ENDED | INACTIVE`).
+- Session state (`ACTIVE | PAUSED | COOLDOWN | ENDED | CLEANUP | INACTIVE`).
 - Session start timestamp.
+- Active elapsed duration.
 - Cumulative paused duration (if greater than zero).
 - Pause count.
-- Expected end time, computed from session duration source (`session override` if present, else campaign default) and then rounded to nearest 15 minutes.
-- Time left in session relative to expected end.
-- For `ENDED`, include session end timestamp and cooldown remaining.
+- For `COOLDOWN`, include cooldown remaining.
+- For `ENDED`/`CLEANUP`, include final ended timing context.
 
 Authority rules:
 
@@ -456,7 +471,7 @@ Planned enhancements:
 The Session Lifecycle ensures:
 
 - Predictable state transitions
-- Clear DM authority
+- Clear lifecycle authority
 - Consistent UI behaviour
 - Reliable reconnection
 - Deterministic event flow

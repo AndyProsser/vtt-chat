@@ -203,23 +203,16 @@ describe('session disconnect cascade service', () => {
 
     await vi.advanceTimersByTimeAsync(60_000)
 
-    expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'ENDED', DM_ID)
+    expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'COOLDOWN', DM_ID)
     expect(mocks.applySessionStateRoomTransition).toHaveBeenCalled()
   })
 
-  it('flags CLEANUP immediately when table has fully disconnected outside active/paused', async () => {
+  it('does not force CLEANUP immediately when table disconnects outside active/paused', async () => {
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
       state: 'IDLE',
-      createdAt: Date.now(),
-    })
-    mocks.updateSessionState.mockResolvedValue({
-      id: SESSION_ID,
-      name: 'Session 1',
-      dmId: DM_ID,
-      state: 'CLEANUP',
       createdAt: Date.now(),
     })
     mocks.getSessionPresence.mockResolvedValue([
@@ -253,7 +246,7 @@ describe('session disconnect cascade service', () => {
       isSessionConnected: () => false,
     })
 
-    expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'CLEANUP', DM_ID)
+    expect(mocks.updateSessionState).not.toHaveBeenCalledWith(SESSION_ID, 'CLEANUP', DM_ID)
     expect(mocks.clearRoomMessages).not.toHaveBeenCalled()
   })
 })

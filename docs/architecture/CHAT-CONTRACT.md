@@ -66,6 +66,7 @@ Context is not encoded as a separate message type. Context is carried by room me
   - IC and OOC messages sent during a session are scoped to that session only.
   - Session-scoped messages are not visible in the campaign Greenroom context.
   - Session chat includes a `[Session Started]` bookend when the session begins and a `[Session Ended]` bookend when the session ends (via COOLDOWN → ENDED transition).
+  - On `COOLDOWN -> ENDED`, room transition orchestration moves participants back to Greenroom while preserving boundary marker ordering in chat timelines.
   - All session-scoped messages are archived after the session ENDED (as part of campaign history), unless marked ephemeral by policy.
 - PAUSED runtime:
   - Default: ephemeral-only runtime chat while paused (cleared during cleanup).
@@ -75,6 +76,7 @@ Context is not encoded as a separate message type. Context is carried by room me
   - Default: ephemeral-only runtime chat (cleared during cleanup).
   - Campaign setting may enable persisted cooldown-chat runtime behavior.
   - Spectators can chat during COOLDOWN; all spectator chat is ephemeral by default (not persisted).
+  - Default cooldown block is 1 minute; campaign-configurable range is 1 to 15 minutes.
 - Whisper Bubble:
   - Off-the-record by default (ephemeral, cleared during cleanup).
   - Visibility restricted to bubble occupants and DM.

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
 import { isGreenroomSessionState } from '@shared'
+import { isGreenRoomName } from '../constants/roomPresence.constants'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
@@ -104,7 +105,44 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     // Chat events
     dispatcher.register('CHAT:MESSAGE_SENT', (event) => {
-      useStore.getState().handleMessageSent(event)
+      if (event.sessionId) {
+        useStore.getState().handleMessageSent(event)
+        return
+      }
+
+      // Campaign-scoped greenroom messages arrive without sessionId/roomId.
+      // Bind them to the active session's greenroom room so live chat renders immediately.
+      if (!sessionId) {
+        return
+      }
+
+      const store = useStore.getState()
+      const sessionRooms = (store.rooms as Record<UUID, Record<UUID, { id: UUID; name: string }>>)[
+        sessionId
+      ]
+
+      if (!sessionRooms) {
+        return
+      }
+
+      const greenroom = Object.values(sessionRooms).find((room) => isGreenRoomName(room.name))
+      if (!greenroom) {
+        return
+      }
+
+      const payload = (event.payload || {}) as Record<string, unknown>
+      const bridgedRoomId = (payload.roomId as UUID | undefined) || greenroom.id
+      const bridgedEvent: EventEnvelope = {
+        ...event,
+        sessionId,
+        roomId: bridgedRoomId,
+        payload: {
+          ...payload,
+          roomId: bridgedRoomId,
+        },
+      }
+
+      store.handleMessageSent(bridgedEvent)
     })
     dispatcher.register('CHAT:MESSAGE_EDITED', (event) => {
       useStore.getState().handleMessageEdited(event)

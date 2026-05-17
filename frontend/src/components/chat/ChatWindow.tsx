@@ -21,6 +21,7 @@ interface ChatWindowProps {
   token: string
   sessionId: UUID
   roomId: UUID
+  campaignId?: UUID
   roomName?: string
   user: { id: UUID; username: string; role: Role | string }
   messageGroupingWindowMs?: number
@@ -57,6 +58,7 @@ export function ChatWindow({
   token,
   sessionId,
   roomId,
+  campaignId,
   roomName,
   user,
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
@@ -183,11 +185,10 @@ export function ChatWindow({
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
         }
-        if (isGreenroomMode) {
-          params.set('roomId', roomId)
-        }
-
-        const historyUrl = `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`
+        const historyUrl =
+          isGreenroomMode && campaignId
+            ? `${apiUrl}/api/chat/campaign/${campaignId}/chat/page?${params.toString()}`
+            : `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`
         const res = await fetch(historyUrl, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -219,7 +220,7 @@ export function ChatWindow({
           oldestLoadedTimestampRef.current = oldestInPage
         }
 
-        const hasMore = Boolean(data.pagination?.hasMore)
+        const hasMore = Boolean(data.pagination?.hasMore ?? data.hasMore)
         setHasMoreHistory(hasMore)
 
         if (older && pendingScrollRestoreRef.current && messageListRef.current) {
@@ -246,7 +247,7 @@ export function ChatWindow({
         }
       }
     },
-    [addMessage, apiUrl, isGreenroomMode, roomId, sessionId, token]
+    [addMessage, apiUrl, campaignId, isGreenroomMode, roomId, sessionId, token]
   )
 
   // Load latest history page on mount/change.
@@ -512,14 +513,23 @@ export function ChatWindow({
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {
-      const res = await fetch(`${apiUrl}/api/chat/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId, roomId, content, type, recipientId }),
-      })
+      const res = await fetch(
+        isGreenroomMode && campaignId
+          ? `${apiUrl}/api/chat/campaign/${campaignId}/chat`
+          : `${apiUrl}/api/chat/message`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(
+            isGreenroomMode && campaignId
+              ? { content }
+              : { sessionId, roomId, content, type, recipientId }
+          ),
+        }
+      )
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -556,7 +566,17 @@ export function ChatWindow({
         }
       }
     },
-    [addMessage, apiUrl, roomId, sessionId, token, user.id, user.username]
+    [
+      addMessage,
+      apiUrl,
+      campaignId,
+      isGreenroomMode,
+      roomId,
+      sessionId,
+      token,
+      user.id,
+      user.username,
+    ]
   )
 
   const handleSend = async (content: string, type: MessageType, recipientId?: string) => {

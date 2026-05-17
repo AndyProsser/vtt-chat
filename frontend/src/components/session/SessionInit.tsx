@@ -3271,6 +3271,7 @@ export function SessionInit({
                             token={token}
                             sessionId={currentSession.id}
                             roomId={selectedRoomId}
+                            campaignId={selectedCampaign?.id as UUID | undefined}
                             roomName={selectedRoom?.name}
                             user={effectiveSessionUser}
                             messageGroupingWindowMs={messageGroupingWindowMs}

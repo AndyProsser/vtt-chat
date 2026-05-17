@@ -15,6 +15,7 @@ import {
   LIVEKIT_API_SECRET,
   DEFAULT_SESSION_CLEANUP_JOB_INTERVAL_MINUTES,
   DEFAULT_SESSION_CLEANUP_MIN_AGE_MINUTES,
+  DEFAULT_SESSION_ENDED_DISCONNECT_GRACE_MS,
 } from './constants'
 
 export interface AppConfig {
@@ -48,6 +49,7 @@ export interface AppConfig {
   sessionCleanup: {
     jobIntervalMinutes: number
     minCleanupAgeMinutes: number
+    endedDisconnectGraceMs: number
   }
 }
 
@@ -93,6 +95,14 @@ export const config: AppConfig = {
       Number.parseInt(
         process.env.SESSION_CLEANUP_MIN_AGE_MINUTES ||
           String(DEFAULT_SESSION_CLEANUP_MIN_AGE_MINUTES),
+        10
+      )
+    ),
+    endedDisconnectGraceMs: Math.max(
+      0,
+      Number.parseInt(
+        process.env.SESSION_ENDED_DISCONNECT_GRACE_MS ||
+          String(DEFAULT_SESSION_ENDED_DISCONNECT_GRACE_MS),
         10
       )
     ),

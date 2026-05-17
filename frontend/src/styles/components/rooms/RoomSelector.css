@@ -899,21 +899,39 @@
 
 .room-selector-profile__stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.2rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.14rem;
+  margin-block: 0.16rem;
 }
 
-.room-selector-profile__stats span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  font-size: 0.66rem;
-  line-height: 1.2;
+.room-selector-profile__stat {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.02rem;
+  min-inline-size: 0;
   color: var(--color-text-secondary);
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
   border-radius: 0.42rem;
-  padding: 0.14rem 0.26rem;
+  padding: 0.14rem 0.12rem;
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+}
+
+.room-selector-profile__stat-value {
+  font-size: 0.82rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.room-selector-profile__stat-label {
+  font-size: 0.52rem;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
 .room-selector-profile__status-pills {

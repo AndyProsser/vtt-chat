@@ -253,51 +253,8 @@ export class SessionDisconnectCascadeService {
       this.scheduleEveryoneLeavesAutoStop(context)
       return
     }
-
-    await this.markSessionForScheduledCleanup(context.sessionId)
-  }
-
-  private async hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
-    const [sessionUsers, presence] = await Promise.all([
-      getSessionUsers(sessionId),
-      getSessionPresence(sessionId),
-    ])
-
-    const tableMemberIds = new Set(
-      sessionUsers
-        .filter((member) => member.role === Role.DM || member.role === Role.PLAYER)
-        .map((member) => member.id)
-    )
-
-    if (tableMemberIds.size === 0) {
-      return false
-    }
-
-    return presence.some(
-      (entry) => tableMemberIds.has(entry.userId) && entry.state !== PresenceState.OFFLINE
-    )
-  }
-
-  private async markSessionForScheduledCleanup(sessionId: UUID): Promise<void> {
-    const session = await getSession(sessionId)
-    if (!session) {
-      return
-    }
-
-    if (session.state === SessionState.CLEANUP) {
-      return
-    }
-
-    const tableStillConnected = await this.hasConnectedTableMembers(sessionId)
-    if (tableStillConnected) {
-      return
-    }
-
-    if (session.state !== SessionState.ENDED && session.state !== SessionState.IDLE) {
-      return
-    }
-
-    await updateSessionState(sessionId, SessionState.CLEANUP, session.dmId)
+    // ENDED/IDLE cleanup transitions are driven by the cleanup job so reconnect/refresh
+    // churn cannot force immediate state changes.
   }
 
   private scheduleEveryoneLeavesAutoStop(context: DisconnectContext): void {
@@ -452,7 +409,6 @@ export class SessionDisconnectCascadeService {
     })
 
     this.clearEveryoneLeavesTimer(context.sessionId)
-    await this.markSessionForScheduledCleanup(context.sessionId)
   }
 
   private clearUserTimers(sessionId: UUID, userId: UUID): void {
