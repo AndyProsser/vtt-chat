@@ -82,6 +82,7 @@ export function ChatWindow({
   const isLoadingOlderRef = useRef(false)
   const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
   const lastSeenLatestMessageAtRef = useRef<number | undefined>(undefined)
+  const initialScrollContextRef = useRef<string | null>(null)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
@@ -313,10 +314,8 @@ export function ChatWindow({
 
     if (isNearBottom) {
       setPendingNewMessageCount(0)
-      lastSeenLatestMessageAtRef.current =
-        visibleMessages[visibleMessages.length - 1]?.createdAt ?? lastSeenLatestMessageAtRef.current
     }
-  }, [visibleMessages])
+  }, [])
 
   useEffect(() => {
     if (isLoading || !hasMoreHistory) {
@@ -555,18 +554,38 @@ export function ChatWindow({
 
   const latestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
 
+  useEffect(() => {
+    if (isUserPinnedToBottom && latestVisibleMessageCreatedAt) {
+      lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+      setPendingNewMessageCount(0)
+    }
+  }, [isUserPinnedToBottom, latestVisibleMessageCreatedAt])
+
   // After initial hydrate (or room/session switch), pin viewport to newest message.
   useEffect(() => {
     if (isLoading || visibleMessages.length === 0) {
       return
     }
 
+    const contextKey = `${sessionId}:${roomId}`
+    if (initialScrollContextRef.current === contextKey) {
+      return
+    }
+
     requestAnimationFrame(() => {
       scrollToLatest('auto')
     })
+    initialScrollContextRef.current = contextKey
     setPendingNewMessageCount(0)
     lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
-  }, [isLoading, latestVisibleMessageCreatedAt, roomId, scrollToLatest, sessionId, visibleMessages.length])
+  }, [
+    isLoading,
+    latestVisibleMessageCreatedAt,
+    roomId,
+    scrollToLatest,
+    sessionId,
+    visibleMessages.length,
+  ])
 
   // Follow new messages only when user is already pinned to bottom.
   // If user is reading history, keep their position and surface a subtle jump cue.

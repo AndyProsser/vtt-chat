@@ -854,6 +854,26 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 76%, var(--color-surface) 24%);
 }
 
+.chat-window__jump-to-latest--new {
+  border-color: color-mix(in srgb, var(--color-brand, #38bdf8) 42%, var(--color-border-soft) 58%);
+  background: color-mix(in srgb, var(--color-surface) 78%, var(--color-brand, #38bdf8) 22%);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 2px color-mix(in srgb, var(--color-brand, #38bdf8) 18%, transparent);
+}
+
+.chat-window__jump-to-latest--new::after {
+  content: '';
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand, #38bdf8) 74%, #ffffff 26%);
+  opacity: 0.86;
+}
+
 .chat-window__typing-slot {
   flex: 0 0 auto;
   min-height: 1.9rem;
