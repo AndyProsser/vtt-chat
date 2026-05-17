@@ -6,6 +6,8 @@
 
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
+import { getRedisClient } from '@/infra/redis'
+import { logger } from '@/utils'
 
 /**
  * Connection state for tracking reconnections
@@ -80,6 +82,45 @@ class EventLog {
  */
 const eventLog = new EventLog()
 
+const RECOVERY_STREAM_MAX_EVENTS = 1000
+
+function recoveryStreamKey(sessionId: UUID): string {
+  return `ws:session:${sessionId}:events`
+}
+
+function parseVisibleAudience(raw: string | undefined): UUID[] {
+  if (!raw) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return parsed.filter((value): value is UUID => typeof value === 'string')
+  } catch {
+    return []
+  }
+}
+
+function parseStreamEvent(raw: string | undefined): EventEnvelope | null {
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as EventEnvelope
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.id !== 'string') {
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 /**
  * Handle user reconnection
  */
@@ -105,6 +146,109 @@ export function handleReconnect(
  */
 export function registerEventForRecovery(sessionId: UUID, event: EventEnvelope): void {
   eventLog.addEvent(sessionId, event)
+}
+
+/**
+ * Register event in durable Redis stream for restart-safe replay.
+ * This is non-fatal: failures are logged and in-memory recovery path remains available.
+ */
+export async function registerEventForRecoveryDurable(
+  sessionId: UUID,
+  event: EventEnvelope,
+  visibleTo?: UUID[]
+): Promise<void> {
+  try {
+    const redis = await getRedisClient()
+    const key = recoveryStreamKey(sessionId)
+
+    await (redis as any).xAdd(key, '*', {
+      eventId: event.id,
+      timestamp: String(event.timestamp),
+      visibleTo: JSON.stringify(visibleTo || []),
+      event: JSON.stringify(event),
+    })
+
+    // Keep stream bounded for predictable replay cost.
+    await (redis as any).xTrim(key, 'MAXLEN', RECOVERY_STREAM_MAX_EVENTS)
+  } catch (error) {
+    logger.warn('ws.recovery', 'Failed to append durable recovery event', {
+      sessionId,
+      eventId: event.id,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+/**
+ * Read replay events from Redis stream for a reconnecting user.
+ * If lastEventId is unknown, it falls back to full stream replay.
+ */
+export async function replayEventsForConnectionDurable(params: {
+  sessionId: UUID
+  userId: UUID
+  lastEventId?: string
+}): Promise<EventEnvelope[]> {
+  try {
+    const redis = await getRedisClient()
+    const entries = (await (redis as any).xRange(
+      recoveryStreamKey(params.sessionId),
+      '-',
+      '+'
+    )) as Array<{ id: string; message: Record<string, string> }>
+
+    if (!entries?.length) {
+      return []
+    }
+
+    const parsedEntries = entries
+      .map((entry) => {
+        const event = parseStreamEvent(entry.message?.event)
+        if (!event) {
+          return null
+        }
+
+        const visibleTo = parseVisibleAudience(entry.message?.visibleTo)
+        return {
+          event,
+          visibleTo,
+        }
+      })
+      .filter(
+        (
+          entry
+        ): entry is {
+          event: EventEnvelope
+          visibleTo: UUID[]
+        } => entry !== null
+      )
+
+    if (!parsedEntries.length) {
+      return []
+    }
+
+    let startIndex = 0
+    if (params.lastEventId) {
+      const found = parsedEntries.findIndex((entry) => entry.event.id === params.lastEventId)
+      startIndex = found >= 0 ? found + 1 : 0
+    }
+
+    return parsedEntries
+      .slice(startIndex)
+      .filter((entry) => {
+        if (!entry.visibleTo.length) {
+          return true
+        }
+        return entry.visibleTo.includes(params.userId)
+      })
+      .map((entry) => entry.event)
+  } catch (error) {
+    logger.warn('ws.recovery', 'Failed to replay durable recovery events', {
+      sessionId: params.sessionId,
+      userId: params.userId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return []
+  }
 }
 
 /**
@@ -136,4 +280,12 @@ export function createConnectionState(
  */
 export function clearSessionRecoveryState(sessionId: UUID): void {
   eventLog.clearSession(sessionId)
+  void (async () => {
+    try {
+      const redis = await getRedisClient()
+      await redis.del(recoveryStreamKey(sessionId))
+    } catch {
+      // Non-fatal cleanup path.
+    }
+  })()
 }

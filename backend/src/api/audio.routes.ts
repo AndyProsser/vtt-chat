@@ -17,6 +17,7 @@ import {
   AUDIO_EVENT_TYPES,
   AUDIO_PRESETS,
 } from '@/constants/audio.constants'
+import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
@@ -210,6 +211,21 @@ async function handleSetEnvironment(req: Request, res: Response) {
   })
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'AUDIO.ENVIRONMENT_SET',
+    targetType: 'ROOM',
+    targetId: roomId as UUID,
+    roomId: roomId as UUID,
+    visibilityClass: 'PUBLIC',
+    timestamp: setAt,
+    metadata: {
+      environmentId: persisted.environmentId,
+      environmentName: persisted.environmentName,
+    },
+  })
   logger.info('audio', 'Environment preset applied', {
     sessionId,
     roomId,
@@ -279,6 +295,19 @@ async function handleApplyDmOverride(req: Request, res: Response) {
   })
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'AUDIO.DM_OVERRIDE_APPLIED',
+    targetType: 'USER',
+    targetId: targetUserId as UUID,
+    visibilityClass: 'ROLE_SCOPED',
+    timestamp: appliedAt,
+    metadata: {
+      overrideType: persisted.overrideType,
+    },
+  })
   logger.info('audio', 'DM audio override applied', {
     sessionId,
     targetUserId,
@@ -335,6 +364,18 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
   })
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'AUDIO.DM_OVERRIDE_REMOVED',
+    targetType: 'USER',
+    targetId: targetUserId as UUID,
+    visibilityClass: 'ROLE_SCOPED',
+    metadata: {
+      overrideType: typeof overrideType === 'string' ? overrideType : 'UNKNOWN',
+    },
+  })
   logger.info('audio', 'DM audio override removed', {
     sessionId,
     targetUserId,
@@ -455,6 +496,21 @@ async function handleSetBroadcastState(req: Request, res: Response) {
   // Compatibility shim for older clients listening to legacy event name.
   eventBroadcaster.broadcastToSession(sessionId as UUID, legacyEvent)
 
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'AUDIO.BROADCAST_STATE_CHANGED',
+    targetType: 'SESSION',
+    targetId: sessionId as UUID,
+    visibilityClass: 'PUBLIC',
+    timestamp: changedAt,
+    metadata: {
+      enabled: state.enabled,
+      broadcastRoomId: state.broadcastRoomId,
+    },
+  })
+
   logger.info('audio', 'Broadcast voice state changed', {
     sessionId,
     enabled,
@@ -557,6 +613,20 @@ async function handleSetUserMute(req: Request, res: Response) {
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
 
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: muted ? 'AUDIO.USER_MUTED' : 'AUDIO.USER_UNMUTED',
+    targetType: 'USER',
+    targetId: state.userId,
+    visibilityClass: 'ROLE_SCOPED',
+    timestamp: state.mutedAt,
+    metadata: {
+      userMuted: state.userMuted,
+    },
+  })
+
   logger.info('audio', `User ${muted ? 'muted' : 'unmuted'} themselves`, {
     sessionId,
     userId: user.userId,
@@ -648,6 +718,23 @@ async function handleSetDmVoiceMode(req: Request, res: Response) {
   })
 
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'AUDIO.DM_VOICE_MODE_CHANGED',
+    targetType: 'USER',
+    targetId: state.dmId,
+    roomId: state.targetGroupId || undefined,
+    visibilityClass: 'PUBLIC',
+    timestamp: state.changedAt,
+    metadata: {
+      voiceMode: state.voiceMode,
+      targetGroupId: state.targetGroupId,
+      backgroundVolume: state.backgroundVolume,
+    },
+  })
 
   logger.info('audio', 'DM voice mode changed', {
     sessionId,

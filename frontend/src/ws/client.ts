@@ -89,6 +89,7 @@ export class WebSocketClient {
 
   // Event queue for offline handling
   private eventQueue: EventEnvelope[] = []
+  private lastReceivedEventId: string | null = null
 
   // Callbacks
   private callbacks: {
@@ -148,6 +149,7 @@ export class WebSocketClient {
               type: 'WS:AUTH',
               token: this.token,
               sessionId: this.sessionId,
+              lastEventId: this.lastReceivedEventId,
             })
           )
           this.reconnectAttempts = 0
@@ -333,6 +335,9 @@ export class WebSocketClient {
 
       if ((incoming as any).type === 'WS:EVENT' && (incoming as any).event) {
         const wsEvent = (incoming as any).event as EventEnvelope
+        if (isValidUUID(wsEvent.id)) {
+          this.lastReceivedEventId = wsEvent.id
+        }
         bumpLoopCounter('ws.incoming.type.WS:EVENT')
         bumpLoopCounter(`ws.incoming.event.${wsEvent.type}`)
         wsClientLogInfo(`Received WS event ${wsEvent.type}`, {
@@ -403,8 +408,12 @@ export class WebSocketClient {
 
       // Backward compatibility: raw event envelope payload
       bumpLoopCounter('ws.incoming.type.raw-envelope')
-      bumpLoopCounter(`ws.incoming.event.${(incoming as EventEnvelope).type}`)
-      this.callbacks.onEvent?.(incoming as EventEnvelope)
+      const rawEnvelope = incoming as EventEnvelope
+      if (isValidUUID(rawEnvelope.id)) {
+        this.lastReceivedEventId = rawEnvelope.id
+      }
+      bumpLoopCounter(`ws.incoming.event.${rawEnvelope.type}`)
+      this.callbacks.onEvent?.(rawEnvelope)
     } catch (error) {
       bumpLoopCounter('ws.incoming.parse-error')
       const err = error instanceof Error ? error : new Error(String(error))

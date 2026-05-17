@@ -5,6 +5,8 @@ Status:
 - This document defines the backend runtime-state contract for Redis-first realtime behavior.
 - Treat this as an implementation target and architecture contract for new and refactored flows.
 - Where current runtime differs, this document should drive convergence work rather than be interpreted as already fully shipped.
+- Current shipped baseline (May 2026): Redis is authoritative for presence and room membership topology; chat/notes/audio durability paths are still primarily Postgres-first.
+- Current shipped baseline (May 2026): a unified session-audit stream with the mandatory record shape in section 4 is not fully implemented yet.
 
 ---
 
@@ -19,6 +21,45 @@ Contract goals:
 2. Reduce database write pressure during bursty session activity.
 3. Preserve required long-term records in Postgres.
 4. Record all meaningful session actions in an auditable session trail.
+
+---
+
+## 1.1 Current Runtime Reality Snapshot (May 2026)
+
+This section captures what is verified in code and tests today, so this contract can be used both as target architecture and as an implementation gap tracker.
+
+### Implemented today
+
+- Redis runtime authority for presence + room membership projection:
+  - `presence:session:{sessionId}` hash
+  - `room:session:{sessionId}:{roomId}:members` sets
+  - `presence:session:{sessionId}:activity` sorted set
+- Server-restart recovery for presence topology:
+  - Presence snapshots persisted to Postgres (`PresenceSnapshot`)
+  - Redis presence hash can be repopulated from snapshots when empty
+- Frontend reconnect rehydration of room + presence + audio environment/DM overrides via API refresh and atomic topology replacement.
+- Redis runtime projection stream for session chat mutations:
+  - `chat:session:{sessionId}:stream` append on send/edit/delete paths.
+- Redis runtime replay stream for websocket reconnect recovery:
+  - `ws:session:{sessionId}:events` bounded replay window keyed by reconnect cursor (`lastEventId`).
+- Session audit Redis stream append introduced for core runtime mutation families:
+  - Chat mutation actions (`CHAT.MESSAGE_SENT|EDITED|DELETED`)
+  - Presence mutation actions (`PRESENCE.STATE_CHANGED`, recovery trigger)
+  - Audio mutation actions (environment, DM overrides, mute, broadcast, DM voice mode)
+
+### Partial today
+
+- Audio runtime split:
+  - User mute projection touches Redis presence state
+  - Room environments/DM overrides/broadcast state are persisted in Postgres and replayed via API + WS
+- Session lifecycle logging exists via `SessionLog` entries, but this is not yet a full action taxonomy across all domain mutations.
+
+### Not yet implemented as a unified contract
+
+- Redis-first write path for all websocket-visible mutations (many routes are still Postgres -> WS without Redis runtime mirror).
+- Redis-backed runtime cache/stream coverage is still incomplete outside presence/room and session chat/audit stream append paths.
+- Mandatory session-audit envelope shape from section 4 across all meaningful action types.
+- Bounded flush/durability worker model for Class B/C as a platform-wide standard.
 
 ---
 
@@ -274,3 +315,14 @@ For every row above that is not `N/A`:
 2. Define exact durable write timing (`inline` or `bounded flush`).
 3. Define audit action taxonomy (`actionType` catalog).
 4. Add integration tests asserting Redis + WS + durable + audit behavior.
+
+---
+
+## 12. Verified Coverage Notes (May 2026)
+
+- Verified via backend integration test: `backend/tests/integration/room-service-recovery.integration.test.ts`
+  - Confirms Redis-empty presence recovery from durable snapshots.
+- Verified via frontend hook test: `frontend/tests/hooks/useWebSocket.test.ts`
+  - Confirms reconnect transitions continue dispatching events and socket lifecycle remains session-scoped.
+- Gap note:
+  - `backend/src/ws/state-recovery.ts` currently uses an in-memory event log and is not yet wired as a durable replay path across backend restarts.

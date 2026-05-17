@@ -8,6 +8,8 @@ import { Server as HTTPServer } from 'node:http'
 import { EventDispatcher } from './dispatcher'
 import {
   registerEventForRecovery,
+  registerEventForRecoveryDurable,
+  replayEventsForConnectionDurable,
   updateConnectionState,
   createConnectionState,
   type ConnectionState,
@@ -44,6 +46,7 @@ interface AuthMessage {
   type: 'WS:AUTH'
   token: string
   sessionId?: UUID
+  lastEventId?: string
 }
 
 /**
@@ -221,7 +224,12 @@ export class WebSocketManager {
     })
   }
 
-  private authenticateConnection(ws: ExtendedWebSocket, token: string, sessionId?: UUID): void {
+  private async authenticateConnection(
+    ws: ExtendedWebSocket,
+    token: string,
+    sessionId?: UUID,
+    lastEventId?: string
+  ): Promise<void> {
     const payload = verifyToken(token)
     if (!payload) {
       ws.close(1008, 'Invalid or expired token')
@@ -240,6 +248,12 @@ export class WebSocketManager {
 
     ws.authPayload = payload
     ws.connectionState = connectionState
+
+    if (lastEventId) {
+      updateConnectionState(connectionState, lastEventId)
+      connectionState.isReconnecting = true
+    }
+
     this.connections.set(connectionId, ws)
 
     if (ws.authTimeoutId) {
@@ -265,6 +279,26 @@ export class WebSocketManager {
         role: payload.role,
       })
     )
+
+    if (lastEventId && connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
+      const replayEvents = await replayEventsForConnectionDurable({
+        sessionId: connectionState.sessionId,
+        userId: payload.userId as UUID,
+        lastEventId,
+      })
+
+      for (const replayEvent of replayEvents) {
+        ws.send(
+          JSON.stringify({
+            type: 'WS:EVENT',
+            event: replayEvent,
+          })
+        )
+        updateConnectionState(connectionState, replayEvent.id)
+      }
+
+      connectionState.isReconnecting = false
+    }
 
     if (connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
       sessionDisconnectCascadeService.handleUserConnected(
@@ -311,12 +345,13 @@ export class WebSocketManager {
           ws.close(1008, 'Authenticate first using WS:AUTH')
           return
         }
-        this.authenticateConnection(
+        await this.authenticateConnection(
           ws,
           auth.token,
           typeof auth.sessionId === 'string' && auth.sessionId
             ? (auth.sessionId as UUID)
-            : undefined
+            : undefined,
+          typeof auth.lastEventId === 'string' && auth.lastEventId ? auth.lastEventId : undefined
         )
         return
       }
@@ -357,6 +392,15 @@ export class WebSocketManager {
 
       // Broadcast to other clients in same session (simple implementation)
       const visibleTo = await this.resolveClientEventAudience(normalizedEvent)
+
+      if (ws.connectionState) {
+        await registerEventForRecoveryDurable(
+          ws.connectionState.sessionId,
+          normalizedEvent,
+          visibleTo
+        )
+      }
+
       this.broadcastToSession(normalizedEvent.sessionId, normalizedEvent, ws, visibleTo)
     } catch (err: any) {
       logger.warn('ws', 'Error processing message', {
@@ -447,6 +491,8 @@ export class WebSocketManager {
    * @param visibleTo - If set, only deliver to users in this list; otherwise deliver to all
    */
   broadcastEventToSession(sessionId: UUID, event: EventEnvelope, visibleTo?: UUID[]): void {
+    void registerEventForRecoveryDurable(sessionId, event, visibleTo)
+
     const OPEN_STATE = 1
     this.wss.clients.forEach((client: any) => {
       const ws = client as ExtendedWebSocket

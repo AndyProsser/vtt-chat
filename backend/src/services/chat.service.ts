@@ -28,6 +28,10 @@ import {
 } from '@/repositories/chat.repository'
 import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
 import { listCampaignGroupRooms, findRoomById } from '@/repositories/room.repository'
+import {
+  appendChatRuntimeEvent,
+  appendSessionAuditEvent,
+} from '@/services/runtime/runtime-streams.service'
 import { isGreenRoomName } from '@/utils'
 
 const SYSTEM_CHAT_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
@@ -37,6 +41,26 @@ interface ChatVisibilityPayload {
   visibleTo?: UUID[]
   roomId?: UUID
   targetIds?: UUID[]
+}
+
+function toVisibilityClass(params: {
+  type: MessageType
+  isDmOnly: boolean
+  isOffTheRecord?: boolean
+}): 'PUBLIC' | 'ROLE_SCOPED' | 'PRIVATE' | 'SYSTEM' {
+  if (params.type === MessageType.SYSTEM) {
+    return 'SYSTEM'
+  }
+
+  if (params.type === MessageType.WHISPER || params.isOffTheRecord) {
+    return 'PRIVATE'
+  }
+
+  if (params.isDmOnly) {
+    return 'ROLE_SCOPED'
+  }
+
+  return 'PUBLIC'
 }
 
 function parseUUIDArray(value: unknown): UUID[] | undefined {
@@ -203,6 +227,7 @@ export async function sendMessage(params: {
   roomId?: UUID
   authorId: UUID
   authorUsername: string
+  actorRole?: string
   dmId: UUID
   content: string
   type: MessageType
@@ -215,6 +240,7 @@ export async function sendMessage(params: {
     roomId,
     authorId,
     authorUsername,
+    actorRole,
     dmId,
     content,
     type,
@@ -246,6 +272,47 @@ export async function sendMessage(params: {
     targetIds: visibility.targetIds,
     createdAt: Date.now(),
   }
+
+  const visibilityClass = toVisibilityClass({
+    type,
+    isDmOnly: message.isDmOnly,
+    isOffTheRecord: message.isOffTheRecord,
+  })
+
+  await appendChatRuntimeEvent({
+    sessionId,
+    messageId: id,
+    action: 'MESSAGE_SENT',
+    roomId,
+    authorId: resolvedAuthorId,
+    messageType: type,
+    visibilityClass,
+    timestamp: message.createdAt,
+    payload: {
+      isDmOnly: message.isDmOnly,
+      isOffTheRecord: message.isOffTheRecord,
+      visibleAudienceCount: visibility.visibleTo?.length ?? 0,
+    },
+  })
+
+  await appendSessionAuditEvent({
+    sessionId,
+    actorUserId: resolvedAuthorId,
+    actorRole: actorRole || (type === MessageType.SYSTEM ? 'SYSTEM' : 'PLAYER'),
+    actionType: 'CHAT.MESSAGE_SENT',
+    targetType: 'MESSAGE',
+    targetId: id,
+    roomId,
+    visibilityClass,
+    timestamp: message.createdAt,
+    metadata: {
+      messageType: type,
+      isDmOnly: message.isDmOnly,
+      isOffTheRecord: message.isOffTheRecord,
+      visibleAudienceCount: visibility.visibleTo?.length ?? 0,
+      contentLength: content.length,
+    },
+  })
 
   await createChatMessageRecord({
     id,
@@ -468,6 +535,46 @@ export async function editMessage(
   if (requesterRole !== 'DM' && message.authorId !== requesterId) return null
 
   const editedAt = Date.now()
+
+  const visibilityClass = toVisibilityClass({
+    type: message.type,
+    isDmOnly: message.isDmOnly,
+    isOffTheRecord: message.isOffTheRecord,
+  })
+
+  if (message.sessionId) {
+    await appendChatRuntimeEvent({
+      sessionId: message.sessionId,
+      messageId,
+      action: 'MESSAGE_EDITED',
+      roomId: message.roomId,
+      authorId: requesterId,
+      messageType: message.type,
+      visibilityClass,
+      timestamp: editedAt,
+      payload: {
+        editorId: requesterId,
+        contentLength: newContent.length,
+      },
+    })
+
+    await appendSessionAuditEvent({
+      sessionId: message.sessionId,
+      actorUserId: requesterId,
+      actorRole: requesterRole,
+      actionType: 'CHAT.MESSAGE_EDITED',
+      targetType: 'MESSAGE',
+      targetId: messageId,
+      roomId: message.roomId,
+      visibilityClass,
+      timestamp: editedAt,
+      metadata: {
+        editorId: requesterId,
+        contentLength: newContent.length,
+      },
+    })
+  }
+
   await updateMessageRecord({
     messageId,
     content: newContent,
@@ -495,6 +602,44 @@ export async function deleteMessage(
   if (requesterRole !== 'DM' && message.authorId !== requesterId) return null
 
   const deletedAt = Date.now()
+
+  const visibilityClass = toVisibilityClass({
+    type: message.type,
+    isDmOnly: message.isDmOnly,
+    isOffTheRecord: message.isOffTheRecord,
+  })
+
+  if (message.sessionId) {
+    await appendChatRuntimeEvent({
+      sessionId: message.sessionId,
+      messageId,
+      action: 'MESSAGE_DELETED',
+      roomId: message.roomId,
+      authorId: requesterId,
+      messageType: message.type,
+      visibilityClass,
+      timestamp: deletedAt,
+      payload: {
+        deletedBy: requesterId,
+      },
+    })
+
+    await appendSessionAuditEvent({
+      sessionId: message.sessionId,
+      actorUserId: requesterId,
+      actorRole: requesterRole,
+      actionType: 'CHAT.MESSAGE_DELETED',
+      targetType: 'MESSAGE',
+      targetId: messageId,
+      roomId: message.roomId,
+      visibilityClass,
+      timestamp: deletedAt,
+      metadata: {
+        deletedBy: requesterId,
+      },
+    })
+  }
+
   await softDeleteMessageRecord({
     messageId,
     deletedBy: requesterId,

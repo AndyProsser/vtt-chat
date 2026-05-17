@@ -91,6 +91,8 @@ Current shipped baseline most directly covers:
 - WebSocket reconnects
 - Client reconnect-driven room/presence refresh
 - Redis-empty presence restoration from persisted snapshots on the backend
+- Backend restarts by rebuilding runtime topology from durable APIs/snapshots
+- Redis-backed websocket replay window using reconnect cursors (`lastEventId`) for session-scoped WS events
 
 ---
 
@@ -131,6 +133,12 @@ Current shipped Stage 6-7 runtime baseline is narrower:
 
 5. **Domain events continue flowing**
    Normal websocket event dispatch resumes after reconnect.
+
+6. **If backend restarts, clients rehydrate from APIs**
+   Runtime continuity depends on durable records (for example presence snapshots and Postgres-backed domain state), then websocket updates continue from the new process.
+
+7. **Reconnect replay window (bounded)**
+   Client auth now includes optional `lastEventId`; server can replay recent session events from Redis stream before normal live flow resumes.
 
 ### **Lifecycle Stages**
 
@@ -257,7 +265,16 @@ The architecture supports future event replay:
 - Client replays events since last known timestamp
 - Ensures perfect determinism
 
-This is not yet implemented but the Event Bus is designed for it.
+Current shipped baseline:
+
+- A bounded replay baseline is implemented for websocket session events using Redis stream storage and reconnect cursor (`lastEventId`) handling.
+- Replay is limited to recent retained events; it is not a full historical/event-sourcing replay system.
+- Full deterministic replay across all domains remains future architecture.
+
+Current implementation note:
+
+- `backend/src/ws/state-recovery.ts` now has both in-memory replay helpers (legacy/tests) and Redis durable replay helpers for restart-safe reconnect windows (`ws:session:{sessionId}:events`).
+- After restart, clients rely on both targeted API rehydration and bounded Redis replay when cursor history is available.
 
 ---
 
@@ -301,6 +318,7 @@ Current shipped baseline:
 - Chat continues as an event-driven domain after reconnect.
 - Full chat snapshot hydration is not yet the shipped contract.
 - Client may maintain a local outgoing send queue for UX (`queued`/`sending`/`failed`), but persisted chat order/content remains backend + WS authoritative.
+- After backend restart, chat continuity is restored from durable APIs (Postgres-backed history) rather than Redis event-stream replay.
 
 ---
 
@@ -352,6 +370,7 @@ Current shipped baseline:
 - Presence recovery is the most complete shipped subsystem recovery path.
 - Backend can recover session presence from persisted snapshots when realtime state is empty.
 - Frontend reconnect refresh replaces room and presence topology atomically.
+- This path is validated by `backend/tests/integration/room-service-recovery.integration.test.ts`.
 
 ---
 

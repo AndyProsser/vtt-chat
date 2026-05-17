@@ -17,6 +17,7 @@ import {
   broadcastSessionStatsSnapshot,
   getSessionStatsSnapshot,
 } from '@/services/session/stats.service'
+import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { ensureMockSimulationRunning } from '@/services/dev-mock/simulation.service'
 import type { WebSocketManager } from '@/ws'
 
@@ -167,6 +168,24 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       privateRoomId: privateRoomId as UUID | undefined,
     })
 
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'PRESENCE.STATE_CHANGED',
+      targetType: 'USER',
+      targetId: user.userId as UUID,
+      roomId: updated.primaryRoomId,
+      visibilityClass: 'PUBLIC',
+      timestamp: updated.lastSeenAt,
+      metadata: {
+        previousState: previous?.state || PresenceState.OFFLINE,
+        newState: updated.state,
+        previousGroupId: updated.previousGroupId || null,
+        ghostMode: updated.ghost || false,
+      },
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event: EventEnvelope = {
@@ -244,6 +263,21 @@ router.post('/:sessionId/recover', requireAuth, async (req: Request, res: Respon
     const recovered = await ensurePresenceRecoveredFromSnapshots(sessionId as UUID)
     const snapshotCount = await snapshotSessionPresence(sessionId as UUID)
     const presence = await getSessionPresence(sessionId as UUID)
+
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'PRESENCE.RECOVERY_TRIGGERED',
+      targetType: 'SESSION',
+      targetId: sessionId as UUID,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        recoveredFromSnapshots: recovered,
+        snapshotCount,
+        presenceCount: presence.length,
+      },
+    })
 
     return res.status(200).json({
       recoveredFromSnapshots: recovered,

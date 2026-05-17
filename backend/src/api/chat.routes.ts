@@ -285,6 +285,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       roomId: roomId as UUID,
       authorId: effective.userId,
       authorUsername: effective.username,
+      actorRole: requesterRole,
       dmId: session.dmId,
       content,
       type,
