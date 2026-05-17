@@ -265,18 +265,6 @@ function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSe
   }
 }
 
-function formatTransitionNotice(params: {
-  nextState: SessionState
-  movedUsers: number
-  targetRoomName: string
-  targetState: PresenceState
-}): string {
-  const stateLabel = params.nextState.toLowerCase()
-  const usersLabel = params.movedUsers === 1 ? '1 user' : `${params.movedUsers} users`
-  const targetStateLabel = params.targetState.toLowerCase()
-  return `Session ${stateLabel}: moved ${usersLabel} to ${params.targetRoomName} (${targetStateLabel}).`
-}
-
 function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   if (sessions.length === 0) return null
 
@@ -432,7 +420,7 @@ function toValidPostSessionDurationMinutes(value: unknown, fallback = 5): number
     return fallback
   }
 
-  return Math.max(1, Math.min(60, Math.round(parsed)))
+  return Math.max(1, Math.min(15, Math.round(parsed)))
 }
 
 export function SessionInit({
@@ -2667,7 +2655,7 @@ export function SessionInit({
     }
 
     setShowStopSessionModal(false)
-    await handleTransitionSession(currentSession.id, SessionState.ENDED)
+    await handleTransitionSession(currentSession.id, SessionState.COOLDOWN)
   }
 
   useEffect(() => {
@@ -2718,7 +2706,7 @@ export function SessionInit({
                   updatedSession.startedAt ?? currentSession?.startedAt ?? transitionTimestamp,
                 pausedAt: undefined,
               }
-            : state === SessionState.ENDED
+            : state === SessionState.COOLDOWN
               ? {
                   endedAt: updatedSession.endedAt ?? transitionTimestamp,
                 }
@@ -2893,10 +2881,10 @@ export function SessionInit({
     toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000
   )
   const cooldownControlVisible =
-    currentSession?.state === SessionState.ENDED &&
+    currentSession?.state === SessionState.COOLDOWN &&
     (effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER)
   const canManageCooldown =
-    currentSession?.state === SessionState.ENDED &&
+    currentSession?.state === SessionState.COOLDOWN &&
     (currentSession?.dmId === user.id || (effectiveSessionRole === Role.PLAYER && isDmDisconnected))
   const cooldownControlLockedReason =
     cooldownControlVisible && !canManageCooldown
@@ -2960,22 +2948,6 @@ export function SessionInit({
       },
     })
   }, [lobbyNotice, showToast])
-
-  useEffect(() => {
-    if (!activeTransitionNotice) return
-
-    showToast({
-      id: `session-init:transition:${activeTransitionNotice.eventId}`,
-      variant: 'info',
-      message: formatTransitionNotice({
-        nextState: activeTransitionNotice.nextState,
-        movedUsers: activeTransitionNotice.movedUsers,
-        targetRoomName: activeTransitionNotice.targetRoomName,
-        targetState: activeTransitionNotice.targetState,
-      }),
-      onDismiss: hideTransitionToast,
-    })
-  }, [activeTransitionNotice, hideTransitionToast, showToast])
 
   useEffect(() => {
     wsErrorMessageRef.current = wsError?.message || null
@@ -3221,10 +3193,15 @@ export function SessionInit({
                 <div className="session-command-center-pane">
                   {effectiveSessionRole === Role.SPECTATOR &&
                   (currentSession.state === SessionState.PAUSED ||
+                    currentSession.state === SessionState.COOLDOWN ||
                     currentSession.state === SessionState.ENDED) ? (
                     <SpectatorWaitScreen
                       sessionState={
-                        currentSession.state === SessionState.PAUSED ? 'PAUSED' : 'ENDED'
+                        currentSession.state === SessionState.PAUSED
+                          ? 'PAUSED'
+                          : currentSession.state === SessionState.COOLDOWN
+                            ? 'COOLDOWN'
+                            : 'ENDED'
                       }
                       sessionEndedAt={currentSession.endedAt}
                       cooldownDurationMs={configuredCooldownDurationMs}

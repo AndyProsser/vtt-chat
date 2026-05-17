@@ -19,6 +19,7 @@ import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
+import { isGreenRoomName } from '@/utils'
 
 const router = Router()
 
@@ -46,11 +47,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
-}
-
-function isGreenRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
 }
 
 /**
@@ -554,22 +550,34 @@ router.post('/campaign/:campaignId/chat', requireAuth, async (req: Request, res:
         .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid message content' })
     }
 
-    // Resolve DM (required for visibility computation)
-    // In greenroom context, we use a default DM audience. For now, visibility is public to campaign.
+    // Verify the sender is a campaign member (spectators cannot post to greenroom)
+    const { isUserInCampaign, getCampaignDmId } = await import('@/repositories/campaign.repository')
+    const isMember = await isUserInCampaign({
+      userId: user.userId as string,
+      campaignId: campaignId as string,
+    })
+    if (!isMember) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+    }
+
+    // Resolve the campaign DM for visibility computation
+    const dmId = await getCampaignDmId(campaignId as string)
+    if (!dmId) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
     const { sendCampaignGreenroomMessage } = await import('@/services/chat.service')
     const message = await sendCampaignGreenroomMessage({
       campaignId: campaignId as UUID,
       authorId: user.userId as UUID,
       authorUsername: user.username,
-      dmId: user.userId as UUID, // Self as DM for greenroom context
+      dmId: dmId as UUID,
       content,
     })
 
-    // Broadcast to all campaign members
+    // Broadcast to all campaign members via campaign-scoped WS delivery
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
-      // Note: wsManager.broadcastToCampaign would be ideal, but we use session for now
-      // This should be updated when campaign-scoped WS broadcast is available
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
         type: 'CHAT:MESSAGE_SENT',
@@ -592,8 +600,7 @@ router.post('/campaign/:campaignId/chat', requireAuth, async (req: Request, res:
           targetIds: message.targetIds,
         },
       }
-      // TODO: Implement campaign-scoped WS broadcast
-      // For now, this is sent but will require frontend to subscribe to campaign channel
+      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
     return res.status(201).json(message)

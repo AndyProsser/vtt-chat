@@ -26,6 +26,7 @@ import type { TokenPayload } from '@/services/auth.service'
 import { verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { resolveTypingAudience } from '@/services/chat-visibility.service'
+import { listCampaignMemberIds } from '@/repositories/campaign.repository'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
@@ -462,6 +463,36 @@ export class WebSocketManager {
         return
       }
 
+      ws.send(JSON.stringify({ type: 'WS:EVENT', event }))
+    })
+  }
+
+  /**
+   * Broadcast an event to all connected clients who are members of a campaign.
+   * Used for campaign-scoped events such as greenroom chat.
+   * Looks up campaign member IDs from the DB and delivers to matching connections.
+   */
+  async broadcastToCampaignMembers(campaignId: UUID, event: EventEnvelope): Promise<void> {
+    const OPEN_STATE = 1
+    let memberIds: string[]
+    try {
+      memberIds = await listCampaignMemberIds(campaignId)
+    } catch (error) {
+      logger.error('ws', 'Failed to resolve campaign members for broadcast', {
+        campaignId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return
+    }
+    const memberSet = new Set(memberIds)
+    this.wss.clients.forEach((client: any) => {
+      const ws = client as ExtendedWebSocket
+      if (ws.readyState !== OPEN_STATE || !ws.authPayload) {
+        return
+      }
+      if (!memberSet.has(ws.authPayload.userId)) {
+        return
+      }
       ws.send(JSON.stringify({ type: 'WS:EVENT', event }))
     })
   }

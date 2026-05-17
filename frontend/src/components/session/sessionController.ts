@@ -94,7 +94,7 @@ export function toValidPostSessionDurationMinutes(value: unknown, fallback = 5):
     return fallback
   }
 
-  return Math.max(1, Math.min(60, Math.round(parsed)))
+  return Math.max(1, Math.min(15, Math.round(parsed)))
 }
 
 /**

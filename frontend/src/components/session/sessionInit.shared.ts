@@ -19,7 +19,7 @@ export interface CampaignSummary {
   connectedPlayersLabel?: string
   connectedSpectatorsRounded?: number
   connectedSpectatorsLabel?: string
-  displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED'
+  displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN'
   latestSessionState?: SessionState | null
 }
 
@@ -29,7 +29,7 @@ export type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
 
 export type CampaignSettingsPayload = {
   latestSessionId?: UUID | null
-  latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'ENDED' | null
+  latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | null
   latestSessionEndedAt?: string | null
   id: UUID
   name: string
@@ -61,7 +61,7 @@ export type CampaignEntryAction = {
 
 export function getCampaignDisplayState(
   campaign: CampaignSummary
-): 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' {
+): 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' {
   if (campaign.displayState) {
     return campaign.displayState
   }

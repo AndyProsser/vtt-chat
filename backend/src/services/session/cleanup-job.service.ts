@@ -11,13 +11,12 @@ import {
 import { getRooms, getSessionPresence } from '@/services/room.service'
 import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
-import { STANDALONE_SESSION_COOLDOWN_MS } from '@/constants/session.constants'
-import { logger } from '@/utils'
-
-function isGreenRoomName(value: string): boolean {
-  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
-}
+import {
+  SESSION_COOLDOWN_EXTENSION_MAX_MS,
+  SESSION_COOLDOWN_EXTENSION_MIN_MS,
+  STANDALONE_SESSION_COOLDOWN_MS,
+} from '@/constants/session.constants'
+import { logger, isGreenRoomName } from '@/utils'
 
 async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
   const [members, presence] = await Promise.all([
@@ -151,9 +150,15 @@ export class SessionCleanupJobService {
 
       try {
         const cooldownMs =
-          session.campaign?.postSessionChatEnabled === false
-            ? 0
-            : (session.campaign?.postSessionChatDurationMs ?? STANDALONE_SESSION_COOLDOWN_MS)
+          session.campaign?.postSessionChatDurationMs == null
+            ? STANDALONE_SESSION_COOLDOWN_MS
+            : Math.max(
+                SESSION_COOLDOWN_EXTENSION_MIN_MS,
+                Math.min(
+                  SESSION_COOLDOWN_EXTENSION_MAX_MS,
+                  session.campaign.postSessionChatDurationMs
+                )
+              )
 
         const cooldownStartedAtMs = session.endedAt?.getTime() ?? 0
         const cooldownExpiresAt = cooldownStartedAtMs + cooldownMs

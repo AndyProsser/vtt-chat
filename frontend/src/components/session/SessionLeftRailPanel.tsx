@@ -75,7 +75,7 @@ export function SessionLeftRailPanel({
   const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now())
 
   useEffect(() => {
-    if (sessionState !== 'ENDED') {
+    if (sessionState !== 'COOLDOWN') {
       return
     }
 
@@ -90,7 +90,7 @@ export function SessionLeftRailPanel({
 
   const cooldownWindowMs = Number.isFinite(cooldownDurationMs) ? Number(cooldownDurationMs) : 0
   const isEndedCooldownActive = useMemo(() => {
-    if (sessionState !== 'ENDED') {
+    if (sessionState !== 'COOLDOWN') {
       return false
     }
 
@@ -196,7 +196,7 @@ export function SessionLeftRailPanel({
               .map((member) => {
                 const isSpectator = member.role === 'SPECTATOR'
                 const canShowSpectatorInRoom =
-                  isGreenRoomName(room.name) && sessionState === 'ENDED' && isEndedCooldownActive
+                  isGreenRoomName(room.name) && sessionState === 'COOLDOWN' && isEndedCooldownActive
 
                 if (isSpectator && !canShowSpectatorInRoom) {
                   return null

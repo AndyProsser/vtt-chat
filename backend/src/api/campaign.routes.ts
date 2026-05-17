@@ -613,13 +613,13 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   if (
     !Number.isFinite(parsedPostSessionChatDurationMs) ||
     parsedPostSessionChatDurationMs < 60_000 ||
-    parsedPostSessionChatDurationMs > 3_600_000 ||
+    parsedPostSessionChatDurationMs > 900_000 ||
     parsedPostSessionChatDurationMs % 60_000 !== 0
   ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message:
-        'postSessionChatDurationMs must be a number between 60000 and 3600000 in 60000ms increments',
+        'postSessionChatDurationMs must be a number between 60000 and 900000 in 60000ms increments',
       field: 'postSessionChatDurationMs',
     })
   }

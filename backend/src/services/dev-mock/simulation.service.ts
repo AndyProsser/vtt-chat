@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { sendMessage } from '@/services/chat.service'
+import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
+import { isGreenRoomName } from '@/utils'
 import { DEV_MOCK_CHAT_MESSAGES } from '@/constants/dev-mock-chat-messages.constants'
 import {
   DEV_MOCK_MESSAGE_WINDOW_MS,
@@ -270,11 +272,6 @@ function broadcastEvent(sessionId: UUID, event: EventEnvelope, visibleTo?: UUID[
   }
 
   eventBroadcaster.broadcastToSession(sessionId, event, visibleTo)
-}
-
-function isGreenRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
 }
 
 function broadcastTypingStarted(sessionId: UUID, user: MockPresenceUser): void {
@@ -645,6 +642,19 @@ async function emitPersistedChatMessage(params: {
     }
   }
 
+  let visibleTo: UUID[] | undefined
+  if (type === MessageType.WHISPER && recipientId) {
+    // Mirror real player whisper: sender + DM + recipient only
+    visibleTo = uniqueVisibleAudience([params.author.userId, session.dmId, recipientId])
+  } else {
+    // Mirror real player IC/OOC: resolve room occupants at send time
+    visibleTo = await resolveRoomAudience({
+      sessionId: params.sessionId,
+      roomId: messageRoomId,
+      dmId: session.dmId,
+    })
+  }
+
   const content = pickTemplate(type)
   if (!content) {
     return
@@ -659,6 +669,7 @@ async function emitPersistedChatMessage(params: {
     content,
     type,
     recipientId,
+    visibleTo,
   })
 
   recordMessageSent(params.runtime, type, stored.createdAt)

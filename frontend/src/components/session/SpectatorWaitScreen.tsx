@@ -3,7 +3,7 @@ import '../../styles/components/session/SpectatorWaitScreen.css'
 
 interface SpectatorWaitScreenProps {
   /** Current session state */
-  sessionState: 'PAUSED' | 'ENDED'
+  sessionState: 'PAUSED' | 'COOLDOWN' | 'ENDED'
   /** Timestamp (ms) when the session ended — used to compute cooldown countdown */
   sessionEndedAt?: number
   /** Configured cooldown duration in ms (e.g., 300000 for 5 min) */
@@ -27,13 +27,14 @@ function formatCountdown(remainingMs: number): string {
  *
  * Shown to spectators when they cannot observe the live session:
  * - PAUSED: session is on intermission (curtain down).
- * - ENDED: post-session cooldown window is active or has expired.
+ * - COOLDOWN: post-session cooldown window is active.
+ * - ENDED: post-session cooldown has concluded.
  *
  * Contract:
  * - PAUSED → spectators see an intermission holding screen.
- * - ENDED with cooldown active → spectators see a countdown and the message that
+ * - COOLDOWN → spectators see a countdown and the message that
  *   post-session chat is open (they can use the chat panel below/alongside this).
- * - ENDED with cooldown expired (endedAt = 0 or past) → "Session has ended" message.
+ * - ENDED → "Session has ended" message.
  */
 export function SpectatorWaitScreen({
   sessionState,
@@ -53,7 +54,7 @@ export function SpectatorWaitScreen({
   })
 
   useEffect(() => {
-    if (sessionState !== 'ENDED') return
+    if (sessionState !== 'COOLDOWN') return
 
     const id = setInterval(() => {
       setRemainingMs(computeRemaining(endedAtRef.current, cooldownRef.current))
@@ -76,36 +77,34 @@ export function SpectatorWaitScreen({
     )
   }
 
-  if (sessionState === 'ENDED') {
-    const cooldownActive = sessionEndedAt !== undefined && sessionEndedAt !== 0 && remainingMs > 0
-
-    if (cooldownActive) {
-      return (
-        <div
-          className="spectator-wait-screen spectator-wait-screen--cooldown"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="spectator-wait-screen__icon" aria-hidden="true">
-            <span className="material-symbols-outlined">celebration</span>
-          </div>
-          <h2 className="spectator-wait-screen__title">That&apos;s a wrap!</h2>
-          <p className="spectator-wait-screen__body">
-            The session has ended. Post-session chat is open for{' '}
-            <span
-              className="spectator-wait-screen__countdown"
-              aria-label={`${formatCountdown(remainingMs)} remaining`}
-            >
-              {formatCountdown(remainingMs)}
-            </span>
-          </p>
-          <p className="spectator-wait-screen__hint">
-            Use the chat panel to say farewell to the table.
-          </p>
+  if (sessionState === 'COOLDOWN') {
+    return (
+      <div
+        className="spectator-wait-screen spectator-wait-screen--cooldown"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="spectator-wait-screen__icon" aria-hidden="true">
+          <span className="material-symbols-outlined">celebration</span>
         </div>
-      )
-    }
+        <h2 className="spectator-wait-screen__title">That&apos;s a wrap!</h2>
+        <p className="spectator-wait-screen__body">
+          The session has ended. Post-session chat is open for{' '}
+          <span
+            className="spectator-wait-screen__countdown"
+            aria-label={`${formatCountdown(remainingMs)} remaining`}
+          >
+            {formatCountdown(remainingMs)}
+          </span>
+        </p>
+        <p className="spectator-wait-screen__hint">
+          Use the chat panel to say farewell to the table.
+        </p>
+      </div>
+    )
+  }
 
+  if (sessionState === 'ENDED') {
     return (
       <div
         className="spectator-wait-screen spectator-wait-screen--ended"

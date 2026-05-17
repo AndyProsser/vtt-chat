@@ -28,6 +28,7 @@ import {
 } from '@/services/room.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import type { WebSocketManager } from '@/ws'
+import { isGreenRoomName } from '@/utils'
 
 const router = Router()
 
@@ -57,11 +58,6 @@ function parseRoomType(value: unknown): RoomType | null {
     return upper as RoomType
   }
   return null
-}
-
-function isGreenRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
 }
 
 function internalErrorResponse(res: Response) {

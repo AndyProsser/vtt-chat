@@ -691,7 +691,7 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                       className="session-slider"
                       type="range"
                       min={1}
-                      max={60}
+                      max={15}
                       step={1}
                       value={props.settingsPostSessionChatDurationMinutes}
                       onChange={(event) =>
@@ -702,7 +702,7 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                       disabled={props.isSettingsSaving || !props.settingsPostSessionChatEnabled}
                     />
                     <p className="session-card-subtitle">
-                      Default 5 minutes. Minimum 1 minute, maximum 60 minutes.
+                      Default 5 minutes. Minimum 1 minute, maximum 15 minutes.
                     </p>
 
                     <label

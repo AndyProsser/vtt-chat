@@ -88,7 +88,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
         setDescription(payload.campaign.description || '')
         setPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
         setPostSessionChatDurationMinutes(
-          Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+          Math.max(1, Math.min(15, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
         )
         setExtensionSyncPolicy(
           payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
@@ -141,7 +141,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
       setDescription(payload.campaign.description || '')
       setPostSessionChatEnabled(payload.campaign.postSessionChatEnabled)
       setPostSessionChatDurationMinutes(
-        Math.max(1, Math.min(60, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
+        Math.max(1, Math.min(15, Math.round(payload.campaign.postSessionChatDurationMs / 60000)))
       )
       setExtensionSyncPolicy(
         payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'

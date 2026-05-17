@@ -23,10 +23,7 @@ import {
 import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth'
 import type { RemoveUserFromSessionResult } from '@/types/session.types'
 import { getSessionEventHistory } from '@/services/session/logs.service'
-import {
-  SESSION_COOLDOWN_FORCE_EXPIRE_OFFSET_MS,
-  SESSION_STATE_TRANSITIONS,
-} from '@/constants/session.constants'
+import { SESSION_STATE_TRANSITIONS } from '@/constants/session.constants'
 
 /**
  * Generate a UUID for session creation.
@@ -330,19 +327,7 @@ export function endSessionCooldown(sessionId: UUID, dmId: UUID): Promise<Session
       })
     }
 
-    // Set endedAt far enough in the past that the cleanup job sees the cooldown as expired
-    // regardless of postSessionChatDurationMs setting (max 60 min = 3_600_000 ms).
-    const pastEndedAt = new Date(Date.now() - SESSION_COOLDOWN_FORCE_EXPIRE_OFFSET_MS)
-
-    await updateSessionEndedAtRecord({
-      sessionId,
-      endedAt: pastEndedAt,
-    })
-
-    const updated = await findSessionById(sessionId)
-    if (!updated) return null
-
-    return mapSessionRecord(updated as any)
+    return updateSessionState(sessionId, SessionStateEnum.ENDED, dmId)
   })
 }
 

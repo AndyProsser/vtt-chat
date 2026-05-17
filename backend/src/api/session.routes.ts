@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
+import { getPrismaClient } from '@/infra/db'
 import {
   createSession,
   endSessionCooldown,
@@ -48,6 +49,8 @@ import {
 } from '@/services/audio/audio-state'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
+  countSessionCooldownExtensions,
+  logSessionCooldownExtended,
   logSessionJoin,
   logSessionLeave,
   logSessionStateChange,
@@ -70,6 +73,28 @@ import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
 
 const router = Router()
+const prisma = getPrismaClient()
+
+async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> {
+  const result = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: {
+      campaign: {
+        select: {
+          postSessionChatDurationMs: true,
+        },
+      },
+    },
+  })
+
+  const configured = result?.campaign?.postSessionChatDurationMs ?? STANDALONE_SESSION_COOLDOWN_MS
+  const clamped = Math.max(
+    SESSION_COOLDOWN_EXTENSION_MIN_MS,
+    Math.min(SESSION_COOLDOWN_EXTENSION_MAX_MS, configured)
+  )
+
+  return clamped
+}
 
 /**
  * Middleware: Verify auth token exists
@@ -957,6 +982,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 
       // Broadcast SESSION:COOLDOWN_STARTED when transitioning to COOLDOWN
       if (requestedState === 'COOLDOWN') {
+        const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
         const cooldownStartedAt = session.endedAt ?? Date.now()
         wsManager.broadcastEventToSession(session.id, {
           id: crypto.randomUUID() as UUID,
@@ -969,7 +995,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           timestamp: Date.now(),
           payload: {
             cooldownStartedAt,
-            cooldownExpiresAt: cooldownStartedAt + STANDALONE_SESSION_COOLDOWN_MS,
+            cooldownExpiresAt: cooldownStartedAt + cooldownDurationMs,
           },
         })
       }
@@ -1058,7 +1084,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
   ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
-      message: 'extensionMs must be between 60000 and 3600000 in 60000ms increments',
+      message: 'extensionMs must be between 60000 and 900000 in 60000ms increments',
       field: 'extensionMs',
     })
   }
@@ -1073,6 +1099,14 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
       return res.status(403).json({
         code: ErrorCode.FORBIDDEN,
         message: cooldownAuth.message || 'Cooldown controls are not available.',
+      })
+    }
+
+    const cooldownExtensionCount = await countSessionCooldownExtensions(id as UUID)
+    if (cooldownExtensionCount >= 3) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_STATE_TRANSITION,
+        message: 'Cooldown can only be extended up to 3 times per session.',
       })
     }
 
@@ -1110,6 +1144,13 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
       })
     }
 
+    await logSessionCooldownExtended(
+      session.id,
+      user.userId as UUID,
+      user.username,
+      parsedExtensionMs
+    )
+
     return res.status(200).json({ session })
   } catch (err: any) {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
@@ -1125,7 +1166,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
 /**
  * POST /sessions/:id/cooldown/end
  * DM ends the post-session cooldown window early.
- * Sets endedAt to a past timestamp so the cleanup job picks up the session immediately.
+ * Immediately transitions session state from COOLDOWN to ENDED.
  */
 router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
@@ -1152,6 +1193,7 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
       })
     }
 
+    const previousSession = await getSession(id as UUID)
     const session = await endSessionCooldown(id as UUID, cooldownAuth.transitionActorUserId)
 
     if (!session) {
@@ -1163,6 +1205,20 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:STATE_CHANGED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          state: session.state,
+        },
+      })
+
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
         type: SESSION_EVENT_TYPES.COOLDOWN_ENDED,
@@ -1179,6 +1235,14 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
         },
       })
     }
+
+    await logSessionStateChange(
+      session.id,
+      user.userId as UUID,
+      user.username,
+      previousSession?.state || 'UNKNOWN',
+      toPublicSessionState(session.state) ?? session.state
+    )
 
     return res.status(200).json({ session })
   } catch (err: any) {

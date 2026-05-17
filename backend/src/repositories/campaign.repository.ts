@@ -582,3 +582,19 @@ export async function isUserInCampaign(params: {
 
   return !!membership
 }
+
+export async function listCampaignMemberIds(campaignId: string): Promise<string[]> {
+  const memberships = await prisma.campaignMembership.findMany({
+    where: { campaignId },
+    select: { userId: true },
+  })
+  return memberships.map((m) => m.userId)
+}
+
+export async function getCampaignDmId(campaignId: string): Promise<string | null> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { currentDmId: true },
+  })
+  return campaign?.currentDmId ?? null
+}

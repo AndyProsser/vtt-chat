@@ -25,6 +25,7 @@ import {
 } from '@/repositories/chat.repository'
 import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
 import { listCampaignGroupRooms, findRoomById } from '@/repositories/room.repository'
+import { isGreenRoomName } from '@/utils'
 
 const SYSTEM_CHAT_AUTHOR_ID = '00000000-0000-0000-0000-000000000000' as UUID
 const SYSTEM_CHAT_AUTHOR_USERNAME = 'SYSTEM'
@@ -87,11 +88,6 @@ function computeVisibility(
   visibility.targetIds = recipientId ? [recipientId] : undefined
 
   return visibility
-}
-
-function isGreenRoomName(name: string): boolean {
-  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ')
-  return normalized === 'green room' || normalized === 'green-room'
 }
 
 /**

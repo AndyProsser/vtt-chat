@@ -255,7 +255,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
                 ? undefined
                 : existing.pausedAt,
           endedAt:
-            payload.state === 'ENDED'
+            payload.state === 'COOLDOWN' || payload.state === 'ENDED'
               ? event.timestamp
               : payload.state === 'ACTIVE'
                 ? undefined
@@ -376,7 +376,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ...state.sessions,
         [event.sessionId]: {
           ...current,
-          state: 'ENDED' as SessionLifecycleState,
+          state: 'COOLDOWN' as SessionLifecycleState,
           endedAt: nextEndedAt,
         },
       }
@@ -393,20 +393,24 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   },
 
   handleSessionCooldownEnded: (event) => {
-    // Cooldown ended early — keep state as ENDED but signal via endedAt = 0 so
-    // countdown timers immediately read as expired.
+    const payload = event.payload as { endedAt?: number | null }
     set((state) => {
       const current = state.sessions[event.sessionId]
       if (!current) {
         return state
       }
 
+      const nextEndedAt =
+        typeof payload.endedAt === 'number' && Number.isFinite(payload.endedAt)
+          ? payload.endedAt
+          : event.timestamp
+
       const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
           ...current,
           state: 'ENDED' as SessionLifecycleState,
-          endedAt: 0,
+          endedAt: nextEndedAt,
         },
       }
 

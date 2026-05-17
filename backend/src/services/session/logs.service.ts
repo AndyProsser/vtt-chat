@@ -9,6 +9,7 @@ import {
   countSessionLogs,
   createSessionLog,
   getSessionLogs,
+  getSessionLogsByType,
 } from '@/repositories/session-logs.repository'
 
 /**
@@ -62,6 +63,37 @@ export async function logSessionStateChange(
     eventType: 'STATE_CHANGED',
     detail: `Session state changed from ${oldState} to ${newState}`,
   })
+}
+
+/**
+ * Log a cooldown extension operation.
+ */
+export async function logSessionCooldownExtended(
+  sessionId: UUID,
+  dmId: UUID,
+  dmUsername: string,
+  extensionMs: number
+): Promise<void> {
+  await createSessionLog({
+    sessionId,
+    userId: dmId,
+    username: dmUsername,
+    eventType: 'STATE_CHANGED',
+    detail: `Cooldown extended by ${extensionMs}ms`,
+  })
+}
+
+/**
+ * Count how many times cooldown has been extended for this session.
+ */
+export async function countSessionCooldownExtensions(sessionId: UUID): Promise<number> {
+  const stateChanges = await getSessionLogsByType(sessionId, 'STATE_CHANGED', 200, 0)
+  return stateChanges.reduce((count, entry) => {
+    if (entry.detail?.startsWith('Cooldown extended by ')) {
+      return count + 1
+    }
+    return count
+  }, 0)
 }
 
 /**
