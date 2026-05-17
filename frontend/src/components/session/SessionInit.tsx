@@ -714,8 +714,8 @@ export function SessionInit({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
-  const activeTakeoverUserId = useStore(
-    (state) => (currentSessionId ? state.mockTakeoverUserIdBySession[currentSessionId] : null)
+  const activeTakeoverUserId = useStore((state) =>
+    currentSessionId ? state.mockTakeoverUserIdBySession[currentSessionId] : null
   )
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
@@ -882,7 +882,13 @@ export function SessionInit({
 
     const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
     return (mainRoom || visibleRooms[0]).id
-  }, [currentPresence, effectiveActorUserId, isTakeoverActive, selectedRoomIdOverride, visibleRooms])
+  }, [
+    currentPresence,
+    effectiveActorUserId,
+    isTakeoverActive,
+    selectedRoomIdOverride,
+    visibleRooms,
+  ])
   const selectedRoom = useMemo(
     () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
     [selectedRoomId, visibleRooms]
@@ -905,13 +911,7 @@ export function SessionInit({
       : undefined
 
     setPrivateRoomCleanMode(ownRoomType === RoomType.PRIVATE)
-  }, [
-    currentPresence,
-    currentRooms,
-    currentSession,
-    effectiveActorUserId,
-    setPrivateRoomCleanMode,
-  ])
+  }, [currentPresence, currentRooms, currentSession, effectiveActorUserId, setPrivateRoomCleanMode])
 
   useEffect(() => {
     if (!currentSession || !connectedRoomId) {
@@ -2944,12 +2944,11 @@ export function SessionInit({
           )
         : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
-  const effectiveSessionRole: Role =
-    isTakeoverActive
-      ? Role.PLAYER
-      : currentSession && currentSession.dmId === user.id
-        ? Role.DM
-        : membershipRole
+  const effectiveSessionRole: Role = isTakeoverActive
+    ? Role.PLAYER
+    : currentSession && currentSession.dmId === user.id
+      ? Role.DM
+      : membershipRole
   const dmPresence = useMemo(
     () => currentPresence.find((presence) => presence.userId === currentSession?.dmId) || null,
     [currentPresence, currentSession?.dmId]

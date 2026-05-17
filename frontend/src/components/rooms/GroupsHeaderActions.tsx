@@ -146,7 +146,7 @@ export function GroupsHeaderActions({
           </TooltipContent>
         </Tooltip>
       ) : null}
-      {canManageRooms && import.meta.env.DEV ? (
+      {import.meta.env.DEV && (canManageRooms || takeoverActive) ? (
         <div className="room-selector-header__mock-wrap" ref={mockPanelRef}>
           <Tooltip>
             <TooltipTrigger asChild>

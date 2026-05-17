@@ -418,7 +418,16 @@ export function ChatWindow({
     }
 
     return roomScopedMessages.slice(latestSessionStartIndex)
-  }, [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId, user.id, user.role])
+  }, [
+    greenroomRoomId,
+    isGreenroomMode,
+    messageList,
+    resolvedRoomName,
+    roomDirectory,
+    roomId,
+    user.id,
+    user.role,
+  ])
 
   const whisperRecipients = useMemo(() => {
     const participants = Object.entries(sessionPresence ?? {}) as Array<
