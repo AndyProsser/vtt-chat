@@ -398,10 +398,10 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     const chatEvent: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
       type: 'CHAT:MESSAGE_SENT',
+      sessionId: message.sessionId as UUID,
       version: 1,
       userId: user.userId as UUID,
       userRole: requesterRole as any,
-      sessionId: message.sessionId,
       roomId: null,
       timestamp: message.createdAt,
       payload: {
@@ -414,7 +414,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       },
     }
     wsManager.broadcastEventToSession(
-      message.sessionId,
+      message.sessionId as UUID,
       chatEvent,
       noteVisibleTo({
         authorId: published.authorId,

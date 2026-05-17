@@ -244,19 +244,14 @@ describe('chat.service', () => {
     ])
 
     const result = await getCampaignGreenroomMessages(
-      SESSION_ID,
+      '99999999-9999-4999-8999-999999999999' as any,
       AUTHOR_ID,
-      'PLAYER',
-      '99999999-9999-4999-8999-999999999999' as any
+      'PLAYER'
     )
 
     expect(result.map((message) => message.id)).toEqual([
       '12121212-1212-4121-8121-121212121212',
       '13131313-1313-4131-8131-131313131313',
-    ])
-    expect(mocks.listMessagesBySessionIds).toHaveBeenCalledWith([
-      SESSION_ID,
-      '88888888-8888-4888-8888-888888888888',
     ])
   })
 })

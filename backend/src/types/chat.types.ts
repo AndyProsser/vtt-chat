@@ -1,7 +1,7 @@
 import type { MessageEntity, UUID } from '@shared'
 
 export interface StoredMessage extends MessageEntity {
-  sessionId: UUID
+  sessionId?: UUID
   authorUsername: string
   isDmOnly: boolean
   isOffTheRecord: boolean

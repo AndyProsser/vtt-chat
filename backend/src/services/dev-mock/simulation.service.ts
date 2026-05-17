@@ -318,13 +318,16 @@ function broadcastTypingStopped(sessionId: UUID, user: MockPresenceUser): void {
 }
 
 function buildMessageSentEvent(message: StoredMessage, actorUserId: UUID): EventEnvelope {
+  if (!message.sessionId) {
+    throw new Error('Simulation message must have sessionId')
+  }
   return {
     id: randomUUID() as UUID,
     type: 'CHAT:MESSAGE_SENT',
     version: 1,
     userId: actorUserId,
     userRole: Role.PLAYER,
-    sessionId: message.sessionId,
+    sessionId: message.sessionId as UUID,
     roomId: message.roomId || null,
     timestamp: message.createdAt,
     payload: {

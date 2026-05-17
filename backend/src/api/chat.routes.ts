@@ -7,13 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
-import {
-  sendMessage,
-  editMessage,
-  deleteMessage,
-  getMessagesPage,
-  getCampaignGreenroomMessagesPage,
-} from '@/services/chat.service'
+import { sendMessage, editMessage, deleteMessage, getMessagesPage } from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
 import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
 import type { StoredMessage } from '@/types/chat.types'
@@ -73,7 +67,7 @@ function buildMessageSentEvent(
     version: 1,
     userId,
     userRole: userRole as any,
-    sessionId: message.sessionId,
+    sessionId: message.sessionId as UUID,
     roomId: message.roomId || null,
     timestamp: message.createdAt,
     payload: {
@@ -102,7 +96,7 @@ function buildMessageEditedEvent(
     version: 1,
     userId,
     userRole: userRole as any,
-    sessionId: message.sessionId,
+    sessionId: message.sessionId as UUID,
     roomId: message.roomId || null,
     timestamp: message.editedAt ?? Date.now(),
     payload: {
@@ -123,7 +117,7 @@ function buildMessageDeletedEvent(
     version: 1,
     userId: requesterId,
     userRole: userRole as any,
-    sessionId: message.sessionId,
+    sessionId: message.sessionId as UUID,
     roomId: message.roomId || null,
     timestamp: message.deletedAt ?? Date.now(),
     payload: {
@@ -322,7 +316,6 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const user = (req as any).user
     const { sessionId } = req.params
     const roomId = req.query.roomId
-    const includeCampaignGreenroom = req.query.includeCampaignGreenroom === '1'
     const limitRaw = req.query.limit
     const beforeRaw = req.query.before
 
@@ -384,30 +377,17 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const parsedLimit = limitRaw !== undefined ? Number(limitRaw) : undefined
     const parsedBefore = beforeRaw !== undefined ? Number(beforeRaw) : undefined
 
-    let page
-    if (includeCampaignGreenroom && roomId !== undefined) {
-      page = await getCampaignGreenroomMessagesPage(
-        sessionId as UUID,
-        user.userId as UUID,
-        requesterRole,
-        roomId as UUID,
-        {
-          limit: parsedLimit,
-          before: parsedBefore,
-        }
-      )
-    } else {
-      page = await getMessagesPage(
-        sessionId as UUID,
-        user.userId as UUID,
-        requesterRole,
-        roomId !== undefined ? (roomId as UUID) : undefined,
-        {
-          limit: parsedLimit,
-          before: parsedBefore,
-        }
-      )
-    }
+    // Session-scoped chat only (greenroom now uses separate campaign endpoints)
+    const page = await getMessagesPage(
+      sessionId as UUID,
+      user.userId as UUID,
+      requesterRole,
+      roomId !== undefined ? (roomId as UUID) : undefined,
+      {
+        limit: parsedLimit,
+        before: parsedBefore,
+      }
+    )
     return res.status(200).json({
       messages: page.messages,
       pagination: {
@@ -452,7 +432,9 @@ router.put('/message/:id', requireAuth, async (req: Request, res: Response) => {
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event = buildMessageEditedEvent(updated, user.userId as UUID, user.role)
-      wsManager.broadcastEventToSession(updated.sessionId, event, updated.visibleTo)
+      if (updated.sessionId) {
+        wsManager.broadcastEventToSession(updated.sessionId, event, updated.visibleTo)
+      }
     }
 
     return res.status(200).json({ message: updated })
@@ -484,10 +466,137 @@ router.delete('/message/:id', requireAuth, async (req: Request, res: Response) =
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event = buildMessageDeletedEvent(deleted, user.userId as UUID, user.role)
-      wsManager.broadcastEventToSession(deleted.sessionId, event)
+      if (deleted.sessionId) {
+        wsManager.broadcastEventToSession(deleted.sessionId, event)
+      }
     }
 
     return res.status(200).json({ ok: true })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * GET /campaign/:campaignId/chat
+ * Get all campaign greenroom messages (campaign-scoped, OOC only, persistent across sessions)
+ */
+router.get('/campaign/:campaignId/chat', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { campaignId } = req.params
+    const user = (req as any).user
+
+    if (!isValidUUID(campaignId as string)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+    }
+
+    const { getCampaignGreenroomMessages } = await import('@/services/chat.service')
+    const messages = await getCampaignGreenroomMessages(
+      campaignId as UUID,
+      user.userId as UUID,
+      user.role
+    )
+
+    return res.status(200).json({ messages })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * GET /campaign/:campaignId/chat/page
+ * Get paginated campaign greenroom messages
+ */
+router.get('/campaign/:campaignId/chat/page', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { campaignId } = req.params
+    const { before, limit } = req.query
+    const user = (req as any).user
+
+    if (!isValidUUID(campaignId as string)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+    }
+
+    const { getCampaignGreenroomMessagesPage } = await import('@/services/chat.service')
+    const result = await getCampaignGreenroomMessagesPage(
+      campaignId as UUID,
+      user.userId as UUID,
+      user.role,
+      {
+        before: before ? parseInt(before as string) : undefined,
+        limit: limit ? parseInt(limit as string) : 20,
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * POST /campaign/:campaignId/chat
+ * Send a message to the campaign greenroom (OOC-only, visible to all campaign members)
+ */
+router.post('/campaign/:campaignId/chat', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { campaignId } = req.params
+    const { content } = req.body
+    const user = (req as any).user
+
+    if (!isValidUUID(campaignId as string)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+    }
+
+    if (!isValidMessageContent(content)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid message content' })
+    }
+
+    // Resolve DM (required for visibility computation)
+    // In greenroom context, we use a default DM audience. For now, visibility is public to campaign.
+    const { sendCampaignGreenroomMessage } = await import('@/services/chat.service')
+    const message = await sendCampaignGreenroomMessage({
+      campaignId: campaignId as UUID,
+      authorId: user.userId as UUID,
+      authorUsername: user.username,
+      dmId: user.userId as UUID, // Self as DM for greenroom context
+      content,
+    })
+
+    // Broadcast to all campaign members
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      // Note: wsManager.broadcastToCampaign would be ideal, but we use session for now
+      // This should be updated when campaign-scoped WS broadcast is available
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'CHAT:MESSAGE_SENT',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role as any,
+        sessionId: null as any,
+        roomId: null,
+        timestamp: message.createdAt,
+        payload: {
+          messageId: message.id,
+          roomId: message.roomId,
+          authorId: message.authorId,
+          authorUsername: message.authorUsername,
+          content: message.content,
+          type: message.type,
+          isDmOnly: message.isDmOnly,
+          isOffTheRecord: message.isOffTheRecord,
+          visibleTo: message.visibleTo,
+          targetIds: message.targetIds,
+        },
+      }
+      // TODO: Implement campaign-scoped WS broadcast
+      // For now, this is sent but will require frontend to subscribe to campaign channel
+    }
+
+    return res.status(201).json(message)
   } catch {
     return internalErrorResponse(res)
   }

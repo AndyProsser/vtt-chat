@@ -9,6 +9,7 @@ import { logger } from '@/utils/logger'
 import { bumpLoopCounter, isLoopDiagnosticsEnabled } from '@/utils/loopDiagnostics'
 import type { SessionSlice } from './sessionSlice'
 import type { ChatSlice } from './chatSlice'
+import type { GreenroomSlice } from './greenroomSlice'
 import type { NotesSlice } from './notesSlice'
 import type { AudioSlice } from './audioSlice'
 import type { RoomSlice } from './roomSlice'
@@ -20,6 +21,7 @@ import type { UserMuteSlice } from './userMuteSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
+import { createGreenroomSlice } from './greenroomSlice'
 import { createNotesSlice } from './notesSlice'
 import { createAudioSlice } from './audioSlice'
 import { createRoomSlice } from './roomSlice'
@@ -40,6 +42,7 @@ declare global {
  */
 export type Store = SessionSlice &
   ChatSlice &
+  GreenroomSlice &
   NotesSlice &
   AudioSlice &
   PresenceSlice &
@@ -56,6 +59,7 @@ export type Store = SessionSlice &
 export const useStore = create<Store>()((...args) => ({
   ...createSessionSlice(...args),
   ...createChatSlice(...args),
+  ...createGreenroomSlice(...args),
   ...createNotesSlice(...args),
   ...createAudioSlice(...args),
   ...createPresenceSlice(...args),

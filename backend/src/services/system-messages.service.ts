@@ -5,6 +5,7 @@ import type { SessionBoundaryType } from '@/types/session-boundary.types'
 import type { WebSocketManager } from '@/ws'
 import { sendMessage } from './chat.service'
 import { getPrismaClient } from '@/infra/db'
+import { logger } from '@/infra/logging/logger'
 
 /**
  * Prefixes used to identify recap system messages in the chat timeline.
@@ -119,6 +120,10 @@ export async function emitSessionRecapMessage(params: {
     })
 
     if (params.wsManager) {
+      if (!stored.sessionId) {
+        logger.warn('System message stored without sessionId', { messageId: stored.id })
+        return
+      }
       const event = buildSystemChatEvent(stored)
       params.wsManager.broadcastEventToSession(params.sessionId, event)
     }
@@ -155,6 +160,10 @@ export async function emitSessionRecapMessage(params: {
   })
 
   if (params.wsManager) {
+    if (!stored.sessionId) {
+      logger.warn('System message stored without sessionId', { messageId: stored.id })
+      return
+    }
     const event = buildSystemChatEvent(stored)
     params.wsManager.broadcastEventToSession(params.sessionId, event)
   }
@@ -176,7 +185,7 @@ function buildSessionBoundaryMessage(
 
 function buildSystemChatEvent(message: {
   id: UUID
-  sessionId: UUID
+  sessionId?: UUID
   roomId?: UUID
   authorId: UUID
   authorUsername: string
@@ -191,7 +200,7 @@ function buildSystemChatEvent(message: {
     version: 1,
     userId: message.authorId,
     userRole: 'DM' as Role,
-    sessionId: message.sessionId,
+    sessionId: message.sessionId as UUID,
     roomId: message.roomId || null,
     timestamp: message.createdAt,
     payload: {
@@ -235,6 +244,10 @@ export async function emitSessionBoundarySystemMessage(params: {
     })
 
     if (params.wsManager) {
+      if (!stored.sessionId) {
+        logger.warn('System message stored without sessionId', { messageId: stored.id })
+        continue
+      }
       const event = buildSystemChatEvent(stored)
       params.wsManager.broadcastEventToSession(params.sessionId, event)
     }

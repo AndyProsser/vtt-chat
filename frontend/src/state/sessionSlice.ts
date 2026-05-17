@@ -44,6 +44,7 @@ export interface SessionSlice {
   // Event handlers
   handleSessionCreated: (event: EventEnvelope) => void
   handleSessionStateChanged: (event: EventEnvelope) => void
+  handleSessionCooldownStarted: (event: EventEnvelope) => void
   handleSessionCooldownExtended: (event: EventEnvelope) => void
   handleSessionCooldownEnded: (event: EventEnvelope) => void
   handleSessionEnded: (event: EventEnvelope) => void
@@ -319,6 +320,34 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           endedAt: event.timestamp,
         },
       }
+      const currentSession = state.currentSessionId
+        ? sessionById(nextSessions, state.currentSessionId)
+        : null
+
+      return {
+        sessions: nextSessions,
+        isGreenroom: isGreenroomSessionState(currentSession?.state),
+      }
+    })
+  },
+
+  handleSessionCooldownStarted: (event) => {
+    const payload = event.payload as { cooldownExpiresAt?: number; cooldownStartedAt?: number }
+    set((state) => {
+      const current = state.sessions[event.sessionId]
+      if (!current) {
+        return state
+      }
+
+      const nextSessions = {
+        ...state.sessions,
+        [event.sessionId]: {
+          ...current,
+          state: 'COOLDOWN' as SessionLifecycleState,
+          endedAt: payload.cooldownStartedAt ?? current.endedAt,
+        },
+      }
+
       const currentSession = state.currentSessionId
         ? sessionById(nextSessions, state.currentSessionId)
         : null

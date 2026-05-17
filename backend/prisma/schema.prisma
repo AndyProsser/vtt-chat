@@ -132,6 +132,7 @@ model Campaign {
   externalLinks                 CampaignExternalLink[]
   spectatorWaitlist             SpectatorWaitlist[]
   sessions                      Session[]
+  greenroomMessages             ChatMessage[]
   recordings                    RecordingMetadata[]
   portabilityArtifacts          ImportExportArtifact[]
   createdAt                     DateTime               @default(now())
@@ -246,8 +247,10 @@ model SessionMember {
 
 model ChatMessage {
   id             String      @id @default(uuid()) @db.Uuid
-  sessionId      String      @db.Uuid
-  session        Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId      String?     @db.Uuid
+  session        Session?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  campaignId     String?     @db.Uuid
+  campaign       Campaign?   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   authorId       String      @db.Uuid
   authorUsername String
   content        String      @db.Text
@@ -261,6 +264,7 @@ model ChatMessage {
   deletedBy      String?     @db.Uuid
 
   @@index([sessionId])
+  @@index([campaignId])
   @@index([createdAt])
   @@index([type])
 }

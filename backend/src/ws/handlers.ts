@@ -53,6 +53,18 @@ export const sessionHandlers = {
     logHandled('SESSION:RESUMED', event)
   },
 
+  async handleSessionCooldownStarted(event: EventEnvelope) {
+    logHandled('SESSION:COOLDOWN_STARTED', event)
+  },
+
+  async handleSessionCooldownExtended(event: EventEnvelope) {
+    logHandled('SESSION:COOLDOWN_EXTENDED', event)
+  },
+
+  async handleSessionCooldownEnded(event: EventEnvelope) {
+    logHandled('SESSION:COOLDOWN_ENDED', event)
+  },
+
   async handleSessionEnded(event: EventEnvelope) {
     logHandled('SESSION:ENDED', event)
   },

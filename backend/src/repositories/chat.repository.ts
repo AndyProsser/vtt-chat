@@ -5,7 +5,8 @@ const prisma = getPrismaClient()
 
 export async function createChatMessageRecord(params: {
   id: string
-  sessionId: string
+  sessionId?: string | null
+  campaignId?: string | null
   authorId: string
   authorUsername: string
   content: string
@@ -18,7 +19,8 @@ export async function createChatMessageRecord(params: {
   await prisma.chatMessage.create({
     data: {
       id: params.id,
-      sessionId: params.sessionId,
+      sessionId: params.sessionId ?? undefined,
+      campaignId: params.campaignId ?? undefined,
       authorId: params.authorId,
       authorUsername: params.authorUsername,
       content: params.content,
@@ -249,7 +251,8 @@ export async function listMessagesBySessionIdsPage(params: {
 
 export async function findMessageById(messageId: string): Promise<{
   id: string
-  sessionId: string
+  sessionId: string | null
+  campaignId: string | null
   authorId: string
   authorUsername: string
   content: string
@@ -271,6 +274,7 @@ export async function findMessageById(messageId: string): Promise<{
   return {
     id: row.id,
     sessionId: row.sessionId,
+    campaignId: row.campaignId,
     authorId: row.authorId,
     authorUsername: row.authorUsername,
     content: row.content,
@@ -325,6 +329,134 @@ export async function deleteSessionMessages(sessionId: string): Promise<void> {
   })
 }
 
+/**
+ * List all greenroom messages for a campaign
+ * @param campaignId Campaign UUID
+ * @returns Array of campaign chat messages ordered by creation date
+ */
+export async function listCampaignMessages(campaignId: string): Promise<
+  Array<{
+    id: string
+    campaignId: string
+    authorId: string
+    authorUsername: string
+    content: string
+    type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
+    isDmOnly: boolean
+    isOffTheRecord: boolean
+    visibleTo: unknown
+    createdAt: Date
+    editedAt: Date | null
+    deletedAt: Date | null
+    deletedBy: string | null
+  }>
+> {
+  const rows = await prisma.chatMessage.findMany({
+    where: {
+      campaignId,
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  return rows
+    .filter((row): row is typeof row & { campaignId: string } => row.campaignId !== null)
+    .map((row) => ({
+      id: row.id,
+      campaignId: row.campaignId,
+      authorId: row.authorId,
+      authorUsername: row.authorUsername,
+      content: row.content,
+      type: row.type,
+      isDmOnly: row.isDmOnly,
+      isOffTheRecord: row.isOffTheRecord,
+      visibleTo: row.visibleTo,
+      createdAt: row.createdAt,
+      editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
+      deletedBy: row.deletedBy,
+    }))
+}
+
+/**
+ * List campaign messages with pagination (backward/before pagination)
+ * @param params campaignId, optional before timestamp, limit
+ * @returns Paginated campaign messages and hasMore flag
+ */
+export async function listCampaignMessagesPage(params: {
+  campaignId: string
+  before?: Date
+  limit: number
+}): Promise<{
+  rows: Array<{
+    id: string
+    campaignId: string
+    authorId: string
+    authorUsername: string
+    content: string
+    type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
+    isDmOnly: boolean
+    isOffTheRecord: boolean
+    visibleTo: unknown
+    createdAt: Date
+    editedAt: Date | null
+    deletedAt: Date | null
+    deletedBy: string | null
+  }>
+  hasMore: boolean
+}> {
+  const queryLimit = Math.max(1, Math.min(100, params.limit))
+
+  const rows = await prisma.chatMessage.findMany({
+    where: {
+      campaignId: params.campaignId,
+      ...(params.before
+        ? {
+            createdAt: {
+              lt: params.before,
+            },
+          }
+        : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    take: queryLimit + 1,
+  })
+
+  const hasMore = rows.length > queryLimit
+  const page = (hasMore ? rows.slice(0, queryLimit) : rows).reverse()
+
+  return {
+    rows: page
+      .filter((row): row is typeof row & { campaignId: string } => row.campaignId !== null)
+      .map((row) => ({
+        id: row.id,
+        campaignId: row.campaignId,
+        authorId: row.authorId,
+        authorUsername: row.authorUsername,
+        content: row.content,
+        type: row.type,
+        isDmOnly: row.isDmOnly,
+        isOffTheRecord: row.isOffTheRecord,
+        visibleTo: row.visibleTo,
+        createdAt: row.createdAt,
+        editedAt: row.editedAt,
+        deletedAt: row.deletedAt,
+        deletedBy: row.deletedBy,
+      })),
+    hasMore,
+  }
+}
+
+/**
+ * Delete all greenroom messages for a campaign
+ * Typically called during campaign deletion
+ * @param campaignId Campaign UUID
+ */
+export async function deleteCampaignMessages(campaignId: string): Promise<void> {
+  await prisma.chatMessage.deleteMany({
+    where: { campaignId },
+  })
+}
+
 export async function getChatCounts(): Promise<{
   totalMessages: number
   messagesLastMinute: number
@@ -337,6 +469,7 @@ export async function getChatCounts(): Promise<{
     prisma.chatMessage.count({ where: { createdAt: { gte: oneMinuteAgo } } }),
     prisma.chatMessage.findMany({
       distinct: ['sessionId'],
+      where: { sessionId: { not: null } },
       select: { sessionId: true },
     }),
   ])

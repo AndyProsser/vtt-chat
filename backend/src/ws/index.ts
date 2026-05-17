@@ -109,6 +109,18 @@ export class WebSocketManager {
     this.dispatcher.registerHandler('SESSION:STARTED', sessionHandlers.handleSessionStarted)
     this.dispatcher.registerHandler('SESSION:PAUSED', sessionHandlers.handleSessionPaused)
     this.dispatcher.registerHandler('SESSION:RESUMED', sessionHandlers.handleSessionResumed)
+    this.dispatcher.registerHandler(
+      'SESSION:COOLDOWN_STARTED',
+      sessionHandlers.handleSessionCooldownStarted
+    )
+    this.dispatcher.registerHandler(
+      'SESSION:COOLDOWN_EXTENDED',
+      sessionHandlers.handleSessionCooldownExtended
+    )
+    this.dispatcher.registerHandler(
+      'SESSION:COOLDOWN_ENDED',
+      sessionHandlers.handleSessionCooldownEnded
+    )
     this.dispatcher.registerHandler('SESSION:ENDED', sessionHandlers.handleSessionEnded)
 
     // Chat events

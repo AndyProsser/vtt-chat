@@ -64,6 +64,7 @@ import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
   SESSION_COOLDOWN_EXTENSION_MIN_MS,
   SESSION_COOLDOWN_EXTENSION_STEP_MS,
+  STANDALONE_SESSION_COOLDOWN_MS,
 } from '@/constants/session.constants'
 import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
@@ -953,6 +954,25 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         actorUserId: user.userId as UUID,
         actorUserRole: user.role,
       })
+
+      // Broadcast SESSION:COOLDOWN_STARTED when transitioning to COOLDOWN
+      if (requestedState === 'COOLDOWN') {
+        const cooldownStartedAt = session.endedAt ?? Date.now()
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'SESSION:COOLDOWN_STARTED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            cooldownStartedAt,
+            cooldownExpiresAt: cooldownStartedAt + STANDALONE_SESSION_COOLDOWN_MS,
+          },
+        })
+      }
     }
 
     const boundaryType =
