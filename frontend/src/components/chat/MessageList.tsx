@@ -265,9 +265,7 @@ export function MessageList({
                   .join(', ')
               : null
           const whisperAudience =
-            msg.type === MessageType.WHISPER && whisperTargetNames
-              ? `To ${whisperTargetNames}`
-              : null
+            msg.type === MessageType.WHISPER && whisperTargetNames ? whisperTargetNames : null
           const isDmWhisper =
             msg.type === MessageType.WHISPER &&
             Boolean(sessionDmId) &&
@@ -283,14 +281,8 @@ export function MessageList({
             msg.type === MessageType.WHISPER && isDmWhisper
               ? 'chat-message__bubble--whisper-dm'
               : ''
-          const whisperTypeIconClass =
-            msg.type === MessageType.WHISPER && isDmWhisper
-              ? 'chat-message__type-icon--whisper-dm'
-              : `chat-message__type-icon--${variant}`
-          const typeIcon =
-            msg.type === MessageType.WHISPER && isDmWhisper
-              ? 'shield_locked'
-              : TYPE_ICON_BY_VARIANT[variant]
+          const typeIconClass = `chat-message__type-icon--${variant}`
+          const typeIcon = TYPE_ICON_BY_VARIANT[variant]
           const isGroupedWithPrevious = Boolean(
             groupingWindowMs > 0 &&
             previous &&
@@ -453,7 +445,7 @@ export function MessageList({
               ) : null}
 
               <article
-                className={`chat-message ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
+                className={`chat-message ${msg.type === MessageType.WHISPER ? 'chat-message--whisper' : ''} ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
               >
                 <div className="chat-message__row">
                   {!isSelf && !isGroupedWithPrevious ? (
@@ -478,48 +470,58 @@ export function MessageList({
                     {!isGroupedWithPrevious ? (
                       <div className="chat-message__meta">
                         <span className="chat-message__author">{authorName}</span>
-                        {isDmViewer && whisperAudience ? (
-                          <span className="chat-message__whisper-target-inline">
-                            {whisperAudience}
-                          </span>
-                        ) : null}
                       </div>
                     ) : null}
 
                     <div
                       className={`chat-message__bubble chat-message__bubble--${variant} ${bubbleWhisperClass} ${isSelf ? 'chat-message__bubble--self' : ''}`}
                     >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className={`chat-message__type-icon ${whisperTypeIconClass} material-symbols-outlined`}
-                            aria-hidden="true"
-                          >
-                            {typeIcon}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">{TYPE_LABEL_BY_VARIANT[variant]}</TooltipContent>
-                      </Tooltip>
+                      {msg.type !== MessageType.WHISPER ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className={`chat-message__type-icon ${typeIconClass} material-symbols-outlined`}
+                              aria-hidden="true"
+                            >
+                              {typeIcon}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            {TYPE_LABEL_BY_VARIANT[variant]}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
                       <span className="chat-message__bubble-text">{msg.content}</span>
                     </div>
 
-                    <div className="chat-message__footer">
-                      {whisperRouteText ? (
-                        <div
-                          className={`chat-message__whisper-route ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            {isSelf ? 'arrow_right_alt' : 'arrow_left_alt'}
-                          </span>
-                          <span>{whisperRouteText}</span>
-                        </div>
-                      ) : (
-                        <span />
-                      )}
+                    <div
+                      className={`chat-message__footer ${whisperRouteText ? 'chat-message__footer--whisper' : ''}`}
+                    >
                       <div className="chat-message__timestamp">
                         {msg.editedAt ? 'edited · ' : ''}
                         {formatRelativeTime(msg.createdAt)}
                       </div>
+                      {whisperRouteText ? (
+                        <div
+                          className={`chat-message__whisper-route ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                        >
+                          {isSelf ? (
+                            <span className="chat-message__whisper-route-label">
+                              {whisperRouteText}
+                            </span>
+                          ) : null}
+                          <span className="chat-message__whisper-connector" aria-hidden="true">
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              {isSelf ? 'subdirectory_arrow_left' : 'subdirectory_arrow_right'}
+                            </span>
+                          </span>
+                          {!isSelf ? (
+                            <span className="chat-message__whisper-route-label">
+                              {whisperRouteText}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
