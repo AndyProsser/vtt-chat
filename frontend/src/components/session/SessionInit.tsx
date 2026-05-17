@@ -268,12 +268,14 @@ function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSe
 function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   if (sessions.length === 0) return null
 
+  // Live session — always preferred.
   const active = sessions.find((session) => session.state === SessionState.ACTIVE)
   if (active) return active
 
   const paused = sessions.find((session) => session.state === SessionState.PAUSED)
   if (paused) return paused
 
+  // Fresh lobby (never started).
   const draftIdle = sessions.find(
     (session) =>
       session.state === SessionState.IDLE &&
@@ -282,6 +284,15 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   )
   if (draftIdle) return draftIdle
 
+  // Post-session cooldown window — reload should land back here, not stall.
+  const cooldown = sessions.find((session) => session.state === SessionState.COOLDOWN)
+  if (cooldown) return cooldown
+
+  // Session fully ended but cleanup hasn't archived it yet — land in greenroom rather than stall.
+  const ended = sessions.find((session) => session.state === SessionState.ENDED)
+  if (ended) return ended
+
+  // CLEANUP sessions are terminal; backend provisions a fresh IDLE session after archiving.
   return null
 }
 

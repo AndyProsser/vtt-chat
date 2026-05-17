@@ -7,9 +7,11 @@ import {
   listEndedSessionsWithCampaign,
   campaignHasActiveSessions,
   listEndedSessionIdsByCampaign,
+  listSessionsByCampaign,
 } from '@/repositories/session.repository'
 import { getRooms, getSessionPresence } from '@/services/room.service'
-import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
+import { ensureSessionDefaultRoomsForSession } from '@/services/room/lifecycle.service'
+import { updateSessionState, getSessionUsers, createSession } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
@@ -120,6 +122,37 @@ async function transitionToCleanup(session: {
   logger.info('session-cleanup-job', 'Transitioned session ENDED → CLEANUP', {
     sessionId: session.id,
     sessionName: session.name,
+  })
+}
+
+/**
+ * Ensures a campaign always has an IDLE (greenroom) session ready after cleanup.
+ *
+ * Called after all campaign sessions transition to CLEANUP. Checks whether an
+ * IDLE session already exists; if not, creates one so that DMs and players
+ * reloading the page land directly in the greenroom without stalling.
+ *
+ * Idempotent — safe to call multiple times; the check prevents duplicate IDLE sessions.
+ */
+async function provisionIdleSessionForCampaign(campaignId: string, dmId: string): Promise<void> {
+  const allSessions = await listSessionsByCampaign(campaignId)
+  const alreadyHasIdle = allSessions.some((s) => s.state === 'IDLE')
+
+  if (alreadyHasIdle) {
+    return
+  }
+
+  const nextNumber = allSessions.length + 1
+  const dateLabel = new Date().toLocaleDateString('en-CA')
+  const sessionName = `Session ${nextNumber} - ${dateLabel}`
+
+  const newSession = await createSession(sessionName, dmId as UUID, undefined, campaignId as UUID)
+  await ensureSessionDefaultRoomsForSession(newSession.id as UUID, newSession.dmId as UUID)
+
+  logger.info('session-cleanup-job', 'Provisioned new IDLE session for campaign after cleanup', {
+    campaignId,
+    newSessionId: newSession.id,
+    newSessionName: newSession.name,
   })
 }
 
@@ -336,6 +369,21 @@ export class SessionCleanupJobService {
           }
 
           processedCampaigns.add(campaignId)
+
+          // After all sessions are archived, ensure a fresh IDLE session exists so
+          // reloading users land in the greenroom rather than hitting a stall screen.
+          try {
+            await provisionIdleSessionForCampaign(campaignId, session.dmId)
+          } catch (err) {
+            logger.warn(
+              'session-cleanup-job',
+              'Failed to provision idle session for campaign after cleanup',
+              {
+                campaignId,
+                error: err instanceof Error ? err.message : String(err),
+              }
+            )
+          }
         } else {
           // Standalone session — transition directly.
           await transitionToCleanup(session)
