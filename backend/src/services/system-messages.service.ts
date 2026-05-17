@@ -173,6 +173,7 @@ const boundaryTemplates: Record<SessionBoundaryType, (sessionName: string) => st
   SESSION_STARTED: (sessionName) => `[Session Started] ${sessionName}`,
   SESSION_PAUSED: (sessionName) => `[Session Paused] ${sessionName}`,
   SESSION_RESUMED: (sessionName) => `[Session Resumed] ${sessionName}`,
+  SESSION_COOLDOWN: (sessionName) => `[Session Cooldown] ${sessionName}`,
   SESSION_ENDED: (sessionName) => `[Session Ended] ${sessionName}`,
 }
 

@@ -29,6 +29,7 @@ const SESSION_BOOKEND_PREFIXES = [
   '[Session Ended]',
   '[Session Paused]',
   '[Session Resumed]',
+  '[Session Cooldown]',
 ] as const
 
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000

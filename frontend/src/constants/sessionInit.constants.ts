@@ -26,6 +26,7 @@ export const SESSION_BOOKEND_PREFIXES = [
   '[Session Ended]',
   '[Session Paused]',
   '[Session Resumed]',
+  '[Session Cooldown]',
 ] as const
 
 export const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<

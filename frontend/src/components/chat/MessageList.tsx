@@ -53,11 +53,72 @@ const SESSION_BOOKEND_PREFIXES = [
   '[Session Ended]',
   '[Session Paused]',
   '[Session Resumed]',
+  '[Session Cooldown]',
 ]
 const SESSION_NOTE_PREFIX = 'Session Note:'
 const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
-const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]']
+type SessionBookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown'
+
+const BOOKEND_META: Record<
+  SessionBookendState,
+  { label: string; icon: string; className: string }
+> = {
+  started: {
+    label: 'Session Started',
+    icon: 'play_circle',
+    className: 'chat-session-marker--started',
+  },
+  ended: {
+    label: 'Session Ended',
+    icon: 'stop_circle',
+    className: 'chat-session-marker--ended',
+  },
+  paused: {
+    label: 'Session Paused',
+    icon: 'pause_circle',
+    className: 'chat-session-marker--paused',
+  },
+  resumed: {
+    label: 'Session Resumed',
+    icon: 'play_circle',
+    className: 'chat-session-marker--resumed',
+  },
+  cooldown: {
+    label: 'Cooldown Started',
+    icon: 'theaters',
+    className: 'chat-session-marker--cooldown',
+  },
+}
+
+function getSessionBookendState(content: string): SessionBookendState | null {
+  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
+    return 'started'
+  }
+  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
+    return 'ended'
+  }
+  if (content.startsWith('[Session Paused]')) {
+    return 'paused'
+  }
+  if (content.startsWith('[Session Resumed]')) {
+    return 'resumed'
+  }
+  if (content.startsWith('[Session Cooldown]')) {
+    return 'cooldown'
+  }
+
+  return null
+}
+
+function formatBookendTimestamp(ts: number): string {
+  return new Date(ts).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
 
 function getAuthorInitial(username: string): string {
   return username.trim().charAt(0).toUpperCase() || '?'
@@ -145,9 +206,7 @@ export function MessageList({
           const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
           const isSessionBookend =
             isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
-          const isIntermissionBookend =
-            isSessionBookend &&
-            INTERMISSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+          const sessionBookendState = isSessionBookend ? getSessionBookendState(msg.content) : null
           const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
           const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
             ? CAMPAIGN_BRIEF_PREFIX
@@ -181,7 +240,12 @@ export function MessageList({
           )
           const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
 
-          if (hideIntermissionMarkers && isIntermissionBookend) {
+          if (
+            hideIntermissionMarkers &&
+            (sessionBookendState === 'paused' ||
+              sessionBookendState === 'resumed' ||
+              sessionBookendState === 'cooldown')
+          ) {
             return null
           }
 
@@ -206,12 +270,39 @@ export function MessageList({
           }
 
           if (isSessionBookend || isSessionNote) {
+            const markerMeta = sessionBookendState ? BOOKEND_META[sessionBookendState] : null
             return (
               <article
                 key={msg.id}
-                className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${isIntermissionBookend ? 'chat-session-marker--intermission' : ''}`}
+                className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${markerMeta?.className || ''}`}
               >
-                <span className="chat-session-marker__text">{msg.content}</span>
+                {isSessionBookend && markerMeta ? (
+                  <div className="chat-session-marker__content">
+                    <div className="chat-session-marker__label-row">
+                      <span
+                        className="chat-session-marker__icon material-symbols-outlined"
+                        aria-hidden="true"
+                      >
+                        {markerMeta.icon}
+                      </span>
+                      <span className="chat-session-marker__text">{msg.content}</span>
+                      <span
+                        className="chat-session-marker__icon material-symbols-outlined"
+                        aria-hidden="true"
+                      >
+                        {markerMeta.icon}
+                      </span>
+                    </div>
+                    <time
+                      className="chat-session-marker__time"
+                      dateTime={new Date(msg.createdAt).toISOString()}
+                    >
+                      {formatBookendTimestamp(msg.createdAt)}
+                    </time>
+                  </div>
+                ) : (
+                  <span className="chat-session-marker__text">{msg.content}</span>
+                )}
               </article>
             )
           }
@@ -235,7 +326,7 @@ export function MessageList({
                   <span
                     className={`chat-room-shift__pill ${msg.roomId === activeRoomId ? 'chat-room-shift__pill--active' : ''}`}
                   >
-                    {msg.roomId === activeRoomId ? 'Live in ' : 'Remembered from '}
+                    {msg.roomId === activeRoomId ? 'In ' : 'From '}
                     {roomName}
                   </span>
                 </div>

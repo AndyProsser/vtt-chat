@@ -31,26 +31,30 @@ interface ChatWindowProps {
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const CHAT_HISTORY_PAGE_SIZE = 20
-const INTERMISSION_BOOKEND_PREFIXES = ['[Session Paused]', '[Session Resumed]'] as const
-const SUPPRESSED_BOOKEND_PREFIXES = [
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Ended]',
-  'Session End:',
-] as const
+type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null
 
-function isSuppressedBookend(content: string, type: MessageType): boolean {
-  return (
-    type === MessageType.SYSTEM &&
-    SUPPRESSED_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
-  )
-}
+function getBookendState(content: string, type: MessageType): BookendState {
+  if (type !== MessageType.SYSTEM) {
+    return null
+  }
 
-function isIntermissionBookend(content: string, type: MessageType): boolean {
-  return (
-    type === MessageType.SYSTEM &&
-    INTERMISSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
-  )
+  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
+    return 'started'
+  }
+  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
+    return 'ended'
+  }
+  if (content.startsWith('[Session Paused]')) {
+    return 'paused'
+  }
+  if (content.startsWith('[Session Resumed]')) {
+    return 'resumed'
+  }
+  if (content.startsWith('[Session Cooldown]')) {
+    return 'cooldown'
+  }
+
+  return null
 }
 
 export function ChatWindow({
@@ -140,6 +144,12 @@ export function ChatWindow({
       },
       {} as Record<string, { name: string }>
     )
+  }, [sessionRooms])
+
+  const greenroomRoomId = useMemo(() => {
+    const rooms = Object.values(sessionRooms ?? {}) as Array<{ id: UUID; name: string }>
+    const greenroom = rooms.find((room) => isGreenRoomName(room.name))
+    return greenroom?.id
   }, [sessionRooms])
 
   // Derive ordered message list for this session
@@ -338,20 +348,23 @@ export function ChatWindow({
   const visibleMessages = useMemo(
     () =>
       messageList.filter((message) => {
+        const bookendState = getBookendState(message.content, message.type)
+
         if (!isGreenroomMode) {
           const roomNameForMessage = message.roomId
             ? roomDirectory[message.roomId]?.name
             : undefined
           const isGreenroomMessage =
-            message.roomId === roomId
+            message.roomId === greenroomRoomId ||
+            (message.roomId === roomId
               ? isGreenRoomName(resolvedRoomName)
-              : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage)
+              : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
 
           if (isGreenroomMessage) {
             return false
           }
 
-          return !isSuppressedBookend(message.content, message.type)
+          return true
         }
 
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
@@ -363,13 +376,13 @@ export function ChatWindow({
           return false
         }
 
-        if (isSuppressedBookend(message.content, message.type)) {
+        if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
           return false
         }
 
-        return !isIntermissionBookend(message.content, message.type)
+        return true
       }),
-    [isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId]
+    [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId]
   )
 
   const whisperRecipients = useMemo(() => {

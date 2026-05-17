@@ -143,7 +143,12 @@ function normalizeRoomName(value: string): string {
 }
 
 function getBoundaryRoomIds(params: {
-  boundaryType: 'SESSION_STARTED' | 'SESSION_PAUSED' | 'SESSION_RESUMED' | 'SESSION_ENDED'
+  boundaryType:
+    | 'SESSION_STARTED'
+    | 'SESSION_PAUSED'
+    | 'SESSION_RESUMED'
+    | 'SESSION_COOLDOWN'
+    | 'SESSION_ENDED'
   mainRoomId: UUID
   greenRoomId: UUID
 }): UUID[] {
@@ -153,6 +158,13 @@ function getBoundaryRoomIds(params: {
 
   return [params.mainRoomId]
 }
+
+type SessionBoundaryEventType =
+  | 'SESSION_STARTED'
+  | 'SESSION_PAUSED'
+  | 'SESSION_RESUMED'
+  | 'SESSION_COOLDOWN'
+  | 'SESSION_ENDED'
 
 async function ensureJoinedMemberPresence(params: {
   session: Awaited<ReturnType<typeof getSession>>
@@ -1001,18 +1013,16 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    const boundaryType =
+    const boundaryTypes: SessionBoundaryEventType[] =
       requestedState === 'ACTIVE'
-        ? previousSession?.state === 'PAUSED'
-          ? 'SESSION_RESUMED'
-          : 'SESSION_STARTED'
+        ? [previousSession?.state === 'PAUSED' ? 'SESSION_RESUMED' : 'SESSION_STARTED']
         : requestedState === 'PAUSED'
-          ? 'SESSION_PAUSED'
+          ? ['SESSION_PAUSED']
           : requestedState === 'COOLDOWN'
-            ? 'SESSION_ENDED'
-            : null
+            ? ['SESSION_ENDED', 'SESSION_COOLDOWN']
+            : []
 
-    if (boundaryType) {
+    for (const boundaryType of boundaryTypes) {
       await emitSessionBoundarySystemMessage({
         sessionId: session.id,
         roomIds: getBoundaryRoomIds({
@@ -1026,7 +1036,9 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         dmUsername: user.username,
         wsManager,
       })
+    }
 
+    if (boundaryTypes.length > 0) {
       // Log the state change
       await logSessionStateChange(
         session.id,
@@ -1037,7 +1049,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       )
 
       // Emit a previous-session recap card after SESSION_STARTED (not resume from pause)
-      if (boundaryType === 'SESSION_STARTED' && transition.mainRoomId) {
+      if (boundaryTypes.includes('SESSION_STARTED') && transition.mainRoomId) {
         void emitSessionRecapMessage({
           sessionId: session.id,
           mainRoomId: transition.mainRoomId,
