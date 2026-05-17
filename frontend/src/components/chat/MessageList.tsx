@@ -65,27 +65,27 @@ const BOOKEND_META: Record<
   { label: string; icon: string; className: string }
 > = {
   started: {
-    label: 'Session Started',
+    label: 'STARTED',
     icon: 'play_circle',
     className: 'chat-session-marker--started',
   },
   ended: {
-    label: 'Session Ended',
+    label: 'ENDED',
     icon: 'stop_circle',
     className: 'chat-session-marker--ended',
   },
   paused: {
-    label: 'Session Paused',
+    label: 'PAUSED',
     icon: 'pause_circle',
     className: 'chat-session-marker--paused',
   },
   resumed: {
-    label: 'Session Resumed',
+    label: 'RESUMED',
     icon: 'play_circle',
     className: 'chat-session-marker--resumed',
   },
   cooldown: {
-    label: 'Cooldown Started',
+    label: 'CLOSED',
     icon: 'theaters',
     className: 'chat-session-marker--cooldown',
   },
@@ -279,19 +279,23 @@ export function MessageList({
                 {isSessionBookend && markerMeta ? (
                   <div className="chat-session-marker__content">
                     <div className="chat-session-marker__label-row">
-                      <span
-                        className="chat-session-marker__icon material-symbols-outlined"
-                        aria-hidden="true"
-                      >
-                        {markerMeta.icon}
+                      <span className="chat-session-marker__line" aria-hidden="true" />
+                      <span className="chat-session-marker__badge">
+                        <span
+                          className="chat-session-marker__icon material-symbols-outlined"
+                          aria-hidden="true"
+                        >
+                          {markerMeta.icon}
+                        </span>
+                        <span className="chat-session-marker__text">{markerMeta.label}</span>
+                        <span
+                          className="chat-session-marker__icon material-symbols-outlined"
+                          aria-hidden="true"
+                        >
+                          {markerMeta.icon}
+                        </span>
                       </span>
-                      <span className="chat-session-marker__text">{msg.content}</span>
-                      <span
-                        className="chat-session-marker__icon material-symbols-outlined"
-                        aria-hidden="true"
-                      >
-                        {markerMeta.icon}
-                      </span>
+                      <span className="chat-session-marker__line" aria-hidden="true" />
                     </div>
                     <time
                       className="chat-session-marker__time"

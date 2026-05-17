@@ -192,8 +192,12 @@ export function ChatWindow({
       try {
         const params = new URLSearchParams()
         params.set('limit', String(CHAT_HISTORY_PAGE_SIZE))
+        params.set('sinceLatestStart', '1')
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
+        }
+        if (isGreenroomMode) {
+          params.set('sessionId', sessionId)
         }
         const historyUrl =
           isGreenroomMode && campaignId
@@ -345,45 +349,56 @@ export function ChatWindow({
     }
   }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
 
-  const visibleMessages = useMemo(
-    () =>
-      messageList.filter((message) => {
-        const bookendState = getBookendState(message.content, message.type)
+  const visibleMessages = useMemo(() => {
+    const roomScopedMessages = messageList.filter((message) => {
+      const bookendState = getBookendState(message.content, message.type)
 
-        if (!isGreenroomMode) {
-          const roomNameForMessage = message.roomId
-            ? roomDirectory[message.roomId]?.name
-            : undefined
-          const isGreenroomMessage =
-            message.roomId === greenroomRoomId ||
-            (message.roomId === roomId
-              ? isGreenRoomName(resolvedRoomName)
-              : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-
-          if (isGreenroomMessage) {
-            return false
-          }
-
-          return true
-        }
-
+      if (!isGreenroomMode) {
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
         const isGreenroomMessage =
-          message.roomId === roomId ||
-          (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
+          message.roomId === greenroomRoomId ||
+          (message.roomId === roomId
+            ? isGreenRoomName(resolvedRoomName)
+            : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
 
-        if (!isGreenroomMessage) {
-          return false
-        }
-
-        if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
+        if (isGreenroomMessage) {
           return false
         }
 
         return true
-      }),
-    [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId]
-  )
+      }
+
+      const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
+      const isGreenroomMessage =
+        message.roomId === roomId ||
+        (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
+
+      if (!isGreenroomMessage) {
+        return false
+      }
+
+      if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
+        return false
+      }
+
+      return true
+    })
+
+    let latestSessionStartIndex = -1
+    for (let index = roomScopedMessages.length - 1; index >= 0; index -= 1) {
+      const message = roomScopedMessages[index]
+      if (getBookendState(message.content, message.type) === 'started') {
+        latestSessionStartIndex = index
+        break
+      }
+    }
+
+    if (latestSessionStartIndex <= 0) {
+      return roomScopedMessages
+    }
+
+    return roomScopedMessages.slice(latestSessionStartIndex)
+  }, [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId])
 
   const whisperRecipients = useMemo(() => {
     const participants = Object.entries(sessionPresence ?? {}) as Array<

@@ -7,6 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
+import { findSessionById } from '@/repositories/session.repository'
 import { sendMessage, editMessage, deleteMessage, getMessagesPage } from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
 import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
@@ -314,6 +315,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const roomId = req.query.roomId
     const limitRaw = req.query.limit
     const beforeRaw = req.query.before
+    const sinceLatestStartRaw = req.query.sinceLatestStart
 
     if (!isValidUUID(sessionId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -372,6 +374,8 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
 
     const parsedLimit = limitRaw !== undefined ? Number(limitRaw) : undefined
     const parsedBefore = beforeRaw !== undefined ? Number(beforeRaw) : undefined
+    const sinceLatestStart =
+      sinceLatestStartRaw === '1' || sinceLatestStartRaw === 'true' || sinceLatestStartRaw === 'yes'
 
     // Session-scoped chat only (greenroom now uses separate campaign endpoints)
     const page = await getMessagesPage(
@@ -382,6 +386,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       {
         limit: parsedLimit,
         before: parsedBefore,
+        sinceLatestStart,
       }
     )
     return res.status(200).json({
@@ -480,17 +485,35 @@ router.delete('/message/:id', requireAuth, async (req: Request, res: Response) =
 router.get('/campaign/:campaignId/chat', requireAuth, async (req: Request, res: Response) => {
   try {
     const { campaignId } = req.params
+    const sessionIdRaw = req.query.sessionId
     const user = (req as any).user
 
     if (!isValidUUID(campaignId as string)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
     }
 
+    let since: number | undefined
+    if (sessionIdRaw !== undefined) {
+      if (!isValidUUID(sessionIdRaw)) {
+        return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+      }
+
+      const session = await findSessionById(sessionIdRaw as UUID)
+      if (!session || session.campaignId !== (campaignId as UUID)) {
+        return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
+      }
+
+      since = session.startedAt ? session.startedAt.getTime() : undefined
+    }
+
     const { getCampaignGreenroomMessages } = await import('@/services/chat.service')
     const messages = await getCampaignGreenroomMessages(
       campaignId as UUID,
       user.userId as UUID,
-      user.role
+      user.role,
+      {
+        since,
+      }
     )
 
     return res.status(200).json({ messages })
@@ -506,11 +529,25 @@ router.get('/campaign/:campaignId/chat', requireAuth, async (req: Request, res: 
 router.get('/campaign/:campaignId/chat/page', requireAuth, async (req: Request, res: Response) => {
   try {
     const { campaignId } = req.params
-    const { before, limit } = req.query
+    const { before, limit, sessionId } = req.query
     const user = (req as any).user
 
     if (!isValidUUID(campaignId as string)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+    }
+
+    let since: number | undefined
+    if (sessionId !== undefined) {
+      if (!isValidUUID(sessionId)) {
+        return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+      }
+
+      const session = await findSessionById(sessionId as UUID)
+      if (!session || session.campaignId !== (campaignId as UUID)) {
+        return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
+      }
+
+      since = session.startedAt ? session.startedAt.getTime() : undefined
     }
 
     const { getCampaignGreenroomMessagesPage } = await import('@/services/chat.service')
@@ -521,6 +558,7 @@ router.get('/campaign/:campaignId/chat/page', requireAuth, async (req: Request, 
       {
         before: before ? parseInt(before as string) : undefined,
         limit: limit ? parseInt(limit as string) : 20,
+        since,
       }
     )
 

@@ -236,21 +236,10 @@
 }
 
 .chat-session-marker {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0.15rem 0 0.4rem;
-}
-
-.chat-session-marker::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 68%, transparent);
 }
 
 .chat-session-marker__text {
@@ -265,20 +254,32 @@
 }
 
 .chat-session-marker__content {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   flex-direction: column;
   align-items: center;
   gap: 0.12rem;
-  padding: 0 0.7rem;
-  background: color-mix(in srgb, var(--color-surface) 90%, #0f172a 10%);
+  padding: 0;
 }
 
 .chat-session-marker__label-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chat-session-marker__line {
+  flex: 1 1 auto;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 68%, transparent);
+}
+
+.chat-session-marker__badge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  padding: 0 0.7rem;
+  background: color-mix(in srgb, var(--color-surface) 90%, #0f172a 10%);
 }
 
 .chat-session-marker__icon {

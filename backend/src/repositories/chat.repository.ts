@@ -50,8 +50,40 @@ export async function listSessionMessages(sessionId: string): Promise<
     deletedBy: string | null
   }>
 > {
+  return listSessionMessagesSince(sessionId)
+}
+
+export async function listSessionMessagesSince(
+  sessionId: string,
+  since?: Date
+): Promise<
+  Array<{
+    id: string
+    sessionId: string
+    authorId: string
+    authorUsername: string
+    content: string
+    type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
+    isDmOnly: boolean
+    isOffTheRecord: boolean
+    visibleTo: unknown
+    createdAt: Date
+    editedAt: Date | null
+    deletedAt: Date | null
+    deletedBy: string | null
+  }>
+> {
   const rows = await prisma.chatMessage.findMany({
-    where: { sessionId },
+    where: {
+      sessionId,
+      ...(since
+        ? {
+            createdAt: {
+              gte: since,
+            },
+          }
+        : {}),
+    },
     orderBy: { createdAt: 'asc' },
   })
 
@@ -74,6 +106,7 @@ export async function listSessionMessages(sessionId: string): Promise<
 
 export async function listSessionMessagesPage(params: {
   sessionId: string
+  since?: Date
   before?: Date
   limit: number
 }): Promise<{
@@ -95,15 +128,25 @@ export async function listSessionMessagesPage(params: {
   hasMore: boolean
 }> {
   const queryLimit = Math.max(1, Math.min(100, params.limit))
+  const createdAtFilter = {
+    ...(params.since
+      ? {
+          gte: params.since,
+        }
+      : {}),
+    ...(params.before
+      ? {
+          lt: params.before,
+        }
+      : {}),
+  }
 
   const rows = await prisma.chatMessage.findMany({
     where: {
       sessionId: params.sessionId,
-      ...(params.before
+      ...(Object.keys(createdAtFilter).length > 0
         ? {
-            createdAt: {
-              lt: params.before,
-            },
+            createdAt: createdAtFilter,
           }
         : {}),
     },
@@ -351,9 +394,39 @@ export async function listCampaignMessages(campaignId: string): Promise<
     deletedBy: string | null
   }>
 > {
+  return listCampaignMessagesSince(campaignId)
+}
+
+export async function listCampaignMessagesSince(
+  campaignId: string,
+  since?: Date
+): Promise<
+  Array<{
+    id: string
+    campaignId: string
+    authorId: string
+    authorUsername: string
+    content: string
+    type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
+    isDmOnly: boolean
+    isOffTheRecord: boolean
+    visibleTo: unknown
+    createdAt: Date
+    editedAt: Date | null
+    deletedAt: Date | null
+    deletedBy: string | null
+  }>
+> {
   const rows = await prisma.chatMessage.findMany({
     where: {
       campaignId,
+      ...(since
+        ? {
+            createdAt: {
+              gte: since,
+            },
+          }
+        : {}),
     },
     orderBy: { createdAt: 'asc' },
   })
@@ -384,6 +457,7 @@ export async function listCampaignMessages(campaignId: string): Promise<
  */
 export async function listCampaignMessagesPage(params: {
   campaignId: string
+  since?: Date
   before?: Date
   limit: number
 }): Promise<{
@@ -405,15 +479,25 @@ export async function listCampaignMessagesPage(params: {
   hasMore: boolean
 }> {
   const queryLimit = Math.max(1, Math.min(100, params.limit))
+  const createdAtFilter = {
+    ...(params.since
+      ? {
+          gte: params.since,
+        }
+      : {}),
+    ...(params.before
+      ? {
+          lt: params.before,
+        }
+      : {}),
+  }
 
   const rows = await prisma.chatMessage.findMany({
     where: {
       campaignId: params.campaignId,
-      ...(params.before
+      ...(Object.keys(createdAtFilter).length > 0
         ? {
-            createdAt: {
-              lt: params.before,
-            },
+            createdAt: createdAtFilter,
           }
         : {}),
     },
@@ -455,6 +539,29 @@ export async function deleteCampaignMessages(campaignId: string): Promise<void> 
   await prisma.chatMessage.deleteMany({
     where: { campaignId },
   })
+}
+
+export async function findLatestSessionStartBoundaryTimestamp(
+  sessionId: string
+): Promise<Date | null> {
+  const latest = await prisma.chatMessage.findFirst({
+    where: {
+      sessionId,
+      type: 'SYSTEM',
+      OR: [
+        { content: { startsWith: '[Session Started]' } },
+        { content: { startsWith: 'Session Start:' } },
+      ],
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    select: {
+      createdAt: true,
+    },
+  })
+
+  return latest?.createdAt ?? null
 }
 
 export async function getChatCounts(): Promise<{

@@ -11,15 +11,18 @@ import {
   createChatMessageRecord,
   deleteMessageRecord,
   deleteSessionMessages,
+  findLatestSessionStartBoundaryTimestamp,
   findMessageById,
   getChatCounts,
   listMessagesBySessionIdsPage,
   listMessagesBySessionIds,
   listSessionMessagesPage,
   listSessionMessages,
+  listSessionMessagesSince,
   softDeleteMessageRecord,
   updateMessageRecord,
   listCampaignMessages,
+  listCampaignMessagesSince,
   listCampaignMessagesPage,
   deleteCampaignMessages,
 } from '@/repositories/chat.repository'
@@ -126,6 +129,7 @@ async function determineMessageContext(
 export interface ChatHistoryPageOptions {
   before?: number
   limit?: number
+  sinceLatestStart?: boolean
 }
 
 export interface ChatHistoryPageResult {
@@ -319,9 +323,14 @@ export async function getMessages(
   sessionId: UUID,
   requesterId: UUID,
   requesterRole: string,
-  roomId?: UUID
+  roomId?: UUID,
+  options?: { sinceLatestStart?: boolean }
 ): Promise<StoredMessage[]> {
-  const rows = await listSessionMessages(sessionId)
+  const sinceLatestStart = options?.sinceLatestStart === true
+  const latestStartBoundary = sinceLatestStart
+    ? await findLatestSessionStartBoundaryTimestamp(sessionId)
+    : null
+  const rows = await listSessionMessagesSince(sessionId, latestStartBoundary ?? undefined)
   const messages = rows.map(mapStoredMessage)
   return messages.filter((m) => {
     // DM can see all messages (audit)
@@ -339,8 +348,15 @@ export async function getMessagesPage(
   roomId?: UUID,
   options?: ChatHistoryPageOptions
 ): Promise<ChatHistoryPageResult> {
+  const sinceLatestStart = options?.sinceLatestStart === true
+  const latestStartBoundary = sinceLatestStart
+    ? await findLatestSessionStartBoundaryTimestamp(sessionId)
+    : null
+
   if (options?.limit === undefined) {
-    const allMessages = await getMessages(sessionId, requesterId, requesterRole, roomId)
+    const allMessages = await getMessages(sessionId, requesterId, requesterRole, roomId, {
+      sinceLatestStart,
+    })
     return {
       messages: allMessages,
       hasMore: false,
@@ -350,6 +366,7 @@ export async function getMessagesPage(
 
   const page = await listSessionMessagesPage({
     sessionId,
+    since: latestStartBoundary ?? undefined,
     before: options?.before ? new Date(options.before) : undefined,
     limit: normalizeHistoryLimit(options?.limit),
   })
@@ -375,9 +392,12 @@ export async function getMessagesPage(
 export async function getCampaignGreenroomMessages(
   campaignId: UUID,
   requesterId: UUID,
-  requesterRole: string
+  requesterRole: string,
+  options?: { since?: number }
 ): Promise<StoredMessage[]> {
-  const rows = await listCampaignMessages(campaignId)
+  const rows = options?.since
+    ? await listCampaignMessagesSince(campaignId, new Date(options.since))
+    : await listCampaignMessages(campaignId)
   const messages = rows.map(mapStoredMessage)
 
   return messages.filter((message) => {
@@ -395,10 +415,12 @@ export async function getCampaignGreenroomMessagesPage(
   campaignId: UUID,
   requesterId: UUID,
   requesterRole: string,
-  options?: ChatHistoryPageOptions
+  options?: ChatHistoryPageOptions & { since?: number }
 ): Promise<ChatHistoryPageResult> {
   if (options?.limit === undefined) {
-    const allMessages = await getCampaignGreenroomMessages(campaignId, requesterId, requesterRole)
+    const allMessages = await getCampaignGreenroomMessages(campaignId, requesterId, requesterRole, {
+      since: options?.since,
+    })
     return {
       messages: allMessages,
       hasMore: false,
@@ -408,6 +430,7 @@ export async function getCampaignGreenroomMessagesPage(
 
   const page = await listCampaignMessagesPage({
     campaignId,
+    since: options?.since ? new Date(options.since) : undefined,
     before: options?.before ? new Date(options.before) : undefined,
     limit: normalizeHistoryLimit(options?.limit),
   })
