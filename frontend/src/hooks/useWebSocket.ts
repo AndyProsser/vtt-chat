@@ -105,10 +105,14 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     // Chat events
     dispatcher.register('CHAT:MESSAGE_SENT', (event) => {
+      const store = useStore.getState()
+
       if (event.sessionId) {
-        useStore.getState().handleMessageSent(event)
+        store.handleMessageSent(event)
         return
       }
+
+      store.handleGreenroomMessageSent(event)
 
       // Campaign-scoped greenroom messages arrive without sessionId/roomId.
       // Bind them to the active session's greenroom room so live chat renders immediately.
@@ -116,7 +120,6 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         return
       }
 
-      const store = useStore.getState()
       const sessionRooms = (store.rooms as Record<UUID, Record<UUID, { id: UUID; name: string }>>)[
         sessionId
       ]
@@ -145,10 +148,22 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       store.handleMessageSent(bridgedEvent)
     })
     dispatcher.register('CHAT:MESSAGE_EDITED', (event) => {
-      useStore.getState().handleMessageEdited(event)
+      const store = useStore.getState()
+      if (event.sessionId) {
+        store.handleMessageEdited(event)
+        return
+      }
+
+      store.handleGreenroomMessageEdited(event)
     })
     dispatcher.register('CHAT:MESSAGE_DELETED', (event) => {
-      useStore.getState().handleMessageDeleted(event)
+      const store = useStore.getState()
+      if (event.sessionId) {
+        store.handleMessageDeleted(event)
+        return
+      }
+
+      store.handleGreenroomMessageDeleted(event)
     })
     dispatcher.register('CHAT:ROOM_CONTEXT_CLEARED', (event) => {
       useStore.getState().handleRoomContextCleared(event)

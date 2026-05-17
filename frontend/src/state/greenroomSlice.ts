@@ -15,29 +15,29 @@ export interface GreenroomSlice {
   // State
   greenroomMessages: Record<UUID, Message> // keyed by messageId
   currentCampaignId: UUID | null
-  isLoading: boolean
+  isGreenroomLoading: boolean
 
   // Actions
-  addMessage: (message: Message) => void
-  updateMessage: (messageId: UUID, updates: Partial<Message>) => void
-  deleteMessage: (messageId: UUID) => void
-  clearMessages: () => void
-  setCampaignId: (campaignId: UUID | null) => void
+  addGreenroomMessage: (message: Message) => void
+  updateGreenroomMessage: (messageId: UUID, updates: Partial<Message>) => void
+  deleteGreenroomMessage: (messageId: UUID) => void
+  clearGreenroomMessages: () => void
+  setGreenroomCampaignId: (campaignId: UUID | null) => void
 
   // Event handlers
-  handleMessageSent: (event: EventEnvelope) => void
-  handleMessageEdited: (event: EventEnvelope) => void
-  handleMessageDeleted: (event: EventEnvelope) => void
+  handleGreenroomMessageSent: (event: EventEnvelope) => void
+  handleGreenroomMessageEdited: (event: EventEnvelope) => void
+  handleGreenroomMessageDeleted: (event: EventEnvelope) => void
 }
 
 export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
   // State
   greenroomMessages: {},
   currentCampaignId: null,
-  isLoading: false,
+  isGreenroomLoading: false,
 
   // Actions
-  addMessage: (message) =>
+  addGreenroomMessage: (message) =>
     set((state) => ({
       greenroomMessages: {
         ...state.greenroomMessages,
@@ -45,7 +45,7 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
       },
     })),
 
-  updateMessage: (messageId, updates) =>
+  updateGreenroomMessage: (messageId, updates) =>
     set((state) => {
       const message = state.greenroomMessages[messageId]
       if (!message) return state
@@ -58,7 +58,7 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
       }
     }),
 
-  deleteMessage: (messageId) =>
+  deleteGreenroomMessage: (messageId) =>
     set((state) => {
       const newMessages = { ...state.greenroomMessages }
       delete newMessages[messageId]
@@ -67,18 +67,18 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
       }
     }),
 
-  clearMessages: () =>
+  clearGreenroomMessages: () =>
     set({
       greenroomMessages: {},
     }),
 
-  setCampaignId: (campaignId) =>
+  setGreenroomCampaignId: (campaignId) =>
     set({
       currentCampaignId: campaignId,
     }),
 
   // Event handlers
-  handleMessageSent: (event) => {
+  handleGreenroomMessageSent: (event) => {
     const payload = event.payload as {
       messageId: UUID
       roomId?: UUID
@@ -114,7 +114,7 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
     }))
   },
 
-  handleMessageEdited: (event) => {
+  handleGreenroomMessageEdited: (event) => {
     const payload = event.payload as { messageId: UUID; content: string }
 
     set((state) => {
@@ -134,7 +134,7 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
     })
   },
 
-  handleMessageDeleted: (event) => {
+  handleGreenroomMessageDeleted: (event) => {
     const payload = event.payload as { messageId: UUID }
 
     set((state) => {

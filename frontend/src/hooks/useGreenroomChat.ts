@@ -20,9 +20,9 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
 
   const greenroomMessages = useStore((state) => state.greenroomMessages)
   const currentCampaignId = useStore((state) => state.currentCampaignId)
-  const setCampaignId = useStore((state) => state.setCampaignId)
-  const addMessage = useStore((state) => state.addMessage)
-  const clearMessages = useStore((state) => state.clearMessages)
+  const setGreenroomCampaignId = useStore((state) => state.setGreenroomCampaignId)
+  const addGreenroomMessage = useStore((state) => state.addGreenroomMessage)
+  const clearGreenroomMessages = useStore((state) => state.clearGreenroomMessages)
 
   const activeCampaignId = campaignId || currentCampaignId
 
@@ -50,7 +50,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
 
       // Populate greenroom messages in store
       messages.forEach((msg: any) => {
-        addMessage({
+        addGreenroomMessage({
           id: msg.id,
           roomId: msg.roomId,
           authorId: msg.authorId,
@@ -72,7 +72,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
     } catch (error) {
       logger.error('Error fetching greenroom messages', { error, campaignId: activeCampaignId })
     }
-  }, [activeCampaignId, enabled, addMessage])
+  }, [activeCampaignId, enabled, addGreenroomMessage])
 
   const fetchGreenroomMessagesPage = useCallback(
     async (before?: number) => {
@@ -103,7 +103,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
 
         // Populate messages in store
         result.messages.forEach((msg: any) => {
-          addMessage({
+          addGreenroomMessage({
             id: msg.id,
             roomId: msg.roomId,
             authorId: msg.authorId,
@@ -131,7 +131,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         return { messages: [], hasMore: false }
       }
     },
-    [activeCampaignId, limit, enabled, addMessage]
+    [activeCampaignId, limit, enabled, addGreenroomMessage]
   )
 
   const sendGreenroomMessage = useCallback(
@@ -160,7 +160,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         }
 
         const message = await response.json()
-        addMessage({
+        addGreenroomMessage({
           id: message.id,
           roomId: message.roomId,
           authorId: message.authorId,
@@ -180,15 +180,21 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         return null
       }
     },
-    [activeCampaignId, addMessage]
+    [activeCampaignId, addGreenroomMessage]
   )
 
   // Update campaign ID in store when it changes
   useEffect(() => {
     if (campaignId) {
-      setCampaignId(campaignId)
+      setGreenroomCampaignId(campaignId)
     }
-  }, [campaignId, setCampaignId])
+  }, [campaignId, setGreenroomCampaignId])
+
+  useEffect(() => {
+    if (!enabled || !activeCampaignId) {
+      clearGreenroomMessages()
+    }
+  }, [activeCampaignId, clearGreenroomMessages, enabled])
 
   // Fetch messages when campaign changes
   useEffect(() => {
