@@ -279,7 +279,8 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0 0.7rem;
-  background: color-mix(in srgb, var(--color-surface) 90%, #0f172a 10%);
+  background: var(--color-surface-subtle);
+  border-radius: 6px;
 }
 
 .chat-session-marker__icon {
@@ -299,27 +300,27 @@
 
 .chat-session-marker--started .chat-session-marker__text,
 .chat-session-marker--started .chat-session-marker__icon {
-  color: color-mix(in srgb, #22c55e 70%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-text-secondary));
 }
 
 .chat-session-marker--ended .chat-session-marker__text,
 .chat-session-marker--ended .chat-session-marker__icon {
-  color: color-mix(in srgb, #ef4444 70%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 72%, var(--color-text-secondary));
 }
 
 .chat-session-marker--paused .chat-session-marker__text,
 .chat-session-marker--paused .chat-session-marker__icon {
-  color: color-mix(in srgb, #f59e0b 75%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-warning, #f59e0b) 74%, var(--color-text-secondary));
 }
 
 .chat-session-marker--resumed .chat-session-marker__text,
 .chat-session-marker--resumed .chat-session-marker__icon {
-  color: color-mix(in srgb, #38bdf8 72%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-brand, #38bdf8) 72%, var(--color-text-secondary));
 }
 
 .chat-session-marker--cooldown .chat-session-marker__text,
 .chat-session-marker--cooldown .chat-session-marker__icon {
-  color: color-mix(in srgb, #14b8a6 72%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-accent, #14b8a6) 72%, var(--color-text-secondary));
 }
 
 /* ── Session Recap Card ─────────────────────────────────────────────────────── */
@@ -331,9 +332,9 @@
   gap: 0.65rem;
   margin: 0.35rem 0.5rem 0.6rem;
   padding: 0.6rem 0.75rem;
-  background: color-mix(in srgb, var(--color-surface) 88%, #0f172a 12%);
+  background: var(--color-surface-subtle);
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
-  border-left: 3px solid color-mix(in srgb, var(--color-accent, #6366f1) 55%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent, #6366f1) 60%, transparent);
   border-radius: 6px;
 }
 
@@ -383,7 +384,7 @@
   flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 86%, #0f172a 14%);
+  background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   font-size: 0.66rem;
   font-weight: 700;
@@ -412,13 +413,13 @@
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-surface-subtle) 88%, #0f172a 12%);
+  background: var(--color-surface-subtle);
 }
 
 .chat-room-shift__pill--active {
-  border-color: color-mix(in srgb, #38bdf8 28%, transparent);
-  color: color-mix(in srgb, #dbeafe 78%, var(--color-text-primary));
-  background: color-mix(in srgb, #38bdf8 12%, var(--color-surface) 88%);
+  border-color: color-mix(in srgb, var(--color-brand, #38bdf8) 28%, transparent);
+  color: color-mix(in srgb, var(--color-brand, #38bdf8) 60%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-brand, #38bdf8) 12%, var(--color-surface) 88%);
 }
 
 .chat-message {

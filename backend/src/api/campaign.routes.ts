@@ -1267,7 +1267,7 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
   }
 
   if (
-    campaign.latestSessionState === 'ENDED' &&
+    campaign.latestSessionState === 'COOLDOWN' &&
     campaign.postSessionChatEnabled &&
     campaign.latestSessionEndedAt
   ) {
