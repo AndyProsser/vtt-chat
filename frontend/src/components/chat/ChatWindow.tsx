@@ -192,11 +192,13 @@ export function ChatWindow({
       try {
         const params = new URLSearchParams()
         params.set('limit', String(CHAT_HISTORY_PAGE_SIZE))
-        params.set('sinceLatestStart', '1')
+        if (!isGreenroomMode) {
+          params.set('sinceLatestStart', '1')
+        }
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
         }
-        if (isGreenroomMode) {
+        if (isGreenroomMode && sessionId) {
           params.set('sessionId', sessionId)
         }
         const historyUrl =
@@ -383,6 +385,12 @@ export function ChatWindow({
 
       return true
     })
+
+    // In greenroom mode, all campaign messages should be visible (old greenroom messages appear
+    // before the STARTED bookend). Only trim to the latest STARTED bookend in session chat.
+    if (isGreenroomMode) {
+      return roomScopedMessages
+    }
 
     let latestSessionStartIndex = -1
     for (let index = roomScopedMessages.length - 1; index >= 0; index -= 1) {

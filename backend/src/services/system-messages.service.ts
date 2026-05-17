@@ -254,3 +254,62 @@ export async function emitSessionBoundarySystemMessage(params: {
     }
   }
 }
+
+/** Prefix used to identify session summary cards in the chat timeline. */
+export const SESSION_SUMMARY_PREFIX = '[Session Summary]'
+
+/**
+ * Emits a session summary SYSTEM message to the greenroom after a session moves to COOLDOWN.
+ * Encodes stats as JSON following the prefix so the frontend can render a summary card.
+ *
+ * Stats included: session name, startedAt, total duration, cumulativePauseMs, pauseCount,
+ * and the total number of unique non-spectator users who joined the session.
+ */
+export async function emitSessionSummaryMessage(params: {
+  session: {
+    id: UUID
+    name: string
+    startedAt?: number
+    endedAt?: number
+    cumulativePauseMs?: number
+    pauseCount?: number
+  }
+  users: Array<{ id: string; role?: string }>
+  greenRoomId: UUID
+  dmId: UUID
+  dmUsername: string
+  wsManager?: WebSocketManager
+}): Promise<void> {
+  const { session, users, greenRoomId, dmId, dmUsername, wsManager } = params
+
+  const playerCount = users.filter((u) => u.role !== 'SPECTATOR' && u.role !== 'SYSTEM').length
+
+  const stats = {
+    sessionName: session.name,
+    startedAt: session.startedAt ?? null,
+    cumulativePauseMs: session.cumulativePauseMs ?? 0,
+    pauseCount: session.pauseCount ?? 0,
+    playerCount,
+  }
+
+  const content = `${SESSION_SUMMARY_PREFIX} ${JSON.stringify(stats)}`
+
+  const stored = await sendMessage({
+    sessionId: session.id,
+    roomId: greenRoomId,
+    authorId: dmId,
+    authorUsername: dmUsername,
+    dmId,
+    content,
+    type: MessageType.SYSTEM,
+  })
+
+  if (wsManager) {
+    if (!stored.sessionId) {
+      logger.warn('Session summary message stored without sessionId', { messageId: stored.id })
+      return
+    }
+    const event = buildSystemChatEvent(stored)
+    wsManager.broadcastEventToSession(session.id, event)
+  }
+}

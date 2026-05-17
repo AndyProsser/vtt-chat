@@ -58,6 +58,34 @@ const SESSION_BOOKEND_PREFIXES = [
 const SESSION_NOTE_PREFIX = 'Session Note:'
 const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
+const SESSION_SUMMARY_PREFIX = '[Session Summary]'
+
+interface SessionSummaryStats {
+  sessionName: string
+  startedAt: number | null
+  cumulativePauseMs: number
+  pauseCount: number
+  playerCount: number
+}
+
+function parseSessionSummary(content: string): SessionSummaryStats | null {
+  try {
+    const json = content.slice(SESSION_SUMMARY_PREFIX.length).trim()
+    return JSON.parse(json) as SessionSummaryStats
+  } catch {
+    return null
+  }
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  return `${minutes}m`
+}
 type SessionBookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown'
 
 const BOOKEND_META: Record<
@@ -212,6 +240,7 @@ export function MessageList({
             ? CAMPAIGN_BRIEF_PREFIX
             : SESSION_RECAP_PREFIX
           const isSessionRecap = isSystem && msg.content.startsWith(recapPrefix)
+          const isSessionSummary = isSystem && msg.content.startsWith(SESSION_SUMMARY_PREFIX)
           const isSelf = !isSystem && msg.authorId === currentUserId
           const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
           const authorProfile = participantDirectory?.[msg.authorId]
@@ -247,6 +276,49 @@ export function MessageList({
               sessionBookendState === 'cooldown')
           ) {
             return null
+          }
+
+          if (isSessionSummary) {
+            const stats = parseSessionSummary(msg.content)
+            if (!stats) return null
+            const startedDisplay = stats.startedAt
+              ? new Date(stats.startedAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })
+              : null
+            return (
+              <article key={msg.id} className="chat-session-summary">
+                <div className="chat-session-summary__header">
+                  <span
+                    className="chat-session-summary__icon material-symbols-outlined"
+                    aria-hidden="true"
+                  >
+                    summarize
+                  </span>
+                  <span className="chat-session-summary__title">{stats.sessionName}</span>
+                </div>
+                <dl className="chat-session-summary__stats">
+                  {startedDisplay && (
+                    <>
+                      <dt>Started</dt>
+                      <dd>{startedDisplay}</dd>
+                    </>
+                  )}
+                  <dt>Players</dt>
+                  <dd>{stats.playerCount}</dd>
+                  {stats.cumulativePauseMs > 0 && (
+                    <>
+                      <dt>Paused</dt>
+                      <dd>
+                        {formatDuration(stats.cumulativePauseMs)}
+                        {stats.pauseCount > 1 && ` (${stats.pauseCount}×)`}
+                      </dd>
+                    </>
+                  )}
+                </dl>
+              </article>
+            )
           }
 
           if (isSessionRecap) {

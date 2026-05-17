@@ -368,6 +368,63 @@
   font-style: italic;
 }
 
+/* ── Session Summary Card ───────────────────────────────────────────────────── */
+/* Emitted to greenroom on COOLDOWN transition; shows key stats for the session  */
+/* that just ended: name, start time, player count, and pause time.              */
+.chat-session-summary {
+  margin: 0.35rem 0.5rem 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-surface-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-danger, #ef4444) 55%, transparent);
+  border-radius: 6px;
+}
+
+.chat-session-summary__header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.chat-session-summary__icon {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 65%, var(--color-text-muted));
+}
+
+.chat-session-summary__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-danger, #ef4444) 70%, var(--color-text-secondary));
+}
+
+.chat-session-summary__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  row-gap: 0.18rem;
+  margin: 0;
+}
+
+.chat-session-summary__stats dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  align-self: baseline;
+}
+
+.chat-session-summary__stats dd {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  align-self: baseline;
+}
+
 .chat-day-separator {
   display: flex;
   align-items: center;

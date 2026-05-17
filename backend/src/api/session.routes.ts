@@ -32,6 +32,7 @@ import type { UUID } from '@shared'
 import {
   emitSessionBoundarySystemMessage,
   emitSessionRecapMessage,
+  emitSessionSummaryMessage,
 } from '@/services/system-messages.service'
 import {
   applySessionStateRoomTransition,
@@ -1019,7 +1020,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         : requestedState === 'PAUSED'
           ? ['SESSION_PAUSED']
           : requestedState === 'COOLDOWN'
-            ? ['SESSION_ENDED', 'SESSION_COOLDOWN']
+            ? ['SESSION_COOLDOWN']
             : []
 
     for (const boundaryType of boundaryTypes) {
@@ -1047,6 +1048,20 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
         previousSession?.state || 'UNKNOWN',
         toPublicSessionState(requestedState) ?? requestedState
       )
+
+      // Emit session summary card to greenroom when transitioning to COOLDOWN
+      if (boundaryTypes.includes('SESSION_COOLDOWN') && transition.greenRoomId) {
+        void emitSessionSummaryMessage({
+          session,
+          users,
+          greenRoomId: transition.greenRoomId,
+          dmId: user.userId as UUID,
+          dmUsername: user.username,
+          wsManager,
+        }).catch((err) => {
+          console.error('[session summary] failed to emit summary message', err)
+        })
+      }
 
       // Emit a previous-session recap card after SESSION_STARTED (not resume from pause)
       if (boundaryTypes.includes('SESSION_STARTED') && transition.mainRoomId) {
@@ -1302,6 +1317,20 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
         },
       })
     }
+
+    // Emit SESSION_ENDED boundary to main room + greenroom now that the session is fully ENDED.
+    const endedBoundaryRoomIds = [transition.mainRoomId, transition.greenRoomId].filter(
+      Boolean
+    ) as UUID[]
+    await emitSessionBoundarySystemMessage({
+      sessionId: session.id,
+      roomIds: endedBoundaryRoomIds,
+      sessionName: session.name,
+      boundaryType: 'SESSION_ENDED',
+      dmId: user.userId as UUID,
+      dmUsername: user.username,
+      wsManager: req.app.locals.wsManager,
+    })
 
     await logSessionStateChange(
       session.id,
