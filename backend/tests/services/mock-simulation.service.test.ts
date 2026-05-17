@@ -21,7 +21,7 @@ vi.mock('@/services/session/core.service', () => ({
 }))
 
 vi.mock('@/services/room.service', () => ({
-  getSessionPresence: vi.fn(),
+  getSessionPresence: vi.fn(async () => []),
   getRooms: vi.fn(),
   updatePresenceState: vi.fn(),
 }))
@@ -169,5 +169,151 @@ describe('mock simulation service greenroom gating', () => {
         type: MessageType.OOC,
       })
     )
+  })
+
+  it('can emit DM-only messages from mocks during active sessions', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.ACTIVE,
+    })
+
+    await __testOnly.emitPersistedChatMessage({
+      sessionId: SESSION_ID as any,
+      runtime: {
+        config: {
+          speakingSimulatorEnabled: true,
+          chatSimulatorEnabled: true,
+          disconnectSimulatorEnabled: false,
+          multiDeviceSimulatorEnabled: false,
+          playerCount: 1,
+          disconnectRealismProfile: 'BALANCED',
+          disconnectChancePerTick: 0.18,
+          ghostMinDurationMs: 2500,
+          ghostMaxDurationMs: 7000,
+        },
+        isRunning: true,
+        startedAt: 0,
+        tickTimer: null,
+        speakingNow: new Set(),
+        typingNow: new Set(),
+        disconnectedByUserId: new Map(),
+        messageSentAtByType: { IC: [], OOC: [], WHISPER: [], DM: [] },
+        multiDeviceByUserId: new Map(),
+        transferByUserId: new Map(),
+        multiDeviceSetupAt: 0,
+      },
+      author: {
+        userId: AUTHOR_ID as any,
+        username: 'dev_mock_alpha',
+        primaryRoomId: MAIN_ROOM_ID as any,
+        state: 'ONLINE' as any,
+      },
+      users: [
+        {
+          userId: AUTHOR_ID as any,
+          username: 'dev_mock_alpha',
+          primaryRoomId: MAIN_ROOM_ID as any,
+          state: 'ONLINE' as any,
+        },
+      ],
+      roomsById: new Map([
+        [MAIN_ROOM_ID as any, { id: MAIN_ROOM_ID as any, type: RoomType.GROUP, name: 'Group A' }],
+      ]),
+    })
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        roomId: MAIN_ROOM_ID,
+        type: MessageType.DM,
+        recipientId: undefined,
+        visibleTo: [AUTHOR_ID, DM_ID],
+      })
+    )
+
+    randomSpy.mockRestore()
+  })
+
+  it('keeps whispers to one same-room player plus DM visibility', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.9)
+    const sameRoomRecipientId = '66666666-6666-4666-8666-666666666666'
+    const otherRoomRecipientId = '77777777-7777-4777-8777-777777777777'
+
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.ACTIVE,
+    })
+
+    await __testOnly.emitPersistedChatMessage({
+      sessionId: SESSION_ID as any,
+      runtime: {
+        config: {
+          speakingSimulatorEnabled: true,
+          chatSimulatorEnabled: true,
+          disconnectSimulatorEnabled: false,
+          multiDeviceSimulatorEnabled: false,
+          playerCount: 1,
+          disconnectRealismProfile: 'BALANCED',
+          disconnectChancePerTick: 0.18,
+          ghostMinDurationMs: 2500,
+          ghostMaxDurationMs: 7000,
+        },
+        isRunning: true,
+        startedAt: 0,
+        tickTimer: null,
+        speakingNow: new Set(),
+        typingNow: new Set(),
+        disconnectedByUserId: new Map(),
+        messageSentAtByType: { IC: [], OOC: [], WHISPER: [], DM: [] },
+        multiDeviceByUserId: new Map(),
+        transferByUserId: new Map(),
+        multiDeviceSetupAt: 0,
+      },
+      author: {
+        userId: AUTHOR_ID as any,
+        username: 'dev_mock_alpha',
+        primaryRoomId: MAIN_ROOM_ID as any,
+        state: 'ONLINE' as any,
+      },
+      users: [
+        {
+          userId: AUTHOR_ID as any,
+          username: 'dev_mock_alpha',
+          primaryRoomId: MAIN_ROOM_ID as any,
+          state: 'ONLINE' as any,
+        },
+        {
+          userId: sameRoomRecipientId as any,
+          username: 'dev_mock_bravo',
+          primaryRoomId: MAIN_ROOM_ID as any,
+          state: 'ONLINE' as any,
+        },
+        {
+          userId: otherRoomRecipientId as any,
+          username: 'dev_mock_charlie',
+          primaryRoomId: GREEN_ROOM_ID as any,
+          state: 'ONLINE' as any,
+        },
+      ],
+      roomsById: new Map([
+        [MAIN_ROOM_ID as any, { id: MAIN_ROOM_ID as any, type: RoomType.GROUP, name: 'Group A' }],
+        [GREEN_ROOM_ID as any, { id: GREEN_ROOM_ID as any, type: RoomType.GROUP, name: 'Group B' }],
+      ]),
+    })
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        roomId: MAIN_ROOM_ID,
+        type: MessageType.WHISPER,
+        recipientId: sameRoomRecipientId,
+        visibleTo: [AUTHOR_ID, DM_ID, sameRoomRecipientId],
+      })
+    )
+
+    randomSpy.mockRestore()
   })
 })

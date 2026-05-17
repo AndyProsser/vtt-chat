@@ -507,38 +507,77 @@ export function MessageList({
                     </div>
 
                     <div
-                      className={`chat-message__footer ${hasWhisperRoute ? 'chat-message__footer--whisper' : ''}`}
+                      className={`chat-message__footer ${hasWhisperRoute ? `chat-message__footer--whisper ${isSelf ? 'chat-message__footer--whisper-outgoing' : 'chat-message__footer--whisper-incoming'}` : ''}`}
                     >
                       {hasWhisperRoute ? (
                         <div
                           className={`chat-message__whisper-meta ${isSelf ? 'chat-message__whisper-meta--outgoing' : 'chat-message__whisper-meta--incoming'}`}
                         >
-                          <div
-                            className={`chat-message__whisper-route chat-message__whisper-route--stacked ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
-                          >
-                            {whisperRouteEntries.map((line, index) => (
-                              <div
-                                key={`${msg.id}-whisper-${index}`}
-                                className="chat-message__whisper-route-line"
-                              >
-                                <span className="chat-message__whisper-route-label">{line}</span>
-                                <span
-                                  className="chat-message__whisper-connector"
-                                  aria-hidden="true"
-                                >
-                                  <span className="material-symbols-outlined" aria-hidden="true">
-                                    {isSelf
-                                      ? 'subdirectory_arrow_left'
-                                      : 'subdirectory_arrow_right'}
-                                  </span>
-                                </span>
+                          {!isSelf ? (
+                            <div className="chat-message__whisper-meta-row chat-message__whisper-meta-row--incoming">
+                              <div className="chat-message__timestamp chat-message__timestamp--whisper">
+                                {msg.editedAt ? 'edited · ' : ''}
+                                {formatRelativeTime(msg.createdAt)}
                               </div>
-                            ))}
-                          </div>
-                          <div className="chat-message__timestamp chat-message__timestamp--whisper">
-                            {msg.editedAt ? 'edited · ' : ''}
-                            {formatRelativeTime(msg.createdAt)}
-                          </div>
+                              <div
+                                className={`chat-message__whisper-route chat-message__whisper-route--incoming-list ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                              >
+                                {whisperRouteEntries.map((line, index) => (
+                                  <div
+                                    key={`${msg.id}-whisper-${index}`}
+                                    className="chat-message__whisper-route-line"
+                                  >
+                                    <span
+                                      className="chat-message__whisper-connector"
+                                      aria-hidden="true"
+                                    >
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        subdirectory_arrow_right
+                                      </span>
+                                    </span>
+                                    <span className="chat-message__whisper-route-label">
+                                      {line}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div
+                                className={`chat-message__whisper-route chat-message__whisper-route--stacked chat-message__whisper-route--outgoing ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                              >
+                                {whisperRouteEntries.map((line, index) => (
+                                  <div
+                                    key={`${msg.id}-whisper-${index}`}
+                                    className="chat-message__whisper-route-line"
+                                  >
+                                    <span className="chat-message__whisper-route-label">
+                                      {line}
+                                    </span>
+                                    <span
+                                      className="chat-message__whisper-connector"
+                                      aria-hidden="true"
+                                    >
+                                      <span
+                                        className="material-symbols-outlined"
+                                        aria-hidden="true"
+                                      >
+                                        subdirectory_arrow_left
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="chat-message__timestamp chat-message__timestamp--whisper">
+                                {msg.editedAt ? 'edited · ' : ''}
+                                {formatRelativeTime(msg.createdAt)}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : null}
                       {!hasWhisperRoute ? (

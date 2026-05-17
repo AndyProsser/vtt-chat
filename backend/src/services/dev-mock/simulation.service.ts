@@ -652,14 +652,21 @@ function pickChatType(room: { type: RoomType; name: string } | undefined): Messa
     return MessageType.OOC
   }
 
+  if (room?.type === RoomType.PRIVATE) {
+    return MessageType.WHISPER
+  }
+
   const roll = Math.random()
-  if (roll < 0.56) {
+  if (roll < 0.5) {
     return MessageType.IC
   }
-  if (roll < 0.84) {
+  if (roll < 0.79) {
     return MessageType.OOC
   }
-  return MessageType.WHISPER
+  if (roll < 0.93) {
+    return MessageType.WHISPER
+  }
+  return MessageType.DM
 }
 
 function pickWhisperRecipient(
@@ -728,6 +735,9 @@ async function emitPersistedChatMessage(params: {
   if (type === MessageType.WHISPER && recipientId) {
     // Mirror real player whisper: sender + DM + recipient only
     visibleTo = uniqueVisibleAudience([params.author.userId, session.dmId, recipientId])
+  } else if (type === MessageType.DM) {
+    // DM message type is always sender + DM only.
+    visibleTo = uniqueVisibleAudience([params.author.userId, session.dmId])
   } else {
     // Mirror real player IC/OOC: resolve room occupants at send time
     visibleTo = await resolveRoomAudience({
@@ -1482,6 +1492,7 @@ export async function getMockSimulationStatus(sessionId: UUID): Promise<{
     IC: number
     OOC: number
     WHISPER: number
+    DM: number
   }
 }> {
   ensureMockSimulationRunning(sessionId)
@@ -1506,6 +1517,7 @@ export async function getMockSimulationStatus(sessionId: UUID): Promise<{
       IC: runtime.messageSentAtByType.IC.length,
       OOC: runtime.messageSentAtByType.OOC.length,
       WHISPER: runtime.messageSentAtByType.WHISPER.length,
+      DM: runtime.messageSentAtByType.DM.length,
     },
   }
 }

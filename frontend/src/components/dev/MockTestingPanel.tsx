@@ -22,6 +22,7 @@ interface MockSimulationStatusResponse {
     IC: number
     OOC: number
     WHISPER: number
+    DM: number
   }
   bounds?: { min: number; max: number }
 }
@@ -74,7 +75,10 @@ export function MockTestingPanel({
 
       const byType = data.messagesSentLastMinuteByType
       const totalPerMinute = byType
-        ? Number(byType.IC || 0) + Number(byType.OOC || 0) + Number(byType.WHISPER || 0)
+        ? Number(byType.IC || 0) +
+          Number(byType.OOC || 0) +
+          Number(byType.WHISPER || 0) +
+          Number(byType.DM || 0)
         : 0
       setMessageRateHistory((prev) => [...prev.slice(-9), totalPerMinute])
 
@@ -313,11 +317,11 @@ export function MockTestingPanel({
 
   const messageRateText = useMemo(() => {
     if (!status?.messagesSentLastMinuteByType) {
-      return 'Messages/min: IC 0, OOC 0, Whisper 0'
+      return 'Messages/min: IC 0, OOC 0, Whisper 0, DM 0'
     }
 
     const byType = status.messagesSentLastMinuteByType
-    return `Messages/min: IC ${byType.IC}, OOC ${byType.OOC}, Whisper ${byType.WHISPER}`
+    return `Messages/min: IC ${byType.IC}, OOC ${byType.OOC}, Whisper ${byType.WHISPER}, DM ${byType.DM}`
   }, [status])
 
   const sparklinePoints = useMemo(() => {

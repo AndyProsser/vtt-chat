@@ -115,7 +115,7 @@ describe('GET /dev/mock-players/simulation/status/:sessionId', () => {
       activeMockCount: 8,
       speakingNow: [],
       uptime: 1200,
-      messagesSentLastMinuteByType: { IC: 1, OOC: 2, WHISPER: 0 },
+      messagesSentLastMinuteByType: { IC: 1, OOC: 2, WHISPER: 0, DM: 1 },
     })
 
     const res = await request(buildApp())
