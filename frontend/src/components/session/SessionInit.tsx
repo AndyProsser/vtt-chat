@@ -714,6 +714,9 @@ export function SessionInit({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
+  const activeTakeoverUserId = useStore(
+    (state) => (currentSessionId ? state.mockTakeoverUserIdBySession[currentSessionId] : null)
+  )
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
@@ -823,6 +826,8 @@ export function SessionInit({
   const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
   const typedSessionStatsBySession = sessionStatsBySessionId as Record<UUID, ApiSessionStats>
   const typedRoomMembers = roomMembers as Record<UUID, RoomMember[]>
+  const isTakeoverActive = Boolean(activeTakeoverUserId)
+  const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
   const currentRooms = useMemo<RoomRecord[]>(
     () => (currentSession ? Object.values(typedRoomsBySession[currentSession.id] || {}) : []),
     [currentSession, typedRoomsBySession]
@@ -847,16 +852,27 @@ export function SessionInit({
     : 0
   const typedNotesBySession = notes as Record<UUID, Record<UUID, Note>>
   const typedMessagesBySession = messages as Record<UUID, Record<UUID, Message>>
+  const takeoverPresence = useMemo(
+    () =>
+      activeTakeoverUserId
+        ? currentPresence.find((presence) => presence.userId === activeTakeoverUserId) || null
+        : null,
+    [activeTakeoverUserId, currentPresence]
+  )
   const selectedRoomId = useMemo<UUID | ''>(() => {
     if (!visibleRooms.length) {
       return ''
     }
 
-    if (selectedRoomIdOverride && visibleRooms.some((room) => room.id === selectedRoomIdOverride)) {
+    if (
+      !isTakeoverActive &&
+      selectedRoomIdOverride &&
+      visibleRooms.some((room) => room.id === selectedRoomIdOverride)
+    ) {
       return selectedRoomIdOverride
     }
 
-    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
     if (
       ownPresence?.primaryRoomId &&
       visibleRooms.some((room) => room.id === ownPresence.primaryRoomId)
@@ -866,16 +882,16 @@ export function SessionInit({
 
     const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
     return (mainRoom || visibleRooms[0]).id
-  }, [currentPresence, visibleRooms, selectedRoomIdOverride, user.id])
+  }, [currentPresence, effectiveActorUserId, isTakeoverActive, selectedRoomIdOverride, visibleRooms])
   const selectedRoom = useMemo(
     () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
     [selectedRoomId, visibleRooms]
   )
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
   const connectedRoomId = useMemo<UUID | ''>(() => {
-    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
     return ownPresence?.primaryRoomId || ''
-  }, [currentPresence, user.id])
+  }, [currentPresence, effectiveActorUserId])
 
   useEffect(() => {
     if (!currentSession) {
@@ -883,13 +899,19 @@ export function SessionInit({
       return
     }
 
-    const ownPresence = currentPresence.find((presence) => presence.userId === user.id)
+    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
     const ownRoomType = ownPresence?.primaryRoomId
       ? currentRooms.find((room) => room.id === ownPresence.primaryRoomId)?.type
       : undefined
 
     setPrivateRoomCleanMode(ownRoomType === RoomType.PRIVATE)
-  }, [currentPresence, currentRooms, currentSession, setPrivateRoomCleanMode, user.id])
+  }, [
+    currentPresence,
+    currentRooms,
+    currentSession,
+    effectiveActorUserId,
+    setPrivateRoomCleanMode,
+  ])
 
   useEffect(() => {
     if (!currentSession || !connectedRoomId) {
@@ -2923,7 +2945,11 @@ export function SessionInit({
         : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role =
-    currentSession && currentSession.dmId === user.id ? Role.DM : membershipRole
+    isTakeoverActive
+      ? Role.PLAYER
+      : currentSession && currentSession.dmId === user.id
+        ? Role.DM
+        : membershipRole
   const dmPresence = useMemo(
     () => currentPresence.find((presence) => presence.userId === currentSession?.dmId) || null,
     [currentPresence, currentSession?.dmId]
@@ -2957,10 +2983,12 @@ export function SessionInit({
     : currentCooldownExtensionCount >= 3
       ? 'Cooldown extention limit reached'
       : undefined
+  const takeoverDisplayName =
+    takeoverPresence?.characterName || takeoverPresence?.username || user.username
   // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
   // distinguish the campaign-scoped role from the global account role.
   const effectiveSessionUser =
-    effectiveSessionRole === user.role
+    effectiveSessionRole === user.role && !isTakeoverActive
       ? {
           ...user,
           campaignMembershipRole: selectedCampaign?.memberRole as
@@ -2971,14 +2999,18 @@ export function SessionInit({
         }
       : {
           ...user,
+          id: effectiveActorUserId,
+          username: takeoverDisplayName,
           role: effectiveSessionRole,
           campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
         }
-  const canStartFromGreenroom = currentSession?.dmId === user.id && isGreenroom
+  const canStartFromGreenroom = !isTakeoverActive && currentSession?.dmId === user.id && isGreenroom
   const canPauseFromActive =
+    !isTakeoverActive &&
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
   const canStopFromActive =
+    !isTakeoverActive &&
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
   const canEditCharacterSettings =
@@ -3013,6 +3045,17 @@ export function SessionInit({
       },
     })
   }, [lobbyNotice, showToast])
+
+  const handleRoomSelection = useCallback(
+    (roomId: UUID) => {
+      if (isTakeoverActive) {
+        return
+      }
+
+      setSelectedRoomIdOverride(roomId)
+    },
+    [isTakeoverActive, setSelectedRoomIdOverride]
+  )
 
   useEffect(() => {
     wsErrorMessageRef.current = wsError?.message || null
@@ -3224,7 +3267,7 @@ export function SessionInit({
                     connectedPlayersCount={connectedPlayersWithDm}
                     connectedSpectatorsCount={connectedSpectatorsCount}
                     dmUserId={currentSession.dmId}
-                    currentUserId={user.id}
+                    currentUserId={effectiveSessionUser.id}
                     rooms={visibleRooms.map((room) => ({
                       id: room.id,
                       name: room.name,
@@ -3234,7 +3277,7 @@ export function SessionInit({
                     sessionEndedAt={currentSession.endedAt}
                     cooldownDurationMs={configuredCooldownDurationMs}
                     selectedRoomId={selectedRoomId}
-                    onSelectRoom={setSelectedRoomIdOverride}
+                    onSelectRoom={handleRoomSelection}
                     broadcastModeEnabled={broadcastModeEnabled}
                     onToggleBroadcastMode={handleToggleBroadcastMode}
                     dmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}

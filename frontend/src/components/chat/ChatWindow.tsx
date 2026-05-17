@@ -223,6 +223,8 @@ export function ChatWindow({
           content: m.content as string,
           type: m.type as MessageType,
           isDmOnly: m.isDmOnly as boolean,
+          visibleTo: Array.isArray(m.visibleTo) ? (m.visibleTo as UUID[]) : undefined,
+          targetIds: Array.isArray(m.targetIds) ? (m.targetIds as UUID[]) : undefined,
           createdAt: m.createdAt as number,
           editedAt: m.editedAt as number | undefined,
         }))
@@ -352,10 +354,20 @@ export function ChatWindow({
   }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
 
   const visibleMessages = useMemo(() => {
+    const isDmViewer = user.role === Role.DM || String(user.role) === 'DM'
+
     const roomScopedMessages = messageList.filter((message) => {
+      if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(user.id)) {
+        return false
+      }
+
       const bookendState = getBookendState(message.content, message.type)
 
       if (!isGreenroomMode) {
+        if (!isDmViewer && message.roomId !== roomId) {
+          return false
+        }
+
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
         const isGreenroomMessage =
           message.roomId === greenroomRoomId ||
@@ -406,7 +418,7 @@ export function ChatWindow({
     }
 
     return roomScopedMessages.slice(latestSessionStartIndex)
-  }, [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId])
+  }, [greenroomRoomId, isGreenroomMode, messageList, resolvedRoomName, roomDirectory, roomId, user.id, user.role])
 
   const whisperRecipients = useMemo(() => {
     const participants = Object.entries(sessionPresence ?? {}) as Array<
@@ -592,6 +604,12 @@ export function ChatWindow({
           content: ((rawMessage as any).content ?? content) as string,
           type: ((rawMessage as any).type ?? type) as MessageType,
           isDmOnly: Boolean((rawMessage as any).isDmOnly),
+          visibleTo: Array.isArray((rawMessage as any).visibleTo)
+            ? ((rawMessage as any).visibleTo as UUID[])
+            : undefined,
+          targetIds: Array.isArray((rawMessage as any).targetIds)
+            ? ((rawMessage as any).targetIds as UUID[])
+            : undefined,
           createdAt,
           editedAt: (rawMessage as any).editedAt as number | undefined,
         }

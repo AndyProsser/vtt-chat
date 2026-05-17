@@ -165,9 +165,15 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
+    const effective = await resolveEffectiveActor({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorUsername: user.username,
+    })
+
     const authz = await resolveEffectiveSessionRole({
       sessionId: sessionId as UUID,
-      userId: user.userId as UUID,
+      userId: effective.userId,
     })
     if (!authz.ok) {
       return res.status(403).json({
@@ -214,7 +220,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
     if (requesterRole !== 'DM') {
       const presence = await getSessionPresence(sessionId as UUID)
-      const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
+      const requesterPresence = presence.find((entry) => entry.userId === effective.userId)
       if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
         return res.status(403).json({
           code: ErrorCode.FORBIDDEN,
@@ -250,12 +256,6 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
         })
       }
     }
-
-    const effective = await resolveEffectiveActor({
-      sessionId: sessionId as UUID,
-      actorUserId: user.userId as UUID,
-      actorUsername: user.username,
-    })
 
     let visibleTo: UUID[] | undefined
     if (type === MessageType.WHISPER) {
@@ -339,9 +339,15 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
+    const effective = await resolveEffectiveActor({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorUsername: user.username,
+    })
+
     const authz = await resolveEffectiveSessionRole({
       sessionId: sessionId as UUID,
-      userId: user.userId as UUID,
+      userId: effective.userId,
     })
     if (!authz.ok) {
       return res.status(403).json({
@@ -364,7 +370,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
 
     if (requesterRole !== 'DM' && roomId !== undefined) {
       const presence = await getSessionPresence(sessionId as UUID)
-      const requesterPresence = presence.find((entry) => entry.userId === (user.userId as UUID))
+      const requesterPresence = presence.find((entry) => entry.userId === effective.userId)
       if (!requesterPresence || requesterPresence.primaryRoomId !== (roomId as UUID)) {
         return res.status(403).json({
           code: ErrorCode.FORBIDDEN,
@@ -381,7 +387,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     // Session-scoped chat only (greenroom now uses separate campaign endpoints)
     const page = await getMessagesPage(
       sessionId as UUID,
-      user.userId as UUID,
+      effective.userId,
       requesterRole,
       roomId !== undefined ? (roomId as UUID) : undefined,
       {
