@@ -376,6 +376,7 @@ router.post('/simulation/settings', requireAuth, async (req: Request, res: Respo
           speakingSimulatorEnabled?: boolean
           chatSimulatorEnabled?: boolean
           disconnectSimulatorEnabled?: boolean
+          multiDeviceSimulatorEnabled?: boolean
           playerCount?: number
           disconnectRealismProfile?: 'SHORT_BLIPS' | 'BALANCED' | 'NETWORK_CHURN'
           disconnectChancePerTick?: number

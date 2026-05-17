@@ -11,8 +11,8 @@ import {
 } from '@/constants/dev-mock.constants'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
-import { MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
-import type { EventEnvelope, UUID } from '@shared'
+import { DeviceClass, MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
+import type { DeviceSessionEntity, EventEnvelope, UUID } from '@shared'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import type { StoredMessage } from '@/types/chat.types'
 import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
@@ -32,11 +32,44 @@ export interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean
   chatSimulatorEnabled: boolean
   disconnectSimulatorEnabled: boolean
+  multiDeviceSimulatorEnabled: boolean
   playerCount: number
   disconnectRealismProfile: DisconnectRealismProfile
   disconnectChancePerTick: number
   ghostMinDurationMs: number
   ghostMaxDurationMs: number
+}
+
+// ---------------------------------------------------------------------------
+// Multi-device simulation types
+// ---------------------------------------------------------------------------
+
+interface SimulatedDevice {
+  deviceSessionId: string
+  deviceClass: DeviceClass
+  label: string
+  connectedAt: number
+}
+
+/** State held for a mock user that is simulating two simultaneous devices. */
+interface MultiDeviceMockState {
+  userId: UUID
+  username: string
+  primaryDevice: SimulatedDevice
+  secondaryDevice: SimulatedDevice
+  /** Which deviceSessionId currently owns the mic. */
+  activeDeviceSessionId: string
+  /** True when the disconnect sim permanently dropped the secondary device. */
+  secondaryPermanentlyDisconnected: boolean
+}
+
+/** Users assigned to emit device-transfer events this session. */
+interface TransferMockState {
+  userId: UUID
+  username: string
+  fromDeviceSessionId: string
+  toDeviceSessionId: string
+  transferEmittedAt: number | null
 }
 
 interface MockSimulationRuntime {
@@ -52,6 +85,12 @@ interface MockSimulationRuntime {
     OOC: number[]
     WHISPER: number[]
   }
+  /** Active two-device states, keyed by userId. */
+  multiDeviceByUserId: Map<UUID, MultiDeviceMockState>
+  /** Users picked to emit a TRANSFER event at some point this session. */
+  transferByUserId: Map<UUID, TransferMockState>
+  /** Ticks since multi-device setup last ran (used to avoid immediate re-setup). */
+  multiDeviceSetupAt: number
 }
 
 interface MockPresenceUser {
@@ -198,6 +237,7 @@ function defaultConfig(): MockSimulationConfig {
     speakingSimulatorEnabled: true,
     chatSimulatorEnabled: false,
     disconnectSimulatorEnabled: false,
+    multiDeviceSimulatorEnabled: false,
     playerCount: 8,
     disconnectRealismProfile: DEFAULT_DISCONNECT_PROFILE,
     disconnectChancePerTick: preset.disconnectChancePerTick,
@@ -252,6 +292,9 @@ function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
       OOC: [],
       WHISPER: [],
     },
+    multiDeviceByUserId: new Map<UUID, MultiDeviceMockState>(),
+    transferByUserId: new Map<UUID, TransferMockState>(),
+    multiDeviceSetupAt: 0,
   }
 
   runtimeBySession.set(sessionId, runtime)
@@ -262,7 +305,8 @@ function shouldRun(config: MockSimulationConfig): boolean {
   return (
     config.speakingSimulatorEnabled ||
     config.chatSimulatorEnabled ||
-    config.disconnectSimulatorEnabled
+    config.disconnectSimulatorEnabled ||
+    config.multiDeviceSimulatorEnabled
   )
 }
 
@@ -394,6 +438,36 @@ async function disconnectMockUser(params: {
   now: number
 }) {
   if (!params.user.primaryRoomId || !isMockUsername(params.user.username)) {
+    return
+  }
+
+  // If this user is in multi-device mode, disconnect the secondary device only.
+  // The secondary is marked permanently disconnected until multi-device re-cycles.
+  const multiDeviceState = params.runtime.multiDeviceByUserId.get(params.user.userId)
+  if (multiDeviceState && !multiDeviceState.secondaryPermanentlyDisconnected) {
+    multiDeviceState.secondaryPermanentlyDisconnected = true
+    // Switch active to primary so the user still appears live.
+    multiDeviceState.activeDeviceSessionId = multiDeviceState.primaryDevice.deviceSessionId
+    const now = Date.now()
+    broadcastEvent(params.sessionId, {
+      id: randomUUID() as UUID,
+      type: 'SESSION:DEVICE_SESSION_DISCONNECTED',
+      version: 1,
+      userId: params.user.userId,
+      userRole: Role.PLAYER,
+      sessionId: params.sessionId,
+      roomId: params.user.primaryRoomId ?? null,
+      timestamp: now,
+      payload: {
+        sessionId: params.sessionId,
+        userId: params.user.userId,
+        deviceSessionId: multiDeviceState.secondaryDevice.deviceSessionId,
+        deviceClass: multiDeviceState.secondaryDevice.deviceClass,
+        label: multiDeviceState.secondaryDevice.label,
+        disconnectedAt: now,
+        deviceSessions: buildFakeDeviceSessions(multiDeviceState),
+      },
+    })
     return
   }
 
@@ -824,6 +898,342 @@ async function maybeEmitMockSelfUnmute(
   await emitMockSelfUnmute(sessionId, selected)
 }
 
+// ---------------------------------------------------------------------------
+// Multi-device simulation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the DeviceSessionEntity[] snapshot for a mock user's simulated devices.
+ * Used in all SESSION:DEVICE_* event payloads.
+ */
+function buildFakeDeviceSessions(state: MultiDeviceMockState): DeviceSessionEntity[] {
+  const sessions: DeviceSessionEntity[] = [
+    {
+      deviceSessionId: state.primaryDevice.deviceSessionId,
+      deviceClass: state.primaryDevice.deviceClass,
+      label: state.primaryDevice.label,
+      connectedAt: state.primaryDevice.connectedAt,
+      isActive: state.activeDeviceSessionId === state.primaryDevice.deviceSessionId,
+      isMuted: state.activeDeviceSessionId !== state.primaryDevice.deviceSessionId,
+    },
+  ]
+  if (!state.secondaryPermanentlyDisconnected) {
+    sessions.push({
+      deviceSessionId: state.secondaryDevice.deviceSessionId,
+      deviceClass: state.secondaryDevice.deviceClass,
+      label: state.secondaryDevice.label,
+      connectedAt: state.secondaryDevice.connectedAt,
+      isActive: state.activeDeviceSessionId === state.secondaryDevice.deviceSessionId,
+      isMuted: state.activeDeviceSessionId !== state.secondaryDevice.deviceSessionId,
+    })
+  }
+  return sessions
+}
+
+/**
+ * Picks 1–2 online mocks for two-device simulation and 1–3 others for
+ * device-transfer simulation. Emits SESSION:DEVICE_SESSION_CONNECTED for each
+ * secondary device so clients start tracking the secondary.
+ *
+ * Called on the first tick after multiDeviceSimulatorEnabled is turned on.
+ */
+function setupMultiDeviceMocks(
+  sessionId: UUID,
+  runtime: MockSimulationRuntime,
+  users: MockPresenceUser[]
+): void {
+  const eligible = users.filter(
+    (u) => u.state !== PresenceState.OFFLINE && Boolean(u.primaryRoomId)
+  )
+  if (eligible.length === 0) {
+    return
+  }
+
+  const multiDeviceCount = Math.min(2, Math.max(1, Math.floor(eligible.length * 0.3)))
+  const pickedIds = pickRandomUsers(
+    eligible.map((u) => u.userId),
+    multiDeviceCount
+  )
+
+  const now = Date.now()
+  const usedIds = new Set<UUID>(pickedIds)
+
+  for (const userId of pickedIds) {
+    const user = eligible.find((u) => u.userId === userId)
+    if (!user) {
+      continue
+    }
+
+    const primaryId = `fake-dev-${userId}-primary`
+    const secondaryId = `fake-dev-${userId}-secondary`
+    const multiState: MultiDeviceMockState = {
+      userId,
+      username: user.username,
+      primaryDevice: {
+        deviceSessionId: primaryId,
+        deviceClass: DeviceClass.DESKTOP,
+        label: 'Desktop',
+        connectedAt: now - 60_000,
+      },
+      secondaryDevice: {
+        deviceSessionId: secondaryId,
+        deviceClass: DeviceClass.MOBILE,
+        label: 'Mobile',
+        connectedAt: now,
+      },
+      activeDeviceSessionId: primaryId,
+      secondaryPermanentlyDisconnected: false,
+    }
+    runtime.multiDeviceByUserId.set(userId, multiState)
+
+    // Announce secondary device connected
+    broadcastEvent(sessionId, {
+      id: randomUUID() as UUID,
+      type: 'SESSION:DEVICE_SESSION_CONNECTED',
+      version: 1,
+      userId,
+      userRole: Role.PLAYER,
+      sessionId,
+      roomId: user.primaryRoomId ?? null,
+      timestamp: now,
+      payload: {
+        sessionId,
+        userId,
+        deviceSessionId: secondaryId,
+        deviceClass: DeviceClass.MOBILE,
+        label: 'Mobile',
+        connectedAt: now,
+        deviceSessions: buildFakeDeviceSessions(multiState),
+      },
+    })
+  }
+
+  // Pick transfer candidates from the remaining non-multi-device users
+  const transferEligible = eligible.filter((u) => !usedIds.has(u.userId))
+  const transferCount = Math.min(3, Math.max(1, Math.floor(transferEligible.length * 0.2)))
+  const transferIds = pickRandomUsers(
+    transferEligible.map((u) => u.userId),
+    transferCount
+  )
+
+  for (const userId of transferIds) {
+    const user = transferEligible.find((u) => u.userId === userId)
+    if (!user) {
+      continue
+    }
+    runtime.transferByUserId.set(userId, {
+      userId,
+      username: user.username,
+      fromDeviceSessionId: `fake-dev-${userId}-old`,
+      toDeviceSessionId: `fake-dev-${userId}-new`,
+      transferEmittedAt: null,
+    })
+  }
+
+  runtime.multiDeviceSetupAt = now
+}
+
+/**
+ * Each tick: for each multi-device mock whose secondary is still live,
+ * randomly switch which device owns the mic (approximately 20% chance per user).
+ */
+function tickMultiDeviceMics(sessionId: UUID, runtime: MockSimulationRuntime): void {
+  const now = Date.now()
+  for (const [userId, state] of runtime.multiDeviceByUserId.entries()) {
+    if (state.secondaryPermanentlyDisconnected) {
+      continue
+    }
+    if (Math.random() > 0.2) {
+      continue
+    }
+    const previous = state.activeDeviceSessionId
+    const next =
+      previous === state.primaryDevice.deviceSessionId
+        ? state.secondaryDevice.deviceSessionId
+        : state.primaryDevice.deviceSessionId
+    state.activeDeviceSessionId = next
+
+    broadcastEvent(sessionId, {
+      id: randomUUID() as UUID,
+      type: 'SESSION:DEVICE_MIC_OWNER_CHANGED',
+      version: 1,
+      userId,
+      userRole: Role.PLAYER,
+      sessionId,
+      roomId: null,
+      timestamp: now,
+      payload: {
+        sessionId,
+        userId,
+        previousDeviceSessionId: previous,
+        activeDeviceSessionId: next,
+        changedAt: now,
+        deviceSessions: buildFakeDeviceSessions(state),
+      },
+    })
+  }
+}
+
+/**
+ * Each tick: for pending transfer mocks, ~25% chance to emit the transfer
+ * event (one-shot per assigned transfer candidate).
+ */
+function tickTransferMocks(sessionId: UUID, runtime: MockSimulationRuntime): void {
+  const now = Date.now()
+  for (const [userId, state] of runtime.transferByUserId.entries()) {
+    if (state.transferEmittedAt !== null) {
+      continue
+    }
+    if (Math.random() > 0.25) {
+      continue
+    }
+    state.transferEmittedAt = now
+    broadcastEvent(sessionId, {
+      id: randomUUID() as UUID,
+      type: 'SESSION:DEVICE_SESSION_TRANSFERRED',
+      version: 1,
+      userId,
+      userRole: Role.PLAYER,
+      sessionId,
+      roomId: null,
+      timestamp: now,
+      payload: {
+        sessionId,
+        userId,
+        fromDeviceSessionId: state.fromDeviceSessionId,
+        toDeviceSessionId: state.toDeviceSessionId,
+        transferredAt: now,
+        deviceSessions: [
+          {
+            deviceSessionId: state.toDeviceSessionId,
+            deviceClass: DeviceClass.DESKTOP,
+            label: 'Desktop (transferred)',
+            connectedAt: now,
+            isActive: true,
+            isMuted: false,
+          },
+        ],
+      },
+    })
+  }
+}
+
+/**
+ * Re-cycles multi-device assignments. Users whose secondary was permanently
+ * disconnected by the disconnect sim may be re-selected.
+ * Called with a ~5% chance each tick to keep the simulation feeling dynamic.
+ */
+function maybeRecycleMultiDeviceMocks(
+  sessionId: UUID,
+  runtime: MockSimulationRuntime,
+  users: MockPresenceUser[]
+): void {
+  if (Math.random() > 0.05) {
+    return
+  }
+
+  // Find users whose secondary was permanently disconnected — eligible for re-assignment
+  const recycleable = [...runtime.multiDeviceByUserId.values()].filter(
+    (s) => s.secondaryPermanentlyDisconnected
+  )
+  if (recycleable.length === 0) {
+    return
+  }
+
+  const now = Date.now()
+  for (const stale of recycleable) {
+    runtime.multiDeviceByUserId.delete(stale.userId)
+    const user = users.find((u) => u.userId === stale.userId)
+    if (!user || !user.primaryRoomId || user.state === PresenceState.OFFLINE) {
+      continue
+    }
+
+    const primaryId = `fake-dev-${stale.userId}-primary-${now}`
+    const secondaryId = `fake-dev-${stale.userId}-secondary-${now}`
+    const refreshedState: MultiDeviceMockState = {
+      userId: stale.userId,
+      username: stale.username,
+      primaryDevice: {
+        deviceSessionId: primaryId,
+        deviceClass: DeviceClass.DESKTOP,
+        label: 'Desktop',
+        connectedAt: now - 30_000,
+      },
+      secondaryDevice: {
+        deviceSessionId: secondaryId,
+        deviceClass: DeviceClass.MOBILE,
+        label: 'Mobile',
+        connectedAt: now,
+      },
+      activeDeviceSessionId: primaryId,
+      secondaryPermanentlyDisconnected: false,
+    }
+    runtime.multiDeviceByUserId.set(stale.userId, refreshedState)
+
+    broadcastEvent(sessionId, {
+      id: randomUUID() as UUID,
+      type: 'SESSION:DEVICE_SESSION_CONNECTED',
+      version: 1,
+      userId: stale.userId,
+      userRole: Role.PLAYER,
+      sessionId,
+      roomId: user.primaryRoomId,
+      timestamp: now,
+      payload: {
+        sessionId,
+        userId: stale.userId,
+        deviceSessionId: secondaryId,
+        deviceClass: DeviceClass.MOBILE,
+        label: 'Mobile',
+        connectedAt: now,
+        deviceSessions: buildFakeDeviceSessions(refreshedState),
+      },
+    })
+  }
+}
+
+/**
+ * Cleans up all active multi-device and transfer state, emitting
+ * SESSION:DEVICE_SESSION_DISCONNECTED for any live secondary devices.
+ */
+function clearMultiDeviceState(sessionId: UUID, runtime: MockSimulationRuntime): void {
+  const now = Date.now()
+  for (const [userId, state] of runtime.multiDeviceByUserId.entries()) {
+    if (!state.secondaryPermanentlyDisconnected) {
+      broadcastEvent(sessionId, {
+        id: randomUUID() as UUID,
+        type: 'SESSION:DEVICE_SESSION_DISCONNECTED',
+        version: 1,
+        userId,
+        userRole: Role.PLAYER,
+        sessionId,
+        roomId: null,
+        timestamp: now,
+        payload: {
+          sessionId,
+          userId,
+          deviceSessionId: state.secondaryDevice.deviceSessionId,
+          deviceClass: state.secondaryDevice.deviceClass,
+          label: state.secondaryDevice.label,
+          disconnectedAt: now,
+          deviceSessions: [
+            {
+              deviceSessionId: state.primaryDevice.deviceSessionId,
+              deviceClass: state.primaryDevice.deviceClass,
+              label: state.primaryDevice.label,
+              connectedAt: state.primaryDevice.connectedAt,
+              isActive: true,
+              isMuted: false,
+            },
+          ],
+        },
+      })
+    }
+  }
+  runtime.multiDeviceByUserId.clear()
+  runtime.transferByUserId.clear()
+}
+
 async function runTick(sessionId: UUID): Promise<void> {
   const runtime = runtimeBySession.get(sessionId)
   if (!runtime || !runtime.isRunning) {
@@ -973,6 +1383,20 @@ async function runTick(sessionId: UUID): Promise<void> {
         }
       }
     }
+
+    // Multi-device simulator
+    if (runtime.config.multiDeviceSimulatorEnabled) {
+      const needsSetup =
+        runtime.multiDeviceByUserId.size === 0 && runtime.transferByUserId.size === 0
+
+      if (needsSetup) {
+        setupMultiDeviceMocks(sessionId, runtime, users)
+      } else {
+        tickMultiDeviceMics(sessionId, runtime)
+        tickTransferMocks(sessionId, runtime)
+        maybeRecycleMultiDeviceMocks(sessionId, runtime, users)
+      }
+    }
   } catch (error) {
     logger.error(
       'dev-mock-simulation',
@@ -996,6 +1420,7 @@ async function clearRuntimeState(sessionId: UUID, runtime: MockSimulationRuntime
 
   await clearSpeaking(sessionId, runtime, users)
   await clearTyping(sessionId, runtime, users)
+  clearMultiDeviceState(sessionId, runtime)
 }
 
 function startRunner(sessionId: UUID): void {
@@ -1083,6 +1508,7 @@ export async function updateMockSimulationConfig(params: {
 }): Promise<MockSimulationConfig> {
   const runtime = getOrCreateRuntime(params.sessionId)
   const previousSpeakingSimulatorEnabled = runtime.config.speakingSimulatorEnabled
+  const previousMultiDeviceEnabled = runtime.config.multiDeviceSimulatorEnabled
   const disconnectConfig = normalizeDisconnectConfig(runtime.config, params.config)
 
   runtime.config = {
@@ -1091,6 +1517,8 @@ export async function updateMockSimulationConfig(params: {
     chatSimulatorEnabled: params.config.chatSimulatorEnabled ?? runtime.config.chatSimulatorEnabled,
     disconnectSimulatorEnabled:
       params.config.disconnectSimulatorEnabled ?? runtime.config.disconnectSimulatorEnabled,
+    multiDeviceSimulatorEnabled:
+      params.config.multiDeviceSimulatorEnabled ?? runtime.config.multiDeviceSimulatorEnabled,
     playerCount: clampPlayerCount(params.config.playerCount ?? runtime.config.playerCount),
     ...disconnectConfig,
   }
@@ -1098,6 +1526,11 @@ export async function updateMockSimulationConfig(params: {
   if (previousSpeakingSimulatorEnabled && !runtime.config.speakingSimulatorEnabled) {
     const users = await listSessionMockUsers(params.sessionId)
     await clearSpeaking(params.sessionId, runtime, users)
+  }
+
+  // When multi-device is toggled off, clean up any active fake device sessions.
+  if (previousMultiDeviceEnabled && !runtime.config.multiDeviceSimulatorEnabled) {
+    clearMultiDeviceState(params.sessionId, runtime)
   }
 
   if (shouldRun(runtime.config)) {

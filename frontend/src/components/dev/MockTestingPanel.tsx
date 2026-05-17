@@ -7,6 +7,7 @@ interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean
   chatSimulatorEnabled: boolean
   disconnectSimulatorEnabled: boolean
+  multiDeviceSimulatorEnabled: boolean
   playerCount: number
 }
 
@@ -49,6 +50,7 @@ export function MockTestingPanel({
     speakingSimulatorEnabled: true,
     chatSimulatorEnabled: false,
     disconnectSimulatorEnabled: false,
+    multiDeviceSimulatorEnabled: false,
     playerCount: 8,
   })
   const [status, setStatus] = useState<MockSimulationStatusResponse | null>(null)
@@ -448,6 +450,30 @@ export function MockTestingPanel({
               }`}
               onClick={() => updateConfig({ disconnectSimulatorEnabled: false })}
               disabled={isLoading || !config.disconnectSimulatorEnabled}
+            >
+              OFF
+            </button>
+          </div>
+        </div>
+
+        <div className="mock-testing-panel__row">
+          <label className="mock-testing-panel__label">Multi-Device</label>
+          <div className="mock-testing-panel__toggle-group">
+            <button
+              className={`mock-testing-panel__segment-btn ${
+                config.multiDeviceSimulatorEnabled ? 'is-active' : ''
+              }`}
+              onClick={() => updateConfig({ multiDeviceSimulatorEnabled: true })}
+              disabled={isLoading || config.multiDeviceSimulatorEnabled}
+            >
+              ON
+            </button>
+            <button
+              className={`mock-testing-panel__segment-btn ${
+                !config.multiDeviceSimulatorEnabled ? 'is-active' : ''
+              }`}
+              onClick={() => updateConfig({ multiDeviceSimulatorEnabled: false })}
+              disabled={isLoading || !config.multiDeviceSimulatorEnabled}
             >
               OFF
             </button>
