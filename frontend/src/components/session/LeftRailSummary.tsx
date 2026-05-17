@@ -47,13 +47,13 @@ export function LeftRailSummary({
               <TooltipTrigger asChild>
                 <article
                   className="voice-rail-summary__stat"
-                  aria-label={`Connected players including DM ${connectedPlayersCount}`}
+                  aria-label={`Connected players ${connectedPlayersCount}`}
                 >
                   <Icon name="users" />
                   <strong>{connectedPlayersCount}</strong>
                 </article>
               </TooltipTrigger>
-              <TooltipContent>Connected Players + DM</TooltipContent>
+              <TooltipContent>Connected Players</TooltipContent>
             </Tooltip>
 
             {hasSpectators ? (

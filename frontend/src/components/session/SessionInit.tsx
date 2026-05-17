@@ -2928,22 +2928,62 @@ export function SessionInit({
   )
   const connectedSpectatorsCount =
     currentSessionStats?.connectedSpectators ?? selectedCampaign?.connectedSpectatorsRounded ?? 0
+  const greenroomRosterCount = useMemo(() => {
+    if (!currentSession || !isGreenroom) {
+      return undefined
+    }
+
+    const greenroom = currentRooms.find((room) => isGreenRoom(room))
+    if (!greenroom) {
+      return undefined
+    }
+
+    const members = typedRoomMembers[greenroom.id] || []
+    const uniqueUserIds = new Set<UUID>()
+    for (const member of members) {
+      if (member.role === Role.SPECTATOR || member.role === 'SPECTATOR') {
+        continue
+      }
+      if (member.role === Role.SYSTEM || member.role === 'SYSTEM') {
+        continue
+      }
+      uniqueUserIds.add(member.userId)
+    }
+
+    return uniqueUserIds.size
+  }, [currentRooms, currentSession, isGreenroom, typedRoomMembers])
   const liveConnectedPresenceCount = currentPresence.filter(
     (presence) => presence.state !== PresenceState.OFFLINE
   ).length
   const hasLivePresence = currentSession !== null && currentPresence.length > 0
-  const connectedPlayersWithDm = currentSessionStats
-    ? currentSessionStats.connectedPlayersWithDm
-    : hasLivePresence
-      ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
-      : selectedCampaign?.connectedPlayersRounded !== undefined ||
-          selectedCampaign?.connectedPlayers
-        ? Math.max(
-            0,
-            (selectedCampaign?.connectedPlayersRounded ?? selectedCampaign?.connectedPlayers ?? 0) +
-              (selectedCampaign?.dmOnline ? 1 : 0)
-          )
-        : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+  const connectedPlayers = isGreenroom
+    ? (greenroomRosterCount ??
+      (currentSessionStats
+        ? currentSessionStats.connectedPlayersWithDm
+        : hasLivePresence
+          ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+          : selectedCampaign?.connectedPlayersRounded !== undefined ||
+              selectedCampaign?.connectedPlayers
+            ? Math.max(
+                0,
+                (selectedCampaign?.connectedPlayersRounded ??
+                  selectedCampaign?.connectedPlayers ??
+                  0) + (selectedCampaign?.dmOnline ? 1 : 0)
+              )
+            : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)))
+    : currentSessionStats
+      ? currentSessionStats.connectedPlayersWithDm
+      : hasLivePresence
+        ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
+        : selectedCampaign?.connectedPlayersRounded !== undefined ||
+            selectedCampaign?.connectedPlayers
+          ? Math.max(
+              0,
+              (selectedCampaign?.connectedPlayersRounded ??
+                selectedCampaign?.connectedPlayers ??
+                0) + (selectedCampaign?.dmOnline ? 1 : 0)
+            )
+          : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
   const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
   const effectiveSessionRole: Role = isTakeoverActive
     ? Role.PLAYER
@@ -3264,7 +3304,7 @@ export function SessionInit({
                     sessionName={currentSession.name}
                     sessionState={toSessionStateValue(currentSession.state)}
                     sessionCount={sessionList.length}
-                    connectedPlayersCount={connectedPlayersWithDm}
+                    connectedPlayersCount={connectedPlayers}
                     connectedSpectatorsCount={connectedSpectatorsCount}
                     dmUserId={currentSession.dmId}
                     currentUserId={effectiveSessionUser.id}
