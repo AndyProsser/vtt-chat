@@ -2,7 +2,7 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-14
+Last updated: 2026-05-17
 
 Related roadmap:
 
@@ -190,6 +190,7 @@ Known readiness gap classes:
 | W9  | DEV Mock Players                 | In Progress             | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players                     |
 | W10 | Voice Group Panel Follow-up      | Planned                 | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel                 |
 | W12 | Temporal API Migration           | Planned (Future)        | Phased migration from legacy `Date` to `Temporal` API; Phase 1 (pure timestamps) is low-risk; Phases 2–4 blocked on Prisma Temporal support |
+| W13 | Durable Queue and Async Workers  | Planned (Future)        | Durable queue manager for scheduled and long-running jobs with restart-safe retry/checkpointing for cleanup, transcription, and summaries   |
 
 ---
 
@@ -1047,3 +1048,31 @@ Ready for production-readiness sign-off when all are true:
 - Operatisation checks and runbooks are validated and current
 - UI modernization follow-through items are closed or explicitly waived
 - User documentation is published and verified against runtime behavior
+
+---
+
+## 7) Future Enhancements
+
+These enhancements are intentionally scoped as future-facing architecture and should be delivered incrementally behind operational gates.
+
+### FE1: Durable Queue Manager and Worker Runtime
+
+- Introduce a durable backend queue manager for scheduled and asynchronous jobs.
+- Replace in-process best-effort long-running execution with restart-safe worker processing.
+- Add retry, dead-letter, checkpoint, and operator observability paths.
+
+Primary reference:
+
+- [docs/architecture/QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
+
+### FE2: Recording, Transcription, and Summary Pipeline
+
+- Implement queue-managed post-session processing stages for recording finalize, transcription, and summarization.
+- Enforce off-the-record and privacy policies throughout the pipeline.
+- Support resume-after-restart for multi-hour processing jobs.
+
+Primary references:
+
+- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+- [docs/architecture/QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
+- [docs/architecture/STATE-RECOVERY.md](docs/architecture/STATE-RECOVERY.md)

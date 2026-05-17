@@ -261,6 +261,26 @@ This is not yet implemented but the Event Bus is designed for it.
 
 ---
 
+## 6.1 Background Job Recovery (Future)
+
+Long-running backend tasks (for example cleanup transitions, transcription, and summary generation)
+must recover safely from process restarts and transient failures.
+
+Recovery requirements for async jobs:
+
+- Job envelopes are durable and survive service restarts.
+- Interrupted jobs resume from persisted checkpoints when available.
+- Retry behavior is bounded and visible (with DLQ for terminal failures).
+- Status hydration after reconnect/refresh comes from backend-persisted job status,
+  not in-memory worker state.
+
+Design references:
+
+- [QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
+- [TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+
+---
+
 ## 7. Subsystem Recovery Rules
 
 Each subsystem has specific recovery behaviour.

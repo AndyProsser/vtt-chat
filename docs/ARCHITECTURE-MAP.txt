@@ -73,6 +73,12 @@ Each subsystem is isolated, documented, and event‑driven.
  │ Overlay / VTT Bridge │
  └──────────────────────┘
 
+ ┌──────────────────────┐
+ │   QUEUE / ASYNC JOBS │
+ │ Durable Workers +    │
+ │ Restart Recovery     │
+ └──────────────────────┘
+
 
 ████████████████████████████████████████████████████████████████████████████████
 SECTION 4 — ROLE SYSTEM
@@ -107,9 +113,9 @@ Privacy enforced at:
 SECTION 6 — SESSION LIFECYCLE
 ████████████████████████████████████████████████████████████████████████████████
 
- ┌──────┐   start   ┌────────┐   pause   ┌────────┐   end   ┌──────┐
+ ┌──────┐   start  ┌────────┐   pause   ┌────────┐  end   ┌──────┐
  │ idle │─────────▶│ active │──────────▶│ paused │───────▶│ ended│
- └──────┘           └────────┘           └────────┘         └──────┘
+ └──────┘          └────────┘           └────────┘        └──────┘
                        ▲                         │
                        └──────── resume ─────────┘
 

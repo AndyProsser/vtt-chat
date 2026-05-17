@@ -98,6 +98,28 @@ Developer guide for D&D markdown blocks in Notes/Journal with AI-assisted genera
 - Validation and repair prompts
 - VS Code fenced-language setup and snippets
 
+### [Queue Job Manager Architecture](architecture/QUEUE-JOB-MANAGER.md)
+
+Durable queue and worker blueprint for scheduled and long-running backend tasks.
+
+**Topics:**
+
+- Durable queue model and worker lifecycle
+- Retry/backoff, DLQ, idempotency, and checkpoint resume
+- Migration path from in-process schedulers
+- Operational visibility and job-state policy
+
+### [Transcription and Recording System](architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+
+Policy and pipeline contract for post-session recording, transcription, and summary generation.
+
+**Topics:**
+
+- Off-the-record and privacy enforcement
+- Queue-managed long-running processing stages
+- Restart-safe checkpoint/resume rules
+- Artifact/status model and dependency ordering
+
 ---
 
 ## Quick Reference
