@@ -26,6 +26,7 @@ import {
   leaveRoom,
   updatePresenceState,
 } from '@/services/room.service'
+import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import type { WebSocketManager } from '@/ws'
 import { isGreenRoomName } from '@/utils'
@@ -263,6 +264,21 @@ async function createRoomHandler(req: Request, res: Response) {
       createdBy: user.userId as UUID,
     })
 
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_CREATED',
+      targetType: 'ROOM',
+      targetId: room.id,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        roomName: room.name,
+        roomType: room.type,
+      },
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event: EventEnvelope = {
@@ -326,6 +342,20 @@ async function joinRoomHandler(req: Request, res: Response) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
+    await appendSessionAuditEvent({
+      sessionId: room.sessionId,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_JOINED',
+      targetType: 'ROOM_MEMBERSHIP',
+      targetId: user.userId as UUID,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        roomType: room.type,
+      },
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       const event: EventEnvelope = {
@@ -384,6 +414,20 @@ async function leaveRoomHandler(req: Request, res: Response) {
       roomId: room.id,
       userId: user.userId as UUID,
       state: PresenceState.IDLE,
+    })
+
+    await appendSessionAuditEvent({
+      sessionId: room.sessionId,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_LEFT',
+      targetType: 'ROOM_MEMBERSHIP',
+      targetId: user.userId as UUID,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        roomType: room.type,
+      },
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -549,6 +593,23 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
         campaignId: fallbackPresence.campaignId,
       })
 
+      await appendSessionAuditEvent({
+        sessionId: sessionId as UUID,
+        actorUserId: user.userId as UUID,
+        actorRole: user.role,
+        actionType: 'ROOM_MEMBER_MOVED',
+        targetType: 'ROOM_MEMBERSHIP',
+        targetId: targetUser.id as UUID,
+        roomId: mainFallback.id,
+        visibilityClass: 'SYSTEM',
+        metadata: {
+          fromRoomId: previousRoomId || null,
+          toRoomId: mainFallback.id,
+          reason: 'TARGET_ROOM_MISSING',
+          movedBy: user.userId,
+        },
+      })
+
       return res.status(200).json({
         ok: true,
         movedBy: user.userId,
@@ -574,6 +635,22 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
         campaignId: updatedPresence.campaignId,
       })
     }
+
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_MEMBER_MOVED',
+      targetType: 'ROOM_MEMBERSHIP',
+      targetId: targetUser.id as UUID,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        fromRoomId: previousRoomId || null,
+        toRoomId: room.id,
+        movedBy: user.userId,
+      },
+    })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
@@ -701,6 +778,21 @@ async function endWhisperHandler(req: Request, res: Response) {
     const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
 
     await clearRoomMessages(sessionId as UUID, room.id)
+
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'WHISPER_ENDED',
+      targetType: 'ROOM',
+      targetId: room.id,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        movedUsersCount: movedUsers.length,
+        fallbackRoomId: mainRoom.id,
+      },
+    })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
@@ -896,6 +988,21 @@ async function deleteRoomHandler(req: Request, res: Response) {
     }
 
     await deleteRoom({ sessionId: sessionId as UUID, roomId: room.id })
+
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_DELETED',
+      targetType: 'ROOM',
+      targetId: room.id,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        movedToRoomId: mainRoom.id,
+        movedUserCount: movedUserIds.length,
+      },
+    })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {

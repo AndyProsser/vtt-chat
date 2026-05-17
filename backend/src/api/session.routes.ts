@@ -62,6 +62,7 @@ import {
 } from '@/services/session/access.service'
 import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
+import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
 import {
   isSessionActiveOrPaused,
@@ -454,6 +455,19 @@ async function joinSessionHandler(req: Request, res: Response) {
 
     await logSessionJoin(id as UUID, user.userId as UUID, user.username)
 
+    await appendSessionAuditEvent({
+      sessionId: id as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_MEMBER_JOINED',
+      targetType: 'SESSION_MEMBERSHIP',
+      targetId: user.userId as UUID,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        role: joinRole.role,
+      },
+    })
+
     const ensured = await ensureJoinedMemberPresence({
       session,
       userId: user.userId as UUID,
@@ -594,6 +608,19 @@ async function leaveSessionHandler(req: Request, res: Response) {
 
     await logSessionLeave(id as UUID, user.userId as UUID, user.username)
 
+    await appendSessionAuditEvent({
+      sessionId: id as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_MEMBER_LEFT',
+      targetType: 'SESSION_MEMBERSHIP',
+      targetId: user.userId as UUID,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        promotedSpectator: removal.promotedSpectator.promoted,
+      },
+    })
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
       wsManager.broadcastEventToSession(id as UUID, {
@@ -677,6 +704,20 @@ router.post('/', requireAuth, requireDM, async (req: Request, res: Response) => 
 
   try {
     const session = await createSession(name, user.userId, description)
+
+    await appendSessionAuditEvent({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_CREATED',
+      targetType: 'SESSION',
+      targetId: session.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        name: session.name,
+      },
+    })
+
     res.status(201).json(session)
   } catch {
     return internalErrorResponse(res)
@@ -887,6 +928,23 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     if (requestedState === 'COOLDOWN') {
       await deletePrivateRoomsForEndedSession(session.id)
     }
+
+    await appendSessionAuditEvent({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_STATE_CHANGED',
+      targetType: 'SESSION',
+      targetId: session.id,
+      roomId: transition.targetRoomId,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        previousState: previousSession.state,
+        nextState: session.state,
+        movedUsersCount: transition.movedUsers,
+        targetRoomId: transition.targetRoomId,
+      },
+    })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
@@ -1174,6 +1232,20 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
       })
     }
 
+    await appendSessionAuditEvent({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_COOLDOWN_EXTENDED',
+      targetType: 'SESSION',
+      targetId: session.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        extensionMs: parsedExtensionMs,
+        extensionCount: nextCooldownExtensionCount,
+      },
+    })
+
     await logSessionCooldownExtended(
       session.id,
       user.userId as UUID,
@@ -1317,6 +1389,22 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
         },
       })
     }
+
+    await appendSessionAuditEvent({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_COOLDOWN_ENDED',
+      targetType: 'SESSION',
+      targetId: session.id,
+      roomId: transition.targetRoomId,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        previousState: previousSession?.state || null,
+        nextState: session.state,
+        movedUsersCount: transition.movedUsers,
+      },
+    })
 
     // Emit SESSION_ENDED boundary to main room + greenroom now that the session is fully ENDED.
     const endedBoundaryRoomIds = [transition.mainRoomId, transition.greenRoomId].filter(
@@ -1468,6 +1556,14 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    const session = await getSession(id as UUID)
+    if (!session) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
     const deleted = await deleteSession(id as UUID, user.userId)
     if (!deleted) {
       return res.status(404).json({
@@ -1475,6 +1571,19 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
         message: 'Session not found',
       })
     }
+
+    await appendSessionAuditEvent({
+      sessionId: id as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'SESSION_DELETED',
+      targetType: 'SESSION',
+      targetId: id as UUID,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        previousState: session.state,
+      },
+    })
 
     res.status(204).send()
   } catch (err: any) {

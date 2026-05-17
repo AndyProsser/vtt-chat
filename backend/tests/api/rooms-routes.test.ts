@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   mockGetSessionPresence: vi.fn(),
   mockEnsureSessionDefaultRoomsForSession: vi.fn(),
   mockRoomMemberIds: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -49,6 +50,10 @@ vi.mock('@/services/room.service', () => ({
   getSessionPresence: mocks.mockGetSessionPresence,
   ensureSessionDefaultRoomsForSession: mocks.mockEnsureSessionDefaultRoomsForSession,
   getRoomMemberIds: mocks.mockRoomMemberIds,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
 }))
 
 import roomsRoutes from '@/api/rooms.routes'
@@ -116,6 +121,7 @@ describe('rooms routes', () => {
     mocks.mockGetSessionPresence.mockResolvedValue([])
     mocks.mockDeleteRoom.mockResolvedValue(undefined)
     mocks.mockRoomMemberIds.mockResolvedValue([])
+    mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
   })
 
   // ── GET /:sessionId ──────────────────────────────────────────────────────────
@@ -239,6 +245,14 @@ describe('rooms routes', () => {
       expect(res.status).toBe(201)
       expect(res.body.room).toBeDefined()
       expect(res.body.room.name).toBe('Side Room')
+      expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          actionType: 'ROOM_CREATED',
+          targetType: 'ROOM',
+          targetId: ROOM_ID,
+        })
+      )
     })
 
     it('emits ROOM:CREATED event when wsManager is present', async () => {
@@ -329,6 +343,15 @@ describe('rooms routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.ok).toBe(true)
       expect(res.body.presence).toBeDefined()
+      expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          actionType: 'ROOM_JOINED',
+          targetType: 'ROOM_MEMBERSHIP',
+          targetId: PLAYER_ID,
+          roomId: ROOM_ID,
+        })
+      )
     })
 
     it('emits ROOM:USER_JOINED event when wsManager is present', async () => {
@@ -419,6 +442,15 @@ describe('rooms routes', () => {
         .set('Authorization', 'Bearer token')
       expect(res.status).toBe(200)
       expect(res.body.ok).toBe(true)
+      expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          actionType: 'ROOM_LEFT',
+          targetType: 'ROOM_MEMBERSHIP',
+          targetId: PLAYER_ID,
+          roomId: ROOM_ID,
+        })
+      )
     })
 
     it('emits ROOM:USER_LEFT event when wsManager is present', async () => {
@@ -470,6 +502,15 @@ describe('rooms routes', () => {
         sessionId: SESSION_ID,
         roomId: GROUP_ROOM_FIXTURE.id,
       })
+      expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          actionType: 'ROOM_DELETED',
+          targetType: 'ROOM',
+          targetId: GROUP_ROOM_FIXTURE.id,
+          roomId: GROUP_ROOM_FIXTURE.id,
+        })
+      )
     })
 
     it('returns 400 when attempting to delete greenroom', async () => {
