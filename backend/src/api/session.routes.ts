@@ -982,7 +982,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           },
           targetRoomId: transition.targetRoomId,
           targetRoomName: transition.targetRoomName,
-          users: users.map((member) => ({
+          users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
           })),
@@ -1352,7 +1352,7 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
           },
           targetRoomId: transition.targetRoomId,
           targetRoomName: transition.targetRoomName,
-          users: users.map((member) => ({
+          users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
           })),

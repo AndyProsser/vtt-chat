@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   mockCreateSession: vi.fn(),
   mockListSessionsByCampaign: vi.fn(),
   mockEnsureSessionDefaultRoomsForSession: vi.fn(),
+  mockRestoreRememberedDevMockPlayersForSession: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -56,6 +57,10 @@ vi.mock('@/services/session/core.service', () => ({
 
 vi.mock('@/services/room.service', () => ({
   ensureSessionDefaultRoomsForSession: mocks.mockEnsureSessionDefaultRoomsForSession,
+}))
+
+vi.mock('@/services/dev-mock/players.service', () => ({
+  restoreRememberedDevMockPlayersForSession: mocks.mockRestoreRememberedDevMockPlayersForSession,
 }))
 
 vi.mock('@/repositories/session.repository', () => ({
@@ -182,6 +187,7 @@ describe('campaign routes', () => {
       createdAt: Date.now(),
     })
     mocks.mockEnsureSessionDefaultRoomsForSession.mockResolvedValue(undefined)
+    mocks.mockRestoreRememberedDevMockPlayersForSession.mockResolvedValue([])
 
     const response = await request(app)
       .post(`/api/campaigns/${CAMPAIGN_ID}/sessions/start`)
@@ -199,6 +205,9 @@ describe('campaign routes', () => {
       '33333333-3333-4333-8333-333333333333',
       USER_ID
     )
+    expect(mocks.mockRestoreRememberedDevMockPlayersForSession).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333'
+    )
   })
 
   it('rejects starting a new session while the post-session window is active', async () => {
@@ -211,7 +220,7 @@ describe('campaign routes', () => {
       currentDmId: USER_ID,
       postSessionChatEnabled: true,
       postSessionChatDurationMs: 300000,
-      latestSessionState: 'ENDED',
+      latestSessionState: 'COOLDOWN',
       latestSessionEndedAt: new Date(Date.now() - 120000),
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -7,6 +7,7 @@ import { createSession } from '@/services/session/core.service'
 import { ensureSessionDefaultRoomsForSession, getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { countSessionCooldownExtensions } from '@/services/session/logs.service'
+import { restoreRememberedDevMockPlayersForSession } from '@/services/dev-mock/players.service'
 import {
   createCampaignForUser,
   createCharacterForCampaign,
@@ -1289,6 +1290,7 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
   )
 
   await ensureSessionDefaultRoomsForSession(session.id as UUID, session.dmId as UUID)
+  await restoreRememberedDevMockPlayersForSession(session.id as UUID)
 
   return res.status(201).json({ session })
 })

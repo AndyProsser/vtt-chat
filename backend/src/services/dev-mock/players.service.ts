@@ -675,6 +675,57 @@ export async function joinMockPlayersToSession(sessionId: UUID): Promise<void> {
   await ensureDevMockPlayersForSession(sessionId)
 }
 
+export async function restoreRememberedDevMockPlayersForSession(
+  sessionId: UUID
+): Promise<MockPlayerDef[]> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { campaignId: true },
+  })
+
+  if (!session?.campaignId) {
+    return []
+  }
+
+  const campaignId = session.campaignId as UUID
+  if (campaignRosterByCampaignId.has(campaignId)) {
+    return ensureDevMockPlayersForSession(sessionId)
+  }
+
+  const previousSessions = await prisma.session.findMany({
+    where: {
+      campaignId,
+      id: { not: sessionId },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true },
+    take: 5,
+  })
+
+  for (const previousSession of previousSessions) {
+    const previousMocks = await prisma.sessionMember.findMany({
+      where: {
+        sessionId: previousSession.id as UUID,
+        username: { startsWith: DEV_MOCK_PREFIX },
+      },
+      orderBy: { username: 'asc' },
+      select: { username: true },
+    })
+
+    if (previousMocks.length === 0) {
+      continue
+    }
+
+    const rememberedSlugs = [
+      ...new Set(previousMocks.map((mock) => mock.username.slice(DEV_MOCK_PREFIX.length))),
+    ]
+    campaignRosterByCampaignId.set(campaignId, rememberedSlugs)
+    return ensureDevMockPlayersForSession(sessionId)
+  }
+
+  return []
+}
+
 export async function resetDevMockRoster(params: {
   sessionId?: UUID
   campaignId?: UUID

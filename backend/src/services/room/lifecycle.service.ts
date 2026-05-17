@@ -212,8 +212,24 @@ export async function applySessionStateRoomTransition(params: {
         ? PresenceState.ONLINE
         : PresenceState.IDLE
 
-  let movedUsers = 0
+  const presence = await getSessionPresence(params.sessionId)
+  const transitionUsers = new Map<UUID, { id: UUID; username: string }>()
+
   for (const user of params.users) {
+    transitionUsers.set(user.id, user)
+  }
+
+  for (const entry of presence) {
+    if (!transitionUsers.has(entry.userId)) {
+      transitionUsers.set(entry.userId, {
+        id: entry.userId,
+        username: entry.username,
+      })
+    }
+  }
+
+  let movedUsers = 0
+  for (const user of transitionUsers.values()) {
     const result = await joinRoom({
       sessionId: params.sessionId,
       roomId: targetRoom.id,
@@ -244,6 +260,7 @@ export async function applySessionStateRoomTransition(params: {
     targetRoomId: targetRoom.id,
     targetRoomName: targetRoom.name,
     movedUsers,
+    users: [...transitionUsers.values()],
     targetState,
   }
 }

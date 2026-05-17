@@ -104,6 +104,7 @@ const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const DM_ID = '22222222-2222-4222-8222-222222222222'
 const USER_A = '33333333-3333-4333-8333-333333333333'
 const USER_B = '44444444-4444-4444-8444-444444444444'
+const USER_MOCK = '55555555-5555-4555-8555-555555555555'
 const MAIN_ROOM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const GROUP_ROOM_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const WHISPER_ROOM_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
@@ -203,6 +204,36 @@ describe('room service recovery integration', () => {
 
     expect(mainRoomMembers.sort()).toEqual([USER_A, USER_B].sort())
     expect(greenRoomMembers).toEqual([])
+  })
+
+  it('includes live presence users omitted from the explicit transition user list', async () => {
+    await updatePresenceState({
+      sessionId: SESSION_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'IDLE' as any,
+    })
+    await updatePresenceState({
+      sessionId: SESSION_ID as any,
+      userId: USER_MOCK as any,
+      username: 'dev_mock_ghost',
+      state: 'IDLE' as any,
+    })
+
+    const transition = await applySessionStateRoomTransition({
+      sessionId: SESSION_ID as any,
+      dmId: DM_ID as any,
+      nextState: 'ACTIVE' as any,
+      users: [{ id: USER_A as any, username: 'alice' }],
+    })
+
+    expect(transition.users.map((user) => user.id).sort()).toEqual([USER_A, USER_MOCK].sort())
+    expect(transition.movedUsers).toBe(2)
+
+    const finalPresence = await getSessionPresence(SESSION_ID as any)
+    const mockPresence = finalPresence.find((entry) => entry.userId === (USER_MOCK as any))
+    expect(mockPresence?.primaryRoomId).toBe(transition.mainRoomId)
+    expect(mockPresence?.state).toBe('ONLINE')
   })
 
   it('restores whisper participants to stored privateRoomId when it is still valid', async () => {
