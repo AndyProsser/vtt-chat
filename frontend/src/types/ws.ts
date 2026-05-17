@@ -1,4 +1,4 @@
-import type { EventEnvelope, UUID } from '@shared'
+import type { DeviceClass, EventEnvelope, UUID } from '@shared'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
@@ -9,6 +9,10 @@ export interface ConnectionOptions {
   token: string
   /** Active session to bind the socket to for session-scoped broadcasts */
   sessionId?: UUID | null
+  /** Stable per-device-session identifier for multi-device negotiation */
+  deviceSessionId?: string
+  /** Client inferred device class used for transport negotiation and UI labels */
+  deviceClass?: DeviceClass
   /** Callback when connection state changes */
   onStateChange?: (state: ConnectionState) => void
   /** Callback when an event is received */

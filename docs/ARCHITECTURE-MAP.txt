@@ -131,6 +131,12 @@ On reconnect:
  4. Frontend refreshes room/presence/audio state via APIs
  5. Store replaces topology snapshots and resumes WS-driven updates
 
+Multi-device recovery invariants:
+ - WS auth includes `deviceSessionId` and `deviceClass` for each connected device.
+ - One active mic device per user is authoritative; siblings hard-unpublish on ownership changes.
+ - Transfer policy force-disconnects the previous device and returns it to campaign shell.
+ - LiveKit webhook signals are reconciled with backend runtime state during recovery.
+
 Current shipped note:
    No single `system.state.hydrate` event is shipped yet.
    Full cross-domain hydrate/event replay remains planned architecture.

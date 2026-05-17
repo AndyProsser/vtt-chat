@@ -4,7 +4,7 @@
  * Reference: docs/architecture/EVENT-BUS.md
  */
 
-import type { EventEnvelope, UUID } from '@shared'
+import type { DeviceClass, EventEnvelope, UUID } from '@shared'
 import { isValidUUID } from '@shared'
 import { logger } from '../utils/logger'
 import { bumpLoopCounter } from '../utils/loopDiagnostics'
@@ -44,6 +44,10 @@ function wsClientLogError(message: string, meta?: unknown): void {
   logger.error('ws.client', message, meta)
 }
 
+const DEVICE_CLASS_DESKTOP = 'DESKTOP' as DeviceClass
+const DEVICE_CLASS_MOBILE = 'MOBILE' as DeviceClass
+const DEVICE_CLASS_TABLET = 'TABLET' as DeviceClass
+
 export type { ConnectionState, ConnectionOptions } from '@/types/ws'
 type IncomingWsMessage =
   | EventEnvelope
@@ -57,6 +61,8 @@ type IncomingWsMessage =
       userId: string
       username: string
       role: string
+      deviceSessionId?: string
+      deviceClass?: DeviceClass
     }
   | {
       type: 'WS:ACK'
@@ -78,6 +84,8 @@ export class WebSocketClient {
   private state: ConnectionState = 'disconnected'
   private token: string
   private sessionId: UUID | null
+  private deviceSessionId: string
+  private deviceClass: DeviceClass
   private url: string
   private manualDisconnect = false
 
@@ -103,6 +111,8 @@ export class WebSocketClient {
     this.url = options.url
     this.token = options.token
     this.sessionId = options.sessionId ?? null
+    this.deviceSessionId = options.deviceSessionId || resolveDeviceSessionId()
+    this.deviceClass = isDeviceClass(options.deviceClass) ? options.deviceClass : inferDeviceClass()
     this.callbacks = {
       onStateChange: options.onStateChange,
       onEvent: options.onEvent,
@@ -150,6 +160,8 @@ export class WebSocketClient {
               token: this.token,
               sessionId: this.sessionId,
               lastEventId: this.lastReceivedEventId,
+              deviceSessionId: this.deviceSessionId,
+              deviceClass: this.deviceClass,
             })
           )
           this.reconnectAttempts = 0
@@ -357,6 +369,8 @@ export class WebSocketClient {
           userId: string
           username: string
           role: string
+          deviceSessionId?: string
+          deviceClass?: DeviceClass
         }
         if (!isValidUUID(msg.userId)) {
           this.callbacks.onError?.(new Error(`Invalid WS:CONNECTED userId: ${msg.userId}`))
@@ -377,6 +391,8 @@ export class WebSocketClient {
             username: msg.username,
             userRole: msg.role,
             connectionId: msg.connectionId,
+            deviceSessionId: msg.deviceSessionId || this.deviceSessionId,
+            deviceClass: msg.deviceClass || this.deviceClass,
           },
         }
         wsClientLogInfo('Received WS:CONNECTED', {
@@ -490,4 +506,48 @@ export class WebSocketClient {
       }
     }
   }
+}
+
+function resolveDeviceSessionId(): string {
+  const generateId = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    return `device-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  }
+
+  if (typeof window === 'undefined') {
+    return generateId()
+  }
+
+  const key = 'vtt-chat:device-session-id'
+  const existing = window.sessionStorage.getItem(key)
+  if (existing) {
+    return existing
+  }
+
+  const next = generateId()
+  window.sessionStorage.setItem(key, next)
+  return next
+}
+
+function inferDeviceClass(): DeviceClass {
+  if (typeof navigator === 'undefined') {
+    return DEVICE_CLASS_DESKTOP
+  }
+
+  const ua = navigator.userAgent.toLowerCase()
+  const isTablet = /ipad|tablet|playbook|silk|(android(?!.*mobile))/i.test(ua)
+  if (isTablet) {
+    return DEVICE_CLASS_TABLET
+  }
+
+  const isMobile = /mobile|iphone|ipod|android/i.test(ua)
+  return isMobile ? DEVICE_CLASS_MOBILE : DEVICE_CLASS_DESKTOP
+}
+
+function isDeviceClass(value: unknown): value is DeviceClass {
+  return (
+    value === DEVICE_CLASS_DESKTOP || value === DEVICE_CLASS_MOBILE || value === DEVICE_CLASS_TABLET
+  )
 }

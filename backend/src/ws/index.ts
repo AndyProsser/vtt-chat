@@ -22,6 +22,7 @@ import {
   audioHandlers,
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
+import type { DeviceClass } from '@shared'
 import { PresenceState, Role } from '@shared'
 import { ErrorCode, createError } from '@shared'
 import type { TokenPayload } from '@/services/auth.service'
@@ -41,12 +42,18 @@ import {
 const AUTH_TIMEOUT_MS = 5000
 const MAX_WS_MESSAGE_SIZE = 64 * 1024
 const UNASSIGNED_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
+const DEFAULT_DEVICE_CLASS = 'DESKTOP' as DeviceClass
+
+const isDeviceClass = (value: unknown): value is DeviceClass =>
+  value === 'DESKTOP' || value === 'MOBILE' || value === 'TABLET'
 
 interface AuthMessage {
   type: 'WS:AUTH'
   token: string
   sessionId?: UUID
   lastEventId?: string
+  deviceSessionId?: string
+  deviceClass?: DeviceClass
 }
 
 /**
@@ -56,6 +63,8 @@ interface ExtendedWebSocket extends WebSocket {
   connectionState?: ConnectionState
   isAlive?: boolean
   authPayload?: TokenPayload
+  authDeviceSessionId?: string
+  authDeviceClass?: DeviceClass
   authTimeoutId?: ReturnType<typeof setTimeout>
 }
 
@@ -228,7 +237,9 @@ export class WebSocketManager {
     ws: ExtendedWebSocket,
     token: string,
     sessionId?: UUID,
-    lastEventId?: string
+    lastEventId?: string,
+    deviceSessionId?: string,
+    deviceClass?: DeviceClass
   ): Promise<void> {
     const payload = verifyToken(token)
     if (!payload) {
@@ -248,6 +259,8 @@ export class WebSocketManager {
 
     ws.authPayload = payload
     ws.connectionState = connectionState
+    ws.authDeviceSessionId = deviceSessionId || connectionId
+    ws.authDeviceClass = isDeviceClass(deviceClass) ? deviceClass : DEFAULT_DEVICE_CLASS
 
     if (lastEventId) {
       updateConnectionState(connectionState, lastEventId)
@@ -277,6 +290,8 @@ export class WebSocketManager {
         userId: payload.userId,
         username: payload.username,
         role: payload.role,
+        deviceSessionId: ws.authDeviceSessionId,
+        deviceClass: ws.authDeviceClass,
       })
     )
 
@@ -351,7 +366,11 @@ export class WebSocketManager {
           typeof auth.sessionId === 'string' && auth.sessionId
             ? (auth.sessionId as UUID)
             : undefined,
-          typeof auth.lastEventId === 'string' && auth.lastEventId ? auth.lastEventId : undefined
+          typeof auth.lastEventId === 'string' && auth.lastEventId ? auth.lastEventId : undefined,
+          typeof auth.deviceSessionId === 'string' && auth.deviceSessionId
+            ? auth.deviceSessionId
+            : undefined,
+          auth.deviceClass
         )
         return
       }

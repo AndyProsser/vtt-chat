@@ -97,7 +97,11 @@ describe('WebSocketClient', () => {
     expect(client.getState()).toBe('connected')
     expect(onStateChange).toHaveBeenCalledWith('connecting')
     expect(onStateChange).toHaveBeenCalledWith('connected')
-    expect(socket.sent[0]).toBe(JSON.stringify({ type: 'WS:AUTH', token: 'jwt-token' }))
+    const authPayload = JSON.parse(socket.sent[0])
+    expect(authPayload.type).toBe('WS:AUTH')
+    expect(authPayload.token).toBe('jwt-token')
+    expect(typeof authPayload.deviceSessionId).toBe('string')
+    expect(authPayload.deviceClass).toBe('DESKTOP')
   })
 
   it('queues events while disconnected and flushes queue on reconnect', async () => {

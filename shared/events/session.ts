@@ -7,7 +7,7 @@
  * Visibility: All state changes are visible to all session participants.
  */
 
-import type { UUID } from '../types'
+import type { DeviceClass, UUID } from '../types'
 import type { EventEnvelope } from './base'
 
 export type SessionEventType =
@@ -21,6 +21,11 @@ export type SessionEventType =
   | 'SESSION:STATS_UPDATED'
   | 'SESSION:COOLDOWN_EXTENDED'
   | 'SESSION:COOLDOWN_ENDED'
+  | 'SESSION:DEVICE_SESSION_CONNECTED'
+  | 'SESSION:DEVICE_SESSION_DISCONNECTED'
+  | 'SESSION:DEVICE_SESSION_TRANSFERRED'
+  | 'SESSION:DEVICE_MIC_OWNER_CHANGED'
+  | 'SESSION:DEVICE_MIC_HARD_UNPUBLISHED'
 
 /**
  * SESSION:CREATED
@@ -165,6 +170,58 @@ export interface SessionCooldownEnded {
 
 export type SessionCooldownEndedEvent = EventEnvelope<SessionCooldownEnded>
 
+export interface SessionDeviceSessionConnected {
+  sessionId: UUID
+  userId: UUID
+  deviceSessionId: string
+  deviceClass: DeviceClass
+  label: string
+  connectedAt: number
+}
+
+export type SessionDeviceSessionConnectedEvent = EventEnvelope<SessionDeviceSessionConnected>
+
+export interface SessionDeviceSessionDisconnected {
+  sessionId: UUID
+  userId: UUID
+  deviceSessionId: string
+  deviceClass: DeviceClass
+  label: string
+  disconnectedAt: number
+}
+
+export type SessionDeviceSessionDisconnectedEvent = EventEnvelope<SessionDeviceSessionDisconnected>
+
+export interface SessionDeviceSessionTransferred {
+  sessionId: UUID
+  userId: UUID
+  fromDeviceSessionId: string
+  toDeviceSessionId: string
+  transferredAt: number
+}
+
+export type SessionDeviceSessionTransferredEvent = EventEnvelope<SessionDeviceSessionTransferred>
+
+export interface SessionDeviceMicOwnerChanged {
+  sessionId: UUID
+  userId: UUID
+  previousDeviceSessionId: string | null
+  activeDeviceSessionId: string
+  changedAt: number
+}
+
+export type SessionDeviceMicOwnerChangedEvent = EventEnvelope<SessionDeviceMicOwnerChanged>
+
+export interface SessionDeviceMicHardUnpublished {
+  sessionId: UUID
+  userId: UUID
+  deviceSessionId: string
+  reason: 'MIC_OWNERSHIP_SWITCHED' | 'TRANSFERRED' | 'FORCED_SYNC'
+  unpublishedAt: number
+}
+
+export type SessionDeviceMicHardUnpublishedEvent = EventEnvelope<SessionDeviceMicHardUnpublished>
+
 /**
  * Union type for all session events.
  */
@@ -179,3 +236,8 @@ export type SessionEvent =
   | SessionStatsUpdatedEvent
   | SessionCooldownExtendedEvent
   | SessionCooldownEndedEvent
+  | SessionDeviceSessionConnectedEvent
+  | SessionDeviceSessionDisconnectedEvent
+  | SessionDeviceSessionTransferredEvent
+  | SessionDeviceMicOwnerChangedEvent
+  | SessionDeviceMicHardUnpublishedEvent

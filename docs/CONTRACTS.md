@@ -76,6 +76,12 @@ Placement boundary:
 - Backend session broadcasts only fan out to sockets whose authenticated connection state is bound to the matching session id.
 - A socket can authenticate successfully without being eligible for session broadcasts if it is not session-bound.
 
+Multi-device addendum (May 2026):
+
+- Frontend WebSocket auth must include `deviceSessionId` and inferred `deviceClass` (`DESKTOP`, `MOBILE`, `TABLET`).
+- Backend WS connect acknowledgement includes `deviceSessionId` and `deviceClass` for client-side reconciliation.
+- `deviceSessionId` is transport-scoped identity used for device transfer/arbitration; it does not create additional visible participant entities.
+
 ### Presence Profile Updates
 
 - `PRESENCE:PROFILE_UPDATED` is the session-scoped event for character sheet / player card metadata changes while the user remains in-session.
@@ -192,6 +198,7 @@ Archive lock rules:
 - `NoteVisibility`: DM_ONLY, PLAYERS_VISIBLE, CUSTOM
 - `MessageType`: IC, OOC, WHISPER, SYSTEM
 - `PresenceState`: ONLINE, TYPING, SPEAKING, IDLE, OFFLINE
+- `DeviceClass`: DESKTOP, MOBILE, TABLET
 
 Compatibility note:
 
@@ -265,6 +272,11 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 - `SESSION:RESUMED` — PAUSED → ACTIVE (DM only)
 - `SESSION:ENDED` — ACTIVE → ENDED, freezes all changes
 - `SESSION:ARCHIVED` — Admin cleanup, no more joins
+- `SESSION:DEVICE_SESSION_CONNECTED` — device session attached for a user
+- `SESSION:DEVICE_SESSION_DISCONNECTED` — device session detached for a user
+- `SESSION:DEVICE_SESSION_TRANSFERRED` — active device ownership transferred
+- `SESSION:DEVICE_MIC_OWNER_CHANGED` — authoritative active mic device switched
+- `SESSION:DEVICE_MIC_HARD_UNPUBLISHED` — sibling device forced unpublish on ownership change
 
 **Chat** (file: `events/chat.ts`)
 

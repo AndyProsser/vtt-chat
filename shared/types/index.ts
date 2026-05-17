@@ -50,6 +50,12 @@ export enum PresenceState {
   OFFLINE = 'OFFLINE',
 }
 
+export enum DeviceClass {
+  DESKTOP = 'DESKTOP',
+  MOBILE = 'MOBILE',
+  TABLET = 'TABLET',
+}
+
 // ---------------------------------------------------------------------------
 // Connection status canonical model
 // Used by frontend, backend, and admin to refer to the same state keys.
