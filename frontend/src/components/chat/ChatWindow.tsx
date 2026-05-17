@@ -354,8 +354,6 @@ export function ChatWindow({
   }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
 
   const visibleMessages = useMemo(() => {
-    const isDmViewer = user.role === Role.DM || String(user.role) === 'DM'
-
     const roomScopedMessages = messageList.filter((message) => {
       if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(user.id)) {
         return false
@@ -364,10 +362,6 @@ export function ChatWindow({
       const bookendState = getBookendState(message.content, message.type)
 
       if (!isGreenroomMode) {
-        if (!isDmViewer && message.roomId !== roomId) {
-          return false
-        }
-
         const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
         const isGreenroomMessage =
           message.roomId === greenroomRoomId ||

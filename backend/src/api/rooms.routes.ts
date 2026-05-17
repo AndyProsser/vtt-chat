@@ -29,6 +29,7 @@ import {
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import type { WebSocketManager } from '@/ws'
+import { getMockTakeoverSnapshot } from '@/services/dev-mock/takeover.service'
 import { isGreenRoomName } from '@/utils'
 
 const router = Router()
@@ -63,6 +64,28 @@ function parseRoomType(value: unknown): RoomType | null {
 
 function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
+}
+
+async function rejectRoomMutationDuringTakeover(params: {
+  sessionId: UUID
+  userId: UUID
+  res: Response
+}): Promise<boolean> {
+  const identity = await getMockTakeoverSnapshot({
+    sessionId: params.sessionId,
+    actorUserId: params.userId,
+  })
+
+  if (!identity.active) {
+    return false
+  }
+
+  params.res.status(403).json({
+    code: ErrorCode.FORBIDDEN,
+    message:
+      'Room-management actions are disabled while mock takeover is active. Return to your DM user first.',
+  })
+  return true
 }
 
 async function ensureNoHomelessPresence(
@@ -244,6 +267,16 @@ async function createRoomHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: sessionId as UUID,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
+    }
+
     if (session.dmId !== (user.userId as UUID)) {
       return res
         .status(403)
@@ -330,6 +363,16 @@ async function joinRoomHandler(req: Request, res: Response) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
     }
 
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: room.sessionId,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
+    }
+
     const presence = await joinRoom({
       sessionId: room.sessionId,
       roomId: room.id,
@@ -407,6 +450,16 @@ async function leaveRoomHandler(req: Request, res: Response) {
     const allowed = await canAccessSessionRooms(room.sessionId, user)
     if (!allowed) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: room.sessionId,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
     }
 
     const presence = await leaveRoom({
@@ -490,6 +543,16 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
       return res
         .status(404)
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: sessionId as UUID,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
     }
 
     if (!room) {
@@ -756,6 +819,16 @@ async function endWhisperHandler(req: Request, res: Response) {
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
     }
 
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: sessionId as UUID,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
+    }
+
     if (session.dmId !== (user.userId as UUID)) {
       return res
         .status(403)
@@ -925,6 +998,16 @@ async function deleteRoomHandler(req: Request, res: Response) {
       return res
         .status(404)
         .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: sessionId as UUID,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
     }
 
     if (session.dmId !== (user.userId as UUID)) {
