@@ -258,6 +258,47 @@ Required test coverage for each new mutation path:
 3. Every meaningful session action must leave an audit trace.
 4. Privacy policy (Whisper/intermission off-the-record constraints) must never be broken by caching or audit implementations.
 
+### 10.1 Multi-device invariants (approved May 2026)
+
+These rules are now part of the state-machine contract.
+
+1. One user is always one visible participant card to DM/players, regardless of connected device count.
+2. DM and players may connect multiple devices; spectators are single-device only.
+3. Exactly one active microphone device is allowed per user per session at any time (including DM).
+4. When one device becomes active for microphone publish, sibling devices for the same user must be hard-unpublished.
+5. Transfer mode is immediate and silent: old device is force-disconnected from WS and returned to campaign screen (guest users are logged out).
+6. Join vs Transfer prompt is required on each additional device connect (no remembered choice).
+7. Device labels exposed to users must be inferred class labels only (`Desktop`, `Mobile`, `Tablet`) with counters when duplicated.
+8. Device identifiers in audit metadata must be pseudonymous labels, never raw hardware identifiers.
+9. DM mute behavior remains advisory in this model: a multi-connected player may pick one device to unmute.
+
+### 10.2 Multi-device event and audit taxonomy (required)
+
+At minimum, the following control-plane actions must be auditable:
+
+- `DEVICE_SESSION_CONNECTED`
+- `DEVICE_SESSION_DISCONNECTED`
+- `DEVICE_SESSION_TRANSFERRED`
+- `DEVICE_SESSION_TRANSFER_CANCELLED`
+- `DEVICE_MIC_OWNER_CHANGED`
+- `DEVICE_MIC_HARD_UNPUBLISHED`
+
+Audit metadata should include pseudonymous device class label and per-user counter (for example `Mobile 2`).
+
+### 10.3 Multi-device Redis keyspace additions (required)
+
+Canonical additions for device-aware runtime state:
+
+- `device:session:{sessionId}:user:{userId}:connections`
+- `device:session:{sessionId}:user:{userId}:mic-owner`
+- `device:session:{sessionId}:user:{userId}:last-transfer`
+
+Rules:
+
+- Device records are runtime-scoped and must be reconciled on reconnect.
+- Mic-owner pointer is authoritative for publish arbitration.
+- Forced disconnect/transfer must clear stale device entries atomically.
+
 ---
 
 ## 11. Implementation Checklist Matrix

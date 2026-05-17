@@ -94,6 +94,10 @@ Current shipped baseline most directly covers:
 - Backend restarts by rebuilding runtime topology from durable APIs/snapshots
 - Redis-backed websocket replay window using reconnect cursors (`lastEventId`) for session-scoped WS events
 
+Multi-device requirement (approved):
+
+- Reconnect behavior must preserve a single visible participant entity while rehydrating multiple device sessions for the same user behind the scenes.
+
 ---
 
 ## 3. Recovery Lifecycle
@@ -139,6 +143,9 @@ Current shipped Stage 6-7 runtime baseline is narrower:
 
 7. **Reconnect replay window (bounded)**
    Client auth now includes optional `lastEventId`; server can replay recent session events from Redis stream before normal live flow resumes.
+
+8. **Device-session reconciliation (required for multi-device)**
+   Server reconciles WS-connected devices, runtime mic-owner pointer, and media publish state before allowing new publish transitions.
 
 ### **Lifecycle Stages**
 
@@ -255,6 +262,12 @@ Current shipped baseline instead relies on:
 - targeted API refresh for room and presence state
 - store-level atomic replacement for room/presence topology
 
+For multi-device support, hydration must additionally:
+
+- Restore device-session roster for the authenticated user.
+- Restore current mic-owner selection for that user.
+- Force local hard-unpublish if this device is no longer mic owner.
+
 ---
 
 ## 6. Event Replay (Future)
@@ -318,6 +331,24 @@ Current shipped baseline:
 - Chat continues as an event-driven domain after reconnect.
 - Full chat snapshot hydration is not yet the shipped contract.
 - Client may maintain a local outgoing send queue for UX (`queued`/`sending`/`failed`), but persisted chat order/content remains backend + WS authoritative.
+
+### 7.2 Multi-device recovery and transfer rules (approved)
+
+1. **One visible user, many devices**
+   Presence recovery remains user-scoped for DM/player views; device-scoped state is private to the authenticated user.
+
+2. **Mic owner recovery**
+   On reconnect, server state for mic owner is authoritative. If device publish state disagrees, client must hard-unpublish immediately.
+
+3. **Transfer mode recovery**
+   Transfer is immediate and silent. Old device receives forced disconnect and must route to campaign screen (or logout for guest users).
+
+4. **Spectator restriction**
+   Spectators are single-device only. Additional spectator device connection attempts must require `Transfer` or `Cancel`.
+
+5. **Consistency channel requirement**
+   LiveKit webhooks are accepted as one source of truth, but recovery must reconcile webhook-derived publish state with backend runtime snapshots/events after refresh/reconnect.
+
 - After backend restart, chat continuity is restored from durable APIs (Postgres-backed history) rather than Redis event-stream replay.
 
 ---
