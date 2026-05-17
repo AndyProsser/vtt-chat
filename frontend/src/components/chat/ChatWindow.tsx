@@ -751,6 +751,8 @@ export function ChatWindow({
         <MessageList
           messages={visibleMessages}
           currentUserId={user.id}
+          currentUserRole={String(user.role)}
+          sessionDmId={sessionRecord?.dmId}
           groupingWindowMs={messageGroupingWindowMs}
           listRef={messageListRef}
           topSentinelRef={topSentinelRef}

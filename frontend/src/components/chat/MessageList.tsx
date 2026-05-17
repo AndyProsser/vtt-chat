@@ -12,6 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 interface MessageListProps {
   messages: Message[]
   currentUserId: string
+  currentUserRole?: string
+  sessionDmId?: string
   groupingWindowMs?: number
   listRef?: RefObject<HTMLDivElement | null>
   topSentinelRef?: RefObject<HTMLDivElement | null>
@@ -212,6 +214,8 @@ function formatDayLabel(ts: number): string {
 export function MessageList({
   messages,
   currentUserId,
+  currentUserRole,
+  sessionDmId,
   groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
   listRef,
   topSentinelRef,
@@ -221,6 +225,8 @@ export function MessageList({
   activeRoomId,
   hideIntermissionMarkers = false,
 }: MessageListProps) {
+  const isDmViewer = currentUserRole === 'DM'
+
   if (messages.length === 0) {
     return <div className="chat-message-list__empty">No messages yet. Say something!</div>
   }
@@ -250,7 +256,7 @@ export function MessageList({
             ? 'SYSTEM'
             : authorProfile?.displayName || msg.authorUsername || 'Unknown'
           const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
-          const whisperAudience =
+          const whisperTargetNames =
             msg.type === MessageType.WHISPER &&
             Array.isArray(msg.targetIds) &&
             msg.targetIds.length > 0
@@ -258,6 +264,33 @@ export function MessageList({
                   .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
                   .join(', ')
               : null
+          const whisperAudience =
+            msg.type === MessageType.WHISPER && whisperTargetNames
+              ? `To ${whisperTargetNames}`
+              : null
+          const isDmWhisper =
+            msg.type === MessageType.WHISPER &&
+            Boolean(sessionDmId) &&
+            Boolean(
+              msg.authorId === sessionDmId ||
+              (Array.isArray(msg.targetIds) && msg.targetIds.includes(sessionDmId))
+            )
+          const whisperRouteText =
+            msg.type === MessageType.WHISPER && whisperAudience && (isSelf || isDmViewer)
+              ? whisperAudience
+              : null
+          const bubbleWhisperClass =
+            msg.type === MessageType.WHISPER && isDmWhisper
+              ? 'chat-message__bubble--whisper-dm'
+              : ''
+          const whisperTypeIconClass =
+            msg.type === MessageType.WHISPER && isDmWhisper
+              ? 'chat-message__type-icon--whisper-dm'
+              : `chat-message__type-icon--${variant}`
+          const typeIcon =
+            msg.type === MessageType.WHISPER && isDmWhisper
+              ? 'shield_locked'
+              : TYPE_ICON_BY_VARIANT[variant]
           const isGroupedWithPrevious = Boolean(
             groupingWindowMs > 0 &&
             previous &&
@@ -445,22 +478,24 @@ export function MessageList({
                     {!isGroupedWithPrevious ? (
                       <div className="chat-message__meta">
                         <span className="chat-message__author">{authorName}</span>
-                        {whisperAudience ? (
-                          <span className="chat-message__whisper-pill">To {whisperAudience}</span>
+                        {isDmViewer && whisperAudience ? (
+                          <span className="chat-message__whisper-target-inline">
+                            {whisperAudience}
+                          </span>
                         ) : null}
                       </div>
                     ) : null}
 
                     <div
-                      className={`chat-message__bubble chat-message__bubble--${variant} ${isSelf ? 'chat-message__bubble--self' : ''}`}
+                      className={`chat-message__bubble chat-message__bubble--${variant} ${bubbleWhisperClass} ${isSelf ? 'chat-message__bubble--self' : ''}`}
                     >
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className={`chat-message__type-icon chat-message__type-icon--${variant} material-symbols-outlined`}
+                            className={`chat-message__type-icon ${whisperTypeIconClass} material-symbols-outlined`}
                             aria-hidden="true"
                           >
-                            {TYPE_ICON_BY_VARIANT[variant]}
+                            {typeIcon}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top">{TYPE_LABEL_BY_VARIANT[variant]}</TooltipContent>
@@ -468,9 +503,23 @@ export function MessageList({
                       <span className="chat-message__bubble-text">{msg.content}</span>
                     </div>
 
-                    <div className="chat-message__timestamp">
-                      {msg.editedAt ? 'edited · ' : ''}
-                      {formatRelativeTime(msg.createdAt)}
+                    <div className="chat-message__footer">
+                      {whisperRouteText ? (
+                        <div
+                          className={`chat-message__whisper-route ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                        >
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            {isSelf ? 'arrow_right_alt' : 'arrow_left_alt'}
+                          </span>
+                          <span>{whisperRouteText}</span>
+                        </div>
+                      ) : (
+                        <span />
+                      )}
+                      <div className="chat-message__timestamp">
+                        {msg.editedAt ? 'edited · ' : ''}
+                        {formatRelativeTime(msg.createdAt)}
+                      </div>
                     </div>
                   </div>
                 </div>

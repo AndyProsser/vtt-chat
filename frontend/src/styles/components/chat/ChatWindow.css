@@ -566,19 +566,12 @@
   display: none;
 }
 
-.chat-message__whisper-pill {
+.chat-message__whisper-target-inline {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.16rem 0.46rem;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-}
-
-.chat-message__whisper-pill {
-  border: 1px solid color-mix(in srgb, #c084fc 28%, transparent);
-  background: color-mix(in srgb, #c084fc 10%, var(--color-surface) 90%);
   color: color-mix(in srgb, #e9d5ff 82%, var(--color-text-primary));
 }
 
@@ -656,6 +649,12 @@
   color: color-mix(in srgb, #f3e8ff 88%, var(--color-text-primary));
 }
 
+.chat-message__type-icon--whisper-dm {
+  border-color: color-mix(in srgb, #f59e0b 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #f59e0b 24%, #0b1420 76%);
+  color: color-mix(in srgb, #ffedd5 88%, var(--color-text-primary));
+}
+
 .chat-message__type-icon--system {
   border-color: color-mix(in srgb, #f59e0b 52%, var(--color-border-soft));
   background: color-mix(in srgb, #f59e0b 24%, #0b1420 76%);
@@ -675,6 +674,11 @@
 .chat-message__bubble--whisper {
   background: color-mix(in srgb, #0f1d2b 90%, #c084fc 10%);
   border-color: color-mix(in srgb, #c084fc 28%, #415266 72%);
+}
+
+.chat-message__bubble--whisper-dm {
+  background: color-mix(in srgb, #0f1d2b 88%, #f59e0b 12%);
+  border-color: color-mix(in srgb, #f59e0b 34%, #415266 66%);
 }
 
 .chat-message__bubble--system {
@@ -703,6 +707,11 @@
   border-color: color-mix(in srgb, #c084fc 34%, #536372 66%);
 }
 
+.chat-message__bubble--self.chat-message__bubble--whisper-dm {
+  background: color-mix(in srgb, #33414d 84%, #f59e0b 16%);
+  border-color: color-mix(in srgb, #f59e0b 38%, #536372 62%);
+}
+
 .chat-message--grouped .chat-message__bubble {
   border-top-left-radius: 0.55rem;
 }
@@ -712,8 +721,43 @@
   border-top-left-radius: 0.95rem;
 }
 
+.chat-message__footer {
+  margin-top: 0.09rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.chat-message__whisper-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, #f3e8ff 84%, var(--color-text-secondary));
+}
+
+.chat-message__whisper-route .material-symbols-outlined {
+  font-size: 0.84rem;
+  line-height: 1;
+}
+
+.chat-message__whisper-route--incoming {
+  justify-self: flex-start;
+}
+
+.chat-message__whisper-route--outgoing {
+  justify-self: flex-end;
+}
+
+.chat-message__whisper-route--dm {
+  color: color-mix(in srgb, #ffedd5 82%, var(--color-text-secondary));
+}
+
 .chat-message__timestamp {
-  margin-top: 0.06rem;
   font-size: 0.7rem;
   color: color-mix(in srgb, var(--color-text-muted) 74%, transparent);
 }
