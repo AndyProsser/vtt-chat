@@ -1,6 +1,10 @@
 import express from 'express'
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  SESSION_COOLDOWN_EXTENSION_MIN_MS,
+  SESSION_COOLDOWN_EXTENSION_STEP_MS,
+} from '@/constants/session.constants'
 
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
@@ -30,6 +34,15 @@ const mocks = vi.hoisted(() => ({
   mockListSessionUsersForRequester: vi.fn(),
   mockBroadcastSessionStatsSnapshot: vi.fn(),
   mockGetPrismaClient: vi.fn(),
+  mockApplySessionStateRoomTransition: vi.fn(),
+  mockDeletePrivateRoomsForEndedSession: vi.fn(),
+  mockResolveCooldownControlAuthorization: vi.fn(),
+  mockEndSessionCooldown: vi.fn(),
+  mockExtendSessionCooldown: vi.fn(),
+  mockClearRoomEnvironmentState: vi.fn(),
+  mockClearSessionDMOverrideState: vi.fn(),
+  mockGetSessionAudioState: vi.fn(),
+  mockEmitSessionBoundarySystemMessage: vi.fn(),
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -43,8 +56,8 @@ vi.mock('@/services/auth.service', () => ({
 
 vi.mock('@/services/session/core.service', () => ({
   createSession: mocks.mockCreateSession,
-  endSessionCooldown: vi.fn(),
-  extendSessionCooldown: vi.fn(),
+  endSessionCooldown: mocks.mockEndSessionCooldown,
+  extendSessionCooldown: mocks.mockExtendSessionCooldown,
   getSession: mocks.mockGetSession,
   getAllSessions: mocks.mockGetAllSessions,
   updateSessionMetadata: mocks.mockUpdateSessionMetadata,
@@ -56,8 +69,8 @@ vi.mock('@/services/session/core.service', () => ({
 }))
 
 vi.mock('@/services/room.service', () => ({
-  applySessionStateRoomTransition: vi.fn(),
-  deletePrivateRoomsForEndedSession: vi.fn(),
+  applySessionStateRoomTransition: mocks.mockApplySessionStateRoomTransition,
+  deletePrivateRoomsForEndedSession: mocks.mockDeletePrivateRoomsForEndedSession,
   ensureSessionDefaultRoomsForSession: mocks.mockEnsureSessionDefaultRoomsForSession,
   ensureSessionWhisperRoomForSession: mocks.mockEnsureSessionWhisperRoomForSession,
   getRooms: mocks.mockGetRooms,
@@ -66,11 +79,9 @@ vi.mock('@/services/room.service', () => ({
 }))
 
 vi.mock('@/services/audio/audio-state', () => ({
-  clearRoomEnvironmentState: vi.fn(),
-  clearSessionDMOverrideState: vi.fn(),
-  getSessionAudioState: vi
-    .fn()
-    .mockResolvedValue({ dmOverrides: [], broadcast: { enabled: false } }),
+  clearRoomEnvironmentState: mocks.mockClearRoomEnvironmentState,
+  clearSessionDMOverrideState: mocks.mockClearSessionDMOverrideState,
+  getSessionAudioState: mocks.mockGetSessionAudioState,
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -78,7 +89,7 @@ vi.mock('@/services/chat.service', () => ({
 }))
 
 vi.mock('@/services/system-messages.service', () => ({
-  emitSessionBoundarySystemMessage: vi.fn(),
+  emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
   emitSessionRecapMessage: vi.fn(),
   emitSessionSummaryMessage: vi.fn(),
 }))
@@ -105,7 +116,7 @@ vi.mock('@/services/session/stats.service', () => ({
 }))
 
 vi.mock('@/services/session/cooldown-authz.service', () => ({
-  resolveCooldownControlAuthorization: vi.fn(),
+  resolveCooldownControlAuthorization: mocks.mockResolveCooldownControlAuthorization,
 }))
 
 vi.mock('@/services/runtime/runtime-streams.service', () => ({
@@ -193,6 +204,45 @@ describe('session routes audit appends', () => {
     mocks.mockListSessionLogsForRequester.mockResolvedValue({ ok: true, logs: [] })
     mocks.mockListSessionUsersForRequester.mockResolvedValue({ ok: true, users: [] })
     mocks.mockBroadcastSessionStatsSnapshot.mockResolvedValue(undefined)
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
+      mainRoomId: MAIN_ROOM_ID,
+      mainRoomName: 'Main Room',
+      greenRoomId: '55555555-5555-4555-8555-555555555555',
+      greenRoomName: 'Green Room',
+      targetRoomId: MAIN_ROOM_ID,
+      targetRoomName: 'Main Room',
+      targetState: 'ACTIVE',
+      movedUsers: 0,
+    })
+    mocks.mockDeletePrivateRoomsForEndedSession.mockResolvedValue(undefined)
+    mocks.mockResolveCooldownControlAuthorization.mockResolvedValue({
+      ok: true,
+      transitionActorUserId: DM_ID,
+    })
+    mocks.mockEndSessionCooldown.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ENDED',
+      createdAt: Date.now(),
+      endedAt: Date.now(),
+    })
+    mocks.mockExtendSessionCooldown.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'COOLDOWN',
+      createdAt: Date.now(),
+      endedAt: Date.now(),
+    })
+    mocks.mockClearRoomEnvironmentState.mockResolvedValue(undefined)
+    mocks.mockClearSessionDMOverrideState.mockResolvedValue(undefined)
+    mocks.mockGetSessionAudioState.mockResolvedValue({
+      dmOverrides: [],
+      broadcast: { enabled: false, broadcastRoomId: null },
+    })
+    mocks.mockEmitSessionBoundarySystemMessage.mockResolvedValue(undefined)
   })
 
   it('appends SESSION_CREATED audit event', async () => {
@@ -254,6 +304,130 @@ describe('session routes audit appends', () => {
         actionType: 'SESSION_MEMBER_LEFT',
         targetType: 'SESSION_MEMBERSHIP',
         targetId: PLAYER_ID,
+      })
+    )
+  })
+
+  it('appends SESSION_STATE_CHANGED audit event', async () => {
+    const app = buildApp()
+
+    mocks.mockGetSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ACTIVE',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockUpdateSessionState.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'PAUSED',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
+      mainRoomId: MAIN_ROOM_ID,
+      mainRoomName: 'Main Room',
+      greenRoomId: '55555555-5555-4555-8555-555555555555',
+      greenRoomName: 'Green Room',
+      targetRoomId: MAIN_ROOM_ID,
+      targetRoomName: 'Main Room',
+      targetState: 'PAUSED',
+      movedUsers: 2,
+    })
+
+    const res = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'PAUSED' })
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'SESSION_STATE_CHANGED',
+        targetType: 'SESSION',
+        targetId: SESSION_ID,
+        roomId: MAIN_ROOM_ID,
+      })
+    )
+  })
+
+  it('appends SESSION_COOLDOWN_EXTENDED audit event', async () => {
+    const app = buildApp()
+
+    const extensionMs = SESSION_COOLDOWN_EXTENSION_MIN_MS + SESSION_COOLDOWN_EXTENSION_STEP_MS
+
+    const res = await request(app)
+      .post(`/api/session/${SESSION_ID}/cooldown/extend`)
+      .set('Authorization', 'Bearer token')
+      .send({ extensionMs })
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'SESSION_COOLDOWN_EXTENDED',
+        targetType: 'SESSION',
+        targetId: SESSION_ID,
+      })
+    )
+  })
+
+  it('appends SESSION_COOLDOWN_ENDED audit event', async () => {
+    const app = buildApp()
+
+    mocks.mockGetSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'COOLDOWN',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
+      mainRoomId: MAIN_ROOM_ID,
+      mainRoomName: 'Main Room',
+      greenRoomId: '55555555-5555-4555-8555-555555555555',
+      greenRoomName: 'Green Room',
+      targetRoomId: '55555555-5555-4555-8555-555555555555',
+      targetRoomName: 'Green Room',
+      targetState: 'ENDED',
+      movedUsers: 1,
+    })
+
+    const res = await request(app)
+      .post(`/api/session/${SESSION_ID}/cooldown/end`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'SESSION_COOLDOWN_ENDED',
+        targetType: 'SESSION',
+        targetId: SESSION_ID,
+      })
+    )
+  })
+
+  it('appends SESSION_DELETED audit event', async () => {
+    const app = buildApp()
+    mocks.mockDeleteSession.mockResolvedValue(true)
+
+    const res = await request(app)
+      .delete(`/api/session/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(204)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'SESSION_DELETED',
+        targetType: 'SESSION',
+        targetId: SESSION_ID,
       })
     )
   })
