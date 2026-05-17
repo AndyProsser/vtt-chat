@@ -2,11 +2,23 @@
 
 This roadmap tracks test-readiness, operatisation, hardening, and release-gate work for the current platform baseline.
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 
 Related roadmap:
 
 - Development roadmap (feature-stage history and delivery log): [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)
+
+---
+
+## Recent Delivery Update (2026-05-18)
+
+Completed across recent chat/runtime polish work:
+
+- Chat composer and message-type UX now support canonical `IC | OOC | WHISPER | DM` flows, including DM message routing and whisper recipient selection improvements.
+- Whisper timeline rendering was refined so outgoing/incoming whisper route metadata has distinct layout behavior and improved readability in long threads.
+- DEV mock chat simulation now supports all selectable chat types (`IC`, `OOC`, `WHISPER`, `DM`) with room-scoped whisper targeting and DM-only message routing semantics.
+- DEV mock message pools are now normalized to at least 50 templates per selectable type for more realistic repetition resistance.
+- Session info-panel connected-player count in greenroom now derives from live greenroom roster membership (excluding spectators/system), and user-facing copy now consistently uses "Connected Players" naming.
 
 ---
 
@@ -175,22 +187,22 @@ Known readiness gap classes:
 
 ## 3) Workstreams
 
-| ID  | Workstream                       | Status                  | Scope                                                                                                                                       |
-| --- | -------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| W0  | Frontend Surface Completion      | In Progress             | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX                  |
-| W11 | Runtime State and Audit Contract | Planned (High Priority) | Redis-first runtime-state adoption, websocket mutation persistence policy, and session-audit trail enforcement across domain flows          |
-| W1  | Hardening and Reliability        | In Progress             | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                                       |
-| W2  | Testing Program and Gates        | In Progress             | Cross-package test gates, regression matrix, perf/security checks                                                                           |
-| W3  | Operatisation and Runbooks       | Planned                 | Telemetry durability checks, backup/restore drills, migration parity checks                                                                 |
-| W4  | UI Modernization Completion      | In Progress             | Regression hardening, accessibility and visual consistency follow-through                                                                   |
-| W5  | User Documentation               | Planned                 | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                                            |
-| W6  | Refactor and Simplification      | Completed               | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                                            |
-| W7  | Admin Operations UX Review       | Planned                 | Best-practice operations review for admin information architecture and workflows                                                            |
-| W8  | Localization Foundation          | Planned                 | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                                     |
-| W9  | DEV Mock Players                 | In Progress             | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players                     |
-| W10 | Voice Group Panel Follow-up      | Planned                 | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel                 |
-| W12 | Temporal API Migration           | Planned (Future)        | Phased migration from legacy `Date` to `Temporal` API; Phase 1 (pure timestamps) is low-risk; Phases 2–4 blocked on Prisma Temporal support |
-| W13 | Durable Queue and Async Workers  | Planned (Future)        | Durable queue manager for scheduled and long-running jobs with restart-safe retry/checkpointing for cleanup, transcription, and summaries   |
+| ID  | Workstream                       | Status                      | Scope                                                                                                                                       |
+| --- | -------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| W0  | Frontend Surface Completion      | In Progress                 | Right-panel screen completion, topbar Settings/Information panel rollout, settings/profile usability, connection status UX                  |
+| W11 | Runtime State and Audit Contract | In Progress (High Priority) | Redis-first runtime-state adoption, websocket mutation persistence policy, and session-audit trail enforcement across domain flows          |
+| W1  | Hardening and Reliability        | In Progress                 | Reconnect/recovery soak, fanout/load validation, audio durability, env validation, structured logging                                       |
+| W2  | Testing Program and Gates        | In Progress                 | Cross-package test gates, regression matrix, perf/security checks                                                                           |
+| W3  | Operatisation and Runbooks       | Planned                     | Telemetry durability checks, backup/restore drills, migration parity checks                                                                 |
+| W4  | UI Modernization Completion      | In Progress                 | Regression hardening, accessibility and visual consistency follow-through                                                                   |
+| W5  | User Documentation               | Planned                     | DM/player/spectator guides, onboarding, troubleshooting, operational quickstarts                                                            |
+| W6  | Refactor and Simplification      | Completed                   | Baseline completed; follow-up hardening/coverage/deprecation tracked in W1/W2/W3                                                            |
+| W7  | Admin Operations UX Review       | Planned                     | Best-practice operations review for admin information architecture and workflows                                                            |
+| W8  | Localization Foundation          | Planned                     | i18n/l10n architecture, translation key rollout, language switch scaffolding, and localization QA gates                                     |
+| W9  | DEV Mock Players                 | In Progress                 | Always-on seeded mock player accounts in DEV mode so the developer can test DM superpowers without needing real players                     |
+| W10 | Voice Group Panel Follow-up      | Planned                     | Deferred accessibility, close-group reconciliation, styling polish, and remaining hardening items from W0 Voice Group Panel                 |
+| W12 | Temporal API Migration           | Planned (Future)            | Phased migration from legacy `Date` to `Temporal` API; Phase 1 (pure timestamps) is low-risk; Phases 2–4 blocked on Prisma Temporal support |
+| W13 | Durable Queue and Async Workers  | Planned (Future)            | Durable queue manager for scheduled and long-running jobs with restart-safe retry/checkpointing for cleanup, transcription, and summaries   |
 
 ---
 
@@ -437,9 +449,9 @@ Current implementation boundary (2026-05-08 first pass):
   - completed session count
   - next session ETA (when available)
 - [ ] Campaign stat explanatory copy is hidden in tooltip/popper help (definition only).
-- [ ] Chat lifecycle bookends render for `Session Started`, `Session Ended`, `Session Paused`, and `Session Resumed` transitions.
-- [ ] Chat message visibility matches persona and group membership rules (runtime room membership).
-- [ ] Chat message creation uses the canonical composer surface.
+- [x] Chat lifecycle bookends render for `Session Started`, `Session Ended`, `Session Paused`, and `Session Resumed` transitions.
+- [x] Chat message visibility matches persona and group membership rules (runtime room membership).
+- [x] Chat message creation uses the canonical composer surface.
 - [ ] Information tab order is canonical: `Campaign | Notes | Journal | History`.
 - [ ] Search panel is removed; per-tab search exists in Notes, Journal, and History.
 - [ ] Journal is feature-flagged off by default.
@@ -674,8 +686,8 @@ Campaign Info panel contract lock-in (2026-05-14):
 3. Rework global user settings so the same settings surface works both in-session and out-of-session.
 4. Add campaign settings access controls (DM edit, non-DM read-only default, DM hide option) and include user profile flow ownership.
 5. Add session settings cog popover with DM edit permissions, non-DM read-only visibility, and timer-override warning behavior.
-6. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon.
-7. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment.
+6. Consolidate websocket/audio connection indicators into a coherent status model with one primary status icon. - Done
+7. Implement the connection-state color matrix exactly as defined in Section 0 (Connection Status Icon Rules), including subtle LiveKit/audio signal treatment. - Done
 
 #### W0 Next Concrete Breakdown: Notes and Journal (2026-05-14)
 
@@ -723,17 +735,17 @@ Definition of done:
 
 ### W11: Runtime State and Audit Contract (High Priority)
 
-1. Adopt [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md) as the implementation checklist baseline.
-2. Classify websocket-visible backend route families and event families into Class A/B/C and mark delivery status in the matrix.
-3. Enforce Redis-first mutation order for domain actions: validate -> Redis update -> audit append -> websocket publish -> required Postgres durability.
-4. Define per-family Redis key contracts (key naming, TTL policy, invalidation, cleanup ownership).
-5. Define per-family durability mode (`inline` vs `bounded flush`) and retry/idempotency semantics.
-6. Define and enforce a session-audit action taxonomy for room, presence, audio, chat, notes/journal/history, and session lifecycle actions.
-7. Add integration tests for all in-scope families asserting Redis state, websocket fanout, durable persistence (where required), and audit append behavior.
-8. Validate reconnect behavior against backend-authoritative recovery (Redis runtime + durable fallback) and eliminate client-local drift assumptions.
+1. Adopt [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md) as the implementation checklist baseline. - Done
+2. Classify websocket-visible backend route families and event families into Class A/B/C and mark delivery status in the matrix. - In Progress
+3. Enforce Redis-first mutation order for domain actions: validate -> Redis update -> audit append -> websocket publish -> required Postgres durability. - In Progress
+4. Define per-family Redis key contracts (key naming, TTL policy, invalidation, cleanup ownership). - Done
+5. Define per-family durability mode (`inline` vs `bounded flush`) and retry/idempotency semantics. - In Progress
+6. Define and enforce a session-audit action taxonomy for room, presence, audio, chat, notes/journal/history, and session lifecycle actions. - In Progress
+7. Add integration tests for all in-scope families asserting Redis state, websocket fanout, durable persistence (where required), and audit append behavior. - In Progress
+8. Validate reconnect behavior against backend-authoritative recovery (Redis runtime + durable fallback) and eliminate client-local drift assumptions. - Done
 9. State-machine residual (priority P0): implement backend server-side mute enforcement in webhook/audio pipeline and reject or ignore muted audio packets. - Done (2026-05-14: LiveKit token issuance now enforces `canPublish=false` when `userMuted || dmMuted`)
-10. State-machine residual (priority P0): on ENDED transition, dispatch recording shutdown plus summary/close-out work asynchronously before returning control-path response.
-11. State-machine residual (priority P1): verify and enforce environment sync contract on room change (join response and SessionInit projection behavior) to avoid stale ambience/effect projections.
+10. State-machine residual (priority P0): on ENDED transition, dispatch recording shutdown plus summary/close-out work asynchronously before returning control-path response. - In Progress
+11. State-machine residual (priority P1): verify and enforce environment sync contract on room change (join response and SessionInit projection behavior) to avoid stale ambience/effect projections. - In Progress
 
 Definition of done:
 
@@ -1007,7 +1019,7 @@ Current status (2026-05-09): Core implementation delivered (DEV-only auto-seed +
 2. ✅ Auto-join mocks when DM joins session in DEV, via the normal session/presence paths (draggable, mutable, condition-capable like real players).
 3. ✅ Add randomized D&D profile generation (3–5 players selected from >=20 archetype variations, level spread within 2).
 4. ✅ Expose a DEV-only `POST /api/dev/mock-players/reset` endpoint to re-roll and re-seed current session roster without restart.
-5. ⏳ Ensure mocks are excluded from recording/history pipelines where persistence policy requires runtime-only behavior.
+5. Ensure mocks are excluded from recording/history pipelines where persistence policy requires runtime-only behavior. - In Progress
 6. ✅ Document the mock setup in `DEVELOPING.md` so contributors know mocks are available in DEV.
 
 Definition of done:
