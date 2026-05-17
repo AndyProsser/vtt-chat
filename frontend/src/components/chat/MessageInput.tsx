@@ -58,6 +58,7 @@ export function MessageInput({
   whisperRecipients = [],
   roomType,
 }: MessageInputProps) {
+  const isDmRole = String(role) === 'DM'
   const isWhisperGroupMode = roomType === RoomType.PRIVATE
   const roleAllowedTypes = useMemo(
     () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
@@ -107,6 +108,50 @@ export function MessageInput({
 
   const canShowWhisperPicker =
     type === MessageType.WHISPER && !isWhisperGroupMode && !forceMessageType
+
+  const inputToneClass = useMemo(() => {
+    if (type === MessageType.IC) return 'chat-input__textarea--ic'
+    if (type === MessageType.OOC) return 'chat-input__textarea--ooc'
+    if (type === MessageType.WHISPER) {
+      return isDmRole ? 'chat-input__textarea--whisper-dm' : 'chat-input__textarea--whisper'
+    }
+    if (type === MessageType.DM) return 'chat-input__textarea--dm'
+    return ''
+  }, [isDmRole, type])
+
+  const inputPlaceholder = useMemo(() => {
+    if (type === MessageType.WHISPER) {
+      if (isWhisperGroupMode) {
+        return 'Whisper to this private group... (Enter to send)'
+      }
+
+      if (selectedRecipient?.label) {
+        return `Whisper to ${selectedRecipient.label}... (Enter to send)`
+      }
+
+      return 'Whisper to a player... (Select target, then Enter to send)'
+    }
+
+    if (type === MessageType.IC) {
+      return 'In character... (Enter to send, Shift+Enter for newline)'
+    }
+
+    if (type === MessageType.OOC) {
+      return 'Out of character... (Enter to send, Shift+Enter for newline)'
+    }
+
+    if (type === MessageType.DM) {
+      return 'Message the DM privately... (Enter to send)'
+    }
+
+    return 'Message... (Enter to send, Shift+Enter for newline)'
+  }, [isWhisperGroupMode, selectedRecipient?.label, type])
+
+  const canSend =
+    !!content.trim() &&
+    !disabled &&
+    !isSending &&
+    (type !== MessageType.WHISPER || isWhisperGroupMode || !!validRecipientId.trim())
 
   const emitTypingStarted = useCallback(() => {
     if (isTypingRef.current) {
@@ -177,100 +222,112 @@ export function MessageInput({
     <div className="chat-input">
       {!forceMessageType ? (
         <div
-          className="chat-input__types"
-          role="radiogroup"
-          aria-label="Message type"
+          className={`chat-input__type-stack ${canShowWhisperPicker && isWhisperPickerOpen ? 'chat-input__type-stack--picker-open' : ''}`}
           onMouseEnter={() => {
             if (canShowWhisperPicker) {
               setIsWhisperPickerOpen(true)
             }
           }}
+          onMouseLeave={() => {
+            setIsWhisperPickerOpen(false)
+          }}
         >
-          {visibleTypes.map((messageType) => {
-            const meta = TYPE_META[messageType]
-            const isActive = type === messageType
-            const isDisabled = isWhisperGroupMode && messageType !== MessageType.WHISPER
-
-            return (
-              <button
-                key={messageType}
-                type="button"
-                role="radio"
-                aria-checked={isActive}
-                disabled={disabled || isSending || isDisabled}
-                onClick={() => {
-                  if (isDisabled) return
-                  setSelectedType(messageType)
-                  if (messageType !== MessageType.WHISPER) {
-                    setIsWhisperPickerOpen(false)
-                  }
-                  if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
-                    setIsWhisperPickerOpen(true)
-                  }
-                }}
-                className={`chat-input__type-toggle chat-input__type-toggle--${meta.tone} ${isActive ? 'chat-input__type-toggle--active' : ''}`}
-                title={meta.label}
-              >
-                <span
-                  className="chat-input__type-toggle-icon material-symbols-outlined"
-                  aria-hidden="true"
-                >
-                  {meta.icon}
-                </span>
-                <span className="chat-input__type-toggle-label">{meta.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
-
-      {canShowWhisperPicker && isWhisperPickerOpen ? (
-        <div
-          className="chat-input__whisper-picker chat-input__whisper-picker--open"
-          onMouseEnter={() => setIsWhisperPickerOpen(true)}
-        >
-          <div className="chat-input__whisper-picker-header">
-            <span className="chat-input__whisper-picker-title">Whisper to</span>
-            <span className="chat-input__whisper-picker-current">
-              {selectedRecipient?.label ?? 'Select a player'}
-            </span>
-          </div>
           <div
-            className="chat-input__whisper-picker-list"
-            role="listbox"
-            aria-label="Whisper recipients"
+            className="chat-input__types"
+            data-count={visibleTypes.length}
+            role="radiogroup"
+            aria-label="Message type"
           >
-            {whisperRecipients.length > 0 ? (
-              whisperRecipients.map((option) => {
-                const isSelected = option.id === validRecipientId
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    disabled={disabled || isSending}
-                    onClick={() => {
-                      setRecipientId(option.id)
+            {visibleTypes.map((messageType) => {
+              const meta = TYPE_META[messageType]
+              const tone =
+                messageType === MessageType.WHISPER && isDmRole ? 'whisper-dm' : meta.tone
+              const isActive = type === messageType
+              const isDisabled = isWhisperGroupMode && messageType !== MessageType.WHISPER
+              const showMutedWhisperIcon =
+                messageType === MessageType.WHISPER && !isWhisperGroupMode && !selectedRecipient
+
+              return (
+                <button
+                  key={messageType}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  disabled={disabled || isSending || isDisabled}
+                  onClick={() => {
+                    if (isDisabled) return
+                    setSelectedType(messageType)
+                    if (messageType !== MessageType.WHISPER) {
                       setIsWhisperPickerOpen(false)
-                    }}
-                    className={`chat-input__whisper-recipient ${isSelected ? 'chat-input__whisper-recipient--selected' : ''}`}
+                    }
+                    if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
+                      setIsWhisperPickerOpen(true)
+                    }
+                  }}
+                  className={`chat-input__type-toggle chat-input__type-toggle--${tone} ${isActive ? 'chat-input__type-toggle--active' : ''}`}
+                  title={meta.label}
+                >
+                  <span
+                    className={`chat-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'chat-input__type-toggle-icon--muted' : ''}`}
+                    aria-hidden="true"
                   >
-                    <span className="chat-input__whisper-recipient-avatar" aria-hidden="true">
-                      {option.avatarUrl ? (
-                        <img src={option.avatarUrl} alt="" />
-                      ) : (
-                        (option.label.trim()[0] || '?').toUpperCase()
-                      )}
-                    </span>
-                    <span className="chat-input__whisper-recipient-name">{option.label}</span>
-                  </button>
-                )
-              })
-            ) : (
-              <div className="chat-input__whisper-empty">No visible players to whisper to.</div>
-            )}
+                    {meta.icon}
+                  </span>
+                  <span className="chat-input__type-toggle-label">{meta.label}</span>
+                </button>
+              )
+            })}
           </div>
+
+          {canShowWhisperPicker && isWhisperPickerOpen ? (
+            <div
+              className={`chat-input__whisper-picker chat-input__whisper-picker--open ${isDmRole ? 'chat-input__whisper-picker--dm' : ''}`.trim()}
+              onMouseEnter={() => setIsWhisperPickerOpen(true)}
+            >
+              <div className="chat-input__whisper-picker-header">
+                <span className="chat-input__whisper-picker-title">Whisper to</span>
+                <span className="chat-input__whisper-picker-current">
+                  {selectedRecipient?.label ?? 'Select a player'}
+                </span>
+              </div>
+              <div
+                className="chat-input__whisper-picker-list"
+                role="listbox"
+                aria-label="Whisper recipients"
+              >
+                {whisperRecipients.length > 0 ? (
+                  whisperRecipients.map((option) => {
+                    const isSelected = option.id === validRecipientId
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        disabled={disabled || isSending}
+                        onClick={() => {
+                          setRecipientId(option.id)
+                          setIsWhisperPickerOpen(false)
+                        }}
+                        className={`chat-input__whisper-recipient ${isSelected ? 'chat-input__whisper-recipient--selected' : ''}`}
+                      >
+                        <span className="chat-input__whisper-recipient-avatar" aria-hidden="true">
+                          {option.avatarUrl ? (
+                            <img src={option.avatarUrl} alt="" />
+                          ) : (
+                            (option.label.trim()[0] || '?').toUpperCase()
+                          )}
+                        </span>
+                        <span className="chat-input__whisper-recipient-name">{option.label}</span>
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="chat-input__whisper-empty">No visible players to whisper to.</div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -296,25 +353,12 @@ export function MessageInput({
           }}
           onKeyDown={handleKeyDown}
           disabled={disabled || isSending}
-          placeholder={
-            type === MessageType.WHISPER
-              ? 'Whisper... (Enter to send)'
-              : 'Message... (Enter to send, Shift+Enter for newline)'
-          }
+          placeholder={inputPlaceholder}
           rows={2}
           maxLength={4000}
-          className="chat-input__textarea"
+          className={`chat-input__textarea ${inputToneClass}`.trim()}
         />
-        <button
-          onClick={() => void handleSend()}
-          disabled={
-            !content.trim() ||
-            disabled ||
-            isSending ||
-            (type === MessageType.WHISPER && !isWhisperGroupMode && !validRecipientId.trim())
-          }
-          className="chat-input__send"
-        >
+        <button onClick={() => void handleSend()} disabled={!canSend} className="chat-input__send">
           {isSending ? '…' : 'Send'}
         </button>
       </div>

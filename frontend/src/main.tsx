@@ -11,6 +11,7 @@ initFrontendThemeMode()
 installFetchDebugLogging()
 
 if (import.meta.env.DEV) {
+  setLogLevel(LogLevel.error)
   setLogLevel(LogLevel.error, LoggerNames.Room)
 }
 

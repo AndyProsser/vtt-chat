@@ -76,10 +76,12 @@ export function ChatWindow({
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
+  const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
   const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
+  const lastSeenLatestMessageAtRef = useRef<number | undefined>(undefined)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
@@ -308,7 +310,13 @@ export function ChatWindow({
       scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight
     const isNearBottom = distanceFromBottom <= 24
     setIsUserPinnedToBottom(isNearBottom)
-  }, [])
+
+    if (isNearBottom) {
+      setPendingNewMessageCount(0)
+      lastSeenLatestMessageAtRef.current =
+        visibleMessages[visibleMessages.length - 1]?.createdAt ?? lastSeenLatestMessageAtRef.current
+    }
+  }, [visibleMessages])
 
   useEffect(() => {
     if (isLoading || !hasMoreHistory) {
@@ -440,6 +448,7 @@ export function ChatWindow({
     >
 
     const dmId = sessionRecord?.dmId
+    const isDmUser = user.role === Role.DM || String(user.role) === 'DM'
 
     return participants
       .filter(([participantUserId, participant]) => {
@@ -447,12 +456,12 @@ export function ChatWindow({
           return false
         }
 
-        if (participantUserId === dmId) {
-          return false
+        if (isDmUser) {
+          return true
         }
 
-        if (user.role === Role.DM || String(user.role) === 'DM') {
-          return participant.primaryRoomId === roomId
+        if (participantUserId === dmId) {
+          return false
         }
 
         return participant.primaryRoomId === roomId
@@ -555,16 +564,33 @@ export function ChatWindow({
     requestAnimationFrame(() => {
       scrollToLatest('auto')
     })
-  }, [isLoading, roomId, scrollToLatest, sessionId, visibleMessages.length])
+    setPendingNewMessageCount(0)
+    lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+  }, [isLoading, latestVisibleMessageCreatedAt, roomId, scrollToLatest, sessionId, visibleMessages.length])
 
-  // Always follow newly appended messages to keep the latest content visible.
+  // Follow new messages only when user is already pinned to bottom.
+  // If user is reading history, keep their position and surface a subtle jump cue.
   useEffect(() => {
     if (!latestVisibleMessageCreatedAt) {
       return
     }
 
-    scrollToLatest('smooth')
-  }, [latestVisibleMessageCreatedAt, scrollToLatest])
+    const lastSeen = lastSeenLatestMessageAtRef.current
+    const isNewLatest = !lastSeen || latestVisibleMessageCreatedAt > lastSeen
+
+    if (!isNewLatest) {
+      return
+    }
+
+    if (isUserPinnedToBottom) {
+      scrollToLatest('smooth')
+      setPendingNewMessageCount(0)
+      lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+      return
+    }
+
+    setPendingNewMessageCount((count) => count + 1)
+  }, [isUserPinnedToBottom, latestVisibleMessageCreatedAt, scrollToLatest])
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {
@@ -774,17 +800,23 @@ export function ChatWindow({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="chat-window__jump-to-latest"
+                className={`chat-window__jump-to-latest ${pendingNewMessageCount > 0 ? 'chat-window__jump-to-latest--new' : ''}`}
                 onClick={() => {
                   scrollToLatest('smooth')
                   setIsUserPinnedToBottom(true)
+                  setPendingNewMessageCount(0)
+                  lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
                 }}
                 aria-label="Jump to latest message"
               >
                 ↓
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left">Jump to latest</TooltipContent>
+            <TooltipContent side="left">
+              {pendingNewMessageCount > 0
+                ? `Jump to latest (${pendingNewMessageCount} new)`
+                : 'Jump to latest'}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : null}

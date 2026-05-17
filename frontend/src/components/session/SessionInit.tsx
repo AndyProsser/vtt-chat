@@ -728,6 +728,7 @@ export function SessionInit({
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
+  const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
 
   // WebSocket connection
   const {
@@ -739,7 +740,7 @@ export function SessionInit({
     url: wsUrl,
     token,
     sessionId: currentSessionId,
-    enabled: !!token,
+    enabled: shouldEnableWs,
     onAuthFailure: handleWebSocketAuthFailure,
   })
 
