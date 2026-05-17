@@ -87,8 +87,8 @@
 .mock-player-control-panel__button {
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid var(--color-border-primary);
-  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
   color: var(--color-text-secondary);
   font-size: 0.7rem;
   font-weight: 500;
@@ -98,7 +98,7 @@
   flex: 1;
 
   &:hover:not(:disabled) {
-    background: var(--color-surface-primary);
+    background: var(--color-surface);
     color: var(--color-text-primary);
   }
 
@@ -130,8 +130,8 @@
   width: 100%;
   padding: 6px 8px;
   border-radius: 4px;
-  border: 1px solid var(--color-border-secondary);
-  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-subtle);
   color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 500;
@@ -144,7 +144,7 @@
   margin-top: 8px;
 
   &:hover:not(:disabled) {
-    background: var(--color-surface-primary);
+    background: var(--color-surface);
     color: var(--color-text-primary);
   }
 

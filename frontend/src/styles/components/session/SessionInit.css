@@ -167,6 +167,30 @@
   background-position: center !important;
   background-repeat: no-repeat !important;
   color: #f8fafc;
+  position: relative;
+  overflow: hidden;
+}
+
+/* In light mode, soften the dark fantasy poster with a very subtle warm tint overlay */
+:root.light .session-campaign-card.has-poster::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 248, 240, 0.18);
+  pointer-events: none;
+  z-index: 0;
+}
+
+:root.light .session-campaign-card.has-poster {
+  border-color: var(--color-border-soft);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+:root.light .session-campaign-card.has-poster > * {
+  position: relative;
+  z-index: 1;
 }
 
 .session-campaign-card.has-poster .session-campaign-card__description,

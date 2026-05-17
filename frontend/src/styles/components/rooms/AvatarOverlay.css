@@ -21,7 +21,7 @@
   background: linear-gradient(
     140deg,
     color-mix(in srgb, var(--color-brand) 24%, var(--color-surface) 76%),
-    color-mix(in srgb, var(--color-surface-2, var(--color-surface)) 82%, #0f172a 18%)
+    color-mix(in srgb, var(--color-surface-subtle) 82%, var(--color-surface) 18%)
   );
   color: var(--color-text-primary);
   font-size: 0.75rem;

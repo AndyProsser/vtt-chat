@@ -159,10 +159,10 @@
 }
 
 .chat-window__queue-debug-item {
-  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 26%, transparent);
   border-radius: 0.55rem;
   padding: 0.35rem 0.45rem;
-  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-warning, #f59e0b) 10%);
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-warn, #f59e0b) 10%);
 }
 
 .chat-window__queue-debug-content {
@@ -180,9 +180,9 @@
 }
 
 .chat-window__queue-debug-button {
-  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 38%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-warning, #f59e0b) 16%, transparent);
+  background: color-mix(in srgb, var(--color-warn, #f59e0b) 16%, transparent);
   color: var(--color-text-primary);
   font-size: 0.68rem;
   font-weight: 600;
@@ -192,7 +192,7 @@
 }
 
 .chat-window__queue-debug-button:hover {
-  background: color-mix(in srgb, var(--color-warning, #f59e0b) 24%, transparent);
+  background: color-mix(in srgb, var(--color-warn, #f59e0b) 24%, transparent);
 }
 
 .chat-window__queue-debug-button--quiet {
@@ -203,7 +203,7 @@
 .chat-window__queue-debug-error {
   margin: 0.25rem 0 0;
   font-size: 0.69rem;
-  color: color-mix(in srgb, var(--color-danger-text, #fecaca) 85%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-error-text, #991b1b) 85%, var(--color-text-secondary));
 }
 
 .chat-message-list {
@@ -291,7 +291,7 @@
 }
 
 .chat-session-marker--note .chat-session-marker__text {
-  color: color-mix(in srgb, var(--color-warning-text, #f59e0b) 80%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-warn-text, #78350f) 80%, var(--color-text-secondary));
 }
 
 .chat-session-marker--started .chat-session-marker__text,
@@ -301,12 +301,12 @@
 
 .chat-session-marker--ended .chat-session-marker__text,
 .chat-session-marker--ended .chat-session-marker__icon {
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 72%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-error, #ef4444) 72%, var(--color-text-secondary));
 }
 
 .chat-session-marker--paused .chat-session-marker__text,
 .chat-session-marker--paused .chat-session-marker__icon {
-  color: color-mix(in srgb, var(--color-warning, #f59e0b) 74%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-warn, #f59e0b) 74%, var(--color-text-secondary));
 }
 
 .chat-session-marker--resumed .chat-session-marker__text,
@@ -372,7 +372,7 @@
   padding: 0.6rem 0.75rem;
   background: var(--color-surface-subtle);
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
-  border-left: 3px solid color-mix(in srgb, var(--color-danger, #ef4444) 55%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-error, #ef4444) 55%, transparent);
   border-radius: 6px;
 }
 
@@ -386,7 +386,7 @@
 .chat-session-summary__icon {
   flex: 0 0 auto;
   font-size: 1rem;
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 65%, var(--color-text-muted));
+  color: color-mix(in srgb, var(--color-error, #ef4444) 65%, var(--color-text-muted));
 }
 
 .chat-session-summary__title {
@@ -394,7 +394,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 70%, var(--color-text-secondary));
+  color: color-mix(in srgb, var(--color-error, #ef4444) 70%, var(--color-text-secondary));
 }
 
 .chat-session-summary__stats {
@@ -423,7 +423,7 @@
 
 .chat-session-summary__quip {
   margin: 0.55rem 0 0;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.4;
@@ -740,7 +740,7 @@
 }
 
 .chat-window__jump-to-latest:hover {
-  background: color-mix(in srgb, var(--color-surface-subtle) 76%, #0f172a 24%);
+  background: color-mix(in srgb, var(--color-surface-subtle) 76%, var(--color-surface) 24%);
 }
 
 .chat-window__typing-slot {

@@ -61,7 +61,7 @@
   flex: 0 0 1.6rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   cursor: pointer;
   transition:
@@ -71,7 +71,11 @@
 
 .mock-testing-panel__icon-button:hover:not(:disabled) {
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 92%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle) 70%,
+    var(--color-border-default, rgba(148, 163, 184, 0.28)) 30%
+  );
 }
 
 .mock-testing-panel__icon-button:disabled {
@@ -90,7 +94,7 @@
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
   overflow: hidden;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .mock-testing-panel__segment-btn {
@@ -114,7 +118,7 @@
 }
 
 .mock-testing-panel__segment-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 60%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 60%, transparent);
 }
 
 .mock-testing-panel__segment-btn:disabled {
@@ -123,7 +127,7 @@
 }
 
 .mock-testing-panel__segment-btn.is-active {
-  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
+  background: var(--color-brand, #3b82f6);
   color: #fff;
 }
 
@@ -136,7 +140,7 @@
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   font-size: 0.68rem;
   font-weight: 600;
@@ -150,7 +154,11 @@
 }
 
 .mock-testing-panel__action-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 92%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle) 70%,
+    var(--color-border-default, rgba(148, 163, 184, 0.28)) 30%
+  );
   color: var(--color-text-primary);
 }
 
@@ -160,14 +168,14 @@
 }
 
 .mock-testing-panel__action-button--danger {
-  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 35%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 80%, #fff 20%);
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 35%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 80%, #fff 20%);
 }
 
 .mock-testing-panel__action-button--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 20%, transparent);
-  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 55%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 90%, #fff 10%);
+  background: color-mix(in srgb, var(--color-error, #ef4444) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 55%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 90%, #fff 10%);
 }
 
 .mock-testing-panel__action-button--takeover-exit {

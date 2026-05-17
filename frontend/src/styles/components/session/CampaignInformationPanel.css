@@ -225,6 +225,6 @@
 
 .cip-error {
   margin: 0;
-  color: var(--color-danger, #d05454);
+  color: var(--color-error, #ef4444);
   font-size: 0.8rem;
 }

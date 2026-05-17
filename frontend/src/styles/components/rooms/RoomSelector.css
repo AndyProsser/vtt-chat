@@ -92,10 +92,10 @@
 }
 
 .room-selector-header__end-whisper {
-  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
+  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 58%, var(--color-border-soft));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 16%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 74%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 16%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 74%, var(--color-text-primary));
   width: 1.7rem;
   height: 1.7rem;
   display: inline-flex;
@@ -106,7 +106,7 @@
 }
 
 .room-selector-header__end-whisper:hover {
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 22%, transparent);
+  background: color-mix(in srgb, var(--color-error, #ef4444) 22%, transparent);
 }
 
 .room-selector-header__end-whisper .material-symbols-outlined {
@@ -559,10 +559,10 @@
 }
 
 .room-selector-item__close-inline {
-  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
+  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 58%, var(--color-border-soft));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 18%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 78%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 18%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 78%, var(--color-text-primary));
   width: 1.5rem;
   height: 1.5rem;
   display: inline-flex;
@@ -579,9 +579,9 @@
 }
 
 .room-selector-item__close-inline--delete {
-  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 18%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 78%, var(--color-text-primary));
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 58%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 18%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 78%, var(--color-text-primary));
 }
 
 .room-selector-item__close-inline .material-symbols-outlined {
@@ -793,7 +793,7 @@
 }
 
 .room-selector-presence-dot[data-state='offline'] .room-selector-presence-dot__inner {
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 88%, #ffffff 12%);
+  background: color-mix(in srgb, var(--color-error, #ef4444) 88%, #ffffff 12%);
 }
 
 .room-selector-profile__avatar {
@@ -970,10 +970,10 @@
 }
 
 .room-selector-item__close-btn {
-  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 58%, var(--color-border-soft));
+  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 58%, var(--color-border-soft));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 18%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 78%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 18%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 78%, var(--color-text-primary));
   min-height: 1.5rem;
   padding: 0 0.52rem;
   display: inline-flex;
@@ -1031,9 +1031,9 @@
 }
 
 .room-selector-status-pill.muted {
-  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 44%, var(--color-border-soft));
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 72%, var(--color-text-primary));
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 44%, var(--color-border-soft));
+  color: color-mix(in srgb, var(--color-error, #ef4444) 72%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 12%, transparent);
 }
 
 .room-selector-status-pill.ghost {
@@ -1069,9 +1069,9 @@
   margin: 0;
   font-size: 0.68rem;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 82%, #ffffff 18%);
-  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 54%, var(--color-border-soft));
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 14%, var(--color-surface));
+  color: color-mix(in srgb, var(--color-error, #ef4444) 82%, #ffffff 18%);
+  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 54%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 14%, var(--color-surface));
   border-radius: 0.42rem;
   padding: 0.2rem 0.34rem;
   pointer-events: auto;

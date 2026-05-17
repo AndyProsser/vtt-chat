@@ -258,6 +258,19 @@ export async function emitSessionBoundarySystemMessage(params: {
 /** Prefix used to identify session summary cards in the chat timeline. */
 export const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
+const SURVIVAL_QUIPS = [
+  'The party survived. Historians are baffled.',
+  'All PCs accounted for. The dice gods were merciful, or bored.',
+  'Nobody died. The DM is taking this personally.',
+  'The adventure continues. Against all probability.',
+  'Clerics earned their gold piece.',
+  'The party lives to roll again. The dungeon is deeply disappointed.',
+  'No total-party kills. The tavern breathes a sigh of relief.',
+  "They made it. The dungeon's HR department has filed a complaint.",
+  'Another session. Another inexplicable series of natural 20s.',
+  "Everyone survived. Even the rogue who 'just wanted to check for traps'.",
+]
+
 /**
  * Emits a session summary SYSTEM message to the greenroom after a session moves to COOLDOWN.
  * Encodes stats as JSON following the prefix so the frontend can render a summary card.
@@ -284,6 +297,9 @@ export async function emitSessionSummaryMessage(params: {
 
   const playerCount = users.filter((u) => u.role !== 'SPECTATOR' && u.role !== 'SYSTEM').length
 
+  const quipIndex =
+    session.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % SURVIVAL_QUIPS.length
+
   const stats = {
     sessionName: session.name,
     startedAt: session.startedAt ?? null,
@@ -291,6 +307,7 @@ export async function emitSessionSummaryMessage(params: {
     cumulativePauseMs: session.cumulativePauseMs ?? 0,
     pauseCount: session.pauseCount ?? 0,
     playerCount,
+    quip: SURVIVAL_QUIPS[quipIndex],
   }
 
   const content = `${SESSION_SUMMARY_PREFIX} ${JSON.stringify(stats)}`

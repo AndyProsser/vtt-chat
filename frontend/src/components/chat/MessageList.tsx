@@ -60,19 +60,6 @@ const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
-const SURVIVAL_QUIPS = [
-  'The party survived. Historians are baffled.',
-  'All PCs accounted for. The dice gods were merciful, or bored.',
-  'Nobody died. The DM is taking this personally.',
-  'The adventure continues. Against all probability.',
-  'Clerics earned their gold piece.',
-  'The party lives to roll again. The dungeon is deeply disappointed.',
-  'No total-party kills. The tavern breathes a sigh of relief.',
-  "They made it. The dungeon's HR department has filed a complaint.",
-  'Another session. Another inexplicable series of natural 20s.',
-  "Everyone survived. Even the rogue who 'just wanted to check for traps'.",
-]
-
 interface SessionSummaryStats {
   sessionName: string
   startedAt: number | null
@@ -80,6 +67,7 @@ interface SessionSummaryStats {
   cumulativePauseMs: number
   pauseCount: number
   playerCount: number
+  quip?: string
 }
 
 function parseSessionSummary(content: string): SessionSummaryStats | null {
@@ -303,8 +291,6 @@ export function MessageList({
                   timeStyle: 'short',
                 })
               : null
-            const quipIndex =
-              msg.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % SURVIVAL_QUIPS.length
             return (
               <article key={msg.id} className="chat-session-summary">
                 <div className="chat-session-summary__header">
@@ -341,7 +327,7 @@ export function MessageList({
                     </>
                   )}
                 </dl>
-                <p className="chat-session-summary__quip">{SURVIVAL_QUIPS[quipIndex]}</p>
+                {stats.quip && <p className="chat-session-summary__quip">{stats.quip}</p>}
               </article>
             )
           }

@@ -225,9 +225,9 @@
 }
 
 .invite-join-email-status.status-error {
-  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
-  color: var(--color-danger-strong);
-  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-error) 55%, var(--color-border));
+  color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
 }
 
 .invite-join-disclosure {

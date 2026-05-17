@@ -43,7 +43,7 @@
 }
 
 .audio-panel__error {
-  color: var(--color-danger-text, #fecaca);
+  color: var(--color-error-text, #991b1b);
   font-size: 0.8rem;
 }
 
@@ -94,7 +94,7 @@
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 75%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .audio-panel__participant {
@@ -104,7 +104,7 @@
   min-height: 2.5rem;
   padding: 0.45rem 0.55rem;
   border-radius: 0.65rem;
-  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 75%, transparent);
+  background: var(--color-surface-subtle);
   transition:
     background-color 140ms ease,
     box-shadow 140ms ease,
@@ -127,7 +127,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 35%, #111827 65%);
+  background: color-mix(in srgb, var(--color-brand, #3b82f6) 55%, var(--color-surface-subtle) 45%);
 }
 
 .audio-panel__name {
@@ -161,8 +161,8 @@
 }
 
 .audio-panel__badge.muted {
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 22%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 84%, #fff 16%);
+  background: color-mix(in srgb, var(--color-error, #ef4444) 22%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 84%, #fff 16%);
 }
 
 .audio-panel__badge.deafened {
@@ -181,7 +181,7 @@
 
 .audio-panel__control:hover:not(:disabled) {
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 92%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .audio-panel__control:disabled {
@@ -191,19 +191,19 @@
 
 .audio-panel__control.is-active {
   color: #fff;
-  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
-  border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 65%, transparent);
+  background: var(--color-brand, #3b82f6);
+  border-color: color-mix(in srgb, var(--color-brand, #3b82f6) 65%, transparent);
 }
 
 .audio-panel__control.is-danger {
   color: #fff;
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 55%, #1e293b 45%);
-  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 65%, transparent);
+  background: var(--color-error, #ef4444);
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 65%, transparent);
 }
 
 .audio-panel__control.is-success {
   color: #fff;
-  background: color-mix(in srgb, var(--color-success, #22c55e) 52%, #1e293b 48%);
+  background: var(--color-success, #22c55e);
   border-color: color-mix(in srgb, var(--color-success, #22c55e) 65%, transparent);
 }
 
@@ -218,7 +218,7 @@
   height: 1.85rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--color-surface-2, #0f172a) 84%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-secondary);
   font-size: 0.7rem;
   font-weight: 700;
@@ -257,11 +257,11 @@
   height: 0.42rem;
   border-radius: 999px;
   background: var(--color-text-muted);
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-border-soft) 50%, transparent);
 }
 
 .audio-panel__mode-pill-badge[data-state='disconnected'] {
-  background: color-mix(in srgb, var(--color-text-muted) 80%, #334155 20%);
+  background: var(--color-text-muted);
 }
 
 .audio-panel__mode-pill-badge[data-state='connecting'] {
@@ -277,8 +277,8 @@
 }
 
 .audio-panel__mode-pill.is-muted {
-  background: color-mix(in srgb, var(--color-danger, #ef4444) 20%, transparent);
-  color: color-mix(in srgb, var(--color-danger, #ef4444) 82%, #fff 18%);
+  background: color-mix(in srgb, var(--color-error, #ef4444) 20%, transparent);
+  color: color-mix(in srgb, var(--color-error, #ef4444) 82%, #fff 18%);
 }
 
 .audio-panel__mode-pill.is-live {
@@ -295,7 +295,7 @@
   height: 1.6rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.38));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 88%, transparent);
+  background: var(--color-surface-subtle);
   overflow: hidden;
 }
 
@@ -306,7 +306,7 @@
     to top,
     color-mix(in srgb, var(--color-success, #22c55e) 90%, #fff 10%) 0%,
     color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-warn, #f59e0b) 28%) 65%,
-    color-mix(in srgb, var(--color-danger, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
+    color-mix(in srgb, var(--color-error, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
   );
   transition: height 70ms linear;
 }
@@ -354,8 +354,8 @@
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.65rem;
   padding: 0.45rem 0.55rem;
-  background: var(--color-surface-1, #0f172a);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
   z-index: 260;
 }
 
@@ -389,7 +389,7 @@
   gap: 0.45rem;
   padding: 0.28rem 0.35rem;
   border-radius: 0.45rem;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 78%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .audio-panel__detail-icon {
@@ -427,10 +427,10 @@
   z-index: 1200;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.75rem;
-  background: var(--color-surface-1, #0f172a);
+  background: var(--color-surface);
   box-shadow:
-    0 -4px 16px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.04);
+    0 -4px 16px rgba(0, 0, 0, 0.15),
+    0 0 0 1px color-mix(in srgb, var(--color-border-soft) 60%, transparent);
   overflow: hidden;
 }
 
@@ -468,7 +468,7 @@
 
 .audio-settings-panel__close:hover {
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .audio-settings-panel__close .ui-icon {
@@ -518,7 +518,7 @@
   padding: 0.28rem 0.5rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-primary);
   font-size: 0.76rem;
   cursor: pointer;
@@ -530,7 +530,7 @@
   height: 0.42rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.38));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 88%, transparent);
+  background: var(--color-surface-subtle);
   overflow: hidden;
 }
 
@@ -542,7 +542,7 @@
     to right,
     color-mix(in srgb, var(--color-success, #22c55e) 90%, #fff 10%) 0%,
     color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-warn, #f59e0b) 28%) 65%,
-    color-mix(in srgb, var(--color-danger, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
+    color-mix(in srgb, var(--color-error, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
   );
   transition: width 70ms linear;
 }
@@ -563,7 +563,7 @@
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 999px;
   padding: 0 0.5rem;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   font-size: 0.62rem;
   font-weight: 700;
@@ -576,8 +576,8 @@
 }
 
 .audio-settings-panel__toggle.is-on {
-  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
-  border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 65%, transparent);
+  background: var(--color-brand, #3b82f6);
+  border-color: color-mix(in srgb, var(--color-brand, #3b82f6) 65%, transparent);
   color: #fff;
 }
 
@@ -615,7 +615,7 @@
 .audio-settings-panel__segment-btn {
   flex: 1;
   padding: 0.28rem 0;
-  background: color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, transparent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   font-size: 0.65rem;
   font-weight: 700;
@@ -633,6 +633,6 @@
 }
 
 .audio-settings-panel__segment-btn.is-active {
-  background: color-mix(in srgb, var(--color-primary-500, #3b82f6) 55%, #1e293b 45%);
+  background: var(--color-brand, #3b82f6);
   color: #fff;
 }
