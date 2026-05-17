@@ -60,9 +60,23 @@ const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
+const SURVIVAL_QUIPS = [
+  'The party survived. Historians are baffled.',
+  'All PCs accounted for. The dice gods were merciful, or bored.',
+  'Nobody died. The DM is taking this personally.',
+  'The adventure continues. Against all probability.',
+  'Clerics earned their gold piece.',
+  'The party lives to roll again. The dungeon is deeply disappointed.',
+  'No total-party kills. The tavern breathes a sigh of relief.',
+  "They made it. The dungeon's HR department has filed a complaint.",
+  'Another session. Another inexplicable series of natural 20s.',
+  "Everyone survived. Even the rogue who 'just wanted to check for traps'.",
+]
+
 interface SessionSummaryStats {
   sessionName: string
   startedAt: number | null
+  endedAt: number | null
   cumulativePauseMs: number
   pauseCount: number
   playerCount: number
@@ -281,12 +295,16 @@ export function MessageList({
           if (isSessionSummary) {
             const stats = parseSessionSummary(msg.content)
             if (!stats) return null
+            const durationMs =
+              stats.endedAt && stats.startedAt ? stats.endedAt - stats.startedAt : null
             const startedDisplay = stats.startedAt
               ? new Date(stats.startedAt).toLocaleString(undefined, {
                   dateStyle: 'medium',
                   timeStyle: 'short',
                 })
               : null
+            const quipIndex =
+              msg.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % SURVIVAL_QUIPS.length
             return (
               <article key={msg.id} className="chat-session-summary">
                 <div className="chat-session-summary__header">
@@ -305,18 +323,25 @@ export function MessageList({
                       <dd>{startedDisplay}</dd>
                     </>
                   )}
+                  {durationMs !== null && (
+                    <>
+                      <dt>Session Time</dt>
+                      <dd>{formatDuration(durationMs)}</dd>
+                    </>
+                  )}
                   <dt>Players</dt>
                   <dd>{stats.playerCount}</dd>
-                  {stats.cumulativePauseMs > 0 && (
+                  {(stats.cumulativePauseMs > 0 || stats.pauseCount > 0) && (
                     <>
                       <dt>Paused</dt>
                       <dd>
                         {formatDuration(stats.cumulativePauseMs)}
-                        {stats.pauseCount > 1 && ` (${stats.pauseCount}×)`}
+                        {stats.pauseCount >= 1 && ` (${stats.pauseCount}×)`}
                       </dd>
                     </>
                   )}
                 </dl>
+                <p className="chat-session-summary__quip">{SURVIVAL_QUIPS[quipIndex]}</p>
               </article>
             )
           }

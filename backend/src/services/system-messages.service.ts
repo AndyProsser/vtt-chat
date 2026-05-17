@@ -287,6 +287,7 @@ export async function emitSessionSummaryMessage(params: {
   const stats = {
     sessionName: session.name,
     startedAt: session.startedAt ?? null,
+    endedAt: session.endedAt ?? null,
     cumulativePauseMs: session.cumulativePauseMs ?? 0,
     pauseCount: session.pauseCount ?? 0,
     playerCount,
