@@ -9,6 +9,7 @@ exports.StatusColorKey =
   exports.StatusContext =
   exports.LiveKitConnectionState =
   exports.CoreWsState =
+  exports.DeviceClass =
   exports.PresenceState =
   exports.MessageType =
   exports.NoteVisibility =
@@ -59,6 +60,12 @@ var PresenceState
   PresenceState['IDLE'] = 'IDLE'
   PresenceState['OFFLINE'] = 'OFFLINE'
 })(PresenceState || (exports.PresenceState = PresenceState = {}))
+var DeviceClass
+;(function (DeviceClass) {
+  DeviceClass['DESKTOP'] = 'DESKTOP'
+  DeviceClass['MOBILE'] = 'MOBILE'
+  DeviceClass['TABLET'] = 'TABLET'
+})(DeviceClass || (exports.DeviceClass = DeviceClass = {}))
 var CoreWsState
 ;(function (CoreWsState) {
   CoreWsState['CONNECTED'] = 'CONNECTED'

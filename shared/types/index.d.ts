@@ -43,6 +43,11 @@ export declare enum PresenceState {
   IDLE = 'IDLE',
   OFFLINE = 'OFFLINE',
 }
+export declare enum DeviceClass {
+  DESKTOP = 'DESKTOP',
+  MOBILE = 'MOBILE',
+  TABLET = 'TABLET',
+}
 export declare enum CoreWsState {
   CONNECTED = 'CONNECTED',
   CONNECTING = 'CONNECTING',

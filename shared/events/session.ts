@@ -7,7 +7,7 @@
  * Visibility: All state changes are visible to all session participants.
  */
 
-import type { DeviceClass, UUID } from '../types'
+import type { DeviceClass, DeviceSessionEntity, UUID } from '../types'
 import type { EventEnvelope } from './base'
 
 export type SessionEventType =
@@ -177,6 +177,7 @@ export interface SessionDeviceSessionConnected {
   deviceClass: DeviceClass
   label: string
   connectedAt: number
+  deviceSessions: DeviceSessionEntity[]
 }
 
 export type SessionDeviceSessionConnectedEvent = EventEnvelope<SessionDeviceSessionConnected>
@@ -188,6 +189,7 @@ export interface SessionDeviceSessionDisconnected {
   deviceClass: DeviceClass
   label: string
   disconnectedAt: number
+  deviceSessions: DeviceSessionEntity[]
 }
 
 export type SessionDeviceSessionDisconnectedEvent = EventEnvelope<SessionDeviceSessionDisconnected>
@@ -198,6 +200,7 @@ export interface SessionDeviceSessionTransferred {
   fromDeviceSessionId: string
   toDeviceSessionId: string
   transferredAt: number
+  deviceSessions: DeviceSessionEntity[]
 }
 
 export type SessionDeviceSessionTransferredEvent = EventEnvelope<SessionDeviceSessionTransferred>
@@ -208,6 +211,7 @@ export interface SessionDeviceMicOwnerChanged {
   previousDeviceSessionId: string | null
   activeDeviceSessionId: string
   changedAt: number
+  deviceSessions: DeviceSessionEntity[]
 }
 
 export type SessionDeviceMicOwnerChangedEvent = EventEnvelope<SessionDeviceMicOwnerChanged>
@@ -218,6 +222,7 @@ export interface SessionDeviceMicHardUnpublished {
   deviceSessionId: string
   reason: 'MIC_OWNERSHIP_SWITCHED' | 'TRANSFERRED' | 'FORCED_SYNC'
   unpublishedAt: number
+  deviceSessions: DeviceSessionEntity[]
 }
 
 export type SessionDeviceMicHardUnpublishedEvent = EventEnvelope<SessionDeviceMicHardUnpublished>

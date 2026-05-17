@@ -111,10 +111,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '../shared'),
-      },
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+        { find: '@shared', replacement: path.resolve(__dirname, '../shared/index.ts') },
+        { find: /^@shared\/(.*)$/, replacement: path.resolve(__dirname, '../shared/$1') },
+      ],
     },
     server: {
       host: '0.0.0.0',

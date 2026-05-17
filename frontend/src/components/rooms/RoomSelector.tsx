@@ -20,6 +20,7 @@ import { Icon } from '../ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupCard } from './GroupCard'
 import { GroupsHeaderActions } from './GroupsHeaderActions'
+import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { WhisperDock } from './WhisperDock'
 import {
   getDisplayGroupName,
@@ -35,6 +36,7 @@ import {
   type GroupParticipantWithGroupId,
   type GroupsPanelProps,
 } from '@/types/groupPanel'
+import type { SessionPresence } from '@/types/room'
 import { useRoomMoves } from './useRoomMoves'
 import { useWhisperFlow } from './useWhisperFlow'
 import '../../styles/components/rooms/RoomSelector.css'
@@ -49,6 +51,7 @@ export type {
 } from '@/types/groupPanel'
 
 const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
+const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = {}
 
 interface OptimisticRoomEntry {
   room: GroupPanelGroupWithParticipants
@@ -92,6 +95,9 @@ export function RoomSelector({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
+  const sessionPresenceByUser = useStore(
+    (state) => state.sessionPresence[sessionId] || EMPTY_SESSION_PRESENCE
+  )
   const currentUser = useStore((state) => state.currentUser)
   const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
@@ -165,6 +171,11 @@ export function RoomSelector({
     [allRooms]
   )
 
+  const getDeviceSessions = useCallback(
+    (userId: UUID) => sessionPresenceByUser[userId]?.deviceSessions || [],
+    [sessionPresenceByUser]
+  )
+
   const dmParticipant = useMemo(
     () => baseParticipants.find((participant) => participant.userId === dmUserId),
     [baseParticipants, dmUserId]
@@ -230,6 +241,7 @@ export function RoomSelector({
         characterStats?: Record<string, unknown> | null
         primaryRoomId?: UUID
         privateRoomId?: UUID
+        deviceSessions?: SessionPresence['deviceSessions']
         state: PresenceState
         lastSeenAt: number
       }>
@@ -1213,6 +1225,7 @@ export function RoomSelector({
       getResolvedPresenceState={getResolvedPresenceState}
       getPresenceDotState={getPresenceDotState}
       getStatEntries={getGroupStatEntries}
+      getDeviceSessions={getDeviceSessions}
     />
   )
 
@@ -1340,6 +1353,9 @@ export function RoomSelector({
                         </span>
                       ) : null}
                       <p>{getParticipantMetaLineForRoom(dmParticipant)}</p>
+                      <ParticipantDeviceList
+                        deviceSessions={getDeviceSessions(dmParticipant.userId)}
+                      />
                       <div className="room-selector-profile__status-pills">
                         {dmParticipant.isSpeaking ? (
                           <span className="room-selector-status-pill speaking">

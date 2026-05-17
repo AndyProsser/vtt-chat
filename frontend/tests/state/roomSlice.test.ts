@@ -277,6 +277,48 @@ describe('roomSlice', () => {
     })
   })
 
+  describe('replaceSessionPresence', () => {
+    it('preserves hydrated device session snapshots on session presence entries', () => {
+      useStore.getState().replaceSessionPresence(SESSION_A, [
+        {
+          userId: USER_ID_1,
+          username: 'alice',
+          state: 'ONLINE' as any,
+          primaryRoomId: ROOM_ID_1,
+          lastSeenAt: NOW,
+          deviceSessions: [
+            {
+              deviceSessionId: 'device-a',
+              deviceClass: 'DESKTOP' as any,
+              label: 'Desktop',
+              connectedAt: NOW,
+              isActive: true,
+              isMuted: false,
+            },
+            {
+              deviceSessionId: 'device-b',
+              deviceClass: 'MOBILE' as any,
+              label: 'Mobile',
+              connectedAt: NOW + 1000,
+              isActive: false,
+              isMuted: true,
+            },
+          ],
+        } as any,
+      ])
+
+      expect(
+        useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.deviceSessions
+      ).toHaveLength(2)
+      expect(
+        useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.deviceSessions?.[1]
+      ).toMatchObject({
+        label: 'Mobile',
+        isMuted: true,
+      })
+    })
+  })
+
   describe('clearSessionTransitionNotice', () => {
     it('removes the transition notice for a session', () => {
       // Set via event handler then clear

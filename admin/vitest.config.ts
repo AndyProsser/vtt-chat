@@ -3,10 +3,14 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@shared': path.resolve(import.meta.dirname, '../shared'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(import.meta.dirname, 'src') },
+      { find: '@shared', replacement: path.resolve(import.meta.dirname, '../shared/index.ts') },
+      {
+        find: /^@shared\/(.*)$/,
+        replacement: path.resolve(import.meta.dirname, '../shared/$1'),
+      },
+    ],
   },
   test: {
     environment: 'jsdom',

@@ -315,10 +315,18 @@ describe('WebSocketManager', () => {
     const visibleTo = await (manager as any).resolveClientEventAudience(event)
     ;(manager as any).broadcastToSession('session-1', event, senderSocket, visibleTo)
 
-    const sameRoomEvents = sameRoomSocket.sent.filter((message) => message.type === 'WS:EVENT')
-    const dmEvents = dmSocket.sent.filter((message) => message.type === 'WS:EVENT')
-    const otherRoomEvents = otherRoomSocket.sent.filter((message) => message.type === 'WS:EVENT')
-    const senderEvents = senderSocket.sent.filter((message) => message.type === 'WS:EVENT')
+    const sameRoomEvents = sameRoomSocket.sent.filter(
+      (message) => message.type === 'WS:EVENT' && message.event?.type === 'CHAT:TYPING_STARTED'
+    )
+    const dmEvents = dmSocket.sent.filter(
+      (message) => message.type === 'WS:EVENT' && message.event?.type === 'CHAT:TYPING_STARTED'
+    )
+    const otherRoomEvents = otherRoomSocket.sent.filter(
+      (message) => message.type === 'WS:EVENT' && message.event?.type === 'CHAT:TYPING_STARTED'
+    )
+    const senderEvents = senderSocket.sent.filter(
+      (message) => message.type === 'WS:EVENT' && message.event?.type === 'CHAT:TYPING_STARTED'
+    )
 
     expect(visibleTo).toEqual(['player-1', 'dm-1', 'player-2'])
     expect(sameRoomEvents).toHaveLength(1)

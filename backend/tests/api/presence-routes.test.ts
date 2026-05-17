@@ -78,7 +78,10 @@ function buildApp() {
 
 function buildAppWithWS() {
   const app = buildApp()
-  app.locals.wsManager = { broadcastEventToSession: vi.fn() }
+  app.locals.wsManager = {
+    broadcastEventToSession: vi.fn(),
+    getSessionDeviceSessionsSnapshot: vi.fn().mockReturnValue({}),
+  }
   return app
 }
 
@@ -234,6 +237,51 @@ describe('presence routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.presence[0].avatarUrl).toBe('https://example.com/alice.png')
       expect(res.body.presence[0].displayName).toBe('Alice')
+    })
+
+    it('includes device session snapshots when ws manager provides them', async () => {
+      mocks.mockGetSessionPresence.mockResolvedValue([
+        {
+          userId: USER_ID,
+          username: 'alice',
+          state: 'ONLINE',
+          primaryRoomId: ROOM_ID,
+          lastSeenAt: 1700000000000,
+        },
+      ])
+
+      const app = buildAppWithWS()
+      app.locals.wsManager.getSessionDeviceSessionsSnapshot.mockReturnValue({
+        [USER_ID]: [
+          {
+            deviceSessionId: 'device-a',
+            deviceClass: 'DESKTOP',
+            label: 'Desktop',
+            connectedAt: 1700000000000,
+            isActive: true,
+            isMuted: false,
+          },
+          {
+            deviceSessionId: 'device-b',
+            deviceClass: 'MOBILE',
+            label: 'Mobile',
+            connectedAt: 1700000001000,
+            isActive: false,
+            isMuted: true,
+          },
+        ],
+      })
+
+      const res = await request(app)
+        .get(`/api/presence/${SESSION_ID}`)
+        .set('Authorization', 'Bearer token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.presence[0].deviceSessions).toHaveLength(2)
+      expect(res.body.presence[0].deviceSessions[0]).toMatchObject({
+        label: 'Desktop',
+        isActive: true,
+      })
     })
 
     it('serves the same presence data through the canonical mount', async () => {

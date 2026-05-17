@@ -5,7 +5,9 @@
 
 import { WebSocket, WebSocketServer } from 'ws'
 import { Server as HTTPServer } from 'node:http'
+import type { DeviceSessionEntity } from '@shared'
 import { EventDispatcher } from './dispatcher'
+import { buildSessionDeviceSessionsByUser } from './device-sessions'
 import {
   registerEventForRecovery,
   registerEventForRecoveryDurable,
@@ -295,6 +297,18 @@ export class WebSocketManager {
       })
     )
 
+    if (connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
+      this.broadcastDeviceSessionSnapshot({
+        sessionId: connectionState.sessionId,
+        userId: payload.userId as UUID,
+        userRole: payload.role as Role,
+        eventType: 'SESSION:DEVICE_SESSION_CONNECTED',
+        deviceSessionId: ws.authDeviceSessionId,
+        deviceClass: ws.authDeviceClass,
+        changedAt: connectionState.connectedAt,
+      })
+    }
+
     if (lastEventId && connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
       const replayEvents = await replayEventsForConnectionDurable({
         sessionId: connectionState.sessionId,
@@ -532,6 +546,10 @@ export class WebSocketManager {
     })
   }
 
+  getSessionDeviceSessionsSnapshot(sessionId: UUID): Record<UUID, DeviceSessionEntity[]> {
+    return buildSessionDeviceSessionsByUser(this.connections.values(), sessionId)
+  }
+
   /**
    * Broadcast an event to all connected clients who are members of a campaign.
    * Used for campaign-scoped events such as greenroom chat.
@@ -581,6 +599,16 @@ export class WebSocketManager {
     if (ws.authPayload && ws.connectionState.sessionId !== UNASSIGNED_SESSION_ID) {
       const sessionId = ws.connectionState.sessionId
       const userId = ws.authPayload.userId as UUID
+
+      this.broadcastDeviceSessionSnapshot({
+        sessionId,
+        userId,
+        userRole: ws.authPayload.role as Role,
+        eventType: 'SESSION:DEVICE_SESSION_DISCONNECTED',
+        deviceSessionId: ws.authDeviceSessionId,
+        deviceClass: ws.authDeviceClass,
+        changedAt: Date.now(),
+      })
 
       if (!this.hasActiveConnectionForUser(sessionId, userId)) {
         void sessionDisconnectCascadeService.handleUserDisconnected({
@@ -651,6 +679,57 @@ export class WebSocketManager {
       this.wss.close(() => {
         resolve()
       })
+    })
+  }
+
+  private broadcastDeviceSessionSnapshot(params: {
+    sessionId: UUID
+    userId: UUID
+    userRole: Role
+    eventType: 'SESSION:DEVICE_SESSION_CONNECTED' | 'SESSION:DEVICE_SESSION_DISCONNECTED'
+    deviceSessionId?: string
+    deviceClass?: DeviceClass
+    changedAt: number
+  }): void {
+    const deviceSessionsByUser = this.getSessionDeviceSessionsSnapshot(params.sessionId)
+    const userDeviceSessions = deviceSessionsByUser[params.userId] || []
+    const matchingDevice = userDeviceSessions.find(
+      (device) => device.deviceSessionId === params.deviceSessionId
+    )
+    const fallbackLabel = matchingDevice?.label || 'Device'
+    const fallbackDeviceClass = params.deviceClass || DEFAULT_DEVICE_CLASS
+
+    const payload =
+      params.eventType === 'SESSION:DEVICE_SESSION_CONNECTED'
+        ? {
+            sessionId: params.sessionId,
+            userId: params.userId,
+            deviceSessionId: params.deviceSessionId || '',
+            deviceClass: fallbackDeviceClass,
+            label: fallbackLabel,
+            connectedAt: params.changedAt,
+            deviceSessions: userDeviceSessions,
+          }
+        : {
+            sessionId: params.sessionId,
+            userId: params.userId,
+            deviceSessionId: params.deviceSessionId || '',
+            deviceClass: fallbackDeviceClass,
+            label: fallbackLabel,
+            disconnectedAt: params.changedAt,
+            deviceSessions: userDeviceSessions,
+          }
+
+    this.broadcastEventToSession(params.sessionId, {
+      id: crypto.randomUUID() as UUID,
+      type: params.eventType,
+      version: 1,
+      userId: params.userId,
+      userRole: params.userRole,
+      sessionId: params.sessionId,
+      roomId: null,
+      timestamp: params.changedAt,
+      payload,
     })
   }
 }

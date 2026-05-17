@@ -22,6 +22,11 @@ export interface PresenceSlice {
   ) => void
   replaceSessionStatsSnapshot: (sessionId: UUID, snapshot: SessionStatsSnapshot) => void
   handleSessionStatsUpdated: (event: EventEnvelope) => void
+  applySessionPresenceDeviceSessions: (params: {
+    sessionId: UUID
+    userId: UUID
+    deviceSessions: NonNullable<SessionPresence['deviceSessions']>
+  }) => void
   clearSessionPresence: (sessionId?: UUID) => void
   upsertSessionPresenceOnJoin: (params: {
     sessionId: UUID
@@ -121,6 +126,29 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       },
     }))
   },
+
+  applySessionPresenceDeviceSessions: ({ sessionId, userId, deviceSessions }) =>
+    set((state) => {
+      const bySession = state.sessionPresence[sessionId] || {}
+      const existing = bySession[userId]
+
+      if (!existing) {
+        return state
+      }
+
+      return {
+        sessionPresence: {
+          ...state.sessionPresence,
+          [sessionId]: {
+            ...bySession,
+            [userId]: {
+              ...existing,
+              deviceSessions,
+            },
+          },
+        },
+      }
+    }),
 
   clearSessionPresence: (sessionId) =>
     set((state) => {

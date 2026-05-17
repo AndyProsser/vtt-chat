@@ -851,6 +851,61 @@
   color: var(--color-text-primary);
 }
 
+.room-selector-profile__devices {
+  display: grid;
+  gap: 0.18rem;
+  margin-top: 0.08rem;
+}
+
+.room-selector-profile__devices-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.room-selector-profile__devices-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.room-selector-profile__devices-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.room-selector-profile__devices-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.08rem 0.34rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.room-selector-profile__devices-status--active {
+  color: #d1fae5;
+  background: color-mix(in srgb, #16a34a 52%, transparent);
+}
+
+.room-selector-profile__devices-status--muted {
+  color: #fecaca;
+  background: color-mix(in srgb, #dc2626 42%, transparent);
+}
+
+.room-selector-profile__devices-label {
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
 .room-selector-profile__title-row {
   display: flex;
   align-items: center;

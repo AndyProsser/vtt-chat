@@ -102,6 +102,34 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('SESSION:STATS_UPDATED', (event) => {
       useStore.getState().handleSessionStatsUpdated(event)
     })
+    dispatcher.register('SESSION:DEVICE_SESSION_CONNECTED', (event) => {
+      const payload = event.payload as { userId?: UUID; deviceSessions?: unknown[] }
+      if (!payload.userId || !Array.isArray(payload.deviceSessions)) {
+        return
+      }
+
+      useStore.getState().applySessionPresenceDeviceSessions({
+        sessionId: event.sessionId,
+        userId: payload.userId,
+        deviceSessions: payload.deviceSessions as NonNullable<
+          import('@/types/room').SessionPresence['deviceSessions']
+        >,
+      })
+    })
+    dispatcher.register('SESSION:DEVICE_SESSION_DISCONNECTED', (event) => {
+      const payload = event.payload as { userId?: UUID; deviceSessions?: unknown[] }
+      if (!payload.userId || !Array.isArray(payload.deviceSessions)) {
+        return
+      }
+
+      useStore.getState().applySessionPresenceDeviceSessions({
+        sessionId: event.sessionId,
+        userId: payload.userId,
+        deviceSessions: payload.deviceSessions as NonNullable<
+          import('@/types/room').SessionPresence['deviceSessions']
+        >,
+      })
+    })
 
     // Chat events
     dispatcher.register('CHAT:MESSAGE_SENT', (event) => {

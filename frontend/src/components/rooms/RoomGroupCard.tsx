@@ -12,6 +12,7 @@ import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from '@/types/groupPanel'
+import type { SessionPresence } from '@/types/room'
 
 export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants
@@ -63,6 +64,7 @@ export interface GroupCardProps {
     presenceState: GroupParticipantWithGroupId['presenceState']
   ) => 'online' | 'offline'
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
 }
 
 export type RoomGroupCardProps = GroupCardProps
@@ -109,6 +111,7 @@ export function RoomGroupCard({
   getResolvedPresenceState,
   getPresenceDotState,
   getStatEntries,
+  getDeviceSessions,
 }: GroupCardProps) {
   const isGreenroomCard = isGreenRoomName(room.name)
   const isWhisperRoomGroup = isWhisperGroup(room)
@@ -360,6 +363,7 @@ export function RoomGroupCard({
           getResolvedPresenceState={getResolvedPresenceState}
           getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
+          getDeviceSessions={getDeviceSessions}
           getResolvedGroupEnvironmentName={getResolvedEnvironmentName}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}

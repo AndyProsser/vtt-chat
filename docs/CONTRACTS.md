@@ -88,6 +88,12 @@ Multi-device addendum (May 2026):
 - The payload carries the latest profile fields needed to refresh live room cards in place: player name, avatar, character name, class, subclass, race, level, and character stats.
 - New profile data should be broadcast after persistence succeeds and before the acting user relies on a refresh to see the change.
 
+Presence hydration addendum:
+
+- `GET /api/presence/:sessionId` may include `deviceSessions` on each presence entry.
+- `deviceSessions` is derived from active authenticated WS connections and carries `deviceSessionId`, `deviceClass`, inferred label, connected time, and active/muted flags.
+- Player/DM avatar poppers render device rows only when more than one device is currently connected for that user.
+
 ---
 
 ## Location
@@ -277,6 +283,7 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 - `SESSION:DEVICE_SESSION_TRANSFERRED` — active device ownership transferred
 - `SESSION:DEVICE_MIC_OWNER_CHANGED` — authoritative active mic device switched
 - `SESSION:DEVICE_MIC_HARD_UNPUBLISHED` — sibling device forced unpublish on ownership change
+- Device session connect/disconnect payloads include the user's full current `deviceSessions` snapshot for client reconciliation.
 
 **Chat** (file: `events/chat.ts`)
 

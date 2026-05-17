@@ -1,4 +1,5 @@
 import type {
+  DeviceClass,
   MessageType,
   NoteVisibility,
   PresenceState,
@@ -14,6 +15,15 @@ import type {
  * These are intentionally permissive enough for backend persistence models,
  * frontend view models, and admin DTOs to align on a shared base shape.
  */
+
+export interface DeviceSessionEntity {
+  deviceSessionId: string
+  deviceClass: DeviceClass
+  label: string
+  connectedAt: number
+  isActive: boolean
+  isMuted: boolean
+}
 
 export interface UserEntity {
   id: UUID
@@ -102,5 +112,6 @@ export interface PresenceEntity {
   primaryRoomId?: UUID
   previousGroupId?: UUID
   privateRoomId?: UUID
+  deviceSessions?: DeviceSessionEntity[]
   lastSeenAt: number
 }

@@ -163,6 +163,7 @@ export interface Metadata {
 }
 
 export type {
+  DeviceSessionEntity,
   UserEntity,
   SessionEntity,
   RoomEntity,

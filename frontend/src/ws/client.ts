@@ -4,8 +4,8 @@
  * Reference: docs/architecture/EVENT-BUS.md
  */
 
-import type { DeviceClass, EventEnvelope, UUID } from '@shared'
-import { isValidUUID } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
+import { DeviceClass, isValidUUID } from '@shared'
 import { logger } from '../utils/logger'
 import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { ConnectionState, ConnectionOptions } from '@/types/ws'
@@ -43,10 +43,6 @@ function wsClientLogError(message: string, meta?: unknown): void {
 
   logger.error('ws.client', message, meta)
 }
-
-const DEVICE_CLASS_DESKTOP = 'DESKTOP' as DeviceClass
-const DEVICE_CLASS_MOBILE = 'MOBILE' as DeviceClass
-const DEVICE_CLASS_TABLET = 'TABLET' as DeviceClass
 
 export type { ConnectionState, ConnectionOptions } from '@/types/ws'
 type IncomingWsMessage =
@@ -112,7 +108,7 @@ export class WebSocketClient {
     this.token = options.token
     this.sessionId = options.sessionId ?? null
     this.deviceSessionId = options.deviceSessionId || resolveDeviceSessionId()
-    this.deviceClass = isDeviceClass(options.deviceClass) ? options.deviceClass : inferDeviceClass()
+    this.deviceClass = options.deviceClass || inferDeviceClass()
     this.callbacks = {
       onStateChange: options.onStateChange,
       onEvent: options.onEvent,
@@ -533,21 +529,15 @@ function resolveDeviceSessionId(): string {
 
 function inferDeviceClass(): DeviceClass {
   if (typeof navigator === 'undefined') {
-    return DEVICE_CLASS_DESKTOP
+    return DeviceClass.DESKTOP
   }
 
   const ua = navigator.userAgent.toLowerCase()
   const isTablet = /ipad|tablet|playbook|silk|(android(?!.*mobile))/i.test(ua)
   if (isTablet) {
-    return DEVICE_CLASS_TABLET
+    return DeviceClass.TABLET
   }
 
   const isMobile = /mobile|iphone|ipod|android/i.test(ua)
-  return isMobile ? DEVICE_CLASS_MOBILE : DEVICE_CLASS_DESKTOP
-}
-
-function isDeviceClass(value: unknown): value is DeviceClass {
-  return (
-    value === DEVICE_CLASS_DESKTOP || value === DEVICE_CLASS_MOBILE || value === DEVICE_CLASS_TABLET
-  )
+  return isMobile ? DeviceClass.MOBILE : DeviceClass.DESKTOP
 }

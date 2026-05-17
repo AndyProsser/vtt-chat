@@ -4,11 +4,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '../../constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
 import { AvatarOverlay } from './AvatarOverlay'
+import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from '@/types/groupPanel'
+import type { SessionPresence } from '@/types/room'
 
 interface RoomMemberListProps {
   room: GroupPanelGroupWithParticipants
@@ -26,6 +28,7 @@ interface RoomMemberListProps {
   ) => 'online' | 'offline'
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
+  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
   distanceTargets: string[]
   conditionTargets: string[]
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
@@ -52,6 +55,7 @@ export function RoomMemberList({
   getPresenceDotState,
   getStatEntries,
   getResolvedGroupEnvironmentName,
+  getDeviceSessions,
   distanceTargets,
   conditionTargets,
   onApplyDistanceOverride,
@@ -230,6 +234,7 @@ export function RoomMemberList({
                       ))}
                     </div>
                   ) : null}
+                  <ParticipantDeviceList deviceSessions={getDeviceSessions(member.userId)} />
                   <div className="room-selector-profile__status-pills">
                     <span className="room-selector-status-pill environment">
                       <span className="material-symbols-outlined" aria-hidden="true">

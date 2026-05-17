@@ -85,11 +85,15 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
       sessionId: sessionId as UUID,
       actorUserId: user.userId as UUID,
     })
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    const deviceSessionsByUser =
+      wsManager?.getSessionDeviceSessionsSnapshot(sessionId as UUID) || {}
 
     return res.status(200).json({
       presence: scopedPresence.map((entry) => ({
         ...entry,
         role: sessionRoleByUserId.get(entry.userId),
+        deviceSessions: deviceSessionsByUser[entry.userId] || [],
         ...(profiles[entry.userId] || {}),
       })),
       stats,
