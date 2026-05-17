@@ -146,6 +146,7 @@ export interface SessionCooldownExtended {
   extensionMs: number
   previousEndedAt: number | null
   endedAt: number | null
+  extensionCount?: number
 }
 
 export type SessionCooldownExtendedEvent = EventEnvelope<SessionCooldownExtended>

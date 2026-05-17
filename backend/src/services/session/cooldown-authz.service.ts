@@ -22,10 +22,10 @@ export async function resolveCooldownControlAuthorization(
     return { ok: false, message: 'Session not found' }
   }
 
-  if (session.state !== SessionState.ENDED) {
+  if (session.state !== SessionState.COOLDOWN) {
     return {
       ok: false,
-      message: 'Cooldown controls are only available while session is ENDED.',
+      message: 'Cooldown controls are only available while session is COOLDOWN.',
     }
   }
 

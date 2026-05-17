@@ -574,10 +574,36 @@ export function SessionInit({
   const fetchWithAuthGuard = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const response = await window.fetch(input, init)
-      if (response.status === 401 || response.status === 403) {
+
+      if (response.status === 401) {
         forceLogoutToAuthScreen()
-        throw new Error(`Authentication failed (${response.status})`)
+        throw new Error('Authentication failed (401)')
       }
+
+      if (response.status === 403) {
+        // 403 is frequently a normal authorization denial (not an auth expiry).
+        // Only force logout when backend explicitly marks it as unauthorized/authentication failure.
+        try {
+          const payload = (await response
+            .clone()
+            .json()
+            .catch(() => null)) as { code?: string; message?: string } | null
+          const code = payload?.code?.toUpperCase() || ''
+          const message = payload?.message?.toLowerCase() || ''
+          const shouldForceLogout =
+            code === 'UNAUTHORIZED' ||
+            message.includes('authentication required') ||
+            message.includes('missing authorization')
+
+          if (shouldForceLogout) {
+            forceLogoutToAuthScreen()
+            throw new Error('Authentication failed (403)')
+          }
+        } catch {
+          // If payload cannot be parsed, keep caller-level handling for 403.
+        }
+      }
+
       return response
     },
     [forceLogoutToAuthScreen]
@@ -683,6 +709,7 @@ export function SessionInit({
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
   const pauseStats = useStore((state) => state.pauseStats)
+  const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
@@ -2892,6 +2919,15 @@ export function SessionInit({
         ? 'Cooldown controls unlock for players only if the DM disconnects.'
         : 'Only the DM can control cooldown.'
       : undefined
+  const currentCooldownExtensionCount = currentSession
+    ? (cooldownExtensionCounts[currentSession.id] ?? 0)
+    : 0
+  const canExtendCooldown = Boolean(canManageCooldown) && currentCooldownExtensionCount < 3
+  const extendCooldownLockedReason = !canManageCooldown
+    ? cooldownControlLockedReason
+    : currentCooldownExtensionCount >= 3
+      ? 'Cooldown has already been extended 3 times.'
+      : undefined
   // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
   // distinguish the campaign-scoped role from the global account role.
   const effectiveSessionUser =
@@ -3131,6 +3167,8 @@ export function SessionInit({
                   showCooldownControls={cooldownControlVisible}
                   canManageCooldown={Boolean(canManageCooldown)}
                   cooldownControlLockedReason={cooldownControlLockedReason}
+                  canExtendCooldown={canExtendCooldown}
+                  extendCooldownLockedReason={extendCooldownLockedReason}
                   onStartSession={() => handleStartSession(currentSession.id)}
                   onPauseSession={() => handlePauseSession(currentSession.id)}
                   onStopSession={() => handleStopSession(currentSession.id)}

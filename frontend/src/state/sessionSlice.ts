@@ -29,6 +29,7 @@ export interface SessionSlice {
   isGreenroom: boolean
   isLoading: boolean
   pauseStats: Record<UUID, SessionPauseStats>
+  cooldownExtensionCounts: Record<UUID, number>
 
   // Actions
   createSession: (session: Session) => void
@@ -61,6 +62,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   isGreenroom: true,
   isLoading: false,
   pauseStats: {},
+  cooldownExtensionCounts: {},
 
   // Actions
   createSession: (session) =>
@@ -218,6 +220,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           createdAt: event.timestamp,
         },
       },
+      cooldownExtensionCounts: {
+        ...state.cooldownExtensionCounts,
+        [payload.id]: 0,
+      },
       isGreenroom: isGreenroomSessionState(
         state.currentSessionId
           ? sessionById(state.sessions, state.currentSessionId)?.state
@@ -262,6 +268,19 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
                 : existing.endedAt,
         },
       }
+
+      const nextCooldownExtensionCounts = { ...state.cooldownExtensionCounts }
+      if (payload.state === 'COOLDOWN') {
+        nextCooldownExtensionCounts[event.sessionId] =
+          nextCooldownExtensionCounts[event.sessionId] ?? 0
+      } else if (
+        payload.state === 'ACTIVE' ||
+        payload.state === 'IDLE' ||
+        payload.state === 'ENDED'
+      ) {
+        nextCooldownExtensionCounts[event.sessionId] = 0
+      }
+
       const currentSession = state.currentSessionId
         ? sessionById(nextSessions, state.currentSessionId)
         : null
@@ -304,6 +323,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
         pauseStats: { ...state.pauseStats, [event.sessionId]: nextStats },
+        cooldownExtensionCounts: nextCooldownExtensionCounts,
       }
     })
   },
@@ -355,12 +375,16 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        cooldownExtensionCounts: {
+          ...state.cooldownExtensionCounts,
+          [event.sessionId]: 0,
+        },
       }
     })
   },
 
   handleSessionCooldownExtended: (event) => {
-    const payload = event.payload as { endedAt?: number | null }
+    const payload = event.payload as { endedAt?: number | null; extensionCount?: number }
     set((state) => {
       const current = state.sessions[event.sessionId]
       if (!current) {
@@ -371,6 +395,11 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         typeof payload.endedAt === 'number' && Number.isFinite(payload.endedAt)
           ? payload.endedAt
           : current.endedAt
+
+      const nextExtensionCount =
+        typeof payload.extensionCount === 'number' && Number.isFinite(payload.extensionCount)
+          ? payload.extensionCount
+          : (state.cooldownExtensionCounts[event.sessionId] ?? 0) + 1
 
       const nextSessions = {
         ...state.sessions,
@@ -388,6 +417,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        cooldownExtensionCounts: {
+          ...state.cooldownExtensionCounts,
+          [event.sessionId]: nextExtensionCount,
+        },
       }
     })
   },
@@ -421,6 +454,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
+        cooldownExtensionCounts: {
+          ...state.cooldownExtensionCounts,
+          [event.sessionId]: 0,
+        },
       }
     })
   },

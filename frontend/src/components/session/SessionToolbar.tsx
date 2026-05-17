@@ -33,6 +33,8 @@ interface SessionToolbarProps {
   showCooldownControls?: boolean
   canManageCooldown?: boolean
   cooldownControlLockedReason?: string
+  canExtendCooldown?: boolean
+  extendCooldownLockedReason?: string
   onStartSession: () => void
   onPauseSession: () => void
   onStopSession: () => void
@@ -61,6 +63,8 @@ export function SessionToolbar({
   showCooldownControls = false,
   canManageCooldown = false,
   cooldownControlLockedReason,
+  canExtendCooldown = false,
+  extendCooldownLockedReason,
   onStartSession,
   onPauseSession,
   onStopSession,
@@ -407,20 +411,20 @@ export function SessionToolbar({
                         <button
                           type="button"
                           onClick={() => {
-                            if (!canManageCooldown) return
+                            if (!canExtendCooldown) return
                             onExtendCooldown?.()
                           }}
                           className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-extend"
                           aria-label="Extend cooldown"
-                          disabled={!canManageCooldown}
+                          disabled={!canExtendCooldown}
                         >
                           <Icon name="timer" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" align="end">
-                        {canManageCooldown
+                        {canExtendCooldown
                           ? 'Add one more cooldown block'
-                          : cooldownControlLockedReason || 'Cooldown controls are locked'}
+                          : extendCooldownLockedReason || 'Cooldown extension is locked'}
                       </TooltipContent>
                     </Tooltip>
                   </span>

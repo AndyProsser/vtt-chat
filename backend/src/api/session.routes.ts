@@ -1110,6 +1110,8 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
       })
     }
 
+    const nextCooldownExtensionCount = cooldownExtensionCount + 1
+
     const previousSession = await getSession(id as UUID)
     const session = await extendSessionCooldown(
       id as UUID,
@@ -1140,6 +1142,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
           extensionMs: parsedExtensionMs,
           previousEndedAt: previousSession?.endedAt ?? null,
           endedAt: session.endedAt ?? null,
+          extensionCount: nextCooldownExtensionCount,
         },
       })
     }
