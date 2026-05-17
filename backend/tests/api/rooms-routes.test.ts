@@ -513,6 +513,36 @@ describe('rooms routes', () => {
       )
     })
 
+    it('applies ROOM_DELETED audit append before WS broadcasts', async () => {
+      mocks.mockGetRoom.mockResolvedValue(GROUP_ROOM_FIXTURE)
+      mocks.mockGetRooms.mockResolvedValue([ROOM_FIXTURE, GROUP_ROOM_FIXTURE])
+      mocks.mockRoomMemberIds.mockResolvedValue([PLAYER_ID])
+      mocks.mockJoinRoom.mockResolvedValue({
+        sessionId: SESSION_ID,
+        userId: PLAYER_ID,
+        username: 'alice',
+        primaryRoomId: ROOM_FIXTURE.id,
+        state: 'ONLINE',
+        lastSeenAt: 1700000010000,
+      })
+
+      const app = buildAppWithWS()
+      const res = await request(app)
+        .delete(`/api/rooms/${GROUP_ROOM_FIXTURE.id}`)
+        .set('Authorization', 'Bearer token')
+        .send({ sessionId: SESSION_ID })
+
+      expect(res.status).toBe(200)
+
+      const wsManager = app.locals.wsManager
+      expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalled()
+      expect(wsManager.broadcastEventToSession).toHaveBeenCalled()
+
+      const auditCallOrder = mocks.mockAppendSessionAuditEvent.mock.invocationCallOrder[0]
+      const wsCallOrder = wsManager.broadcastEventToSession.mock.invocationCallOrder[0]
+      expect(auditCallOrder).toBeLessThan(wsCallOrder)
+    })
+
     it('returns 400 when attempting to delete greenroom', async () => {
       mocks.mockGetRoom.mockResolvedValue({
         ...GROUP_ROOM_FIXTURE,

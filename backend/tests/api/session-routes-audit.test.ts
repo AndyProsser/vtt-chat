@@ -137,6 +137,12 @@ function buildApp() {
   return app
 }
 
+function buildAppWithWS() {
+  const app = buildApp()
+  app.locals.wsManager = { broadcastEventToSession: vi.fn() }
+  return app
+}
+
 describe('session routes audit appends', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -353,6 +359,52 @@ describe('session routes audit appends', () => {
         roomId: MAIN_ROOM_ID,
       })
     )
+  })
+
+  it('applies SESSION_STATE_CHANGED audit append before WS transition broadcast', async () => {
+    const app = buildAppWithWS()
+
+    mocks.mockGetSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ACTIVE',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockUpdateSessionState.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'PAUSED',
+      createdAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
+      mainRoomId: MAIN_ROOM_ID,
+      mainRoomName: 'Main Room',
+      greenRoomId: '55555555-5555-4555-8555-555555555555',
+      greenRoomName: 'Green Room',
+      targetRoomId: MAIN_ROOM_ID,
+      targetRoomName: 'Main Room',
+      targetState: 'PAUSED',
+      movedUsers: 1,
+    })
+
+    const res = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'PAUSED' })
+
+    expect(res.status).toBe(200)
+
+    const wsManager = app.locals.wsManager
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalled()
+    expect(wsManager.broadcastEventToSession).toHaveBeenCalled()
+
+    const auditCallOrder = mocks.mockAppendSessionAuditEvent.mock.invocationCallOrder[0]
+    const wsCallOrder = wsManager.broadcastEventToSession.mock.invocationCallOrder[0]
+    expect(auditCallOrder).toBeLessThan(wsCallOrder)
   })
 
   it('appends SESSION_COOLDOWN_EXTENDED audit event', async () => {
