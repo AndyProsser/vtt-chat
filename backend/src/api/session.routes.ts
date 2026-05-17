@@ -1154,7 +1154,10 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
       parsedExtensionMs
     )
 
-    return res.status(200).json({ session })
+    return res.status(200).json({
+      session,
+      extensionCount: nextCooldownExtensionCount,
+    })
   } catch (err: any) {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
@@ -1206,8 +1209,57 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
       })
     }
 
+    const users = await getSessionUsers(id as UUID)
+    const transition = await applySessionStateRoomTransition({
+      sessionId: session.id,
+      dmId: session.dmId,
+      nextState: session.state,
+      users: users.map((member) => ({
+        id: member.id,
+        username: member.username,
+      })),
+    })
+
+    const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
+    if (movedToGreenRoom && session.state === SessionStateEnum.ENDED) {
+      await clearRoomMessages(session.id, transition.greenRoomId)
+    }
+
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'ROOM:SESSION_TRANSITION_APPLIED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: transition.targetRoomId,
+        timestamp: Date.now(),
+        payload: {
+          previousState: previousSession?.state || null,
+          nextState: session.state,
+          movedUsers: transition.movedUsers,
+          targetState: transition.targetState,
+          mainRoom: {
+            id: transition.mainRoomId,
+            name: transition.mainRoomName,
+            roomType: RoomType.MAIN,
+          },
+          greenRoom: {
+            id: transition.greenRoomId,
+            name: transition.greenRoomName,
+            roomType: RoomType.GROUP,
+          },
+          targetRoomId: transition.targetRoomId,
+          targetRoomName: transition.targetRoomName,
+          users: users.map((member) => ({
+            userId: member.id,
+            username: member.username,
+          })),
+        },
+      })
+
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
         type: 'SESSION:STATE_CHANGED',

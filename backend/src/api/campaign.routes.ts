@@ -6,6 +6,7 @@ import { createToken, extractTokenFromHeader, verifyToken } from '@/services/aut
 import { createSession } from '@/services/session/core.service'
 import { ensureSessionDefaultRoomsForSession, getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
+import { countSessionCooldownExtensions } from '@/services/session/logs.service'
 import {
   createCampaignForUser,
   createCharacterForCampaign,
@@ -1311,7 +1312,24 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   }
 
   const sessions = await listSessionsByCampaign(campaignId as UUID)
-  return res.status(200).json({ sessions })
+  const sessionsWithCooldownExtensionCount = await Promise.all(
+    sessions.map(async (session) => {
+      if (session.state !== 'COOLDOWN') {
+        return {
+          ...session,
+          cooldownExtensionCount: 0,
+        }
+      }
+
+      const cooldownExtensionCount = await countSessionCooldownExtensions(session.id as UUID)
+      return {
+        ...session,
+        cooldownExtensionCount,
+      }
+    })
+  )
+
+  return res.status(200).json({ sessions: sessionsWithCooldownExtensionCount })
 })
 
 router.get('/:campaignId/spectator/waitlist-status', async (req: Request, res: Response) => {

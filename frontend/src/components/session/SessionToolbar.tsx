@@ -263,8 +263,7 @@ export function SessionToolbar({
   const audioToneClass = toneFromAudioState(livekitState)
 
   // Timer state label text
-  const timerStateLabel =
-    sessionState === 'CLEANUP' ? 'GREENROOM' : sessionState === 'ENDED' ? 'ENDED' : sessionState
+  const timerStateLabel = sessionState
 
   return (
     <TooltipProvider delayDuration={140}>
@@ -423,7 +422,7 @@ export function SessionToolbar({
                       </TooltipTrigger>
                       <TooltipContent side="bottom" align="end">
                         {canExtendCooldown
-                          ? 'Add one more cooldown block'
+                          ? 'Extend cooldown'
                           : extendCooldownLockedReason || 'Cooldown extension is locked'}
                       </TooltipContent>
                     </Tooltip>

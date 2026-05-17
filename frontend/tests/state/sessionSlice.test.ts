@@ -71,6 +71,24 @@ describe('sessionSlice', () => {
       useStore.getState().replaceSessions([])
       expect(useStore.getState().sessions).toEqual({})
     })
+
+    it('hydrates cooldownExtensionCount and leaves extend disabled after refresh when count is capped', () => {
+      useStore.getState().replaceSessions([
+        {
+          ...SAMPLE_SESSION,
+          state: 'COOLDOWN' as any,
+          cooldownExtensionCount: 3,
+        },
+      ])
+
+      const hydratedCount = useStore.getState().cooldownExtensionCounts[SESSION_ID_1]
+      expect(hydratedCount).toBe(3)
+
+      // SessionInit computes canExtendCooldown as canManageCooldown && count < 3.
+      const canManageCooldown = true
+      const canExtendCooldown = Boolean(canManageCooldown) && (hydratedCount ?? 0) < 3
+      expect(canExtendCooldown).toBe(false)
+    })
   })
 
   describe('updateSession', () => {
@@ -220,7 +238,7 @@ describe('sessionSlice', () => {
   })
 
   describe('handleSessionCooldownExtended', () => {
-    it('updates endedAt for an ended session from WS payload', () => {
+    it('moves session into COOLDOWN and updates endedAt from WS payload', () => {
       useStore.getState().createSession({
         ...SAMPLE_SESSION,
         state: 'ENDED' as any,
@@ -235,7 +253,7 @@ describe('sessionSlice', () => {
       useStore.getState().handleSessionCooldownExtended(event)
 
       const session = useStore.getState().sessions[SESSION_ID_1]
-      expect(session!.state).toBe('ENDED')
+      expect(session!.state).toBe('COOLDOWN')
       expect(session!.endedAt).toBe(NOW + 60_000)
     })
   })

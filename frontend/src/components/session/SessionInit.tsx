@@ -710,6 +710,7 @@ export function SessionInit({
   const updateSession = useStore((state) => state.updateSession)
   const pauseStats = useStore((state) => state.pauseStats)
   const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
+  const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
@@ -2659,20 +2660,37 @@ export function SessionInit({
         const payload = (await response.json().catch(() => ({}))) as {
           message?: string
           session?: SessionRecord
+          extensionCount?: number
         }
 
         if (!response.ok) {
+          if (
+            response.status === 409 &&
+            typeof payload.message === 'string' &&
+            /up to 3 times per session/i.test(payload.message)
+          ) {
+            setCooldownExtensionCount(sessionId, 3)
+          }
+
           throw new Error(payload.message || 'Failed to extend cooldown')
         }
 
         if (payload.session) {
           updateSession(sessionId, normalizeSessionRecord(payload.session))
         }
+
+        if (typeof payload.extensionCount === 'number' && Number.isFinite(payload.extensionCount)) {
+          setCooldownExtensionCount(sessionId, payload.extensionCount)
+        }
       } catch (error) {
+        if (error instanceof Error && /up to 3 times per session/i.test(error.message)) {
+          setCooldownExtensionCount(sessionId, 3)
+        }
+
         setError(error instanceof Error ? error.message : 'Failed to extend cooldown')
       }
     },
-    [apiUrl, fetchWithAuthGuard, token, updateSession]
+    [apiUrl, fetchWithAuthGuard, setCooldownExtensionCount, token, updateSession]
   )
 
   const handleConfirmStopSession = async () => {
@@ -2926,7 +2944,7 @@ export function SessionInit({
   const extendCooldownLockedReason = !canManageCooldown
     ? cooldownControlLockedReason
     : currentCooldownExtensionCount >= 3
-      ? 'Cooldown has already been extended 3 times.'
+      ? 'Cooldown extention limit reached'
       : undefined
   // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
   // distinguish the campaign-scoped role from the global account role.

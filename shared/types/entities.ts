@@ -38,6 +38,7 @@ export interface SessionEntity {
   pausedAt?: number
   endedAt?: number
   updatedAt?: number
+  cooldownExtensionCount?: number
 }
 
 export interface RoomEntity {

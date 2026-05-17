@@ -41,6 +41,7 @@ export interface SessionSlice {
   clearSessions: () => void
   clearPauseStats: (sessionId: UUID) => void
   hydrateSessionPauseStats: (session: Session) => void
+  setCooldownExtensionCount: (sessionId: UUID, count: number) => void
 
   // Event handlers
   handleSessionCreated: (event: EventEnvelope) => void
@@ -100,11 +101,26 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       // Hydrate pauseStats from loaded sessions
       const nextPauseStats = { ...state.pauseStats }
+      const nextCooldownExtensionCounts = { ...state.cooldownExtensionCounts }
       for (const session of sessions) {
         nextPauseStats[session.id] = {
           cumulativePauseMs: session.cumulativePauseMs ?? 0,
           pauseCount: session.pauseCount ?? 0,
           pauseStartedAt: session.pauseStartedAt,
+        }
+
+        if (
+          typeof session.cooldownExtensionCount === 'number' &&
+          Number.isFinite(session.cooldownExtensionCount)
+        ) {
+          nextCooldownExtensionCounts[session.id] = Math.max(
+            0,
+            Math.round(session.cooldownExtensionCount)
+          )
+        } else if (session.state !== 'COOLDOWN') {
+          nextCooldownExtensionCounts[session.id] = 0
+        } else {
+          nextCooldownExtensionCounts[session.id] = nextCooldownExtensionCounts[session.id] ?? 0
         }
       }
 
@@ -113,6 +129,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
         pauseStats: nextPauseStats,
+        cooldownExtensionCounts: nextCooldownExtensionCounts,
       }
     }),
 
@@ -138,10 +155,24 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         pauseStartedAt: nextSession.pauseStartedAt,
       }
 
+      const nextCooldownExtensionCounts = { ...state.cooldownExtensionCounts }
+      if (
+        typeof nextSession.cooldownExtensionCount === 'number' &&
+        Number.isFinite(nextSession.cooldownExtensionCount)
+      ) {
+        nextCooldownExtensionCounts[sessionId] = Math.max(
+          0,
+          Math.round(nextSession.cooldownExtensionCount)
+        )
+      } else if (nextSession.state !== 'COOLDOWN') {
+        nextCooldownExtensionCounts[sessionId] = 0
+      }
+
       return {
         sessions: nextSessions,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
         pauseStats: nextPauseStats,
+        cooldownExtensionCounts: nextCooldownExtensionCounts,
       }
     }),
 
@@ -204,6 +235,14 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         },
       }
     }),
+
+  setCooldownExtensionCount: (sessionId, count) =>
+    set((state) => ({
+      cooldownExtensionCounts: {
+        ...state.cooldownExtensionCounts,
+        [sessionId]: Math.max(0, Math.round(Number.isFinite(count) ? count : 0)),
+      },
+    })),
 
   // Event handlers
   handleSessionCreated: (event) => {
