@@ -91,7 +91,9 @@ function isValidTag(value) {
  * Message type validator: must be one of allowed types.
  */
 function isValidMessageType(value) {
-  return value === 'IC' || value === 'OOC' || value === 'WHISPER' || value === 'SYSTEM'
+  return (
+    value === 'IC' || value === 'OOC' || value === 'WHISPER' || value === 'DM' || value === 'SYSTEM'
+  )
 }
 /**
  * Note visibility validator.

@@ -39,6 +39,7 @@ export enum MessageType {
   IC = 'IC',
   OOC = 'OOC',
   WHISPER = 'WHISPER',
+  DM = 'DM',
   SYSTEM = 'SYSTEM',
 }
 

@@ -472,6 +472,7 @@ enum MessageType {
   IC
   OOC
   WHISPER
+  DM
   SYSTEM
 }
 

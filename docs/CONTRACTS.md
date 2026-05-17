@@ -107,7 +107,7 @@ shared/
   types/index.ts             # Core domain types (Role, Session, Room, User, etc.)
   events/
     base.ts                  # EventEnvelope schema + validation rules
-    chat.ts                  # Chat system events (IC, OOC, whisper, typing)
+    chat.ts                  # Chat system events (IC, OOC, whisper, DM, typing)
     session.ts               # Session lifecycle events (IDLE→ACTIVE→PAUSED→ENDED)
     room.ts                  # Room management + presence events
     audio.ts                 # Audio effects + DM overrides + notes
@@ -202,7 +202,7 @@ Archive lock rules:
 
 - `RoomType`: MAIN, GROUP, PRIVATE
 - `NoteVisibility`: DM_ONLY, PLAYERS_VISIBLE, CUSTOM
-- `MessageType`: IC, OOC, WHISPER, SYSTEM
+- `MessageType`: IC, OOC, WHISPER, DM, SYSTEM
 - `PresenceState`: ONLINE, TYPING, SPEAKING, IDLE, OFFLINE
 - `DeviceClass`: DESKTOP, MOBILE, TABLET
 
@@ -287,7 +287,7 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 
 **Chat** (file: `events/chat.ts`)
 
-- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/system, delivery metadata includes room scope, send-time audience, and off-the-record state
+- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/DM/system, delivery metadata includes room scope, send-time audience, and off-the-record state; DM messages are sender + DM only, and private whisper-group messages target the visible private-room audience off the record
 - `CHAT:MESSAGE_EDITED` — Author or DM can edit
 - `CHAT:MESSAGE_DELETED` — Author or DM can delete
 - `CHAT:TYPING_STARTED` — Ephemeral, room-scoped payload, never durable
@@ -346,6 +346,7 @@ Room close/delete sequencing contract:
 | CHAT     | SEND_IC                            | ✅  | ✅     | ❌        |
 | CHAT     | SEND_OOC                           | ✅  | ✅     | ✅        |
 | CHAT     | SEND_WHISPER                       | ✅  | ✅     | ❌        |
+| CHAT     | SEND_DM                            | ❌  | ✅     | ❌        |
 | CHAT     | SEND_SYSTEM                        | ✅  | ❌     | ❌        |
 | CHAT     | EDIT_OWN                           | ✅  | ✅     | ✅        |
 | CHAT     | EDIT_ANY                           | ✅  | ❌     | ❌        |
@@ -459,7 +460,7 @@ All validators are **deterministic, side-effect-free** (suitable for both backen
 
 ### Enums & Types
 
-- `isValidMessageType(value): boolean` — One of IC/OOC/WHISPER/SYSTEM
+- `isValidMessageType(value): boolean` — One of IC/OOC/WHISPER/DM/SYSTEM
 - `isValidNoteVisibility(value): boolean` — One of DM_ONLY/PLAYERS_VISIBLE/CUSTOM
 - `isValidPresenceState(value): boolean` — One of ONLINE/TYPING/SPEAKING/IDLE/OFFLINE
 

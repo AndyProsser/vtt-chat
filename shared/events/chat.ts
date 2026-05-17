@@ -3,7 +3,7 @@
  * Reference: docs/subsystems/CHAT-SYSTEM.md
  *
  * Chat events are room-scoped and role-filtered.
- * Privacy: OOC/IC public to room, Whispers DM-visible only, System messages filtered.
+ * Privacy: OOC/IC public to room, Whispers DM-visible only, DM messages visible to sender + DM, System messages filtered.
  */
 
 import type { UUID, MessageType } from '../types'
@@ -19,7 +19,7 @@ export type ChatEventType =
 
 /**
  * CHAT:MESSAGE_SENT
- * User sends a message (IC, OOC, whisper, or system).
+ * User sends a message (IC, OOC, whisper, DM, or system).
  * Visibility: Role-filtered by type (whispers visible to DM + recipients only).
  */
 export interface ChatMessageSent {

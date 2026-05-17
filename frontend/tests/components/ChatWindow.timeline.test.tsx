@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageType, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { ChatWindow } from '../../src/components/chat/ChatWindow'
+import { MessageInput } from '../../src/components/chat/MessageInput'
 import { MessageList } from '../../src/components/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
@@ -107,6 +108,7 @@ describe('ChatWindow timeline behavior', () => {
         sessionId={SESSION_ID}
         roomId={GREEN_ROOM_ID}
         roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
         user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
         forceMessageType={MessageType.OOC}
       />
@@ -114,7 +116,7 @@ describe('ChatWindow timeline behavior', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/chat/messages/11111111-1111-4111-8111-111111111111?limit=20&roomId=44444444-4444-4444-8444-444444444444&includeCampaignGreenroom=1',
+        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&sessionId=11111111-1111-4111-8111-111111111111',
         expect.anything()
       )
     })
@@ -209,13 +211,13 @@ describe('ChatWindow timeline behavior', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/chat/messages/11111111-1111-4111-8111-111111111111?limit=20',
+        'http://localhost:3000/api/chat/messages/11111111-1111-4111-8111-111111111111?limit=20&sinceLatestStart=1',
         expect.anything()
       )
     })
 
     expect(screen.getByText('Main room action')).toBeTruthy()
-    expect(screen.getByText('[Session Started] Session Alpha')).toBeTruthy()
+    expect(screen.getByText('STARTED')).toBeTruthy()
     expect(screen.queryByText('Greenroom aside')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
@@ -285,5 +287,40 @@ describe('ChatWindow timeline behavior', () => {
     const separators = document.querySelectorAll('.chat-day-separator')
     expect(separators.length).toBe(2)
     expect(screen.getByText('Today action')).toBeTruthy()
+  })
+
+  it('renders the connected message-type bar and whisper picker for players', async () => {
+    render(
+      <MessageInput
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        role={Role.PLAYER}
+        whisperRecipients={[
+          {
+            id: '99999999-9999-4999-8999-999999999999',
+            label: 'Brother Sol',
+            avatarUrl: null,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('radio', { name: 'IC' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'OOC' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'WHISPER' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'DM' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'WHISPER' }))
+
+    expect(await screen.findByText('Whisper to')).toBeTruthy()
+    expect(screen.getByText('Brother Sol')).toBeTruthy()
+  })
+
+  it('hides the DM type button for the DM', () => {
+    render(<MessageInput onSend={vi.fn().mockResolvedValue(undefined)} role={Role.DM} />)
+
+    expect(screen.getByRole('radio', { name: 'IC' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'OOC' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'WHISPER' })).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: 'DM' })).toBeNull()
   })
 })

@@ -3326,6 +3326,7 @@ export function SessionInit({
                             roomId={selectedRoomId}
                             campaignId={selectedCampaign?.id as UUID | undefined}
                             roomName={selectedRoom?.name}
+                            roomType={selectedRoom?.type}
                             user={effectiveSessionUser}
                             messageGroupingWindowMs={messageGroupingWindowMs}
                             sendWsEvent={send}

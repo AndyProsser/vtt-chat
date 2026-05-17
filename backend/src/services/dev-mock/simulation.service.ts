@@ -84,6 +84,7 @@ interface MockSimulationRuntime {
     IC: number[]
     OOC: number[]
     WHISPER: number[]
+    DM: number[]
   }
   /** Active two-device states, keyed by userId. */
   multiDeviceByUserId: Map<UUID, MultiDeviceMockState>
@@ -291,6 +292,7 @@ function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
       IC: [],
       OOC: [],
       WHISPER: [],
+      DM: [],
     },
     multiDeviceByUserId: new Map<UUID, MultiDeviceMockState>(),
     transferByUserId: new Map<UUID, TransferMockState>(),
@@ -630,10 +632,16 @@ function pruneMessageWindow(runtime: MockSimulationRuntime, now: number) {
   runtime.messageSentAtByType.WHISPER = runtime.messageSentAtByType.WHISPER.filter(
     (ts) => ts >= cutoff
   )
+  runtime.messageSentAtByType.DM = runtime.messageSentAtByType.DM.filter((ts) => ts >= cutoff)
 }
 
 function recordMessageSent(runtime: MockSimulationRuntime, type: MessageType, at: number) {
-  if (type === MessageType.IC || type === MessageType.OOC || type === MessageType.WHISPER) {
+  if (
+    type === MessageType.IC ||
+    type === MessageType.OOC ||
+    type === MessageType.WHISPER ||
+    type === MessageType.DM
+  ) {
     runtime.messageSentAtByType[type].push(at)
   }
   pruneMessageWindow(runtime, at)

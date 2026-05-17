@@ -233,6 +233,101 @@ describe('chat routes', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
+  it('sends direct messages to the DM without a recipient target', async () => {
+    const app = buildApp()
+
+    mocks.sendMessage.mockResolvedValueOnce({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
+      authorId: USER_ID,
+      authorUsername: 'alice',
+      content: 'psst dm',
+      type: MessageType.DM,
+      isDmOnly: true,
+      isOffTheRecord: false,
+      visibleTo: [USER_ID, DM_ID],
+      createdAt: 1700000000000,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'psst dm',
+        type: MessageType.DM,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual([USER_ID, DM_ID])
+    expect(mocks.broadcastEventToSession).toHaveBeenCalledWith(
+      SESSION_ID,
+      expect.objectContaining({ type: 'CHAT:MESSAGE_SENT' }),
+      [USER_ID, DM_ID]
+    )
+  })
+
+  it('allows whisper-group chat in a private room without a direct recipient', async () => {
+    const app = buildApp()
+
+    mocks.getRoom.mockResolvedValueOnce({
+      id: ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Whisper Circle',
+      type: 'PRIVATE',
+    })
+    mocks.getSessionPresence.mockResolvedValueOnce([
+      {
+        userId: USER_ID,
+        username: 'alice',
+        state: 'ONLINE',
+        primaryRoomId: ROOM_ID,
+        privateRoomId: ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+      {
+        userId: RECIPIENT_ID,
+        username: 'bea',
+        state: 'ONLINE',
+        primaryRoomId: ROOM_ID,
+        privateRoomId: ROOM_ID,
+        lastSeenAt: Date.now(),
+      },
+    ])
+    mocks.sendMessage.mockResolvedValueOnce({
+      id: MESSAGE_ID,
+      sessionId: SESSION_ID,
+      roomId: ROOM_ID,
+      authorId: USER_ID,
+      authorUsername: 'alice',
+      content: 'whisper circle',
+      type: MessageType.WHISPER,
+      isDmOnly: true,
+      isOffTheRecord: true,
+      visibleTo: [USER_ID, DM_ID, RECIPIENT_ID],
+      targetIds: [RECIPIENT_ID],
+      createdAt: 1700000000000,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'whisper circle',
+        type: MessageType.WHISPER,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage.mock.calls[0][0].isOffTheRecord).toBe(true)
+    expect(mocks.sendMessage.mock.calls[0][0].visibleTo).toEqual(
+      expect.arrayContaining([USER_ID, DM_ID, RECIPIENT_ID])
+    )
+  })
+
   it('sends a message and broadcasts websocket event', async () => {
     const app = buildApp()
 
@@ -278,6 +373,7 @@ describe('chat routes', () => {
     expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID, {
       limit: undefined,
       before: undefined,
+      sinceLatestStart: false,
     })
   })
 
@@ -296,27 +392,71 @@ describe('chat routes', () => {
     })
 
     const response = await request(app)
-      .get(`/api/chat/messages/${SESSION_ID}`)
-      .query({ roomId: ROOM_ID, includeCampaignGreenroom: '1' })
+      .get('/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page')
       .set('Authorization', 'Bearer token')
 
     expect(response.status).toBe(200)
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
-    expect(response.body.pagination).toEqual({
-      hasMore: true,
-      nextBefore: 1700000000000,
-    })
+    expect(response.body.hasMore).toBe(true)
+    expect(response.body.nextBefore).toBe(1700000000000)
     expect(mocks.getCampaignGreenroomMessagesPage).toHaveBeenCalledWith(
-      SESSION_ID,
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       USER_ID,
       'PLAYER',
-      ROOM_ID,
       {
-        limit: undefined,
         before: undefined,
+        limit: 20,
+        since: undefined,
       }
     )
     expect(mocks.getMessagesPage).not.toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
+  })
+
+  it('allows the session owner to fetch room chat even when auth role is not DM', async () => {
+    const app = buildApp()
+
+    mocks.verifyToken.mockReturnValue({
+      userId: DM_ID,
+      username: 'morgan',
+      role: 'PLAYER',
+    })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'DM' })
+    mocks.getMessagesPage.mockResolvedValueOnce({ messages: [{ id: MESSAGE_ID }], hasMore: false })
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .query({ roomId: ROOM_ID })
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.getSessionPresence).not.toHaveBeenCalled()
+    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'DM', ROOM_ID, {
+      limit: undefined,
+      before: undefined,
+      sinceLatestStart: false,
+    })
+  })
+
+  it('returns the visible session timeline when roomId is omitted', async () => {
+    const app = buildApp()
+    mocks.getMessagesPage.mockResolvedValueOnce({
+      messages: [{ id: MESSAGE_ID }],
+      hasMore: false,
+      nextBefore: 1700000000000,
+    })
+
+    const response = await request(app)
+      .get(`/api/chat/messages/${SESSION_ID}`)
+      .set('Authorization', 'Bearer token')
+
+    expect(response.status).toBe(200)
+    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', undefined, {
+      limit: undefined,
+      before: undefined,
+      sinceLatestStart: false,
+    })
+    expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
+    expect(response.body.pagination).toEqual({ hasMore: false, nextBefore: 1700000000000 })
   })
 
   it('restricts whisper delivery to sender, recipient, and DM', async () => {
@@ -397,51 +537,6 @@ describe('chat routes', () => {
 
     const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
     expect(eventArg.userRole).toBe('DM')
-  })
-
-  it('allows the session owner to fetch room chat even when auth role is not DM', async () => {
-    const app = buildApp()
-
-    mocks.verifyToken.mockReturnValue({
-      userId: DM_ID,
-      username: 'morgan',
-      role: 'PLAYER',
-    })
-    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'DM' })
-    mocks.getMessagesPage.mockResolvedValueOnce({ messages: [{ id: MESSAGE_ID }], hasMore: false })
-
-    const response = await request(app)
-      .get(`/api/chat/messages/${SESSION_ID}`)
-      .query({ roomId: ROOM_ID })
-      .set('Authorization', 'Bearer token')
-
-    expect(response.status).toBe(200)
-    expect(mocks.getSessionPresence).not.toHaveBeenCalled()
-    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, DM_ID, 'DM', ROOM_ID, {
-      limit: undefined,
-      before: undefined,
-    })
-  })
-
-  it('returns the visible session timeline when roomId is omitted', async () => {
-    const app = buildApp()
-    mocks.getMessagesPage.mockResolvedValueOnce({
-      messages: [{ id: MESSAGE_ID }],
-      hasMore: false,
-      nextBefore: 1700000000000,
-    })
-
-    const response = await request(app)
-      .get(`/api/chat/messages/${SESSION_ID}`)
-      .set('Authorization', 'Bearer token')
-
-    expect(response.status).toBe(200)
-    expect(mocks.getMessagesPage).toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', undefined, {
-      limit: undefined,
-      before: undefined,
-    })
-    expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
-    expect(response.body.pagination).toEqual({ hasMore: false, nextBefore: 1700000000000 })
   })
 
   it('edits a message and broadcasts update', async () => {

@@ -6,9 +6,12 @@ const mocks = vi.hoisted(() => ({
   deleteSessionMessages: vi.fn(),
   findMessageById: vi.fn(),
   getChatCounts: vi.fn(),
+  listCampaignMessages: vi.fn(),
+  listCampaignMessagesSince: vi.fn(),
   listCampaignGroupRooms: vi.fn(),
   listMessagesBySessionIds: vi.fn(),
   listSessionMessages: vi.fn(),
+  listSessionMessagesSince: vi.fn(),
   findSessionById: vi.fn(),
   listSessionsByCampaign: vi.fn(),
   softDeleteMessageRecord: vi.fn(),
@@ -20,8 +23,11 @@ vi.mock('@/repositories/chat.repository', () => ({
   deleteSessionMessages: mocks.deleteSessionMessages,
   findMessageById: mocks.findMessageById,
   getChatCounts: mocks.getChatCounts,
+  listCampaignMessages: mocks.listCampaignMessages,
+  listCampaignMessagesSince: mocks.listCampaignMessagesSince,
   listMessagesBySessionIds: mocks.listMessagesBySessionIds,
   listSessionMessages: mocks.listSessionMessages,
+  listSessionMessagesSince: mocks.listSessionMessagesSince,
   softDeleteMessageRecord: mocks.softDeleteMessageRecord,
   updateMessageRecord: mocks.updateMessageRecord,
 }))
@@ -95,6 +101,9 @@ describe('chat.service', () => {
       },
     ])
     mocks.listMessagesBySessionIds.mockResolvedValue([])
+    mocks.listSessionMessagesSince.mockResolvedValue([])
+    mocks.listCampaignMessages.mockResolvedValue([])
+    mocks.listCampaignMessagesSince.mockResolvedValue([])
   })
 
   it('creates whisper visibility list and persists message', async () => {
@@ -115,8 +124,41 @@ describe('chat.service', () => {
     expect(mocks.createChatMessageRecord).toHaveBeenCalledTimes(1)
   })
 
+  it('creates direct-message visibility for sender and DM', async () => {
+    const message = await sendMessage({
+      sessionId: SESSION_ID,
+      authorId: AUTHOR_ID,
+      authorUsername: 'author',
+      dmId: DM_ID,
+      content: 'hello dm',
+      type: MessageType.DM,
+    })
+
+    expect(message.isDmOnly).toBe(true)
+    expect(message.visibleTo).toEqual(expect.arrayContaining([AUTHOR_ID, DM_ID]))
+    expect(message.targetIds).toBeUndefined()
+    expect(mocks.createChatMessageRecord).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips persistence for off-the-record whisper-group messages', async () => {
+    const message = await sendMessage({
+      sessionId: SESSION_ID,
+      authorId: AUTHOR_ID,
+      authorUsername: 'author',
+      dmId: DM_ID,
+      content: 'whisper circle',
+      type: MessageType.WHISPER,
+      visibleTo: [AUTHOR_ID, DM_ID],
+      isOffTheRecord: true,
+    })
+
+    expect(message.isOffTheRecord).toBe(true)
+    expect(mocks.createChatMessageRecord).not.toHaveBeenCalled()
+    expect(mocks.getChatCounts).not.toHaveBeenCalled()
+  })
+
   it('filters visible messages by role and whisper audience', async () => {
-    mocks.listSessionMessages.mockResolvedValue([
+    mocks.listSessionMessagesSince.mockResolvedValue([
       makeRepoRow({ type: MessageType.OOC }),
       makeRepoRow({
         id: '66666666-6666-4666-8666-666666666666',
@@ -218,7 +260,7 @@ describe('chat.service', () => {
   })
 
   it('merges greenroom messages across campaign sessions', async () => {
-    mocks.listMessagesBySessionIds.mockResolvedValue([
+    mocks.listCampaignMessages.mockResolvedValue([
       makeRepoRow({
         id: '12121212-1212-4121-8121-121212121212',
         sessionId: SESSION_ID,
@@ -252,6 +294,7 @@ describe('chat.service', () => {
     expect(result.map((message) => message.id)).toEqual([
       '12121212-1212-4121-8121-121212121212',
       '13131313-1313-4131-8131-131313131313',
+      '14141414-1414-4141-8141-141414141414',
     ])
   })
 })

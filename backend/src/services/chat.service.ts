@@ -52,7 +52,11 @@ function toVisibilityClass(params: {
     return 'SYSTEM'
   }
 
-  if (params.type === MessageType.WHISPER || params.isOffTheRecord) {
+  if (
+    params.type === MessageType.WHISPER ||
+    params.type === MessageType.DM ||
+    params.isOffTheRecord
+  ) {
     return 'PRIVATE'
   }
 
@@ -101,18 +105,25 @@ function computeVisibility(
 ): ChatVisibilityPayload {
   const visibility: ChatVisibilityPayload = roomId ? { roomId } : {}
 
-  if (visibleAudience && visibleAudience.length > 0) {
-    visibility.visibleTo = Array.from(new Set(visibleAudience))
+  const audience = Array.from(new Set(visibleAudience ?? []))
+  if (audience.length > 0) {
+    visibility.visibleTo = audience
+  }
+
+  if (type === MessageType.DM) {
+    visibility.visibleTo = Array.from(new Set([authorId, dmId, ...audience]))
+    return visibility
   }
 
   if (type !== MessageType.WHISPER) {
     return visibility
   }
 
-  const visibleTo = new Set<UUID>([authorId, dmId])
+  const visibleTo = new Set<UUID>([authorId, dmId, ...audience])
   if (recipientId) visibleTo.add(recipientId)
   visibility.visibleTo = Array.from(visibleTo)
-  visibility.targetIds = recipientId ? [recipientId] : undefined
+  const targetIds = audience.filter((userId) => userId !== authorId && userId !== dmId)
+  visibility.targetIds = targetIds.length > 0 ? targetIds : recipientId ? [recipientId] : undefined
 
   return visibility
 }
@@ -177,7 +188,7 @@ function mapStoredMessage(row: {
   authorId: string
   authorUsername: string
   content: string
-  type: 'IC' | 'OOC' | 'WHISPER' | 'SYSTEM'
+  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown
@@ -266,11 +277,15 @@ export async function sendMessage(params: {
     authorUsername: resolvedAuthorUsername,
     content,
     type,
-    isDmOnly: type === MessageType.WHISPER,
+    isDmOnly: type === MessageType.WHISPER || type === MessageType.DM,
     isOffTheRecord: isOffTheRecord ?? false,
     visibleTo: visibility.visibleTo,
     targetIds: visibility.targetIds,
     createdAt: Date.now(),
+  }
+
+  if (message.isOffTheRecord) {
+    return message
   }
 
   const visibilityClass = toVisibilityClass({

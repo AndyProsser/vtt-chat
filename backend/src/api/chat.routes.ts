@@ -15,7 +15,7 @@ import type { StoredMessage } from '@/types/chat.types'
 import { isValidUUID, isValidMessageContent, isValidMessageType } from '@shared'
 import { ErrorCode } from '@shared'
 import type { UUID } from '@shared'
-import { MessageType, SessionState } from '@shared'
+import { MessageType, RoomType, SessionState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
@@ -183,10 +183,10 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     }
     const requesterRole = authz.role
 
-    if (type === MessageType.IC && requesterRole === 'SPECTATOR') {
+    if ((type === MessageType.IC || type === MessageType.DM) && requesterRole === 'SPECTATOR') {
       return res
         .status(403)
-        .json({ code: ErrorCode.FORBIDDEN, message: 'Spectators may not send IC messages' })
+        .json({ code: ErrorCode.FORBIDDEN, message: 'Spectators may not send chat messages' })
     }
     if (type === MessageType.WHISPER && requesterRole === 'SPECTATOR') {
       return res
@@ -212,10 +212,12 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     }
 
     if (room.type === 'PRIVATE') {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'Whisper bubble does not allow chat logging or message persistence',
-      })
+      if (type !== MessageType.WHISPER) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Whisper bubble only allows whisper messages',
+        })
+      }
     }
 
     if (requesterRole !== 'DM') {
@@ -240,6 +242,14 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    if (room.type === RoomType.PRIVATE && type !== MessageType.WHISPER) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Whisper group chat only supports whisper messages',
+        field: 'type',
+      })
+    }
+
     if (session.state !== SessionState.ACTIVE && !allowGreenroomChatOutsideActive) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,
@@ -247,7 +257,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    if (type === MessageType.WHISPER) {
+    if (type === MessageType.WHISPER && room.type !== RoomType.PRIVATE) {
       if (!recipientId || !isValidUUID(recipientId)) {
         return res.status(400).json({
           code: ErrorCode.INVALID_INPUT,
@@ -258,7 +268,15 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     }
 
     let visibleTo: UUID[] | undefined
-    if (type === MessageType.WHISPER) {
+    let isOffTheRecord = false
+    if (type === MessageType.WHISPER && room.type === RoomType.PRIVATE) {
+      visibleTo = await resolveRoomAudience({
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        dmId: session.dmId,
+      })
+      isOffTheRecord = true
+    } else if (type === MessageType.WHISPER) {
       const presence = await getSessionPresence(sessionId as UUID)
       const recipientPresence = presence.find((entry) => entry.userId === (recipientId as UUID))
       const recipientIsDm = (recipientId as UUID) === session.dmId
@@ -272,6 +290,8 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       }
 
       visibleTo = uniqueVisibleAudience([effective.userId, session.dmId, recipientId as UUID])
+    } else if (type === MessageType.DM) {
+      visibleTo = uniqueVisibleAudience([effective.userId, session.dmId])
     } else {
       visibleTo = await resolveRoomAudience({
         sessionId: sessionId as UUID,
@@ -291,6 +311,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       type,
       recipientId: recipientId as UUID | undefined,
       visibleTo,
+      isOffTheRecord,
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager

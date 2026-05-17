@@ -26,24 +26,27 @@ interface MessageListProps {
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 
-const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'system'> = {
+const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'> = {
   [MessageType.IC]: 'ic',
   [MessageType.OOC]: 'ooc',
   [MessageType.WHISPER]: 'whisper',
+  [MessageType.DM]: 'dm',
   [MessageType.SYSTEM]: 'system',
 }
 
-const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'system', string> = {
+const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
   ic: 'swords',
   ooc: 'chat_bubble',
   whisper: 'visibility_off',
+  dm: 'mail',
   system: 'info',
 }
 
-const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'system', string> = {
+const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
   ic: 'In Character',
   ooc: 'Out of Character',
   whisper: 'Whisper',
+  dm: 'DM',
   system: 'System',
 }
 
@@ -257,28 +260,33 @@ export function MessageList({
             : authorProfile?.displayName || msg.authorUsername || 'Unknown'
           const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
           const whisperTargetNames =
-            msg.type === MessageType.WHISPER &&
+            (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) &&
             Array.isArray(msg.targetIds) &&
             msg.targetIds.length > 0
               ? msg.targetIds
                   .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
-                  .join(', ')
-              : null
-          const whisperAudience =
-            msg.type === MessageType.WHISPER && whisperTargetNames ? whisperTargetNames : null
-          const isDmWhisper =
-            msg.type === MessageType.WHISPER &&
-            Boolean(sessionDmId) &&
-            Boolean(
-              msg.authorId === sessionDmId ||
-              (Array.isArray(msg.targetIds) && msg.targetIds.includes(sessionDmId))
-            )
+                  .filter((name) => name.trim().length > 0)
+              : []
           const whisperRouteText =
-            msg.type === MessageType.WHISPER && whisperAudience && (isSelf || isDmViewer)
-              ? whisperAudience
-              : null
+            msg.type === MessageType.DM
+              ? 'DM'
+              : msg.type === MessageType.WHISPER && whisperTargetNames.length === 1
+                ? whisperTargetNames[0]
+                : null
+          const whisperRouteLines =
+            msg.type === MessageType.WHISPER && whisperTargetNames.length > 1
+              ? whisperTargetNames
+              : []
+          const isDmWhisper =
+            msg.type === MessageType.DM ||
+            ((msg.type === MessageType.WHISPER || msg.type === MessageType.DM) &&
+              Boolean(sessionDmId) &&
+              Boolean(
+                msg.authorId === sessionDmId ||
+                (Array.isArray(msg.targetIds) && msg.targetIds.includes(sessionDmId))
+              ))
           const bubbleWhisperClass =
-            msg.type === MessageType.WHISPER && isDmWhisper
+            (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) && isDmWhisper
               ? 'chat-message__bubble--whisper-dm'
               : ''
           const typeIconClass = `chat-message__type-icon--${variant}`
@@ -501,25 +509,31 @@ export function MessageList({
                         {msg.editedAt ? 'edited · ' : ''}
                         {formatRelativeTime(msg.createdAt)}
                       </div>
-                      {whisperRouteText ? (
+                      {whisperRouteLines.length > 0 ? (
+                        <div
+                          className={`chat-message__whisper-route chat-message__whisper-route--stacked ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                        >
+                          {whisperRouteLines.map((line, index) => (
+                            <div
+                              key={`${msg.id}-whisper-${index}`}
+                              className="chat-message__whisper-route-line"
+                            >
+                              <span className="chat-message__whisper-route-label">{line}</span>
+                              <span className="chat-message__whisper-connector" aria-hidden="true">
+                                <span className="material-symbols-outlined" aria-hidden="true">
+                                  subdirectory_arrow_right
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : whisperRouteText ? (
                         <div
                           className={`chat-message__whisper-route ${isSelf ? 'chat-message__whisper-route--outgoing' : 'chat-message__whisper-route--incoming'} ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
                         >
-                          {isSelf ? (
-                            <span className="chat-message__whisper-route-label">
-                              {whisperRouteText}
-                            </span>
-                          ) : null}
-                          <span className="chat-message__whisper-connector" aria-hidden="true">
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              {isSelf ? 'subdirectory_arrow_left' : 'subdirectory_arrow_right'}
-                            </span>
+                          <span className="chat-message__whisper-route-label">
+                            {whisperRouteText}
                           </span>
-                          {!isSelf ? (
-                            <span className="chat-message__whisper-route-label">
-                              {whisperRouteText}
-                            </span>
-                          ) : null}
                         </div>
                       ) : null}
                     </div>

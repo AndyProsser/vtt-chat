@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
-import { MessageType, Role } from '@shared'
+import { MessageType, Role, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { isGreenRoomName, ROOM_NAMES } from '../../constants/roomPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
@@ -23,6 +23,7 @@ interface ChatWindowProps {
   roomId: UUID
   campaignId?: UUID
   roomName?: string
+  roomType?: RoomType
   user: { id: UUID; username: string; role: Role | string }
   messageGroupingWindowMs?: number
   forceMessageType?: MessageType
@@ -64,6 +65,7 @@ export function ChatWindow({
   roomId,
   campaignId,
   roomName,
+  roomType,
   user,
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
   forceMessageType,
@@ -430,6 +432,7 @@ export function ChatWindow({
         {
           username: string
           characterName?: string | null
+          avatarUrl?: string | null
           role?: Role | string
           primaryRoomId?: UUID
         },
@@ -444,12 +447,12 @@ export function ChatWindow({
           return false
         }
 
-        if (user.role === Role.DM || String(user.role) === 'DM') {
-          return participant.primaryRoomId === roomId
+        if (participantUserId === dmId) {
+          return false
         }
 
-        if (dmId && participantUserId === dmId) {
-          return true
+        if (user.role === Role.DM || String(user.role) === 'DM') {
+          return participant.primaryRoomId === roomId
         }
 
         return participant.primaryRoomId === roomId
@@ -458,8 +461,9 @@ export function ChatWindow({
         id: participantUserId,
         label:
           participant.characterName && participant.characterName.trim().length > 0
-            ? `${participant.characterName} (${participant.username})`
+            ? participant.characterName
             : participant.username,
+        avatarUrl: participant.avatarUrl,
       }))
       .sort((left, right) => left.label.localeCompare(right.label))
   }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
@@ -810,6 +814,7 @@ export function ChatWindow({
         disabled={isLoading}
         forceMessageType={forceMessageType}
         whisperRecipients={whisperRecipients}
+        roomType={roomType}
       />
     </section>
   )

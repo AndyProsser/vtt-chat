@@ -50,6 +50,7 @@ var MessageType
   MessageType['IC'] = 'IC'
   MessageType['OOC'] = 'OOC'
   MessageType['WHISPER'] = 'WHISPER'
+  MessageType['DM'] = 'DM'
   MessageType['SYSTEM'] = 'SYSTEM'
 })(MessageType || (exports.MessageType = MessageType = {}))
 var PresenceState
