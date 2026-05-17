@@ -3448,6 +3448,8 @@ export function SessionInit({
         messageGroupingWindowMs={messageGroupingWindowMs}
         onMessageGroupingWindowChange={setMessageGroupingWindowMs}
         showExitSessionModal={showExitSessionModal}
+        currentSessionState={currentSession?.state}
+        effectiveSessionRole={effectiveSessionRole}
         exitUpgradePassword={exitUpgradePassword}
         onExitUpgradePasswordChange={setExitUpgradePassword}
         exitUpgradeLoading={exitUpgradeLoading}

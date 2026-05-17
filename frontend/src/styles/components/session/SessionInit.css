@@ -410,6 +410,15 @@
   padding: 1rem;
 }
 
+.session-modal-backdrop--top-offset {
+  align-items: flex-start;
+  padding-top: 112px;
+}
+
+.session-modal--confirm-dialog {
+  width: min(520px, 100%);
+}
+
 /* Radix Dialog variants — overlay is pure backdrop, content is self-centered */
 .session-modal-backdrop--overlay {
   display: block;
@@ -613,6 +622,10 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.session-action-row--confirm-dialog {
+  justify-content: flex-end;
 }
 
 .session-action-row .session-button {

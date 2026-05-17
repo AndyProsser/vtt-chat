@@ -28,6 +28,7 @@ var SessionState
   SessionState['IDLE'] = 'IDLE'
   SessionState['ACTIVE'] = 'ACTIVE'
   SessionState['PAUSED'] = 'PAUSED'
+  SessionState['COOLDOWN'] = 'COOLDOWN'
   SessionState['ENDED'] = 'ENDED'
   SessionState['CLEANUP'] = 'CLEANUP'
 })(SessionState || (exports.SessionState = SessionState = {}))

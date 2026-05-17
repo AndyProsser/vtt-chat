@@ -1,6 +1,6 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import type { UUID } from '@shared'
+import type { Role, SessionState, UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import type { Session as SessionRecord } from '@/types/session'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
@@ -71,6 +71,8 @@ type SessionInitModalsProps = {
   messageGroupingWindowMs: number
   onMessageGroupingWindowChange: (value: number) => void
   showExitSessionModal: boolean
+  currentSessionState?: SessionState | null
+  effectiveSessionRole: Role
   exitUpgradePassword: string
   onExitUpgradePasswordChange: (value: string) => void
   exitUpgradeLoading: boolean
@@ -85,6 +87,18 @@ type SessionInitModalsProps = {
 }
 
 export function SessionInitModals(props: SessionInitModalsProps) {
+  const shouldWarnDmDuringActivePlay =
+    props.effectiveSessionRole === 'DM' &&
+    (props.currentSessionState === 'ACTIVE' || props.currentSessionState === 'PAUSED')
+  const shouldWarnDmDuringWrapUp =
+    props.effectiveSessionRole === 'DM' && props.currentSessionState === 'COOLDOWN'
+
+  const leaveSessionWarning = shouldWarnDmDuringActivePlay
+    ? 'If you leave now, everyone gets the surprise ending. Even if they were mid-scene.'
+    : shouldWarnDmDuringWrapUp
+      ? 'If you can, stick around until the wrap-up finishes. The curtain is already falling.'
+      : null
+
   const playerInviteUrl = props.settingsData
     ? `${window.location.origin}/join/${encodeURIComponent(props.settingsData.inviteCode)}`
     : ''
@@ -836,19 +850,30 @@ export function SessionInitModals(props: SessionInitModalsProps) {
         </DialogPrimitive.Root>
 
         {props.showExitSessionModal ? (
-          <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal-backdrop session-modal-backdrop--top-offset"
+            role="presentation"
+          >
             <div
-              className="session-modal"
+              className="session-modal session-modal--confirm-dialog"
               role="dialog"
               aria-modal="true"
               aria-label="Exit session"
             >
               <h4 className="session-inline-form-title">Leave Session</h4>
+              {leaveSessionWarning ? (
+                <p className="session-card-subtitle session-card-subtitle--warn">
+                  {leaveSessionWarning}
+                </p>
+              ) : null}
               {props.user.authType === 'GUEST' ? (
                 <>
                   <p className="session-card-subtitle">
-                    You are on a guest account. Add a password now to upgrade before exit, or skip
-                    to sign out. Skipping requires using your invite URL again to return.
+                    Add a password now to save this guest account before you leave. Or skip and sign
+                    out.
+                  </p>
+                  <p className="session-card-subtitle">
+                    If you skip, you will need your invite link to get back in.
                   </p>
 
                   <label className="session-label" htmlFor="exit-upgrade-password">
@@ -868,7 +893,7 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                     <p className="session-card-subtitle">{props.exitUpgradeError}</p>
                   ) : null}
 
-                  <div className="session-action-row">
+                  <div className="session-action-row session-action-row--confirm-dialog">
                     <button
                       type="button"
                       className="session-button session-button-neutral"
@@ -897,11 +922,11 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                 </>
               ) : (
                 <>
+                  <p className="session-card-subtitle">Leave now and go back to campaign select?</p>
                   <p className="session-card-subtitle">
-                    Leave this session and return to the campaign selector? Unsaved local UI state
-                    may be lost.
+                    Any unsaved screen changes on this page will disappear.
                   </p>
-                  <div className="session-action-row">
+                  <div className="session-action-row session-action-row--confirm-dialog">
                     <button
                       type="button"
                       className="session-button session-button-neutral"
@@ -925,23 +950,23 @@ export function SessionInitModals(props: SessionInitModalsProps) {
 
         {props.showStopSessionModal ? (
           <div
-            className="session-modal-backdrop"
+            className="session-modal-backdrop session-modal-backdrop--top-offset"
             role="presentation"
             onClick={props.onCloseStopSession}
           >
             <div
-              className="session-modal"
+              className="session-modal session-modal--confirm-dialog"
               role="dialog"
               aria-modal="true"
               aria-label="End session"
               onClick={(event) => event.stopPropagation()}
             >
               <h4 className="session-inline-form-title">End Session</h4>
+              <p className="session-card-subtitle">End this session for everyone?</p>
               <p className="session-card-subtitle">
-                End this session now? This closes the current chapter for everyone and moves players
-                back to greenroom/offline state.
+                This ends tonight's chapter for the whole table. Final scene, then credits.
               </p>
-              <div className="session-action-row">
+              <div className="session-action-row session-action-row--confirm-dialog">
                 <button
                   type="button"
                   className="session-button session-button-neutral"
