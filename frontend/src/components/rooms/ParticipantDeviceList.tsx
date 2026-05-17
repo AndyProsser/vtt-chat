@@ -4,30 +4,33 @@ interface ParticipantDeviceListProps {
   deviceSessions?: DeviceSessionEntity[]
 }
 
+/**
+ * Compact icon row rendered below the avatar in the member profile card.
+ * Only shown when a user has more than one device connected.
+ * Max 2 devices in practice; fits within the 3rem avatar column.
+ */
 export function ParticipantDeviceList({ deviceSessions }: ParticipantDeviceListProps) {
   if (!deviceSessions || deviceSessions.length <= 1) {
     return null
   }
 
   return (
-    <div className="room-selector-profile__devices" aria-label="Connected devices">
-      <span className="room-selector-profile__devices-title">Devices</span>
-      <ul className="room-selector-profile__devices-list">
-        {deviceSessions.map((device) => (
-          <li key={device.deviceSessionId} className="room-selector-profile__devices-item">
-            <span
-              className={`room-selector-profile__devices-status ${
-                device.isActive
-                  ? 'room-selector-profile__devices-status--active'
-                  : 'room-selector-profile__devices-status--muted'
-              }`}
-            >
-              {device.isActive ? 'Active' : 'Muted'}
-            </span>
-            <span className="room-selector-profile__devices-label">{device.label}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="room-selector-profile__devices" aria-label="Connected devices">
+      {deviceSessions.map((device) => (
+        <li
+          key={device.deviceSessionId}
+          className="room-selector-profile__device-row"
+          title={`${device.label} — ${device.isActive ? 'Active' : 'Muted'}`}
+        >
+          <span
+            className={`material-symbols-outlined room-selector-profile__device-mic-icon ${device.isActive ? 'is-active' : 'is-muted'}`}
+            aria-label={device.isActive ? 'Active mic' : 'Muted'}
+          >
+            {device.isActive ? 'mic' : 'mic_off'}
+          </span>
+          <span className="room-selector-profile__device-label">{device.label}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

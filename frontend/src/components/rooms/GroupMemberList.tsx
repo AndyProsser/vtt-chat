@@ -185,19 +185,22 @@ export function GroupMemberList({
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
             <TooltipContent side="right" className="room-selector-profile-tooltip">
               <div className="room-selector-profile">
-                <div className="room-selector-profile__avatar" aria-hidden="true">
-                  {member.avatarUrl ? (
-                    <img src={member.avatarUrl} alt="" />
-                  ) : (
-                    (member.characterName || member.username).charAt(0).toUpperCase()
-                  )}
-                  {isMuted ? (
-                    <span className="room-selector-profile__avatar-muted-badge">
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        mic_off
+                <div className="room-selector-profile__avatar-col">
+                  <div className="room-selector-profile__avatar" aria-hidden="true">
+                    {member.avatarUrl ? (
+                      <img src={member.avatarUrl} alt="" />
+                    ) : (
+                      (member.characterName || member.username).charAt(0).toUpperCase()
+                    )}
+                    {isMuted ? (
+                      <span className="room-selector-profile__avatar-muted-badge">
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          mic_off
+                        </span>
                       </span>
-                    </span>
-                  ) : null}
+                    ) : null}
+                  </div>
+                  <ParticipantDeviceList deviceSessions={getDeviceSessions(member.userId)} />
                 </div>
                 <div className="room-selector-profile__meta">
                   <div className="room-selector-profile__title-row">
@@ -242,7 +245,6 @@ export function GroupMemberList({
                       ))}
                     </div>
                   ) : null}
-                  <ParticipantDeviceList deviceSessions={getDeviceSessions(member.userId)} />
                   <div className="room-selector-profile__status-pills">
                     <span className="room-selector-status-pill environment">
                       <span className="material-symbols-outlined" aria-hidden="true">

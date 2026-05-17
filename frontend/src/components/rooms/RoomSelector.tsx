@@ -1307,21 +1307,26 @@ export function RoomSelector({
                 </TooltipTrigger>
                 <TooltipContent side="right" className="room-selector-profile-tooltip">
                   <div className="room-selector-profile">
-                    <div className="room-selector-profile__avatar" aria-hidden="true">
-                      {dmParticipant.avatarUrl ? (
-                        <img src={dmParticipant.avatarUrl} alt="" />
-                      ) : (
-                        (dmParticipant.characterName || dmParticipant.username)
-                          .charAt(0)
-                          .toUpperCase()
-                      )}
-                      {dmParticipant.isMuted ? (
-                        <span className="room-selector-profile__avatar-muted-badge">
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            mic_off
+                    <div className="room-selector-profile__avatar-col">
+                      <div className="room-selector-profile__avatar" aria-hidden="true">
+                        {dmParticipant.avatarUrl ? (
+                          <img src={dmParticipant.avatarUrl} alt="" />
+                        ) : (
+                          (dmParticipant.characterName || dmParticipant.username)
+                            .charAt(0)
+                            .toUpperCase()
+                        )}
+                        {dmParticipant.isMuted ? (
+                          <span className="room-selector-profile__avatar-muted-badge">
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              mic_off
+                            </span>
                           </span>
-                        </span>
-                      ) : null}
+                        ) : null}
+                      </div>
+                      <ParticipantDeviceList
+                        deviceSessions={getDeviceSessions(dmParticipant.userId)}
+                      />
                     </div>
                     <div className="room-selector-profile__meta">
                       <div className="room-selector-profile__title-row">
@@ -1353,9 +1358,6 @@ export function RoomSelector({
                         </span>
                       ) : null}
                       <p>{getParticipantMetaLineForRoom(dmParticipant)}</p>
-                      <ParticipantDeviceList
-                        deviceSessions={getDeviceSessions(dmParticipant.userId)}
-                      />
                       <div className="room-selector-profile__status-pills">
                         {dmParticipant.isSpeaking ? (
                           <span className="room-selector-status-pill speaking">
