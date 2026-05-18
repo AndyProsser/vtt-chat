@@ -39,7 +39,7 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 **Examples:**
 
 - **Session:**
-  - `session.state ∈ { IDLE, ACTIVE, PAUSED, ENDED, CLEANUP }`
+  - `session.state ∈ { IDLE, ACTIVE, PAUSED, COOLDOWN, ENDED, CLEANUP }`
   - `session.hasEnded: boolean` (optional helper)
   - `session.inactiveAnchorAt: ISO8601 | null` (first DM/player greenroom join for next-session readiness timer)
   - `session.startedAt: ISO8601 | null` (active timer anchor)
@@ -49,7 +49,7 @@ This document defines **where state lives**, **who is authoritative**, and **whi
   - `session.currentPauseStartedAt: ISO8601 | null`
   - `session.cooldownDurationMs: number` (default 60000, configurable 1-60 minutes)
   - `session.cooldownEndsAt: ISO8601 | null`
-  - On session `ACTIVE` → `PAUSED` or `ENDED`: per-session audio effects/conditions persisted in backend snapshot for restore on resume or cleanup.
+  - On session `ACTIVE` → `PAUSED` or `COOLDOWN`: per-session audio effects/conditions persisted in backend snapshot for restore on resume or cleanup.
 - **Users (players, DM, spectators):**
   - `user.role ∈ { DM, PLAYER, SPECTATOR }`
   - `user.presence ∈ { CONNECTED, DISCONNECTED }`
@@ -200,7 +200,7 @@ Per user (PLAYER/DM/SPECTATOR):
 - Spectators may join only after at least one DM/player has established the campaign as active for a playable cycle (not cold-empty `IDLE`).
 - On session `IDLE`, `PAUSED`, or `CLEANUP`:
   - Spectators see a **wait screen**.
-- During `ENDED` cooldown:
+- During `COOLDOWN`:
   - Spectators can participate only while cooldown is running.
   - On cooldown expiry/cancel, spectators are disconnected and returned to waiting flow.
 - Audio steering and device settings:
@@ -445,13 +445,13 @@ The topbar timer always represents elapsed/remaining time for the current lifecy
 - `IDLE`: show elapsed time since first DM/player joined greenroom membership for next-session readiness; no popper.
 - `ACTIVE`: reset to `00:00` at start and show active elapsed time.
 - `PAUSED`: topbar primary timer shows paused elapsed duration in paused color; active elapsed continues in background.
-- `ENDED`: topbar timer shows cooldown countdown to zero.
+- `COOLDOWN`: topbar timer shows cooldown countdown to zero.
 
 Timer popper behavior:
 
-- Available in `ACTIVE`, `PAUSED`, and `ENDED` only.
+- Available in `ACTIVE`, `PAUSED`, and `COOLDOWN` only.
 - Live-updating values while open.
-- Shows: state, start timestamp, cumulative paused duration, pause count, expected end timestamp, time left, and (in `ENDED`) end timestamp plus cooldown remaining.
+- Shows: state, start timestamp, cumulative paused duration, pause count, expected end timestamp, time left, and (in `COOLDOWN`) end timestamp plus cooldown remaining.
 - Expected end timestamp is computed from session duration source (`session override` else campaign default) and then rounded to nearest 15 minutes.
 
 Consistency and recovery:

@@ -120,6 +120,24 @@ Policy and pipeline contract for post-session recording, transcription, and summ
 - Restart-safe checkpoint/resume rules
 - Artifact/status model and dependency ordering
 
+### [Session State Machine Contract](changes/STATE-MACHINE.md)
+
+Canonical lifecycle and transition contract for `IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, and `CLEANUP`.
+
+**Topics:**
+
+- Session transition graph and invalid-transition behavior
+- Spectator/cooldown lifecycle rules
+- State authority and reconnect expectations
+
+### [Operator Runbook](operations/RUNBOOK.md)
+
+Phase 0 operational procedures for restart, backup/restore, incident triage, and log analysis.
+
+### [Telemetry Matrix](operations/TELEMETRY-MATRIX.md)
+
+Phase 0 telemetry coverage matrix mapping signal families to owners, consumers, and alert priorities.
+
 ---
 
 ## Quick Reference

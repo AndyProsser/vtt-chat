@@ -28,10 +28,10 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 
 **Acceptance Criteria**:
 
-- [ ] State machine contract is locked (`IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, `CLEANUP`)
-- [ ] Transition rules are enforced at API layer (current implementation returns 409 on invalid transitions)
-- [ ] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
-- [ ] Frontend renders bookends correctly after refresh/reconnect
+- [x] State machine contract is locked (`IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, `CLEANUP`)
+- [x] Transition rules are enforced at API layer (current implementation returns 409 on invalid transitions)
+- [x] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
+- [x] Frontend renders bookends correctly after refresh/reconnect
 - [ ] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
 - [ ] Post-session chat timer and cooldown window work end-to-end
 
@@ -62,6 +62,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 **Related Docs**:
 
 - [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
+- [docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md](docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md)
 
 ---
 
@@ -76,7 +77,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 **Acceptance Criteria**:
 
 - [ ] Backend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
-- [ ] Frontend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
+- [x] Frontend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
 - [ ] Release-gate reporting is automated and enforced in CI
 - [ ] Session lifecycle coverage includes: start → pause → resume → end → cleanup
 - [ ] Audio state recovery coverage includes: environment + conditions + distance + mute
@@ -91,7 +92,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 
 ### W3-Operatisation: Runbooks and Telemetry Matrix
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine, W11-Redis-First
 
@@ -99,14 +100,16 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 
 **Acceptance Criteria**:
 
-- [ ] Operator runbook exists for: restart, backup/restore, incident triage, log analysis
-- [ ] Telemetry matrix documents what is tracked, why, and how it is consumed
+- [x] Operator runbook exists for: restart, backup/restore, incident triage, log analysis
+- [x] Telemetry matrix documents what is tracked, why, and how it is consumed
 - [ ] Restart-survival validation confirms telemetry/diagnostic sinks persist across restarts
 - [ ] Backup/restore drill is executed and documented as reproducible
 
 **Related Docs**:
 
 - [docs/operations/](docs/operations/)
+- [docs/operations/RUNBOOK.md](docs/operations/RUNBOOK.md)
+- [docs/operations/TELEMETRY-MATRIX.md](docs/operations/TELEMETRY-MATRIX.md)
 
 ---
 
