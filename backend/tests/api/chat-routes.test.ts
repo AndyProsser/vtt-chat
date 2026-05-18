@@ -511,6 +511,39 @@ describe('chat routes', () => {
     expect(mocks.getMessagesPage).not.toHaveBeenCalledWith(SESSION_ID, USER_ID, 'PLAYER', ROOM_ID)
   })
 
+  it('applies server-side today-only boundary for campaign greenroom pagination', async () => {
+    const app = buildApp()
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-01-15T13:45:20.000Z'))
+
+      mocks.getCampaignGreenroomMessagesPage.mockResolvedValueOnce({
+        messages: [{ id: MESSAGE_ID }],
+        hasMore: false,
+        nextBefore: 1768464000000,
+      })
+
+      const response = await request(app)
+        .get('/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page')
+        .query({ todayOnly: '1' })
+        .set('Authorization', 'Bearer token')
+
+      expect(response.status).toBe(200)
+      expect(mocks.getCampaignGreenroomMessagesPage).toHaveBeenCalledWith(
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        USER_ID,
+        'PLAYER',
+        {
+          before: undefined,
+          limit: 20,
+          since: Date.UTC(2026, 0, 15, 0, 0, 0, 0),
+        }
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('allows the session owner to fetch room chat even when auth role is not DM', async () => {
     const app = buildApp()
 

@@ -42,6 +42,15 @@ Evidence snapshot (2026-05-18):
   - spectator chat allowed only during `COOLDOWN`
   - spectator cooldown chat requires campaign `postSessionChatEnabled`
 - Added backend route coverage for these paths in `backend/tests/api/chat-routes.test.ts`.
+- Spectator center-pane lifecycle screens now map state explicitly:
+  - `IDLE` + `PAUSED` show a "Please wait" hold screen.
+  - `ENDED` + `CLEANUP` show a "Session Closed" screen.
+  - `COOLDOWN` continues to show the post-session countdown panel.
+- Greenroom chat hydration now avoids new-session over-filtering and loads deterministically:
+  - initial load requests campaign greenroom page with `todayOnly=1`
+  - lazy scroll-up pagination still backfills older history via `before`
+  - backend campaign chat page now supports server-side `todayOnly` boundary filtering.
+- Cooldown countdown controls remain verified by frontend coverage (`frontend/tests/components/SessionToolbar.test.tsx`).
 - Voice participation policy in cooldown is still pending explicit backend enforcement and test proof.
 
 **Related Docs**:

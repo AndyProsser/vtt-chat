@@ -617,14 +617,21 @@ router.get('/campaign/:campaignId/chat', requireAuth, async (req: Request, res: 
 router.get('/campaign/:campaignId/chat/page', requireAuth, async (req: Request, res: Response) => {
   try {
     const { campaignId } = req.params
-    const { before, limit, sessionId } = req.query
+    const { before, limit, sessionId, todayOnly } = req.query
     const user = (req as any).user
 
     if (!isValidUUID(campaignId as string)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
     }
 
+    const includeTodayOnly = todayOnly === '1' || todayOnly === 'true' || todayOnly === 'yes'
+
     let since: number | undefined
+    if (includeTodayOnly) {
+      const now = new Date()
+      since = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    }
+
     if (sessionId !== undefined) {
       if (!isValidUUID(sessionId)) {
         return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -635,7 +642,10 @@ router.get('/campaign/:campaignId/chat/page', requireAuth, async (req: Request, 
         return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
       }
 
-      since = session.startedAt ? session.startedAt.getTime() : undefined
+      const sessionStartSince = session.startedAt ? session.startedAt.getTime() : undefined
+      if (sessionStartSince !== undefined) {
+        since = since === undefined ? sessionStartSince : Math.max(since, sessionStartSince)
+      }
     }
 
     const { getCampaignGreenroomMessagesPage } = await import('@/services/chat.service')

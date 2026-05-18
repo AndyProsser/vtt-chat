@@ -206,8 +206,9 @@ export function ChatWindow({
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
         }
-        if (isGreenroomMode && sessionId) {
-          params.set('sessionId', sessionId)
+        if (isGreenroomMode && !older) {
+          // Bootstrap with today's greenroom timeline, then allow lazy-loading older history.
+          params.set('todayOnly', '1')
         }
         const historyUrl =
           isGreenroomMode && campaignId

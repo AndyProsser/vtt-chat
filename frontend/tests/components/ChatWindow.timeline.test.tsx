@@ -116,7 +116,7 @@ describe('ChatWindow timeline behavior', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&sessionId=11111111-1111-4111-8111-111111111111',
+        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&todayOnly=1',
         expect.anything()
       )
     })

@@ -1,9 +1,10 @@
+import { SessionState } from '@shared'
 import { useEffect, useRef, useState } from 'react'
 import '../../styles/components/session/SpectatorWaitScreen.css'
 
 interface SpectatorWaitScreenProps {
   /** Current session state */
-  sessionState: 'PAUSED' | 'COOLDOWN' | 'ENDED'
+  sessionState: SessionState
   /** Timestamp (ms) when the session ended — used to compute cooldown countdown */
   sessionEndedAt?: number
   /** Configured cooldown duration in ms (e.g., 300000 for 5 min) */
@@ -26,15 +27,16 @@ function formatCountdown(remainingMs: number): string {
  * SpectatorWaitScreen
  *
  * Shown to spectators when they cannot observe the live session:
+ * - IDLE: session has not started yet.
  * - PAUSED: session is on intermission (curtain down).
  * - COOLDOWN: post-session cooldown window is active.
- * - ENDED: post-session cooldown has concluded.
+ * - ENDED/CLEANUP: post-session lifecycle has concluded.
  *
  * Contract:
- * - PAUSED → spectators see an intermission holding screen.
+ * - IDLE/PAUSED → spectators see a "Please Wait" hold screen.
  * - COOLDOWN → spectators see a countdown and the message that
  *   post-session chat is open (they can use the chat panel below/alongside this).
- * - ENDED → "Session has ended" message.
+ * - ENDED/CLEANUP → "Session Closed" message.
  */
 export function SpectatorWaitScreen({
   sessionState,
@@ -51,10 +53,11 @@ export function SpectatorWaitScreen({
   useEffect(() => {
     endedAtRef.current = sessionEndedAt
     cooldownRef.current = cooldownDurationMs
-  })
+    setRemainingMs(computeRemaining(sessionEndedAt, cooldownDurationMs))
+  }, [sessionEndedAt, cooldownDurationMs])
 
   useEffect(() => {
-    if (sessionState !== 'COOLDOWN') return
+    if (sessionState !== SessionState.COOLDOWN) return
 
     const id = setInterval(() => {
       setRemainingMs(computeRemaining(endedAtRef.current, cooldownRef.current))
@@ -63,21 +66,23 @@ export function SpectatorWaitScreen({
     return () => clearInterval(id)
   }, [sessionState])
 
-  if (sessionState === 'PAUSED') {
+  if (sessionState === SessionState.IDLE || sessionState === SessionState.PAUSED) {
     return (
       <div className="spectator-wait-screen" role="status" aria-live="polite">
         <div className="spectator-wait-screen__icon" aria-hidden="true">
           <span className="material-symbols-outlined">theaters</span>
         </div>
-        <h2 className="spectator-wait-screen__title">Session is on intermission</h2>
+        <h2 className="spectator-wait-screen__title">Please wait</h2>
         <p className="spectator-wait-screen__body">
-          The DM has paused the session. The curtain will rise again shortly — sit tight!
+          {sessionState === SessionState.IDLE
+            ? 'The DM is setting the stage. Spectator view will open once the session starts.'
+            : 'The DM has paused the session for intermission. The curtain will rise again shortly.'}
         </p>
       </div>
     )
   }
 
-  if (sessionState === 'COOLDOWN') {
+  if (sessionState === SessionState.COOLDOWN) {
     return (
       <div
         className="spectator-wait-screen spectator-wait-screen--cooldown"
@@ -104,7 +109,7 @@ export function SpectatorWaitScreen({
     )
   }
 
-  if (sessionState === 'ENDED') {
+  if (sessionState === SessionState.ENDED || sessionState === SessionState.CLEANUP) {
     return (
       <div
         className="spectator-wait-screen spectator-wait-screen--ended"
@@ -114,10 +119,9 @@ export function SpectatorWaitScreen({
         <div className="spectator-wait-screen__icon" aria-hidden="true">
           <span className="material-symbols-outlined">history</span>
         </div>
-        <h2 className="spectator-wait-screen__title">Session has ended</h2>
+        <h2 className="spectator-wait-screen__title">Session Closed</h2>
         <p className="spectator-wait-screen__body">
-          Thanks for watching! This session is now closed. Campaign history will be available once
-          the DM archives the session.
+          Thanks for watching. This session is closed and spectator viewing is no longer available.
         </p>
       </div>
     )

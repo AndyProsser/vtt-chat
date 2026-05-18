@@ -3342,17 +3342,13 @@ export function SessionInit({
               renderCenterPane={(view) => (
                 <div className="session-command-center-pane">
                   {effectiveSessionRole === Role.SPECTATOR &&
-                  (currentSession.state === SessionState.PAUSED ||
+                  (currentSession.state === SessionState.IDLE ||
+                    currentSession.state === SessionState.PAUSED ||
                     currentSession.state === SessionState.COOLDOWN ||
-                    currentSession.state === SessionState.ENDED) ? (
+                    currentSession.state === SessionState.ENDED ||
+                    currentSession.state === SessionState.CLEANUP) ? (
                     <SpectatorWaitScreen
-                      sessionState={
-                        currentSession.state === SessionState.PAUSED
-                          ? 'PAUSED'
-                          : currentSession.state === SessionState.COOLDOWN
-                            ? 'COOLDOWN'
-                            : 'ENDED'
-                      }
+                      sessionState={currentSession.state}
                       sessionEndedAt={currentSession.endedAt}
                       cooldownDurationMs={configuredCooldownDurationMs}
                     />
