@@ -253,6 +253,55 @@ describe('current Auth Routes (Normalized API)', () => {
       expect(res.status).toBe(403)
       expect(res.body.code).toBe('ADMIN_ACCESS_REQUIRED')
     })
+
+    it('maps missing/deactivated/non-full-account users to specific errors', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: testUserId,
+        username: testUsername,
+        role: 'DM',
+        authType: 'FULL',
+      })
+
+      mocks.mockGetUserAuthContext.mockResolvedValueOnce(null)
+      let res = await request(app)
+        .post('/auth/handoff/admin')
+        .set('Authorization', `Bearer ${testToken}`)
+      expect(res.status).toBe(404)
+      expect(res.body.code).toBe('USER_NOT_FOUND')
+
+      mocks.mockGetUserAuthContext.mockResolvedValueOnce({
+        id: testUserId,
+        username: testUsername,
+        email: 'test@example.com',
+        adminRole: null,
+        hasAdminAccess: true,
+        requiresUpgradeForAdmin: false,
+        isActive: false,
+        isFullAccount: true,
+      })
+      res = await request(app)
+        .post('/auth/handoff/admin')
+        .set('Authorization', `Bearer ${testToken}`)
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('ACCOUNT_DEACTIVATED')
+
+      mocks.mockGetUserAuthContext.mockResolvedValueOnce({
+        id: testUserId,
+        username: testUsername,
+        email: 'test@example.com',
+        adminRole: null,
+        hasAdminAccess: true,
+        requiresUpgradeForAdmin: true,
+        isActive: true,
+        isFullAccount: false,
+      })
+      res = await request(app)
+        .post('/auth/handoff/admin')
+        .set('Authorization', `Bearer ${testToken}`)
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('GUEST_UPGRADE_REQUIRED')
+    })
   })
 
   describe('POST /auth/handoff/exchange - Accept Handoff', () => {
@@ -291,6 +340,45 @@ describe('current Auth Routes (Normalized API)', () => {
         role: 'PLAYER',
       })
     })
+
+    it('rejects invalid handoff tokens and unavailable handoff users', async () => {
+      mocks.mockConsumeHandoffToken.mockReturnValueOnce(null)
+      let res = await request(app).post('/auth/handoff/exchange').send({
+        handoffToken: 'invalid-token',
+      })
+      expect(res.status).toBe(401)
+      expect(res.body.code).toBe('INVALID_HANDOFF_TOKEN')
+
+      mocks.mockConsumeHandoffToken.mockReturnValueOnce({
+        userId: testUserId,
+        username: testUsername,
+      })
+      mocks.mockGetHandoffExchangeUser.mockResolvedValueOnce(null)
+      res = await request(app).post('/auth/handoff/exchange').send({
+        handoffToken: 'valid-token',
+      })
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('ACCOUNT_NOT_ALLOWED')
+
+      mocks.mockConsumeHandoffToken.mockReturnValueOnce({
+        userId: testUserId,
+        username: testUsername,
+      })
+      mocks.mockGetHandoffExchangeUser.mockResolvedValueOnce({
+        id: testUserId,
+        username: testUsername,
+        displayName: 'Bad Role',
+        avatarUrl: null,
+        role: 'SYSTEM',
+        authType: 'FULL',
+        isActive: true,
+      })
+      res = await request(app).post('/auth/handoff/exchange').send({
+        handoffToken: 'valid-token-2',
+      })
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('INVALID_ROLE')
+    })
   })
 
   describe('POST /auth/join/guest/player - Guest Player Join', () => {
@@ -325,6 +413,35 @@ describe('current Auth Routes (Normalized API)', () => {
       expect(res.body.token).toBe('guest-token')
       expect(res.body.user.authType).toBe('GUEST')
     })
+
+    it('maps guest player join errors by code', async () => {
+      mocks.mockJoinGuestPlayerViaInvite.mockRejectedValueOnce(new Error('INVITE_EXPIRED'))
+      let res = await request(app).post('/auth/join/guest/player').send({
+        inviteCode: 'INVITE123',
+        email: 'guest@example.com',
+        displayName: 'Guest Player',
+      })
+      expect(res.status).toBe(404)
+      expect(res.body.code).toBe('INVITE_EXPIRED')
+
+      mocks.mockJoinGuestPlayerViaInvite.mockRejectedValueOnce(new Error('FULL_ACCOUNT_EXISTS'))
+      res = await request(app).post('/auth/join/guest/player').send({
+        inviteCode: 'INVITE123',
+        email: 'guest@example.com',
+        displayName: 'Guest Player',
+      })
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('FULL_ACCOUNT_EXISTS')
+
+      mocks.mockJoinGuestPlayerViaInvite.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/join/guest/player').send({
+        inviteCode: 'INVITE123',
+        email: 'guest@example.com',
+        displayName: 'Guest Player',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('PLAYER_JOIN_FAILED')
+    })
   })
 
   describe('POST /auth/join/guest/spectator - Guest Spectator Join', () => {
@@ -357,6 +474,199 @@ describe('current Auth Routes (Normalized API)', () => {
 
       expect(res.status).toBe(200)
       expect(res.body.user.role).toBe('SPECTATOR')
+    })
+
+    it('maps spectator join errors by category', async () => {
+      mocks.mockJoinGuestSpectatorViaInvite.mockRejectedValueOnce(new Error('INVITE_EXPIRED'))
+      let res = await request(app).post('/auth/join/guest/spectator').send({
+        spectatorInviteCode: 'SPEC123',
+        email: 'spectator@example.com',
+        displayName: 'Guest Spectator',
+      })
+      expect(res.status).toBe(404)
+      expect(res.body.code).toBe('INVITE_EXPIRED')
+
+      mocks.mockJoinGuestSpectatorViaInvite.mockRejectedValueOnce(new Error('SPECTATORS_DISABLED'))
+      res = await request(app).post('/auth/join/guest/spectator').send({
+        spectatorInviteCode: 'SPEC123',
+        email: 'spectator@example.com',
+        displayName: 'Guest Spectator',
+      })
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('SPECTATORS_DISABLED')
+
+      mocks.mockJoinGuestSpectatorViaInvite.mockRejectedValueOnce(
+        new Error('FULL_ACCOUNT_REQUIRED')
+      )
+      res = await request(app).post('/auth/join/guest/spectator').send({
+        spectatorInviteCode: 'SPEC123',
+        email: 'spectator@example.com',
+        displayName: 'Guest Spectator',
+      })
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('FULL_ACCOUNT_REQUIRED')
+
+      mocks.mockJoinGuestSpectatorViaInvite.mockRejectedValueOnce(
+        new Error('SPECTATOR_CAPACITY_REACHED')
+      )
+      res = await request(app).post('/auth/join/guest/spectator').send({
+        spectatorInviteCode: 'SPEC123',
+        email: 'spectator@example.com',
+        displayName: 'Guest Spectator',
+      })
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('SPECTATOR_CAPACITY_REACHED')
+
+      mocks.mockJoinGuestSpectatorViaInvite.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/join/guest/spectator').send({
+        spectatorInviteCode: 'SPEC123',
+        email: 'spectator@example.com',
+        displayName: 'Guest Spectator',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('SPECTATOR_JOIN_FAILED')
+    })
+  })
+
+  describe('POST /auth/validate/player - Player Invite Precheck', () => {
+    it('rejects missing required fields', async () => {
+      const res = await request(app).post('/auth/validate/player').send({ inviteCode: 'ABC123' })
+
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_PLAYER_VALIDATE_REQUEST')
+    })
+
+    it('maps INVITE_EXPIRED and unexpected errors', async () => {
+      mocks.mockPrecheckPlayerInviteEmail.mockRejectedValueOnce(new Error('INVITE_EXPIRED'))
+      let res = await request(app).post('/auth/validate/player').send({
+        inviteCode: 'ABC123',
+        email: 'player@example.com',
+      })
+
+      expect(res.status).toBe(404)
+      expect(res.body.code).toBe('INVITE_EXPIRED')
+
+      mocks.mockPrecheckPlayerInviteEmail.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/validate/player').send({
+        inviteCode: 'ABC123',
+        email: 'player@example.com',
+      })
+
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('PLAYER_VALIDATE_FAILED')
+    })
+
+    it('returns precheck payload on success', async () => {
+      mocks.mockPrecheckPlayerInviteEmail.mockResolvedValueOnce({
+        inviteValid: true,
+        accountType: 'GUEST',
+      })
+
+      const res = await request(app).post('/auth/validate/player').send({
+        inviteCode: 'ABC123',
+        email: 'player@example.com',
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toMatchObject({ inviteValid: true, accountType: 'GUEST' })
+    })
+  })
+
+  describe('POST /auth/upgrade - Guest Account Upgrade', () => {
+    it('requires password and maps guest upgrade conflicts', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: testUserId,
+        username: testUsername,
+        role: 'PLAYER',
+        authType: 'GUEST',
+      })
+
+      let res = await request(app)
+        .post('/auth/upgrade')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({})
+
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('MISSING_PASSWORD')
+
+      mocks.mockUpgradeGuestAccount.mockRejectedValueOnce(new Error('NOT_GUEST_ACCOUNT'))
+      res = await request(app)
+        .post('/auth/upgrade')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ password: 'ValidPassword!23' })
+
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('NOT_GUEST_ACCOUNT')
+    })
+
+    it('maps already-upgraded and generic upgrade failures', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: testUserId,
+        username: testUsername,
+        role: 'PLAYER',
+        authType: 'GUEST',
+      })
+
+      mocks.mockUpgradeGuestAccount.mockRejectedValueOnce(new Error('ACCOUNT_ALREADY_UPGRADED'))
+      let res = await request(app)
+        .post('/auth/upgrade')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ password: 'ValidPassword!23' })
+
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('ACCOUNT_ALREADY_UPGRADED')
+
+      mocks.mockUpgradeGuestAccount.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app)
+        .post('/auth/upgrade')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ password: 'ValidPassword!23' })
+
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('UPGRADE_FAILED')
+    })
+  })
+
+  describe('auth middleware guard paths', () => {
+    it('rejects refresh without authorization header', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(null)
+
+      const res = await request(app).post('/auth/refresh')
+
+      expect(res.status).toBe(401)
+      expect(res.body.code).toBe('UNAUTHORIZED')
+    })
+
+    it('rejects validate when token verification fails', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+      mocks.mockVerifyToken.mockReturnValue(null)
+
+      const res = await request(app)
+        .get('/auth/validate')
+        .set('Authorization', `Bearer ${testToken}`)
+
+      expect(res.status).toBe(401)
+      expect(res.body.code).toBe('UNAUTHORIZED')
+    })
+  })
+
+  describe('GET /auth/me - Current User Error Path', () => {
+    it('returns 500 when user context lookup fails', async () => {
+      mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: testUserId,
+        username: testUsername,
+        role: 'PLAYER',
+        authType: 'FULL',
+      })
+      mocks.mockGetUserAuthContext.mockRejectedValueOnce(new Error('lookup failed'))
+
+      const res = await request(app).get('/auth/me').set('Authorization', `Bearer ${testToken}`)
+
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('FAILED_TO_GET_USER')
     })
   })
 

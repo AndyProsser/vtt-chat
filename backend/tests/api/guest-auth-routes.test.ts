@@ -9,8 +9,10 @@ import {
 const mocks = vi.hoisted(() => ({
   mockCreateToken: vi.fn(),
   mockHashPassword: vi.fn(),
+  mockVerifyPassword: vi.fn(),
   mockVerifyToken: vi.fn(),
   mockExtractTokenFromHeader: vi.fn(),
+  mockJoinCampaignForUser: vi.fn(),
   mockUserCount: vi.fn(),
   mockUserFindUnique: vi.fn(),
   mockUserFindFirst: vi.fn(),
@@ -40,6 +42,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/services/auth.service', () => ({
   createToken: (...args: unknown[]) => mocks.mockCreateToken(...args),
   hashPassword: (...args: unknown[]) => mocks.mockHashPassword(...args),
+  verifyPassword: (...args: unknown[]) => mocks.mockVerifyPassword(...args),
   verifyToken: (...args: unknown[]) => mocks.mockVerifyToken(...args),
   extractTokenFromHeader: (...args: unknown[]) => mocks.mockExtractTokenFromHeader(...args),
 }))
@@ -112,7 +115,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
   createCampaignForUser: vi.fn(),
   getCampaignForUser: vi.fn(),
   isUserInCampaign: vi.fn(),
-  joinCampaignForUser: vi.fn(),
+  joinCampaignForUser: (...args: unknown[]) => mocks.mockJoinCampaignForUser(...args),
   createCharacterForCampaign: vi.fn(),
   getUserProfileById: vi.fn(),
   listCharactersForUser: vi.fn(),
@@ -147,7 +150,9 @@ describe('guest auth routes', () => {
 
     mocks.mockCreateToken.mockReturnValue('jwt-token')
     mocks.mockHashPassword.mockResolvedValue('hashed-password')
+    mocks.mockVerifyPassword.mockResolvedValue(true)
     mocks.mockExtractTokenFromHeader.mockReturnValue('token')
+    mocks.mockJoinCampaignForUser.mockResolvedValue(true)
     mocks.mockVerifyToken.mockReturnValue({
       userId: 'guest-user',
       username: 'guest-user',
@@ -547,6 +552,193 @@ describe('guest auth routes', () => {
       authType: 'FULL',
     })
     expect(mocks.mockHashPassword).toHaveBeenCalledWith('ValidPassword!23')
+  })
+
+  it('validates auth login payload and access mode', async () => {
+    const app = buildApp()
+
+    let response = await request(app).post('/api/auth/login').send({
+      username: 'a',
+      accessMode: 'USER',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.code).toBe('INVALID_INPUT')
+
+    response = await request(app).post('/api/auth/login').send({
+      username: 'validname',
+      accessMode: 'INVALID_MODE',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.code).toBe('INVALID_INPUT')
+  })
+
+  it('blocks direct login when user is missing and when account is guest-only', async () => {
+    const app = buildApp()
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    let response = await request(app).post('/api/auth/login').send({
+      username: 'validname',
+      accessMode: 'USER',
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('LOGIN_DISABLED')
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce({
+      id: 'u-guest',
+      username: 'validname',
+      displayName: 'Guest',
+      avatarUrl: null,
+      role: 'PLAYER',
+      authType: 'GUEST',
+    })
+    response = await request(app).post('/api/auth/login').send({
+      username: 'validname',
+      accessMode: 'USER',
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('GUEST_INVITE_REQUIRED')
+  })
+
+  it('issues login tokens for full accounts with normalized access mode', async () => {
+    const app = buildApp()
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce({
+      id: 'u-full',
+      username: 'validname',
+      displayName: 'Valid User',
+      avatarUrl: 'avatar.png',
+      role: 'PLAYER',
+      authType: 'FULL',
+    })
+
+    const response = await request(app).post('/api/auth/login').send({
+      username: 'validname',
+      accessMode: 'campaign',
+      role: 'PLAYER',
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.token).toBe('jwt-token')
+    expect(response.body.accessMode).toBe('CAMPAIGN')
+    expect(response.body.user).toMatchObject({
+      id: 'u-full',
+      username: 'validname',
+      authType: 'FULL',
+    })
+  })
+
+  it('rejects full player join requests with missing fields', async () => {
+    const app = buildApp()
+
+    const response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body.code).toBe('INVALID_PLAYER_FULL_JOIN_REQUEST')
+  })
+
+  it('rejects full player join when invite is invalid', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValueOnce(null)
+
+    const response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'BAD999',
+      email: 'player@example.com',
+      password: 'Password123!',
+    })
+
+    expect(response.status).toBe(404)
+    expect(response.body.code).toBe('INVITE_EXPIRED')
+  })
+
+  it('enforces full-account and password checks for full player join', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValue({
+      id: 'campaign-1',
+      inviteCode: 'ABC123',
+    })
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    let response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+      password: 'Password123!',
+    })
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FULL_ACCOUNT_REQUIRED')
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce({
+      id: 'user-1',
+      username: 'player1',
+      role: 'PLAYER',
+      authType: 'FULL',
+      password: 'hashed',
+      isActive: false,
+    })
+    response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+      password: 'Password123!',
+    })
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('ACCOUNT_DEACTIVATED')
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce({
+      id: 'user-1',
+      username: 'player1',
+      role: 'PLAYER',
+      authType: 'FULL',
+      password: null,
+      isActive: true,
+    })
+    response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+      password: 'Password123!',
+    })
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('PASSWORD_NOT_SET')
+  })
+
+  it('rejects bad password and invalid membership join for full player join', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValue({
+      id: 'campaign-1',
+      inviteCode: 'ABC123',
+    })
+    mocks.mockUserFindFirst.mockResolvedValue({
+      id: 'user-1',
+      username: 'player1',
+      role: 'PLAYER',
+      authType: 'FULL',
+      password: 'hashed',
+      isActive: true,
+    })
+
+    mocks.mockVerifyPassword.mockResolvedValueOnce(false)
+    let response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+      password: 'Wrong!',
+    })
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('INVALID_CREDENTIALS')
+
+    mocks.mockVerifyPassword.mockResolvedValueOnce(true)
+    mocks.mockJoinCampaignForUser.mockResolvedValueOnce(false)
+    response = await request(app).post('/api/auth/player/full-join').send({
+      inviteCode: 'ABC123',
+      email: 'player@example.com',
+      password: 'Password123!',
+    })
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FORBIDDEN')
   })
 
   it('validates spectator invite codes publicly', async () => {

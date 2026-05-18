@@ -204,6 +204,11 @@ Known readiness gap classes:
 | W12 | Temporal API Migration           | Planned (Future)            | Phased migration from legacy `Date` to `Temporal` API; Phase 1 (pure timestamps) is low-risk; Phases 2–4 blocked on Prisma Temporal support |
 | W13 | Durable Queue and Async Workers  | Planned (Future)            | Durable queue manager for scheduled and long-running jobs with restart-safe retry/checkpointing for cleanup, transcription, and summaries   |
 
+### W0/W11 Next-Cycle Deferrals (2026-05-18)
+
+- Coverage-closure cycle deferrals for W0 and W11 are tracked in [docs/changes/W0-W11-NEXT-CYCLE-DEFER-2026-05-18.md](docs/changes/W0-W11-NEXT-CYCLE-DEFER-2026-05-18.md).
+- This deferral set intentionally holds remaining W0 surface-finish work until W11 runtime-contract sequencing is executed as a cohesive pass.
+
 ---
 
 ### W0 Subtask: State Machine Contract Lock (Critical Prerequisite)

@@ -1457,6 +1457,12 @@ function startRunner(sessionId: UUID): void {
 }
 
 export function ensureMockSimulationRunning(sessionId: UUID): boolean {
+  // Test runs should not spin background intervals that can outlive individual
+  // suites and trigger noisy DB-bound tick failures.
+  if ((process.env.NODE_ENV || '').toLowerCase() === 'test') {
+    return false
+  }
+
   const runtime = getOrCreateRuntime(sessionId)
 
   if (!runtime.isRunning && shouldRun(runtime.config)) {
