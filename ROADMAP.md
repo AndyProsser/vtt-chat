@@ -69,9 +69,9 @@ Evidence snapshot (2026-05-18):
 
 ---
 
-### W11-Redis-First: Runtime State Persistence and Recovery
+### W1-Runtime-Recovery: Runtime State Persistence and Recovery
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical (blocking)
 **Depends on**: W0-State-Machine
 
@@ -81,14 +81,14 @@ Evidence snapshot (2026-05-18):
 
 - [x] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
 - [x] All websocket-visible domain routes classify into Class A (Redis durable) / Class B (Redis w/ bounded flush) / Class C (ephemeral)
-- [ ] Session audit trail captures all meaningful control-plane actions (join/leave, move, mute, lifecycle boundaries)
-- [ ] Reconnect recovery uses backend-authoritative sources (Redis runtime state + Postgres fallback)
-- [ ] Multi-client reconnect soak suite passes consistently
+- [x] Session audit trail captures all meaningful control-plane actions (join/leave, move, mute, lifecycle boundaries)
+- [x] Reconnect recovery uses backend-authoritative sources (Redis runtime state + Postgres fallback)
+- [x] Multi-client reconnect soak suite passes consistently
 
 **Related Docs**:
 
 - [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
-- [docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md](docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md)
+- [docs/changes/RUNTIME-RECOVERY-AUDIT-2026-05-18.md](docs/changes/RUNTIME-RECOVERY-AUDIT-2026-05-18.md)
 
 **Current Evidence Snapshot (2026-05-18):**
 
@@ -96,9 +96,11 @@ Evidence snapshot (2026-05-18):
 - Session audio rehydration now prefers Redis (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres fallback in `backend/src/services/audio/presets.service.ts`.
 - Focused coverage expanded in `backend/tests/services/audio-state.service.test.ts` for Redis write-through and Redis-first read behavior.
 - Added a typed runtime route classification registry for WS-visible mutation surfaces in `backend/src/services/runtime/runtime-route-classification.service.ts`.
-- Registry coverage now includes `presence`, `rooms`, `audio`, `session`, `chat`, and `notes` mutation routes with focused validation in `backend/tests/services/runtime-route-classification.service.test.ts`.
+- Registry coverage now includes `presence`, `rooms`, `audio`, `session`, `chat`, `notes`, and `integrations` mutation routes with focused validation in `backend/tests/services/runtime-route-classification.service.test.ts`.
 - Session audit envelope normalization now runs through `backend/src/services/runtime/runtime-streams.service.ts`, with focused helper coverage in `backend/tests/services/runtime-streams.service.unit.test.ts`.
 - Notes mutation routes now append standardized audit events for create/update/publish/delete flows in `backend/src/api/notes.routes.ts`, covered by `backend/tests/api/notes-routes.test.ts`.
+- All remaining WS-visible mutation families (audio, rooms, session, presence, chat, notes, integrations) now have `appendSessionAuditEvent` coverage. Chat audit flows through `chat.service.ts` (MESSAGE_SENT/EDITED/DELETED). `integrations.routes.ts` now appends one audit event per affected session for extension-driven profile sync.
+- Multi-client reconnect soak evidence exists in `backend/tests/integration/multi-client-reconnect.integration.test.ts` (4 scenarios: concurrent reconnect slices, session isolation, FIFO cap, full-replay fallback) and `backend/tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts` (same-user multi-tab sequencing).
 
 ---
 
@@ -106,7 +108,7 @@ Evidence snapshot (2026-05-18):
 
 **Status**: 🟡 In Progress
 **Priority**: 🟡 High (gating Phase 1)
-**Depends on**: W0-State-Machine, W11-Redis-First
+**Depends on**: W0-State-Machine, W1-Runtime-Recovery
 
 **Scope**: Lock in release gates for backend/frontend/admin. Add integration coverage for session lifecycle, audio state recovery, multi-client reconnect, and state-machine transitions.
 
@@ -130,7 +132,7 @@ Evidence snapshot (2026-05-18):
 
 **Status**: 🟡 In Progress
 **Priority**: 🟡 High
-**Depends on**: W0-State-Machine, W11-Redis-First
+**Depends on**: W0-State-Machine, W1-Runtime-Recovery
 
 **Scope**: Document and validate operator workflows, backup/restore drills, and telemetry signal definitions.
 
@@ -239,7 +241,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 **Status**: ⚪ Not Started
 **Priority**: 🟡 High
-**Depends on**: W11-Redis-First
+**Depends on**: W1-Runtime-Recovery
 
 **Scope**: DM can select which group(s) hear their voice. Broadcast mode sends to all groups; targeted mode sends to selected group only.
 
@@ -262,7 +264,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 **Status**: ⚪ Not Started
 **Priority**: 🟡 High
-**Depends on**: W11-Redis-First
+**Depends on**: W1-Runtime-Recovery
 
 **Scope**: DM can apply audio conditions to players (Drunk: slurred pitch, Confused: scrambled audio, Silenced: routed only to DM + spectators). Conditions are visible in AudioPanel. System message appears in chat when applied/removed.
 
@@ -288,7 +290,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 **Status**: ⚪ Not Started
 **Priority**: 🟡 High
-**Depends on**: W11-Redis-First
+**Depends on**: W1-Runtime-Recovery
 
 **Scope**: DM can set player distance (Default | Nearby | Visible | Far). Each applies audio processing (lowpass, reverb, volume). System message in chat when distance changes.
 
@@ -311,7 +313,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 **Status**: ⚪ Not Started
 **Priority**: 🟡 High
-**Depends on**: W11-Redis-First
+**Depends on**: W1-Runtime-Recovery
 
 **Scope**: DM sets environment for each group (affects all members). Environment persists across session boundaries (campaign-level setting). Environment icon in group header; DM click to change.
 

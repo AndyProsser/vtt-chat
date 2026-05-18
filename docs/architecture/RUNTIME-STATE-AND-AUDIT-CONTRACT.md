@@ -48,21 +48,21 @@ This section captures what is verified in code and tests today, so this contract
   - Audio mutation actions (environment, DM overrides, mute, broadcast, DM voice mode)
 - Typed runtime route classification registry introduced for WS-visible mutation families:
   - `backend/src/services/runtime/runtime-route-classification.service.ts`
-  - Current coverage scope: `presence`, `rooms`, `audio`, `session`, `chat`, `notes`
-- Session audit envelope normalization now runs centrally in `appendSessionAuditEvent`, with notes mutation routes adopting the standardized audit append path.
+  - Current coverage scope: `presence`, `rooms`, `audio`, `session`, `chat`, `notes`, `integrations`
+- Session audit envelope normalization now runs centrally in `appendSessionAuditEvent`, with all WS-visible mutation families adopting the standardized audit append path:
+  - Audio (6 call sites in `audio.routes.ts`), rooms (8 call sites in `rooms.routes.ts`), session (7 call sites in `session.routes.ts`), presence (2 call sites in `presence.routes.ts`), notes (4 call sites in `notes.routes.ts`), chat (3 call sites in `chat.service.ts`), integrations (1 call site in `integrations.routes.ts`).
+  - `integrations.routes.ts` appends `INTEGRATIONS.EXTERNAL_SYNCED` per affected session when extension-driven sync produces session-visible profile updates.
 
 ### Partial today
 
 - Audio runtime convergence is in progress:
   - User mute projection touches Redis presence state
   - Room environments/DM overrides/broadcast state now mirror to Redis runtime projection keys while retaining Postgres durability
-- Session lifecycle logging exists via `SessionLog` entries, but this is not yet a full action taxonomy across all domain mutations.
 
 ### Not yet implemented as a unified contract
 
 - Redis-first write path for all websocket-visible mutations (many routes are still Postgres -> WS without Redis runtime mirror).
 - Redis-backed runtime cache/stream coverage is still incomplete outside presence/room and session chat/audit stream append paths.
-- Mandatory session-audit envelope shape from section 4 across all meaningful action types.
 - Bounded flush/durability worker model for Class B/C as a platform-wide standard.
 
 ---

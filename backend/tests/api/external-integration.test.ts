@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   mockCampaignExternalLinkFindFirst: vi.fn(),
   mockCampaignExternalLinkCreate: vi.fn(),
   mockCampaignExternalLinkUpdate: vi.fn(),
+  mockGetSessionPresence: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -67,6 +69,14 @@ vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: vi.fn(),
 }))
 
+vi.mock('@/services/room.service', () => ({
+  getSessionPresence: (...args: unknown[]) => mocks.mockGetSessionPresence(...args),
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
+}))
+
 vi.mock('@/services/guest-auth', () => ({
   browseSpectatorCampaignsForUser: vi.fn(),
   getSpectatorWaitlistStatus: vi.fn(),
@@ -102,6 +112,7 @@ describe('external integration endpoints', () => {
     })
 
     mocks.mockAdminAuditLogCreate.mockResolvedValue({ id: 'audit-1' })
+    mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
   })
 
   it('returns 400 for invalid campaignId on sync', async () => {
@@ -276,8 +287,16 @@ describe('external integration endpoints', () => {
     })
 
     mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: CHARACTER_ID })
+    mocks.mockGetSessionPresence.mockResolvedValueOnce([{ userId: USER_ID }])
 
-    const response = await request(app)
+    const { listSessionsByCampaign } = await import('@/repositories/session.repository')
+    vi.mocked(listSessionsByCampaign).mockResolvedValueOnce([{ id: CAMPAIGN_ID } as any])
+
+    const appWithWs = buildApp()
+    const broadcastEventToSession = vi.fn()
+    appWithWs.locals.wsManager = { broadcastEventToSession }
+
+    const response = await request(appWithWs)
       .post('/api/integrations/external/sync')
       .set('Authorization', 'Bearer token')
       .send({
@@ -308,6 +327,24 @@ describe('external integration endpoints', () => {
     })
 
     expect(mocks.mockAdminAuditLogCreate).toHaveBeenCalledTimes(1)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: CAMPAIGN_ID,
+        campaignId: CAMPAIGN_ID,
+        actorUserId: USER_ID,
+        actionType: 'INTEGRATIONS.EXTERNAL_SYNCED',
+        targetType: 'INTEGRATION_PROFILE',
+        targetId: USER_ID,
+        visibilityClass: 'ROLE_SCOPED',
+        metadata: expect.objectContaining({
+          externalSystem: 'dndbeyond',
+          source: 'player',
+          hasCharacterUpdate: true,
+          hasCampaignUpdate: false,
+        }),
+      })
+    )
+    expect(broadcastEventToSession).toHaveBeenCalledTimes(1)
   })
 
   it('lists external links for campaign DM', async () => {

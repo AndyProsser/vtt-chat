@@ -4,7 +4,7 @@ export interface RuntimeRouteClassification {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   path: string
   routeClass: RuntimeRouteClass
-  domain: 'audio' | 'presence' | 'rooms' | 'session' | 'chat' | 'notes'
+  domain: 'audio' | 'presence' | 'rooms' | 'session' | 'chat' | 'notes' | 'integrations'
   reason: string
   aliasOf?: string
 }
@@ -201,6 +201,14 @@ export const WEBSOCKET_VISIBLE_RUNTIME_ROUTE_CLASSIFICATIONS = [
     domain: 'audio',
     reason:
       'DM voice mode is transient runtime routing state with optional preference persistence.',
+  }),
+  createEntry({
+    method: 'POST',
+    path: '/api/integrations/external/sync',
+    routeClass: 'CLASS_B',
+    domain: 'integrations',
+    reason:
+      'Extension-driven profile sync mutates campaign-linked character state and broadcasts session-visible presence updates.',
   }),
   createEntry({
     method: 'POST',

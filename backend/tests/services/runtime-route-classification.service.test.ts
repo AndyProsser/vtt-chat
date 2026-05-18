@@ -26,6 +26,11 @@ describe('runtime route classification registry', () => {
       domain: 'chat',
     })
 
+    expect(getRuntimeRouteClassification('POST', '/api/integrations/external/sync')).toMatchObject({
+      routeClass: 'CLASS_B',
+      domain: 'integrations',
+    })
+
     expect(getRuntimeRouteClassification('POST', '/api/notes/:noteId/publish')).toMatchObject({
       routeClass: 'CLASS_B',
       domain: 'notes',

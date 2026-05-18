@@ -5,6 +5,7 @@ import type { UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { syncExternalIntegration } from '@/services/integration-sync.service'
+import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 
 const router = Router()
 
@@ -111,6 +112,23 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
         if (!presence.some((entry) => entry.userId === user.userId)) {
           continue
         }
+
+        await appendSessionAuditEvent({
+          sessionId: session.id as UUID,
+          campaignId,
+          actorUserId: user.userId,
+          actorRole: user.role,
+          actionType: 'INTEGRATIONS.EXTERNAL_SYNCED',
+          targetType: 'INTEGRATION_PROFILE',
+          targetId: user.userId,
+          visibilityClass: 'ROLE_SCOPED',
+          metadata: {
+            externalSystem,
+            source,
+            hasCharacterUpdate: Boolean(characterUpdate),
+            hasCampaignUpdate: Boolean(campaignUpdate),
+          },
+        })
 
         wsManager.broadcastEventToSession(session.id as UUID, {
           id: crypto.randomUUID() as UUID,

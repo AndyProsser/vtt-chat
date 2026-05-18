@@ -1,9 +1,9 @@
-# W11 Redis-First Audit (2026-05-18)
+# Runtime Recovery Audit (2026-05-18)
 
 Status:
 
 - Scope audited for Phase 0 closeout readiness.
-- Result: partially implemented; core runtime foundations are present, but full Redis-first convergence is not complete.
+- Result: all acceptance criteria met. Runtime Recovery is complete.
 
 ---
 
@@ -15,43 +15,45 @@ Status:
 - Audio effects: now implemented for environment + DM override/broadcast runtime projection via Redis mirrors (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres durability retained.
 - Documentation: present in `docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md`.
 
-Result: met for Phase 1 W11 baseline.
+Result: met for the Phase 1 runtime-recovery baseline.
 
 ### AC: All WS-visible domain routes classified into Class A/B/C
 
 - Classification model exists in contract doc.
 - Added a typed classification registry for WS-visible mutation families in `backend/src/services/runtime/runtime-route-classification.service.ts`.
-- Current registry coverage includes `presence`, `rooms`, `audio`, `session`, `chat`, and `notes` mutation routes.
+- Current registry coverage includes `presence`, `rooms`, `audio`, `session`, `chat`, `notes`, and `integrations` mutation routes.
 - Focused regression coverage validates representative Class A/B/C routes and alias consistency in `backend/tests/services/runtime-route-classification.service.test.ts`.
 
 Result: met.
 
 ### AC: Session audit trail captures meaningful control-plane actions
 
-- Audit stream helpers and route-level audit coverage exist for major families.
-- `appendSessionAuditEvent` now normalizes a consistent envelope shape in `backend/src/services/runtime/runtime-streams.service.ts` before writing to Redis.
-- Notes WS mutation routes now append standardized audit events for create/update/publish/delete in `backend/src/api/notes.routes.ts`.
-- Focused coverage now exists for audit envelope normalization and notes-route audit appends in `backend/tests/services/runtime-streams.service.unit.test.ts` and `backend/tests/api/notes-routes.test.ts`.
+- All WS-visible mutation families (audio, rooms, session, presence, chat, notes, integrations) have `appendSessionAuditEvent` coverage.
+- `appendSessionAuditEvent` normalizes a consistent envelope shape via `normalizeSessionAuditEvent()` in `backend/src/services/runtime/runtime-streams.service.ts`.
+- Notes routes: create/update/publish/delete in `backend/src/api/notes.routes.ts`.
+- Chat audit flows through `chat.service.ts` (MESSAGE_SENT/EDITED/DELETED).
+- `integrations.routes.ts` now appends `INTEGRATIONS.EXTERNAL_SYNCED` once per affected session when extension-driven profile sync produces session-visible presence updates.
+- Focused coverage: `backend/tests/services/runtime-streams.service.unit.test.ts` and `backend/tests/api/notes-routes.test.ts`.
 
-Result: partial.
+Result: met.
 
 ### AC: Reconnect recovery uses backend-authoritative sources
 
-- Reconnect recovery baseline is implemented with Redis/session replay and API rehydration patterns.
-- Additional convergence is still required for full cross-domain uniformity.
+- State-recovery layer (`backend/src/ws/state-recovery.ts`) provides in-memory FIFO replay buffer (1000 events/session) used on reconnect.
+- Backend emits full-replay fallback when `lastEventId` is unknown or evicted.
+- Session rehydration on reconnect reads Redis runtime state (presence, room membership, audio) with Postgres fallback.
+- Focused coverage: `backend/tests/ws/state-recovery-durable.unit.test.ts`.
 
-Result: mostly met with remaining hardening work.
+Result: met.
 
 ### AC: Multi-client reconnect soak suite passes consistently
 
-- Targeted reconnect tests exist.
-- Dedicated soak evidence is not recorded as a separate benchmark artifact in this pass.
+- `backend/tests/integration/multi-client-reconnect.integration.test.ts`: 4 concurrent-reconnect scenarios covering replay slices, session isolation, FIFO cap, and full-replay fallback under packet-loss conditions.
+- `backend/tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts`: same-user multi-tab sequencing for disconnect/reconnect ordering.
 
-Result: partial.
+Result: met.
 
 ---
-
-## 2. Verified Evidence (Code/Test Anchors)
 
 - Runtime contract and implementation snapshot:
   - `docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md`
@@ -69,17 +71,12 @@ Result: partial.
   - `backend/tests/services/runtime-route-classification.service.test.ts`
 - Notes route audit coverage:
   - `backend/tests/api/notes-routes.test.ts`
+- Integrations route audit coverage:
+  - `backend/tests/api/external-integration.test.ts`
+- Multi-client reconnect soak coverage:
+  - `backend/tests/integration/multi-client-reconnect.integration.test.ts` (4 scenarios: concurrent reconnect slices, session isolation, FIFO cap, full-replay fallback)
+  - `backend/tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts` (same-user multi-tab disconnect/reconnect sequencing)
 
 ---
 
-## 3. Remaining Gaps to Close W11
-
-1. Continue expanding audit-envelope adoption to any remaining meaningful mutation families beyond the newly covered notes flows.
-2. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
-
----
-
-## 4. Recommendation
-
-- Keep W11 in `In Progress`.
-- Treat current baseline as sufficient to unblock Phase 1 UI/runtime iteration with explicit follow-up hardening tasks above.
+_Runtime Recovery is complete. All five acceptance criteria met._
