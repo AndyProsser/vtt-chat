@@ -513,90 +513,70 @@
   color: var(--color-text-muted);
 }
 
-.audio-settings-panel__select-trigger {
+.audio-settings-panel__select-wrap {
+  position: relative;
+  display: block;
+}
+
+.audio-settings-panel__select {
   width: 100%;
   min-width: 0;
-  padding: 0.28rem 0.5rem;
+  min-height: 1.72rem;
+  padding: 0.28rem 1.9rem 0.28rem 0.5rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
-  background: var(--color-surface-subtle);
+  background: color-mix(in srgb, var(--color-surface-subtle) 96%, transparent);
   color: var(--color-text-primary);
   font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+  color-scheme: dark;
 }
 
-.audio-settings-panel__select-trigger > span:first-child {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
+.audio-settings-panel__select:hover {
+  border-color: color-mix(in srgb, var(--color-brand) 34%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-surface-subtle) 84%, var(--color-surface));
 }
 
-.audio-settings-panel__select-trigger[data-placeholder] {
-  color: var(--color-text-muted);
+.audio-settings-panel__select:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
 .audio-settings-panel__select-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .audio-settings-panel__select-icon .material-symbols-outlined {
   font-size: 0.92rem;
 }
 
-.audio-settings-panel__select-content {
-  width: var(--radix-select-trigger-width);
-  max-width: min(30rem, calc(100vw - 1.5rem));
-  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
-  border-radius: 0.45rem;
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.32);
-  overflow: hidden;
-  z-index: 220;
-}
-
-.audio-settings-panel__select-viewport {
-  padding: 0.2rem;
-}
-
-.audio-settings-panel__select-item {
-  display: flex;
-  align-items: center;
-  min-height: 1.7rem;
-  padding: 0.2rem 0.45rem;
-  border-radius: 0.3rem;
+.audio-settings-panel__select option {
+  background: color-mix(in srgb, var(--color-surface) 95%, transparent);
   color: var(--color-text-primary);
   font-size: 0.75rem;
-  cursor: pointer;
-  user-select: none;
-  outline: none;
-}
-
-.audio-settings-panel__select-item[data-highlighted] {
-  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
-}
-
-.audio-settings-panel__select-item[data-state='checked'] {
-  background: color-mix(in srgb, var(--color-brand) 24%, var(--color-surface));
-}
-
-.audio-settings-panel__select-item > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 600;
 }
 
 .audio-settings-panel__mic-meter {

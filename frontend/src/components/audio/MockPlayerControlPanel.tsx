@@ -268,7 +268,7 @@ export function MockPlayerControlPanel({
     } finally {
       setIsLoading(false)
     }
-  }, [apiUrl, token, sessionId, fetchStatus, applyStatusSnapshot])
+  }, [apiUrl, token, sessionId, fetchStatus, applyStatusSnapshot, onClose])
 
   const statusText = useMemo(() => {
     if (!status) return 'Loading...'

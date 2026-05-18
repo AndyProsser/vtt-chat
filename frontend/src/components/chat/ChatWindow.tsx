@@ -86,6 +86,9 @@ export function ChatWindow({
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
+  const clearPendingNewMessageCount = useCallback(() => {
+    setPendingNewMessageCount((count) => (count === 0 ? count : 0))
+  }, [])
   const isGreenroomMode = forceMessageType === MessageType.OOC
   const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
   const resolvedRoomName =
@@ -313,9 +316,9 @@ export function ChatWindow({
     setIsUserPinnedToBottom(isNearBottom)
 
     if (isNearBottom) {
-      setPendingNewMessageCount(0)
+      clearPendingNewMessageCount()
     }
-  }, [])
+  }, [clearPendingNewMessageCount])
 
   useEffect(() => {
     if (isLoading || !hasMoreHistory) {
@@ -429,7 +432,6 @@ export function ChatWindow({
     roomDirectory,
     roomId,
     user.id,
-    user.role,
   ])
 
   const whisperRecipients = useMemo(() => {
@@ -557,9 +559,11 @@ export function ChatWindow({
   useEffect(() => {
     if (isUserPinnedToBottom && latestVisibleMessageCreatedAt) {
       lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
-      setPendingNewMessageCount(0)
+      window.requestAnimationFrame(() => {
+        clearPendingNewMessageCount()
+      })
     }
-  }, [isUserPinnedToBottom, latestVisibleMessageCreatedAt])
+  }, [clearPendingNewMessageCount, isUserPinnedToBottom, latestVisibleMessageCreatedAt])
 
   // After initial hydrate (or room/session switch), pin viewport to newest message.
   useEffect(() => {
@@ -576,9 +580,10 @@ export function ChatWindow({
       scrollToLatest('auto')
     })
     initialScrollContextRef.current = contextKey
-    setPendingNewMessageCount(0)
+    clearPendingNewMessageCount()
     lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
   }, [
+    clearPendingNewMessageCount,
     isLoading,
     latestVisibleMessageCreatedAt,
     roomId,
@@ -603,13 +608,22 @@ export function ChatWindow({
 
     if (isUserPinnedToBottom) {
       scrollToLatest('smooth')
-      setPendingNewMessageCount(0)
+      window.requestAnimationFrame(() => {
+        clearPendingNewMessageCount()
+      })
       lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
       return
     }
 
-    setPendingNewMessageCount((count) => count + 1)
-  }, [isUserPinnedToBottom, latestVisibleMessageCreatedAt, scrollToLatest])
+    window.requestAnimationFrame(() => {
+      setPendingNewMessageCount((count) => count + 1)
+    })
+  }, [
+    clearPendingNewMessageCount,
+    isUserPinnedToBottom,
+    latestVisibleMessageCreatedAt,
+    scrollToLatest,
+  ])
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {

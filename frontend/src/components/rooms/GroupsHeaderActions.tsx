@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
@@ -64,19 +64,33 @@ export function GroupsHeaderActions({
   const mockPanelRef = useRef<HTMLDivElement | null>(null)
   const takeoverActive = Boolean(activeTakeoverUserId)
 
+  const closeMockPanel = useCallback(() => {
+    setMockPanelOpen(false)
+    setShowMockPanel(false)
+  }, [])
+
+  const handleToggleMockPanel = () => {
+    setShowMockPanel((current) => {
+      const next = !current
+
+      if (next) {
+        setRenderMockPanel(true)
+        window.requestAnimationFrame(() => {
+          setMockPanelOpen(true)
+        })
+      } else {
+        setMockPanelOpen(false)
+      }
+
+      return next
+    })
+  }
+
   useEffect(() => {
     if (showMockPanel) {
-      setRenderMockPanel(true)
-      const rafId = window.requestAnimationFrame(() => {
-        setMockPanelOpen(true)
-      })
-
-      return () => {
-        window.cancelAnimationFrame(rafId)
-      }
+      return
     }
 
-    setMockPanelOpen(false)
     const timeoutId = window.setTimeout(() => {
       setRenderMockPanel(false)
     }, MOCK_PANEL_ANIMATION_MS)
@@ -84,7 +98,7 @@ export function GroupsHeaderActions({
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [showMockPanel])
+  }, [closeMockPanel, showMockPanel])
 
   useEffect(() => {
     if (!showMockPanel) {
@@ -98,13 +112,13 @@ export function GroupsHeaderActions({
       }
 
       if (mockPanelRef.current && !mockPanelRef.current.contains(target)) {
-        setShowMockPanel(false)
+        closeMockPanel()
       }
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setShowMockPanel(false)
+        closeMockPanel()
       }
     }
 
@@ -115,7 +129,7 @@ export function GroupsHeaderActions({
       document.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [showMockPanel])
+  }, [closeMockPanel, showMockPanel])
 
   return (
     <div className="room-selector-header__meta room-selector-header__meta--actions">
@@ -159,7 +173,7 @@ export function GroupsHeaderActions({
                     : 'Configure mock testing'
                 }
                 disabled={isDevResettingMocks}
-                onClick={() => setShowMockPanel((current) => !current)}
+                onClick={handleToggleMockPanel}
                 aria-haspopup="dialog"
                 aria-expanded={showMockPanel}
               >
@@ -182,7 +196,7 @@ export function GroupsHeaderActions({
                 sessionId={sessionId}
                 activeTakeoverUserId={activeTakeoverUserId}
                 onReturnToUser={onReturnToUser}
-                onClose={() => setShowMockPanel(false)}
+                onClose={closeMockPanel}
               />
             </div>
           ) : null}

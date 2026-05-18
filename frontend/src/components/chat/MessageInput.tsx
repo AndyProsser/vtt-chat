@@ -145,7 +145,7 @@ export function MessageInput({
     }
 
     return 'Message... (Enter to send, Shift+Enter for newline)'
-  }, [isWhisperGroupMode, selectedRecipient?.label, type])
+  }, [isWhisperGroupMode, selectedRecipient, type])
 
   const canSend =
     !!content.trim() &&

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import * as SelectPrimitive from '@radix-ui/react-select'
 import { Icon } from '../../ui/Icon'
 import { Slider } from '../../../core-ui'
 import type { AudioDeviceState } from '@/types/audio'
@@ -21,10 +20,6 @@ interface AudioSettingsPanelProps {
   isWhisperMode: boolean
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void
   onClose: () => void
-  /** Called whenever any device select opens or closes. Used by the parent to
-   * suppress the outside-click close handler while Radix disables pointer-events
-   * on the body (which would otherwise cause panel-body clicks to mis-fire close). */
-  onAnySelectOpen?: (open: boolean) => void
 }
 
 const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label: string }> = [
@@ -34,13 +29,15 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
   { value: 'high', label: 'HIGH' },
 ]
 
-function normalizeSelectValue(value: string | null | undefined): string {
-  if (typeof value !== 'string') {
-    return 'default'
+const MAX_DEVICE_LABEL_CHARS = 36
+
+function truncateDeviceLabel(label: string): string {
+  const normalized = label.trim()
+  if (normalized.length <= MAX_DEVICE_LABEL_CHARS) {
+    return normalized
   }
 
-  const normalized = value.trim()
-  return normalized.length > 0 ? normalized : 'default'
+  return `${normalized.slice(0, MAX_DEVICE_LABEL_CHARS - 1)}…`
 }
 
 export function AudioSettingsPanel({
@@ -50,16 +47,9 @@ export function AudioSettingsPanel({
   isWhisperMode,
   onDeviceChange,
   onClose,
-  onAnySelectOpen,
 }: AudioSettingsPanelProps) {
   const [micDevices, setMicDevices] = useState<MediaDeviceOption[]>([])
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceOption[]>([])
-  const [speakerOpen, setSpeakerOpen] = useState(false)
-  const [micOpen, setMicOpen] = useState(false)
-
-  useEffect(() => {
-    onAnySelectOpen?.(speakerOpen || micOpen)
-  }, [speakerOpen, micOpen, onAnySelectOpen])
   const micMeterFillRef = useRef<HTMLSpanElement | null>(null)
   const localMicLevelPercent = Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)
 
@@ -122,49 +112,25 @@ export function AudioSettingsPanel({
               <Icon name="signal" className="audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.speaker}
             </span>
-            <SelectPrimitive.Root
-              value={normalizeSelectValue(device.selectedSpeakerDeviceId)}
-              onValueChange={(nextValue) => onDeviceChange({ selectedSpeakerDeviceId: nextValue })}
-              onOpenChange={setSpeakerOpen}
-            >
-              <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
-                <SelectPrimitive.Value />
-                <SelectPrimitive.Icon className="audio-settings-panel__select-icon">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    arrow_drop_down
-                  </span>
-                </SelectPrimitive.Icon>
-              </SelectPrimitive.Trigger>
-              <SelectPrimitive.Portal>
-                <SelectPrimitive.Content
-                  className="audio-settings-panel__select-content"
-                  data-audio-settings-select-content="true"
-                  position="popper"
-                  sideOffset={4}
-                >
-                  <SelectPrimitive.Viewport className="audio-settings-panel__select-viewport">
-                    <SelectPrimitive.Item
-                      value="default"
-                      className="audio-settings-panel__select-item"
-                    >
-                      <SelectPrimitive.ItemText>
-                        {AUDIO_SETTINGS_COPY.systemDefault}
-                      </SelectPrimitive.ItemText>
-                    </SelectPrimitive.Item>
-                    {speakerDevices.map((d) => (
-                      <SelectPrimitive.Item
-                        key={d.deviceId}
-                        value={d.deviceId}
-                        className="audio-settings-panel__select-item"
-                        title={d.label}
-                      >
-                        <SelectPrimitive.ItemText>{d.label}</SelectPrimitive.ItemText>
-                      </SelectPrimitive.Item>
-                    ))}
-                  </SelectPrimitive.Viewport>
-                </SelectPrimitive.Content>
-              </SelectPrimitive.Portal>
-            </SelectPrimitive.Root>
+            <span className="audio-settings-panel__select-wrap">
+              <select
+                className="audio-settings-panel__select"
+                value={device.selectedSpeakerDeviceId ?? ''}
+                onChange={(e) =>
+                  onDeviceChange({ selectedSpeakerDeviceId: e.target.value || null })
+                }
+              >
+                <option value="">{AUDIO_SETTINGS_COPY.systemDefault}</option>
+                {speakerDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId} title={d.label}>
+                    {truncateDeviceLabel(d.label)}
+                  </option>
+                ))}
+              </select>
+              <span className="audio-settings-panel__select-icon" aria-hidden="true">
+                <span className="material-symbols-outlined">arrow_drop_down</span>
+              </span>
+            </span>
           </label>
 
           <label className="audio-settings-panel__label">
@@ -172,49 +138,23 @@ export function AudioSettingsPanel({
               <Icon name="mic" className="audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.microphone}
             </span>
-            <SelectPrimitive.Root
-              value={normalizeSelectValue(device.selectedMicDeviceId)}
-              onValueChange={(nextValue) => onDeviceChange({ selectedMicDeviceId: nextValue })}
-              onOpenChange={setMicOpen}
-            >
-              <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
-                <SelectPrimitive.Value />
-                <SelectPrimitive.Icon className="audio-settings-panel__select-icon">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    arrow_drop_down
-                  </span>
-                </SelectPrimitive.Icon>
-              </SelectPrimitive.Trigger>
-              <SelectPrimitive.Portal>
-                <SelectPrimitive.Content
-                  className="audio-settings-panel__select-content"
-                  data-audio-settings-select-content="true"
-                  position="popper"
-                  sideOffset={4}
-                >
-                  <SelectPrimitive.Viewport className="audio-settings-panel__select-viewport">
-                    <SelectPrimitive.Item
-                      value="default"
-                      className="audio-settings-panel__select-item"
-                    >
-                      <SelectPrimitive.ItemText>
-                        {AUDIO_SETTINGS_COPY.systemDefault}
-                      </SelectPrimitive.ItemText>
-                    </SelectPrimitive.Item>
-                    {micDevices.map((d) => (
-                      <SelectPrimitive.Item
-                        key={d.deviceId}
-                        value={d.deviceId}
-                        className="audio-settings-panel__select-item"
-                        title={d.label}
-                      >
-                        <SelectPrimitive.ItemText>{d.label}</SelectPrimitive.ItemText>
-                      </SelectPrimitive.Item>
-                    ))}
-                  </SelectPrimitive.Viewport>
-                </SelectPrimitive.Content>
-              </SelectPrimitive.Portal>
-            </SelectPrimitive.Root>
+            <span className="audio-settings-panel__select-wrap">
+              <select
+                className="audio-settings-panel__select"
+                value={device.selectedMicDeviceId ?? ''}
+                onChange={(e) => onDeviceChange({ selectedMicDeviceId: e.target.value || null })}
+              >
+                <option value="">{AUDIO_SETTINGS_COPY.systemDefault}</option>
+                {micDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId} title={d.label}>
+                    {truncateDeviceLabel(d.label)}
+                  </option>
+                ))}
+              </select>
+              <span className="audio-settings-panel__select-icon" aria-hidden="true">
+                <span className="material-symbols-outlined">arrow_drop_down</span>
+              </span>
+            </span>
           </label>
 
           <div

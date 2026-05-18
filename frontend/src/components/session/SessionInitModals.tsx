@@ -954,7 +954,7 @@ export function SessionInitModals(props: SessionInitModalsProps) {
               <h4 className="session-inline-form-title">End Session</h4>
               <p className="session-card-subtitle">End this session for everyone?</p>
               <p className="session-card-subtitle">
-                This ends tonight's chapter for the whole table. Final scene, then credits.
+                This ends tonight&apos;s chapter for the whole table. Final scene, then credits.
               </p>
               <div className="session-action-row session-action-row--confirm-dialog">
                 <button
