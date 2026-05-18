@@ -118,7 +118,7 @@ Evidence snapshot (2026-05-18):
 - [x] Frontend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
 - [ ] Release-gate reporting is automated and enforced in CI
 - [x] Session lifecycle coverage includes: start → pause → resume → end → cleanup (covered by `backend/tests/integration/session-room-transition.integration.test.ts`, `backend/tests/integration/session-cooldown-handoff.integration.test.ts`, `backend/tests/services/session-cleanup-job.service.test.ts`)
-- [ ] Audio state recovery coverage includes: environment + conditions + distance + mute
+- [x] Audio state recovery coverage includes: environment + conditions + distance + mute (covered by `backend/tests/integration/audio-state-recovery.integration.test.ts`)
 - [x] Multi-client reconnect coverage includes: concurrent reconnect, session isolation, FIFO recovery (`backend/tests/integration/multi-client-reconnect.integration.test.ts`)
 
 **Related Docs**:

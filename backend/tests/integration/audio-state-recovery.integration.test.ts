@@ -24,10 +24,12 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { UUID } from '@shared'
 import {
   applyDMOverrideState,
+  getServerMuteEnforcementState,
   getSessionAudioState,
   removeDMOverrideState,
   setBroadcastState,
   setRoomEnvironmentState,
+  setUserMuteState,
 } from '@/services/audio/audio-state'
 
 // In-memory repository store — mirrors repository schema without Prisma
@@ -56,12 +58,25 @@ const dmOverrideRows = new Map<
   }
 >()
 
+const presenceRows = new Map<
+  string,
+  {
+    userId: string
+    sessionId: string
+    userMuted?: boolean
+  }
+>()
+
 function roomKey(sessionId: string, roomId: string) {
   return `${sessionId}::${roomId}`
 }
 
 function overrideKey(sessionId: string, targetUserId: string, overrideType: string) {
   return `${sessionId}::${targetUserId}::${overrideType}`
+}
+
+function presenceKey(sessionId: string, userId: string) {
+  return `${sessionId}::${userId}`
 }
 
 // Vitest module mock — must be declared before any imports from the mocked module
@@ -103,6 +118,36 @@ vi.mock('@/repositories/audio.repository', () => ({
   ),
 }))
 
+vi.mock('@/infra/redis', () => ({
+  getRedisClient: vi.fn(async () => ({
+    hSet: vi.fn(async (key: string, field: string, value: string) => {
+      if (!key.startsWith('presence:session:')) {
+        return
+      }
+
+      const sessionId = key.replace('presence:session:', '')
+      const parsed = JSON.parse(value) as { userMuted?: boolean }
+      presenceRows.set(presenceKey(sessionId, field), {
+        sessionId,
+        userId: field,
+        userMuted: parsed.userMuted === true,
+      })
+    }),
+    hGet: vi.fn(async (key: string, field: string) => {
+      if (!key.startsWith('presence:session:')) {
+        return null
+      }
+
+      const sessionId = key.replace('presence:session:', '')
+      const row = presenceRows.get(presenceKey(sessionId, field))
+      return row ? JSON.stringify(row) : null
+    }),
+    hGetAll: vi.fn(async () => ({})),
+    hDel: vi.fn(async () => 1),
+    del: vi.fn(async () => 1),
+  })),
+}))
+
 const SESSION = '11111111-1111-4111-8111-111111111111' as UUID
 const SESSION_2 = '22222222-2222-4222-8222-222222222222' as UUID
 const ROOM_A = 'aaaa0000-0000-4000-8000-000000000001' as UUID
@@ -115,6 +160,7 @@ describe('audio-state persistence and recovery soak', () => {
   beforeEach(() => {
     roomStateRows.clear()
     dmOverrideRows.clear()
+    presenceRows.clear()
   })
 
   // ----- Environment state persistence -----
@@ -219,6 +265,70 @@ describe('audio-state persistence and recovery soak', () => {
       overrideType: 'MUTE',
       appliedBy: DM_ID,
       appliedAt: 1700000006000,
+    })
+  })
+
+  it('recovers condition-like override payloads without losing parameters', async () => {
+    await applyDMOverrideState({
+      sessionId: SESSION,
+      targetUserId: PLAYER_1,
+      overrideType: 'FILTER',
+      parameters: {
+        category: 'CONDITION',
+        presetId: 'cond-silenced',
+        conditionName: 'Silenced',
+        mix: 1,
+      },
+      appliedBy: DM_ID,
+      appliedAt: 1700000006050,
+    })
+
+    const state = await getSessionAudioState(SESSION)
+
+    expect(state.dmOverrides).toContainEqual({
+      targetUserId: PLAYER_1,
+      overrideType: 'FILTER',
+      parameters: {
+        category: 'CONDITION',
+        presetId: 'cond-silenced',
+        conditionName: 'Silenced',
+        mix: 1,
+      },
+      appliedBy: DM_ID,
+      appliedAt: 1700000006050,
+    })
+  })
+
+  it('recovers distance-like override payloads without losing parameters', async () => {
+    await applyDMOverrideState({
+      sessionId: SESSION,
+      targetUserId: PLAYER_2,
+      overrideType: 'GAIN',
+      parameters: {
+        category: 'DISTANCE',
+        presetId: 'distance-far',
+        distanceName: 'Far',
+        gain: 0.45,
+        lowpassFreq: 1200,
+      },
+      appliedBy: DM_ID,
+      appliedAt: 1700000006060,
+    })
+
+    const state = await getSessionAudioState(SESSION)
+
+    expect(state.dmOverrides).toContainEqual({
+      targetUserId: PLAYER_2,
+      overrideType: 'GAIN',
+      parameters: {
+        category: 'DISTANCE',
+        presetId: 'distance-far',
+        distanceName: 'Far',
+        gain: 0.45,
+        lowpassFreq: 1200,
+      },
+      appliedBy: DM_ID,
+      appliedAt: 1700000006060,
     })
   })
 
@@ -379,5 +489,47 @@ describe('audio-state persistence and recovery soak', () => {
     expect(stateA.dmOverrides).toHaveLength(0)
     expect(stateB.environments).toHaveLength(0)
     expect(stateB.dmOverrides).toHaveLength(1)
+  })
+
+  it('mute recovery enforces publish block from dm override state after reconnect', async () => {
+    await applyDMOverrideState({
+      sessionId: SESSION,
+      targetUserId: PLAYER_1,
+      overrideType: 'MUTE',
+      parameters: { enabled: true },
+      appliedBy: DM_ID,
+      appliedAt: 1700000015000,
+    })
+
+    const muteState = await getServerMuteEnforcementState({
+      sessionId: SESSION,
+      userId: PLAYER_1,
+    })
+
+    expect(muteState).toEqual({
+      userMuted: false,
+      dmMuted: true,
+      enforcedMuted: true,
+    })
+  })
+
+  it('mute recovery enforces publish block from user mute state after reconnect', async () => {
+    await setUserMuteState({
+      sessionId: SESSION,
+      userId: PLAYER_2,
+      muted: true,
+      mutedAt: 1700000015100,
+    })
+
+    const muteState = await getServerMuteEnforcementState({
+      sessionId: SESSION,
+      userId: PLAYER_2,
+    })
+
+    expect(muteState).toEqual({
+      userMuted: true,
+      dmMuted: false,
+      enforcedMuted: true,
+    })
   })
 })
