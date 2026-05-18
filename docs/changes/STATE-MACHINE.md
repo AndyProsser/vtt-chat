@@ -8,19 +8,20 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 
 ## 0. State Naming Clarification
 
-**Canonical contract names:** `IDLE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`
+**Canonical contract names:** `IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, `CLEANUP`
 
-**Codebase current names:** `IDLE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`
+**Codebase current names:** `IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, `CLEANUP`
 
 **Mapping:**
 
-| Contract  | Codebase  | Meaning                                                                                                                   |
-| --------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `IDLE`    | `IDLE`    | Session exists but not running; green room mode.                                                                          |
-| `ACTIVE`  | `ACTIVE`  | Session running; players/DM in `MAIN` with effects active.                                                                |
-| `PAUSED`  | `PAUSED`  | Session suspended; players in `MAIN`, no session effects, off-the-record runtime.                                         |
-| `ENDED`   | `ENDED`   | Session has stopped; recording is shut down and summary/close-out work is triggered, but a new session may not begin yet. |
-| `CLEANUP` | `CLEANUP` | Post-session: no users connected, 20min greenroom purge timer running.                                                    |
+| Contract   | Codebase   | Meaning                                                                                 |
+| ---------- | ---------- | --------------------------------------------------------------------------------------- |
+| `IDLE`     | `IDLE`     | Session exists but not running; green room mode.                                        |
+| `ACTIVE`   | `ACTIVE`   | Session running; players/DM in `MAIN` with effects active.                              |
+| `PAUSED`   | `PAUSED`   | Session suspended; players in `MAIN`, no session effects, off-the-record runtime.       |
+| `COOLDOWN` | `COOLDOWN` | Post-session spectator window / cooldown period before the session becomes fully ended. |
+| `ENDED`    | `ENDED`    | Session has stopped; cooldown is complete and close-out work is triggered.              |
+| `CLEANUP`  | `CLEANUP`  | Post-session: no users connected, 20min greenroom purge timer running.                  |
 
 **Implementation rule:** Keep `IDLE` as the canonical greenroom state, keep `ENDED` as the explicit stop/processing phase, and transition to `IDLE` only after the backend has triggered recording shutdown and summary/close-out work. The backend must not block on those jobs completing. If the DM disables post-session spectator chat, `ENDED` may be a very short-lived trigger state that only dispatches the required work before moving on.
 
@@ -120,13 +121,14 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 - `IDLE`
 - `ACTIVE`
 - `PAUSED`
+- `COOLDOWN`
 - `ENDED`
 - `CLEANUP`
 
 **Green room:**
 
 - Green room is **not** a separate session state.
-- Green room is a calculated runtime state: `session.state !== ACTIVE && session.state !== PAUSED`.
+- Green room is a calculated runtime state: `session.state !== ACTIVE && session.state !== PAUSED && session.state !== COOLDOWN`.
 - In practice, green room mode applies to `IDLE`, `ENDED`, and `CLEANUP` while users are in `GREEN_ROOM` group.
 
 ### 2.2 Allowed transitions
@@ -140,10 +142,16 @@ This document defines **where state lives**, **who is authoritative**, and **whi
   - Trigger: DM disconnects (intentional or network) or DM explicitly pauses.
 - `PAUSED → ACTIVE`
   - Trigger: DM resumes session (only DM).
-- `ACTIVE → ENDED`
-  - Trigger: DM stops session.
+- `ACTIVE → COOLDOWN`
+  - Trigger: DM stops session from a live session.
   - Semantics:
-    - Session is ended; recording/close-out tasks begin.
+    - Session enters spectator cooldown / cooldown chat window if enabled.
+- `PAUSED → COOLDOWN`
+  - Trigger: DM stops session while paused.
+- `COOLDOWN → ENDED`
+  - Trigger: Cooldown expires or DM ends cooldown early.
+  - Semantics:
+    - Session runtime ends; close-out work begins.
 - `ENDED → CLEANUP`
   - Trigger: All players & DM disconnected and remain disconnected for 20min.
   - Backend action: Start 20min TTL timer in Redis.
@@ -156,6 +164,13 @@ This document defines **where state lives**, **who is authoritative**, and **whi
   - Trigger: Cleanup TTL expires (20min after last disconnect).
   - Backend action: Purge green room chat; reset session for fresh start.
   - Visibility: No WS event needed; cleanup is silent.
+
+### 2.3 Invalid transition behavior
+
+- Invalid transitions are rejected at the API layer.
+- Current shipped backend behavior returns HTTP `409 Conflict` for `INVALID_STATE_TRANSITION` errors.
+- Error payloads must remain descriptive and include the current and requested states.
+- Frontend controls should still be disabled ahead of time when the current session state makes the action invalid.
 
 ---
 

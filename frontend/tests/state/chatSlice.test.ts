@@ -292,4 +292,99 @@ describe('chatSlice', () => {
       expect(useStore.getState().messages[SESSION_A]?.[MSG_ID_2]).toBeDefined()
     })
   })
+
+  describe('handleMessageSent — session bookend deduplication', () => {
+    beforeEach(() => {
+      useStore.getState().clearMessages()
+    })
+
+    it('does not add a duplicate bookend within dedupe window', () => {
+      const bookendEvent = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+        messageId: MSG_ID_1,
+        roomId: ROOM_ID_A,
+        authorId: USER_ID,
+        authorUsername: 'system',
+        content: '[Session Started]',
+        type: 'SYSTEM',
+        isDmOnly: false,
+      })
+      const duplicateEvent = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+        messageId: MSG_ID_2,
+        roomId: ROOM_ID_A,
+        authorId: USER_ID,
+        authorUsername: 'system',
+        content: '[Session Started]',
+        type: 'SYSTEM',
+        isDmOnly: false,
+      })
+
+      useStore.getState().handleMessageSent(bookendEvent)
+      useStore.getState().handleMessageSent(duplicateEvent)
+
+      const msgs = useStore.getState().messages[SESSION_A]!
+      // Only the first bookend should be stored; the duplicate is rejected
+      expect(Object.keys(msgs)).toHaveLength(1)
+      expect(msgs[MSG_ID_1]).toBeDefined()
+      expect(msgs[MSG_ID_2]).toBeUndefined()
+    })
+
+    it('adds a bookend that is outside the dedupe window', () => {
+      const bookendEvent = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+        messageId: MSG_ID_1,
+        roomId: ROOM_ID_A,
+        authorId: USER_ID,
+        authorUsername: 'system',
+        content: '[Session Started]',
+        type: 'SYSTEM',
+        isDmOnly: false,
+      })
+      // Second event is far outside the 10 000 ms dedupe window
+      const lateEvent = {
+        ...makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+          messageId: MSG_ID_2,
+          roomId: ROOM_ID_A,
+          authorId: USER_ID,
+          authorUsername: 'system',
+          content: '[Session Started]',
+          type: 'SYSTEM',
+          isDmOnly: false,
+        }),
+        timestamp: NOW + 20_000,
+      }
+
+      useStore.getState().handleMessageSent(bookendEvent)
+      useStore.getState().handleMessageSent(lateEvent)
+
+      const msgs = useStore.getState().messages[SESSION_A]!
+      expect(Object.keys(msgs)).toHaveLength(2)
+    })
+
+    it('adds non-bookend SYSTEM messages without dedup checks', () => {
+      const event1 = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+        messageId: MSG_ID_1,
+        roomId: ROOM_ID_A,
+        authorId: USER_ID,
+        authorUsername: 'system',
+        content: 'Player joined the session',
+        type: 'SYSTEM',
+        isDmOnly: false,
+      })
+      const event2 = makeEvent('CHAT:MESSAGE_SENT', SESSION_A, {
+        messageId: MSG_ID_2,
+        roomId: ROOM_ID_A,
+        authorId: USER_ID,
+        authorUsername: 'system',
+        content: 'Player joined the session',
+        type: 'SYSTEM',
+        isDmOnly: false,
+      })
+
+      useStore.getState().handleMessageSent(event1)
+      useStore.getState().handleMessageSent(event2)
+
+      // Non-bookend SYSTEM messages are not deduplicated
+      const msgs = useStore.getState().messages[SESSION_A]!
+      expect(Object.keys(msgs)).toHaveLength(2)
+    })
+  })
 })

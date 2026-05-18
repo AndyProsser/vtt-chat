@@ -28,8 +28,8 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 
 **Acceptance Criteria**:
 
-- [ ] State machine contract is locked (`IDLE`, `ACTIVE`, `PAUSED`, `ENDED`, `CLEANUP`)
-- [ ] Transition rules are enforced at API layer (return 403 on invalid transitions)
+- [ ] State machine contract is locked (`IDLE`, `ACTIVE`, `PAUSED`, `COOLDOWN`, `ENDED`, `CLEANUP`)
+- [ ] Transition rules are enforced at API layer (current implementation returns 409 on invalid transitions)
 - [ ] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
 - [ ] Frontend renders bookends correctly after refresh/reconnect
 - [ ] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)

@@ -237,6 +237,26 @@ describe('sessionSlice', () => {
     })
   })
 
+  describe('handleSessionCooldownStarted', () => {
+    it('moves session into COOLDOWN and sets endedAt from cooldownStartedAt', () => {
+      useStore.getState().createSession({ ...SAMPLE_SESSION, state: 'ACTIVE' as any })
+      const event = makeEvent('SESSION:COOLDOWN_STARTED', SESSION_ID_1, {
+        cooldownStartedAt: NOW + 1000,
+      })
+      useStore.getState().handleSessionCooldownStarted(event)
+      const session = useStore.getState().sessions[SESSION_ID_1]
+      expect(session!.state).toBe('COOLDOWN')
+      expect(session!.endedAt).toBe(NOW + 1000)
+    })
+
+    it('is a no-op when the session does not exist', () => {
+      const UNKNOWN_ID = 'ffffffff-ffff-4fff-8fff-ffffffffffff' as UUID
+      const event = makeEvent('SESSION:COOLDOWN_STARTED', UNKNOWN_ID, {})
+      useStore.getState().handleSessionCooldownStarted(event)
+      expect(useStore.getState().sessions[UNKNOWN_ID]).toBeUndefined()
+    })
+  })
+
   describe('handleSessionCooldownExtended', () => {
     it('moves session into COOLDOWN and updates endedAt from WS payload', () => {
       useStore.getState().createSession({
@@ -255,6 +275,26 @@ describe('sessionSlice', () => {
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session!.state).toBe('COOLDOWN')
       expect(session!.endedAt).toBe(NOW + 60_000)
+    })
+
+    it('falls back to current endedAt when payload.endedAt is null', () => {
+      useStore.getState().createSession({
+        ...SAMPLE_SESSION,
+        state: 'ENDED' as any,
+        endedAt: NOW + 9999,
+      })
+      const event = makeEvent('SESSION:COOLDOWN_EXTENDED', SESSION_ID_1, { endedAt: null })
+      useStore.getState().handleSessionCooldownExtended(event)
+      const session = useStore.getState().sessions[SESSION_ID_1]
+      expect(session!.endedAt).toBe(NOW + 9999)
+    })
+
+    it('is a no-op when the session does not exist', () => {
+      // Use a session id that was never created
+      const UNKNOWN_ID = 'ffffffff-ffff-4fff-8fff-ffffffffffff' as UUID
+      const event = makeEvent('SESSION:COOLDOWN_EXTENDED', UNKNOWN_ID, { endedAt: NOW })
+      useStore.getState().handleSessionCooldownExtended(event)
+      expect(useStore.getState().sessions[UNKNOWN_ID]).toBeUndefined()
     })
   })
 

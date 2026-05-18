@@ -75,4 +75,102 @@ describe('logger controls', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(errorSpy).toHaveBeenCalledTimes(1)
   })
+
+  it('ignores invalid runtime and storage overrides and falls back safely', () => {
+    window.__VTT_LOG_LEVEL__ = 'LOUD'
+    const storage = {
+      getItem: vi.fn().mockReturnValue('NOPE'),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', storage)
+
+    expect(logger.getLevel()).toBe('INFO')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('persists setLevel to localStorage when available', () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', storage)
+
+    logger.setLevel('ERROR')
+
+    expect(window.__VTT_LOG_LEVEL__).toBe('ERROR')
+    expect(storage.setItem).toHaveBeenCalledWith('vtt.log.level', 'ERROR')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('tolerates storage write failures in setLevel', () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(() => {
+        throw new Error('blocked')
+      }),
+      removeItem: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', storage)
+
+    expect(() => logger.setLevel('WARN')).not.toThrow()
+    expect(window.__VTT_LOG_LEVEL__).toBe('WARN')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('clearPersistedLevel removes runtime and storage overrides', () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue('DEBUG'),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', storage)
+    window.__VTT_LOG_LEVEL__ = 'DEBUG'
+
+    logger.clearPersistedLevel()
+
+    expect(window.__VTT_LOG_LEVEL__).toBeUndefined()
+    expect(storage.removeItem).toHaveBeenCalledWith('vtt.log.level')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('tolerates storage removal failures in clearPersistedLevel', () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue('DEBUG'),
+      setItem: vi.fn(),
+      removeItem: vi.fn(() => {
+        throw new Error('blocked')
+      }),
+    }
+    vi.stubGlobal('localStorage', storage)
+    window.__VTT_LOG_LEVEL__ = 'DEBUG'
+
+    expect(() => logger.clearPersistedLevel()).not.toThrow()
+    expect(window.__VTT_LOG_LEVEL__).toBeUndefined()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('tracks console enabled state explicitly', () => {
+    logger.enableConsole(false)
+    expect(logger.isConsoleEnabled()).toBe(false)
+
+    logger.enableConsole(true)
+    expect(logger.isConsoleEnabled()).toBe(true)
+  })
+
+  it('resetForTests restores defaults', () => {
+    logger.enableConsole(false)
+    logger.setLevel('ERROR')
+
+    logger.resetForTests()
+
+    expect(logger.isConsoleEnabled()).toBe(true)
+    expect(logger.getLevel()).toBe('INFO')
+  })
 })

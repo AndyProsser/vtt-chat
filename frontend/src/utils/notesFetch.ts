@@ -63,11 +63,15 @@ export function fetchSessionNotesOnce(
   })()
 
   inFlightSessionNotes.set(key, request)
-  request.finally(() => {
-    if (inFlightSessionNotes.get(key) === request) {
-      inFlightSessionNotes.delete(key)
-    }
-  })
+  void request
+    .finally(() => {
+      if (inFlightSessionNotes.get(key) === request) {
+        inFlightSessionNotes.delete(key)
+      }
+    })
+    .catch(() => {
+      // The caller observes the request failure; this cleanup chain should not rethrow.
+    })
 
   return request
 }

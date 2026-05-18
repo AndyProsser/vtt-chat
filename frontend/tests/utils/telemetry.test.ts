@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { logger } from '../../src/utils/logger'
-import { TelemetryClient, sanitizeTelemetryProperties } from '../../src/utils/telemetry'
+import {
+  TelemetryClient,
+  createHttpTelemetryTransport,
+  sanitizeTelemetryProperties,
+} from '../../src/utils/telemetry'
 
 describe('sanitizeTelemetryProperties', () => {
   it('removes sensitive keys recursively', () => {
@@ -18,6 +22,25 @@ describe('sanitizeTelemetryProperties', () => {
     expect(sanitized.token).toBeUndefined()
     expect((sanitized.nested as Record<string, unknown>).noteContent).toBeUndefined()
     expect((sanitized.nested as Record<string, unknown>).safe).toBe(42)
+  })
+
+  it('returns an empty object for undefined input', () => {
+    expect(sanitizeTelemetryProperties(undefined)).toEqual({})
+  })
+
+  it('truncates long strings, limits arrays, and stringifies unknown objects', () => {
+    const sanitized = sanitizeTelemetryProperties({
+      long: 'x'.repeat(130),
+      list: Array.from({ length: 25 }, (_, index) => index),
+      custom: new Map([['k', 'v']]),
+      ok: true,
+    })
+
+    expect((sanitized.long as string).length).toBe(120)
+    expect(sanitized.long).toMatch(/\.\.\.$/)
+    expect(sanitized.list as unknown[]).toHaveLength(20)
+    expect(sanitized.custom).toEqual({})
+    expect(sanitized.ok).toBe(true)
   })
 })
 
@@ -91,5 +114,94 @@ describe('TelemetryClient', () => {
     await client.flush()
 
     expect(client.getQueuedCount()).toBe(3)
+  })
+
+  it('start is idempotent and stop is safe when not started', () => {
+    const addListenerSpy = vi.spyOn(window, 'addEventListener')
+    const client = new TelemetryClient({ flushIntervalMs: 100 })
+
+    client.stop()
+    client.start()
+    client.start()
+
+    expect(addListenerSpy).toHaveBeenCalledTimes(1)
+    client.stop()
+  })
+
+  it('flush is a no-op when the queue is empty', async () => {
+    const transport = vi.fn().mockResolvedValue(undefined)
+    const client = new TelemetryClient({ transport })
+
+    await client.flush()
+
+    expect(transport).not.toHaveBeenCalled()
+  })
+
+  it('flushes on beforeunload and onSessionEnd', async () => {
+    const transport = vi.fn().mockResolvedValue(undefined)
+    const client = new TelemetryClient({ transport })
+
+    client.track('A')
+    client.start()
+    window.dispatchEvent(new Event('beforeunload'))
+    await Promise.resolve()
+
+    client.track('B')
+    client.onSessionEnd()
+    await Promise.resolve()
+
+    expect(transport).toHaveBeenCalledTimes(2)
+    client.stop()
+  })
+})
+
+describe('createHttpTelemetryTransport', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does nothing for an empty event batch', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const transport = createHttpTelemetryTransport({
+      apiUrl: 'http://api.test/',
+      token: 'secret',
+    })
+
+    await transport([])
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('posts telemetry events to the normalized endpoint', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchSpy)
+    const transport = createHttpTelemetryTransport({
+      apiUrl: 'http://api.test/',
+      token: 'secret',
+    })
+
+    await transport([{ event: 'E1', properties: {}, ts: 1 }])
+
+    expect(fetchSpy).toHaveBeenCalledWith('http://api.test/api/telemetry/client-events', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer secret',
+      },
+      body: JSON.stringify({ events: [{ event: 'E1', properties: {}, ts: 1 }] }),
+    })
+  })
+
+  it('throws when the telemetry HTTP transport fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const transport = createHttpTelemetryTransport({
+      apiUrl: 'http://api.test',
+      token: 'secret',
+    })
+
+    await expect(transport([{ event: 'E1', properties: {}, ts: 1 }])).rejects.toThrow(
+      'Telemetry HTTP transport failed'
+    )
   })
 })
