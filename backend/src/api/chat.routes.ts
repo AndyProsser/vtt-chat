@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
+import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { findSessionById } from '@/repositories/session.repository'
@@ -23,6 +24,7 @@ import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 import { isGreenRoomName } from '@/utils'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 /**
  * Middleware: Verify auth token
@@ -183,6 +185,45 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     }
     const requesterRole = authz.role
 
+    const isSpectator = requesterRole === 'SPECTATOR'
+    const cooldownPolicy =
+      session.state === SessionState.COOLDOWN
+        ? await prisma.session.findUnique({
+            where: { id: sessionId as UUID },
+            select: {
+              campaign: {
+                select: {
+                  postSessionChatEnabled: true,
+                },
+              },
+            },
+          })
+        : null
+    const postSessionChatEnabled = cooldownPolicy?.campaign?.postSessionChatEnabled ?? true
+
+    if (isSpectator) {
+      if (session.state === SessionState.ACTIVE) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Spectators are observe-only during active play',
+        })
+      }
+
+      if (session.state !== SessionState.COOLDOWN) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Spectators may only chat during post-session cooldown',
+        })
+      }
+
+      if (!postSessionChatEnabled) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Post-session spectator chat is disabled for this campaign',
+        })
+      }
+    }
+
     if ((type === MessageType.IC || type === MessageType.DM) && requesterRole === 'SPECTATOR') {
       return res
         .status(403)
@@ -232,7 +273,15 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
     }
 
     const allowGreenroomChatOutsideActive =
-      room.type === 'GROUP' && isGreenRoomName(room.name) && session.state !== SessionState.ACTIVE
+      room.type === 'GROUP' &&
+      isGreenRoomName(room.name) &&
+      session.state !== SessionState.ACTIVE &&
+      session.state !== SessionState.COOLDOWN
+
+    const allowCooldownChat =
+      session.state === SessionState.COOLDOWN &&
+      postSessionChatEnabled &&
+      (room.type === RoomType.MAIN || (room.type === RoomType.GROUP && isGreenRoomName(room.name)))
 
     if (isGreenRoomName(room.name) && type !== MessageType.OOC) {
       return res.status(400).json({
@@ -250,7 +299,18 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    if (session.state !== SessionState.ACTIVE && !allowGreenroomChatOutsideActive) {
+    if (session.state === SessionState.COOLDOWN && !postSessionChatEnabled) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_SESSION,
+        message: 'Post-session chat is disabled for this campaign',
+      })
+    }
+
+    if (
+      session.state !== SessionState.ACTIVE &&
+      !allowCooldownChat &&
+      !allowGreenroomChatOutsideActive
+    ) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,
         message: 'Chat is only available in greenroom before or after active play',

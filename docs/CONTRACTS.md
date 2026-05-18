@@ -189,7 +189,9 @@ Archive lock rules:
 - A `[Session Ended]` bookend is inserted into session chat.
 - OOC-only chat is allowed; IC chat is disabled.
 - Players can view full session chat history.
-- Spectators are elevated to post-session interaction mode: they can chat and speak with the table.
+- Spectators are elevated to post-session interaction mode only when campaign post-session chat is enabled.
+- During `ACTIVE`, spectators are observe-only and cannot send chat.
+- During non-cooldown states, spectators cannot send session chat.
 - All cooldown chat is ephemeral by default (cleared during cleanup), but DM can toggle persistence per campaign.
 - DM audio effects are frozen; no new effects, conditions, or environment changes allowed.
 - DM cannot create, delete, or move groups during cooldown.

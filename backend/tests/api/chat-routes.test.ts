@@ -18,6 +18,15 @@ const mocks = vi.hoisted(() => ({
   getMessagesPage: vi.fn(),
   getCampaignGreenroomMessagesPage: vi.fn(),
   broadcastEventToSession: vi.fn(),
+  prismaSessionFindUnique: vi.fn(),
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    session: {
+      findUnique: mocks.prismaSessionFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -159,6 +168,9 @@ describe('chat routes', () => {
 
     mocks.getMessagesPage.mockResolvedValue({ messages: [], hasMore: false })
     mocks.getCampaignGreenroomMessagesPage.mockResolvedValue({ messages: [], hasMore: false })
+    mocks.prismaSessionFindUnique.mockResolvedValue({
+      campaign: { postSessionChatEnabled: true },
+    })
   })
 
   it('returns 401 when auth header is missing', async () => {
@@ -191,6 +203,93 @@ describe('chat routes', () => {
       })
 
     expect(response.status).toBe(403)
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 for spectator OOC message during ACTIVE (observe-only)', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({
+      userId: USER_ID,
+      username: 'watcher',
+      role: 'SPECTATOR',
+    })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'SPECTATOR' })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'watching only',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(403)
+    expect(response.body.message).toContain('observe-only')
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('allows spectator OOC chat during COOLDOWN when post-session chat is enabled', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({
+      userId: USER_ID,
+      username: 'watcher',
+      role: 'SPECTATOR',
+    })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'SPECTATOR' })
+    mocks.getSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.COOLDOWN,
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: true },
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'good game everyone',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 403 for spectator cooldown chat when campaign disables post-session chat', async () => {
+    const app = buildApp()
+    mocks.verifyToken.mockReturnValue({
+      userId: USER_ID,
+      username: 'watcher',
+      role: 'SPECTATOR',
+    })
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({ ok: true, role: 'SPECTATOR' })
+    mocks.getSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.COOLDOWN,
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: false },
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'farewell',
+        type: MessageType.OOC,
+      })
+
+    expect(response.status).toBe(403)
+    expect(response.body.message).toContain('disabled')
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 

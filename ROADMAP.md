@@ -35,6 +35,15 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 - [ ] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
 - [ ] Post-session chat timer and cooldown window work end-to-end
 
+Evidence snapshot (2026-05-18):
+
+- Backend now enforces spectator chat lifecycle at API level in `POST /api/chat/message`:
+  - observe-only during `ACTIVE`
+  - spectator chat allowed only during `COOLDOWN`
+  - spectator cooldown chat requires campaign `postSessionChatEnabled`
+- Added backend route coverage for these paths in `backend/tests/api/chat-routes.test.ts`.
+- Voice participation policy in cooldown is still pending explicit backend enforcement and test proof.
+
 **Related Docs**:
 
 - [docs/changes/STATE-MACHINE.md](docs/changes/STATE-MACHINE.md)
@@ -76,12 +85,12 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 
 **Acceptance Criteria**:
 
-- [ ] Backend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
+- [x] Backend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures (2026-05-18: 83/83 test files, 660/660 tests, 65.26% statements, 53.67% branches, 66.96% functions, 65.62% lines)
 - [x] Frontend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
 - [ ] Release-gate reporting is automated and enforced in CI
-- [ ] Session lifecycle coverage includes: start → pause → resume → end → cleanup
+- [x] Session lifecycle coverage includes: start → pause → resume → end → cleanup (covered by `backend/tests/integration/session-room-transition.integration.test.ts`, `backend/tests/integration/session-cooldown-handoff.integration.test.ts`, `backend/tests/services/session-cleanup-job.service.test.ts`)
 - [ ] Audio state recovery coverage includes: environment + conditions + distance + mute
-- [ ] Multi-client reconnect coverage includes: concurrent reconnect, session isolation, FIFO recovery
+- [x] Multi-client reconnect coverage includes: concurrent reconnect, session isolation, FIFO recovery (`backend/tests/integration/multi-client-reconnect.integration.test.ts`)
 
 **Related Docs**:
 
