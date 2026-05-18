@@ -11,9 +11,11 @@ It tracks:
 
 Last updated: 2026-05-08
 
-Status: Deprecated for active planning. This document is retained as feature-stage history and delivery log.
+**Status**: Deprecated for active planning. This document is retained as feature-stage history and delivery log.
 
-Active planning source of truth: [ROADMAP.md](../ROADMAP.md)
+**Active Planning Source of Truth**: [ROADMAP.md](../ROADMAP.md) (simplified, work-item tracking focus)
+
+**Detailed Historical Notes**: [DEVELOPMENT-ROADMAP-2026-05.md](DEVELOPMENT-ROADMAP-2026-05.md) (verbose delivery history, implementation notes, and phase descriptions from 2026-05-18)
 
 Recent planning additions (2026-05-06) are tracked in the active roadmap:
 

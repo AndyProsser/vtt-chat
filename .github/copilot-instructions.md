@@ -554,6 +554,8 @@ The following documents must be kept current as standing discipline — not as a
 | `docs/CONTRACTS.md`         | When any API endpoint or WS event contract changes                       |
 | `docs/ARCHITECTURE-MAP.txt` | When new files, modules, or subsystems are added                         |
 
+**Roadmap discipline**: `ROADMAP.md` is a tracking document only. It contains work-item status, dependencies, and brief acceptance criteria. All detailed acceptance criteria, design decisions, and implementation notes belong in the linked `docs/` files — not inline in the roadmap. When implementing a work unit, create or update the relevant doc alongside the code. Do not put implementation details into `ROADMAP.md`.
+
 ---
 
 ## Living Instructions (This File)
