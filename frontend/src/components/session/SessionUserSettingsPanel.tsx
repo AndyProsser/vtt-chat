@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
+import { Slider } from '../../core-ui'
 import '../../styles/components/session/SessionUserSettingsPanel.css'
 
 export interface SessionUserSettingsPanelProps {
@@ -287,13 +288,12 @@ export function SessionUserSettingsPanel({
                   <span>Master volume</span>
                   <span>{masterVolume}%</span>
                 </span>
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={100}
                   step={1}
                   value={masterVolume}
-                  onChange={(event) => setMasterVolume(Number(event.target.value))}
+                  onValueChange={(nextValue) => setMasterVolume(nextValue)}
                   className="susp-range"
                   aria-label="Master volume"
                 />
@@ -304,13 +304,12 @@ export function SessionUserSettingsPanel({
                   <span>Microphone level</span>
                   <span>{inputVolume}%</span>
                 </span>
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={100}
                   step={1}
                   value={inputVolume}
-                  onChange={(event) => setInputVolume(Number(event.target.value))}
+                  onValueChange={(nextValue) => setInputVolume(nextValue)}
                   className="susp-range"
                   aria-label="Microphone level"
                 />
@@ -320,13 +319,12 @@ export function SessionUserSettingsPanel({
                   <span>Voice output level</span>
                   <span>{outputVolume}%</span>
                 </span>
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={100}
                   step={1}
                   value={outputVolume}
-                  onChange={(event) => setOutputVolume(Number(event.target.value))}
+                  onValueChange={(nextValue) => setOutputVolume(nextValue)}
                   className="susp-range"
                   aria-label="Voice output level"
                 />

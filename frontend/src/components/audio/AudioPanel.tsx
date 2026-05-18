@@ -398,8 +398,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       ? 'connecting'
       : 'disconnected'
   const isVoiceConnected = canonicalIsConnected
-  const liveKitConnectionKey =
-    sharedLiveKitState?.key ?? buildLiveKitConnectionKey(sessionId, roomId, 'room')
   const hasLocalPublication = sharedLiveKitState?.hasLocalPublication ?? false
   const liveKitError = sharedLiveKitState?.error ?? livekit.error
 
@@ -662,7 +660,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           device={device}
           statusState={statusState}
           isVoiceConnected={isVoiceConnected}
-          liveKitConnectionKey={liveKitConnectionKey}
           hasLocalPublication={hasLocalPublication}
           pttActive={pttActive}
           activeEffectsCount={activeEffectsCount}

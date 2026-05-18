@@ -2,7 +2,7 @@ import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { PolicyNotice } from './PolicyNotice'
 import {
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
@@ -672,14 +672,14 @@ export function InviteJoinPage({
                       />
 
                       <label htmlFor="join-character-level">Level</label>
-                      <input
+                      <Slider
                         id="join-character-level"
-                        type="range"
+                        className="invite-join-level-slider"
                         min={1}
                         max={20}
                         step={1}
                         value={characterLevel}
-                        onChange={(event) => setCharacterLevel(Number(event.target.value) || 1)}
+                        onValueChange={(nextValue) => setCharacterLevel(nextValue || 1)}
                       />
                       <output className="invite-join-level-output" htmlFor="join-character-level">
                         Level {characterLevel}

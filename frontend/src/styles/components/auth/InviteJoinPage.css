@@ -267,6 +267,24 @@
   color: var(--color-text-secondary);
 }
 
+.invite-join-level-slider {
+  width: 100%;
+  height: 1rem;
+}
+
+.invite-join-level-slider .ui-slider__track {
+  background: color-mix(in srgb, var(--color-border) 78%, transparent);
+}
+
+.invite-join-level-slider .ui-slider__range,
+.invite-join-level-slider .ui-slider__thumb {
+  background: var(--color-brand);
+}
+
+.invite-join-level-slider .ui-slider__thumb {
+  border-color: color-mix(in srgb, var(--color-brand) 65%, #fff 35%);
+}
+
 .invite-join-avatar-preview {
   width: 84px;
   height: 84px;

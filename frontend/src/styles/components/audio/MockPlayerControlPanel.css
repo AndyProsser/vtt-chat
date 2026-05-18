@@ -29,46 +29,25 @@
 
 .mock-player-control-panel__slider {
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
+  height: 1rem;
+}
+
+.mock-player-control-panel__slider .ui-slider__track {
   background: linear-gradient(to right, var(--color-accent-primary), var(--color-accent-secondary));
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+}
 
-  &::-webkit-slider-thumb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--color-accent-primary);
-    cursor: grab;
-    border: none;
+.mock-player-control-panel__slider .ui-slider__range,
+.mock-player-control-panel__slider .ui-slider__thumb {
+  background: var(--color-accent-primary);
+}
 
-    &:active {
-      cursor: grabbing;
-    }
-  }
+.mock-player-control-panel__slider .ui-slider__thumb {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 65%, #fff 35%);
+}
 
-  &::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--color-accent-primary);
-    cursor: grab;
-    border: none;
-
-    &:active {
-      cursor: grabbing;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+.mock-player-control-panel__slider[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .mock-player-control-panel__count {

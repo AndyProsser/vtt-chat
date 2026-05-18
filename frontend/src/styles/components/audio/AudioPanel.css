@@ -515,6 +515,7 @@
 
 .audio-settings-panel__select {
   width: 100%;
+  min-width: 0;
   padding: 0.28rem 0.5rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
@@ -522,6 +523,9 @@
   color: var(--color-text-primary);
   font-size: 0.76rem;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .audio-settings-panel__mic-meter {
@@ -589,7 +593,24 @@
 
 .audio-settings-panel__slider {
   flex: 1;
-  accent-color: var(--color-primary-500, #3b82f6);
+  height: 1rem;
+}
+
+.audio-settings-panel__slider .ui-slider__track {
+  background: color-mix(
+    in srgb,
+    var(--color-border-default, rgba(148, 163, 184, 0.28)) 78%,
+    transparent
+  );
+}
+
+.audio-settings-panel__slider .ui-slider__range,
+.audio-settings-panel__slider .ui-slider__thumb {
+  background: var(--color-primary-500, #3b82f6);
+}
+
+.audio-settings-panel__slider .ui-slider__thumb {
+  border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 70%, #fff 30%);
 }
 
 .audio-settings-panel__slider-value {

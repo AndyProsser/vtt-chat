@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { UUID } from '@shared'
 import { useToast } from '../../hooks/useToast'
+import { Slider } from '../../core-ui'
 import '../../styles/components/session/SessionInit.css'
 
 type CampaignSettingsPageProps = {
@@ -302,15 +303,14 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
               <label className="session-label" htmlFor="post-session-chat-duration">
                 Duration: {postSessionChatDurationMinutes} min
               </label>
-              <input
+              <Slider
                 id="post-session-chat-duration"
                 className="session-slider"
-                type="range"
                 min={1}
                 max={60}
                 step={1}
                 value={postSessionChatDurationMinutes}
-                onChange={(event) => setPostSessionChatDurationMinutes(Number(event.target.value))}
+                onValueChange={(nextValue) => setPostSessionChatDurationMinutes(nextValue)}
                 disabled={isSaving || !postSessionChatEnabled}
               />
               <p className="session-card-subtitle">

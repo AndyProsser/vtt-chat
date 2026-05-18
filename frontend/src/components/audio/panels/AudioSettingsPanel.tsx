@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
+import { Slider } from '../../../core-ui'
 import type { AudioDeviceState } from '@/types/audio'
 import {
   AUDIO_CONTROL_COPY,
@@ -27,6 +28,17 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
   { value: 'medium', label: 'MED' },
   { value: 'high', label: 'HIGH' },
 ]
+
+const DEVICE_LABEL_MAX_CHARS = 28
+
+function truncateDeviceLabel(label: string, maxChars: number = DEVICE_LABEL_MAX_CHARS): string {
+  const normalized = label.trim()
+  if (normalized.length <= maxChars) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`
+}
 
 export function AudioSettingsPanel({
   device,
@@ -106,8 +118,8 @@ export function AudioSettingsPanel({
             >
               <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
               {speakerDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label}
+                <option key={d.deviceId} value={d.deviceId} title={d.label}>
+                  {truncateDeviceLabel(d.label)}
                 </option>
               ))}
             </select>
@@ -125,8 +137,8 @@ export function AudioSettingsPanel({
             >
               <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
               {micDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label}
+                <option key={d.deviceId} value={d.deviceId} title={d.label}>
+                  {truncateDeviceLabel(d.label)}
                 </option>
               ))}
             </select>
@@ -161,12 +173,11 @@ export function AudioSettingsPanel({
                 {AUDIO_SETTINGS_COPY.sensitivity}
               </span>
               <div className="audio-settings-panel__slider-row">
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={100}
                   value={device.micGain}
-                  onChange={(e) => onDeviceChange({ micGain: Number(e.target.value) })}
+                  onValueChange={(nextValue) => onDeviceChange({ micGain: nextValue })}
                   className="audio-settings-panel__slider"
                   aria-label={AUDIO_SETTINGS_COPY.microphoneSensitivity}
                 />
@@ -228,12 +239,11 @@ export function AudioSettingsPanel({
                 {AUDIO_SETTINGS_COPY.backgroundAudioLevel}
               </span>
               <div className="audio-settings-panel__slider-row">
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={100}
                   value={device.backgroundAudioLevel}
-                  onChange={(e) => onDeviceChange({ backgroundAudioLevel: Number(e.target.value) })}
+                  onValueChange={(nextValue) => onDeviceChange({ backgroundAudioLevel: nextValue })}
                   className="audio-settings-panel__slider"
                   aria-label={AUDIO_SETTINGS_COPY.backgroundAudioLevelAria}
                 />
@@ -257,12 +267,11 @@ export function AudioSettingsPanel({
               {AUDIO_SETTINGS_COPY.masterVolume}
             </span>
             <div className="audio-settings-panel__slider-row">
-              <input
-                type="range"
+              <Slider
                 min={0}
                 max={100}
                 value={device.volumeLevel}
-                onChange={(e) => onDeviceChange({ volumeLevel: Number(e.target.value) })}
+                onValueChange={(nextValue) => onDeviceChange({ volumeLevel: nextValue })}
                 className="audio-settings-panel__slider"
                 aria-label={AUDIO_SETTINGS_COPY.masterVolumeAria}
               />

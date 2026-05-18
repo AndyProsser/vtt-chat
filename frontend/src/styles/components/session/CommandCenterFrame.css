@@ -68,7 +68,7 @@
   height: var(--command-center-rails-height);
   max-height: var(--command-center-rails-height);
   overflow: hidden;
-  grid-template-columns: minmax(304px, 336px) minmax(0, 1fr) 2.15rem;
+  grid-template-columns: minmax(264px, 296px) minmax(0, 1fr) 2.15rem;
 }
 
 .command-center-center-pane {

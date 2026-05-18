@@ -24,7 +24,6 @@ interface AudioDevicePanelProps {
   device: AudioDeviceState
   statusState: AudioConnectionStatusState
   isVoiceConnected: boolean
-  liveKitConnectionKey: string
   hasLocalPublication: boolean
   pttActive: boolean
   activeEffectsCount: number
@@ -41,7 +40,6 @@ export function AudioDevicePanel({
   device,
   statusState,
   isVoiceConnected,
-  liveKitConnectionKey,
   hasLocalPublication,
   pttActive,
   activeEffectsCount,

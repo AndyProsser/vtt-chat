@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '@/styles/components/dev/MockTestingPanel.css'
 
 interface MockSimulationConfig {
@@ -355,14 +355,18 @@ export function MockTestingPanel({
         <div className="mock-testing-panel__row">
           <label className="mock-testing-panel__label">Mock Players</label>
           <div className="mock-testing-panel__slider-row">
-            <input
-              type="range"
+            <Slider
               min={String(playerBounds.min)}
               max={String(playerBounds.max)}
               value={playerCount}
-              onChange={handlePlayerCountChange}
-              onMouseUp={handlePlayerCountCommit}
-              onTouchEnd={handlePlayerCountCommit}
+              onValueChange={(nextValue) =>
+                handlePlayerCountChange({
+                  target: { value: String(nextValue) },
+                } as React.ChangeEvent<HTMLInputElement>)
+              }
+              onValueCommit={() => {
+                void handlePlayerCountCommit()
+              }}
               className="mock-testing-panel__slider"
               disabled={isLoading}
             />
@@ -390,98 +394,68 @@ export function MockTestingPanel({
         {/* Simulator Toggles */}
         <div className="mock-testing-panel__row">
           <label className="mock-testing-panel__label">Speaking</label>
-          <div className="mock-testing-panel__toggle-group">
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                config.speakingSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ speakingSimulatorEnabled: true })}
-              disabled={isLoading || config.speakingSimulatorEnabled}
-            >
-              ON
-            </button>
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                !config.speakingSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ speakingSimulatorEnabled: false })}
-              disabled={isLoading || !config.speakingSimulatorEnabled}
-            >
-              OFF
-            </button>
-          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={config.speakingSimulatorEnabled}
+            className={`mock-testing-panel__toggle ${config.speakingSimulatorEnabled ? 'is-on' : ''}`}
+            onClick={() =>
+              void updateConfig({ speakingSimulatorEnabled: !config.speakingSimulatorEnabled })
+            }
+            disabled={isLoading}
+          >
+            {config.speakingSimulatorEnabled ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         <div className="mock-testing-panel__row">
           <label className="mock-testing-panel__label">Chat</label>
-          <div className="mock-testing-panel__toggle-group">
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                config.chatSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ chatSimulatorEnabled: true })}
-              disabled={isLoading || config.chatSimulatorEnabled}
-            >
-              ON
-            </button>
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                !config.chatSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ chatSimulatorEnabled: false })}
-              disabled={isLoading || !config.chatSimulatorEnabled}
-            >
-              OFF
-            </button>
-          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={config.chatSimulatorEnabled}
+            className={`mock-testing-panel__toggle ${config.chatSimulatorEnabled ? 'is-on' : ''}`}
+            onClick={() =>
+              void updateConfig({ chatSimulatorEnabled: !config.chatSimulatorEnabled })
+            }
+            disabled={isLoading}
+          >
+            {config.chatSimulatorEnabled ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         <div className="mock-testing-panel__row">
           <label className="mock-testing-panel__label">Disconnect</label>
-          <div className="mock-testing-panel__toggle-group">
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                config.disconnectSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ disconnectSimulatorEnabled: true })}
-              disabled={isLoading || config.disconnectSimulatorEnabled}
-            >
-              ON
-            </button>
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                !config.disconnectSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ disconnectSimulatorEnabled: false })}
-              disabled={isLoading || !config.disconnectSimulatorEnabled}
-            >
-              OFF
-            </button>
-          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={config.disconnectSimulatorEnabled}
+            className={`mock-testing-panel__toggle ${config.disconnectSimulatorEnabled ? 'is-on' : ''}`}
+            onClick={() =>
+              void updateConfig({ disconnectSimulatorEnabled: !config.disconnectSimulatorEnabled })
+            }
+            disabled={isLoading}
+          >
+            {config.disconnectSimulatorEnabled ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         <div className="mock-testing-panel__row">
           <label className="mock-testing-panel__label">Multi-Device</label>
-          <div className="mock-testing-panel__toggle-group">
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                config.multiDeviceSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ multiDeviceSimulatorEnabled: true })}
-              disabled={isLoading || config.multiDeviceSimulatorEnabled}
-            >
-              ON
-            </button>
-            <button
-              className={`mock-testing-panel__segment-btn ${
-                !config.multiDeviceSimulatorEnabled ? 'is-active' : ''
-              }`}
-              onClick={() => updateConfig({ multiDeviceSimulatorEnabled: false })}
-              disabled={isLoading || !config.multiDeviceSimulatorEnabled}
-            >
-              OFF
-            </button>
-          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={config.multiDeviceSimulatorEnabled}
+            className={`mock-testing-panel__toggle ${config.multiDeviceSimulatorEnabled ? 'is-on' : ''}`}
+            onClick={() =>
+              void updateConfig({
+                multiDeviceSimulatorEnabled: !config.multiDeviceSimulatorEnabled,
+              })
+            }
+            disabled={isLoading}
+          >
+            {config.multiDeviceSimulatorEnabled ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         {/* Remove All Button */}

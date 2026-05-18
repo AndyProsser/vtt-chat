@@ -1,5 +1,6 @@
 import type { PresenceState, UUID } from '@shared'
 import { getPresenceLabel, RADIAL_MENU_COPY } from '../../constants/roomPresence.constants'
+import { Slider } from '../../core-ui'
 
 interface AudioPreset {
   id: string
@@ -121,14 +122,13 @@ export function DMPlayerOverridesSection({
 
         <label className="grid gap-1">
           <span className="text-xs text-ui-secondary">Gain ({gainPercent}%)</span>
-          <input
+          <Slider
             aria-label="Override Gain"
-            type="range"
             min={25}
             max={200}
             step={5}
             value={gainPercent}
-            onChange={(event) => onGainChange(Number(event.target.value))}
+            onValueChange={(nextValue) => onGainChange(nextValue)}
             className="accent-sky-600"
           />
         </label>

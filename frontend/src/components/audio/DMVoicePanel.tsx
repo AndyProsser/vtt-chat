@@ -1,4 +1,5 @@
 import { AUDIO_CONTROL_COPY, getDMVoiceChannelButtonLabel } from '../../constants/audioUi.constants'
+import { Slider } from '../../core-ui'
 
 interface DMVoicePanelProps {
   isEnabled: boolean
@@ -35,15 +36,14 @@ export function DMVoicePanel({
 
       <label className="mt-3 block text-xs text-ui-secondary">
         Gain ({Math.round(gain * 100)}%)
-        <input
+        <Slider
           className="mt-1 w-full"
-          type="range"
           min={0}
           max={2}
           step={0.05}
           value={gain}
           disabled={!isEnabled}
-          onChange={(event) => onGainChange(Number(event.target.value))}
+          onValueChange={(nextValue) => onGainChange(nextValue)}
         />
       </label>
 

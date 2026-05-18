@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
+import { Slider } from '../../core-ui'
 import { DMEnvironmentSection } from '../audio/DMEnvironmentSection'
 import { DMPlayerOverridesSection } from '../audio/DMPlayerOverridesSection'
 import { DMRoomMovementSection } from '../audio/DMRoomMovementSection'
@@ -638,14 +639,13 @@ export function DMAudioControls({
             <label className="text-xs text-ui-secondary" htmlFor="dm-background-volume">
               Background Volume: {Math.round(localBackgroundVolume * 100)}%
             </label>
-            <input
+            <Slider
               id="dm-background-volume"
-              type="range"
               min={0}
               max={1}
               step={0.05}
               value={localBackgroundVolume}
-              onChange={(e) => setLocalBackgroundVolume(Number(e.target.value))}
+              onValueChange={(nextValue) => setLocalBackgroundVolume(nextValue)}
               className="w-full"
             />
           </div>

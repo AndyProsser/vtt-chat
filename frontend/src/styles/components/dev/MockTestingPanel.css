@@ -39,7 +39,24 @@
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
-  accent-color: var(--color-primary-500, #3b82f6);
+  height: 1rem;
+}
+
+.mock-testing-panel__slider .ui-slider__track {
+  background: color-mix(
+    in srgb,
+    var(--color-border-default, rgba(148, 163, 184, 0.28)) 78%,
+    transparent
+  );
+}
+
+.mock-testing-panel__slider .ui-slider__range,
+.mock-testing-panel__slider .ui-slider__thumb {
+  background: var(--color-primary-500, #3b82f6);
+}
+
+.mock-testing-panel__slider .ui-slider__thumb {
+  border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 65%, #fff 35%);
 }
 
 .mock-testing-panel__value {
@@ -89,46 +106,36 @@
   display: block;
 }
 
-.mock-testing-panel__toggle-group {
-  display: flex;
+.mock-testing-panel__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.8rem;
+  height: 1.5rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
-  border-radius: 0.4rem;
-  overflow: hidden;
+  border-radius: 999px;
+  padding: 0 0.5rem;
   background: var(--color-surface-subtle);
-}
-
-.mock-testing-panel__segment-btn {
-  flex: 1;
-  padding: 0.28rem 0.5rem;
-  background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  border: none;
-  border-right: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  letter-spacing: 0.06em;
   cursor: pointer;
   transition:
-    background-color 100ms ease,
-    color 100ms ease;
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
-.mock-testing-panel__segment-btn:last-child {
-  border-right: none;
+.mock-testing-panel__toggle.is-on {
+  background: var(--color-brand, #3b82f6);
+  border-color: color-mix(in srgb, var(--color-brand, #3b82f6) 65%, transparent);
+  color: #fff;
 }
 
-.mock-testing-panel__segment-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-surface-subtle) 60%, transparent);
-}
-
-.mock-testing-panel__segment-btn:disabled {
+.mock-testing-panel__toggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.mock-testing-panel__segment-btn.is-active {
-  background: var(--color-brand, #3b82f6);
-  color: #fff;
 }
 
 .mock-testing-panel__action-button {

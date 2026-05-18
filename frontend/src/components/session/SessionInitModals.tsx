@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import type { Role, SessionState, UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import type { Session as SessionRecord } from '@/types/session'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
 import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
@@ -604,17 +604,14 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                     <label className="session-label" htmlFor="campaign-settings-spectator-max">
                       Max spectators: {props.settingsSpectatorMax}
                     </label>
-                    <input
+                    <Slider
                       id="campaign-settings-spectator-max"
                       className="session-slider"
-                      type="range"
                       min={5}
                       max={50}
                       step={5}
                       value={props.settingsSpectatorMax}
-                      onChange={(event) =>
-                        props.onSettingsSpectatorMaxChange(Number(event.target.value))
-                      }
+                      onValueChange={(nextValue) => props.onSettingsSpectatorMaxChange(nextValue)}
                       disabled={props.isSettingsSaving || !props.settingsSpectatorsEnabled}
                     />
 
@@ -650,18 +647,15 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                       Spectator reconnect grace (seconds):{' '}
                       {props.settingsSpectatorReconnectGraceSecs}
                     </label>
-                    <input
+                    <Slider
                       id="campaign-settings-reconnect-grace"
                       className="session-slider"
-                      type="range"
                       min={30}
                       max={90}
                       step={5}
                       value={props.settingsSpectatorReconnectGraceSecs}
-                      onChange={(event) =>
-                        props.onSettingsSpectatorReconnectGraceSecsChange(
-                          Number(event.target.value)
-                        )
+                      onValueChange={(nextValue) =>
+                        props.onSettingsSpectatorReconnectGraceSecsChange(nextValue)
                       }
                       disabled={props.isSettingsSaving || !props.settingsSpectatorsEnabled}
                     />
@@ -700,18 +694,15 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                     >
                       Post-session duration: {props.settingsPostSessionChatDurationMinutes} min
                     </label>
-                    <input
+                    <Slider
                       id="campaign-settings-post-session-duration"
                       className="session-slider"
-                      type="range"
                       min={1}
                       max={15}
                       step={1}
                       value={props.settingsPostSessionChatDurationMinutes}
-                      onChange={(event) =>
-                        props.onSettingsPostSessionChatDurationMinutesChange(
-                          Number(event.target.value)
-                        )
+                      onValueChange={(nextValue) =>
+                        props.onSettingsPostSessionChatDurationMinutesChange(nextValue)
                       }
                       disabled={props.isSettingsSaving || !props.settingsPostSessionChatEnabled}
                     />
@@ -799,16 +790,15 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                     <label className="session-label" htmlFor="campaign-settings-late-join-grace">
                       Late join grace (minutes): {props.settingsLateJoinGraceMinutes}
                     </label>
-                    <input
+                    <Slider
                       id="campaign-settings-late-join-grace"
                       className="session-slider"
-                      type="range"
                       min={30}
                       max={90}
                       step={10}
                       value={props.settingsLateJoinGraceMinutes}
-                      onChange={(event) =>
-                        props.onSettingsLateJoinGraceMinutesChange(Number(event.target.value))
+                      onValueChange={(nextValue) =>
+                        props.onSettingsLateJoinGraceMinutesChange(nextValue)
                       }
                       disabled={props.isSettingsSaving || props.settingsLateJoinPolicy === 'OPEN'}
                     />

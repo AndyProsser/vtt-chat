@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import '@/styles/components/audio/MockPlayerControlPanel.css'
 
 interface MockSimulationConfig {
@@ -282,14 +282,18 @@ export function MockPlayerControlPanel({
         {/* Player Count Slider */}
         <div className="mock-player-control-panel__row">
           <label className="mock-player-control-panel__label">Player Count:</label>
-          <input
-            type="range"
+          <Slider
             min="1"
             max="20"
             value={playerCount}
-            onChange={handlePlayerCountChange}
-            onMouseUp={handlePlayerCountCommit}
-            onTouchEnd={handlePlayerCountCommit}
+            onValueChange={(nextValue) =>
+              handlePlayerCountChange({
+                target: { value: String(nextValue) },
+              } as React.ChangeEvent<HTMLInputElement>)
+            }
+            onValueCommit={() => {
+              void handlePlayerCountCommit()
+            }}
             className="mock-player-control-panel__slider"
             disabled={isLoading}
           />
