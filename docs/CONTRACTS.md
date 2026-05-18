@@ -132,6 +132,12 @@ Role.SPECTATOR // Read-only: observe, no actions
 Role.SYSTEM // Autonomous events (not user-triggered)
 ```
 
+Role scoping:
+
+- `DM`, `PLAYER`, and `SPECTATOR` are campaign-scoped roles — they exist only within the context of a specific `CampaignMembership`.
+- Outside any campaign membership context, an authenticated user's identity is simply `User`.
+- There is no global DM or global SPECTATOR identity; a user may be DM in one campaign and Player in another.
+
 Compatibility note: `ASSISTANT_DM` appears in some product-level docs as a delegated authority persona.
 Until a contract re-lock, runtime authorization still resolves to the locked roles above.
 
@@ -549,6 +555,24 @@ Once Stage 0 is locked (✅), proceed to Stage 1:
 7. Implement state recovery on reconnect
 
 **Deliverable**: Minimal REST + WS infrastructure, validated against Stage 0 contracts, all endpoints return deterministic responses.
+
+---
+
+## Campaign Display Rules
+
+These rules govern how campaign state is presented in the lobby and dashboard. They are product contracts, not implementation details.
+
+### DM Presence on Campaign Cards
+
+- Campaign cards in the lobby show the DM's presence as `Online` or `Offline`.
+- No finer-grained status (e.g. typing, speaking) is surfaced at the campaign card level.
+- `Online` means the DM has an active authenticated WS connection. `Offline` means they do not.
+
+### Dashboard Metrics Privacy
+
+- Home dashboard aggregate metrics (e.g. active players, session counts) are privacy-limited.
+- Exact counts are never shown; values are rounded or expressed as approximate signals (e.g. "a few active", "10+").
+- This prevents information leakage about campaign size or player activity to unauthenticated users or casual observers.
 
 ---
 

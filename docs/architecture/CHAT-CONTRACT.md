@@ -60,7 +60,8 @@ Context is not encoded as a separate message type. Context is carried by room me
   - Greenroom views render campaign Greenroom chat plus `[Session Started]` and `[Session Ended]` bookends for timeline anchoring.
   - Greenroom views suppress `[Session Paused]` and `[Session Resumed]` markers (those remain in session-scoped history only).
   - Bookends (`[Session Started]`, `[Session Ended]`) are inserted into Greenroom to mark session boundaries; players see when sessions occurred in the campaign timeline.
-  - Greenroom chat is always durable and persisted to campaign history (not ephemeral).
+  - Greenroom chat is durable and persisted to campaign history by default.
+  - Admins can configure a cleanup policy per campaign (e.g. purge messages older than N days). Outside of that policy, Greenroom messages are never ephemeral and survive session boundaries and server restarts.
   - Greenroom is always separate from session-scoped chat timelines; players never see session messages mixed with Greenroom in the Greenroom context.
 - Session-scoped chat (active/paused/cooldown runtime):
   - IC and OOC messages sent during a session are scoped to that session only.

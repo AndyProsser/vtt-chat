@@ -32,7 +32,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 - [ ] Transition rules are enforced at API layer (return 403 on invalid transitions)
 - [ ] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
 - [ ] Frontend renders bookends correctly after refresh/reconnect
-- [ ] Spectator lifecycle rules are enforced (can only see `ACTIVE` and post-session `ENDED` cooldown)
+- [ ] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
 - [ ] Post-session chat timer and cooldown window work end-to-end
 
 **Related Docs**:
@@ -487,6 +487,29 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Related Docs**:
 
 - [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md)
+
+---
+
+### W-DM-Handoff: Campaign Ownership Transfer
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (post-MVP)
+**Depends on**: Core Reliability complete
+
+**Scope**: Campaign owner (DM) can resign and assign another existing campaign member as the new DM. Ensures campaigns survive DM unavailability without platform intervention.
+
+**Acceptance Criteria**:
+
+- [ ] DM can initiate handoff to any current campaign member from campaign settings
+- [ ] Target player must accept the handoff before ownership transfers
+- [ ] Handoff is not permitted during an active session (must be from greenroom/IDLE)
+- [ ] All campaign-scoped data (groups, notes, history) is preserved on transfer
+- [ ] Former DM is demoted to PLAYER role automatically
+- [ ] Handoff is logged as a campaign system event
+
+**Related Docs**:
+
+- (To be created when work begins)
 
 ---
 

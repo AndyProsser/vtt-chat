@@ -251,7 +251,7 @@ Note: if runtime recording controls are not wired yet, this remains a required c
 - **IC, OOC, System messages:** Always persisted to campaign history. Players always retain these.
 - **Whisper messages (player-to-player):** Always persisted to campaign history for sender and all targets.
 - **DM Whisper messages:** Always visible to target player regardless of group movement (except in Whisper Group context).
-- **Greenroom messages:** Ephemeral by default (purged at cleanup); marked for staging/privacy.
+- **Greenroom messages:** Durable (persisted to campaign history). Admin can configure a per-campaign cleanup policy (e.g. purge messages older than N days). Never ephemeral by default.
 - **Whisper Group messages:** Off-the-record by default (deleted on exit). DM can toggle persistence per campaign.
 
 **Key Rule:** No message is "lost" or "trapped" as players move groups. The session group history (`sessionGroupHistory` in Zustand) tracks all contexts a player visits; all messages from those contexts remain visible.
