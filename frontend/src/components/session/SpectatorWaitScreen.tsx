@@ -1,5 +1,5 @@
 import { SessionState } from '@shared'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import '../../styles/components/session/SpectatorWaitScreen.css'
 
 interface SpectatorWaitScreenProps {
@@ -11,9 +11,13 @@ interface SpectatorWaitScreenProps {
   cooldownDurationMs?: number
 }
 
-function computeRemaining(sessionEndedAt: number | undefined, cooldownDurationMs: number): number {
+function computeRemaining(
+  sessionEndedAt: number | undefined,
+  cooldownDurationMs: number,
+  nowMs: number
+): number {
   if (!sessionEndedAt || sessionEndedAt === 0) return 0
-  return Math.max(0, sessionEndedAt + cooldownDurationMs - Date.now())
+  return Math.max(0, sessionEndedAt + cooldownDurationMs - nowMs)
 }
 
 function formatCountdown(remainingMs: number): string {
@@ -43,24 +47,14 @@ export function SpectatorWaitScreen({
   sessionEndedAt,
   cooldownDurationMs = 300_000,
 }: SpectatorWaitScreenProps) {
-  const [remainingMs, setRemainingMs] = useState<number>(() =>
-    computeRemaining(sessionEndedAt, cooldownDurationMs)
-  )
-
-  const endedAtRef = useRef(sessionEndedAt)
-  const cooldownRef = useRef(cooldownDurationMs)
-
-  useEffect(() => {
-    endedAtRef.current = sessionEndedAt
-    cooldownRef.current = cooldownDurationMs
-    setRemainingMs(computeRemaining(sessionEndedAt, cooldownDurationMs))
-  }, [sessionEndedAt, cooldownDurationMs])
+  const [nowMs, setNowMs] = useState<number>(() => Date.now())
+  const remainingMs = computeRemaining(sessionEndedAt, cooldownDurationMs, nowMs)
 
   useEffect(() => {
     if (sessionState !== SessionState.COOLDOWN) return
 
     const id = setInterval(() => {
-      setRemainingMs(computeRemaining(endedAtRef.current, cooldownRef.current))
+      setNowMs(Date.now())
     }, 1000)
 
     return () => clearInterval(id)

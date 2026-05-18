@@ -10,7 +10,6 @@ import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
-import type { ConnectionState } from '../../ws/client'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { useCampaignSettings } from '../../hooks/useCampaignSettings'
 import { useCharacterSettings } from '../../hooks/useCharacterSettings'
@@ -53,10 +52,7 @@ import {
   MAX_POSTER_DATA_URL_CHARS,
   MAX_POSTER_WIDTH_PX,
   ROOM_ENVIRONMENT_PRESET_FALLBACKS,
-  SESSION_BOOKEND_DEDUPE_WINDOW_MS,
   SESSION_BOOKEND_PREFIXES,
-  SESSION_SUMMARY_TAG,
-  SESSION_SUMMARY_TITLE,
   WS_AUTO_RETRY_WINDOW_MS,
   WS_ERROR_TOAST_ID,
 } from '../../constants/sessionInit.constants'
@@ -72,9 +68,7 @@ import type {
   SessionPresence as PresenceRecord,
 } from '@/types/room'
 import {
-  type CampaignMembershipRole,
   type CampaignSettingsPayload,
-  type CampaignSettingsHomeTab,
   type CampaignSummary,
   getCampaignDisplayState,
   resolveMembershipRole,
@@ -313,24 +307,6 @@ function getLatestSessionChronologically(sessions: SessionRecord[]): SessionReco
   return sorted.length ? sorted[sorted.length - 1] : null
 }
 
-function getPreviousSessionChronologically(
-  sessions: SessionRecord[],
-  currentSessionId: UUID
-): SessionRecord | null {
-  const sorted = getSessionsSortedChronologically(sessions)
-  const currentIndex = sorted.findIndex((session) => session.id === currentSessionId)
-
-  if (currentIndex <= 0) {
-    return null
-  }
-
-  return sorted[currentIndex - 1] || null
-}
-
-function formatSessionBookendTimestamp(timestamp: number): string {
-  return new Date(timestamp).toLocaleString()
-}
-
 function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
   const nextSessionNumber = existingSessions.length + 1
   const dateLabel = new Date().toLocaleDateString('en-CA')
@@ -486,8 +462,6 @@ export function SessionInit({
     settingsHomeTab,
     settingsCampaignSessions,
     settingsReferenceSessionId,
-    isSettingsReferenceNotesLoading,
-    settingsReferenceNotesError,
     settingsData,
     settingsName,
     settingsDescription,
@@ -853,7 +827,6 @@ export function SessionInit({
   const currentSessionNoteCount = currentSession
     ? Object.keys(notes[currentSession.id] ?? {}).length
     : 0
-  const typedNotesBySession = notes as Record<UUID, Record<UUID, Note>>
   const typedMessagesBySession = messages as Record<UUID, Record<UUID, Message>>
   const takeoverPresence = useMemo(
     () =>
@@ -1015,10 +988,6 @@ export function SessionInit({
       window.clearInterval(timerId)
     }
   }, [apiUrl, currentSessionId, fetchWithAuthGuard, token, updateSession])
-
-  const scheduleGreenroomCarry = useCallback((_fromSessionId: UUID, _toSessionId: UUID) => {
-    // New sessions always start clean; carry-over is intentionally disabled.
-  }, [])
 
   const restoreSessionBookendsFromHistory = useCallback(
     async (sessionId: UUID, rooms: Array<Pick<RoomRecord, 'id' | 'type' | 'name'>>) => {
@@ -1951,7 +1920,7 @@ export function SessionInit({
     typedRoomsBySession,
   ])
 
-  const handleCreateCampaign = async (e: React.FormEvent) => {
+  const handleCreateCampaign = async (e: React.FormEvent<Element>) => {
     e.preventDefault()
     setError(null)
     setLobbyNotice(null)
@@ -2001,7 +1970,7 @@ export function SessionInit({
     }
   }
 
-  const handleJoinCampaign = async (e: React.FormEvent) => {
+  const handleJoinCampaign = async (e: React.FormEvent<Element>) => {
     e.preventDefault()
     setError(null)
     setLobbyNotice(null)
@@ -2261,7 +2230,7 @@ export function SessionInit({
     safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
-  const handleSaveCampaignSettings = async (e: React.FormEvent) => {
+  const handleSaveCampaignSettings = async (e: React.FormEvent<Element>) => {
     e.preventDefault()
 
     if (!settingsCampaignId) {
@@ -2679,7 +2648,7 @@ export function SessionInit({
     await handleTransitionSession(sessionId, nextState)
   }
 
-  const handleStopSession = async (sessionId: UUID) => {
+  const handleStopSession = async () => {
     setShowStopSessionModal(true)
   }
 
@@ -2938,26 +2907,6 @@ export function SessionInit({
   const settingsReferenceSession = settingsCampaignSessions.find(
     (session) => session.id === settingsReferenceSessionId
   )
-  const settingsReferenceNotes = useMemo(
-    () =>
-      settingsReferenceSessionId
-        ? Object.values(typedNotesBySession[settingsReferenceSessionId as UUID] || {})
-        : [],
-    [settingsReferenceSessionId, typedNotesBySession]
-  )
-  const settingsReferenceSummaryEntry = useMemo(
-    () =>
-      [...settingsReferenceNotes]
-        .filter((note) => note.tags.includes(SESSION_SUMMARY_TAG))
-        .sort(
-          (left, right) => (right.updatedAt || right.createdAt) - (left.updatedAt || left.createdAt)
-        )[0] ?? null,
-    [settingsReferenceNotes]
-  )
-  const settingsReferenceSummaryExcerpt =
-    settingsReferenceSummaryEntry?.title === SESSION_SUMMARY_TITLE
-      ? 'Not provided'
-      : settingsReferenceSummaryEntry?.title || 'Not provided'
   const settingsCampaignTotalDurationMs = useMemo(
     () =>
       settingsCampaignSessions.reduce((total, session) => {
@@ -2984,10 +2933,7 @@ export function SessionInit({
     const members = typedRoomMembers[greenroom.id] || []
     const uniqueUserIds = new Set<UUID>()
     for (const member of members) {
-      if (member.role === Role.SPECTATOR || member.role === 'SPECTATOR') {
-        continue
-      }
-      if (member.role === Role.SYSTEM || member.role === 'SYSTEM') {
+      if (member.role === Role.SYSTEM) {
         continue
       }
       uniqueUserIds.add(member.userId)
@@ -3096,8 +3042,6 @@ export function SessionInit({
     !isTakeoverActive &&
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
-  const canEditCharacterSettings =
-    effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER
   const canEditSessionSettings =
     currentSession?.state === SessionState.IDLE ||
     currentSession?.state === SessionState.ACTIVE ||
@@ -3327,7 +3271,7 @@ export function SessionInit({
                   extendCooldownLockedReason={extendCooldownLockedReason}
                   onStartSession={() => handleStartSession(currentSession.id)}
                   onPauseSession={() => handlePauseSession(currentSession.id)}
-                  onStopSession={() => handleStopSession(currentSession.id)}
+                  onStopSession={() => handleStopSession()}
                   onCancelCooldown={() => handleCancelCooldown(currentSession.id)}
                   onExtendCooldown={() =>
                     void handleExtendCooldown(currentSession.id, configuredCooldownDurationMs)

@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { EventEnvelope, UUID } from '@shared'
+import { Role, type EventEnvelope, type UUID } from '@shared'
 import broadcaster from '@/ws/event-broadcaster'
+
+function buildEvent(sessionId: UUID): EventEnvelope {
+  return {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID,
+    type: 'TEST:EVENT',
+    version: 1,
+    userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID,
+    userRole: Role.DM,
+    sessionId,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: { ok: true },
+  }
+}
 
 describe('event broadcaster', () => {
   beforeEach(() => {
@@ -21,7 +35,7 @@ describe('event broadcaster', () => {
 
   it('throws when broadcasting before initialization', () => {
     const sessionId = '11111111-1111-4111-8111-111111111111' as UUID
-    const event = { type: 'TEST:EVENT', payload: {} } as EventEnvelope
+    const event = buildEvent(sessionId)
 
     expect(() => broadcaster.broadcastToSession(sessionId, event)).toThrow(
       'WebSocketManager not initialized in broadcaster'
@@ -36,7 +50,7 @@ describe('event broadcaster', () => {
     broadcaster.setWebSocketManager(wsManager)
 
     const sessionId = '22222222-2222-4222-8222-222222222222' as UUID
-    const event = { type: 'TEST:EVENT', payload: { ok: true } } as EventEnvelope
+    const event = buildEvent(sessionId)
     const visibleTo = ['33333333-3333-4333-8333-333333333333' as UUID]
 
     broadcaster.broadcastToSession(sessionId, event, visibleTo)
