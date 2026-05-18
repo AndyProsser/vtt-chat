@@ -21,6 +21,18 @@ const mocks = vi.hoisted(() => ({
   mockBroadcastSessionStatsSnapshot: vi.fn(),
 }))
 
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: vi.fn(() => ({
+    session: {
+      findUnique: vi.fn(async () => ({
+        campaign: {
+          postSessionChatDurationMs: 60_000,
+        },
+      })),
+    },
+  })),
+}))
+
 vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: mocks.mockExtractTokenFromHeader,
   verifyToken: mocks.mockVerifyToken,
@@ -54,6 +66,8 @@ vi.mock('@/services/chat.service', () => ({
 
 vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: mocks.mockEmitSessionBoundarySystemMessage,
+  emitSessionRecapMessage: vi.fn(async () => undefined),
+  emitSessionSummaryMessage: vi.fn(async () => undefined),
 }))
 
 vi.mock('@/services/session/stats.service', () => ({
@@ -125,6 +139,10 @@ describe('session state room orchestration', () => {
       targetRoomName: 'Main Room',
       movedUsers: 2,
       targetState: 'ONLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     mocks.mockRemoveUserFromSession.mockResolvedValue({
@@ -184,7 +202,7 @@ describe('session state room orchestration', () => {
     )
   })
 
-  it('emits persisted boundary system message on ENDED transition', async () => {
+  it('emits persisted boundary system message on COOLDOWN transition', async () => {
     const app = buildApp()
     const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
     const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
@@ -193,7 +211,7 @@ describe('session state room orchestration', () => {
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
-      state: 'ENDED',
+      state: 'COOLDOWN',
       createdAt: Date.now(),
       startedAt: Date.now(),
     })
@@ -206,20 +224,24 @@ describe('session state room orchestration', () => {
       targetRoomId: GREEN_ROOM_ID,
       targetRoomName: 'Green Room',
       movedUsers: 2,
-      targetState: 'OFFLINE',
+      targetState: 'ONLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const response = await request(app)
       .put(`/api/session/${SESSION_ID}/state`)
       .set('Authorization', 'Bearer token')
-      .send({ state: 'ENDED' })
+      .send({ state: 'COOLDOWN' })
 
     expect(response.status).toBe(200)
     expect(mocks.mockEmitSessionBoundarySystemMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: SESSION_ID,
-        boundaryType: 'SESSION_ENDED',
-        roomIds: [MAIN_ROOM_ID, GREEN_ROOM_ID],
+        boundaryType: 'SESSION_COOLDOWN',
+        roomIds: [MAIN_ROOM_ID],
       })
     )
   })
@@ -300,6 +322,10 @@ describe('session state room orchestration', () => {
       targetRoomName: 'Main Room',
       movedUsers: 2,
       targetState: 'ONLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const response = await request(app)
@@ -401,6 +427,10 @@ describe('session state room orchestration', () => {
       targetRoomName: 'Green Room',
       movedUsers: 2,
       targetState: 'IDLE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const response = await request(app)
@@ -440,6 +470,10 @@ describe('session state room orchestration', () => {
       targetRoomName: 'Main Room',
       movedUsers: 2,
       targetState: 'ONLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const response = await request(app)
@@ -491,6 +525,10 @@ describe('session state room orchestration', () => {
         targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main Room',
         movedUsers: 2,
         targetState: testCase.targetRoomId === GREEN_ROOM_ID ? 'IDLE' : 'ONLINE',
+        users: [
+          { id: DM_ID, username: 'dm-user' },
+          { id: PLAYER_ID, username: 'alice' },
+        ],
       })
 
       const response = await request(app)

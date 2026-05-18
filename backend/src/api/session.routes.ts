@@ -955,6 +955,69 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       await clearRoomMessages(session.id, transition.greenRoomId)
     }
 
+    const boundaryTypes: SessionBoundaryEventType[] =
+      requestedState === 'ACTIVE'
+        ? [previousSession?.state === 'PAUSED' ? 'SESSION_RESUMED' : 'SESSION_STARTED']
+        : requestedState === 'PAUSED'
+          ? ['SESSION_PAUSED']
+          : requestedState === 'COOLDOWN'
+            ? ['SESSION_COOLDOWN']
+            : []
+
+    for (const boundaryType of boundaryTypes) {
+      await emitSessionBoundarySystemMessage({
+        sessionId: session.id,
+        roomIds: getBoundaryRoomIds({
+          boundaryType,
+          mainRoomId: transition.mainRoomId,
+          greenRoomId: transition.greenRoomId,
+        }),
+        sessionName: session.name,
+        boundaryType,
+        dmId: user.userId as UUID,
+        dmUsername: user.username,
+        wsManager,
+      })
+    }
+
+    if (boundaryTypes.length > 0) {
+      // Log the state change
+      await logSessionStateChange(
+        session.id,
+        user.userId as UUID,
+        user.username,
+        previousSession?.state || 'UNKNOWN',
+        toPublicSessionState(requestedState) ?? requestedState
+      )
+
+      // Emit session summary card to greenroom when transitioning to COOLDOWN
+      if (boundaryTypes.includes('SESSION_COOLDOWN') && transition.greenRoomId) {
+        void emitSessionSummaryMessage({
+          session,
+          users,
+          greenRoomId: transition.greenRoomId,
+          dmId: user.userId as UUID,
+          dmUsername: user.username,
+          wsManager,
+        }).catch((err) => {
+          console.error('[session summary] failed to emit summary message', err)
+        })
+      }
+
+      // Emit a previous-session recap card after SESSION_STARTED (not resume from pause)
+      if (boundaryTypes.includes('SESSION_STARTED') && transition.mainRoomId) {
+        void emitSessionRecapMessage({
+          sessionId: session.id,
+          mainRoomId: transition.mainRoomId,
+          dmId: user.userId as UUID,
+          dmUsername: user.username,
+          wsManager,
+        }).catch((err) => {
+          console.error('[session recap] failed to emit recap message', err)
+        })
+      }
+    }
+
     if (wsManager) {
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
@@ -1072,71 +1135,13 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    const boundaryTypes: SessionBoundaryEventType[] =
-      requestedState === 'ACTIVE'
-        ? [previousSession?.state === 'PAUSED' ? 'SESSION_RESUMED' : 'SESSION_STARTED']
-        : requestedState === 'PAUSED'
-          ? ['SESSION_PAUSED']
-          : requestedState === 'COOLDOWN'
-            ? ['SESSION_COOLDOWN']
-            : []
-
-    for (const boundaryType of boundaryTypes) {
-      await emitSessionBoundarySystemMessage({
-        sessionId: session.id,
-        roomIds: getBoundaryRoomIds({
-          boundaryType,
-          mainRoomId: transition.mainRoomId,
-          greenRoomId: transition.greenRoomId,
-        }),
-        sessionName: session.name,
-        boundaryType,
-        dmId: user.userId as UUID,
-        dmUsername: user.username,
-        wsManager,
-      })
-    }
-
-    if (boundaryTypes.length > 0) {
-      // Log the state change
-      await logSessionStateChange(
-        session.id,
-        user.userId as UUID,
-        user.username,
-        previousSession?.state || 'UNKNOWN',
-        toPublicSessionState(requestedState) ?? requestedState
-      )
-
-      // Emit session summary card to greenroom when transitioning to COOLDOWN
-      if (boundaryTypes.includes('SESSION_COOLDOWN') && transition.greenRoomId) {
-        void emitSessionSummaryMessage({
-          session,
-          users,
-          greenRoomId: transition.greenRoomId,
-          dmId: user.userId as UUID,
-          dmUsername: user.username,
-          wsManager,
-        }).catch((err) => {
-          console.error('[session summary] failed to emit summary message', err)
-        })
-      }
-
-      // Emit a previous-session recap card after SESSION_STARTED (not resume from pause)
-      if (boundaryTypes.includes('SESSION_STARTED') && transition.mainRoomId) {
-        void emitSessionRecapMessage({
-          sessionId: session.id,
-          mainRoomId: transition.mainRoomId,
-          dmId: user.userId as UUID,
-          dmUsername: user.username,
-          wsManager,
-        }).catch((err) => {
-          console.error('[session recap] failed to emit recap message', err)
-        })
-      }
-    }
-
     res.status(200).json(session)
   } catch (err: any) {
+    console.error('[session.routes] state transition failed', {
+      sessionId: id,
+      requestedState,
+      error: err instanceof Error ? err.message : String(err),
+    })
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }

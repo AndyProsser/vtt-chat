@@ -159,6 +159,10 @@ describe('cooldown extend handoff', () => {
       targetRoomName: 'Green Room',
       movedUsers: 2,
       targetState: 'OFFLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user' },
+        { id: PLAYER_ID, username: 'player-user' },
+      ],
     })
 
     mocks.mockEndSessionCooldown.mockResolvedValue({

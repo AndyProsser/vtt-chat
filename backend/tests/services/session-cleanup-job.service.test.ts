@@ -43,6 +43,10 @@ vi.mock('@/services/room.service', () => ({
   getSessionPresence: mocks.getSessionPresence,
 }))
 
+vi.mock('@/services/room/lifecycle.service', () => ({
+  ensureSessionDefaultRoomsForSession: vi.fn(),
+}))
+
 vi.mock('@/services/session/core.service', () => ({
   updateSessionState: mocks.updateSessionState,
   getSessionUsers: mocks.getSessionUsers,

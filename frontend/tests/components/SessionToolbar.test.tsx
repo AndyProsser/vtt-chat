@@ -33,7 +33,7 @@ describe('SessionToolbar cooldown controls', () => {
         statusLabel="Healthy"
         coreWsState="CONNECTED"
         livekitState="CONNECTED"
-        sessionState={SessionState.ENDED}
+        sessionState={SessionState.COOLDOWN}
         sessionStartedAt={Date.now() - 30 * 60_000}
         sessionEndedAt={Date.now() - 15_000}
         cumulativePauseMs={0}
@@ -44,6 +44,7 @@ describe('SessionToolbar cooldown controls', () => {
         canStopSession={false}
         showCooldownControls={true}
         canManageCooldown={true}
+        canExtendCooldown={true}
         onStartSession={() => undefined}
         onPauseSession={() => undefined}
         onStopSession={() => undefined}
@@ -78,7 +79,7 @@ describe('SessionToolbar cooldown controls', () => {
         statusLabel="Healthy"
         coreWsState="CONNECTED"
         livekitState="CONNECTED"
-        sessionState={SessionState.ENDED}
+        sessionState={SessionState.COOLDOWN}
         sessionStartedAt={Date.now() - 30 * 60_000}
         sessionEndedAt={Date.now() - 15_000}
         cumulativePauseMs={0}
@@ -118,7 +119,7 @@ describe('SessionToolbar cooldown controls', () => {
         statusLabel="Healthy"
         coreWsState="CONNECTED"
         livekitState="CONNECTED"
-        sessionState={SessionState.ENDED}
+        sessionState={SessionState.COOLDOWN}
         sessionStartedAt={Date.now() - 30 * 60_000}
         sessionEndedAt={Date.now() - 15_000}
         cumulativePauseMs={0}
@@ -129,6 +130,7 @@ describe('SessionToolbar cooldown controls', () => {
         canStopSession={false}
         showCooldownControls={true}
         canManageCooldown={true}
+        canExtendCooldown={true}
         onStartSession={() => undefined}
         onPauseSession={() => undefined}
         onStopSession={() => undefined}
@@ -194,7 +196,7 @@ describe('SessionToolbar cooldown controls', () => {
         statusLabel="Healthy"
         coreWsState="CONNECTED"
         livekitState="CONNECTED"
-        sessionState={SessionState.ENDED}
+        sessionState={SessionState.COOLDOWN}
         sessionStartedAt={Date.now() - 30 * 60_000}
         sessionEndedAt={Date.now() - 15_000}
         cumulativePauseMs={0}
@@ -205,6 +207,7 @@ describe('SessionToolbar cooldown controls', () => {
         canStopSession={false}
         showCooldownControls={true}
         canManageCooldown={true}
+        canExtendCooldown={true}
         onStartSession={() => undefined}
         onPauseSession={() => undefined}
         onStopSession={() => undefined}

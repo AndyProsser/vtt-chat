@@ -342,6 +342,10 @@ describe('session routes audit appends', () => {
       targetRoomName: 'Main Room',
       targetState: 'PAUSED',
       movedUsers: 2,
+      users: [
+        { id: DM_ID, username: 'gm' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const res = await request(app)
@@ -389,6 +393,10 @@ describe('session routes audit appends', () => {
       targetRoomName: 'Main Room',
       targetState: 'PAUSED',
       movedUsers: 1,
+      users: [
+        { id: DM_ID, username: 'gm' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const res = await request(app)
@@ -448,6 +456,10 @@ describe('session routes audit appends', () => {
       targetRoomName: 'Green Room',
       targetState: 'ENDED',
       movedUsers: 1,
+      users: [
+        { id: DM_ID, username: 'gm' },
+        { id: PLAYER_ID, username: 'alice' },
+      ],
     })
 
     const res = await request(app)

@@ -141,18 +141,18 @@ describe('Session Pause Stats Persistence', () => {
     expect(updated?.pauseStartedAt).toBeUndefined()
   })
 
-  it('should finalize pause time when ending from PAUSED state', async () => {
+  it('should finalize pause time when entering cooldown from PAUSED state', async () => {
     await updateSessionState(sessionId, SessionState.ACTIVE, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 30))
 
     await updateSessionState(sessionId, SessionState.PAUSED, DM_ID)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const ended = await updateSessionState(sessionId, SessionState.ENDED, DM_ID)
-    expect(ended?.state).toBe('ENDED')
-    expect(ended?.pauseCount).toBe(1)
-    expect(ended?.cumulativePauseMs).toBeGreaterThanOrEqual(40)
-    expect(ended?.pauseStartedAt).toBeUndefined()
+    const cooldown = await updateSessionState(sessionId, SessionState.COOLDOWN, DM_ID)
+    expect(cooldown?.state).toBe('COOLDOWN')
+    expect(cooldown?.pauseCount).toBe(1)
+    expect(cooldown?.cumulativePauseMs).toBeGreaterThanOrEqual(40)
+    expect(cooldown?.pauseStartedAt).toBeUndefined()
   })
 
   it('should persist pause stats in service-backed storage', async () => {

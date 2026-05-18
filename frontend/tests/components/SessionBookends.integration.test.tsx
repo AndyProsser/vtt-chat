@@ -517,10 +517,12 @@ describe('Session bookend integration', () => {
       />
     )
 
-    const intermissionMarkers = document.querySelectorAll('.chat-session-marker--intermission')
-    expect(intermissionMarkers.length).toBe(2)
-    expect(screen.getByText('[Session Paused] Session Alpha')).toBeTruthy()
-    expect(screen.getByText('[Session Resumed] Session Alpha')).toBeTruthy()
+    const pausedMarkers = document.querySelectorAll('.chat-session-marker--paused')
+    const resumedMarkers = document.querySelectorAll('.chat-session-marker--resumed')
+    expect(pausedMarkers.length).toBe(1)
+    expect(resumedMarkers.length).toBe(1)
+    expect(screen.getByText('PAUSED')).toBeTruthy()
+    expect(screen.getByText('RESUMED')).toBeTruthy()
   })
 
   it('renders backend-emitted started/ended markers as bookends', () => {
@@ -556,8 +558,8 @@ describe('Session bookend integration', () => {
 
     const markers = document.querySelectorAll('.chat-session-marker--bookend')
     expect(markers.length).toBe(2)
-    expect(screen.getByText('[Session Started] Session Alpha')).toBeTruthy()
-    expect(screen.getByText('[Session Ended] Session Alpha')).toBeTruthy()
+    expect(screen.getByText('STARTED')).toBeTruthy()
+    expect(screen.getByText('ENDED')).toBeTruthy()
   })
 
   it('rehydrates paused session state and paused marker from backend history on launch', async () => {
@@ -718,7 +720,7 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.PAUSED)
-      expect(screen.getByText('[Session Paused] Session Current')).toBeTruthy()
+      expect(document.querySelectorAll('.chat-session-marker--paused').length).toBeGreaterThan(0)
     })
   })
 
@@ -797,7 +799,7 @@ describe('Session bookend integration', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
 
     await waitFor(() => {
-      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
+      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.COOLDOWN)
     })
 
     const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
@@ -886,7 +888,7 @@ describe('Session bookend integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     fireEvent.click(await screen.findByRole('button', { name: 'End Session' }))
     await waitFor(() => {
-      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.ENDED)
+      expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.COOLDOWN)
     })
 
     // Ended sessions enter cooldown; cancel it before starting the next session.

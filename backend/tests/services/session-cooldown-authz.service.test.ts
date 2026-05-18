@@ -28,7 +28,7 @@ describe('session-cooldown-authz.service', () => {
     mocks.mockGetSession.mockResolvedValue({
       id: SESSION_ID,
       dmId: DM_ID,
-      state: 'ENDED',
+      state: 'COOLDOWN',
     })
 
     mocks.mockGetSessionUsers.mockResolvedValue([
@@ -41,7 +41,7 @@ describe('session-cooldown-authz.service', () => {
     ])
   })
 
-  it('authorizes DM directly during ended cooldown', async () => {
+  it('authorizes DM directly during cooldown', async () => {
     const result = await resolveCooldownControlAuthorization({
       sessionId: SESSION_ID as any,
       requesterUserId: DM_ID as any,

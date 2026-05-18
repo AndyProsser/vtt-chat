@@ -1,1 +1,1 @@
-export { formatTimestamp, formatDuration, truncateText, pluralize } from '@shared/utils/format'
+export { formatTimestamp, formatDuration, truncateText, pluralize } from '@shared'

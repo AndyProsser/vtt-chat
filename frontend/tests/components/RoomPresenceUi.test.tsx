@@ -2594,6 +2594,8 @@ describe('RoomSelector', () => {
       return
     }
 
+    useStore.getState().reset()
+
     let resolveReroll: (response: Response) => void = () => undefined
     const fetchMock = vi.fn((input: string | URL) => {
       const url = String(input)
@@ -2668,7 +2670,11 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure mock testing' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Configure mock testing|Mock takeover active — open controls to return/i,
+      })
+    )
 
     const shuffleButton = await screen.findByRole('button', { name: 'Reroll mock players' })
     expect(shuffleButton.hasAttribute('disabled')).toBe(false)
@@ -2789,7 +2795,11 @@ describe('RoomSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure mock testing' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Configure mock testing|Mock takeover active — open controls to return/i,
+      })
+    )
     fireEvent.click(await screen.findByRole('button', { name: 'Return to My User' }))
 
     await waitFor(() => {

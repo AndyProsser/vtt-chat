@@ -3,6 +3,18 @@ import { beforeAll, afterAll, vi } from 'vitest'
 let debugSpy: ReturnType<typeof vi.spyOn>
 let errorSpy: ReturnType<typeof vi.spyOn>
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(globalThis, 'ResizeObserver', {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverMock,
+})
+
 beforeAll(() => {
   debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
   const originalError = console.error.bind(console)

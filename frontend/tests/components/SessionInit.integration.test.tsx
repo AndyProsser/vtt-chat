@@ -2180,7 +2180,7 @@ describe('SessionInit integration', () => {
             id: SESSION_ID,
             name: 'Session Alpha',
             dmId: DM_ID,
-            state: SessionState.ENDED,
+            state: SessionState.COOLDOWN,
             createdAt: 1,
           }),
         }
@@ -2215,7 +2215,7 @@ describe('SessionInit integration', () => {
       `http://localhost:3000/api/session/${SESSION_ID}/state`,
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ state: SessionState.ENDED }),
+        body: JSON.stringify({ state: SessionState.COOLDOWN }),
       })
     )
 
@@ -2226,7 +2226,7 @@ describe('SessionInit integration', () => {
       `http://localhost:3000/api/session/${SESSION_ID}/state`,
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ state: SessionState.ENDED }),
+        body: JSON.stringify({ state: SessionState.COOLDOWN }),
       })
     )
 
@@ -2238,7 +2238,7 @@ describe('SessionInit integration', () => {
         `http://localhost:3000/api/session/${SESSION_ID}/state`,
         expect.objectContaining({
           method: 'PUT',
-          body: JSON.stringify({ state: SessionState.ENDED }),
+          body: JSON.stringify({ state: SessionState.COOLDOWN }),
         })
       )
     })

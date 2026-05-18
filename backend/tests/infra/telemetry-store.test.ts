@@ -183,6 +183,18 @@ describe('telemetry-store', () => {
   })
 
   it('deduplicates diagnostic events and finds persisted rows by id', async () => {
+    state.files.set(
+      RETENTION_FILE,
+      JSON.stringify({
+        telemetryRetentionDays: 30,
+        telemetryMaxFileSizeMb: 10,
+        telemetryMaxFiles: 7,
+        diagnosticRetentionDays: 30,
+        diagnosticMaxFileSizeMb: 10,
+        diagnosticMaxFiles: 7,
+      })
+    )
+
     const event = {
       timestamp: '2026-05-02T10:00:00.000Z',
       severity: 'INFO' as const,

@@ -248,10 +248,7 @@ describe('room failback integration paths', () => {
       type: RoomType.GROUP,
     })
 
-    mocks.closeRoom.mockResolvedValue({
-      movedUsers: [{ userId: PLAYER_ID, username: 'player-one' }],
-      movedUserIds: [PLAYER_ID],
-    })
+    mocks.getRoomMemberIds.mockResolvedValue([PLAYER_ID])
 
     const app = buildApp()
     const res = await request(app)
