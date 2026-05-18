@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import * as SelectPrimitive from '@radix-ui/react-select'
 import { Icon } from '../../ui/Icon'
 import { Slider } from '../../../core-ui'
 import type { AudioDeviceState } from '@/types/audio'
@@ -28,17 +29,6 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
   { value: 'medium', label: 'MED' },
   { value: 'high', label: 'HIGH' },
 ]
-
-const DEVICE_LABEL_MAX_CHARS = 28
-
-function truncateDeviceLabel(label: string, maxChars: number = DEVICE_LABEL_MAX_CHARS): string {
-  const normalized = label.trim()
-  if (normalized.length <= maxChars) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`
-}
 
 export function AudioSettingsPanel({
   device,
@@ -111,18 +101,47 @@ export function AudioSettingsPanel({
               <Icon name="signal" className="audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.speaker}
             </span>
-            <select
-              className="audio-settings-panel__select"
+            <SelectPrimitive.Root
               value={device.selectedSpeakerDeviceId ?? 'default'}
-              onChange={(e) => onDeviceChange({ selectedSpeakerDeviceId: e.target.value })}
+              onValueChange={(nextValue) => onDeviceChange({ selectedSpeakerDeviceId: nextValue })}
             >
-              <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
-              {speakerDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId} title={d.label}>
-                  {truncateDeviceLabel(d.label)}
-                </option>
-              ))}
-            </select>
+              <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
+                <SelectPrimitive.Value />
+                <SelectPrimitive.Icon className="audio-settings-panel__select-icon">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    arrow_drop_down
+                  </span>
+                </SelectPrimitive.Icon>
+              </SelectPrimitive.Trigger>
+              <SelectPrimitive.Portal>
+                <SelectPrimitive.Content
+                  className="audio-settings-panel__select-content"
+                  position="popper"
+                  sideOffset={4}
+                >
+                  <SelectPrimitive.Viewport className="audio-settings-panel__select-viewport">
+                    <SelectPrimitive.Item
+                      value="default"
+                      className="audio-settings-panel__select-item"
+                    >
+                      <SelectPrimitive.ItemText>
+                        {AUDIO_SETTINGS_COPY.systemDefault}
+                      </SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                    {speakerDevices.map((d) => (
+                      <SelectPrimitive.Item
+                        key={d.deviceId}
+                        value={d.deviceId}
+                        className="audio-settings-panel__select-item"
+                        title={d.label}
+                      >
+                        <SelectPrimitive.ItemText>{d.label}</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                    ))}
+                  </SelectPrimitive.Viewport>
+                </SelectPrimitive.Content>
+              </SelectPrimitive.Portal>
+            </SelectPrimitive.Root>
           </label>
 
           <label className="audio-settings-panel__label">
@@ -130,18 +149,47 @@ export function AudioSettingsPanel({
               <Icon name="mic" className="audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.microphone}
             </span>
-            <select
-              className="audio-settings-panel__select"
+            <SelectPrimitive.Root
               value={device.selectedMicDeviceId ?? 'default'}
-              onChange={(e) => onDeviceChange({ selectedMicDeviceId: e.target.value })}
+              onValueChange={(nextValue) => onDeviceChange({ selectedMicDeviceId: nextValue })}
             >
-              <option value="default">{AUDIO_SETTINGS_COPY.systemDefault}</option>
-              {micDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId} title={d.label}>
-                  {truncateDeviceLabel(d.label)}
-                </option>
-              ))}
-            </select>
+              <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
+                <SelectPrimitive.Value />
+                <SelectPrimitive.Icon className="audio-settings-panel__select-icon">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    arrow_drop_down
+                  </span>
+                </SelectPrimitive.Icon>
+              </SelectPrimitive.Trigger>
+              <SelectPrimitive.Portal>
+                <SelectPrimitive.Content
+                  className="audio-settings-panel__select-content"
+                  position="popper"
+                  sideOffset={4}
+                >
+                  <SelectPrimitive.Viewport className="audio-settings-panel__select-viewport">
+                    <SelectPrimitive.Item
+                      value="default"
+                      className="audio-settings-panel__select-item"
+                    >
+                      <SelectPrimitive.ItemText>
+                        {AUDIO_SETTINGS_COPY.systemDefault}
+                      </SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                    {micDevices.map((d) => (
+                      <SelectPrimitive.Item
+                        key={d.deviceId}
+                        value={d.deviceId}
+                        className="audio-settings-panel__select-item"
+                        title={d.label}
+                      >
+                        <SelectPrimitive.ItemText>{d.label}</SelectPrimitive.ItemText>
+                      </SelectPrimitive.Item>
+                    ))}
+                  </SelectPrimitive.Viewport>
+                </SelectPrimitive.Content>
+              </SelectPrimitive.Portal>
+            </SelectPrimitive.Root>
           </label>
 
           <div
