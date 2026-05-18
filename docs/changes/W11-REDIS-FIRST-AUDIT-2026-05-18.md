@@ -20,7 +20,9 @@ Result: met for Phase 1 W11 baseline.
 ### AC: All WS-visible domain routes classified into Class A/B/C
 
 - Classification model exists in contract doc.
-- Full route-by-route classification and enforcement is not fully complete.
+- Added a typed classification registry for core runtime mutation families (`presence`, `rooms`, `audio`, `session`) in `backend/src/services/runtime/runtime-route-classification.service.ts`.
+- Focused regression coverage now validates representative Class A/B/C routes and alias consistency in `backend/tests/services/runtime-route-classification.service.test.ts`.
+- Full route-by-route classification and enforcement is not fully complete outside the core runtime families above.
 
 Result: partial.
 
@@ -61,12 +63,14 @@ Result: partial.
   - `backend/tests/services/runtime-streams.service.unit.test.ts`
 - Audio Redis-first convergence coverage:
   - `backend/tests/services/audio-state.service.test.ts`
+- Runtime route classification coverage:
+  - `backend/tests/services/runtime-route-classification.service.test.ts`
 
 ---
 
 ## 3. Remaining Gaps to Close W11
 
-1. Enforce and validate A/B/C classification route-by-route, not only by architecture target doc.
+1. Expand and enforce A/B/C classification beyond the current core runtime families, not only via the registry/test baseline.
 2. Standardize mandatory audit envelope shape for all meaningful control-plane events.
 3. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
 

@@ -79,7 +79,6 @@ Evidence snapshot (2026-05-18):
 
 **Acceptance Criteria**:
 
-- [ ] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
 - [x] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
 - [ ] All websocket-visible domain routes classify into Class A (Redis durable) / Class B (Redis w/ bounded flush) / Class C (ephemeral)
 - [ ] Session audit trail captures all meaningful control-plane actions (join/leave, move, mute, lifecycle boundaries)
@@ -96,6 +95,8 @@ Evidence snapshot (2026-05-18):
 - Redis runtime projection writes added for audio environment + DM override/broadcast mutation flows in `backend/src/services/audio/presets.service.ts` and `backend/src/services/audio/effects.service.ts`.
 - Session audio rehydration now prefers Redis (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres fallback in `backend/src/services/audio/presets.service.ts`.
 - Focused coverage expanded in `backend/tests/services/audio-state.service.test.ts` for Redis write-through and Redis-first read behavior.
+- Added a typed runtime route classification registry for core WS-visible mutation surfaces in `backend/src/services/runtime/runtime-route-classification.service.ts`.
+- Added focused validation in `backend/tests/services/runtime-route-classification.service.test.ts` covering representative Class A/B/C routes plus alias consistency.
 
 ---
 
