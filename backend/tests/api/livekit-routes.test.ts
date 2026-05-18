@@ -10,6 +10,15 @@ const mocks = vi.hoisted(() => ({
   generateToken: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn(),
+  prismaSessionFindUnique: vi.fn(),
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    session: {
+      findUnique: mocks.prismaSessionFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -67,7 +76,7 @@ describe('livekit routes', () => {
     mocks.resolveEffectiveSessionRole.mockResolvedValue({
       ok: true,
       role: 'PLAYER',
-      session: { id: SESSION_ID, dmId: 'dm-id' },
+      session: { id: SESSION_ID, dmId: 'dm-id', state: 'ACTIVE' },
     })
     mocks.getServerMuteEnforcementState.mockResolvedValue({
       userMuted: false,
@@ -75,6 +84,9 @@ describe('livekit routes', () => {
       enforcedMuted: false,
     })
     mocks.generateToken.mockResolvedValue('livekit-token')
+    mocks.prismaSessionFindUnique.mockResolvedValue({
+      campaign: { postSessionChatEnabled: true },
+    })
   })
 
   it('returns 401 for missing auth token', async () => {
@@ -187,5 +199,92 @@ describe('livekit routes', () => {
     expect(response.status).toBe(200)
     expect(response.body.status).toBe('healthy')
     expect(typeof response.body.url).toBe('string')
+  })
+
+  it('forces spectators into observe-only mode during ACTIVE', async () => {
+    const app = buildApp()
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+      ok: true,
+      role: 'SPECTATOR',
+      session: { id: SESSION_ID, dmId: 'dm-id', state: 'ACTIVE' },
+    })
+
+    const response = await request(app)
+      .post('/api/livekit/token')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, roomId: ROOM_ID })
+
+    expect(response.status).toBe(200)
+    expect(response.body.canPublish).toBe(false)
+    expect(mocks.generateToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canPublish: false,
+        canSubscribe: true,
+      })
+    )
+  })
+
+  it('allows spectator voice during COOLDOWN when campaign enables post-session chat', async () => {
+    const app = buildApp()
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+      ok: true,
+      role: 'SPECTATOR',
+      session: { id: SESSION_ID, dmId: 'dm-id', state: 'COOLDOWN' },
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: true },
+    })
+
+    const response = await request(app)
+      .post('/api/livekit/token')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, roomId: ROOM_ID })
+
+    expect(response.status).toBe(200)
+    expect(response.body.canPublish).toBe(true)
+    expect(mocks.generateToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canPublish: true,
+      })
+    )
+  })
+
+  it('rejects spectator voice during COOLDOWN when campaign disables post-session chat', async () => {
+    const app = buildApp()
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+      ok: true,
+      role: 'SPECTATOR',
+      session: { id: SESSION_ID, dmId: 'dm-id', state: 'COOLDOWN' },
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: false },
+    })
+
+    const response = await request(app)
+      .post('/api/livekit/token')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, roomId: ROOM_ID })
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FORBIDDEN')
+    expect(mocks.generateToken).not.toHaveBeenCalled()
+  })
+
+  it('rejects spectator voice outside ACTIVE and COOLDOWN session states', async () => {
+    const app = buildApp()
+    mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+      ok: true,
+      role: 'SPECTATOR',
+      session: { id: SESSION_ID, dmId: 'dm-id', state: 'PAUSED' },
+    })
+
+    const response = await request(app)
+      .post('/api/livekit/token')
+      .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID, roomId: ROOM_ID })
+
+    expect(response.status).toBe(403)
+    expect(response.body.code).toBe('FORBIDDEN')
+    expect(mocks.generateToken).not.toHaveBeenCalled()
   })
 })

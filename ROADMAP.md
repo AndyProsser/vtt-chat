@@ -32,7 +32,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 - [x] Transition rules are enforced at API layer (current implementation returns 409 on invalid transitions)
 - [x] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
 - [x] Frontend renders bookends correctly after refresh/reconnect
-- [ ] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
+- [x] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
 - [ ] Post-session chat timer and cooldown window work end-to-end
 
 Evidence snapshot (2026-05-18):
@@ -42,6 +42,11 @@ Evidence snapshot (2026-05-18):
   - spectator chat allowed only during `COOLDOWN`
   - spectator cooldown chat requires campaign `postSessionChatEnabled`
 - Added backend route coverage for these paths in `backend/tests/api/chat-routes.test.ts`.
+- Backend now enforces spectator voice lifecycle at API level in `POST /api/livekit/token`:
+  - observe-only voice during `ACTIVE` (`canPublish=false`)
+  - spectator voice in `COOLDOWN` requires campaign `postSessionChatEnabled`
+  - spectator voice is rejected in non-active/non-cooldown states
+- Added backend route coverage for these paths in `backend/tests/api/livekit-routes.test.ts`.
 - Spectator center-pane lifecycle screens now map state explicitly:
   - `IDLE` + `PAUSED` show a "Please wait" hold screen.
   - `ENDED` + `CLEANUP` show a "Session Closed" screen.
@@ -51,7 +56,6 @@ Evidence snapshot (2026-05-18):
   - lazy scroll-up pagination still backfills older history via `before`
   - backend campaign chat page now supports server-side `todayOnly` boundary filtering.
 - Cooldown countdown controls remain verified by frontend coverage (`frontend/tests/components/SessionToolbar.test.tsx`).
-- Voice participation policy in cooldown is still pending explicit backend enforcement and test proof.
 
 **Related Docs**:
 

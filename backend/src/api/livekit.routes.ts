@@ -11,9 +11,27 @@ import { ErrorCode, isValidUUID, type UUID } from '@shared'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import { getServerMuteEnforcementState } from '@/services/audio/audio-state'
+import { getPrismaClient } from '@/infra/db'
+import { Role, SessionState } from '@shared'
 
 const router = Router()
 const tokenService = new LiveKitTokenService(config)
+const prisma = getPrismaClient()
+
+async function isSpectatorCooldownVoiceEnabled(sessionId: UUID): Promise<boolean> {
+  const result = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: {
+      campaign: {
+        select: {
+          postSessionChatEnabled: true,
+        },
+      },
+    },
+  })
+
+  return Boolean(result?.campaign?.postSessionChatEnabled)
+}
 
 function toWsUrl(input: string): string {
   try {
@@ -130,6 +148,27 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
     }
 
     const isSessionDm = authz.role === 'DM'
+    const isSpectator = authz.role === Role.SPECTATOR
+
+    if (isSpectator) {
+      if (authz.session.state === SessionState.ACTIVE) {
+        // Observe-only in ACTIVE: spectators can hear but cannot publish voice.
+      } else if (authz.session.state === SessionState.COOLDOWN) {
+        const postSessionVoiceEnabled = await isSpectatorCooldownVoiceEnabled(sessionId as UUID)
+        if (!postSessionVoiceEnabled) {
+          return res.status(403).json({
+            code: ErrorCode.FORBIDDEN,
+            message: 'Spectator voice is disabled for this cooldown window',
+          })
+        }
+      } else {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: `Spectator voice is unavailable while the session is ${authz.session.state}`,
+        })
+      }
+    }
+
     const resolvedRoomId =
       requestedChannel === 'broadcast' ? `dm-broadcast:${sessionId}` : (roomId as string)
 
@@ -141,7 +180,11 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
     const publishAllowedByMute = !muteState.enforcedMuted
 
     const canPublish =
-      requestedChannel === 'broadcast' ? isSessionDm && publishAllowedByMute : publishAllowedByMute
+      requestedChannel === 'broadcast'
+        ? isSessionDm && publishAllowedByMute
+        : isSpectator
+          ? authz.session.state === SessionState.COOLDOWN && publishAllowedByMute
+          : publishAllowedByMute
     const canSubscribe = requestedChannel === 'broadcast' ? !isSessionDm : true
 
     // Generate LiveKit token
