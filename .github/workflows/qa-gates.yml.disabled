@@ -1,6 +1,6 @@
 name: QA Gates
 
-# TEMPORARILY DISABLED - Enable once repository-wide Actions are re-enabled.
+# TEMPORARILY DISABLED - Re-enable when development velocity no longer requires rapid check-ins.
 # on:
 #   pull_request:
 #   push:
@@ -25,10 +25,16 @@ jobs:
             admin/package-lock.json
 
       - name: Install workspace dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Run CI test suite
-        run: npm run test:ci
+      - name: Lint workspace
+        run: npm run lint
+
+      - name: Build workspace
+        run: npm run build
+
+      - name: Run coverage suites
+        run: npm run test:coverage
 
       - name: Enforce coverage gates
         run: npm run qa:coverage-report
@@ -40,6 +46,7 @@ jobs:
         run: npm run qa:coverage-report:json > coverage-gate-report.json
 
       - name: Upload QA artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qa-gates

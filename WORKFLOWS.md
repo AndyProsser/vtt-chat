@@ -8,13 +8,14 @@ This document explains the GitHub Actions workflows used for CI/CD, testing, and
 
 VTT‑Chat uses the following workflows:
 
-| Workflow            | Trigger                      | Purpose                                       |
-| ------------------- | ---------------------------- | --------------------------------------------- |
-| **Release**         | Push to `main`               | Semantic versioning & changelog               |
-| **Backend CI**      | PR to `backend/**`           | Lint, type-check, build, Prisma validate      |
-| **Frontend CI**     | PR to `frontend/**`          | Lint, type-check, Vite build                  |
-| **Backend Docker**  | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub) |
-| **Frontend Docker** | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub) |
+| Workflow            | Trigger                      | Purpose                                                               |
+| ------------------- | ---------------------------- | --------------------------------------------------------------------- |
+| **QA Gates**        | PR + push to `main`          | Enforce release gates: lint, build, coverage thresholds, flaky-policy |
+| **Release**         | Push to `main`               | Semantic versioning & changelog                                       |
+| **Backend CI**      | PR to `backend/**`           | Lint, type-check, build, Prisma validate                              |
+| **Frontend CI**     | PR to `frontend/**`          | Lint, type-check, Vite build                                          |
+| **Backend Docker**  | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub)                         |
+| **Frontend Docker** | Push to `main` (or tag `v*`) | Build & push Docker image (GHCR + Docker Hub)                         |
 
 ---
 
@@ -70,6 +71,20 @@ If `DOCKER_HUB_USERNAME` is not set, only GHCR is used (no failures).
 ---
 
 ## 🚀 Workflows in Detail
+
+### QA Gates Workflow (`.github/workflows/qa-gates.yml`)
+
+**Trigger:** Pull requests and pushes to `main`
+
+**What it does:**
+
+1. Installs workspace dependencies (`npm ci`)
+2. Runs workspace lint (`npm run lint`)
+3. Runs workspace build (`npm run build`)
+4. Runs coverage suites (`npm run test:coverage`)
+5. Enforces coverage thresholds (`npm run qa:coverage-report`)
+6. Enforces flaky integration threshold (`npm run qa:flaky-tests:ci`)
+7. Uploads reports as workflow artifacts (`coverage-gate-report.json`, coverage summaries, flaky report)
 
 ### Release Workflow (`.github/workflows/release.yml`)
 

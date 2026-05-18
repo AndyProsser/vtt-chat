@@ -106,7 +106,7 @@ Evidence snapshot (2026-05-18):
 
 ### W2-Testing: Release Gates and Regression Coverage
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High (gating Phase 1)
 **Depends on**: W0-State-Machine, W1-Runtime-Recovery
 
@@ -116,7 +116,7 @@ Evidence snapshot (2026-05-18):
 
 - [x] Backend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures (2026-05-18: 83/83 test files, 660/660 tests, 65.26% statements, 53.67% branches, 66.96% functions, 65.62% lines)
 - [x] Frontend test suite passes with ≥60% coverage statement baseline; zero critical-path test failures
-- [ ] Release-gate reporting is automated and enforced in CI
+- [x] Release-gate reporting is automated and enforced in CI (enforced by `.github/workflows/qa-gates.yml` with lint/build/coverage/flaky gates + artifact reports)
 - [x] Session lifecycle coverage includes: start → pause → resume → end → cleanup (covered by `backend/tests/integration/session-room-transition.integration.test.ts`, `backend/tests/integration/session-cooldown-handoff.integration.test.ts`, `backend/tests/services/session-cleanup-job.service.test.ts`)
 - [x] Audio state recovery coverage includes: environment + conditions + distance + mute (covered by `backend/tests/integration/audio-state-recovery.integration.test.ts`)
 - [x] Multi-client reconnect coverage includes: concurrent reconnect, session isolation, FIFO recovery (`backend/tests/integration/multi-client-reconnect.integration.test.ts`)

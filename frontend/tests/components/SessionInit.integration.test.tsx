@@ -2669,8 +2669,40 @@ describe('SessionInit integration', () => {
               lowpassFreq: 5000,
               roomGain: -4,
             },
-            dmOverrides: [],
-            broadcast: { enabled: false },
+            environments: [
+              {
+                roomId: ROOM_ONE_ID,
+                environmentId: ENV_PRESET_ID,
+                environmentName: 'Cave',
+                parameters: { reverbSend: 0.6, lowpassFreq: 5000, roomGain: -4 },
+                setBy: DM_ID,
+                setAt: 1_715_200_700_100,
+              },
+            ],
+            dmOverrides: [
+              {
+                targetUserId: PLAYER_ID,
+                overrideType: 'MUTE',
+                parameters: { enabled: true },
+                appliedAt: 1_715_200_700_200,
+              },
+              {
+                targetUserId: PLAYER_TWO_ID,
+                overrideType: 'FILTER',
+                parameters: {
+                  category: 'CONDITION',
+                  presetId: 'cond-silenced',
+                  conditionName: 'Silenced',
+                },
+                appliedAt: 1_715_200_700_210,
+              },
+            ],
+            broadcast: {
+              enabled: true,
+              dmId: DM_ID,
+              broadcastRoomId: ROOM_ONE_ID,
+              changedAt: 1_715_200_700_300,
+            },
           }),
         }
       }
@@ -2699,6 +2731,19 @@ describe('SessionInit integration', () => {
     })
 
     const callCountAfterFirstLoad = fetchMock.mock.calls.length
+
+    // Seed stale local audio state so reconnect hydration must replace it.
+    act(() => {
+      const store = useStore.getState()
+      store.setRoomEnvironmentName(ROOM_ONE_ID, 'Stale')
+      store.setDMOverride(PLAYER_ID, {
+        userId: PLAYER_ID,
+        overrideType: 'UNMUTE',
+        parameters: { enabled: false },
+        appliedAt: Date.now(),
+      })
+      store.setBroadcastState({ enabled: false })
+    })
 
     // Simulate WebSocket reconnect by changing wsState
     wsConnectionState = 'reconnecting'
@@ -2737,6 +2782,25 @@ describe('SessionInit integration', () => {
 
       expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_ONE_ID}`))).toBe(true)
       expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_TWO_ID}`))).toBe(true)
+    })
+
+    await waitFor(() => {
+      const storeState = useStore.getState()
+      expect(storeState.roomEnvironmentNames[ROOM_ONE_ID]).toBe('Cave')
+
+      expect(getUserDMOverride(storeState.dmOverrides, PLAYER_ID, 'MUTE')?.overrideType).toBe(
+        'MUTE'
+      )
+      expect(
+        getUserDMOverride(storeState.dmOverrides, PLAYER_TWO_ID, 'FILTER')?.parameters
+      ).toMatchObject({
+        category: 'CONDITION',
+        presetId: 'cond-silenced',
+      })
+
+      expect(storeState.broadcastModeEnabled).toBe(true)
+      expect(storeState.broadcastDmId).toBe(DM_ID)
+      expect(storeState.broadcastRoomId).toBe(ROOM_ONE_ID)
     })
   })
 
