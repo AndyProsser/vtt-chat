@@ -1,6 +1,6 @@
 import express from 'express'
 import request from 'supertest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   resetExternalSystemsRegistryForTests,
   updateExternalSystem,
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   mockVerifyPassword: vi.fn(),
   mockVerifyToken: vi.fn(),
   mockExtractTokenFromHeader: vi.fn(),
+  mockGetUserAuthContext: vi.fn(),
   mockJoinCampaignForUser: vi.fn(),
   mockUserCount: vi.fn(),
   mockUserFindUnique: vi.fn(),
@@ -49,11 +50,7 @@ vi.mock('@/services/auth.service', () => ({
 
 vi.mock('@/services/auth/user-context.service', () => ({
   validateUserAuthState: vi.fn(async () => ({ ok: true })),
-  getUserAuthContext: vi.fn(async () => ({
-    userId: 'guest-user',
-    isActive: true,
-    tokenInvalidBefore: null,
-  })),
+  getUserAuthContext: (...args: unknown[]) => mocks.mockGetUserAuthContext(...args),
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -143,6 +140,9 @@ function buildApp() {
 }
 
 describe('guest auth routes', () => {
+  const originalNodeEnv = process.env.NODE_ENV
+  const testToken = 'test-jwt-token-xyz'
+
   beforeEach(() => {
     vi.clearAllMocks()
     resetExternalSystemsRegistryForTests()
@@ -152,6 +152,20 @@ describe('guest auth routes', () => {
     mocks.mockHashPassword.mockResolvedValue('hashed-password')
     mocks.mockVerifyPassword.mockResolvedValue(true)
     mocks.mockExtractTokenFromHeader.mockReturnValue('token')
+    mocks.mockGetUserAuthContext.mockResolvedValue({
+      id: 'guest-user',
+      userId: 'guest-user',
+      username: 'guest-user',
+      role: 'PLAYER',
+      authType: 'GUEST',
+      adminRole: null,
+      hasAdminAccess: false,
+      requiresUpgradeForAdmin: false,
+      isActive: true,
+      isFullAccount: false,
+      tokenInvalidBefore: null,
+      email: 'guest@example.com',
+    })
     mocks.mockJoinCampaignForUser.mockResolvedValue(true)
     mocks.mockVerifyToken.mockReturnValue({
       userId: 'guest-user',
@@ -183,6 +197,10 @@ describe('guest auth routes', () => {
       tokenInvalidBefore: null,
       authType: 'GUEST',
     })
+  })
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv
   })
 
   it('returns public platform status snapshot', async () => {
@@ -629,6 +647,236 @@ describe('guest auth routes', () => {
       username: 'validname',
       authType: 'FULL',
     })
+  })
+
+  it('creates a development full account when direct login is allowed', async () => {
+    const app = buildApp()
+    process.env.NODE_ENV = 'development'
+
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    mocks.mockUserCreate.mockResolvedValueOnce({
+      id: 'u-dev',
+      username: 'devuser',
+      displayName: 'Dev User',
+      avatarUrl: 'dev.png',
+      role: 'DM',
+      authType: 'FULL',
+    })
+
+    const response = await request(app).post('/api/auth/login').send({
+      username: 'devuser',
+      role: 'DM',
+      accessMode: 'USER',
+      displayName: 'Dev User',
+      avatarUrl: 'dev.png',
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.user).toMatchObject({
+      id: 'u-dev',
+      username: 'devuser',
+      role: 'DM',
+      authType: 'FULL',
+    })
+    expect(mocks.mockUserCreate).toHaveBeenCalled()
+  })
+
+  it('refreshes tokens and validates authenticated users', async () => {
+    const app = buildApp()
+    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      accessMode: 'USER',
+      authType: 'FULL',
+      sessionId: 'session-1',
+      iat: Math.floor(Date.now() / 1000),
+    })
+    mocks.mockCreateToken.mockReturnValue('refreshed-token')
+
+    let response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(200)
+    expect(response.body.token).toBe('refreshed-token')
+
+    response = await request(app)
+      .get('/api/auth/validate')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      valid: true,
+      user: {
+        id: 'u-full',
+        username: 'validname',
+        accessMode: 'USER',
+        sessionId: 'session-1',
+      },
+    })
+  })
+
+  it('returns the current user profile and default campaign access mode', async () => {
+    const app = buildApp()
+    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      authType: 'FULL',
+      iat: Math.floor(Date.now() / 1000),
+    })
+    const userContext = {
+      id: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      adminRole: 'NONE',
+      isActive: true,
+      password: 'hashed',
+      displayName: 'Valid User',
+      avatarUrl: null,
+      email: 'valid@example.com',
+      tokenInvalidBefore: null,
+      authType: 'FULL',
+    }
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce(userContext)
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce(userContext)
+
+    const response = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${testToken}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      id: 'u-full',
+      username: 'validname',
+      accessMode: 'CAMPAIGN',
+      email: 'valid@example.com',
+      authType: 'FULL',
+    })
+  })
+
+  it('maps auth middleware failure branches for refresh and me', async () => {
+    const app = buildApp()
+
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(null)
+    let response = await request(app).post('/api/auth/refresh')
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('UNAUTHORIZED')
+
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
+    mocks.mockVerifyToken.mockReturnValueOnce(null)
+    response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('TOKEN_EXPIRED')
+
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      authType: 'FULL',
+      iat: Math.floor(Date.now() / 1000),
+    })
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce(null)
+    response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('UNAUTHORIZED')
+
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      authType: 'FULL',
+      iat: Math.floor(Date.now() / 1000),
+    })
+    mocks.mockGetUserAuthContext.mockRejectedValueOnce(new Error('lookup failed'))
+    response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(500)
+    expect(response.body.code).toBe('AUTH_CONTEXT_LOOKUP_FAILED')
+
+    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      authType: 'FULL',
+      iat: Math.floor(Date.now() / 1000) - 120,
+    })
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
+      id: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      adminRole: null,
+      isActive: true,
+      password: 'hashed',
+      displayName: 'Valid User',
+      avatarUrl: null,
+      email: 'valid@example.com',
+      tokenInvalidBefore: new Date(Date.now() - 60_000),
+      authType: 'FULL',
+    })
+    response = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(401)
+    expect(response.body.message).toBe('Session is no longer valid')
+  })
+
+  it('maps me lookup not-found and failure responses after auth succeeds', async () => {
+    const app = buildApp()
+    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
+    mocks.mockVerifyToken.mockReturnValue({
+      userId: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      authType: 'FULL',
+      iat: Math.floor(Date.now() / 1000),
+    })
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
+      id: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      adminRole: null,
+      isActive: true,
+      password: 'hashed',
+      displayName: 'Valid User',
+      avatarUrl: null,
+      email: 'valid@example.com',
+      tokenInvalidBefore: null,
+      authType: 'FULL',
+    })
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce(null)
+
+    let response = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(404)
+    expect(response.body.code).toBe('USER_NOT_FOUND')
+
+    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
+      id: 'u-full',
+      username: 'validname',
+      role: 'PLAYER',
+      adminRole: null,
+      isActive: true,
+      password: 'hashed',
+      displayName: 'Valid User',
+      avatarUrl: null,
+      email: 'valid@example.com',
+      tokenInvalidBefore: null,
+      authType: 'FULL',
+    })
+    mocks.mockGetUserAuthContext.mockRejectedValueOnce(new Error('me failed'))
+
+    response = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${testToken}`)
+    expect(response.status).toBe(500)
+    expect(response.body.code).toBe('ME_LOOKUP_FAILED')
   })
 
   it('rejects full player join requests with missing fields', async () => {

@@ -24,6 +24,11 @@ const mocks = vi.hoisted(() => ({
   mockUpgradeGuestAccount: vi.fn(),
   mockIssueHandoffToken: vi.fn(),
   mockConsumeHandoffToken: vi.fn(),
+  mockSuggestAvailableUsername: vi.fn(),
+  mockRegisterFullAccount: vi.fn(),
+  mockRequestPasswordReset: vi.fn(),
+  mockVerifyPasswordResetToken: vi.fn(),
+  mockCompletePasswordReset: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -44,6 +49,14 @@ vi.mock('@/services/guest-auth', () => ({
     mocks.mockJoinGuestSpectatorViaInvite(...args),
   precheckPlayerInviteEmail: (...args: unknown[]) => mocks.mockPrecheckPlayerInviteEmail(...args),
   upgradeGuestAccount: (...args: unknown[]) => mocks.mockUpgradeGuestAccount(...args),
+}))
+
+vi.mock('@/services/self-service-auth', () => ({
+  suggestAvailableUsername: (...args: unknown[]) => mocks.mockSuggestAvailableUsername(...args),
+  registerFullAccount: (...args: unknown[]) => mocks.mockRegisterFullAccount(...args),
+  requestPasswordReset: (...args: unknown[]) => mocks.mockRequestPasswordReset(...args),
+  verifyPasswordResetToken: (...args: unknown[]) => mocks.mockVerifyPasswordResetToken(...args),
+  completePasswordReset: (...args: unknown[]) => mocks.mockCompletePasswordReset(...args),
 }))
 
 vi.mock('@/services/handoff.service', () => ({
@@ -72,6 +85,14 @@ describe('current Auth Routes (Normalized API)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mockSuggestAvailableUsername.mockResolvedValue('suggested-user')
+    mocks.mockVerifyPasswordResetToken.mockResolvedValue({ valid: true, email: 'user@example.com' })
+    mocks.mockRequestPasswordReset.mockResolvedValue({
+      accountFound: true,
+      delivery: 'email',
+      resetToken: undefined,
+      email: 'user@example.com',
+    })
   })
 
   describe('GET /auth/validate - Validate Token', () => {
@@ -191,6 +212,199 @@ describe('current Auth Routes (Normalized API)', () => {
 
       expect(res.status).toBe(400)
       expect(res.body.code).toBe('INVALID_USERNAME')
+    })
+  })
+
+  describe('self-service auth routes', () => {
+    it('suggests available usernames', async () => {
+      const res = await request(app).post('/auth/register/username-suggestion').send({
+        name: 'Test User',
+        username: 'taken-name',
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ username: 'suggested-user' })
+      expect(mocks.mockSuggestAvailableUsername).toHaveBeenCalledWith({
+        displayName: 'Test User',
+        requestedUsername: 'taken-name',
+      })
+    })
+
+    it('maps register validation and conflict failures', async () => {
+      mocks.mockRegisterFullAccount.mockRejectedValueOnce(new Error('DISPLAY_NAME_REQUIRED'))
+      let res = await request(app).post('/auth/register').send({
+        email: 'user@example.com',
+        username: 'user-one',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('DISPLAY_NAME_REQUIRED')
+
+      mocks.mockRegisterFullAccount.mockRejectedValueOnce(new Error('INVALID_EMAIL'))
+      res = await request(app).post('/auth/register').send({
+        name: 'User One',
+        email: 'bad-email',
+        username: 'user-one',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_EMAIL')
+
+      mocks.mockRegisterFullAccount.mockRejectedValueOnce(new Error('INVALID_PASSWORD'))
+      res = await request(app).post('/auth/register').send({
+        name: 'User One',
+        email: 'user@example.com',
+        username: 'user-one',
+        password: 'weak',
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_PASSWORD')
+
+      mocks.mockRegisterFullAccount.mockRejectedValueOnce(new Error('EMAIL_IN_USE'))
+      res = await request(app).post('/auth/register').send({
+        name: 'User One',
+        email: 'user@example.com',
+        username: 'user-one',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('EMAIL_IN_USE')
+    })
+
+    it('returns registration success and generic failures', async () => {
+      mocks.mockRegisterFullAccount.mockResolvedValueOnce({
+        token: 'registered-token',
+        user: { id: 'user-1', username: 'user-one', authType: 'FULL' },
+      })
+
+      let res = await request(app).post('/auth/register').send({
+        name: 'User One',
+        email: 'user@example.com',
+        username: 'user-one',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(201)
+      expect(res.body.token).toBe('registered-token')
+
+      mocks.mockRegisterFullAccount.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/register').send({
+        name: 'User One',
+        email: 'user@example.com',
+        username: 'user-one',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('REGISTRATION_FAILED')
+    })
+
+    it('maps password reset request outcomes', async () => {
+      mocks.mockRequestPasswordReset.mockRejectedValueOnce(new Error('IDENTIFIER_REQUIRED'))
+      let res = await request(app).post('/auth/password-reset/request').send({})
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('IDENTIFIER_REQUIRED')
+
+      mocks.mockRequestPasswordReset.mockResolvedValueOnce({
+        accountFound: false,
+        delivery: 'email',
+        resetToken: undefined,
+        email: null,
+      })
+      res = await request(app).post('/auth/password-reset/request').send({
+        identifier: 'missing@example.com',
+      })
+      expect(res.status).toBe(404)
+      expect(res.body.code).toBe('ACCOUNT_NOT_FOUND')
+
+      mocks.mockRequestPasswordReset.mockRejectedValueOnce(
+        new Error('PASSWORD_RESET_EMAIL_NOT_CONFIGURED')
+      )
+      res = await request(app).post('/auth/password-reset/request').send({
+        identifier: 'user@example.com',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('PASSWORD_RESET_EMAIL_NOT_CONFIGURED')
+
+      mocks.mockRequestPasswordReset.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/password-reset/request').send({
+        identifier: 'user@example.com',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('PASSWORD_RESET_REQUEST_FAILED')
+    })
+
+    it('returns password reset request success payloads', async () => {
+      mocks.mockRequestPasswordReset.mockResolvedValueOnce({
+        accountFound: true,
+        delivery: 'passwordless',
+        resetToken: 'reset-token',
+        email: 'user@example.com',
+      })
+
+      const res = await request(app).post('/auth/password-reset/request').send({
+        identifier: 'user@example.com',
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toMatchObject({
+        accountFound: true,
+        delivery: 'passwordless',
+        resetToken: 'reset-token',
+      })
+    })
+
+    it('maps password reset verify and complete outcomes', async () => {
+      let res = await request(app).post('/auth/password-reset/verify').send({})
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('RESET_TOKEN_REQUIRED')
+
+      mocks.mockVerifyPasswordResetToken.mockResolvedValueOnce({ valid: false })
+      res = await request(app).post('/auth/password-reset/verify').send({ token: 'bad-token' })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_RESET_TOKEN')
+
+      mocks.mockVerifyPasswordResetToken.mockResolvedValueOnce({
+        valid: true,
+        email: 'user@example.com',
+      })
+      res = await request(app).post('/auth/password-reset/verify').send({ token: 'good-token' })
+      expect(res.status).toBe(200)
+      expect(res.body.valid).toBe(true)
+
+      res = await request(app).post('/auth/password-reset/complete').send({ token: 'good-token' })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_PASSWORD_RESET_REQUEST')
+
+      mocks.mockCompletePasswordReset.mockRejectedValueOnce(new Error('INVALID_PASSWORD'))
+      res = await request(app).post('/auth/password-reset/complete').send({
+        token: 'good-token',
+        password: 'weak',
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_PASSWORD')
+
+      mocks.mockCompletePasswordReset.mockRejectedValueOnce(new Error('INVALID_RESET_TOKEN'))
+      res = await request(app).post('/auth/password-reset/complete').send({
+        token: 'expired-token',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.code).toBe('INVALID_RESET_TOKEN')
+
+      mocks.mockCompletePasswordReset.mockRejectedValueOnce(new Error('boom'))
+      res = await request(app).post('/auth/password-reset/complete').send({
+        token: 'good-token',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(500)
+      expect(res.body.code).toBe('PASSWORD_RESET_FAILED')
+
+      mocks.mockCompletePasswordReset.mockResolvedValueOnce(undefined)
+      res = await request(app).post('/auth/password-reset/complete').send({
+        token: 'good-token',
+        password: 'Password123!',
+      })
+      expect(res.status).toBe(200)
+      expect(res.body.message).toBe('Password reset complete')
     })
   })
 
