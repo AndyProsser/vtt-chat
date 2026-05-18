@@ -43,6 +43,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
+  const settingsSelectOpenRef = useRef(false)
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
@@ -614,15 +615,16 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
 
     const handleMouseDown = (event: MouseEvent) => {
+      // While a Radix Select is open, Radix sets pointer-events:none on <body>,
+      // making all panel elements non-interactive. Clicks outside the dropdown
+      // land on body/document instead of panel children, so stopPropagation on
+      // the panel can't help. Skip the close entirely while any select is open.
+      if (settingsSelectOpenRef.current) return
+
       const target = event.target
-      if (!(target instanceof Element)) {
-        return
-      }
-
-      if (target.closest('[data-audio-settings-panel], [data-audio-settings-trigger]')) {
-        return
-      }
-
+      if (!(target instanceof Element)) return
+      // Guard the trigger button (prevents close+reopen on toggle)
+      if (target.closest('[data-audio-settings-trigger]')) return
       setSettingsOpen(false)
     }
 
@@ -654,6 +656,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
             isWhisperMode={isWhisperMode}
             onDeviceChange={setDevice}
             onClose={() => setSettingsOpen(false)}
+            onAnySelectOpen={(open) => {
+              settingsSelectOpenRef.current = open
+            }}
           />
         )}
         <AudioDevicePanel

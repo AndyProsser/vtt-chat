@@ -21,6 +21,10 @@ interface AudioSettingsPanelProps {
   isWhisperMode: boolean
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void
   onClose: () => void
+  /** Called whenever any device select opens or closes. Used by the parent to
+   * suppress the outside-click close handler while Radix disables pointer-events
+   * on the body (which would otherwise cause panel-body clicks to mis-fire close). */
+  onAnySelectOpen?: (open: boolean) => void
 }
 
 const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label: string }> = [
@@ -30,6 +34,15 @@ const NOISE_OPTIONS: Array<{ value: AudioDeviceState['noiseFilterLevel']; label:
   { value: 'high', label: 'HIGH' },
 ]
 
+function normalizeSelectValue(value: string | null | undefined): string {
+  if (typeof value !== 'string') {
+    return 'default'
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : 'default'
+}
+
 export function AudioSettingsPanel({
   device,
   localMicLevel,
@@ -37,9 +50,16 @@ export function AudioSettingsPanel({
   isWhisperMode,
   onDeviceChange,
   onClose,
+  onAnySelectOpen,
 }: AudioSettingsPanelProps) {
   const [micDevices, setMicDevices] = useState<MediaDeviceOption[]>([])
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceOption[]>([])
+  const [speakerOpen, setSpeakerOpen] = useState(false)
+  const [micOpen, setMicOpen] = useState(false)
+
+  useEffect(() => {
+    onAnySelectOpen?.(speakerOpen || micOpen)
+  }, [speakerOpen, micOpen, onAnySelectOpen])
   const micMeterFillRef = useRef<HTMLSpanElement | null>(null)
   const localMicLevelPercent = Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)
 
@@ -55,13 +75,13 @@ export function AudioSettingsPanel({
       .enumerateDevices()
       .then((devices) => {
         const mics = devices
-          .filter((d) => d.kind === 'audioinput')
+          .filter((d) => d.kind === 'audioinput' && d.deviceId.trim().length > 0)
           .map((d, i) => ({
             deviceId: d.deviceId,
             label: d.label || getFallbackAudioDeviceLabel('microphone', i),
           }))
         const speakers = devices
-          .filter((d) => d.kind === 'audiooutput')
+          .filter((d) => d.kind === 'audiooutput' && d.deviceId.trim().length > 0)
           .map((d, i) => ({
             deviceId: d.deviceId,
             label: d.label || getFallbackAudioDeviceLabel('speaker', i),
@@ -80,6 +100,7 @@ export function AudioSettingsPanel({
       role="dialog"
       aria-label={AUDIO_SETTINGS_COPY.title}
       data-audio-settings-panel="true"
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <header className="audio-settings-panel__header">
         <span className="audio-settings-panel__title">{AUDIO_SETTINGS_COPY.title}</span>
@@ -102,8 +123,9 @@ export function AudioSettingsPanel({
               {AUDIO_SETTINGS_COPY.speaker}
             </span>
             <SelectPrimitive.Root
-              value={device.selectedSpeakerDeviceId ?? 'default'}
+              value={normalizeSelectValue(device.selectedSpeakerDeviceId)}
               onValueChange={(nextValue) => onDeviceChange({ selectedSpeakerDeviceId: nextValue })}
+              onOpenChange={setSpeakerOpen}
             >
               <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
                 <SelectPrimitive.Value />
@@ -116,6 +138,7 @@ export function AudioSettingsPanel({
               <SelectPrimitive.Portal>
                 <SelectPrimitive.Content
                   className="audio-settings-panel__select-content"
+                  data-audio-settings-select-content="true"
                   position="popper"
                   sideOffset={4}
                 >
@@ -150,8 +173,9 @@ export function AudioSettingsPanel({
               {AUDIO_SETTINGS_COPY.microphone}
             </span>
             <SelectPrimitive.Root
-              value={device.selectedMicDeviceId ?? 'default'}
+              value={normalizeSelectValue(device.selectedMicDeviceId)}
               onValueChange={(nextValue) => onDeviceChange({ selectedMicDeviceId: nextValue })}
+              onOpenChange={setMicOpen}
             >
               <SelectPrimitive.Trigger className="audio-settings-panel__select-trigger">
                 <SelectPrimitive.Value />
@@ -164,6 +188,7 @@ export function AudioSettingsPanel({
               <SelectPrimitive.Portal>
                 <SelectPrimitive.Content
                   className="audio-settings-panel__select-content"
+                  data-audio-settings-select-content="true"
                   position="popper"
                   sideOffset={4}
                 >
