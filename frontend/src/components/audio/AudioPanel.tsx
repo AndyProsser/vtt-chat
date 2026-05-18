@@ -34,8 +34,8 @@ import { AudioSettingsPanel } from './panels/AudioSettingsPanel'
 import '../../styles/components/audio/AudioPanel.css'
 
 interface AudioPanelProps {
-  sessionId: string
-  roomId: string
+  sessionId: UUID
+  roomId: UUID
   role?: Role
 }
 

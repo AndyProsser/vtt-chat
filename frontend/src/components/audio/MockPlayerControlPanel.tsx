@@ -283,8 +283,8 @@ export function MockPlayerControlPanel({
         <div className="mock-player-control-panel__row">
           <label className="mock-player-control-panel__label">Player Count:</label>
           <Slider
-            min="1"
-            max="20"
+            min={1}
+            max={20}
             value={playerCount}
             onValueChange={(nextValue) =>
               handlePlayerCountChange({

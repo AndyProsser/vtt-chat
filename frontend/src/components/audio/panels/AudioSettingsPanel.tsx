@@ -117,7 +117,7 @@ export function AudioSettingsPanel({
                 className="audio-settings-panel__select"
                 value={device.selectedSpeakerDeviceId ?? ''}
                 onChange={(e) =>
-                  onDeviceChange({ selectedSpeakerDeviceId: e.target.value || null })
+                  onDeviceChange({ selectedSpeakerDeviceId: e.target.value || undefined })
                 }
               >
                 <option value="">{AUDIO_SETTINGS_COPY.systemDefault}</option>
@@ -142,7 +142,9 @@ export function AudioSettingsPanel({
               <select
                 className="audio-settings-panel__select"
                 value={device.selectedMicDeviceId ?? ''}
-                onChange={(e) => onDeviceChange({ selectedMicDeviceId: e.target.value || null })}
+                onChange={(e) =>
+                  onDeviceChange({ selectedMicDeviceId: e.target.value || undefined })
+                }
               >
                 <option value="">{AUDIO_SETTINGS_COPY.systemDefault}</option>
                 {micDevices.map((d) => (
