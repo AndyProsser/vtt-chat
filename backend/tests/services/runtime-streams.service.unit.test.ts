@@ -24,6 +24,7 @@ vi.mock('@/utils', async (importOriginal) => {
 import {
   appendChatRuntimeEvent,
   appendSessionAuditEvent,
+  normalizeSessionAuditEvent,
 } from '@/services/runtime/runtime-streams.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as any
@@ -107,5 +108,29 @@ describe('runtime-streams.service', () => {
     ).resolves.toBeUndefined()
 
     expect(mocks.warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('normalizes audit envelopes with stable defaults', () => {
+    const normalized = normalizeSessionAuditEvent({
+      sessionId: SESSION_ID,
+      actionType: 'NOTES.CREATED',
+      visibilityClass: 'ROLE_SCOPED',
+      metadata: null as any,
+    })
+
+    expect(normalized).toMatchObject({
+      sessionId: SESSION_ID,
+      campaignId: '',
+      actorUserId: '',
+      actorRole: 'SYSTEM',
+      actionType: 'NOTES.CREATED',
+      targetType: '',
+      targetId: '',
+      roomId: '',
+      visibilityClass: 'ROLE_SCOPED',
+      metadata: {},
+    })
+    expect(typeof normalized.timestamp).toBe('number')
+    expect(typeof normalized.eventId).toBe('string')
   })
 })

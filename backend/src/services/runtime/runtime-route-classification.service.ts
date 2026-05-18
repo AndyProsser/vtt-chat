@@ -4,7 +4,7 @@ export interface RuntimeRouteClassification {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   path: string
   routeClass: RuntimeRouteClass
-  domain: 'audio' | 'presence' | 'rooms' | 'session'
+  domain: 'audio' | 'presence' | 'rooms' | 'session' | 'chat' | 'notes'
   reason: string
   aliasOf?: string
 }
@@ -201,6 +201,62 @@ export const WEBSOCKET_VISIBLE_RUNTIME_ROUTE_CLASSIFICATIONS = [
     domain: 'audio',
     reason:
       'DM voice mode is transient runtime routing state with optional preference persistence.',
+  }),
+  createEntry({
+    method: 'POST',
+    path: '/api/chat/message',
+    routeClass: 'CLASS_B',
+    domain: 'chat',
+    reason: 'Session chat messages are durable session timeline mutations broadcast over WS.',
+  }),
+  createEntry({
+    method: 'PUT',
+    path: '/api/chat/message/:id',
+    routeClass: 'CLASS_B',
+    domain: 'chat',
+    reason: 'Chat edit mutates durable session timeline content and broadcasts updates.',
+  }),
+  createEntry({
+    method: 'DELETE',
+    path: '/api/chat/message/:id',
+    routeClass: 'CLASS_B',
+    domain: 'chat',
+    reason: 'Chat delete mutates durable session timeline state and broadcasts updates.',
+  }),
+  createEntry({
+    method: 'POST',
+    path: '/api/chat/campaign/:campaignId/chat',
+    routeClass: 'CLASS_C',
+    domain: 'chat',
+    reason: 'Campaign greenroom chat is campaign-durable and broadcast to campaign members.',
+  }),
+  createEntry({
+    method: 'POST',
+    path: '/api/notes',
+    routeClass: 'CLASS_B',
+    domain: 'notes',
+    reason: 'Session notes are durable session artifacts that emit WS note updates.',
+  }),
+  createEntry({
+    method: 'PUT',
+    path: '/api/notes/:noteId',
+    routeClass: 'CLASS_B',
+    domain: 'notes',
+    reason: 'Note edits mutate durable session artifacts and broadcast note updates.',
+  }),
+  createEntry({
+    method: 'POST',
+    path: '/api/notes/:noteId/publish',
+    routeClass: 'CLASS_B',
+    domain: 'notes',
+    reason: 'Note publish mutates note state and emits a durable system chat message.',
+  }),
+  createEntry({
+    method: 'DELETE',
+    path: '/api/notes/:noteId',
+    routeClass: 'CLASS_B',
+    domain: 'notes',
+    reason: 'Note deletion mutates durable session artifacts and broadcasts note removal.',
   }),
   createEntry({
     method: 'POST',

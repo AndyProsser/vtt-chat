@@ -20,6 +20,21 @@ export interface SessionAuditEventInput {
   metadata?: Record<string, unknown>
 }
 
+export interface NormalizedSessionAuditEvent {
+  eventId: UUID
+  timestamp: number
+  sessionId: UUID
+  campaignId: string
+  actorUserId: string
+  actorRole: string
+  actionType: string
+  targetType: string
+  targetId: string
+  roomId: string
+  visibilityClass: SessionAuditVisibilityClass
+  metadata: Record<string, unknown>
+}
+
 export interface ChatRuntimeEventInput {
   sessionId: UUID
   messageId: UUID
@@ -40,6 +55,33 @@ function chatStreamKey(sessionId: UUID): string {
   return `chat:session:${sessionId}:stream`
 }
 
+function toMetadataRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  return value as Record<string, unknown>
+}
+
+export function normalizeSessionAuditEvent(
+  input: SessionAuditEventInput
+): NormalizedSessionAuditEvent {
+  return {
+    eventId: input.eventId ?? (randomUUID() as UUID),
+    timestamp: input.timestamp ?? Date.now(),
+    sessionId: input.sessionId,
+    campaignId: input.campaignId ?? '',
+    actorUserId: input.actorUserId ?? '',
+    actorRole: input.actorRole ?? 'SYSTEM',
+    actionType: input.actionType,
+    targetType: input.targetType ?? '',
+    targetId: input.targetId ?? '',
+    roomId: input.roomId ?? '',
+    visibilityClass: input.visibilityClass,
+    metadata: toMetadataRecord(input.metadata),
+  }
+}
+
 /**
  * Append a normalized session audit event to Redis stream.
  * This path is intentionally non-fatal: API/domain mutations continue if Redis is unavailable.
@@ -47,22 +89,21 @@ function chatStreamKey(sessionId: UUID): string {
 export async function appendSessionAuditEvent(input: SessionAuditEventInput): Promise<void> {
   try {
     const redis = await getRedisClient()
-    const timestamp = input.timestamp ?? Date.now()
-    const eventId = input.eventId ?? (randomUUID() as UUID)
+    const normalized = normalizeSessionAuditEvent(input)
 
     await redis.xAdd(auditStreamKey(input.sessionId), '*', {
-      eventId,
-      timestamp: String(timestamp),
-      sessionId: input.sessionId,
-      campaignId: input.campaignId ?? '',
-      actorUserId: input.actorUserId ?? '',
-      actorRole: input.actorRole ?? 'SYSTEM',
-      actionType: input.actionType,
-      targetType: input.targetType ?? '',
-      targetId: input.targetId ?? '',
-      roomId: input.roomId ?? '',
-      visibilityClass: input.visibilityClass,
-      metadata: JSON.stringify(input.metadata ?? {}),
+      eventId: normalized.eventId,
+      timestamp: String(normalized.timestamp),
+      sessionId: normalized.sessionId,
+      campaignId: normalized.campaignId,
+      actorUserId: normalized.actorUserId,
+      actorRole: normalized.actorRole,
+      actionType: normalized.actionType,
+      targetType: normalized.targetType,
+      targetId: normalized.targetId,
+      roomId: normalized.roomId,
+      visibilityClass: normalized.visibilityClass,
+      metadata: JSON.stringify(normalized.metadata),
     })
   } catch (error) {
     logger.warn('runtime.audit', 'Failed to append session audit event', {

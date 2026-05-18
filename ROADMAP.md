@@ -80,7 +80,7 @@ Evidence snapshot (2026-05-18):
 **Acceptance Criteria**:
 
 - [x] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
-- [ ] All websocket-visible domain routes classify into Class A (Redis durable) / Class B (Redis w/ bounded flush) / Class C (ephemeral)
+- [x] All websocket-visible domain routes classify into Class A (Redis durable) / Class B (Redis w/ bounded flush) / Class C (ephemeral)
 - [ ] Session audit trail captures all meaningful control-plane actions (join/leave, move, mute, lifecycle boundaries)
 - [ ] Reconnect recovery uses backend-authoritative sources (Redis runtime state + Postgres fallback)
 - [ ] Multi-client reconnect soak suite passes consistently
@@ -95,8 +95,10 @@ Evidence snapshot (2026-05-18):
 - Redis runtime projection writes added for audio environment + DM override/broadcast mutation flows in `backend/src/services/audio/presets.service.ts` and `backend/src/services/audio/effects.service.ts`.
 - Session audio rehydration now prefers Redis (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres fallback in `backend/src/services/audio/presets.service.ts`.
 - Focused coverage expanded in `backend/tests/services/audio-state.service.test.ts` for Redis write-through and Redis-first read behavior.
-- Added a typed runtime route classification registry for core WS-visible mutation surfaces in `backend/src/services/runtime/runtime-route-classification.service.ts`.
-- Added focused validation in `backend/tests/services/runtime-route-classification.service.test.ts` covering representative Class A/B/C routes plus alias consistency.
+- Added a typed runtime route classification registry for WS-visible mutation surfaces in `backend/src/services/runtime/runtime-route-classification.service.ts`.
+- Registry coverage now includes `presence`, `rooms`, `audio`, `session`, `chat`, and `notes` mutation routes with focused validation in `backend/tests/services/runtime-route-classification.service.test.ts`.
+- Session audit envelope normalization now runs through `backend/src/services/runtime/runtime-streams.service.ts`, with focused helper coverage in `backend/tests/services/runtime-streams.service.unit.test.ts`.
+- Notes mutation routes now append standardized audit events for create/update/publish/delete flows in `backend/src/api/notes.routes.ts`, covered by `backend/tests/api/notes-routes.test.ts`.
 
 ---
 

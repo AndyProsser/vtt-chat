@@ -20,16 +20,18 @@ Result: met for Phase 1 W11 baseline.
 ### AC: All WS-visible domain routes classified into Class A/B/C
 
 - Classification model exists in contract doc.
-- Added a typed classification registry for core runtime mutation families (`presence`, `rooms`, `audio`, `session`) in `backend/src/services/runtime/runtime-route-classification.service.ts`.
-- Focused regression coverage now validates representative Class A/B/C routes and alias consistency in `backend/tests/services/runtime-route-classification.service.test.ts`.
-- Full route-by-route classification and enforcement is not fully complete outside the core runtime families above.
+- Added a typed classification registry for WS-visible mutation families in `backend/src/services/runtime/runtime-route-classification.service.ts`.
+- Current registry coverage includes `presence`, `rooms`, `audio`, `session`, `chat`, and `notes` mutation routes.
+- Focused regression coverage validates representative Class A/B/C routes and alias consistency in `backend/tests/services/runtime-route-classification.service.test.ts`.
 
-Result: partial.
+Result: met.
 
 ### AC: Session audit trail captures meaningful control-plane actions
 
 - Audit stream helpers and route-level audit coverage exist for major families.
-- Unified mandatory envelope coverage across all meaningful mutation families is not fully complete.
+- `appendSessionAuditEvent` now normalizes a consistent envelope shape in `backend/src/services/runtime/runtime-streams.service.ts` before writing to Redis.
+- Notes WS mutation routes now append standardized audit events for create/update/publish/delete in `backend/src/api/notes.routes.ts`.
+- Focused coverage now exists for audit envelope normalization and notes-route audit appends in `backend/tests/services/runtime-streams.service.unit.test.ts` and `backend/tests/api/notes-routes.test.ts`.
 
 Result: partial.
 
@@ -65,14 +67,15 @@ Result: partial.
   - `backend/tests/services/audio-state.service.test.ts`
 - Runtime route classification coverage:
   - `backend/tests/services/runtime-route-classification.service.test.ts`
+- Notes route audit coverage:
+  - `backend/tests/api/notes-routes.test.ts`
 
 ---
 
 ## 3. Remaining Gaps to Close W11
 
-1. Expand and enforce A/B/C classification beyond the current core runtime families, not only via the registry/test baseline.
-2. Standardize mandatory audit envelope shape for all meaningful control-plane events.
-3. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
+1. Continue expanding audit-envelope adoption to any remaining meaningful mutation families beyond the newly covered notes flows.
+2. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
 
 ---
 

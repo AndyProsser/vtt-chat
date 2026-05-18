@@ -46,9 +46,10 @@ This section captures what is verified in code and tests today, so this contract
   - Chat mutation actions (`CHAT.MESSAGE_SENT|EDITED|DELETED`)
   - Presence mutation actions (`PRESENCE.STATE_CHANGED`, recovery trigger)
   - Audio mutation actions (environment, DM overrides, mute, broadcast, DM voice mode)
-- Typed runtime route classification registry introduced for core WS-visible mutation families:
+- Typed runtime route classification registry introduced for WS-visible mutation families:
   - `backend/src/services/runtime/runtime-route-classification.service.ts`
-  - Current coverage scope: `presence`, `rooms`, `audio`, `session`
+  - Current coverage scope: `presence`, `rooms`, `audio`, `session`, `chat`, `notes`
+- Session audit envelope normalization now runs centrally in `appendSessionAuditEvent`, with notes mutation routes adopting the standardized audit append path.
 
 ### Partial today
 

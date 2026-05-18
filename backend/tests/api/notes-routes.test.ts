@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   mockMarkNotePublished: vi.fn(),
   mockUpdateNote: vi.fn(),
   mockSendMessage: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }))
 
@@ -44,6 +45,10 @@ vi.mock('@/services/notes.service', () => ({
 
 vi.mock('@/services/chat.service', () => ({
   sendMessage: (...args: unknown[]) => mocks.mockSendMessage(...args),
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
 }))
 
 vi.mock('@/utils/logger', () => ({
@@ -226,6 +231,14 @@ describe('notes routes', () => {
         tags: ['lore'],
       })
     )
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'NOTES.CREATED',
+        targetType: 'NOTE',
+        targetId: NOTE_ID,
+      })
+    )
     expect((app.locals.wsManager.broadcastEventToSession as any).mock.calls[0][1].type).toBe(
       'NOTES:CREATED'
     )
@@ -392,6 +405,14 @@ describe('notes routes', () => {
         visibility: NoteVisibility.CUSTOM,
       })
     expect(response.status).toBe(200)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'NOTES.UPDATED',
+        targetType: 'NOTE',
+        targetId: NOTE_ID,
+      })
+    )
     expect((app.locals.wsManager.broadcastEventToSession as any).mock.calls.at(-1)[1].type).toBe(
       'NOTES:UPDATED'
     )
@@ -525,6 +546,14 @@ describe('notes routes', () => {
         content: `[Note] Recap: ${longContent.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`,
       })
     )
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'NOTES.PUBLISHED',
+        targetType: 'NOTE',
+        targetId: NOTE_ID,
+      })
+    )
     expect((app.locals.wsManager.broadcastEventToSession as any).mock.calls.at(-1)[1].type).toBe(
       'CHAT:MESSAGE_SENT'
     )
@@ -573,6 +602,14 @@ describe('notes routes', () => {
       .set('Authorization', 'Bearer token')
     expect(response.status).toBe(200)
     expect(response.body.ok).toBe(true)
+    expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        actionType: 'NOTES.DELETED',
+        targetType: 'NOTE',
+        targetId: NOTE_ID,
+      })
+    )
     expect((app.locals.wsManager.broadcastEventToSession as any).mock.calls.at(-1)[1].type).toBe(
       'NOTES:DELETED'
     )

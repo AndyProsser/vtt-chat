@@ -24,6 +24,10 @@ import type { WebSocketManager } from '@/ws'
 import { logger } from '@/utils/logger'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import {
+  appendSessionAuditEvent,
+  type SessionAuditVisibilityClass,
+} from '@/services/runtime/runtime-streams.service'
+import {
   noteVisibleTo,
   parseCreateNoteRequest,
   parseUpdateNoteRequest,
@@ -31,6 +35,23 @@ import {
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
 
 const router = Router()
+
+function getSessionCampaignId(session: unknown): UUID | undefined {
+  const candidate = session as { campaignId?: UUID } | null
+  return candidate?.campaignId
+}
+
+function toNoteAuditVisibilityClass(visibility: NoteVisibility): SessionAuditVisibilityClass {
+  switch (visibility) {
+    case NoteVisibility.DM_ONLY:
+      return 'PRIVATE'
+    case NoteVisibility.CUSTOM:
+      return 'ROLE_SCOPED'
+    case NoteVisibility.PLAYERS_VISIBLE:
+    default:
+      return 'PUBLIC'
+  }
+}
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -132,6 +153,24 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     visibility,
     tags,
     allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
+  })
+
+  await appendSessionAuditEvent({
+    sessionId: session.id,
+    campaignId: getSessionCampaignId(session),
+    actorUserId: user.userId as UUID,
+    actorRole: requesterRole,
+    actionType: 'NOTES.CREATED',
+    targetType: 'NOTE',
+    targetId: note.id,
+    visibilityClass: toNoteAuditVisibilityClass(note.visibility),
+    timestamp: note.createdAt,
+    metadata: {
+      noteVisibility: note.visibility,
+      tagCount: note.tags.length,
+      allowedUserCount: note.allowedUsers?.length ?? 0,
+      published: Boolean((note as { publishedAt?: number | null }).publishedAt),
+    },
   })
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -261,6 +300,24 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
 
   const eventRole = authz.role
 
+  await appendSessionAuditEvent({
+    sessionId: note.sessionId,
+    campaignId: getSessionCampaignId(session),
+    actorUserId: user.userId as UUID,
+    actorRole: eventRole,
+    actionType: 'NOTES.UPDATED',
+    targetType: 'NOTE',
+    targetId: note.id,
+    visibilityClass: toNoteAuditVisibilityClass(note.visibility),
+    timestamp: note.updatedAt,
+    metadata: {
+      noteVisibility: note.visibility,
+      tagCount: note.tags.length,
+      allowedUserCount: note.allowedUsers?.length ?? 0,
+      published: Boolean((note as { publishedAt?: number | null }).publishedAt),
+    },
+  })
+
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {
     const event: EventEnvelope = {
@@ -363,6 +420,24 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     type: MessageType.SYSTEM,
   })
 
+  await appendSessionAuditEvent({
+    sessionId: published.sessionId,
+    campaignId: getSessionCampaignId(session),
+    actorUserId: user.userId as UUID,
+    actorRole: requesterRole,
+    actionType: 'NOTES.PUBLISHED',
+    targetType: 'NOTE',
+    targetId: published.id,
+    visibilityClass: toNoteAuditVisibilityClass(published.visibility),
+    timestamp: published.publishedAt ?? Date.now(),
+    metadata: {
+      noteVisibility: published.visibility,
+      allowedUserCount: published.allowedUsers?.length ?? 0,
+      chatMessageId: message.id,
+      snippetLength: snippet.length,
+    },
+  })
+
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {
     const notesEvent: EventEnvelope = {
@@ -459,6 +534,21 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
       message: 'Cannot delete note (not found or insufficient permissions)',
     })
   }
+
+  await appendSessionAuditEvent({
+    sessionId: note.sessionId,
+    campaignId: getSessionCampaignId(existingNote),
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: 'NOTES.DELETED',
+    targetType: 'NOTE',
+    targetId: note.id,
+    visibilityClass: 'SYSTEM',
+    timestamp: Date.now(),
+    metadata: {
+      deletedBy: user.userId as UUID,
+    },
+  })
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {

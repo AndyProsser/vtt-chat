@@ -21,6 +21,16 @@ describe('runtime route classification registry', () => {
       domain: 'audio',
     })
 
+    expect(getRuntimeRouteClassification('POST', '/api/chat/message')).toMatchObject({
+      routeClass: 'CLASS_B',
+      domain: 'chat',
+    })
+
+    expect(getRuntimeRouteClassification('POST', '/api/notes/:noteId/publish')).toMatchObject({
+      routeClass: 'CLASS_B',
+      domain: 'notes',
+    })
+
     expect(getRuntimeRouteClassification('PUT', '/api/session/:id/state')).toMatchObject({
       routeClass: 'CLASS_B',
       domain: 'session',
