@@ -9,8 +9,17 @@ import {
   upsertAudioDMOverrideRecord,
 } from '@/repositories/audio.repository'
 import { getPrismaClient } from '@/infra/db'
+import { logger } from '@/utils'
 
 const prisma = getPrismaClient()
+
+function audioOverridesHashKey(sessionId: UUID): string {
+  return `audio:session:${sessionId}:overrides`
+}
+
+function audioOverrideField(targetUserId: UUID, overrideType: string): string {
+  return `${targetUserId}:${overrideType}`
+}
 
 export { AUDIO_BROADCAST_OVERRIDE_TYPE }
 
@@ -43,6 +52,30 @@ export async function applyDMOverrideState(params: {
     appliedAt: new Date(appliedAt),
   })
 
+  try {
+    const redis = await getRedisClient()
+    const payload: AudioDMOverrideState = {
+      targetUserId: params.targetUserId,
+      overrideType: params.overrideType,
+      parameters: params.parameters || {},
+      appliedBy: params.appliedBy,
+      appliedAt,
+    }
+
+    await redis.hSet(
+      audioOverridesHashKey(params.sessionId),
+      audioOverrideField(params.targetUserId, params.overrideType),
+      JSON.stringify(payload)
+    )
+  } catch (error) {
+    logger.warn('audio', 'Failed to mirror DM override in Redis', {
+      sessionId: params.sessionId,
+      targetUserId: params.targetUserId,
+      overrideType: params.overrideType,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
   return {
     targetUserId: params.targetUserId,
     overrideType: params.overrideType,
@@ -62,10 +95,35 @@ export async function removeDMOverrideState(params: {
     targetUserId: params.targetUserId,
     overrideType: params.overrideType,
   })
+
+  try {
+    const redis = await getRedisClient()
+    await redis.hDel(
+      audioOverridesHashKey(params.sessionId),
+      audioOverrideField(params.targetUserId, params.overrideType)
+    )
+  } catch (error) {
+    logger.warn('audio', 'Failed to remove DM override from Redis mirror', {
+      sessionId: params.sessionId,
+      targetUserId: params.targetUserId,
+      overrideType: params.overrideType,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
 }
 
 export async function clearSessionDMOverrideState(sessionId: UUID): Promise<void> {
   await removeAudioDMOverridesBySession(sessionId)
+
+  try {
+    const redis = await getRedisClient()
+    await redis.del(audioOverridesHashKey(sessionId))
+  } catch (error) {
+    logger.warn('audio', 'Failed to clear DM override Redis mirror', {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
 }
 
 export async function setBroadcastState(params: {
@@ -85,12 +143,51 @@ export async function setBroadcastState(params: {
       appliedBy: params.dmId,
       appliedAt: new Date(changedAt),
     })
+
+    try {
+      const redis = await getRedisClient()
+      const payload: AudioDMOverrideState = {
+        targetUserId: params.dmId,
+        overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
+        parameters: { enabled: true, broadcastRoomId: getBroadcastRoomId(params.sessionId) },
+        appliedBy: params.dmId,
+        appliedAt: changedAt,
+      }
+
+      await redis.hSet(
+        audioOverridesHashKey(params.sessionId),
+        audioOverrideField(params.dmId, AUDIO_BROADCAST_OVERRIDE_TYPE),
+        JSON.stringify(payload)
+      )
+    } catch (error) {
+      logger.warn('audio', 'Failed to mirror broadcast state in Redis', {
+        sessionId: params.sessionId,
+        dmId: params.dmId,
+        enabled: params.enabled,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   } else {
     await removeAudioDMOverrideRecord({
       sessionId: params.sessionId,
       targetUserId: params.dmId,
       overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
     })
+
+    try {
+      const redis = await getRedisClient()
+      await redis.hDel(
+        audioOverridesHashKey(params.sessionId),
+        audioOverrideField(params.dmId, AUDIO_BROADCAST_OVERRIDE_TYPE)
+      )
+    } catch (error) {
+      logger.warn('audio', 'Failed to clear broadcast state in Redis mirror', {
+        sessionId: params.sessionId,
+        dmId: params.dmId,
+        enabled: params.enabled,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
   return {
@@ -236,12 +333,53 @@ export async function setDmVoiceMode(params: {
       appliedBy: params.dmId,
       appliedAt: new Date(changedAt),
     })
+
+    try {
+      const redis = await getRedisClient()
+      const payload: AudioDMOverrideState = {
+        targetUserId: params.dmId,
+        overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
+        parameters: {
+          enabled: true,
+          broadcastRoomId: getBroadcastRoomId(params.sessionId),
+          backgroundVolume,
+        },
+        appliedBy: params.dmId,
+        appliedAt: changedAt,
+      }
+
+      await redis.hSet(
+        audioOverridesHashKey(params.sessionId),
+        audioOverrideField(params.dmId, AUDIO_BROADCAST_OVERRIDE_TYPE),
+        JSON.stringify(payload)
+      )
+    } catch (error) {
+      logger.warn('audio', 'Failed to mirror DM voice broadcast mode in Redis', {
+        sessionId: params.sessionId,
+        dmId: params.dmId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   } else {
     await removeAudioDMOverrideRecord({
       sessionId: params.sessionId,
       targetUserId: params.dmId,
       overrideType: AUDIO_BROADCAST_OVERRIDE_TYPE,
     })
+
+    try {
+      const redis = await getRedisClient()
+      await redis.hDel(
+        audioOverridesHashKey(params.sessionId),
+        audioOverrideField(params.dmId, AUDIO_BROADCAST_OVERRIDE_TYPE)
+      )
+    } catch (error) {
+      logger.warn('audio', 'Failed to clear DM voice broadcast mode in Redis', {
+        sessionId: params.sessionId,
+        dmId: params.dmId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
   return {

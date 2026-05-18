@@ -80,6 +80,7 @@ Evidence snapshot (2026-05-18):
 **Acceptance Criteria**:
 
 - [ ] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
+- [x] Redis-first mutation flow is documented and implemented for: presence, room membership, audio effects (environment, conditions, distance)
 - [ ] All websocket-visible domain routes classify into Class A (Redis durable) / Class B (Redis w/ bounded flush) / Class C (ephemeral)
 - [ ] Session audit trail captures all meaningful control-plane actions (join/leave, move, mute, lifecycle boundaries)
 - [ ] Reconnect recovery uses backend-authoritative sources (Redis runtime state + Postgres fallback)
@@ -89,6 +90,12 @@ Evidence snapshot (2026-05-18):
 
 - [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
 - [docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md](docs/changes/W11-REDIS-FIRST-AUDIT-2026-05-18.md)
+
+**Current Evidence Snapshot (2026-05-18):**
+
+- Redis runtime projection writes added for audio environment + DM override/broadcast mutation flows in `backend/src/services/audio/presets.service.ts` and `backend/src/services/audio/effects.service.ts`.
+- Session audio rehydration now prefers Redis (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres fallback in `backend/src/services/audio/presets.service.ts`.
+- Focused coverage expanded in `backend/tests/services/audio-state.service.test.ts` for Redis write-through and Redis-first read behavior.
 
 ---
 

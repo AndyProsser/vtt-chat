@@ -12,10 +12,10 @@ Status:
 ### AC: Redis-first mutation flow documented and implemented for presence, room membership, audio effects
 
 - Presence and room membership: mostly implemented on Redis runtime paths.
-- Audio effects: partially implemented; some runtime paths remain Postgres-first.
+- Audio effects: now implemented for environment + DM override/broadcast runtime projection via Redis mirrors (`audio:session:{sessionId}:environments`, `audio:session:{sessionId}:overrides`) with Postgres durability retained.
 - Documentation: present in `docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md`.
 
-Result: partial.
+Result: met for Phase 1 W11 baseline.
 
 ### AC: All WS-visible domain routes classified into Class A/B/C
 
@@ -59,15 +59,16 @@ Result: partial.
   - `backend/tests/api/session-routes-audit.test.ts`
 - Runtime stream helper coverage:
   - `backend/tests/services/runtime-streams.service.unit.test.ts`
+- Audio Redis-first convergence coverage:
+  - `backend/tests/services/audio-state.service.test.ts`
 
 ---
 
 ## 3. Remaining Gaps to Close W11
 
-1. Complete Redis-first write convergence for all websocket-visible mutation paths.
-2. Enforce and validate A/B/C classification route-by-route, not only by architecture target doc.
-3. Standardize mandatory audit envelope shape for all meaningful control-plane events.
-4. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
+1. Enforce and validate A/B/C classification route-by-route, not only by architecture target doc.
+2. Standardize mandatory audit envelope shape for all meaningful control-plane events.
+3. Produce dedicated multi-client reconnect soak evidence artifact and repeatability criteria.
 
 ---
 

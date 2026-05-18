@@ -8,6 +8,13 @@ const mocks = vi.hoisted(() => ({
   removeAudioDMOverridesBySession: vi.fn(),
   removeAudioRoomStateRecord: vi.fn(),
   listAudioDMOverridesBySession: vi.fn(),
+  getRedisClient: vi.fn(),
+  redis: {
+    hSet: vi.fn(),
+    hDel: vi.fn(),
+    hGetAll: vi.fn(),
+    del: vi.fn(),
+  },
 }))
 
 vi.mock('@/repositories/audio.repository', () => ({
@@ -20,12 +27,17 @@ vi.mock('@/repositories/audio.repository', () => ({
   listAudioDMOverridesBySession: mocks.listAudioDMOverridesBySession,
 }))
 
+vi.mock('@/infra/redis', () => ({
+  getRedisClient: mocks.getRedisClient,
+}))
+
 import {
   applyDMOverrideState,
   clearRoomEnvironmentState,
   clearSessionDMOverrideState,
   getSessionAudioState,
   removeDMOverrideState,
+  setBroadcastState,
   setRoomEnvironmentState,
 } from '@/services/audio/audio-state'
 
@@ -36,6 +48,8 @@ const USER_ID = '33333333-3333-4333-8333-333333333333'
 describe('audio-state service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getRedisClient.mockResolvedValue(mocks.redis)
+    mocks.redis.hGetAll.mockResolvedValue({})
   })
 
   it('persists and returns environment state payload', async () => {
@@ -65,6 +79,12 @@ describe('audio-state service', () => {
       setBy: USER_ID,
       setAt: 1700000000000,
     })
+
+    expect(mocks.redis.hSet).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:environments`,
+      ROOM_ID,
+      expect.any(String)
+    )
   })
 
   it('persists and returns dm override state payload', async () => {
@@ -92,6 +112,12 @@ describe('audio-state service', () => {
       appliedBy: USER_ID,
       appliedAt: 1700000000100,
     })
+
+    expect(mocks.redis.hSet).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:overrides`,
+      `${USER_ID}:MUTE`,
+      expect.any(String)
+    )
   })
 
   it('removes an existing dm override', async () => {
@@ -106,11 +132,17 @@ describe('audio-state service', () => {
       targetUserId: USER_ID,
       overrideType: 'MUTE',
     })
+
+    expect(mocks.redis.hDel).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:overrides`,
+      `${USER_ID}:MUTE`
+    )
   })
 
   it('clears all dm overrides in a session', async () => {
     await clearSessionDMOverrideState(SESSION_ID as any)
     expect(mocks.removeAudioDMOverridesBySession).toHaveBeenCalledWith(SESSION_ID)
+    expect(mocks.redis.del).toHaveBeenCalledWith(`audio:session:${SESSION_ID}:overrides`)
   })
 
   it('clears environment state for a specific room', async () => {
@@ -123,9 +155,16 @@ describe('audio-state service', () => {
       sessionId: SESSION_ID,
       roomId: ROOM_ID,
     })
+
+    expect(mocks.redis.hDel).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:environments`,
+      ROOM_ID
+    )
   })
 
   it('hydrates persisted session audio state', async () => {
+    mocks.redis.hGetAll.mockResolvedValueOnce({}).mockResolvedValueOnce({})
+
     mocks.listAudioRoomStateBySession.mockResolvedValue([
       {
         sessionId: SESSION_ID,
@@ -168,5 +207,93 @@ describe('audio-state service', () => {
       appliedBy: USER_ID,
       appliedAt: 1700000000300,
     })
+  })
+
+  it('hydrates from Redis projection before database fallback', async () => {
+    mocks.redis.hGetAll
+      .mockResolvedValueOnce({
+        [ROOM_ID]: JSON.stringify({
+          roomId: ROOM_ID,
+          environmentName: 'cave',
+          environmentId: 'env-cave',
+          parameters: { lowpass: 0.2 },
+          setBy: USER_ID,
+          setAt: 1700000010000,
+        }),
+      })
+      .mockResolvedValueOnce({
+        [`${USER_ID}:MUTE`]: JSON.stringify({
+          targetUserId: USER_ID,
+          overrideType: 'MUTE',
+          parameters: { enabled: true },
+          appliedBy: USER_ID,
+          appliedAt: 1700000011000,
+        }),
+      })
+
+    const state = await getSessionAudioState(SESSION_ID as any)
+
+    expect(mocks.listAudioRoomStateBySession).not.toHaveBeenCalled()
+    expect(mocks.listAudioDMOverridesBySession).not.toHaveBeenCalled()
+    expect(state.environments).toEqual([
+      {
+        roomId: ROOM_ID,
+        environmentName: 'cave',
+        environmentId: 'env-cave',
+        parameters: { lowpass: 0.2 },
+        setBy: USER_ID,
+        setAt: 1700000010000,
+      },
+    ])
+    expect(state.dmOverrides).toEqual([
+      {
+        targetUserId: USER_ID,
+        overrideType: 'MUTE',
+        parameters: { enabled: true },
+        appliedBy: USER_ID,
+        appliedAt: 1700000011000,
+      },
+    ])
+  })
+
+  it('mirrors broadcast state toggle into Redis override projection', async () => {
+    await setBroadcastState({
+      sessionId: SESSION_ID as any,
+      dmId: USER_ID as any,
+      enabled: true,
+      changedAt: 1700000012000,
+    })
+
+    expect(mocks.upsertAudioDMOverrideRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        targetUserId: USER_ID,
+        overrideType: 'VOICE_OF_GOD',
+      })
+    )
+
+    expect(mocks.redis.hSet).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:overrides`,
+      `${USER_ID}:VOICE_OF_GOD`,
+      expect.any(String)
+    )
+
+    await setBroadcastState({
+      sessionId: SESSION_ID as any,
+      dmId: USER_ID as any,
+      enabled: false,
+      changedAt: 1700000013000,
+    })
+
+    expect(mocks.removeAudioDMOverrideRecord).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      targetUserId: USER_ID,
+      overrideType: 'VOICE_OF_GOD',
+    })
+
+    expect(mocks.redis.hDel).toHaveBeenCalledWith(
+      `audio:session:${SESSION_ID}:overrides`,
+      `${USER_ID}:VOICE_OF_GOD`
+    )
   })
 })

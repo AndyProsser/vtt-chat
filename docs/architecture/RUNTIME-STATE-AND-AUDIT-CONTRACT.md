@@ -49,9 +49,9 @@ This section captures what is verified in code and tests today, so this contract
 
 ### Partial today
 
-- Audio runtime split:
+- Audio runtime convergence is in progress:
   - User mute projection touches Redis presence state
-  - Room environments/DM overrides/broadcast state are persisted in Postgres and replayed via API + WS
+  - Room environments/DM overrides/broadcast state now mirror to Redis runtime projection keys while retaining Postgres durability
 - Session lifecycle logging exists via `SessionLog` entries, but this is not yet a full action taxonomy across all domain mutations.
 
 ### Not yet implemented as a unified contract
