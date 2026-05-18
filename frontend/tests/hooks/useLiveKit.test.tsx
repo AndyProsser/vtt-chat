@@ -25,6 +25,7 @@ const { loggerMock, mockUseStore, MockRoom, roomInstances } = vi.hoisted(() => {
     localParticipant = {
       publishTrack: vi.fn(),
       unpublishTrack: vi.fn(),
+      audioTrackPublications: new Map(),
     }
 
     constructor() {
@@ -198,5 +199,36 @@ describe('useLiveKit', () => {
     })
 
     await flushMicrotasks()
+  })
+
+  it('does not create a room if unmounted before token fetch resolves', async () => {
+    const { useLiveKit } = await import('../../src/hooks/useLiveKit')
+
+    let resolveFetch: ((value: unknown) => void) | null = null
+    const delayedFetch = new Promise((resolve) => {
+      resolveFetch = resolve
+    })
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => delayedFetch as Promise<unknown>)
+    )
+
+    const { unmount } = renderHook(() => useLiveKit('session-1', 'room-1'))
+
+    await flushMicrotasks()
+    unmount()
+
+    await act(async () => {
+      resolveFetch?.({
+        ok: true,
+        json: async () => ({ token: 'token-1', url: 'wss://livekit.test' }),
+      })
+      await delayedFetch
+      await Promise.resolve()
+    })
+
+    expect(roomInstances).toHaveLength(0)
+    expect(loggerMock.error).not.toHaveBeenCalled()
   })
 })

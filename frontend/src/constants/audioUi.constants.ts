@@ -102,13 +102,18 @@ export function getMicrophoneControlLabel(params: {
 export function getLiveKitBadgeLabel(params: {
   statusState: AudioConnectionStatusState
   hasLocalPublication: boolean
-  liveKitConnectionKey: string
 }): string {
-  const publicationLabel = params.hasLocalPublication
-    ? AUDIO_CONTROL_COPY.publishing
-    : AUDIO_CONTROL_COPY.notPublishing
+  if (params.statusState === 'connected') {
+    return params.hasLocalPublication
+      ? 'Voice connected. Mic is live.'
+      : 'Voice connected. Mic is muted.'
+  }
 
-  return `LiveKit ${params.statusState}. ${publicationLabel}. Channel ${params.liveKitConnectionKey}`
+  if (params.statusState === 'connecting') {
+    return 'Connecting voice...'
+  }
+
+  return 'Voice disconnected.'
 }
 
 export function getAudioQuickPanelCountLabel(count: number): string {

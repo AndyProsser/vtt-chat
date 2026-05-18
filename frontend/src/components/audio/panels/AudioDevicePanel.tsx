@@ -149,7 +149,6 @@ export function AudioDevicePanel({
   const liveKitBadgeLabel = getLiveKitBadgeLabel({
     statusState,
     hasLocalPublication,
-    liveKitConnectionKey,
   })
 
   return (

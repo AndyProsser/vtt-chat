@@ -115,6 +115,8 @@ export function useLiveKit(
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
   const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+  const setLiveKitLocalInputTrackRef = useRef(setLiveKitLocalInputTrack)
+  const cleanupConnectionKeyRef = useRef(connectionKey)
   const sharedLiveKitState = useStore((state) => state.livekitConnections?.[connectionKey] ?? null)
   const localInputTrack = useStore(
     (state) => state.livekitLocalInputTracks?.[connectionKey] ?? null
@@ -127,6 +129,14 @@ export function useLiveKit(
   useEffect(() => {
     hasLocalPublicationRef.current = Boolean(sharedLiveKitState?.hasLocalPublication)
   }, [sharedLiveKitState?.hasLocalPublication])
+
+  useEffect(() => {
+    setLiveKitLocalInputTrackRef.current = setLiveKitLocalInputTrack
+  }, [setLiveKitLocalInputTrack])
+
+  useEffect(() => {
+    cleanupConnectionKeyRef.current = connectionKey
+  }, [connectionKey])
 
   const getHasLocalPublication = useCallback((targetRoom?: Room | null): boolean => {
     const roomToCheck = targetRoom ?? roomRef.current
@@ -197,8 +207,15 @@ export function useLiveKit(
   }, [])
 
   useEffect(() => {
+    // StrictMode runs effect cleanup probes in dev; reset mounted flag on each setup.
+    isMountedRef.current = true
+
     return () => {
       // Unmount cleanup: tear down media/room without relying on state setters.
+      connectionAttemptRef.current += 1
+      isConnectingRef.current = false
+      connectingTargetRef.current = null
+
       const activeAudioTrack = localAudioRef.current
       if (activeAudioTrack) {
         activeAudioTrack.stop()
@@ -212,13 +229,14 @@ export function useLiveKit(
         void activeRoom.disconnect()
       }
 
-      if (typeof setLiveKitLocalInputTrack === 'function') {
-        setLiveKitLocalInputTrack(connectionKey, null)
+      const clearLocalInputTrack = setLiveKitLocalInputTrackRef.current
+      if (typeof clearLocalInputTrack === 'function') {
+        clearLocalInputTrack(cleanupConnectionKeyRef.current, null)
       }
 
       isMountedRef.current = false
     }
-  }, [connectionKey, setLiveKitLocalInputTrack])
+  }, [])
 
   // Keep callback refs up to date without triggering reconnects
   useEffect(() => {
@@ -333,11 +351,24 @@ export function useLiveKit(
         throw new Error('Failed to fetch LiveKit token')
       }
 
+      if (!isMountedRef.current) {
+        isConnectingRef.current = false
+        connectingTargetRef.current = null
+        return
+      }
+
       if (connectionAttemptRef.current !== attemptId) {
         return
       }
 
       nextRoom = new Room()
+
+      if (!isMountedRef.current) {
+        await nextRoom.disconnect()
+        isConnectingRef.current = false
+        connectingTargetRef.current = null
+        return
+      }
 
       if (connectionAttemptRef.current !== attemptId) {
         await nextRoom.disconnect()
@@ -797,7 +828,16 @@ export function useLiveKit(
     }
 
     if (activeRoom) {
-      await activeRoom.disconnect()
+      try {
+        await activeRoom.disconnect()
+      } catch (err) {
+        if (!isExpectedDisconnectError(err)) {
+          logger.warn(
+            'useLiveKit',
+            `Disconnect failed: ${err instanceof Error ? err.message : String(err)}`
+          )
+        }
+      }
     }
 
     setRoomState(null)
@@ -828,6 +868,7 @@ export function useLiveKit(
   }, [
     clearRemoteAudioElements,
     connectionKey,
+    isExpectedDisconnectError,
     publishConnectionSnapshot,
     setLiveKitLocalInputTrack,
     setLocalAudioTrackState,
@@ -855,14 +896,28 @@ export function useLiveKit(
         return
       }
 
-      // If room target changed, disconnect stale or in-flight room before connecting.
+      // If room target changed, replace stale connection work before connecting.
       const hasStaleConnectedRoom =
         Boolean(roomRef.current) && connectionKeyRef.current !== targetConnectionKey
       const hasStaleInFlightRoom =
         isConnectingRef.current && connectingTargetRef.current !== targetConnectionKey
 
-      if (hasStaleConnectedRoom || hasStaleInFlightRoom) {
+      if (hasStaleConnectedRoom) {
         await disconnect()
+      } else if (hasStaleInFlightRoom) {
+        // Avoid disconnecting while offer negotiation is in-flight; invalidate and replace.
+        connectionAttemptRef.current += 1
+        isConnectingRef.current = false
+        connectingTargetRef.current = null
+        roomRef.current = null
+        connectionKeyRef.current = null
+
+        if (isMountedRef.current) {
+          setRoom(null)
+          setConnectionState(ConnectionState.Disconnected)
+          setIsConnected(false)
+          setIsConnecting(false)
+        }
       }
 
       if (!cancelled) {
