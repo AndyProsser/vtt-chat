@@ -47,6 +47,7 @@ export interface SessionEntity {
   startedAt?: number
   pausedAt?: number
   endedAt?: number
+  cooldownExpiresAt?: number
   updatedAt?: number
   cooldownExtensionCount?: number
 }

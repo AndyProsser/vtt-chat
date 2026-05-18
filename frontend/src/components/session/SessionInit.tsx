@@ -233,6 +233,8 @@ const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
   charisma: 8,
 }
 
+const SESSION_TIMER_SYNC_POLL_MS = 30_000
+
 function toValidStat(value: unknown, fallback = 8): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) {
@@ -972,6 +974,47 @@ export function SessionInit({
     roomEnvironmentNames,
     setEnvironment,
   ])
+
+  useEffect(() => {
+    if (!currentSessionId) {
+      return
+    }
+
+    let cancelled = false
+
+    const syncSessionAnchors = async () => {
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSessionId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          return
+        }
+
+        const payload = (await response.json().catch(() => ({}))) as SessionRecord
+        if (!payload?.id || cancelled) {
+          return
+        }
+
+        updateSession(payload.id, normalizeSessionRecord(payload))
+      } catch {
+        // Timer drift correction polling is best-effort and should not disrupt session UX.
+      }
+    }
+
+    void syncSessionAnchors()
+    const timerId = window.setInterval(() => {
+      void syncSessionAnchors()
+    }, SESSION_TIMER_SYNC_POLL_MS)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timerId)
+    }
+  }, [apiUrl, currentSessionId, fetchWithAuthGuard, token, updateSession])
 
   const scheduleGreenroomCarry = useCallback((_fromSessionId: UUID, _toSessionId: UUID) => {
     // New sessions always start clean; carry-over is intentionally disabled.
@@ -3270,6 +3313,7 @@ export function SessionInit({
                   sessionStartedAt={currentSession.startedAt}
                   sessionPausedAt={currentSession.pausedAt ?? currentPauseStats.pauseStartedAt}
                   sessionEndedAt={currentSession.endedAt}
+                  cooldownEndsAt={currentSession.cooldownExpiresAt}
                   cumulativePauseMs={currentPauseStats.cumulativePauseMs}
                   pauseCount={currentPauseStats.pauseCount}
                   cooldownDurationMs={configuredCooldownDurationMs}

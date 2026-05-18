@@ -78,16 +78,32 @@ const router = Router()
 const prisma = getPrismaClient()
 
 async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> {
-  const result = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: {
-      campaign: {
+  let result: { campaign: { postSessionChatDurationMs: number } | null } | null = null
+
+  try {
+    const sessionModel = (
+      prisma as typeof prisma & {
+        session?: {
+          findUnique?: (...args: any[]) => Promise<any>
+        }
+      }
+    ).session
+
+    if (sessionModel?.findUnique) {
+      result = await sessionModel.findUnique({
+        where: { id: sessionId },
         select: {
-          postSessionChatDurationMs: true,
+          campaign: {
+            select: {
+              postSessionChatDurationMs: true,
+            },
+          },
         },
-      },
-    },
-  })
+      })
+    }
+  } catch {
+    result = null
+  }
 
   const configured = result?.campaign?.postSessionChatDurationMs ?? STANDALONE_SESSION_COOLDOWN_MS
   const clamped = Math.max(
@@ -96,6 +112,23 @@ async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> 
   )
 
   return clamped
+}
+
+function computeCooldownExpiresAt(params: {
+  state: string
+  endedAt?: number | null
+  cooldownDurationMs: number
+}): number | undefined {
+  if (params.state !== SessionStateEnum.COOLDOWN) {
+    return undefined
+  }
+
+  const endedAtMs = Number(params.endedAt)
+  if (!Number.isFinite(endedAtMs)) {
+    return undefined
+  }
+
+  return endedAtMs + params.cooldownDurationMs
 }
 
 /**
@@ -761,9 +794,17 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    const cooldownDurationMs = await getEffectiveCooldownDurationMs(id as UUID)
+    const cooldownExpiresAt = computeCooldownExpiresAt({
+      state: session.state,
+      endedAt: session.endedAt,
+      cooldownDurationMs,
+    })
+
     const users = await getSessionUsers(id as UUID)
     res.status(200).json({
       ...session,
+      cooldownExpiresAt,
       userCount: users.length,
     })
   } catch {
@@ -1118,6 +1159,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       if (requestedState === 'COOLDOWN') {
         const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
         const cooldownStartedAt = session.endedAt ?? Date.now()
+        const cooldownExpiresAt = cooldownStartedAt + cooldownDurationMs
         wsManager.broadcastEventToSession(session.id, {
           id: crypto.randomUUID() as UUID,
           type: 'SESSION:COOLDOWN_STARTED',
@@ -1129,13 +1171,23 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           timestamp: Date.now(),
           payload: {
             cooldownStartedAt,
-            cooldownExpiresAt: cooldownStartedAt + cooldownDurationMs,
+            cooldownExpiresAt,
           },
         })
       }
     }
 
-    res.status(200).json(session)
+    const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
+    const cooldownExpiresAt = computeCooldownExpiresAt({
+      state: session.state,
+      endedAt: session.endedAt,
+      cooldownDurationMs,
+    })
+
+    res.status(200).json({
+      ...session,
+      cooldownExpiresAt,
+    })
   } catch (err: any) {
     console.error('[session.routes] state transition failed', {
       sessionId: id,
@@ -1217,6 +1269,13 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
     }
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
+    const cooldownExpiresAt = computeCooldownExpiresAt({
+      state: session.state,
+      endedAt: session.endedAt,
+      cooldownDurationMs,
+    })
+
     if (wsManager) {
       wsManager.broadcastEventToSession(session.id, {
         id: crypto.randomUUID() as UUID,
@@ -1232,6 +1291,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
           extensionMs: parsedExtensionMs,
           previousEndedAt: previousSession?.endedAt ?? null,
           endedAt: session.endedAt ?? null,
+          cooldownExpiresAt,
           extensionCount: nextCooldownExtensionCount,
         },
       })
@@ -1259,7 +1319,10 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
     )
 
     return res.status(200).json({
-      session,
+      session: {
+        ...session,
+        cooldownExpiresAt,
+      },
       extensionCount: nextCooldownExtensionCount,
     })
   } catch (err: any) {

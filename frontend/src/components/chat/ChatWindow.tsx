@@ -34,6 +34,26 @@ const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const CHAT_HISTORY_PAGE_SIZE = 20
 type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null
 
+function toTimestamp(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const parsedNumeric = Number(value)
+    if (Number.isFinite(parsedNumeric)) {
+      return parsedNumeric
+    }
+
+    const parsedDate = Date.parse(value)
+    if (Number.isFinite(parsedDate)) {
+      return parsedDate
+    }
+  }
+
+  return Date.now()
+}
+
 function getBookendState(content: string, type: MessageType): BookendState {
   if (type !== MessageType.SYSTEM) {
     return null
@@ -188,6 +208,12 @@ export function ChatWindow({
 
   const loadHistoryPage = useCallback(
     async ({ before, older }: { before?: number; older: boolean }) => {
+      if (isGreenroomMode && !campaignId) {
+        setIsLoading(false)
+        setIsLoadingOlder(false)
+        return
+      }
+
       if (older) {
         setIsLoadingOlder(true)
       } else {
@@ -205,10 +231,6 @@ export function ChatWindow({
         }
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
-        }
-        if (isGreenroomMode && !older) {
-          // Bootstrap with today's greenroom timeline, then allow lazy-loading older history.
-          params.set('todayOnly', '1')
         }
         const historyUrl =
           isGreenroomMode && campaignId
@@ -234,8 +256,8 @@ export function ChatWindow({
           isDmOnly: m.isDmOnly as boolean,
           visibleTo: Array.isArray(m.visibleTo) ? (m.visibleTo as UUID[]) : undefined,
           targetIds: Array.isArray(m.targetIds) ? (m.targetIds as UUID[]) : undefined,
-          createdAt: m.createdAt as number,
-          editedAt: m.editedAt as number | undefined,
+          createdAt: toTimestamp(m.createdAt),
+          editedAt: m.editedAt !== undefined ? toTimestamp(m.editedAt) : undefined,
         }))
 
         for (const msg of msgs) {

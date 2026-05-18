@@ -305,6 +305,15 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
               : payload.state === 'ACTIVE'
                 ? undefined
                 : existing.endedAt,
+          cooldownExpiresAt:
+            payload.state === 'COOLDOWN'
+              ? existing.cooldownExpiresAt
+              : payload.state === 'ACTIVE' ||
+                  payload.state === 'IDLE' ||
+                  payload.state === 'ENDED' ||
+                  payload.state === 'CLEANUP'
+                ? undefined
+                : existing.cooldownExpiresAt,
         },
       }
 
@@ -377,6 +386,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...endedExisting,
           state: 'ENDED' as SessionLifecycleState,
           endedAt: event.timestamp,
+          cooldownExpiresAt: undefined,
         },
       }
       const currentSession = state.currentSessionId
@@ -404,6 +414,11 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...current,
           state: 'COOLDOWN' as SessionLifecycleState,
           endedAt: payload.cooldownStartedAt ?? current.endedAt,
+          cooldownExpiresAt:
+            typeof payload.cooldownExpiresAt === 'number' &&
+            Number.isFinite(payload.cooldownExpiresAt)
+              ? payload.cooldownExpiresAt
+              : current.cooldownExpiresAt,
         },
       }
 
@@ -423,7 +438,11 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   },
 
   handleSessionCooldownExtended: (event) => {
-    const payload = event.payload as { endedAt?: number | null; extensionCount?: number }
+    const payload = event.payload as {
+      endedAt?: number | null
+      cooldownExpiresAt?: number | null
+      extensionCount?: number
+    }
     set((state) => {
       const current = state.sessions[event.sessionId]
       if (!current) {
@@ -440,12 +459,18 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ? payload.extensionCount
           : (state.cooldownExtensionCounts[event.sessionId] ?? 0) + 1
 
+      const nextCooldownExpiresAt =
+        typeof payload.cooldownExpiresAt === 'number' && Number.isFinite(payload.cooldownExpiresAt)
+          ? payload.cooldownExpiresAt
+          : current.cooldownExpiresAt
+
       const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
           ...current,
           state: 'COOLDOWN' as SessionLifecycleState,
           endedAt: nextEndedAt,
+          cooldownExpiresAt: nextCooldownExpiresAt,
         },
       }
 
@@ -483,6 +508,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           ...current,
           state: 'ENDED' as SessionLifecycleState,
           endedAt: nextEndedAt,
+          cooldownExpiresAt: undefined,
         },
       }
 

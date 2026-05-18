@@ -5,6 +5,8 @@ export interface CampaignSummary {
   id: UUID
   name: string
   description?: string | null
+  createdAt?: number | string
+  updatedAt?: number | string
   posterUrl?: string | null
   extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   inviteCode: string

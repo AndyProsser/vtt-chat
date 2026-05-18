@@ -7,6 +7,34 @@ import {
   getPrivacyCounterLabel,
 } from './sessionInit.shared'
 
+function formatLastActiveLabel(campaign: CampaignSummary): string {
+  const rawTimestamp = campaign.updatedAt ?? campaign.createdAt
+  if (rawTimestamp === undefined || rawTimestamp === null) {
+    return 'Unknown'
+  }
+
+  const numeric =
+    typeof rawTimestamp === 'number'
+      ? rawTimestamp
+      : Number.isFinite(Number(rawTimestamp))
+        ? Number(rawTimestamp)
+        : Date.parse(String(rawTimestamp))
+
+  if (!Number.isFinite(numeric)) {
+    return 'Unknown'
+  }
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(numeric))
+  } catch {
+    return 'Unknown'
+  }
+}
+
 type SessionLobbyViewProps = {
   campaigns: CampaignSummary[]
   selectedCampaignId: CampaignSummary['id'] | ''
@@ -190,6 +218,7 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                 const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
                 const dmInitial = dmDisplayName.charAt(0).toUpperCase()
                 const cardPosterUrl = campaign.posterUrl || undefined
+                const lastActiveLabel = formatLastActiveLabel(campaign)
 
                 return (
                   <div
@@ -267,6 +296,9 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                     </span>
                     <span className="session-campaign-card__description">
                       {campaign.description || 'No description provided.'}
+                    </span>
+                    <span className="session-campaign-card__meta">
+                      Last active: {lastActiveLabel}
                     </span>
                     <span className="session-campaign-card__actions">
                       {isCampaignDm ? (

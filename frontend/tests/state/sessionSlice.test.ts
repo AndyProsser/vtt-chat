@@ -238,15 +238,17 @@ describe('sessionSlice', () => {
   })
 
   describe('handleSessionCooldownStarted', () => {
-    it('moves session into COOLDOWN and sets endedAt from cooldownStartedAt', () => {
+    it('moves session into COOLDOWN and sets endedAt/cooldownExpiresAt from payload', () => {
       useStore.getState().createSession({ ...SAMPLE_SESSION, state: 'ACTIVE' as any })
       const event = makeEvent('SESSION:COOLDOWN_STARTED', SESSION_ID_1, {
         cooldownStartedAt: NOW + 1000,
+        cooldownExpiresAt: NOW + 61_000,
       })
       useStore.getState().handleSessionCooldownStarted(event)
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session!.state).toBe('COOLDOWN')
       expect(session!.endedAt).toBe(NOW + 1000)
+      expect(session!.cooldownExpiresAt).toBe(NOW + 61_000)
     })
 
     it('is a no-op when the session does not exist', () => {
@@ -258,7 +260,7 @@ describe('sessionSlice', () => {
   })
 
   describe('handleSessionCooldownExtended', () => {
-    it('moves session into COOLDOWN and updates endedAt from WS payload', () => {
+    it('moves session into COOLDOWN and updates endedAt/cooldownExpiresAt from WS payload', () => {
       useStore.getState().createSession({
         ...SAMPLE_SESSION,
         state: 'ENDED' as any,
@@ -268,6 +270,7 @@ describe('sessionSlice', () => {
       const event = makeEvent('SESSION:COOLDOWN_EXTENDED', SESSION_ID_1, {
         state: 'ENDED',
         endedAt: NOW + 60_000,
+        cooldownExpiresAt: NOW + 120_000,
       })
 
       useStore.getState().handleSessionCooldownExtended(event)
@@ -275,6 +278,7 @@ describe('sessionSlice', () => {
       const session = useStore.getState().sessions[SESSION_ID_1]
       expect(session!.state).toBe('COOLDOWN')
       expect(session!.endedAt).toBe(NOW + 60_000)
+      expect(session!.cooldownExpiresAt).toBe(NOW + 120_000)
     })
 
     it('falls back to current endedAt when payload.endedAt is null', () => {

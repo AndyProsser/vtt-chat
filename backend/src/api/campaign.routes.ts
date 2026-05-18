@@ -29,6 +29,10 @@ import {
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
+import {
+  SESSION_COOLDOWN_EXTENSION_MAX_MS,
+  SESSION_COOLDOWN_EXTENSION_MIN_MS,
+} from '@/constants/session.constants'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1314,11 +1318,21 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   }
 
   const sessions = await listSessionsByCampaign(campaignId as UUID)
+  const cooldownDurationMs = Math.max(
+    SESSION_COOLDOWN_EXTENSION_MIN_MS,
+    Math.min(SESSION_COOLDOWN_EXTENSION_MAX_MS, campaign.postSessionChatDurationMs)
+  )
   const sessionsWithCooldownExtensionCount = await Promise.all(
     sessions.map(async (session) => {
+      const cooldownExpiresAt =
+        session.state === 'COOLDOWN' && Number.isFinite(Number(session.endedAt))
+          ? Number(session.endedAt) + cooldownDurationMs
+          : undefined
+
       if (session.state !== 'COOLDOWN') {
         return {
           ...session,
+          cooldownExpiresAt,
           cooldownExtensionCount: 0,
         }
       }
@@ -1326,6 +1340,7 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
       const cooldownExtensionCount = await countSessionCooldownExtensions(session.id as UUID)
       return {
         ...session,
+        cooldownExpiresAt,
         cooldownExtensionCount,
       }
     })

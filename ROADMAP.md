@@ -33,7 +33,7 @@ _Prerequisite for all runtime work. State machine must be solid or the rest casc
 - [x] Backend persists state transitions as system chat bookends (`[Session Started]`, etc.)
 - [x] Frontend renders bookends correctly after refresh/reconnect
 - [x] Spectator lifecycle rules are enforced (observe-only during `ACTIVE`; during `COOLDOWN` can chat/speak with players and DM if DM has enabled it in campaign settings; excluded from all other states)
-- [ ] Post-session chat timer and cooldown window work end-to-end
+- [x] Post-session chat timer and cooldown window work end-to-end
 
 Evidence snapshot (2026-05-18):
 
@@ -52,10 +52,14 @@ Evidence snapshot (2026-05-18):
   - `ENDED` + `CLEANUP` show a "Session Closed" screen.
   - `COOLDOWN` continues to show the post-session countdown panel.
 - Greenroom chat hydration now avoids new-session over-filtering and loads deterministically:
-  - initial load requests campaign greenroom page with `todayOnly=1`
+  - initial load requests campaign greenroom page without startup over-filtering
   - lazy scroll-up pagination still backfills older history via `before`
-  - backend campaign chat page now supports server-side `todayOnly` boundary filtering.
+  - backend campaign chat page supports server-side boundary filtering when requested.
 - Cooldown countdown controls remain verified by frontend coverage (`frontend/tests/components/SessionToolbar.test.tsx`).
+- Cooldown timer anchor is backend-authoritative end-to-end:
+  - backend now emits and returns `cooldownExpiresAt` in session cooldown flows (`SESSION:COOLDOWN_STARTED`, `SESSION:COOLDOWN_EXTENDED`, `GET /api/session/:id`, `GET /api/campaigns/:campaignId/sessions`).
+  - frontend stores `cooldownExpiresAt` in session state and renders cooldown remaining time from that server-provided anchor.
+  - frontend runs a low-frequency authoritative session sync poll (30s) to correct drift if WS timing updates are delayed or missed.
 
 **Related Docs**:
 
@@ -169,7 +173,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 ### W0-Lobby: Campaign Discovery and Join Flow
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -177,7 +181,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 **Acceptance Criteria**:
 
-- [ ] Home shows: your campaigns as cards (name, banner, DM, players, last active)
+- [x] Home shows: your campaigns as cards (name, banner, DM, players, last active)
 - [ ] Campaign cards are private by default; only DM + joined members see them
 - [ ] DM can edit campaign via modal dialog from lobby (not separate route)
 - [ ] Players can join via invite link or code
@@ -187,6 +191,11 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Related Docs**:
 
 - [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md)
+
+Evidence snapshot (2026-05-18):
+
+- Lobby campaign cards now render a visible "Last active" date using campaign `updatedAt`/`createdAt` fallback metadata in the card surface.
+- Greenroom chat timeline now hydrates on first screen load (no initial `todayOnly` bootstrap gate), so users see recent persisted greenroom messages immediately without waiting for the first outbound chat event.
 
 ---
 

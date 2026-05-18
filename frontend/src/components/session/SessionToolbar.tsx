@@ -24,6 +24,7 @@ interface SessionToolbarProps {
   sessionStartedAt?: number
   sessionPausedAt?: number
   sessionEndedAt?: number
+  cooldownEndsAt?: number
   cumulativePauseMs: number
   pauseCount: number
   cooldownDurationMs?: number
@@ -54,6 +55,7 @@ export function SessionToolbar({
   sessionStartedAt,
   sessionPausedAt,
   sessionEndedAt,
+  cooldownEndsAt,
   cumulativePauseMs,
   pauseCount,
   cooldownDurationMs = DEFAULT_COOLDOWN_MS,
@@ -116,6 +118,7 @@ export function SessionToolbar({
   const sessionStartedAtMs = toFiniteTimestamp(sessionStartedAt)
   const sessionPausedAtMs = toFiniteTimestamp(sessionPausedAt)
   const sessionEndedAtMs = toFiniteTimestamp(sessionEndedAt)
+  const cooldownEndsAtMs = toFiniteTimestamp(cooldownEndsAt)
   const safeCumulativePauseMs = Number.isFinite(cumulativePauseMs) ? cumulativePauseMs : 0
   const safeCooldownDurationMs = Number.isFinite(cooldownDurationMs)
     ? cooldownDurationMs
@@ -169,12 +172,15 @@ export function SessionToolbar({
   /** Seconds remaining in the post-session cooldown window. */
   const cooldownRemainingSeconds = useMemo(() => {
     if (!currentTimeMs) return 0
-    if (sessionState !== 'COOLDOWN' || !sessionEndedAtMs) return 0
-    return Math.max(
-      0,
-      Math.floor((sessionEndedAtMs + safeCooldownDurationMs - currentTimeMs) / 1000)
-    )
-  }, [currentTimeMs, sessionState, sessionEndedAtMs, safeCooldownDurationMs])
+    if (sessionState !== 'COOLDOWN') return 0
+
+    const resolvedCooldownEndsAtMs =
+      cooldownEndsAtMs ?? (sessionEndedAtMs ? sessionEndedAtMs + safeCooldownDurationMs : undefined)
+
+    if (!resolvedCooldownEndsAtMs) return 0
+
+    return Math.max(0, Math.floor((resolvedCooldownEndsAtMs - currentTimeMs) / 1000))
+  }, [currentTimeMs, sessionState, cooldownEndsAtMs, sessionEndedAtMs, safeCooldownDurationMs])
 
   /** Seconds elapsed since the session entered ENDED/CLEANUP state. */
   const endedElapsedSeconds = useMemo(() => {

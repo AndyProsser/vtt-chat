@@ -151,6 +151,7 @@ export interface SessionCooldownExtended {
   extensionMs: number
   previousEndedAt: number | null
   endedAt: number | null
+  cooldownExpiresAt?: number | null
   extensionCount?: number
 }
 

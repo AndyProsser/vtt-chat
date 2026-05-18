@@ -228,4 +228,47 @@ describe('SessionToolbar cooldown controls', () => {
     expect(onCancelCooldown).toHaveBeenCalledTimes(1)
     expect(onExtendCooldown).toHaveBeenCalledTimes(1)
   })
+
+  it('prefers backend cooldown end anchor when provided', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-15T12:00:00.000Z'))
+
+    render(
+      <SessionToolbar
+        actions={buildActions()}
+        statusColorKey="GREEN"
+        statusLabel="Healthy"
+        coreWsState="CONNECTED"
+        livekitState="CONNECTED"
+        sessionState={SessionState.COOLDOWN}
+        sessionStartedAt={Date.now() - 30 * 60_000}
+        sessionEndedAt={Date.now() - 5_000}
+        cooldownEndsAt={Date.now() + 90_000}
+        cumulativePauseMs={0}
+        pauseCount={0}
+        cooldownDurationMs={60_000}
+        canStartSession={false}
+        canPauseSession={false}
+        canStopSession={false}
+        showCooldownControls={true}
+        canManageCooldown={true}
+        canExtendCooldown={true}
+        onStartSession={() => undefined}
+        onPauseSession={() => undefined}
+        onStopSession={() => undefined}
+        onCancelCooldown={() => undefined}
+        onExtendCooldown={() => undefined}
+        onOpenUserSettings={() => undefined}
+        onExitToSelector={() => undefined}
+      />
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // If fallback math were used (endedAt + 60s), remaining would be ~55s.
+    // Backend anchor should show ~90s remaining instead.
+    expect(screen.getByText('00:01:29')).toBeTruthy()
+  })
 })

@@ -120,6 +120,7 @@ export interface Session {
   createdAt: number
   startedAt?: number
   endedAt?: number
+  cooldownExpiresAt?: number
 }
 
 export interface Room {
