@@ -71,6 +71,19 @@ function safeStorageGetItem(storage: Storage | undefined, key: string): string |
   }
 }
 
+function isLoopbackLiveKitUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return (
+      parsed.hostname === 'localhost' ||
+      parsed.hostname === '127.0.0.1' ||
+      parsed.hostname === '::1'
+    )
+  } catch {
+    return false
+  }
+}
+
 export function buildLiveKitConnectionKey(
   sessionId: string,
   roomId: string,
@@ -303,6 +316,22 @@ export function useLiveKit(
       }
 
       const data = await response.json()
+      logger.info('useLiveKit', 'Received LiveKit token endpoint URL', {
+        sessionId,
+        roomId,
+        tokenChannel,
+        tokenUrl: data.url,
+      })
+
+      if (typeof data.url === 'string' && isLoopbackLiveKitUrl(data.url)) {
+        logger.warn('useLiveKit', 'LiveKit token URL points to loopback; remote clients may fail', {
+          sessionId,
+          roomId,
+          tokenChannel,
+          tokenUrl: data.url,
+        })
+      }
+
       return { token: data.token, url: data.url }
     } catch (err) {
       if (!shouldSuppressLiveKitTestError(err)) {

@@ -76,6 +76,20 @@ VTT‑Chat is designed for **non‑standard HTTPS ports** because many ISPs bloc
 - Works even if ports 80/443 are blocked
 - Requires DNS provider API token
 
+### External Reverse Proxy (Cloudflare, Nginx Proxy, etc.)
+
+If you terminate public TLS at an external edge (for example Cloudflare on `443`) and forward to this host on an internal port (for example `8443`), keep these rules:
+
+- Browser-facing origin should stay a single canonical URL (example: `https://chat.example.com`).
+- Frontend API/WS targets should remain same-origin from the browser perspective.
+- Prefer relative frontend env values in deployed bundles:
+  - `VITE_API_URL=/api`
+  - `VITE_WS_URL=/ws`
+- Avoid baking `localhost` or internal-only origins into frontend build vars.
+- Backend CORS allow-list (if used) must include the external browser origin (example: `https://chat.example.com`).
+
+This allows external `443 -> internal 8443` mapping without browser CORS issues.
+
 ---
 
 ## 4. Directory Structure
@@ -210,10 +224,10 @@ Caddyfile example:
 
 ```yaml
 https://:8443 {
-    tls /opt/vtt-chat/caddy/certs/selfsigned.crt /opt/vtt-chat/caddy/certs/selfsigned.key
-    reverse_proxy backend:3000
-    reverse_proxy /livekit livekit:7880
-    encode gzip
+tls /opt/vtt-chat/caddy/certs/selfsigned.crt /opt/vtt-chat/caddy/certs/selfsigned.key
+reverse_proxy backend:3000
+reverse_proxy /livekit livekit:7880
+encode gzip
 }
 ```
 
@@ -322,6 +336,25 @@ A `infra/livekit/livekit.yaml` file controls all LiveKit settings:
 - Both dev and production compose files use the same config file approach
 - The backend communicates with LiveKit via internal network (`http://livekit:7880`)
 - Clients connect via the exposed ports
+
+### LiveKit + Public Edge Requirements
+
+LiveKit media paths must be reachable from clients independently of your SPA/API reverse proxy path.
+
+- Set LiveKit advertised public IP correctly:
+  - Production compose supports `LIVEKIT_NODE_IP`.
+  - This must resolve to the real public IP clients can reach.
+- Open/forward LiveKit ports end-to-end:
+  - `7880/tcp` signaling
+  - `7881-8980/udp` media
+  - `7881/tcp` fallback
+- Do not rely on standard HTTP reverse proxying for WebRTC UDP media.
+- If using Cloudflare, keep LiveKit host DNS-only (no orange-cloud HTTP proxy) unless you have an L4 product that explicitly supports this traffic.
+
+Example split:
+
+- `chat.example.com` -> Cloudflare/proxy -> Caddy (`8443` internal)
+- `livekit.example.com` -> direct public IP -> LiveKit (`7880`, `7881-8980/udp`)
 
 ### Voice-Only Optimization
 
@@ -479,45 +512,45 @@ Important:
 
 1. Confirm Postgres access with your local superuser password:
 
-    ```bash
-    export PGPASSWORD='<postgres-password>'
-    psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
-    ```
+   ```bash
+   export PGPASSWORD='<postgres-password>'
+   psql -h localhost -U postgres -d postgres -c "select current_user, current_database();"
+   ```
 
 2. Ensure backend Prisma CLI can read `DATABASE_URL` from backend env:
 
-    ```text
-    # backend/prisma.config.ts should include:
-    # import 'dotenv/config'
-    ```
+   ```text
+   # backend/prisma.config.ts should include:
+   # import 'dotenv/config'
+   ```
 
 3. Set local backend DB URL in `backend/.env`:
 
-    ```text
-    DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
-    ```
+   ```text
+   DATABASE_URL=postgresql://postgres:<postgres-password>@localhost:5432/vtt-chat?schema=public
+   ```
 
 4. Reset local DB and recreate it cleanly:
 
-    ```text
-    dropdb -h localhost -U postgres --if-exists vtt-chat
-    createdb -h localhost -U postgres -O postgres vtt-chat
-    ```
+   ```text
+   dropdb -h localhost -U postgres --if-exists vtt-chat
+   createdb -h localhost -U postgres -O postgres vtt-chat
+   ```
 
 5. Apply migrations:
 
-    ```text
-    cd backend
-    npx prisma migrate dev --name stage6_rooms_presence_snapshots
-    ```
+   ```text
+   cd backend
+   npx prisma migrate dev --name stage6_rooms_presence_snapshots
+   ```
 
 6. Verify schema/tooling health:
 
-    ```text
-    npx prisma migrate status
-    npm run build
-    npm test -- --run
-    ```
+   ```text
+   npx prisma migrate status
+   npm run build
+   npm test -- --run
+   ```
 
 ---
 

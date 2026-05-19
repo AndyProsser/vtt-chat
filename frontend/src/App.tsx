@@ -7,6 +7,7 @@ import { WatchRouteView } from './components/routes/WatchRouteView'
 import { useAuthSession } from './hooks/useAuthSession'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { ToastViewport } from './components/ui/ToastViewport'
+import { logger } from './utils/logger'
 import type { UUID } from '@shared'
 import './styles/components/app/AppShell.css'
 
@@ -33,6 +34,7 @@ export default function App() {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
   const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
   const configuredAdminUrl = import.meta.env.VITE_ADMIN_URL?.trim()
+  const configuredLivekitUrl = import.meta.env.VITE_LIVEKIT_URL?.trim()
 
   const isLoopbackHost = (host: string) =>
     host === 'localhost' || host === '127.0.0.1' || host === '::1'
@@ -49,18 +51,33 @@ export default function App() {
     }
   })()
 
+  const parsedConfiguredLivekitUrl = (() => {
+    if (!configuredLivekitUrl) {
+      return null
+    }
+
+    try {
+      return new URL(configuredLivekitUrl)
+    } catch {
+      return null
+    }
+  })()
+
   const parsedBrowserOrigin = new URL(browserOrigin)
-  const isConfiguredApiCaddyLoopbackTarget =
+  const isConfiguredApiLoopbackTarget =
+    Boolean(parsedConfiguredApiUrl) && isLoopbackHost(parsedConfiguredApiUrl!.hostname)
+  const isBrowserOnLoopbackHost = isLoopbackHost(parsedBrowserOrigin.hostname)
+  const isBrowserOnNonLoopbackHost = !isLoopbackHost(parsedBrowserOrigin.hostname)
+  const isBrowserOnDifferentLoopbackOrigin =
+    isBrowserOnLoopbackHost &&
     Boolean(parsedConfiguredApiUrl) &&
-    isLoopbackHost(parsedConfiguredApiUrl!.hostname) &&
-    parsedConfiguredApiUrl!.port === '8080'
-  const isBrowserOnDifferentLoopbackDevPort =
-    isLoopbackHost(parsedBrowserOrigin.hostname) && parsedBrowserOrigin.port !== '8080'
+    parsedConfiguredApiUrl!.origin !== parsedBrowserOrigin.origin
   const isStaleHttpDevProxy =
     browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
   const shouldUseBrowserProxyOrigin =
     isStaleHttpDevProxy ||
-    (isConfiguredApiCaddyLoopbackTarget && isBrowserOnDifferentLoopbackDevPort)
+    (isConfiguredApiLoopbackTarget && isBrowserOnNonLoopbackHost) ||
+    (isConfiguredApiLoopbackTarget && isBrowserOnDifferentLoopbackOrigin)
 
   const shouldPreferBrowserWsOrigin = (() => {
     if (shouldUseBrowserProxyOrigin || !configuredWsUrl) {
@@ -82,6 +99,9 @@ export default function App() {
     : configuredWsUrl
   const wsUrl = normalizeWsUrl(wsUrlBase)
   const adminUrl = configuredAdminUrl || `${browserOrigin}/admin`
+  const livekitUrl = `${browserOrigin.startsWith('https://') ? 'wss' : 'ws'}://${window.location.host}/livekit`
+  const isConfiguredLivekitLoopbackTarget =
+    Boolean(parsedConfiguredLivekitUrl) && isLoopbackHost(parsedConfiguredLivekitUrl!.hostname)
 
   const {
     auth,
@@ -93,6 +113,43 @@ export default function App() {
     apiUrl,
     adminUrl,
   })
+
+  useEffect(() => {
+    logger.info('app.bootstrap', 'Resolved client endpoints', {
+      browserOrigin,
+      apiUrl,
+      wsUrl,
+      adminUrl,
+      livekitUrl,
+      expectedLivekitTokenUrl: livekitUrl,
+      configuredApiUrl: configuredApiUrl || null,
+      configuredWsUrl: configuredWsUrl || null,
+      configuredAdminUrl: configuredAdminUrl || null,
+      configuredLivekitUrl: configuredLivekitUrl || null,
+      configuredLivekitLoopbackTarget: isConfiguredLivekitLoopbackTarget,
+      livekitConnectionSource: '/api/livekit/token response url',
+      secureContext:
+        typeof window !== 'undefined'
+          ? window.isSecureContext
+          : browserOrigin.startsWith('https://'),
+      randomUuidAvailable: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function',
+      shouldUseBrowserProxyOrigin,
+      shouldPreferBrowserWsOrigin,
+    })
+  }, [
+    adminUrl,
+    apiUrl,
+    browserOrigin,
+    configuredAdminUrl,
+    configuredApiUrl,
+    configuredLivekitUrl,
+    isConfiguredLivekitLoopbackTarget,
+    configuredWsUrl,
+    livekitUrl,
+    shouldPreferBrowserWsOrigin,
+    shouldUseBrowserProxyOrigin,
+    wsUrl,
+  ])
 
   useEffect(() => {
     const handleRouteChange = () => {
