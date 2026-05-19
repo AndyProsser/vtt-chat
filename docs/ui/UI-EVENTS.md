@@ -157,11 +157,17 @@ Each section below lists the events and reducer mappings.
 ```ts
 {
   noteId: string
+  targetGroupId: string
 }
 ```
 
 **Reducer:**
 `chatReducer.publishNote`
+
+**Behavior Rules:**
+
+- Posting creates a note card in the selected group's chat timeline.
+- Posting auto-shares the note with all players currently in the target group.
 
 ---
 
@@ -570,6 +576,11 @@ Right-toolbar button click (`INFO`, `PARTY`, `ROOMS`, `NOTES`, `JOURNAL`, `HISTO
 
 **Reducer:**
 `uiReducer.openPanel`
+
+**Role Rules:**
+
+- DM and Player may target `settings`.
+- Spectator may not target `settings` (button hidden and route guarded).
 
 ---
 

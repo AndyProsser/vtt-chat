@@ -463,7 +463,7 @@ Same as above.
 ### **6.1 User Opens a Right‑Toolbar Button**
 
 **UI Action:**
-User clicks a right-toolbar button (`INFO`, `PARTY`, `ROOMS`, `NOTES`, `JOURNAL`, `HISTORY`, or `SETTINGS`).
+User clicks a right-toolbar button.
 
 **Flow:**
 
@@ -473,6 +473,11 @@ User clicks a right-toolbar button (`INFO`, `PARTY`, `ROOMS`, `NOTES`, `JOURNAL`
    - `uiStore.activeRightPanel = tab`
 4. UI updates:
    - Slide‑in panel animates in
+
+Role guard:
+
+- DM/player button set: `INFO`, `PARTY`, `ROOMS` (DM-only), `NOTES`, `JOURNAL`, `HISTORY`, `SETTINGS`.
+- Spectator button set: `INFO`, `PARTY`, `NOTES`, `JOURNAL`, `HISTORY` (`ROOMS` and `SETTINGS` hidden).
 
 ---
 
@@ -609,6 +614,24 @@ DM edits note visibility in the `NOTES` rightbar panel.
    - `notesStore.items[noteId].selectedPlayerIds`
 4. UI updates:
    - Notes list visibility recalculates by persona and permission scope
+
+---
+
+### **6.11 DM Posts Note to Group Chat**
+
+**UI Action:**
+DM clicks `Post to Chat` from a note in the `NOTES` panel and selects a target group.
+
+**Flow:**
+
+1. `notes/postToGroupChat`
+2. Reducer: `chatReducer.publishNoteCard`
+3. Store updates:
+   - Chat timeline appends note card message for target group
+   - Note share scope for that post is set to all players currently in the target group
+4. UI updates:
+   - Group chat shows the posted note card
+   - Players in target group can open the note from the card
 
 ---
 

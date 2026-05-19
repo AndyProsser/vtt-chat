@@ -85,6 +85,12 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 **Editability**: Role-gated and time-gated
 **Persistence**: Backend (PostgreSQL for campaign/session/character; Redis for per-session effects)
 
+Rightbar visibility rule:
+
+- Spectators do not see the rightbar `SETTINGS` button/surface.
+- Players can open only the character settings section from rightbar `SETTINGS`.
+- DMs can open campaign and session settings sections from rightbar `SETTINGS`.
+
 ### 2.1 Campaign Settings
 
 **Editable by**: DM only
@@ -93,6 +99,11 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 - Default session duration (hours:minutes)
 - Group audio auto-target toggle (boolean; affects all groups in campaign)
+
+Not editable in rightbar `SETTINGS` (sync/complexity managed elsewhere):
+
+- Campaign metadata ownership fields (name/description/poster) remain in rightbar `INFO`
+- Other sync-complex campaign controls reserved for dedicated management surfaces
 
 **Ownership boundary**:
 
@@ -170,6 +181,9 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 - Character is a per-session projection; player can have different character profiles across campaigns.
 - Stats and profile are primarily for narrative/community display; no mechanical enforcement in Phase W0.
+- Race and class are free-text fields with autocomplete suggestions from D&D 5.5e SRD data by default.
+- Admin app can configure a pluggable autocomplete source provider for race/class suggestions.
+- Players can always override suggested race/class values with custom text.
 
 ---
 

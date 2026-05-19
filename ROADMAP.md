@@ -187,13 +187,20 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [ ] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [ ] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
-- [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions
+- [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions (same visible fields for players and spectators)
 - [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
-- [ ] NOTES panel is readable by all personas; DM can add/edit/delete/share notes
-- [ ] JOURNAL panel is readable by all personas; DM-only edit
-- [ ] HISTORY panel provides searchable chat archive respecting existing visibility/privacy rules
-- [ ] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators get read-only access where applicable
+- [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
+- [ ] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
+- [ ] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
+- [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
+- [ ] JOURNAL is readable by all personas; DM-only edit
+- [ ] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
+- [ ] HISTORY never includes messages from the current active session
+- [ ] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
 - [ ] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
+- [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
+- [ ] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
+- [ ] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [ ] Right-panel dismisses on backdrop click
 - [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
 

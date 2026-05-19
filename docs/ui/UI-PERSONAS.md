@@ -328,30 +328,31 @@ Minimalist Mobile reminder:
 
 ### **Notes**
 
-| Persona      | Permissions           |
-| ------------ | --------------------- |
-| DM           | Full                  |
-| Assistant DM | Full (except DM‑only) |
-| Player       | Own + shared          |
-| Spectator    | Global only           |
+| Persona      | Permissions                   |
+| ------------ | ----------------------------- |
+| DM           | Full (create/edit/share/post) |
+| Assistant DM | Full (except DM‑only)         |
+| Player       | Read shared notes             |
+| Spectator    | Read shared notes             |
 
 ### **Settings and Rightbar Access**
 
-| Panel / Action                              | DM  | Player         | Spectator   |
-| ------------------------------------------- | --- | -------------- | ----------- |
-| Open topbar Settings                        | Yes | Yes            | Yes         |
-| Open rightbar INFO                          | Yes | Yes            | Yes         |
-| Open rightbar PARTY                         | Yes | Yes            | Yes         |
-| Open rightbar ROOMS                         | Yes | No (hidden)    | No (hidden) |
-| Open rightbar NOTES                         | Yes | Yes            | Yes         |
-| Open rightbar JOURNAL                       | Yes | Yes            | Yes         |
-| Open rightbar HISTORY                       | Yes | Yes            | Yes         |
-| Open rightbar SETTINGS                      | Yes | Yes            | Yes         |
-| Edit INFO campaign metadata                 | Yes | No             | No          |
-| Edit NOTES/JOURNAL                          | Yes | No             | No          |
-| Edit SETTINGS campaign/session              | Yes | No             | No          |
-| Edit SETTINGS character (own character)     | No  | Yes            | No          |
-| PARTY > Edit routes to SETTINGS > Character | n/a | Yes (own only) | No          |
+| Panel / Action                              | DM   | Player         | Spectator   |
+| ------------------------------------------- | ---- | -------------- | ----------- |
+| Open topbar Settings                        | Yes  | Yes            | Yes         |
+| Open rightbar INFO                          | Yes  | Yes            | Yes         |
+| Open rightbar PARTY                         | Yes  | Yes            | Yes         |
+| Open rightbar ROOMS                         | Yes  | No (hidden)    | No (hidden) |
+| Open rightbar NOTES                         | Yes  | Yes            | Yes         |
+| Open rightbar JOURNAL                       | Yes  | Yes            | Yes         |
+| Open rightbar HISTORY                       | Yes  | Yes            | Yes         |
+| Open rightbar SETTINGS                      | Yes  | Yes            | No (hidden) |
+| Edit INFO campaign metadata                 | Yes  | No             | No          |
+| Edit NOTES/JOURNAL                          | Yes  | No             | No          |
+| Edit SETTINGS campaign/session              | Yes  | No             | No          |
+| Edit SETTINGS character (own character)     | No   | Yes            | No          |
+| PARTY > Edit routes to SETTINGS > Character | n/a  | Yes (own only) | No          |
+| PARTY row stats/conditions visibility       | Full | Full           | Full        |
 
 DM note handout scopes remain: `PRIVATE | PARTY | SELECTED`.
 

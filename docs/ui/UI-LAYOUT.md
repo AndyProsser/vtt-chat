@@ -259,8 +259,9 @@ Admin note:
 
 1. Settings opens from topbar settings icon.
 2. Campaign settings are DM-editable.
-3. Players and spectators can view campaign settings read-only by default.
-4. DM can hide campaign settings from non-DM users.
+3. Players can access character settings (own character only) from rightbar `SETTINGS`.
+4. Spectators do not see rightbar `SETTINGS`.
+5. DM can hide campaign settings from non-DM users.
 
 Boundary rule:
 
@@ -306,20 +307,26 @@ Migration note:
 ### Rightbar Surface Behavior
 
 - `INFO`: campaign name, description, banner/poster image, plus read-only stats for player count, session count, completed sessions, and next-session ETA. DM can edit metadata fields (not stats).
-- `PARTY`: campaign-wide roster for all players (including disconnected and not-yet-connected members) with name, class, level, race, connection state, last seen, stats, and active conditions.
+- `PARTY`: campaign-wide roster for all players (including disconnected and not-yet-connected members) with name, class, level, race, connection state, last seen, stats, and active conditions; spectators see the same row fields as players.
 - `ROOMS`: DM-only room/group management surface; hidden for non-DM personas.
-- `NOTES`: searchable notes/handouts list. DM can add/edit/delete/share notes and change sharing targets at any time.
-- `JOURNAL`: reverse-chronological session journals with text and hashtag search; no images; DM edits completed past sessions only.
-- `HISTORY`: read-only searchable full chat history, grouped by session bookends, starts at bottom, dynamically loads older content one session at a time.
-- `SETTINGS`: role-routed surface. DM opens campaign/session settings. Players open own character settings. Spectators are read-only.
+- `NOTES`: searchable notes list. Each note has name, markdown content, image-only attachments (multiple), and hashtags. DM can add/edit/delete/share notes and change sharing targets at any time.
+- `NOTES`: DM can post a note to group chat, creating a note card in that group's chat and automatically sharing to all players in that group.
+- `JOURNAL`: reverse-chronological list of sessions. Each session has exactly one markdown journal entry with hashtags for search. DM edits entries.
+- `HISTORY`: read-only searchable lightweight mirror of previous-session chat only, grouped by session boundaries, and excludes current-session messages.
+- `SETTINGS`: role-routed surface. DM opens campaign/session settings. Players open own character settings. Spectators do not see this button/surface.
 
 Notes details:
 
 - Notes content is markdown with a simple rich-text helper toolbar for non-markdown users.
-- Notes can include attached images rendered below markdown content and scaled to fit available panel space.
+- Notes can include multiple attached images rendered below markdown content and scaled to fit available panel space.
 - Notes list supports favorites for players and DM; favorites bubble to top.
 - Notes panel can expand into a wider overlay for list + detail workflows while preserving the overall 900px target shell behavior.
 - Open note view must include a clear `X` close action.
+
+History details:
+
+- History mirrors prior-session chat data only and must never show current-session chat rows.
+- Session boundaries are always visible in the history stream and separate each archived session segment.
 
 Party edit navigation rule:
 
