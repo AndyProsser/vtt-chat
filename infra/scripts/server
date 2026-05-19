@@ -520,13 +520,79 @@ function generate_docker_compose() {
   fi
 }
 
-function configure_ufw() {
-  echo "Configuring UFW for current install ports..."
+function detect_distro_family() {
+  local id=""
+  local id_like=""
+
+  if [[ -f /etc/os-release ]]; then
+    id=$(grep -E "^ID=" /etc/os-release | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+    id_like=$(grep -E "^ID_LIKE=" /etc/os-release | cut -d= -f2 | tr -d '"' | tr '[:upper:]' '[:lower:]')
+  fi
+
+  if [[ "$id" == "debian" || "$id" == "ubuntu" || "$id_like" == *"debian"* || "$id_like" == *"ubuntu"* ]]; then
+    echo "debian"
+  elif [[ "$id" == "arch" || "$id_like" == *"arch"* ]]; then
+    echo "arch"
+  elif [[ "$id" == "fedora" || "$id_like" == *"fedora"* || "$id_like" == *"rhel"* || "$id_like" == *"centos"* ]]; then
+    echo "fedora"
+  else
+    echo "unknown"
+  fi
+}
+
+function _configure_firewall_ufw() {
+  echo "  Firewall: UFW (Debian-based)"
+  if ! command -v ufw &>/dev/null; then
+    echo "  WARNING: ufw not found. Skipping firewall configuration."
+    echo "  Install ufw to enable automatic port management."
+    return
+  fi
   sudo ufw allow OpenSSH
-  sudo ufw allow ${HTTPS_PORT}/tcp
-  sudo ufw allow ${LIVEKIT_PORT}/tcp
-  sudo ufw allow ${LIVEKIT_UDP_START}:${LIVEKIT_UDP_END}/udp
+  sudo ufw allow "${HTTPS_PORT}/tcp"
+  sudo ufw allow "${LIVEKIT_PORT}/tcp"
+  sudo ufw allow "${LIVEKIT_UDP_START}:${LIVEKIT_UDP_END}/udp"
   sudo ufw --force enable
+}
+
+function _configure_firewall_firewalld() {
+  local distro_label="$1"
+  echo "  Firewall: firewalld (${distro_label}-based)"
+  if ! command -v firewall-cmd &>/dev/null; then
+    echo "  WARNING: firewall-cmd not found. Skipping firewall configuration."
+    echo "  Install firewalld to enable automatic port management."
+    return
+  fi
+  if ! sudo systemctl is-active --quiet firewalld; then
+    echo "  Starting firewalld service..."
+    sudo systemctl enable --now firewalld
+  fi
+  sudo firewall-cmd --permanent --add-service=ssh
+  sudo firewall-cmd --permanent --add-port="${HTTPS_PORT}/tcp"
+  sudo firewall-cmd --permanent --add-port="${LIVEKIT_PORT}/tcp"
+  sudo firewall-cmd --permanent --add-port="${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+  sudo firewall-cmd --reload
+}
+
+function configure_firewall() {
+  echo "Configuring firewall for current install ports..."
+  local distro_family
+  distro_family=$(detect_distro_family)
+
+  case "$distro_family" in
+    debian)
+      _configure_firewall_ufw
+      ;;
+    arch)
+      _configure_firewall_firewalld "Arch"
+      ;;
+    fedora)
+      _configure_firewall_firewalld "Fedora"
+      ;;
+    *)
+      echo "  WARNING: Unknown distro family. Skipping automatic firewall configuration."
+      echo "  Manually open ports: ${HTTPS_PORT}/tcp, ${LIVEKIT_PORT}/tcp, ${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp, SSH."
+      ;;
+  esac
 }
 
 function build() {
@@ -535,7 +601,7 @@ function build() {
   ensure_mode_standard_files
   generate_env_files
   generate_root_env_file
-  configure_ufw
+  configure_firewall
   cd "$INSTALL_DIR"
   local compose_file
   compose_file="$(get_compose_file)"
