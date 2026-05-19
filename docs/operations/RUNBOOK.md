@@ -44,6 +44,7 @@ Related docs:
 
 - `docs/operations/DEPLOYMENT.md`
 - `docs/operations/DEVELOPER-DEPLOYMENT.md`
+- `docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md`
 
 ---
 
@@ -74,6 +75,7 @@ Drill evidence:
 Related docs:
 
 - `docs/operations/BACKUP-RESTORE.md`
+- `docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md`
 
 ---
 

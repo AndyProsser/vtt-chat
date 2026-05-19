@@ -75,6 +75,36 @@ Low priority:
 - Review matrix coverage at each Phase 0/1 gate and after major lifecycle changes.
 - Add new signal families whenever a cross-cutting runtime contract is introduced.
 
+---
+
+## 6. Restart-Survival Validation
+
+Validation objective:
+
+- Confirm telemetry and diagnostic sinks remain durable and queryable through restart-equivalent paths.
+
+Validation command set:
+
+```bash
+cd backend && npx vitest run telemetry-store
+```
+
+```bash
+cd backend && npx vitest run \
+	tests/integration/multi-client-reconnect.integration.test.ts \
+	tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts \
+	tests/integration/audio-state-recovery.integration.test.ts
+```
+
+Expected pass signals:
+
+- Telemetry sink persistence, rotation, and retention tests are all green.
+- Reconnect/recovery integration suites are green with no assertion failures.
+
+Recorded evidence:
+
+- `docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md`
+
 Related docs:
 
 - `docs/operations/TELEMETRY.md`

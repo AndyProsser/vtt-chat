@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-18
+**Last Updated**: 2026-05-19
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -130,7 +130,7 @@ Evidence snapshot (2026-05-18):
 
 ### W3-Operatisation: Runbooks and Telemetry Matrix
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine, W1-Runtime-Recovery
 
@@ -140,14 +140,32 @@ Evidence snapshot (2026-05-18):
 
 - [x] Operator runbook exists for: restart, backup/restore, incident triage, log analysis
 - [x] Telemetry matrix documents what is tracked, why, and how it is consumed
-- [ ] Restart-survival validation confirms telemetry/diagnostic sinks persist across restarts
-- [ ] Backup/restore drill is executed and documented as reproducible
+- [x] Restart-survival validation confirms telemetry/diagnostic sinks persist across restarts
+- [x] Backup/restore drill is executed and documented as reproducible
 
 **Related Docs**:
 
 - [docs/operations/](docs/operations/)
 - [docs/operations/RUNBOOK.md](docs/operations/RUNBOOK.md)
 - [docs/operations/TELEMETRY-MATRIX.md](docs/operations/TELEMETRY-MATRIX.md)
+- [docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md](docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md)
+- [docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md](docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md)
+
+Evidence snapshot (2026-05-19):
+
+- Restart-survival validation suite executed:
+  - `backend/tests/infra/telemetry-store.test.ts` (7/7)
+  - `backend/tests/integration/multi-client-reconnect.integration.test.ts` (6/6)
+  - `backend/tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts` (3/3)
+  - `backend/tests/integration/audio-state-recovery.integration.test.ts` (15/15)
+- Backup/restore drill suite executed:
+  - `backend/tests/services/admin-portability.service.test.ts` (7/7)
+  - `backend/tests/api/admin-campaign-operations.test.ts` (8/8)
+  - `backend/tests/api/admin-settings-routes.test.ts` (15/15)
+  - `backend/tests/api/admin-telemetry-diagnostic-retention.test.ts` (7/7)
+- Drill records and reproducible command sets are now documented in:
+  - `docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md`
+  - `docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md`
 
 ---
 
