@@ -186,7 +186,7 @@ Shows:
 
 - Chat is default
 - Notes replaces chat when selected
-- Notes are also accessible via Information > Notes
+- Notes are also accessible from the right-toolbar `NOTES` panel
 - Chat visibility follows persona and room membership rules, while the message composer remains the canonical chat creation surface when allowed.
 - Session lifecycle markers (`[Session Started]`, `[Session Ended]`, `[Session Paused]`, `[Session Resumed]`) render as system-authored chat bookends in the visible chat stream.
 
@@ -226,27 +226,34 @@ Persona rules:
 
 ## 6. Right Panel — Vertical Tabs + Slide‑In Panels
 
-The right panel contains **secondary tools**.
-Topbar-driven panel groups:
+The right panel contains **secondary tools** and is opened from a dedicated right-toolbar icon for each surface.
 
-- Settings: `SYSTEM | CAMPAIGN | PROFILE`
-- Information: `CAMPAIGN | NOTES | JOURNAL | HISTORY`
-- Notes and Journal are the primary campaign-UI destinations in the Information surface.
-- Search panel is removed; search is integrated per-tab in Notes, Journal, and History.
+Canonical right-toolbar order:
+
+- `INFO`
+- `PARTY`
+- `ROOMS`
+- `NOTES`
+- `JOURNAL`
+- `HISTORY`
+- `SETTINGS`
+
+Panel model contract:
+
+- Do not use a single Information panel with internal tabs for campaign surfaces.
+- Each toolbar item opens its own slide-in panel surface.
+- `ROOMS` is DM-only and hidden for non-DM personas.
+- Search is integrated within `NOTES`, `JOURNAL`, and `HISTORY` panels.
 
 Tabbed UI contract:
 
-- All user-facing campaign/session tabbed panel/dialog screens must use Radix UI Tabs.
-- This is mandatory for Information tabs and the main/home campaign settings dialog tabs.
+- Any panel/dialog that still uses internal sections must use Radix UI Tabs.
+- This is required for settings dialogs and any future multi-section surfaces.
 - Custom tab implementations are not allowed unless explicitly approved in a design exception.
 
 Admin note:
 
 - Admin UI uses MUI; admin tabbed screens should use MUI Tabs (or approved MUI-equivalent tab primitives).
-
-Journal behavior:
-
-- `JOURNAL` tab exists in Information, but is feature-flagged off by default for current release.
 
 ### Settings Panel Access
 
@@ -257,7 +264,7 @@ Journal behavior:
 
 Boundary rule:
 
-- Campaign metadata (name, description, banner/poster image, and read-only campaign stats) is owned by Information > Campaign, not the rightbar campaign settings surface.
+- Campaign metadata (name, description, banner/poster image, and read-only campaign stats) is owned by the `INFO` panel, not the rightbar campaign settings surface.
 
 System settings expectations:
 
@@ -296,12 +303,15 @@ Migration note:
 - In `PAUSED`, topbar shows paused elapsed while popper still exposes active elapsed context.
 - In `ENDED`, popper remains visible until cooldown completes/cancels, then disables after transition back to `INACTIVE`.
 
-### Information Panel Behavior
+### Rightbar Surface Behavior
 
-- Campaign tab: campaign name, description, banner/poster image, plus read-only stats for session count and total session duration. DM can edit metadata fields (not stats).
-- Notes tab: searchable notes/handouts list. DM can add/edit/delete/share notes and change sharing targets at any time.
-- Journal tab: reverse-chronological session journals with text and hashtag search; no images; DM edits completed past sessions only.
-- History tab: read-only searchable full chat history, grouped by session bookends, starts at bottom, dynamically loads older content one session at a time.
+- `INFO`: campaign name, description, banner/poster image, plus read-only stats for player count, session count, completed sessions, and next-session ETA. DM can edit metadata fields (not stats).
+- `PARTY`: campaign-wide roster for all players (including disconnected and not-yet-connected members) with name, class, level, race, connection state, last seen, stats, and active conditions.
+- `ROOMS`: DM-only room/group management surface; hidden for non-DM personas.
+- `NOTES`: searchable notes/handouts list. DM can add/edit/delete/share notes and change sharing targets at any time.
+- `JOURNAL`: reverse-chronological session journals with text and hashtag search; no images; DM edits completed past sessions only.
+- `HISTORY`: read-only searchable full chat history, grouped by session bookends, starts at bottom, dynamically loads older content one session at a time.
+- `SETTINGS`: role-routed surface. DM opens campaign/session settings. Players open own character settings. Spectators are read-only.
 
 Notes details:
 
@@ -310,6 +320,11 @@ Notes details:
 - Notes list supports favorites for players and DM; favorites bubble to top.
 - Notes panel can expand into a wider overlay for list + detail workflows while preserving the overall 900px target shell behavior.
 - Open note view must include a clear `X` close action.
+
+Party edit navigation rule:
+
+- When a player clicks `Edit` from the `PARTY` panel, the UI must switch to `SETTINGS` with the Character section active.
+- After switching, focus moves to the first editable character field.
 
 Home settings access rule:
 

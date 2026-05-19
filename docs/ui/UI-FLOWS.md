@@ -456,14 +456,14 @@ Same as above.
 
 ---
 
-## 6. Right Panel Flows (Tabs + Panels)
+## 6. Right Panel Flows (Buttons + Panels)
 
 ---
 
-### **6.1 User Opens a Right‑Panel Tab**
+### **6.1 User Opens a Right‑Toolbar Button**
 
 **UI Action:**
-User clicks a tab.
+User clicks a right-toolbar button (`INFO`, `PARTY`, `ROOMS`, `NOTES`, `JOURNAL`, `HISTORY`, or `SETTINGS`).
 
 **Flow:**
 
@@ -539,21 +539,21 @@ Capabilities fetch resolves with `summaryProcessingInstalled=false`.
 
 ---
 
-### **6.4 User Opens Information Panel from Topbar**
+### **6.4 User Opens INFO Panel from Right Toolbar**
 
 **UI Action:**
-User clicks the topbar Information icon.
+User clicks the `INFO` right-toolbar button.
 
 **Flow:**
 
 1. `ui/openPanel`
 2. Reducer: `uiReducer.openPanel`
 3. Store updates:
-   - `uiStore.activeRightPanel = 'information'`
-   - `uiStore.activeInformationTab = 'CAMPAIGN'`
+   - `uiStore.activeRightPanel = 'info'`
 4. UI updates:
-   - Information panel opens with tabs in canonical order:
-     - `CAMPAIGN`, `SEARCH`, `NOTES`, `JOURNAL`, `HISTORY`
+   - INFO panel opens and renders campaign overview details
+   - DM sees editable campaign metadata controls
+   - Players/spectators see read-only metadata
 
 ---
 
@@ -598,7 +598,7 @@ DM saves session settings popover.
 ### **6.7 DM Updates Note Handout Permissions**
 
 **UI Action:**
-DM edits note visibility in Information > Notes.
+DM edits note visibility in the `NOTES` rightbar panel.
 
 **Flow:**
 
@@ -615,7 +615,7 @@ DM edits note visibility in Information > Notes.
 ### **6.8 User Opens Session History Entry**
 
 **UI Action:**
-User opens one session row in Information > History.
+User opens one session row in the `HISTORY` rightbar panel.
 
 **Flow:**
 
@@ -628,6 +628,24 @@ User opens one session row in Information > History.
    - Session chat log is displayed
    - If `summaryProcessingInstalled=true` and summaries are enabled, summary content appears at the top
    - If `summaryProcessingInstalled=false`, summary content remains disabled and canonical explanatory copy is displayed
+
+---
+
+### **6.10 Player Jumps from PARTY Edit to Character Settings**
+
+**UI Action:**
+Player clicks `Edit` on their own row in the `PARTY` panel.
+
+**Flow:**
+
+1. `ui/openPanel`
+2. Reducer: `uiReducer.openPanel`
+3. Store updates:
+   - `uiStore.activeRightPanel = 'settings'`
+   - `uiStore.activeSettingsSection = 'character'`
+4. UI updates:
+   - Character settings form opens
+   - Focus moves to the first editable character field
 
 ---
 

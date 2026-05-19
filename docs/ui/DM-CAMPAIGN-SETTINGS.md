@@ -10,7 +10,7 @@
 VTT-Chat settings are organized in three distinct layers, each with specific accessibility, editability rules, and persistence scope:
 
 1. **Topbar Layer** (`<SettingsPanel />`) — User account and system defaults
-2. **Rightbar Layer** (`<CampaignRightbarSettings />`) — Campaign, session, and character settings
+2. **Rightbar SETTINGS Layer** (`<CampaignRightbarSettings />`) — role-routed campaign/session/character settings from the right-toolbar `SETTINGS` button
 3. **Feature Toggles** — Per-campaign feature flags (separate from user/campaign data)
 
 This document covers all three layers plus feature toggle definitions.
@@ -96,8 +96,8 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 **Ownership boundary**:
 
-- Campaign metadata fields (name, description, banner/poster image) are edited in Information > Campaign panel.
-- Campaign stats (session count, total session duration) are read-only and shown in Information > Campaign panel.
+- Campaign metadata fields (name, description, banner/poster image) are edited in the rightbar `INFO` panel.
+- Campaign stats (session count, total session duration) are read-only and shown in the rightbar `INFO` panel.
 
 **Effect**:
 
@@ -142,9 +142,9 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 ### 2.3 Character Settings
 
-**Editable by**: Players (own character only); DM (view/override capabilities TBD)
+**Editable by**: Players (own character only)
 **Editability gate**: Anytime
-**Visible to**: Player (full edit), DM/other players (view with current effects), Spectators (view-only with effects)
+**Visible to**: All personas (read-only unless owner-player editing their own character)
 **Fields**:
 
 - Character name (default: user name)
@@ -159,7 +159,7 @@ Terminology note: this document uses **Group** as the user-facing label. Existin
 
 - Character values override user profile defaults when present.
 - Character stats default to Fighter/Human/Level 1/8 (all stats) if left blank by player.
-- DM can view and possibly override (implementation TBD).
+- Non-owner personas view character data and active effects read-only.
 
 **Persistence**:
 

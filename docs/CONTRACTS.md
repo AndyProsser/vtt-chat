@@ -55,6 +55,33 @@ Compatibility policy:
 - New integrations should use canonical broadcast names.
 - Legacy aliases remain accepted during migration to avoid breaking existing clients.
 
+### Rightbar Surface Contract (Roadmap W0-Rightbar)
+
+Canonical rightbar toolbar order is fixed as:
+
+- `INFO`
+- `PARTY`
+- `ROOMS`
+- `NOTES`
+- `JOURNAL`
+- `HISTORY`
+- `SETTINGS`
+
+Visibility and editability contract:
+
+- `INFO`: readable by all personas; DM-edit for campaign metadata (name/description/poster).
+- `PARTY`: readable by all personas; must include all campaign players even when disconnected or not currently in-session.
+- `ROOMS`: DM-only; hidden (not disabled) for non-DM personas.
+- `NOTES`: readable by all personas; DM edit controls.
+- `JOURNAL`: readable by all personas; DM edit controls only.
+- `HISTORY`: readable by all personas, subject to existing message visibility/privacy constraints.
+- `SETTINGS`: role-routed surface; DM opens campaign/session settings, player opens own character settings, spectator reads allowed fields only.
+
+Party-to-settings navigation contract:
+
+- Player selecting `Edit` from `PARTY` must switch active panel to `SETTINGS` with character section active.
+- The first editable character field must receive focus after the transition.
+
 ### Connection Status Naming (Roadmap Alignment)
 
 Roadmap-aligned implementation naming for cross-surface status indicators:

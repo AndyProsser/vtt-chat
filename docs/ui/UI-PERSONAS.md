@@ -335,24 +335,25 @@ Minimalist Mobile reminder:
 | Player       | Own + shared          |
 | Spectator    | Global only           |
 
-### **Settings and Information Access**
+### **Settings and Rightbar Access**
 
-| Panel / Action                  | DM     | Player      | Spectator   |
-| ------------------------------- | ------ | ----------- | ----------- |
-| Open topbar Settings            | Yes    | Yes         | Yes         |
-| Edit Campaign settings          | Yes    | No          | No          |
-| View Campaign settings          | Yes    | Yes (RO)    | Yes (RO)    |
-| DM can hide campaign settings   | Yes    | n/a         | n/a         |
-| Open topbar Information         | Yes    | Yes         | Yes         |
-| Information > Campaign          | Edit   | Read-only   | Read-only   |
-| Information > Search            | Full   | Full        | Read-only   |
-| Information > Notes             | Full   | Read-only\* | Read-only\* |
-| Information > Journal           | Future | Future      | Future      |
-| Information > History           | Full   | Read-only   | Read-only   |
-| Session settings popover (edit) | Yes    | No          | No          |
-| Session settings popover (view) | Yes    | Yes (RO)    | Yes (RO)    |
+| Panel / Action                              | DM  | Player         | Spectator   |
+| ------------------------------------------- | --- | -------------- | ----------- |
+| Open topbar Settings                        | Yes | Yes            | Yes         |
+| Open rightbar INFO                          | Yes | Yes            | Yes         |
+| Open rightbar PARTY                         | Yes | Yes            | Yes         |
+| Open rightbar ROOMS                         | Yes | No (hidden)    | No (hidden) |
+| Open rightbar NOTES                         | Yes | Yes            | Yes         |
+| Open rightbar JOURNAL                       | Yes | Yes            | Yes         |
+| Open rightbar HISTORY                       | Yes | Yes            | Yes         |
+| Open rightbar SETTINGS                      | Yes | Yes            | Yes         |
+| Edit INFO campaign metadata                 | Yes | No             | No          |
+| Edit NOTES/JOURNAL                          | Yes | No             | No          |
+| Edit SETTINGS campaign/session              | Yes | No             | No          |
+| Edit SETTINGS character (own character)     | No  | Yes            | No          |
+| PARTY > Edit routes to SETTINGS > Character | n/a | Yes (own only) | No          |
 
-`*` DM can hand out notes using `PRIVATE | PARTY | SELECTED` permissions.
+DM note handout scopes remain: `PRIVATE | PARTY | SELECTED`.
 
 ---
 

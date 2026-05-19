@@ -553,30 +553,30 @@ History is read-only for Player/Spectator.
 
 ---
 
-## 11. Information Events
+## 11. Rightbar Surface Events
 
-### **11.1 `information/setActiveTab`**
+### **11.1 `ui/setActiveRightPanel`**
 
 **Triggered by:**
-`<InformationPanel onSelectTab />`
+Right-toolbar button click (`INFO`, `PARTY`, `ROOMS`, `NOTES`, `JOURNAL`, `HISTORY`, `SETTINGS`).
 
 **Payload:**
 
 ```ts
 {
-  tab: 'CAMPAIGN' | 'SEARCH' | 'NOTES' | 'JOURNAL' | 'HISTORY'
+  panel: 'info' | 'party' | 'rooms' | 'notes' | 'journal' | 'history' | 'settings'
 }
 ```
 
 **Reducer:**
-`uiReducer.setActiveInformationTab`
+`uiReducer.openPanel`
 
 ---
 
 ### **11.2 `campaign/updateMetadata`**
 
 **Triggered by:**
-`<CampaignInfoPanel onUpdate />` (DM)
+`<InfoPanel onUpdateCampaignMetadata />` (DM)
 
 **Payload:**
 
@@ -596,7 +596,7 @@ History is read-only for Player/Spectator.
 ### **11.3 `campaign/toggleExtensionSync`**
 
 **Triggered by:**
-`<CampaignInfoPanel onToggleSync />` (DM)
+`<InfoPanel onToggleSync />` (DM)
 
 **Payload:**
 

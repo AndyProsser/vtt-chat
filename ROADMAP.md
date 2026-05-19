@@ -179,18 +179,21 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
-**Scope**: Implement the rightbar icon toolbar and single tabbed info panel (Campaign | Notes | Journal | History). Settings cascade: topbar (user profile) → rightbar (campaign/session) → character (player-only).
+**Scope**: Implement a rightbar toolbar with one button per surface: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS. Replace the single Information tab model with dedicated panel entry points. Keep topbar Settings for user profile/system defaults; rightbar SETTINGS remains campaign/session/character context.
 
 **Acceptance Criteria**:
 
-- [ ] Rightbar toolbar with icons for Info, Campaign Settings, Session Settings, Character Settings
-- [ ] Single info panel with tabs: Campaign (stats, edit DM capability) | Notes (add/edit/delete/share) | Journal (per-session artifact, DM-only edit) | History (searchable chat archive)
-- [ ] Campaign tab shows: name, description, player count, session count, completed sessions, next session ETA
-- [ ] DM can edit campaign name/description/poster in Campaign tab
-- [ ] Campaign Settings tab shows: default session duration, audio auto-target toggle, allow-conditions toggle
-- [ ] Session Settings tab shows: name, planned duration (DM edit only), timer (readonly for players)
-- [ ] Character Settings tab shows: name, race, class, level, stats, avatar (player edit only)
-- [ ] All panels respect persona permissions (DM sees more, players/spectators read-only where applicable)
+- [ ] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS
+- [ ] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
+- [ ] INFO is readable by all personas; DM can edit campaign name/description/poster
+- [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
+- [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions
+- [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
+- [ ] NOTES panel is readable by all personas; DM can add/edit/delete/share notes
+- [ ] JOURNAL panel is readable by all personas; DM-only edit
+- [ ] HISTORY panel provides searchable chat archive respecting existing visibility/privacy rules
+- [ ] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators get read-only access where applicable
+- [ ] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
 - [ ] Right-panel dismisses on backdrop click
 - [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
 
