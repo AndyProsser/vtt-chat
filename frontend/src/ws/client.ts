@@ -7,6 +7,7 @@
 import type { EventEnvelope, UUID } from '@shared'
 import { DeviceClass, isValidUUID } from '@shared'
 import { logger } from '../utils/logger'
+import { generateClientId } from '../utils/uuid'
 import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { ConnectionState, ConnectionOptions } from '@/types/ws'
 
@@ -374,7 +375,7 @@ export class WebSocketClient {
         }
 
         const normalized: EventEnvelope = {
-          id: crypto.randomUUID() as UUID,
+          id: generateClientId('ws') as UUID,
           type: 'WS:CONNECTED',
           version: 1,
           userId: msg.userId,
@@ -506,10 +507,7 @@ export class WebSocketClient {
 
 function resolveDeviceSessionId(): string {
   const generateId = (): string => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID()
-    }
-    return `device-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    return generateClientId('device')
   }
 
   if (typeof window === 'undefined') {

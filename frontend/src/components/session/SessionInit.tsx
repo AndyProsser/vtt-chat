@@ -58,6 +58,7 @@ import {
 } from '../../constants/sessionInit.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { fetchSessionNotesOnce } from '../../utils/notesFetch'
+import { generateClientId } from '../../utils/uuid'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '../../tokens'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Note } from '@/types/notes'
@@ -1052,7 +1053,7 @@ export function SessionInit({
                 }
 
                 return {
-                  id: (entry.id || crypto.randomUUID()) as UUID,
+                  id: (entry.id || generateClientId('message')) as UUID,
                   roomId: (entry.roomId || roomId) as UUID,
                   authorId: entry.authorId,
                   authorUsername: entry.authorUsername,
@@ -1107,7 +1108,7 @@ export function SessionInit({
 
         addMessage(sessionId, {
           ...message,
-          id: crypto.randomUUID() as UUID,
+          id: generateClientId('message') as UUID,
         })
         existingSignatures.add(roomSignature)
       }

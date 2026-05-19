@@ -1,4 +1,5 @@
 import { logger } from './logger'
+import { generateClientId } from './uuid'
 
 const MAX_LOGGED_BODY_LENGTH = 240
 const HTTP_CLIENT_DEBUG_ENABLED = false
@@ -70,7 +71,7 @@ export function installFetchDebugLogging(): void {
 
     const method = request.method || init?.method || 'GET'
     const url = request.url
-    const requestId = crypto.randomUUID()
+    const requestId = generateClientId('request')
     const startedAt = performance.now()
 
     if (HTTP_CLIENT_DEBUG_ENABLED) {

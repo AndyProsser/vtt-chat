@@ -14,6 +14,7 @@ import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import type { OutgoingChatMessage } from '../../state/chatSlice'
 import type { Message } from '@/types/chat'
+import { generateClientId } from '@/utils/uuid'
 import '../../styles/components/chat/ChatWindow.css'
 
 interface ChatWindowProps {
@@ -537,7 +538,7 @@ export function ChatWindow({
 
       const now = Date.now()
       sendWsEvent({
-        id: crypto.randomUUID() as UUID,
+        id: generateClientId('ws') as UUID,
         type,
         version: 1,
         userId: user.id,
@@ -724,7 +725,7 @@ export function ChatWindow({
 
   const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
     setError(null)
-    const queuedMessageId = crypto.randomUUID() as UUID
+    const queuedMessageId = generateClientId('queued-message') as UUID
 
     enqueueOutgoingMessage(sessionId, {
       id: queuedMessageId,

@@ -1,4 +1,5 @@
 import type { ToastVariant } from '@/types/ui'
+import { generateClientId } from '@/utils/uuid'
 
 const DEFAULT_TOAST_DURATION_MS = 10_000
 
@@ -67,7 +68,7 @@ export function dismissToast(id: string): void {
 }
 
 export function showToast(input: ShowToastInput): string {
-  const id = input.id || crypto.randomUUID()
+  const id = input.id || generateClientId('toast')
   const nextItem: ToastCenterItem = {
     id,
     message: input.message,
