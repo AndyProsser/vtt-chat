@@ -595,6 +595,75 @@ function configure_firewall() {
   esac
 }
 
+function get_local_server_ip() {
+  local ip_addr=""
+
+  # Prefer the source address chosen for default routing.
+  if command -v ip >/dev/null 2>&1; then
+    ip_addr=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')
+  fi
+
+  # Fallback: first non-loopback address reported by hostname.
+  if [[ -z "$ip_addr" ]] && command -v hostname >/dev/null 2>&1; then
+    ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
+  fi
+
+  # Final fallback keeps output usable in minimal environments.
+  if [[ -z "$ip_addr" ]]; then
+    ip_addr="127.0.0.1"
+  fi
+
+  echo "$ip_addr"
+}
+
+function get_caddy_access_url_from_compose() {
+  local compose_file
+  local host_ip
+  local mapped
+  local port
+
+  compose_file="$(get_compose_file)"
+  host_ip="$(get_local_server_ip)"
+
+  # Prefer HTTPS when exposed.
+  mapped=$(docker compose -f "$compose_file" port caddy 8443 2>/dev/null | head -n1 || true)
+  if [[ -n "$mapped" ]]; then
+    port=$(printf '%s' "$mapped" | awk -F: '{print $NF}')
+    echo "https://${host_ip}:${port}"
+    return 0
+  fi
+
+  # Fall back to HTTP for dev/local setups.
+  mapped=$(docker compose -f "$compose_file" port caddy 8080 2>/dev/null | head -n1 || true)
+  if [[ -n "$mapped" ]]; then
+    port=$(printf '%s' "$mapped" | awk -F: '{print $NF}')
+    echo "http://${host_ip}:${port}"
+    return 0
+  fi
+
+  return 1
+}
+
+function get_stack_access_url() {
+  local access_url
+  local host_ip
+
+  access_url=$(get_caddy_access_url_from_compose || true)
+  if [[ -n "$access_url" ]]; then
+    echo "$access_url"
+    return 0
+  fi
+
+  host_ip="$(get_local_server_ip)"
+
+  # Fallback for cases where Docker cannot report published ports yet.
+  if [[ "$DEV_MODE" == "true" ]]; then
+    echo "http://${host_ip}:8080"
+  else
+    echo "https://${host_ip}:${HTTPS_PORT}"
+  fi
+}
+
 function build() {
   load_config
   generate_secrets
@@ -642,7 +711,7 @@ function start() {
   sync_dev_workspace_dependencies
   docker compose -f "$(get_compose_file)" up -d --build
   load_config
-  echo "VTT-Chat $stack_name stack started. Access the app at https://<server-ip>:${HTTPS_PORT}"
+  echo "VTT-Chat $stack_name stack started. Access the app at $(get_stack_access_url)"
 }
 
 function restart() {
@@ -652,7 +721,7 @@ function restart() {
   sync_dev_workspace_dependencies
   docker compose -f "$(get_compose_file)" up -d --build
   load_config
-  echo "VTT-Chat $stack_name stack restarted."
+  echo "VTT-Chat $stack_name stack restarted. Access the app at $(get_stack_access_url)"
 }
 
 function stop() {
@@ -664,12 +733,14 @@ function stop() {
 
 function status() {
   local stack_name=$(get_stack_name)
+  local access_url
   local stack_regex
   stack_regex=$(get_stack_container_name_regex)
   local all_rows
   local running_rows
   all_rows=$(get_container_rows_for_regex "$stack_regex")
   running_rows=$(get_running_container_rows_for_regex "$stack_regex")
+  access_url=$(get_stack_access_url)
   cd "$INSTALL_DIR"
 
   # Color codes
@@ -831,6 +902,8 @@ function status() {
       echo -e "${YELLOW}⚠ DEV instance is running${NC}"
     fi
   fi
+
+  echo "Access URL: $access_url"
 
   echo ""
 }
