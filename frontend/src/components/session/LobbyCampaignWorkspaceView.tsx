@@ -30,9 +30,7 @@ type LobbyCampaignWorkspaceViewProps = {
   isLaunchDisabled: boolean
   launchDisabledReason?: string
   showInviteWidget: boolean
-  joinCode: string | null
   joinUrl: string
-  watchCode: string | null
   watchUrl: string
   spectatorsEnabled: boolean
   settingsPanel: ReactNode
@@ -311,10 +309,8 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
             </div>
             <InvitePopoverWidget
               show={props.showInviteWidget}
-              joinCode={props.joinCode}
               joinUrl={props.joinUrl}
               spectatorsEnabled={props.spectatorsEnabled}
-              watchCode={props.watchCode}
               watchUrl={props.watchUrl}
               onCopyInviteUrl={props.onCopyInviteUrl}
             />

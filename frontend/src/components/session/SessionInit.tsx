@@ -3545,16 +3545,12 @@ export function SessionInit({
                 : 'Select a campaign first.'
             }
             showInviteWidget={Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id)}
-            joinCode={settingsData?.inviteCode ?? selectedCampaign?.inviteCode ?? null}
             joinUrl={
               settingsData?.inviteCode
                 ? `${window.location.origin}/join/${encodeURIComponent(settingsData.inviteCode)}`
                 : selectedCampaign?.inviteCode
                   ? `${window.location.origin}/join/${encodeURIComponent(selectedCampaign.inviteCode)}`
                   : ''
-            }
-            watchCode={
-              settingsSpectatorsEnabled ? (settingsData?.spectatorInviteCode ?? null) : null
             }
             watchUrl={
               settingsSpectatorsEnabled && settingsData?.spectatorInviteCode

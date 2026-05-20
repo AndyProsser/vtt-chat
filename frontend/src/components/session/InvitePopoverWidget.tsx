@@ -4,12 +4,36 @@ type InviteType = 'PLAYER' | 'SPECTATOR'
 
 type InvitePopoverWidgetProps = {
   show: boolean
-  joinCode: string | null
   joinUrl: string
   spectatorsEnabled: boolean
-  watchCode: string | null
   watchUrl: string
   onCopyInviteUrl: (inviteType: InviteType) => void
+}
+
+type InviteLinkRowProps = {
+  label: string
+  url: string
+  ariaLabel: string
+  onCopy: () => void
+}
+
+function InviteLinkRow(props: InviteLinkRowProps) {
+  return (
+    <div className="session-lobby-invite__row">
+      <strong className="session-lobby-invite__row-label">{props.label}</strong>
+      <div className="session-lobby-invite__row-value">{props.url}</div>
+      <button
+        type="button"
+        className="session-icon-action session-lobby-invite__copy"
+        aria-label={props.ariaLabel}
+        onClick={props.onCopy}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">
+          content_copy
+        </span>
+      </button>
+    </div>
+  )
 }
 
 export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
@@ -38,7 +62,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
     }
   }, [isOpen])
 
-  if (!props.show || !props.joinCode) {
+  if (!props.show || !props.joinUrl) {
     return null
   }
 
@@ -68,44 +92,20 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
           role="dialog"
           aria-label="Campaign invite links"
         >
-          <h5 className="session-inline-form-title session-lobby-invite__title">Join and Watch</h5>
+          <InviteLinkRow
+            label="Join"
+            url={props.joinUrl}
+            ariaLabel="Copy join invite URL"
+            onCopy={() => handleCopy('PLAYER')}
+          />
 
-          <div className="session-lobby-invite__row">
-            <div className="session-lobby-invite__row-heading">
-              <strong>Join</strong>
-              <span>Code: {props.joinCode}</span>
-            </div>
-            <div className="session-lobby-invite__row-value">{props.joinUrl}</div>
-            <button
-              type="button"
-              className="session-icon-action session-lobby-invite__copy"
-              aria-label="Copy join invite URL"
-              onClick={() => handleCopy('PLAYER')}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                content_copy
-              </span>
-            </button>
-          </div>
-
-          {props.spectatorsEnabled && props.watchCode ? (
-            <div className="session-lobby-invite__row">
-              <div className="session-lobby-invite__row-heading">
-                <strong>Watch</strong>
-                <span>Code: {props.watchCode}</span>
-              </div>
-              <div className="session-lobby-invite__row-value">{props.watchUrl}</div>
-              <button
-                type="button"
-                className="session-icon-action session-lobby-invite__copy"
-                aria-label="Copy watch invite URL"
-                onClick={() => handleCopy('SPECTATOR')}
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  content_copy
-                </span>
-              </button>
-            </div>
+          {props.spectatorsEnabled && props.watchUrl ? (
+            <InviteLinkRow
+              label="Watch"
+              url={props.watchUrl}
+              ariaLabel="Copy watch invite URL"
+              onCopy={() => handleCopy('SPECTATOR')}
+            />
           ) : null}
         </section>
       ) : null}
