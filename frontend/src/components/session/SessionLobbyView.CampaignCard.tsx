@@ -377,15 +377,14 @@ export function CampaignCard({
         >
           {renderCampaignDescription(campaign.description)}
         </div>
-        {isDescriptionExpanded ? (
-          <div
-            className="session-campaign-card__description-popover"
-            aria-label="Expanded campaign description"
-            tabIndex={0}
-          >
-            {renderCampaignDescription(campaign.description)}
-          </div>
-        ) : null}
+        <div
+          className={`session-campaign-card__description-popover ${isDescriptionExpanded ? 'is-open' : ''}`}
+          aria-label="Expanded campaign description"
+          aria-hidden={!isDescriptionExpanded}
+          tabIndex={isDescriptionExpanded ? 0 : -1}
+        >
+          {renderCampaignDescription(campaign.description)}
+        </div>
       </div>
       <span className="session-campaign-card__meta">Last active: {lastActiveLabel}</span>
 
