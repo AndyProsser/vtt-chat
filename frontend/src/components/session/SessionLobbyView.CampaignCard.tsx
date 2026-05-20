@@ -6,6 +6,7 @@
  */
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { useState } from 'react'
 import {
   type CampaignSummary,
   getCampaignEntryAction,
@@ -73,6 +74,114 @@ function formatLastActiveLabel(campaign: CampaignSummary): string {
   }
 }
 
+function renderInlineMarkdown(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = []
+  const tokenRegex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null = tokenRegex.exec(text)
+
+  while (match) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index))
+    }
+
+    const token = match[0]
+    if (token.startsWith('**') && token.endsWith('**')) {
+      nodes.push(<strong key={`${keyPrefix}-strong-${match.index}`}>{token.slice(2, -2)}</strong>)
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      nodes.push(<em key={`${keyPrefix}-em-${match.index}`}>{token.slice(1, -1)}</em>)
+    } else {
+      nodes.push(token)
+    }
+
+    lastIndex = match.index + token.length
+    match = tokenRegex.exec(text)
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex))
+  }
+
+  return nodes.length > 0 ? nodes : [text]
+}
+
+function renderCampaignDescription(markdown?: string | null): React.ReactNode {
+  const source = (markdown || '').trim()
+  if (!source) {
+    return <p>No description provided.</p>
+  }
+
+  const lines = source.split(/\r?\n/)
+  const nodes: React.ReactNode[] = []
+  let paragraphBuffer: string[] = []
+  let listType: 'ul' | 'ol' | null = null
+  let listItems: string[] = []
+
+  const flushParagraph = () => {
+    if (paragraphBuffer.length === 0) {
+      return
+    }
+
+    const text = paragraphBuffer.join(' ').trim()
+    if (text) {
+      nodes.push(<p key={`p-${nodes.length}`}>{renderInlineMarkdown(text, `p-${nodes.length}`)}</p>)
+    }
+    paragraphBuffer = []
+  }
+
+  const flushList = () => {
+    if (!listType || listItems.length === 0) {
+      return
+    }
+
+    const listKey = `${listType}-${nodes.length}`
+    const listChildren = listItems.map((item, index) => (
+      <li key={`${listKey}-item-${index}`}>{renderInlineMarkdown(item, `${listKey}-${index}`)}</li>
+    ))
+
+    nodes.push(
+      listType === 'ul' ? (
+        <ul key={listKey}>{listChildren}</ul>
+      ) : (
+        <ol key={listKey}>{listChildren}</ol>
+      )
+    )
+    listType = null
+    listItems = []
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) {
+      flushParagraph()
+      flushList()
+      continue
+    }
+
+    const ulMatch = line.match(/^-\s+(.+)$/)
+    const olMatch = line.match(/^\d+\.\s+(.+)$/)
+
+    if (ulMatch || olMatch) {
+      flushParagraph()
+      const nextType: 'ul' | 'ol' = ulMatch ? 'ul' : 'ol'
+      if (listType && listType !== nextType) {
+        flushList()
+      }
+      listType = nextType
+      listItems.push((ulMatch?.[1] || olMatch?.[1] || '').trim())
+      continue
+    }
+
+    flushList()
+    paragraphBuffer.push(line)
+  }
+
+  flushParagraph()
+  flushList()
+
+  return nodes.length > 0 ? nodes : <p>No description provided.</p>
+}
+
 export type CampaignCardProps = {
   campaign: CampaignSummary
   isSelected: boolean
@@ -94,6 +203,7 @@ export function CampaignCard({
   onWatchCampaign,
   onError,
 }: CampaignCardProps) {
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const state = getCampaignVisualState(campaign)
   const entryAction = getCampaignEntryAction(campaign)
   const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
@@ -117,6 +227,13 @@ export function CampaignCard({
 
   const reviewLabel =
     campaign.memberRole === 'DM' ? 'Edit' : campaign.memberRole === 'PLAYER' ? 'Review' : null
+
+  function handleDescriptionZoneBlur(event: React.FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget as Node | null
+    if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+      setIsDescriptionExpanded(false)
+    }
+  }
 
   function handleEntryClick(event: React.MouseEvent) {
     event.preventDefault()
@@ -153,6 +270,7 @@ export function CampaignCard({
         'session-campaign-card',
         isSelected ? 'is-selected' : '',
         cardPosterUrl ? 'has-poster' : '',
+        isDescriptionExpanded ? 'is-description-expanded' : '',
         isDimmed ? 'is-dimmed' : '',
       ]
         .filter(Boolean)
@@ -160,7 +278,7 @@ export function CampaignCard({
       style={
         cardPosterUrl
           ? {
-              backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
+              backgroundImage: `linear-gradient(rgba(9, 14, 24, 0.78), rgba(9, 14, 24, 0.78)), url(${cardPosterUrl})`,
             }
           : undefined
       }
@@ -244,9 +362,31 @@ export function CampaignCard({
         </Tooltip>
       </span>
 
-      <span className="session-campaign-card__description">
-        {campaign.description || 'No description provided.'}
-      </span>
+      <div
+        className="session-campaign-card__description-zone"
+        onMouseEnter={() => setIsDescriptionExpanded(true)}
+        onMouseLeave={() => setIsDescriptionExpanded(false)}
+        onFocusCapture={() => setIsDescriptionExpanded(true)}
+        onBlurCapture={handleDescriptionZoneBlur}
+      >
+        <div
+          className="session-campaign-card__description session-campaign-card__description--preview"
+          aria-label="Campaign description"
+          tabIndex={0}
+          aria-expanded={isDescriptionExpanded}
+        >
+          {renderCampaignDescription(campaign.description)}
+        </div>
+        {isDescriptionExpanded ? (
+          <div
+            className="session-campaign-card__description-popover"
+            aria-label="Expanded campaign description"
+            tabIndex={0}
+          >
+            {renderCampaignDescription(campaign.description)}
+          </div>
+        ) : null}
+      </div>
       <span className="session-campaign-card__meta">Last active: {lastActiveLabel}</span>
 
       <span className="session-campaign-card__actions">
