@@ -111,9 +111,27 @@ The browser extension lives in a separate repository: **[AndyProsser/vtt-chat-ex
 
 ---
 
+## Platform Support
+
+Linux is the supported runtime target for both server and development workflows.
+
+| Workflow                    | Supported Linux platforms              | Recommended             |
+| --------------------------- | -------------------------------------- | ----------------------- |
+| **PROD (server/admin)**     | Ubuntu Server (primary support target) | Ubuntu LTS 24.x or 26.x |
+| **DEV (local development)** | Ubuntu/Debian, Fedora, CachyOS/Arch    | Ubuntu LTS 24.x or 26.x |
+
+Editor recommendation: **VS Code**.
+
+Notes:
+
+- PROD quick start in this README assumes Ubuntu Server and the `/opt/vtt-chat` deployment path.
+- DEV quick start assumes a cloned repo and uses in-repo commands (`./install --dev ...`, `./server --dev ...`).
+
+---
+
 ## Quick Start — Self-Hosting on Ubuntu Server
 
-VTT-Chat is designed to run on a home server or small VPS. The `infra/scripts/install.sh` script handles all dependencies and initial configuration on Ubuntu Server 22.04+.
+VTT-Chat is designed to run on a home server or small VPS. The `infra/scripts/install.sh` script handles prerequisites and initial configuration on Ubuntu Server 22.04+.
 
 **Before you start, you will need:**
 
@@ -126,7 +144,7 @@ VTT-Chat is designed to run on a home server or small VPS. The `infra/scripts/in
 curl -fsSL https://raw.githubusercontent.com/AndyProsser/vtt-chat/main/infra/scripts/install.sh | sudo bash -s setup
 ```
 
-This installs Docker, Caddy, and UFW; downloads the latest release; and writes a config file at `/opt/vtt-chat/infra/install-config.yml`.
+This installs Docker and firewall prerequisites, stages the runtime in `/opt/vtt-chat`, and writes a config file at `/opt/vtt-chat/infra/install-config.yml`.
 
 ### 2. Edit the config
 
@@ -136,14 +154,27 @@ sudo nano /opt/vtt-chat/infra/install-config.yml
 
 Set your domain name at minimum. Passwords marked `auto` are generated randomly on first run.
 
-### 3. Start the stack
+### 3. Build and manage the stack with `./server`
 
 ```bash
 cd /opt/vtt-chat
-docker compose up -d
+./server doctor
+./server build
+./server start
 ```
 
 VTT-Chat will be available at `https://your-domain:8443`.
+
+For ongoing admin operations, use:
+
+```bash
+cd /opt/vtt-chat
+./server status
+./server restart
+./server stop
+./server update
+./server clean
+```
 
 For full setup details, reverse-proxy configuration, and upgrade instructions see [docs/operations/](docs/operations/).
 
@@ -158,14 +189,27 @@ See [DEVELOPING.md](DEVELOPING.md) for the full setup guide (Linux/Ubuntu focuse
 ```bash
 git clone https://github.com/AndyProsser/vtt-chat.git
 cd vtt-chat
-npm install                                        # installs all workspaces
-docker compose -f docker-compose.dev.yml up -d    # starts Postgres, Redis, LiveKit
-# in separate terminals:
-npm run dev --prefix backend
-npm run dev --prefix frontend
+./install --dev check
+./install --dev setup
+
+# build and manage DEV stack using tested compose/caddy/livekit configs
+./server --dev doctor
+./server --dev build
+./server --dev start
+./server --dev status
 ```
 
-Backend runs on `http://localhost:3000`, frontend on `http://localhost:5173`.
+The web app is served through Caddy on a single web entrypoint:
+
+- DEV: `http://localhost:8080`
+- PROD: `https://your-domain:8443` (or your configured HTTPS port)
+
+Backend/frontend/admin service ports (`3000`, `5173`, `5174`) are internal container ports used inside the Docker network.
+
+Database exposure by mode:
+
+- DEV: PostgreSQL is exposed for local tooling (default host port `5432`)
+- PROD: PostgreSQL is not exposed publicly; it remains internal to the Docker network
 
 Operator note: backend container startup wait/retry and Prisma schema sync behavior is documented in [backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior](backend/README.md#container-startup-db-wait-schema-sync-and-failure-behavior). For container health state details, see [Container Health Checks](#container-health-checks) below.
 
@@ -175,15 +219,22 @@ Operator note: backend container startup wait/retry and Prisma schema sync behav
 
 All services in both dev and production environments include healthchecks so Docker Compose and orchestrators can track readiness state. Services wait for their dependencies to be healthy before starting.
 
-| Container      | Port      | Check Target                            | What It Verifies                              |
-| -------------- | --------- | --------------------------------------- | --------------------------------------------- |
-| **Backend**    | 3000      | HTTP `GET /health`                      | App is running and can respond to requests    |
-| **Frontend**   | 5173      | HTTP `GET /`                            | Vite dev server (dev) or built SPA is serving |
-| **Admin**      | 5174      | HTTP `GET /`                            | Admin dashboard is serving                    |
-| **PostgreSQL** | 5432      | `pg_isready`                            | Database is accepting connections             |
-| **Redis**      | 6379      | `redis-cli PING`                        | Cache/bus is responding                       |
-| **LiveKit**    | 7880      | HTTP `GET /` (expects OK)               | WebRTC signaling server is responsive         |
-| **Caddy**      | 8080/8443 | HTTP `GET http://127.0.0.1:2019/config` | Reverse proxy admin API is responsive         |
+| Container      | Internal Port | Check Target                            | What It Verifies                              |
+| -------------- | ------------- | --------------------------------------- | --------------------------------------------- |
+| **Backend**    | 3000          | HTTP `GET /health`                      | App is running and can respond to requests    |
+| **Frontend**   | 5173          | HTTP `GET /`                            | Vite dev server (dev) or built SPA is serving |
+| **Admin**      | 5174          | HTTP `GET /`                            | Admin dashboard is serving                    |
+| **PostgreSQL** | 5432          | `pg_isready`                            | Database is accepting connections             |
+| **Redis**      | 6379          | `redis-cli PING`                        | Cache/bus is responding                       |
+| **LiveKit**    | 7880          | HTTP `GET /` (expects OK)               | WebRTC signaling server is responsive         |
+| **Caddy**      | 8080/8443     | HTTP `GET http://127.0.0.1:2019/config` | Reverse proxy admin API is responsive         |
+
+External web access is via Caddy only (single web port):
+
+- DEV: `http://localhost:8080`
+- PROD: `https://<domain>:<https_port>` (default `8443`)
+
+Note: In DEV, PostgreSQL is exposed on the host for local tooling. In PROD, PostgreSQL is not exposed on a public host port.
 
 **Check status in a running stack:**
 

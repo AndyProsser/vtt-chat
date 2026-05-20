@@ -35,17 +35,91 @@ Commands:
   update    Refresh the install from the repository and rebuild
   doctor    Check config integrity for the selected mode
   status    Show Docker Compose service status
+  clean     Remove stale Docker artifacts and logs (default). In DEV, use --full to destroy all DEV data and containers (confirmation required).
   help      Show this help message
 
 Examples:
   server start              # Start PROD environment
   server --dev start        # Start DEV environment
   server --dev stop         # Stop DEV environment
+  server clean              # Prune stale Docker images, containers, volumes, logs
+  server --dev clean --full # FULLY DESTROY all DEV Docker data, containers, images, volumes, logs (confirmation required)
 
 Before running build, edit $CONFIG_FILE with your desired ports and credentials.
 
 ⚠️  WARNING: Do not run PROD and DEV instances simultaneously. They use common ports and may conflict.
 HELP
+}
+
+# --- CLEAN COMMAND IMPLEMENTATION ---
+function clean_logs_and_artifacts() {
+  echo "Cleaning custom logs and workspace artifacts..."
+  # Remove logs in root, backend, frontend, admin (e.g. *.log, logs/*, coverage, dist, etc.)
+  find "$INSTALL_DIR" -type f -name "*.log" -exec rm -f {} +
+  find "$INSTALL_DIR" -type d -name "logs" -exec rm -rf {} +
+  # Run npm run clean in root, backend, frontend, admin if package.json exists
+  for d in "$INSTALL_DIR" "$INSTALL_DIR/backend" "$INSTALL_DIR/frontend" "$INSTALL_DIR/admin"; do
+    if [[ -f "$d/package.json" ]]; then
+      (cd "$d" && npm run clean >/dev/null 2>&1 || true)
+    fi
+  done
+}
+
+function clean_docker_stale() {
+  echo "Pruning unused Docker containers, images, volumes, and networks..."
+  docker container prune -f
+  docker image prune -af
+  docker volume prune -f
+  docker network prune -f
+}
+
+function clean_docker_dev_full() {
+  echo "Stopping and removing all DEV containers, images, volumes, and logs..."
+  local regex
+  regex=$(get_dev_container_name_regex)
+  # Stop and remove DEV containers
+  docker ps -a --format '{{.Names}}' | grep -E "$regex" | xargs -r docker rm -f || true
+  # Remove DEV images
+  docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E 'vttchat-.*-dev' | awk '{print $2}' | xargs -r docker rmi -f || true
+  # Remove DEV volumes
+  docker volume ls --format '{{.Name}}' | grep -E 'vttchat_.*_dev' | xargs -r docker volume rm -f || true
+  # Remove DEV networks
+  docker network ls --format '{{.Name}}' | grep -E 'vttchat-.*-dev' | xargs -r docker network rm -f || true
+  # Remove logs and artifacts
+  clean_logs_and_artifacts
+}
+
+function clean_command() {
+  local full_clean=false
+  for arg in "$@"; do
+    if [[ "$arg" == "--full" ]]; then
+      full_clean=true
+    fi
+  done
+
+  if [[ "$DEV_MODE" == "true" ]]; then
+    if [[ "$full_clean" == "true" ]]; then
+      echo -e "\n\033[1;31mWARNING: This will STOP and REMOVE ALL DEV containers, images, volumes, networks, and logs. ALL DEV DATA WILL BE DESTROYED.\033[0m"
+      if is_interactive_shell; then
+        if ! prompt_user "Are you sure you want to FULLY CLEAN DEV Docker and workspace? This cannot be undone."; then
+          echo "Aborted."
+          exit 1
+        fi
+      fi
+      clean_docker_dev_full
+      echo -e "\033[1;32mDEV Docker and workspace fully cleaned.\033[0m"
+    else
+      clean_docker_stale
+      clean_logs_and_artifacts
+      echo -e "\033[1;32mStale Docker artifacts and logs cleaned (DEV).\033[0m"
+    fi
+  else
+    # PROD: only allow stale prune, never destructive
+    echo -e "\033[1;33mPROD mode: Only cleaning stale Docker images, containers, volumes, and logs. No data or running containers will be destroyed.\033[0m"
+    clean_docker_stale
+    clean_logs_and_artifacts
+    echo -e "\033[1;32mStale Docker artifacts and logs cleaned (PROD).\033[0m"
+  fi
 }
 
 function is_interactive_shell() {
@@ -962,8 +1036,9 @@ function update() {
   start
 }
 
-# Parse arguments to extract --dev flag
+# Parse arguments to extract --dev, --force, --prompt-overwrite, and --full flags
 COMMAND=""
+EXTRA_ARGS=()
 for arg in "$@"; do
   if [[ "$arg" == "--dev" ]]; then
     DEV_MODE=true
@@ -973,6 +1048,8 @@ for arg in "$@"; do
     PROMPT_OVERWRITE=true
   elif [[ -z "$COMMAND" && "$arg" != -* ]]; then
     COMMAND="$arg"
+  else
+    EXTRA_ARGS+=("$arg")
   fi
 done
 
@@ -1000,6 +1077,9 @@ case "$COMMAND" in
     ;;
   status)
     status
+    ;;
+  clean|CLEAN)
+    clean_command "${EXTRA_ARGS[@]}"
     ;;
   help|-h|--help)
     show_help
