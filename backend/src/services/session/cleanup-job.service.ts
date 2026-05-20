@@ -7,11 +7,9 @@ import {
   listEndedSessionsWithCampaign,
   campaignHasActiveSessions,
   listEndedSessionIdsByCampaign,
-  listSessionsByCampaign,
 } from '@/repositories/session.repository'
 import { getRooms, getSessionPresence } from '@/services/room.service'
-import { ensureSessionDefaultRoomsForSession } from '@/services/room/lifecycle.service'
-import { updateSessionState, getSessionUsers, createSession } from '@/services/session/core.service'
+import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
@@ -19,6 +17,8 @@ import {
   STANDALONE_SESSION_COOLDOWN_MS,
 } from '@/constants/session.constants'
 import { logger, isGreenRoomName } from '@/utils'
+
+const LIFECYCLE_POLL_INTERVAL_MS = 60_000
 
 async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
   const [members, presence] = await Promise.all([
@@ -132,28 +132,21 @@ export class SessionCleanupJobService {
   private archiveWorkerRunning = false
 
   start(): void {
-    if (this.lifecycleIntervalId !== null || this.archiveIntervalId !== null) {
+    if (this.archiveIntervalId !== null) {
       return
     }
 
     const intervalMs = config.sessionCleanup.jobIntervalMinutes * 60_000
-    this.lifecycleIntervalId = setInterval(() => {
-      void this.runLifecycleWorkerOnce()
-    }, intervalMs)
-
     this.archiveIntervalId = setInterval(() => {
       void this.runArchiveWorkerOnce()
     }, intervalMs)
-
-    logger.info('session-cleanup-job', 'Scheduled lifecycle cleanup worker started', {
-      intervalMinutes: config.sessionCleanup.jobIntervalMinutes,
-      endedDisconnectGraceMs: config.sessionCleanup.endedDisconnectGraceMs,
-    })
 
     logger.info('session-cleanup-job', 'Scheduled archive verification worker started', {
       intervalMinutes: config.sessionCleanup.jobIntervalMinutes,
       minCleanupAgeMinutes: config.sessionCleanup.minCleanupAgeMinutes,
     })
+
+    void this.refreshLifecycleScheduler('bootstrap')
   }
 
   stop(): void {
@@ -169,8 +162,71 @@ export class SessionCleanupJobService {
   }
 
   async runOnce(): Promise<void> {
-    await this.runLifecycleWorkerOnce()
+    await this.runLifecycleSweepOnce()
     await this.runArchiveWorkerOnce()
+  }
+
+  notifyLifecycleTrigger(reason: 'COOLDOWN_STARTED' | 'SESSION_ENDED'): void {
+    void this.refreshLifecycleScheduler(reason)
+  }
+
+  private async refreshLifecycleScheduler(reason: string): Promise<void> {
+    await this.runLifecycleSweepOnce()
+
+    const hasPending = await this.hasPendingLifecycleWork()
+    if (!hasPending) {
+      this.clearLifecycleScheduler('idle')
+      return
+    }
+
+    if (this.lifecycleIntervalId !== null) {
+      return
+    }
+
+    this.lifecycleIntervalId = setInterval(() => {
+      void this.handleLifecycleTick()
+    }, LIFECYCLE_POLL_INTERVAL_MS)
+
+    logger.info('session-cleanup-job', 'Started on-demand lifecycle cleanup scheduler', {
+      reason,
+      intervalMs: LIFECYCLE_POLL_INTERVAL_MS,
+      endedDisconnectGraceMs: config.sessionCleanup.endedDisconnectGraceMs,
+    })
+  }
+
+  private async handleLifecycleTick(): Promise<void> {
+    await this.runLifecycleSweepOnce()
+
+    const hasPending = await this.hasPendingLifecycleWork()
+    if (!hasPending) {
+      this.clearLifecycleScheduler('drained')
+    }
+  }
+
+  private clearLifecycleScheduler(reason: 'idle' | 'drained'): void {
+    if (this.lifecycleIntervalId === null) {
+      return
+    }
+
+    clearInterval(this.lifecycleIntervalId)
+    this.lifecycleIntervalId = null
+
+    logger.info('session-cleanup-job', 'Stopped on-demand lifecycle cleanup scheduler', {
+      reason,
+    })
+  }
+
+  private async hasPendingLifecycleWork(): Promise<boolean> {
+    const [cooldownSessions, endedSessions] = await Promise.all([
+      listCooldownSessionsWithCampaign(),
+      listEndedSessionsWithCampaign(),
+    ])
+
+    return cooldownSessions.length > 0 || endedSessions.length > 0
+  }
+
+  private async runLifecycleSweepOnce(): Promise<void> {
+    await this.runLifecycleWorkerOnce()
   }
 
   async runLifecycleWorkerOnce(): Promise<void> {

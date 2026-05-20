@@ -56,6 +56,7 @@ import {
   logSessionLeave,
   logSessionStateChange,
 } from '@/services/session/logs.service'
+import { sessionCleanupJobService } from '@/services/session/cleanup-job.service'
 import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
@@ -1181,6 +1182,10 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       cooldownDurationMs,
     })
 
+    if (requestedState === SessionStateEnum.COOLDOWN) {
+      sessionCleanupJobService.notifyLifecycleTrigger('COOLDOWN_STARTED')
+    }
+
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
 
     res.status(200).json({
@@ -1494,6 +1499,8 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
       previousSession?.state || 'UNKNOWN',
       toPublicSessionState(session.state) ?? session.state
     )
+
+    sessionCleanupJobService.notifyLifecycleTrigger('SESSION_ENDED')
 
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
 
