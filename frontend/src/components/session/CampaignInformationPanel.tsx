@@ -474,7 +474,7 @@ export function CampaignInformationPanel({
                 id="cip-description"
                 ref={descriptionInputRef}
                 className="cip-textarea"
-                rows={4}
+                rows={7}
                 value={descriptionDraft}
                 onChange={(event) => setDescriptionDraft(event.target.value)}
                 disabled={isSaving}
