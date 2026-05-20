@@ -41,6 +41,8 @@ type SessionLobbyViewProps = {
 
 export function SessionLobbyView(props: SessionLobbyViewProps) {
   const discoverableCampaigns = props.discoverableCampaigns ?? []
+  const totalVisibleCampaigns = props.campaigns.length + discoverableCampaigns.length
+  const shouldShowSparseFiller = !props.isLoadingCampaigns && totalVisibleCampaigns <= 3
 
   return (
     <TooltipProvider delayDuration={140}>
@@ -255,7 +257,7 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
 
           <div className="session-lobby-campaign-sections">
             <section className="session-lobby-campaign-section" aria-label="Member or DM campaigns">
-              <h4 className="session-lobby-campaign-section__title">Member or DM Of</h4>
+              <h4 className="session-lobby-campaign-section__title">Your Campiagns</h4>
               {props.isLoadingCampaigns ? (
                 <div className="session-status-message">Loading campaigns...</div>
               ) : props.campaigns.length === 0 ? (
@@ -312,6 +314,15 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                   </div>
                 </section>
               </>
+            )}
+
+            {shouldShowSparseFiller && (
+              <div className="session-lobby-campaign-filler" aria-hidden="true">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  auto_awesome
+                </span>
+                <span>More adventures will appear here as campaigns join your roster.</span>
+              </div>
             )}
           </div>
         </div>

@@ -612,7 +612,52 @@ These rules govern how campaign state is presented in the lobby and dashboard. T
 
 - Campaign cards in the lobby show the DM's presence as `Online` or `Offline`.
 - No finer-grained status (e.g. typing, speaking) is surfaced at the campaign card level.
-- `Online` means the DM has an active authenticated WS connection. `Offline` means they do not.
+- `Online` means the DM is connected to the campaign's active realtime session context.
+- `Offline` means the DM is not connected to that campaign's active realtime session context (including while the DM is only in lobby/offline workspace mode).
+
+### Lobby Campaign State Mapping
+
+- Campaign status badges are derived from canonical session state plus live connected-table presence.
+- `OFFLINE` is shown when no DM/player is connected to the active table for that campaign.
+- `READY` is shown for connected `IDLE` sessions.
+- `ACTIVE` is shown for connected `ACTIVE` or `PAUSED` sessions.
+- `FINISHING` is shown for connected `COOLDOWN` sessions.
+- `ENDED` is shown for connected `ENDED` sessions.
+- `CLEANUP` is treated as not-live for lobby card state and must not be presented as a separate user-facing campaign status.
+
+#### Lobby Campaign State Matrix (Quick Reference)
+
+| Canonical Session State | Connected DM/Player Present | Lobby Card Status |
+| ----------------------- | --------------------------- | ----------------- |
+| `IDLE`                  | No                          | `OFFLINE`         |
+| `IDLE`                  | Yes                         | `READY`           |
+| `ACTIVE`                | No                          | `OFFLINE`         |
+| `ACTIVE`                | Yes                         | `ACTIVE`          |
+| `PAUSED`                | No                          | `OFFLINE`         |
+| `PAUSED`                | Yes                         | `ACTIVE`          |
+| `COOLDOWN`              | No                          | `OFFLINE`         |
+| `COOLDOWN`              | Yes                         | `FINISHING`       |
+| `ENDED`                 | No                          | `OFFLINE`         |
+| `ENDED`                 | Yes                         | `ENDED`           |
+| `CLEANUP`               | Either                      | `OFFLINE`         |
+
+### Lobby Connected Count Contract
+
+- Campaign list player/spectator counts must reflect real currently connected users in the campaign's active realtime session.
+- Guest users are included in those connected counts.
+- DEV/mock users are excluded from lobby connected counts.
+- Presence aggregation uses a short disconnect grace buffer to reduce visible flapping from heartbeat jitter/reconnect churn.
+
+### Lobby Sync and Invalidation
+
+- Lobby campaign cards are server-authoritative and refresh via websocket invalidation; manual page refresh is not required.
+- `CAMPAIGN:LIST_INVALIDATED` is the lobby invalidation event and must be emitted after lifecycle/membership mutations that change lobby-visible campaign state.
+- Explicit `Exit Session`/leave actions must invalidate lobby projections immediately after persistence so DM/card status transitions are visible without heartbeat delay.
+
+### Lobby List Structure
+
+- Campaign cards are grouped into two lobby sections: `Member or DM Of` and `Discoverable`.
+- The campaign card container is fixed-height within the lobby shell; section headers are sticky and only the campaign list body scrolls.
 
 ### Dashboard Metrics Privacy
 

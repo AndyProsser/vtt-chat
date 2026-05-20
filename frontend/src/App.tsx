@@ -245,16 +245,16 @@ export default function App() {
           <div className="app-shell__orb--info absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl" />
         </div>
 
-        <div className="relative flex h-full flex-col items-center">
+        <div className="relative flex h-full min-h-0 flex-col items-center">
           {authMessage && (
             <div className="app-shell__frame mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
               {authMessage}
             </div>
           )}
 
-          <main className="app-shell__frame font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0">
+          <main className="app-shell__frame font-sans mx-auto flex h-full min-h-0 flex-1 flex-col px-3 pt-0">
             <ToastViewport />
-            <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
+            <section className="flex h-full min-h-0 flex-1 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
               {renderRouteView()}
             </section>
           </main>

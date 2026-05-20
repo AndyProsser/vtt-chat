@@ -3476,7 +3476,7 @@ export function SessionInit({
   return (
     <>
       <div
-        className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home'}`}
+        className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home session-init-shell--lobby'}`}
       >
         {!hasSessionSelected && lobbyViewMode === 'list' && (
           <SessionLobbyView
