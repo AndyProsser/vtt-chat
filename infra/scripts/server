@@ -12,6 +12,17 @@ MODE="${MODE:-PROD}"
 DEV_MODE=false
 FORCE_OVERWRITE=false
 PROMPT_OVERWRITE=false
+DEV_FULL_CLEAN_DETECTED_CONTAINERS=0
+DEV_FULL_CLEAN_DETECTED_IMAGES=0
+DEV_FULL_CLEAN_DETECTED_VOLUMES=0
+DEV_FULL_CLEAN_DETECTED_BUILD_RECORDS=0
+DEV_FULL_CLEAN_REMOVED_CONTAINERS=0
+DEV_FULL_CLEAN_REMOVED_IMAGES=0
+DEV_FULL_CLEAN_REMOVED_VOLUMES=0
+DEV_FULL_CLEAN_REMOVED_BUILD_RECORDS=0
+PROD_CLEAN_DETECTED_BUILD_RECORDS=0
+PROD_CLEAN_REMOVED_BUILD_RECORDS=0
+PROD_CLEAN_RETAINED_BUILD_RECORDS=0
 
 function show_help() {
   cat <<HELP
@@ -57,6 +68,8 @@ function clean_logs_and_artifacts() {
   # Remove logs in root, backend, frontend, admin (e.g. *.log, logs/*, coverage, dist, etc.)
   find "$INSTALL_DIR" -type f -name "*.log" -exec rm -f {} +
   find "$INSTALL_DIR" -type d -name "logs" -exec rm -rf {} +
+  find "$INSTALL_DIR" -type d \( -name "dist" -o -name "coverage" -o -name ".turbo" -o -name ".vite" \) -exec rm -rf {} +
+
   # Run npm run clean in root, backend, frontend, admin if package.json exists
   for d in "$INSTALL_DIR" "$INSTALL_DIR/backend" "$INSTALL_DIR/frontend" "$INSTALL_DIR/admin"; do
     if [[ -f "$d/package.json" ]]; then
@@ -71,22 +84,227 @@ function clean_docker_stale() {
   docker image prune -af
   docker volume prune -f
   docker network prune -f
+  clean_failed_build_history
+}
+
+function list_build_history_refs() {
+  if ! docker buildx history ls >/dev/null 2>&1; then
+    return 0
+  fi
+
+  docker buildx history ls --format '{{json .}}' 2>/dev/null \
+    | sed -nE 's/.*"ref":"([^"]+)".*/\1/p' \
+    | awk 'NF' \
+    | sort -u || true
+}
+
+function list_build_history_refs_older_than() {
+  local cutoff_epoch="$1"
+  local keep_recent="$2"
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  docker buildx history ls --format '{{json .}}' 2>/dev/null \
+    | sed -nE 's/.*"created_at":"([^"]+)".*"ref":"([^"]+)".*/\1|\2/p' \
+    | awk 'NF' \
+    | sort -r >"$tmp_file" || true
+
+  local line_index=0
+  local row
+  while IFS= read -r row; do
+    [[ -z "$row" ]] && continue
+    ((line_index += 1))
+
+    if (( line_index <= keep_recent )); then
+      continue
+    fi
+
+    local created_at
+    local ref
+    local created_epoch
+    created_at="${row%%|*}"
+    ref="${row#*|}"
+    created_epoch=$(date -u -d "$created_at" +%s 2>/dev/null || echo 0)
+
+    if (( created_epoch < cutoff_epoch )); then
+      echo "$ref"
+    fi
+  done <"$tmp_file"
+
+  rm -f "$tmp_file"
+}
+
+function count_lines_in_file() {
+  local file_path="$1"
+  awk 'NF { count += 1 } END { print count + 0 }' "$file_path"
+}
+
+function count_removed_between_snapshots() {
+  local before_file="$1"
+  local after_file="$2"
+
+  comm -23 "$before_file" "$after_file" | awk 'NF { count += 1 } END { print count + 0 }'
+}
+
+function clean_docker_build_history() {
+  if ! docker buildx history ls >/dev/null 2>&1; then
+    return 0
+  fi
+
+  mapfile -t build_history_refs < <(list_build_history_refs)
+  if [[ ${#build_history_refs[@]} -gt 0 ]]; then
+    docker buildx history rm "${build_history_refs[@]}" >/dev/null 2>&1 || true
+  fi
+
+  # Clear BuildKit cache records that also surface in Desktop build metadata.
+  docker buildx prune -af >/dev/null 2>&1 || true
+  docker builder prune -af >/dev/null 2>&1 || true
+}
+
+function clean_docker_build_history_old_records() {
+  PROD_CLEAN_DETECTED_BUILD_RECORDS=0
+  PROD_CLEAN_REMOVED_BUILD_RECORDS=0
+  PROD_CLEAN_RETAINED_BUILD_RECORDS=0
+
+  if ! docker buildx history ls >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local retention_days
+  local keep_recent
+  local cutoff_epoch
+  retention_days="${PROD_BUILDX_HISTORY_RETENTION_DAYS:-7}"
+  keep_recent="${PROD_BUILDX_HISTORY_KEEP_RECENT:-3}"
+  cutoff_epoch=$(date -u -d "${retention_days} days ago" +%s)
+
+  mapfile -t before_refs < <(list_build_history_refs)
+  PROD_CLEAN_DETECTED_BUILD_RECORDS=${#before_refs[@]}
+
+  mapfile -t old_refs < <(list_build_history_refs_older_than "$cutoff_epoch" "$keep_recent")
+  if [[ ${#old_refs[@]} -gt 0 ]]; then
+    docker buildx history rm "${old_refs[@]}" >/dev/null 2>&1 || true
+  fi
+
+  clean_failed_build_history
+
+  mapfile -t after_refs < <(list_build_history_refs)
+  PROD_CLEAN_RETAINED_BUILD_RECORDS=${#after_refs[@]}
+  PROD_CLEAN_REMOVED_BUILD_RECORDS=$((PROD_CLEAN_DETECTED_BUILD_RECORDS - PROD_CLEAN_RETAINED_BUILD_RECORDS))
+  if (( PROD_CLEAN_REMOVED_BUILD_RECORDS < 0 )); then
+    PROD_CLEAN_REMOVED_BUILD_RECORDS=0
+  fi
+
+  # Prune cache records older than retained current history entries.
+  docker buildx prune -af >/dev/null 2>&1 || true
+  docker builder prune -af >/dev/null 2>&1 || true
+}
+
+function list_dev_container_ids() {
+  docker ps -a --format '{{.ID}}|{{.Names}}' | grep -E "$(get_dev_container_name_regex)" | cut -d'|' -f1 | sort -u || true
+}
+
+function list_dev_image_ids() {
+  {
+    docker ps -a --format '{{.Image}}|{{.Names}}' | grep -E "$(get_dev_container_name_regex)" | cut -d'|' -f1 | xargs -r docker image inspect --format '{{.Id}}' 2>/dev/null || true
+    docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E 'vttchat-.*-dev' | awk '{print $2}' || true
+  } | sort -u
+}
+
+function list_dev_volume_names() {
+  docker volume ls --format '{{.Name}}' | grep -E '(vttchat_.*_dev|postgres_data_dev|backend_node_modules|frontend_node_modules|admin_node_modules)$' | sort -u || true
+}
+
+function count_missing_container_ids() {
+  local count=0
+  local container_id
+  for container_id in "$@"; do
+    [[ -z "$container_id" ]] && continue
+    if ! docker container inspect "$container_id" >/dev/null 2>&1; then
+      ((count += 1))
+    fi
+  done
+  echo "$count"
+}
+
+function count_missing_image_ids() {
+  local count=0
+  local image_id
+  for image_id in "$@"; do
+    [[ -z "$image_id" ]] && continue
+    if ! docker image inspect "$image_id" >/dev/null 2>&1; then
+      ((count += 1))
+    fi
+  done
+  echo "$count"
+}
+
+function count_missing_volume_names() {
+  local count=0
+  local volume_name
+  for volume_name in "$@"; do
+    [[ -z "$volume_name" ]] && continue
+    if ! docker volume inspect "$volume_name" >/dev/null 2>&1; then
+      ((count += 1))
+    fi
+  done
+  echo "$count"
+}
+
+function clean_dev_compose_resources() {
+  local compose_file
+  compose_file="$(get_compose_file)"
+
+  if [[ -f "$compose_file" ]]; then
+    # Compose-native cleanup is the most reliable way to remove named volumes and images
+    # for the selected DEV stack regardless of current running state.
+    docker compose -f "$compose_file" down --volumes --rmi all --remove-orphans || true
+  fi
 }
 
 function clean_docker_dev_full() {
   echo "Stopping and removing all DEV containers, images, volumes, and logs..."
+
+  local -a before_container_ids=()
+  local -a before_image_ids=()
+  local -a before_volume_names=()
+  local before_build_history_file
+  local after_build_history_file
+
+  before_build_history_file=$(mktemp)
+  after_build_history_file=$(mktemp)
+
+  mapfile -t before_container_ids < <(list_dev_container_ids)
+  mapfile -t before_image_ids < <(list_dev_image_ids)
+  mapfile -t before_volume_names < <(list_dev_volume_names)
+  list_build_history_refs >"$before_build_history_file"
+
+  DEV_FULL_CLEAN_DETECTED_CONTAINERS=${#before_container_ids[@]}
+  DEV_FULL_CLEAN_DETECTED_IMAGES=${#before_image_ids[@]}
+  DEV_FULL_CLEAN_DETECTED_VOLUMES=${#before_volume_names[@]}
+  DEV_FULL_CLEAN_DETECTED_BUILD_RECORDS=$(count_lines_in_file "$before_build_history_file")
+
+  clean_dev_compose_resources
+
   local regex
   regex=$(get_dev_container_name_regex)
-  # Stop and remove DEV containers
+
+  # Remove any lingering resources that are still using DEV naming.
   docker ps -a --format '{{.Names}}' | grep -E "$regex" | xargs -r docker rm -f || true
-  # Remove DEV images
   docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E 'vttchat-.*-dev' | awk '{print $2}' | xargs -r docker rmi -f || true
-  # Remove DEV volumes
-  docker volume ls --format '{{.Name}}' | grep -E 'vttchat_.*_dev' | xargs -r docker volume rm -f || true
-  # Remove DEV networks
+  docker volume ls --format '{{.Name}}' | grep -E '(vttchat_.*_dev|postgres_data_dev|backend_node_modules|frontend_node_modules|admin_node_modules)$' | xargs -r docker volume rm -f || true
   docker network ls --format '{{.Name}}' | grep -E 'vttchat-.*-dev' | xargs -r docker network rm -f || true
-  # Remove logs and artifacts
+
   clean_logs_and_artifacts
+  clean_docker_build_history
+
+  list_build_history_refs >"$after_build_history_file"
+
+  DEV_FULL_CLEAN_REMOVED_CONTAINERS=$(count_missing_container_ids "${before_container_ids[@]}")
+  DEV_FULL_CLEAN_REMOVED_IMAGES=$(count_missing_image_ids "${before_image_ids[@]}")
+  DEV_FULL_CLEAN_REMOVED_VOLUMES=$(count_missing_volume_names "${before_volume_names[@]}")
+  DEV_FULL_CLEAN_REMOVED_BUILD_RECORDS=$(count_removed_between_snapshots "$before_build_history_file" "$after_build_history_file")
+
+  rm -f "$before_build_history_file" "$after_build_history_file"
 }
 
 function clean_command() {
@@ -108,8 +326,11 @@ function clean_command() {
       fi
       clean_docker_dev_full
       echo -e "\033[1;32mDEV Docker and workspace fully cleaned.\033[0m"
+      echo "DEV full clean before -> removed: containers ${DEV_FULL_CLEAN_DETECTED_CONTAINERS} -> ${DEV_FULL_CLEAN_REMOVED_CONTAINERS}, images ${DEV_FULL_CLEAN_DETECTED_IMAGES} -> ${DEV_FULL_CLEAN_REMOVED_IMAGES}, volumes ${DEV_FULL_CLEAN_DETECTED_VOLUMES} -> ${DEV_FULL_CLEAN_REMOVED_VOLUMES}, build records ${DEV_FULL_CLEAN_DETECTED_BUILD_RECORDS} -> ${DEV_FULL_CLEAN_REMOVED_BUILD_RECORDS}."
+      echo "DEV full clean summary: removed ${DEV_FULL_CLEAN_REMOVED_CONTAINERS} containers, ${DEV_FULL_CLEAN_REMOVED_IMAGES} images, ${DEV_FULL_CLEAN_REMOVED_VOLUMES} volumes, ${DEV_FULL_CLEAN_REMOVED_BUILD_RECORDS} build records."
     else
       clean_docker_stale
+      clean_docker_build_history
       clean_logs_and_artifacts
       echo -e "\033[1;32mStale Docker artifacts and logs cleaned (DEV).\033[0m"
     fi
@@ -117,7 +338,9 @@ function clean_command() {
     # PROD: only allow stale prune, never destructive
     echo -e "\033[1;33mPROD mode: Only cleaning stale Docker images, containers, volumes, and logs. No data or running containers will be destroyed.\033[0m"
     clean_docker_stale
+    clean_docker_build_history_old_records
     clean_logs_and_artifacts
+    echo "PROD build history cleanup: detected ${PROD_CLEAN_DETECTED_BUILD_RECORDS} records, removed ${PROD_CLEAN_REMOVED_BUILD_RECORDS} old records, retained ${PROD_CLEAN_RETAINED_BUILD_RECORDS} current records."
     echo -e "\033[1;32mStale Docker artifacts and logs cleaned (PROD).\033[0m"
   fi
 }
@@ -204,12 +427,12 @@ function get_stack_name() {
 
 function get_dev_container_name_regex() {
   # DEV containers follow the `vttchat-<service>-dev` pattern.
-  echo '^vttchat-.*-dev\|'
+  echo '^vttchat-.*-dev(\||$)'
 }
 
 function get_prod_container_name_regex() {
   # PROD containers follow the `vttchat-<service>` pattern.
-  echo '^vttchat-(admin|backend|caddy|frontend|livekit|postgres|redis)\|'
+  echo '^vttchat-(admin|backend|caddy|frontend|livekit|postgres|redis)(\||$)'
 }
 
 function get_stack_container_name_regex() {
