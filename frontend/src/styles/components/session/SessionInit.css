@@ -3,12 +3,19 @@
   width: 100%;
   margin: 0 auto;
   padding: 8px 0.75rem;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .session-init-shell-home {
   border: 1px solid var(--color-border-soft);
   border-radius: 12px;
   background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .session-init-shell-wide {
@@ -72,6 +79,15 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-surface);
+}
+
+.session-card--lobby-list {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .session-card-header {
@@ -148,6 +164,13 @@
   gap: 0.5rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding-top: 6px;
+}
+
+.session-campaign-grid--scroll {
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  padding-right: 0.2rem;
 }
 
 .session-campaign-card {
@@ -500,6 +523,33 @@
   grid-template-columns: minmax(280px, 1fr) auto;
 }
 
+.session-lobby-stats {
+  margin-bottom: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.session-lobby-stats__chip {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  padding: 0.45rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.session-lobby-stats__chip .material-symbols-outlined {
+  font-size: 15px;
+}
+
+.session-lobby-stats__chip strong {
+  font-size: 0.78rem;
+}
+
 .session-toolbar--lobby .material-symbols-outlined {
   font-size: 16px;
 }
@@ -648,6 +698,14 @@
   flex-wrap: wrap;
 }
 
+.session-action-row--right {
+  justify-content: flex-end;
+}
+
+.session-action-row--compact {
+  margin-top: 0;
+}
+
 .session-action-row--confirm-dialog {
   justify-content: flex-end;
 }
@@ -697,6 +755,75 @@
     color-mix(in srgb, var(--color-surface-subtle) 65%, transparent),
     color-mix(in srgb, var(--color-surface) 94%, transparent)
   );
+}
+
+.session-lobby-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-subtle) 65%, transparent),
+    color-mix(in srgb, var(--color-surface) 94%, transparent)
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.session-lobby-workspace__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.session-lobby-workspace__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+
+.session-lobby-workspace__panel {
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
+  padding: 0.5rem;
+}
+
+.session-lobby-workspace__dock {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 91%, var(--color-surface-subtle) 9%);
+  width: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.3rem;
+}
+
+.session-lobby-workspace__dock-button {
+  height: 2.2rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.session-lobby-workspace__dock-button.is-active {
+  border-color: color-mix(in srgb, var(--color-brand) 58%, var(--color-border-soft));
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-brand) 12%, var(--color-surface));
 }
 
 .session-greenroom-card {
@@ -1289,6 +1416,25 @@
 
   .session-campaign-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-lobby-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-lobby-workspace__header {
+    flex-direction: column;
+  }
+
+  .session-lobby-workspace__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-lobby-workspace__dock {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 }
 

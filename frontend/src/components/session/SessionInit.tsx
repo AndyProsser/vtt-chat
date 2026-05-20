@@ -25,6 +25,7 @@ import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
 import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionLobbyView } from './SessionLobbyView'
+import { LobbyCampaignWorkspaceView } from './LobbyCampaignWorkspaceView'
 import { SessionInitModals } from './SessionInitModals'
 import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
@@ -71,6 +72,7 @@ import type {
 import {
   type CampaignSettingsPayload,
   type CampaignSummary,
+  getCampaignEntryAction,
   getCampaignDisplayState,
   resolveMembershipRole,
 } from './sessionInit.shared'
@@ -413,6 +415,41 @@ function toValidPostSessionDurationMinutes(value: unknown, fallback = 5): number
   return Math.max(1, Math.min(15, Math.round(parsed)))
 }
 
+function formatDurationCompact(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return '0m'
+  }
+
+  const totalMinutes = Math.round(durationMs / 60_000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours <= 0) {
+    return `${minutes}m`
+  }
+
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+}
+
+function resolveSessionPlayedDurationMs(session: SessionRecord, nowMs: number): number {
+  if (!session.startedAt) {
+    return 0
+  }
+
+  const baselineEndMs =
+    session.endedAt ||
+    (session.state === SessionState.PAUSED && session.pausedAt ? session.pausedAt : nowMs)
+
+  let durationMs = Math.max(0, baselineEndMs - session.startedAt)
+  durationMs -= Math.max(0, session.cumulativePauseMs || 0)
+
+  if (session.state === SessionState.PAUSED && session.pauseStartedAt) {
+    durationMs -= Math.max(0, nowMs - session.pauseStartedAt)
+  }
+
+  return Math.max(0, durationMs)
+}
+
 export function SessionInit({
   apiUrl,
   wsUrl,
@@ -438,9 +475,26 @@ export function SessionInit({
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
   const [newCampaignName, setNewCampaignName] = useState('')
-  const [newCampaignDescription, setNewCampaignDescription] = useState('')
   const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
+  const [lobbyViewMode, setLobbyViewMode] = useState<'list' | 'workspace'>('list')
+  const [lobbyStats, setLobbyStats] = useState<{
+    activeSessions: number
+    connectedPlayersAndDms: number
+    connectedSpectators: number
+    totalTimePlayedLabel: string
+    activeCampaigns: number
+    pausedCampaigns: number
+    averageSessionDurationLabel: string
+  }>({
+    activeSessions: 0,
+    connectedPlayersAndDms: 0,
+    connectedSpectators: 0,
+    totalTimePlayedLabel: '0m',
+    activeCampaigns: 0,
+    pausedCampaigns: 0,
+    averageSessionDurationLabel: '0m',
+  })
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false)
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
@@ -1431,6 +1485,28 @@ export function SessionInit({
     [loadCampaignSettings, loadCampaignSettingsSessionContext, campaignSettingsActions]
   )
 
+  const openLobbyCampaignWorkspace = useCallback(
+    (campaignId: UUID) => {
+      setSelectedCampaignId(campaignId)
+      setLobbyViewMode('workspace')
+
+      campaignSettingsActions.setSettingsCampaignId(campaignId)
+      campaignSettingsActions.setSettingsHomeTab('home')
+
+      void (async () => {
+        const settingsPayload = await loadCampaignSettings(campaignId)
+        const authoritativeLatestSessionId = (settingsPayload?.latestSessionId || '') as UUID | ''
+        await loadCampaignSettingsSessionContext(campaignId, authoritativeLatestSessionId)
+      })()
+    },
+    [
+      campaignSettingsActions,
+      loadCampaignSettings,
+      loadCampaignSettingsSessionContext,
+      setSelectedCampaignId,
+    ]
+  )
+
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {
       await sessionMembershipController.ensureSessionMembership(sessionId)
@@ -1584,6 +1660,104 @@ export function SessionInit({
 
     void loadCampaignSessions()
   }, [selectedCampaignId, clearSessions, replaceSessions, fetchCampaignSessionsData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadLobbyStats = async () => {
+      const connectedPlayersAndDms = campaigns.reduce(
+        (sum, campaign) => sum + (campaign.connectedPlayers || 0) + (campaign.dmOnline ? 1 : 0),
+        0
+      )
+      const connectedSpectators = campaigns.reduce(
+        (sum, campaign) => sum + (campaign.connectedSpectatorsRounded || 0),
+        0
+      )
+      const activeCampaigns = campaigns.filter(
+        (campaign) => getCampaignDisplayState(campaign) === 'ACTIVE'
+      ).length
+      const pausedCampaigns = campaigns.filter(
+        (campaign) => getCampaignDisplayState(campaign) === 'PAUSED'
+      ).length
+
+      let activeSessions = activeCampaigns
+
+      try {
+        const statusResponse = await fetchWithAuthGuard(`${apiUrl}/api/platform/status`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (statusResponse.ok) {
+          const statusPayload = (await statusResponse.json()) as { activeSessions?: number }
+          if (typeof statusPayload.activeSessions === 'number') {
+            activeSessions = Math.max(0, Math.floor(statusPayload.activeSessions))
+          }
+        }
+      } catch {
+        // Fall back to campaign-derived count when status endpoint is unavailable.
+      }
+
+      const nowMs = Date.now()
+      let totalSessionDurationMs = 0
+      let sevenDayDurationMs = 0
+      let sevenDaySessionCount = 0
+      const sevenDaysAgo = nowMs - 7 * 24 * 60 * 60 * 1000
+
+      if (campaigns.length > 0) {
+        const sessionLists = await Promise.all(
+          campaigns.map(async (campaign) => {
+            try {
+              return await fetchCampaignSessionsData(campaign.id)
+            } catch {
+              return [] as SessionRecord[]
+            }
+          })
+        )
+
+        for (const sessionList of sessionLists) {
+          for (const rawSession of sessionList) {
+            const session = normalizeSessionRecord(rawSession)
+            const playedMs = resolveSessionPlayedDurationMs(session, nowMs)
+            if (playedMs <= 0) {
+              continue
+            }
+
+            totalSessionDurationMs += playedMs
+
+            const startedAt = session.startedAt || 0
+            if (startedAt >= sevenDaysAgo) {
+              sevenDayDurationMs += playedMs
+              sevenDaySessionCount += 1
+            }
+          }
+        }
+      }
+
+      if (cancelled) {
+        return
+      }
+
+      setLobbyStats({
+        activeSessions,
+        connectedPlayersAndDms,
+        connectedSpectators,
+        totalTimePlayedLabel: formatDurationCompact(totalSessionDurationMs),
+        activeCampaigns,
+        pausedCampaigns,
+        averageSessionDurationLabel: formatDurationCompact(
+          sevenDaySessionCount > 0 ? sevenDayDurationMs / sevenDaySessionCount : 0
+        ),
+      })
+    }
+
+    void loadLobbyStats()
+
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl, campaigns, fetchCampaignSessionsData, fetchWithAuthGuard, token])
 
   useEffect(() => {
     if (!showCampaignSettingsModal || !settingsReferenceSessionId) {
@@ -1921,8 +2095,7 @@ export function SessionInit({
     typedRoomsBySession,
   ])
 
-  const handleCreateCampaign = async (e: React.FormEvent<Element>) => {
-    e.preventDefault()
+  const handleCreateCampaign = async (intent: 'edit' | 'launch') => {
     setError(null)
     setLobbyNotice(null)
 
@@ -1932,7 +2105,6 @@ export function SessionInit({
     }
 
     setIsCreatingCampaign(true)
-
     try {
       const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
         method: 'POST',
@@ -1942,7 +2114,6 @@ export function SessionInit({
         },
         body: JSON.stringify({
           name: newCampaignName,
-          description: newCampaignDescription || undefined,
         }),
       })
 
@@ -1956,13 +2127,18 @@ export function SessionInit({
       const nextCampaigns = [campaign, ...campaigns]
       setCampaigns(nextCampaigns)
       setSelectedCampaignId(campaign.id)
-      setLobbyNotice(
-        'Campaign created. Review the new card, then continue to launch when you are ready.'
-      )
       setShowCreateCampaignModal(false)
-      openCampaignSettingsModal(campaign.id)
+
+      if (intent === 'launch') {
+        setLobbyNotice('Campaign created. Launching now.')
+        setLobbyViewMode('list')
+        await handleEnterCampaign(campaign.id)
+      } else {
+        setLobbyNotice('Campaign created. Offline edit/review mode is ready.')
+        openLobbyCampaignWorkspace(campaign.id)
+      }
+
       setNewCampaignName('')
-      setNewCampaignDescription('')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       setError(message)
@@ -2059,6 +2235,14 @@ export function SessionInit({
       }
 
       const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
+
+      if (targetCampaign) {
+        const launchAction = getCampaignEntryAction(targetCampaign)
+        if (launchAction.disabled) {
+          setError(launchAction.reason || 'Launch is currently unavailable for this campaign.')
+          return
+        }
+      }
 
       if (targetCampaign?.memberRole === 'SPECTATOR') {
         const state = getCampaignDisplayState(targetCampaign)
@@ -3204,11 +3388,11 @@ export function SessionInit({
       <div
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home'}`}
       >
-        {!hasSessionSelected && (
+        {!hasSessionSelected && lobbyViewMode === 'list' && (
           <SessionLobbyView
             campaigns={campaigns}
+            lobbyStats={lobbyStats}
             selectedCampaignId={selectedCampaignId}
-            currentUserId={user.id}
             isLoadingCampaigns={isLoadingCampaigns}
             isCreatingCampaign={isCreatingCampaign}
             isJoiningCampaign={isJoiningCampaign}
@@ -3227,11 +3411,55 @@ export function SessionInit({
             onToggleTheme={handleToggleTheme}
             onOpenUserSettings={() => setShowUserSettingsModal(true)}
             onLogoff={handleLogoff}
-            onOpenCampaignSettings={openCampaignSettingsModal}
+            onOpenCampaignSettings={openLobbyCampaignWorkspace}
             onEnterCampaign={(campaignId) => {
               void handleEnterCampaign(campaignId)
             }}
             onError={setError}
+          />
+        )}
+
+        {!hasSessionSelected && lobbyViewMode === 'workspace' && (
+          <LobbyCampaignWorkspaceView
+            campaign={selectedCampaign || null}
+            role={membershipRole}
+            themeMode={themeMode}
+            isCreatingCampaign={isCreatingCampaign}
+            isJoiningCampaign={isJoiningCampaign}
+            connectionStatus={{
+              statusColorKey: connectionStatus.statusColorKey,
+              label: connectionStatus.label,
+              coreWsState: connectionStatus.coreWsState as
+                | 'CONNECTED'
+                | 'CONNECTING'
+                | 'DISCONNECTED',
+            }}
+            sessionCount={settingsCampaignSessions.length}
+            totalSessionDurationMs={settingsCampaignTotalDurationMs}
+            canEditCampaignInfo={Boolean(
+              selectedCampaign && selectedCampaign.currentDmId === user.id
+            )}
+            isLaunchDisabled={
+              selectedCampaign ? getCampaignEntryAction(selectedCampaign).disabled : true
+            }
+            launchDisabledReason={
+              selectedCampaign
+                ? getCampaignEntryAction(selectedCampaign).reason
+                : 'Select a campaign first.'
+            }
+            onBackToLobby={() => {
+              setLobbyViewMode('list')
+            }}
+            onCreateCampaign={() => setShowCreateCampaignModal(true)}
+            onJoinCampaign={() => setShowJoinCampaignModal(true)}
+            onToggleTheme={handleToggleTheme}
+            onOpenUserSettings={() => setShowUserSettingsModal(true)}
+            onLogoff={handleLogoff}
+            onLaunch={(campaignId) => {
+              setLobbyViewMode('list')
+              void handleEnterCampaign(campaignId)
+            }}
+            onSaveCampaignInfo={handleSaveCampaignInfoPanel}
           />
         )}
 
@@ -3505,10 +3733,8 @@ export function SessionInit({
         showCreateCampaignModal={showCreateCampaignModal}
         isCreatingCampaign={isCreatingCampaign}
         newCampaignName={newCampaignName}
-        newCampaignDescription={newCampaignDescription}
         onCreateCampaignSubmit={handleCreateCampaign}
         onNewCampaignNameChange={setNewCampaignName}
-        onNewCampaignDescriptionChange={setNewCampaignDescription}
         onCloseCreateCampaign={() => setShowCreateCampaignModal(false)}
         showJoinCampaignModal={showJoinCampaignModal}
         joinInviteInput={joinInviteInput}

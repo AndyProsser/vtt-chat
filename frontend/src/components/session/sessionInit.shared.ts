@@ -55,8 +55,8 @@ export type CampaignSettingsPayload = {
 }
 
 export type CampaignEntryAction = {
-  label: 'Launch' | 'Watch'
-  icon: 'rocket_launch' | 'visibility'
+  label: 'Launch'
+  icon: 'rocket_launch'
   disabled: boolean
   reason?: string
 }
@@ -74,6 +74,16 @@ export function getCampaignDisplayState(
 export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntryAction {
   const state = getCampaignDisplayState(campaign)
   const isSpectator = campaign.memberRole === 'SPECTATOR'
+  const hasDmAndPlayerOnline = Boolean(campaign.dmOnline) && (campaign.connectedPlayers || 0) > 0
+
+  if (!hasDmAndPlayerOnline) {
+    return {
+      label: 'Launch',
+      icon: 'rocket_launch',
+      disabled: true,
+      reason: 'Launch is available once at least one DM and one player are connected.',
+    }
+  }
 
   if (!isSpectator) {
     return {
@@ -85,26 +95,16 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
 
   if (state !== 'ACTIVE') {
     return {
-      label: 'Watch',
-      icon: 'visibility',
+      label: 'Launch',
+      icon: 'rocket_launch',
       disabled: true,
       reason: 'Spectators can only watch active campaigns.',
     }
   }
 
-  const hasTableOnline = Boolean(campaign.dmOnline) || (campaign.connectedPlayers || 0) > 0
-  if (!hasTableOnline) {
-    return {
-      label: 'Watch',
-      icon: 'visibility',
-      disabled: true,
-      reason: 'Campaign is active, but no DM or player is online yet.',
-    }
-  }
-
   return {
-    label: 'Watch',
-    icon: 'visibility',
+    label: 'Launch',
+    icon: 'rocket_launch',
     disabled: false,
   }
 }

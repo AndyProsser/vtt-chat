@@ -558,6 +558,101 @@ User clicks the `INFO` right-toolbar button.
 4. UI updates:
    - INFO panel opens and renders campaign overview details
    - DM sees editable campaign metadata controls
+
+---
+
+## 7. Lobby and Offline Campaign Workspace Flows
+
+### **7.1 User Opens Create Campaign Dialog**
+
+**UI Action:**
+User clicks `Create Campaign` from lobby topbar.
+
+**Flow:**
+
+1. `ui/openCreateCampaignDialog`
+2. Reducer: `uiReducer.setCreateCampaignDialog(true)`
+3. Store updates:
+   - Create dialog visible (top-offset, anchored near topbar)
+4. UI updates:
+   - Dialog shows only campaign name field
+   - Action row is right-aligned: `CANCEL | EDIT | LAUNCH`
+
+### **7.2 User Creates and Opens Offline Edit/Review**
+
+**UI Action:**
+User enters campaign name and clicks `EDIT`.
+
+**Flow:**
+
+1. `campaigns/create(intent='edit')`
+2. API: `POST /api/campaigns`
+3. Store updates:
+   - Campaign inserted in lobby list
+   - Campaign selected
+   - Lobby mode switches to offline campaign workspace
+4. UI updates:
+   - Dialog closes
+   - Offline workspace renders in-page (no modal), topbar preserved
+   - `INFO` panel opens by default
+
+### **7.3 User Creates and Launches Immediately**
+
+**UI Action:**
+User enters campaign name and clicks `LAUNCH`.
+
+**Flow:**
+
+1. `campaigns/create(intent='launch')`
+2. API: `POST /api/campaigns`
+3. API: enter/start session flow
+4. Store updates:
+   - Campaign created and selected
+   - Session selection resolves
+5. UI updates:
+   - User enters runtime campaign screen directly
+
+### **7.4 User Opens Join Dialog**
+
+**UI Action:**
+User clicks `Join Campaign` from lobby topbar.
+
+**Flow:**
+
+1. `ui/openJoinCampaignDialog`
+2. Reducer: `uiReducer.setJoinCampaignDialog(true)`
+3. Store updates:
+   - Join dialog visible (top-offset)
+4. UI updates:
+   - Right-aligned actions: `CANCEL | JOIN`
+
+### **7.5 User Switches Offline Workspace Panels**
+
+**UI Action:**
+User clicks a right-side icon in offline workspace.
+
+**Flow:**
+
+1. `ui/openOfflineWorkspacePanel(tab)`
+2. Reducer: `uiReducer.setOfflineWorkspacePanel(tab)`
+3. Store updates:
+   - Active panel key changes
+4. UI updates:
+   - Main panel body swaps in-page (not popover)
+   - Role visibility matches campaign context; `SETTINGS` hidden in offline mode
+
+### **7.6 Lobby Scroll Behavior**
+
+**Triggered by:**
+Campaign list exceeds available vertical space.
+
+**Flow:**
+
+1. No event dispatch required (layout behavior)
+2. UI updates:
+   - Topbar remains fixed
+   - Stats strip remains fixed
+   - Only campaign-card list area scrolls
    - Players/spectators see read-only metadata
 
 ---

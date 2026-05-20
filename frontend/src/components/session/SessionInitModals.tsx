@@ -15,10 +15,8 @@ type SessionInitModalsProps = {
   showCreateCampaignModal: boolean
   isCreatingCampaign: boolean
   newCampaignName: string
-  newCampaignDescription: string
-  onCreateCampaignSubmit: (event: FormEvent) => void
+  onCreateCampaignSubmit: (intent: 'edit' | 'launch') => void
   onNewCampaignNameChange: (value: string) => void
-  onNewCampaignDescriptionChange: (value: string) => void
   onCloseCreateCampaign: () => void
   showJoinCampaignModal: boolean
   joinInviteInput: string
@@ -111,7 +109,10 @@ export function SessionInitModals(props: SessionInitModalsProps) {
     <TooltipProvider delayDuration={140}>
       <>
         {props.showCreateCampaignModal ? (
-          <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal-backdrop session-modal-backdrop--top-offset"
+            role="presentation"
+          >
             <div
               className="session-modal"
               role="dialog"
@@ -120,8 +121,7 @@ export function SessionInitModals(props: SessionInitModalsProps) {
             >
               <h4 className="session-inline-form-title">Create Campaign</h4>
               <p className="session-card-subtitle">
-                Create a campaign, return to the lobby with it selected, and continue to launch when
-                you are ready.
+                Create the campaign and either open offline edit/review mode or launch directly.
               </p>
               {props.user.authType === 'GUEST' ? (
                 <p className="session-card-subtitle session-card-subtitle--warn">
@@ -129,7 +129,11 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                   campaign.
                 </p>
               ) : null}
-              <form onSubmit={props.onCreateCampaignSubmit}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                }}
+              >
                 <label className="session-label" htmlFor="create-campaign-name">
                   Campaign name
                 </label>
@@ -143,17 +147,6 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                   disabled={props.isCreatingCampaign}
                   required
                 />
-                <label className="session-label" htmlFor="create-campaign-description">
-                  Short description
-                </label>
-                <textarea
-                  id="create-campaign-description"
-                  value={props.newCampaignDescription}
-                  onChange={(event) => props.onNewCampaignDescriptionChange(event.target.value)}
-                  placeholder="Optional context for players before they continue into the campaign."
-                  className="session-textarea"
-                  disabled={props.isCreatingCampaign}
-                />
                 <div
                   className="session-create-campaign-note"
                   aria-label="Create campaign next steps"
@@ -162,27 +155,40 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                   <ul className="session-create-campaign-note__list">
                     <li>You become the campaign DM.</li>
                     <li>The new campaign appears selected in your lobby.</li>
-                    <li>You can open settings or continue to launch from the campaign card.</li>
+                    <li>You can open edit/review mode immediately or launch right away.</li>
                   </ul>
                 </div>
-                <div className="session-action-row">
+                <div className="session-action-row session-action-row--right">
                   <button
-                    type="submit"
+                    type="button"
+                    className="session-button session-button-neutral"
+                    onClick={props.onCloseCreateCampaign}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
                     disabled={
                       props.isCreatingCampaign ||
                       !props.newCampaignName.trim() ||
                       props.user.authType === 'GUEST'
                     }
                     className="session-button session-button-brand"
+                    onClick={() => props.onCreateCampaignSubmit('edit')}
                   >
-                    {props.isCreatingCampaign ? 'Creating...' : 'Create Campaign and Continue'}
+                    {props.isCreatingCampaign ? 'Saving...' : 'Edit'}
                   </button>
                   <button
                     type="button"
-                    className="session-button session-button-neutral"
-                    onClick={props.onCloseCreateCampaign}
+                    disabled={
+                      props.isCreatingCampaign ||
+                      !props.newCampaignName.trim() ||
+                      props.user.authType === 'GUEST'
+                    }
+                    className="session-button session-button-indigo"
+                    onClick={() => props.onCreateCampaignSubmit('launch')}
                   >
-                    Close
+                    {props.isCreatingCampaign ? 'Saving...' : 'Launch'}
                   </button>
                 </div>
               </form>
@@ -191,7 +197,10 @@ export function SessionInitModals(props: SessionInitModalsProps) {
         ) : null}
 
         {props.showJoinCampaignModal ? (
-          <div className="session-modal-backdrop" role="presentation">
+          <div
+            className="session-modal-backdrop session-modal-backdrop--top-offset"
+            role="presentation"
+          >
             <div
               className="session-modal"
               role="dialog"
@@ -209,20 +218,20 @@ export function SessionInitModals(props: SessionInitModalsProps) {
                   disabled={props.isJoiningCampaign}
                   required
                 />
-                <div className="session-action-row">
-                  <button
-                    type="submit"
-                    disabled={props.isJoiningCampaign || !props.joinInviteInput.trim()}
-                    className="session-button session-button-indigo"
-                  >
-                    {props.isJoiningCampaign ? 'Joining...' : 'Join Campaign'}
-                  </button>
+                <div className="session-action-row session-action-row--right">
                   <button
                     type="button"
                     className="session-button session-button-neutral"
                     onClick={props.onCloseJoinCampaign}
                   >
-                    Close
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={props.isJoiningCampaign || !props.joinInviteInput.trim()}
+                    className="session-button session-button-indigo"
+                  >
+                    {props.isJoiningCampaign ? 'Joining...' : 'Join'}
                   </button>
                 </div>
               </form>

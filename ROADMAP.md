@@ -217,13 +217,18 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
-**Scope**: Home lobby shows: your campaigns (with DM indicator, last-active date, player count), join-via-code/invite, and create-campaign CTA. DM can access campaign settings from lobby dialog (not separate route).
+**Scope**: Home lobby shows: your campaigns (with DM indicator, last-active date, player count), join-via-code/invite, and create-campaign CTA. Campaign edit/review runs as an in-page offline workspace (not a modal and not a separate route), with campaign-screen-style rightbar tool switching.
 
 **Acceptance Criteria**:
 
 - [x] Home shows: your campaigns as cards (name, banner, DM, players, last active)
 - [ ] Campaign cards are private by default; only DM + joined members see them
-- [ ] DM can edit campaign via modal dialog from lobby (not separate route)
+- [x] Campaign edit/review opens as an in-page offline workspace (no modal; topbar preserved)
+- [x] Campaign card action labels are role-aware: DM `EDIT`, Player `REVIEW`, Spectator `LAUNCH` only
+- [x] Create Campaign dialog uses right-aligned `CANCEL | EDIT | LAUNCH` actions and no description field
+- [x] Join dialog is top-offset and uses right-aligned actions (`CANCEL | JOIN`)
+- [x] Lobby body is full-height fixed layout with campaign-card list scroll only (topbar and page frame stay fixed)
+- [x] Compact lobby stats strip is shown between topbar and card list (active sessions, connected personas, total played, extra rollups)
 - [ ] Players can join via invite link or code
 - [ ] Spectators can only access active campaigns and cannot edit
 - [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period
@@ -236,6 +241,14 @@ Evidence snapshot (2026-05-18):
 
 - Lobby campaign cards now render a visible "Last active" date using campaign `updatedAt`/`createdAt` fallback metadata in the card surface.
 - Greenroom chat timeline now hydrates on first screen load (no initial `todayOnly` bootstrap gate), so users see recent persisted greenroom messages immediately without waiting for the first outbound chat event.
+
+Evidence snapshot (2026-05-20):
+
+- Lobby create flow now removes description input and supports intent-based create actions: `EDIT` (save + open offline workspace) or `LAUNCH` (save + enter runtime).
+- Join dialog and create dialog now use top-offset placement and right-aligned button rows to match other dialogs.
+- Lobby supports in-page offline campaign edit/review mode with campaign-like right-side icon dock and default `INFO` panel.
+- Offline mode hides rightbar `SETTINGS` and keeps role-based panel visibility aligned with campaign context.
+- Lobby card list now owns vertical scrolling while surrounding shell stays fixed-height.
 
 ---
 

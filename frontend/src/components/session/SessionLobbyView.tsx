@@ -37,8 +37,16 @@ function formatLastActiveLabel(campaign: CampaignSummary): string {
 
 type SessionLobbyViewProps = {
   campaigns: CampaignSummary[]
+  lobbyStats: {
+    activeSessions: number
+    connectedPlayersAndDms: number
+    connectedSpectators: number
+    totalTimePlayedLabel: string
+    activeCampaigns: number
+    pausedCampaigns: number
+    averageSessionDurationLabel: string
+  }
   selectedCampaignId: CampaignSummary['id'] | ''
-  currentUserId: string
   isLoadingCampaigns: boolean
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
@@ -188,7 +196,81 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
           </div>
         </div>
 
-        <div className="session-card">
+        <section className="session-lobby-stats" aria-label="Lobby system stats">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="session-lobby-stats__chip">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  rocket_launch
+                </span>
+                <strong>{props.lobbyStats.activeSessions}</strong>
+                <span>Active</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              {props.lobbyStats.activeCampaigns} campaigns live now,{' '}
+              {props.lobbyStats.pausedCampaigns} paused.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="session-lobby-stats__chip">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  groups
+                </span>
+                <strong>{props.lobbyStats.connectedPlayersAndDms}</strong>
+                <span>Players + DMs</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              Connected players and DMs across campaigns.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="session-lobby-stats__chip">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  visibility
+                </span>
+                <strong>{props.lobbyStats.connectedSpectators}</strong>
+                <span>Spectators</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              Connected spectators across campaigns.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="session-lobby-stats__chip">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  schedule
+                </span>
+                <strong>{props.lobbyStats.totalTimePlayedLabel}</strong>
+                <span>Total played</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              Session active/paused time total. Greenroom time excluded.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="session-lobby-stats__chip">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  speed
+                </span>
+                <strong>{props.lobbyStats.averageSessionDurationLabel}</strong>
+                <span>Avg / session</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              Average duration based on currently visible campaign sessions.
+            </TooltipContent>
+          </Tooltip>
+        </section>
+
+        <div className="session-card session-card--lobby-list">
           <div className="session-card-header">
             <div>
               <h3 className="session-card-title">Campaigns</h3>
@@ -200,7 +282,11 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
           ) : props.campaigns.length === 0 ? (
             <div className="session-status-message">No campaigns available yet.</div>
           ) : (
-            <div className="session-campaign-grid" role="list" aria-label="Campaign list">
+            <div
+              className="session-campaign-grid session-campaign-grid--scroll"
+              role="list"
+              aria-label="Campaign list"
+            >
               {props.campaigns.map((campaign) => {
                 const isSelected = props.selectedCampaignId === campaign.id
                 const state = getCampaignDisplayState(campaign)
@@ -214,11 +300,16 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                   campaign.connectedSpectatorsLabel,
                   campaign.connectedSpectatorsRounded
                 )
-                const isCampaignDm = campaign.currentDmId === props.currentUserId
                 const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
                 const dmInitial = dmDisplayName.charAt(0).toUpperCase()
                 const cardPosterUrl = campaign.posterUrl || undefined
                 const lastActiveLabel = formatLastActiveLabel(campaign)
+                const reviewLabel =
+                  campaign.memberRole === 'DM'
+                    ? 'Edit'
+                    : campaign.memberRole === 'PLAYER'
+                      ? 'Review'
+                      : null
 
                 return (
                   <div
@@ -301,7 +392,7 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                       Last active: {lastActiveLabel}
                     </span>
                     <span className="session-campaign-card__actions">
-                      {isCampaignDm ? (
+                      {reviewLabel ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -317,10 +408,12 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                               <span className="material-symbols-outlined" aria-hidden="true">
                                 tune
                               </span>
-                              <span>Settings</span>
+                              <span>{reviewLabel}</span>
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent side="top">Campaign settings</TooltipContent>
+                          <TooltipContent side="top">
+                            {campaign.memberRole === 'DM' ? 'Edit campaign' : 'Review campaign'}
+                          </TooltipContent>
                         </Tooltip>
                       ) : null}
                       <Tooltip>
