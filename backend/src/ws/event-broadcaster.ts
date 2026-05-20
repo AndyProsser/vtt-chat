@@ -28,6 +28,35 @@ class EventBroadcaster {
   }
 
   /**
+   * Broadcast an event to all connected members of a campaign (lobby-level events).
+   * Use for events that are not session-scoped (e.g. CAMPAIGN:JOIN_REQUEST_RECEIVED).
+   */
+  async broadcastToCampaignMembers(campaignId: UUID, event: EventEnvelope): Promise<void> {
+    if (!this.wsManager) {
+      throw new Error('WebSocketManager not initialized in broadcaster')
+    }
+    await this.wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  /**
+   * Send an event to a single connected user across all their active connections.
+   * Use for targeted notifications (e.g. CAMPAIGN:JOIN_REQUEST_RESOLVED to requester).
+   */
+  sendToUser(userId: UUID, event: EventEnvelope): void {
+    if (!this.wsManager) {
+      throw new Error('WebSocketManager not initialized in broadcaster')
+    }
+    const OPEN_STATE = 1
+    const wss = (this.wsManager as any).wss
+    if (!wss) return
+    wss.clients.forEach((client: any) => {
+      if (client.readyState === OPEN_STATE && client.authPayload?.userId === userId) {
+        client.send(JSON.stringify({ type: 'WS:EVENT', event }))
+      }
+    })
+  }
+
+  /**
    * Check if broadcaster is ready
    */
   isReady(): boolean {

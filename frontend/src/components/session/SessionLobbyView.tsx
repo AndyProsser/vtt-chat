@@ -1,42 +1,11 @@
 import { Icon } from '../ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
-import {
-  type CampaignSummary,
-  getCampaignDisplayState,
-  getCampaignEntryAction,
-  getPrivacyCounterLabel,
-} from './sessionInit.shared'
-
-function formatLastActiveLabel(campaign: CampaignSummary): string {
-  const rawTimestamp = campaign.updatedAt ?? campaign.createdAt
-  if (rawTimestamp === undefined || rawTimestamp === null) {
-    return 'Unknown'
-  }
-
-  const numeric =
-    typeof rawTimestamp === 'number'
-      ? rawTimestamp
-      : Number.isFinite(Number(rawTimestamp))
-        ? Number(rawTimestamp)
-        : Date.parse(String(rawTimestamp))
-
-  if (!Number.isFinite(numeric)) {
-    return 'Unknown'
-  }
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date(numeric))
-  } catch {
-    return 'Unknown'
-  }
-}
+import { type CampaignSummary } from './sessionInit.shared'
+import { CampaignCard } from './SessionLobbyView.CampaignCard'
 
 type SessionLobbyViewProps = {
   campaigns: CampaignSummary[]
+  discoverableCampaigns?: CampaignSummary[]
   lobbyStats: {
     activeSessions: number
     connectedPlayersAndDms: number
@@ -66,9 +35,12 @@ type SessionLobbyViewProps = {
   onOpenCampaignSettings: (campaignId: CampaignSummary['id']) => void
   onEnterCampaign: (campaignId: CampaignSummary['id']) => void
   onError: (message: string) => void
+  onJoinRequest: (campaignId: CampaignSummary['id']) => void
+  onWatchCampaign: (campaignId: CampaignSummary['id']) => void
 }
 
 export function SessionLobbyView(props: SessionLobbyViewProps) {
+  const discoverableCampaigns = props.discoverableCampaigns ?? []
   return (
     <TooltipProvider delayDuration={140}>
       <>
@@ -290,173 +262,52 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
               role="list"
               aria-label="Campaign list"
             >
-              {props.campaigns.map((campaign) => {
-                const isSelected = props.selectedCampaignId === campaign.id
-                const state = getCampaignDisplayState(campaign)
-                const entryAction = getCampaignEntryAction(campaign)
-                const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
-                const playersLabel = getPrivacyCounterLabel(
-                  campaign.connectedPlayersLabel,
-                  campaign.connectedPlayersRounded
-                )
-                const spectatorsLabel = getPrivacyCounterLabel(
-                  campaign.connectedSpectatorsLabel,
-                  campaign.connectedSpectatorsRounded
-                )
-                const dmDisplayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
-                const dmInitial = dmDisplayName.charAt(0).toUpperCase()
-                const cardPosterUrl = campaign.posterUrl || undefined
-                const lastActiveLabel = formatLastActiveLabel(campaign)
-                const reviewLabel =
-                  campaign.memberRole === 'DM'
-                    ? 'Edit'
-                    : campaign.memberRole === 'PLAYER'
-                      ? 'Review'
-                      : null
-
-                return (
-                  <div
-                    key={campaign.id}
-                    role="listitem"
-                    tabIndex={0}
-                    onClick={() => props.onSelectCampaign(campaign.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        props.onSelectCampaign(campaign.id)
-                      }
-                    }}
-                    className={`session-campaign-card ${isSelected ? 'is-selected' : ''} ${cardPosterUrl ? 'has-poster' : ''}`}
-                    style={
-                      cardPosterUrl
-                        ? {
-                            backgroundImage: `linear-gradient(rgba(12, 17, 28, 0.62), rgba(12, 17, 28, 0.62)), url(${cardPosterUrl})`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className="session-campaign-card__header">
-                      <span className="session-campaign-card__title">
-                        <span
-                          className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
-                          aria-label={`Campaign ${state.toLowerCase()}`}
-                        />
-                        <span>{campaign.name}</span>
-                      </span>
-                      <span
-                        className="session-campaign-card__stats"
-                        aria-label="Campaign activity stats"
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="session-campaign-card__stat">
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                groups
-                              </span>
-                              <span>{playersLabel}</span>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Connected players</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="session-campaign-card__stat">
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                visibility
-                              </span>
-                              <span>{spectatorsLabel}</span>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Connected spectators</TooltipContent>
-                        </Tooltip>
-                      </span>
-                    </span>
-                    <span
-                      className={`session-campaign-card__dm session-campaign-card__dm--${campaign.dmOnline ? 'online' : 'offline'}`}
-                    >
-                      {campaign.dmAvatarUrl ? (
-                        <img
-                          src={campaign.dmAvatarUrl}
-                          alt={`${dmDisplayName} avatar`}
-                          className="session-campaign-card__dm-avatar"
-                        />
-                      ) : (
-                        <span className="session-campaign-card__dm-avatar session-campaign-card__dm-avatar--fallback">
-                          {dmInitial}
-                        </span>
-                      )}
-                      <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
-                      <span className="session-campaign-card__dm-status">{dmStatus}</span>
-                    </span>
-                    <span className="session-campaign-card__description">
-                      {campaign.description || 'No description provided.'}
-                    </span>
-                    <span className="session-campaign-card__meta">
-                      Last active: {lastActiveLabel}
-                    </span>
-                    <span className="session-campaign-card__actions">
-                      {reviewLabel ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="session-card-action-button"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                props.onOpenCampaignSettings(campaign.id)
-                              }}
-                              aria-label="Campaign settings"
-                            >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                tune
-                              </span>
-                              <span>{reviewLabel}</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {campaign.memberRole === 'DM' ? 'Edit campaign' : 'Review campaign'}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : null}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <button
-                              type="button"
-                              className="session-card-action-button session-card-action-button-launch"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                if (entryAction.disabled) {
-                                  if (entryAction.reason) {
-                                    props.onError(entryAction.reason)
-                                  }
-                                  return
-                                }
-                                props.onEnterCampaign(campaign.id)
-                              }}
-                              aria-label={entryAction.reason || `${entryAction.label} campaign`}
-                              disabled={entryAction.disabled}
-                            >
-                              <span>{entryAction.label}</span>
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                {entryAction.icon}
-                              </span>
-                            </button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {entryAction.reason || `${entryAction.label} campaign`}
-                        </TooltipContent>
-                      </Tooltip>
-                    </span>
-                  </div>
-                )
-              })}
+              {props.campaigns.map((campaign) => (
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  isSelected={props.selectedCampaignId === campaign.id}
+                  onSelectCampaign={props.onSelectCampaign}
+                  onOpenCampaignSettings={props.onOpenCampaignSettings}
+                  onEnterCampaign={props.onEnterCampaign}
+                  onJoinRequest={props.onJoinRequest}
+                  onWatchCampaign={props.onWatchCampaign}
+                  onError={props.onError}
+                />
+              ))}
             </div>
           )}
         </div>
+
+        {/* Discoverable campaigns — campaigns the user is not yet a member of */}
+        {discoverableCampaigns.length > 0 && (
+          <div className="session-card session-card--lobby-list">
+            <div className="session-card-header">
+              <div>
+                <h3 className="session-card-title">Discover Campaigns</h3>
+              </div>
+            </div>
+            <div
+              className="session-campaign-grid session-campaign-grid--scroll"
+              role="list"
+              aria-label="Discoverable campaigns"
+            >
+              {discoverableCampaigns.map((campaign) => (
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  isSelected={props.selectedCampaignId === campaign.id}
+                  onSelectCampaign={props.onSelectCampaign}
+                  onOpenCampaignSettings={props.onOpenCampaignSettings}
+                  onEnterCampaign={props.onEnterCampaign}
+                  onJoinRequest={props.onJoinRequest}
+                  onWatchCampaign={props.onWatchCampaign}
+                  onError={props.onError}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </>
     </TooltipProvider>
   )

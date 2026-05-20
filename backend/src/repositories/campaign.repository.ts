@@ -117,6 +117,9 @@ export async function listCampaignsForUser(userId: string): Promise<
     dmAvatarUrl: string | null
     createdAt: Date
     updatedAt: Date
+    discoverable: boolean
+    retiredAt: Date | null
+    pendingJoinRequests: number
   }>
 > {
   const memberships = await prisma.campaignMembership.findMany({
@@ -150,6 +153,10 @@ export async function listCampaignsForUser(userId: string): Promise<
             orderBy: [{ createdAt: 'desc' }],
             take: 1,
           },
+          joinRequests: {
+            where: { status: 'PENDING' },
+            select: { id: true },
+          },
         },
       },
     },
@@ -164,7 +171,7 @@ export async function listCampaignsForUser(userId: string): Promise<
         userId: string
         state: 'ONLINE' | 'IDLE' | 'OFFLINE'
       }>
-      const onlineUserIds = new Set(
+      const onlineUserIds = new Set<string>(
         latestSessionPresence
           .filter((entry) => entry.state === 'ONLINE')
           .map((entry) => entry.userId)
@@ -214,6 +221,9 @@ export async function listCampaignsForUser(userId: string): Promise<
     memberRole: m.role,
     createdAt: m.campaign.createdAt,
     updatedAt: m.campaign.updatedAt,
+    discoverable: m.campaign.discoverable,
+    retiredAt: m.campaign.retiredAt,
+    pendingJoinRequests: (m.campaign.joinRequests || []).length,
   }))
 }
 
@@ -597,4 +607,277 @@ export async function getCampaignDmId(campaignId: string): Promise<string | null
     select: { currentDmId: true },
   })
   return campaign?.currentDmId ?? null
+}
+
+/**
+ * Returns discoverable campaigns that the requesting user is NOT a member of.
+ * Includes:
+ *   - PUBLIC (discoverable=true) non-retired campaigns
+ *   - PRIVATE non-retired campaigns with spectators enabled + active session with DM or player online
+ */
+export async function listDiscoverableCampaigns(userId: string): Promise<
+  Array<{
+    id: string
+    name: string
+    description: string | null
+    posterUrl: string | null
+    discoverable: boolean
+    spectatorPolicy: 'NONE' | 'GUESTS' | 'USERS'
+    activeSessionState: SessionState | null
+    spectatorsEnabled: boolean
+    activeConnectedCount: number
+    dmUsername: string
+    dmDisplayName: string
+    dmAvatarUrl: string | null
+    createdAt: Date
+  }>
+> {
+  // Exclude campaigns where user is already a member
+  const memberCampaignIds = await prisma.campaignMembership
+    .findMany({ where: { userId }, select: { campaignId: true } })
+    .then((rows) => rows.map((r) => r.campaignId))
+
+  const campaigns = await prisma.campaign.findMany({
+    where: {
+      retiredAt: null,
+      id: { notIn: memberCampaignIds.length > 0 ? memberCampaignIds : ['__none__'] },
+      OR: [
+        { discoverable: true },
+        {
+          discoverable: false,
+          spectatorPolicy: { not: 'NONE' },
+          sessions: {
+            some: {
+              state: 'ACTIVE',
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      currentDm: {
+        select: { username: true, displayName: true, avatarUrl: true },
+      },
+      members: {
+        select: { userId: true, role: true },
+      },
+      sessions: {
+        where: { state: 'ACTIVE' },
+        select: {
+          state: true,
+          presence: {
+            select: { userId: true, state: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+    },
+  })
+
+  return campaigns
+    .map((c: any) => {
+      const activeSession = c.sessions?.[0] || null
+      const activeSessionState = (activeSession?.state || null) as SessionState | null
+      const onlineUserIds = new Set<string>(
+        (activeSession?.presence || [])
+          .filter((p: { state: string }) => p.state === 'ONLINE')
+          .map((p: { userId: string }) => p.userId)
+      )
+      const roleByUserId = new Map<string, string>(
+        (c.members || []).map((m: { userId: string; role: string }) => [m.userId, m.role])
+      )
+
+      const dmOnline = onlineUserIds.has(c.currentDmId)
+      const playersOnline = Array.from(onlineUserIds).filter(
+        (id) => roleByUserId.get(id) === 'PLAYER'
+      ).length
+      const activeConnectedCount = (dmOnline ? 1 : 0) + playersOnline
+
+      // PRIVATE campaigns are only included if active session + connected DM or player
+      if (!c.discoverable && activeConnectedCount === 0) return null
+
+      const spectatorsEnabled = c.spectatorPolicy !== 'NONE'
+
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        posterUrl: c.posterUrl,
+        discoverable: c.discoverable,
+        spectatorPolicy: c.spectatorPolicy as 'NONE' | 'GUESTS' | 'USERS',
+        activeSessionState,
+        spectatorsEnabled,
+        activeConnectedCount,
+        dmUsername: c.currentDm?.username || 'dm',
+        dmDisplayName: c.currentDm?.displayName || c.currentDm?.username || 'DM',
+        dmAvatarUrl: c.currentDm?.avatarUrl || null,
+        createdAt: c.createdAt,
+      }
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+}
+
+/**
+ * Submit a join request for a PUBLIC campaign. One pending request per user per campaign.
+ */
+export async function createJoinRequest(params: {
+  campaignId: string
+  userId: string
+  message?: string
+}): Promise<
+  | {
+      id: string
+      campaignId: string
+      userId: string
+      message: string | null
+      status: 'PENDING'
+      requestedAt: Date
+    }
+  | { error: 'ALREADY_MEMBER' | 'NOT_DISCOVERABLE' | 'ALREADY_PENDING' | 'RETIRED' }
+> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: params.campaignId },
+    select: { discoverable: true, retiredAt: true },
+  })
+
+  if (!campaign) return { error: 'NOT_DISCOVERABLE' }
+  if (campaign.retiredAt !== null) return { error: 'RETIRED' }
+  if (!campaign.discoverable) return { error: 'NOT_DISCOVERABLE' }
+
+  const existingMembership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId: params.campaignId, userId: params.userId } },
+  })
+  if (existingMembership) return { error: 'ALREADY_MEMBER' }
+
+  const existingRequest = await prisma.campaignJoinRequest.findUnique({
+    where: { campaignId_userId: { campaignId: params.campaignId, userId: params.userId } },
+  })
+  if (existingRequest?.status === 'PENDING') return { error: 'ALREADY_PENDING' }
+
+  // Upsert: re-open a previously resolved request
+  const request = await prisma.campaignJoinRequest.upsert({
+    where: { campaignId_userId: { campaignId: params.campaignId, userId: params.userId } },
+    create: {
+      campaignId: params.campaignId,
+      userId: params.userId,
+      message: params.message ?? null,
+      status: 'PENDING',
+    },
+    update: {
+      message: params.message ?? null,
+      status: 'PENDING',
+      resolvedAt: null,
+      requestedAt: new Date(),
+    },
+  })
+
+  return {
+    id: request.id,
+    campaignId: request.campaignId,
+    userId: request.userId,
+    message: request.message,
+    status: 'PENDING',
+    requestedAt: request.requestedAt,
+  }
+}
+
+/**
+ * Resolve (approve or reject) a pending join request.
+ * On approve: creates a PLAYER membership and resolves the request.
+ */
+export async function resolveJoinRequest(params: {
+  requestId: string
+  campaignId: string
+  resolution: 'APPROVED' | 'REJECTED'
+}): Promise<
+  | {
+      requestId: string
+      userId: string
+      resolution: 'APPROVED' | 'REJECTED'
+    }
+  | { error: 'NOT_FOUND' | 'NOT_PENDING' }
+> {
+  const request = await prisma.campaignJoinRequest.findFirst({
+    where: { id: params.requestId, campaignId: params.campaignId },
+  })
+
+  if (!request) return { error: 'NOT_FOUND' }
+  if (request.status !== 'PENDING') return { error: 'NOT_PENDING' }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.campaignJoinRequest.update({
+      where: { id: params.requestId },
+      data: { status: params.resolution, resolvedAt: new Date() },
+    })
+    if (params.resolution === 'APPROVED') {
+      await tx.campaignMembership.upsert({
+        where: {
+          campaignId_userId: { campaignId: params.campaignId, userId: request.userId },
+        },
+        create: {
+          campaignId: params.campaignId,
+          userId: request.userId,
+          role: 'PLAYER',
+        },
+        update: { role: 'PLAYER' },
+      })
+    }
+  })
+
+  return { requestId: params.requestId, userId: request.userId, resolution: params.resolution }
+}
+
+/**
+ * Retire a campaign (soft-delete). Only allowed when no active session exists.
+ */
+export async function retireCampaign(
+  campaignId: string
+): Promise<
+  { success: true; retiredAt: Date } | { error: 'NOT_FOUND' | 'ACTIVE_SESSION' | 'ALREADY_RETIRED' }
+> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      sessions: {
+        where: { state: { in: ['ACTIVE', 'PAUSED'] } },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  })
+
+  if (!campaign) return { error: 'NOT_FOUND' }
+  if (campaign.retiredAt !== null) return { error: 'ALREADY_RETIRED' }
+  if (campaign.sessions.length > 0) return { error: 'ACTIVE_SESSION' }
+
+  const retiredAt = new Date()
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { retiredAt },
+  })
+
+  return { success: true, retiredAt }
+}
+
+/**
+ * Resume a retired campaign by clearing its retiredAt timestamp.
+ */
+export async function resumeCampaign(
+  campaignId: string
+): Promise<{ success: true } | { error: 'NOT_FOUND' | 'NOT_RETIRED' }> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { retiredAt: true },
+  })
+
+  if (!campaign) return { error: 'NOT_FOUND' }
+  if (campaign.retiredAt === null) return { error: 'NOT_RETIRED' }
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { retiredAt: null },
+  })
+
+  return { success: true }
 }

@@ -97,6 +97,7 @@ model User {
   passwordResetTokens      PasswordResetToken[]
   spectatorWaitlistEntries SpectatorWaitlist[]
   portabilityArtifacts     ImportExportArtifact[]
+  joinRequests             CampaignJoinRequest[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
@@ -126,6 +127,7 @@ model Campaign {
   discoverable                  Boolean                @default(false)
   extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
   currentDmId                   String                 @db.Uuid
+  retiredAt                     DateTime?
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members                       CampaignMembership[]
   characters                    Character[]
@@ -135,6 +137,7 @@ model Campaign {
   greenroomMessages             ChatMessage[]
   recordings                    RecordingMetadata[]
   portabilityArtifacts          ImportExportArtifact[]
+  joinRequests                  CampaignJoinRequest[]
   createdAt                     DateTime               @default(now())
   updatedAt                     DateTime               @updatedAt
 
@@ -142,20 +145,38 @@ model Campaign {
   @@index([discoverable])
   @@index([spectatorPolicy])
   @@index([createdAt])
+  @@index([retiredAt])
 }
 
 model CampaignMembership {
-  id         String   @id @default(uuid()) @db.Uuid
-  campaignId String   @db.Uuid
-  userId     String   @db.Uuid
-  role       Role     @default(PLAYER)
-  joinedAt   DateTime @default(now())
+  id         String            @id @default(uuid()) @db.Uuid
+  campaignId String            @db.Uuid
+  userId     String            @db.Uuid
+  role       Role              @default(PLAYER)
+  joinedAt   DateTime          @default(now())
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, userId])
   @@index([campaignId])
   @@index([userId])
+}
+
+model CampaignJoinRequest {
+  id          String                  @id @default(uuid()) @db.Uuid
+  campaignId  String                  @db.Uuid
+  userId      String                  @db.Uuid
+  message     String?                 @db.VarChar(300)
+  status      CampaignJoinRequestStatus @default(PENDING)
+  requestedAt DateTime                @default(now())
+  resolvedAt  DateTime?
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
 }
 
 model Character {
@@ -441,6 +462,12 @@ enum AdminRole {
 enum AuthType {
   FULL
   GUEST
+}
+
+enum CampaignJoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum SpectatorPolicy {

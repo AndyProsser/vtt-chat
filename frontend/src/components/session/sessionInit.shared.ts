@@ -23,6 +23,12 @@ export interface CampaignSummary {
   connectedSpectatorsLabel?: string
   displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN'
   latestSessionState?: SessionState | null
+  discoverable?: boolean
+  retiredAt?: string | null
+  pendingJoinRequests?: number
+  spectatorsEnabled?: boolean
+  activeConnectedCount?: number
+  isMember?: boolean
 }
 
 export type CampaignMembershipRole = CampaignSummary['memberRole']
@@ -54,12 +60,43 @@ export type CampaignSettingsPayload = {
   dmAutoTargetOnFirstPlayerJoin: boolean
 }
 
-export type CampaignEntryAction = {
-  label: 'Launch'
-  icon: 'rocket_launch'
-  disabled: boolean
-  reason?: string
-}
+export type CampaignEntryAction =
+  | {
+      label: 'Launch'
+      icon: 'rocket_launch'
+      disabled: boolean
+      reason?: string
+      action?: never
+      showLock?: never
+      dimmed?: never
+    }
+  | {
+      label: 'Request to Join'
+      icon: 'person_add'
+      disabled: boolean
+      reason?: string
+      action: 'joinRequest'
+      showLock?: false
+      dimmed?: boolean
+    }
+  | {
+      label: 'Watch'
+      icon: 'visibility'
+      disabled: boolean
+      reason?: string
+      action: 'watch'
+      showLock: true
+      dimmed?: boolean
+    }
+  | {
+      label: 'Invite Only'
+      icon: 'lock'
+      disabled: true
+      reason: string
+      action?: never
+      showLock: true
+      dimmed: true
+    }
 
 export function getCampaignDisplayState(
   campaign: CampaignSummary
@@ -75,12 +112,51 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
   const state = getCampaignDisplayState(campaign)
   const isSpectator = campaign.memberRole === 'SPECTATOR'
 
-  // DMs and players can always enter. Only spectators have entry restrictions.
-  if (!isSpectator) {
+  // Members (DM / Player): always launchable except spectators which have extra guards
+  if (campaign.isMember !== false && campaign.memberRole !== undefined && !isSpectator) {
     return {
       label: 'Launch',
       icon: 'rocket_launch',
       disabled: false,
+    }
+  }
+
+  // Non-member paths
+  if (campaign.isMember === false || campaign.memberRole === undefined) {
+    // PUBLIC campaign: offer "Request to Join"
+    if (campaign.discoverable) {
+      return {
+        label: 'Request to Join',
+        icon: 'person_add',
+        disabled: false,
+        action: 'joinRequest',
+      }
+    }
+
+    // PRIVATE campaign with spectators enabled + active session + people online
+    const isWatchable =
+      campaign.spectatorsEnabled &&
+      campaign.latestSessionState === 'ACTIVE' &&
+      (campaign.activeConnectedCount ?? 0) > 0
+
+    if (isWatchable) {
+      return {
+        label: 'Watch',
+        icon: 'visibility',
+        disabled: false,
+        action: 'watch',
+        showLock: true,
+      }
+    }
+
+    // PRIVATE campaign not currently watchable
+    return {
+      label: 'Invite Only',
+      icon: 'lock',
+      disabled: true,
+      reason: 'This campaign is invite-only.',
+      showLock: true,
+      dimmed: true,
     }
   }
 

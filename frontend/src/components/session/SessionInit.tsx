@@ -3427,6 +3427,7 @@ export function SessionInit({
         {!hasSessionSelected && lobbyViewMode === 'list' && (
           <SessionLobbyView
             campaigns={campaigns}
+            discoverableCampaigns={[]}
             lobbyStats={lobbyStats}
             selectedCampaignId={selectedCampaignId}
             isLoadingCampaigns={isLoadingCampaigns}
@@ -3450,6 +3451,12 @@ export function SessionInit({
             onOpenCampaignSettings={openLobbyCampaignWorkspace}
             onEnterCampaign={(campaignId) => {
               void handleEnterCampaign(campaignId)
+            }}
+            onJoinRequest={() => {
+              setError('Join request flow is not wired into SessionInit yet.')
+            }}
+            onWatchCampaign={() => {
+              setError('Watch flow is not wired into SessionInit yet.')
             }}
             onError={setError}
           />
