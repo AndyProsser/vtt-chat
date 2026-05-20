@@ -7,6 +7,7 @@
 
 .cip-panel--workspace {
   gap: 0.65rem;
+  padding-bottom: 0.25rem;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;

@@ -906,10 +906,12 @@
 }
 
 .session-lobby-workspace__panel {
-  min-height: 0;
+  height: calc(100dvh - 188px);
+  min-height: 180px;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
