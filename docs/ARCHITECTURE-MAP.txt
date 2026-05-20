@@ -140,6 +140,10 @@ Multi-device recovery invariants:
 Current shipped note:
    No single `system.state.hydrate` event is shipped yet.
    Full cross-domain hydrate/event replay remains planned architecture.
+   Lobby peak-concurrency metric is backend-derived from telemetry connection-state events
+   over a rolling 24h window (authoritative platform status source).
+   Offline campaign workspace exposes role-routed settings surfaces (DM campaign settings,
+   player character settings, spectator read-only).
 
 
 ████████████████████████████████████████████████████████████████████████████████

@@ -74,17 +74,8 @@ export function getCampaignDisplayState(
 export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntryAction {
   const state = getCampaignDisplayState(campaign)
   const isSpectator = campaign.memberRole === 'SPECTATOR'
-  const hasDmAndPlayerOnline = Boolean(campaign.dmOnline) && (campaign.connectedPlayers || 0) > 0
 
-  if (!hasDmAndPlayerOnline) {
-    return {
-      label: 'Launch',
-      icon: 'rocket_launch',
-      disabled: true,
-      reason: 'Launch is available once at least one DM and one player are connected.',
-    }
-  }
-
+  // DMs and players can always enter. Only spectators have entry restrictions.
   if (!isSpectator) {
     return {
       label: 'Launch',
@@ -93,12 +84,24 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
     }
   }
 
+  // Spectators can only watch campaigns that are actively live.
   if (state !== 'ACTIVE') {
     return {
       label: 'Launch',
       icon: 'rocket_launch',
       disabled: true,
       reason: 'Spectators can only watch active campaigns.',
+    }
+  }
+
+  // Spectators additionally require at least one DM and player present.
+  const hasDmAndPlayerOnline = Boolean(campaign.dmOnline) && (campaign.connectedPlayers || 0) > 0
+  if (!hasDmAndPlayerOnline) {
+    return {
+      label: 'Launch',
+      icon: 'rocket_launch',
+      disabled: true,
+      reason: 'Launch is available once at least one DM and one player are connected.',
     }
   }
 

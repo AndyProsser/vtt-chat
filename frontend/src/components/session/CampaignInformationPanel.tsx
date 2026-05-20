@@ -22,6 +22,7 @@ interface CampaignInformationPanelProps {
   sessionCount: number
   totalSessionDurationMs: number
   canEdit: boolean
+  workspaceMode?: boolean
   onEditCampaign: (campaignId: UUID) => void
   onSaveCampaignInfo: (
     campaignId: UUID,
@@ -85,6 +86,7 @@ export function CampaignInformationPanel({
   sessionCount,
   totalSessionDurationMs,
   canEdit,
+  workspaceMode = false,
   onEditCampaign,
   onSaveCampaignInfo,
 }: CampaignInformationPanelProps) {
@@ -107,9 +109,9 @@ export function CampaignInformationPanel({
     setDescriptionDraft(campaign.description || '')
     setPosterUrlDraft(campaign.posterUrl || null)
     setIntegrationSyncPolicyDraft(toUiIntegrationPolicy(campaign.extensionSyncPolicy))
-    setIsEditing(false)
+    setIsEditing(Boolean(workspaceMode && canEdit))
     setSaveError(null)
-  }, [campaign])
+  }, [campaign, workspaceMode, canEdit])
 
   if (!campaign) {
     return (
@@ -230,9 +232,17 @@ export function CampaignInformationPanel({
 
   const displayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
   const dmInitial = displayName.charAt(0).toUpperCase()
+  const isDirty =
+    nameDraft.trim() !== campaign.name ||
+    descriptionDraft !== (campaign.description || '') ||
+    (posterUrlDraft?.trim() || '') !== (campaign.posterUrl?.trim() || '') ||
+    integrationSyncPolicyDraft !== toUiIntegrationPolicy(campaign.extensionSyncPolicy)
 
   return (
-    <section className="cip-panel" aria-label="Campaign information">
+    <section
+      className={`cip-panel ${workspaceMode ? 'cip-panel--workspace' : ''}`}
+      aria-label="Campaign information"
+    >
       <div className="cip-hero">
         <div className="cip-copy">
           <p className="cip-kicker">Campaign</p>
@@ -295,6 +305,32 @@ export function CampaignInformationPanel({
                 onChange={(event) => setDescriptionDraft(event.target.value)}
                 disabled={isSaving}
               />
+              {workspaceMode ? (
+                <div className="cip-inline-actions" aria-label="Campaign info actions">
+                  <button
+                    type="button"
+                    className="session-icon-action"
+                    aria-label={isSaving ? 'Saving campaign info' : 'Save campaign info'}
+                    onClick={() => void handleSave()}
+                    disabled={isSaving || !isDirty || !nameDraft.trim()}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {isSaving ? 'hourglass_top' : 'save'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="session-icon-action"
+                    aria-label="Reset campaign edits"
+                    onClick={handleCancel}
+                    disabled={isSaving || !isDirty}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      restart_alt
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <>
@@ -355,7 +391,11 @@ export function CampaignInformationPanel({
       ) : null}
 
       <TooltipProvider delayDuration={140}>
-        <div className="cip-stats" role="list" aria-label="Campaign stats">
+        <div
+          className={`cip-stats ${workspaceMode ? 'cip-stats--compact' : ''}`}
+          role="list"
+          aria-label="Campaign stats"
+        >
           <div className="cip-stat" role="listitem">
             <span className="cip-stat__value">{sessionCount}</span>
             <Tooltip>
@@ -469,7 +509,7 @@ export function CampaignInformationPanel({
       </div>
 
       <div className="cip-actions">
-        {canEdit && isEditing ? (
+        {workspaceMode ? null : canEdit && isEditing ? (
           <>
             <button
               type="button"

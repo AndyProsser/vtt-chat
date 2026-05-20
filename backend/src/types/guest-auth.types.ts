@@ -4,6 +4,7 @@ export type PlatformStatus = {
   activeUsers: number
   activeCampaigns: number
   activeSessions: number
+  peakConcurrentUsers24h: number
   maintenanceMode: boolean
 }
 

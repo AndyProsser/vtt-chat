@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
+import {
+  type WorkspaceTab,
+  getTabIcon,
+  getTabLabel,
+  getTabsForRole,
+} from './LobbyCampaignWorkspaceView.tabs'
 import type { CampaignSummary } from './sessionInit.shared'
-
-type WorkspaceTab = 'information' | 'notes' | 'journal' | 'history' | 'rooms' | 'audio'
 
 type LobbyCampaignWorkspaceViewProps = {
   campaign: CampaignSummary | null
@@ -24,6 +28,7 @@ type LobbyCampaignWorkspaceViewProps = {
   canEditCampaignInfo: boolean
   isLaunchDisabled: boolean
   launchDisabledReason?: string
+  settingsPanel: ReactNode
   onBackToLobby: () => void
   onCreateCampaign: () => void
   onJoinCampaign: () => void
@@ -40,58 +45,6 @@ type LobbyCampaignWorkspaceViewProps = {
       integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
     }
   ) => Promise<void>
-}
-
-function getTabsForRole(role: Role): WorkspaceTab[] {
-  if (role === 'DM') {
-    return ['information', 'notes', 'journal', 'history', 'rooms', 'audio']
-  }
-
-  if (role === 'PLAYER') {
-    return ['information', 'notes', 'journal', 'history']
-  }
-
-  return ['information', 'journal', 'history']
-}
-
-function getTabLabel(tab: WorkspaceTab): string {
-  switch (tab) {
-    case 'information':
-      return 'Info'
-    case 'notes':
-      return 'Notes'
-    case 'journal':
-      return 'Journal'
-    case 'history':
-      return 'History'
-    case 'rooms':
-      return 'Rooms'
-    case 'audio':
-      return 'Audio'
-    default:
-      return 'Info'
-  }
-}
-
-function getTabIcon(
-  tab: WorkspaceTab
-): 'panel' | 'notes' | 'journal' | 'history' | 'rooms' | 'voice' {
-  switch (tab) {
-    case 'information':
-      return 'panel'
-    case 'notes':
-      return 'notes'
-    case 'journal':
-      return 'journal'
-    case 'history':
-      return 'history'
-    case 'rooms':
-      return 'rooms'
-    case 'audio':
-      return 'voice'
-    default:
-      return 'panel'
-  }
 }
 
 export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProps) {
@@ -128,6 +81,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
           sessionCount={props.sessionCount}
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEdit={props.canEditCampaignInfo}
+          workspaceMode
           onEditCampaign={() => {
             // Offline workspace keeps editing in-page instead of opening a modal.
           }}
@@ -194,6 +148,10 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
           campaignName={props.campaign.name}
         />
       )
+    }
+
+    if (resolvedActiveTab === 'settings') {
+      return <>{props.settingsPanel}</>
     }
 
     return (

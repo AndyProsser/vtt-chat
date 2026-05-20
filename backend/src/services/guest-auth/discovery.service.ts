@@ -1,4 +1,5 @@
 import { getPrismaClient } from '@/infra/db'
+import { loadTelemetryEvents } from '@/infra/telemetry-store'
 import type { TokenPayload } from '@/services/auth.service'
 import { deriveCampaignDisplayState, type SessionState } from '@shared'
 import {
@@ -31,11 +32,94 @@ function toPresenceCountLabel(count: number, rounded: number): string {
   return `~${rounded}`
 }
 
+function isConnectedWsState(value: unknown): boolean {
+  return (
+    String(value || '')
+      .trim()
+      .toLowerCase() === 'connected'
+  )
+}
+
+async function computePeakConcurrentUsers24h(): Promise<number> {
+  const telemetry = await loadTelemetryEvents()
+  const nowMs = Date.now()
+  const windowStartMs = nowMs - 24 * 60 * 60 * 1000
+
+  const events = telemetry
+    .map((entry) => {
+      const timestampMs = Date.parse(entry.timestamp)
+      const details = (entry.details || {}) as {
+        userId?: string
+        properties?: Record<string, unknown>
+      }
+
+      return {
+        timestampMs,
+        message: entry.message,
+        userId: typeof details.userId === 'string' ? details.userId : '',
+        toState: details.properties?.to,
+      }
+    })
+    .filter(
+      (entry) =>
+        entry.message === 'WS_CONNECTION_STATE_CHANGED' &&
+        Number.isFinite(entry.timestampMs) &&
+        entry.userId.length > 0
+    )
+    .sort((left, right) => left.timestampMs - right.timestampMs)
+
+  if (!events.length) {
+    return 0
+  }
+
+  const connectedByUser = new Map<string, boolean>()
+
+  for (const event of events) {
+    if (event.timestampMs >= windowStartMs) {
+      break
+    }
+
+    connectedByUser.set(event.userId, isConnectedWsState(event.toState))
+  }
+
+  let currentConcurrent = 0
+  for (const isConnected of connectedByUser.values()) {
+    if (isConnected) {
+      currentConcurrent += 1
+    }
+  }
+
+  let peakConcurrent = currentConcurrent
+
+  for (const event of events) {
+    if (event.timestampMs < windowStartMs) {
+      continue
+    }
+
+    const previousConnected = connectedByUser.get(event.userId) || false
+    const nextConnected = isConnectedWsState(event.toState)
+
+    if (previousConnected === nextConnected) {
+      continue
+    }
+
+    connectedByUser.set(event.userId, nextConnected)
+    currentConcurrent += nextConnected ? 1 : -1
+
+    if (currentConcurrent > peakConcurrent) {
+      peakConcurrent = currentConcurrent
+    }
+  }
+
+  return Math.max(0, peakConcurrent)
+}
+
 export async function getPlatformStatus(): Promise<PlatformStatus> {
-  const [activeUsers, activeCampaigns, activeSessions] = await Promise.all([
+  const [activeUsers, activeCampaigns, activeSessions, peakConcurrentUsers24h] = await Promise.all([
     prisma.user.count({ where: { isActive: true } }),
     prisma.campaign.count(),
     prisma.session.count({ where: { state: 'ACTIVE' } }),
+    computePeakConcurrentUsers24h(),
   ])
 
   return {
@@ -44,6 +128,7 @@ export async function getPlatformStatus(): Promise<PlatformStatus> {
     activeUsers,
     activeCampaigns,
     activeSessions,
+    peakConcurrentUsers24h,
     maintenanceMode: false,
   }
 }

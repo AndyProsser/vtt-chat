@@ -214,6 +214,7 @@ describe('guest auth routes', () => {
       activeUsers: 24,
       activeCampaigns: 5,
       activeSessions: 2,
+      peakConcurrentUsers24h: expect.any(Number),
       maintenanceMode: false,
     })
   })

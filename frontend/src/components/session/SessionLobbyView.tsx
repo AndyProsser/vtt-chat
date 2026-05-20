@@ -41,6 +41,7 @@ type SessionLobbyViewProps = {
     activeSessions: number
     connectedPlayersAndDms: number
     connectedSpectators: number
+    peakConcurrentUsers24h: number
     totalTimePlayedLabel: string
     activeCampaigns: number
     pausedCampaigns: number
@@ -251,7 +252,9 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start">
-              Session active/paused time total. Greenroom time excluded.
+              Total Session time.
+              <br />
+              Average/session: {props.lobbyStats.averageSessionDurationLabel}.
             </TooltipContent>
           </Tooltip>
           <Tooltip>
@@ -260,12 +263,12 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                 <span className="material-symbols-outlined" aria-hidden="true">
                   speed
                 </span>
-                <strong>{props.lobbyStats.averageSessionDurationLabel}</strong>
-                <span>Avg / session</span>
+                <strong>{props.lobbyStats.peakConcurrentUsers24h}</strong>
+                <span>Peak 24h</span>
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start">
-              Average duration based on currently visible campaign sessions.
+              Highest concurrent connected users in the last 24 hours.
             </TooltipContent>
           </Tooltip>
         </section>

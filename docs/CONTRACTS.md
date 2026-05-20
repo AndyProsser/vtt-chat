@@ -82,6 +82,18 @@ Visibility and editability contract:
 - `SETTINGS` character fields for race/class use D&D 5.5e SRD as the default autocomplete source, allow free-text override, and support admin-configured pluggable source providers.
 - `SETTINGS` DM campaign/session forms expose only safe editable fields in rightbar; sync-complex fields stay in dedicated management surfaces.
 
+Offline workspace settings parity contract:
+
+- In offline campaign workspace mode, the same role-routed settings contract applies to the `SETTINGS` tab.
+- DM sees campaign settings controls inline (profile, poster, invites, visibility/spectator/policy toggles).
+- Player sees character settings inline.
+- Spectator sees a read-only non-edit notice.
+
+Platform status metric contract:
+
+- `GET /api/platform/status` includes `peakConcurrentUsers24h` as a number representing the highest concurrent connected users observed in the previous 24 hours.
+- This value is computed from persisted telemetry connection state events and is authoritative for lobby peak display.
+
 Party-to-settings navigation contract:
 
 - Player selecting `Edit` from `PARTY` must switch active panel to `SETTINGS` with character section active.

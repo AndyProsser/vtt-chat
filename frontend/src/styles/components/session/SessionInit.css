@@ -991,6 +991,96 @@
   gap: 0.7rem;
 }
 
+/* Offline workspace settings tab — the outer wrapper fills the panel height */
+.session-campaign-settings-panel.session-campaign-settings-workspace-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  gap: 0;
+}
+
+.session-campaign-settings-workspace-root > .session-campaign-settings-header {
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  margin-bottom: 0.6rem;
+  flex-shrink: 0;
+}
+
+.session-campaign-settings-workspace-root > .session-campaign-settings-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.15rem; /* thin scroll gutter */
+}
+
+/* Tighten interior density inside the workspace settings grid */
+.session-campaign-settings-workspace-root .session-campaign-settings-panel {
+  padding: 0.6rem;
+  gap: 0.3rem;
+}
+
+.session-campaign-settings-workspace-root .session-label {
+  margin-top: 0.5rem;
+  margin-bottom: 0.18rem;
+  font-size: 0.77rem;
+}
+
+.session-campaign-settings-workspace-root .session-label:first-child,
+.session-campaign-settings-workspace-root h5 + .session-label {
+  margin-top: 0;
+}
+
+.session-campaign-settings-workspace-root .session-input,
+.session-campaign-settings-workspace-root .session-textarea {
+  font-size: 0.8rem;
+  padding: 0.32rem 0.5rem;
+}
+
+.session-campaign-settings-workspace-root .session-textarea {
+  min-height: 4rem;
+}
+
+.session-campaign-settings-workspace-root .session-toggle-group {
+  margin-bottom: 0.1rem;
+}
+
+.session-campaign-settings-workspace-root .session-toggle-button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.74rem;
+}
+
+.session-campaign-settings-workspace-root .session-slider {
+  margin-bottom: 0.2rem;
+}
+
+.session-campaign-settings-workspace-root .session-inline-form-title {
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+
+.session-campaign-settings-workspace-root .session-invite-link-row {
+  margin-top: 0.4rem;
+  padding: 0.4rem;
+}
+
+.session-campaign-settings-workspace-root .session-invite-link-row__label {
+  min-width: 4.5rem;
+  font-size: 0.72rem;
+}
+
+.session-campaign-settings-workspace-root .session-invite-link-row__input {
+  font-size: 0.7rem;
+  padding: 0.32rem 0.4rem;
+}
+
+.session-campaign-settings-workspace-root .session-action-row--right {
+  margin-top: 0.25rem;
+}
+
 .session-campaign-settings-panel--compact {
   padding: 0.65rem;
 }
@@ -1435,6 +1525,19 @@
     flex-direction: row;
     justify-content: flex-start;
     overflow-x: auto;
+  }
+
+  /* Settings tab — switch to single column and relax density on narrow screens */
+  .session-campaign-settings-grid-dialog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-campaign-settings-workspace-root > .session-campaign-settings-grid {
+    overflow-y: visible;
+  }
+
+  .session-campaign-settings-workspace-root .session-toggle-group {
+    flex-wrap: wrap;
   }
 }
 

@@ -26,6 +26,7 @@ import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
 import { SessionLeftRailPanel } from './SessionLeftRailPanel'
 import { SessionLobbyView } from './SessionLobbyView'
 import { LobbyCampaignWorkspaceView } from './LobbyCampaignWorkspaceView'
+import { LobbyCampaignSettingsPanel } from './LobbyCampaignSettingsPanel'
 import { SessionInitModals } from './SessionInitModals'
 import { SessionToolbar } from './SessionToolbar'
 import { ReconnectBanner } from '../ui/ReconnectBanner'
@@ -482,6 +483,7 @@ export function SessionInit({
     activeSessions: number
     connectedPlayersAndDms: number
     connectedSpectators: number
+    peakConcurrentUsers24h: number
     totalTimePlayedLabel: string
     activeCampaigns: number
     pausedCampaigns: number
@@ -490,6 +492,7 @@ export function SessionInit({
     activeSessions: 0,
     connectedPlayersAndDms: 0,
     connectedSpectators: 0,
+    peakConcurrentUsers24h: 0,
     totalTimePlayedLabel: '0m',
     activeCampaigns: 0,
     pausedCampaigns: 0,
@@ -1681,6 +1684,7 @@ export function SessionInit({
       ).length
 
       let activeSessions = activeCampaigns
+      let peakConcurrentUsers24h = 0
 
       try {
         const statusResponse = await fetchWithAuthGuard(`${apiUrl}/api/platform/status`, {
@@ -1690,9 +1694,15 @@ export function SessionInit({
         })
 
         if (statusResponse.ok) {
-          const statusPayload = (await statusResponse.json()) as { activeSessions?: number }
+          const statusPayload = (await statusResponse.json()) as {
+            activeSessions?: number
+            peakConcurrentUsers24h?: number
+          }
           if (typeof statusPayload.activeSessions === 'number') {
             activeSessions = Math.max(0, Math.floor(statusPayload.activeSessions))
+          }
+          if (typeof statusPayload.peakConcurrentUsers24h === 'number') {
+            peakConcurrentUsers24h = Math.max(0, Math.floor(statusPayload.peakConcurrentUsers24h))
           }
         }
       } catch {
@@ -1743,6 +1753,7 @@ export function SessionInit({
         activeSessions,
         connectedPlayersAndDms,
         connectedSpectators,
+        peakConcurrentUsers24h,
         totalTimePlayedLabel: formatDurationCompact(totalSessionDurationMs),
         activeCampaigns,
         pausedCampaigns,
@@ -2415,9 +2426,7 @@ export function SessionInit({
     safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
-  const handleSaveCampaignSettings = async (e: React.FormEvent<Element>) => {
-    e.preventDefault()
-
+  const saveCampaignSettings = useCallback(async () => {
     if (!settingsCampaignId) {
       return
     }
@@ -2515,13 +2524,40 @@ export function SessionInit({
       )
 
       setLobbyNotice('Campaign settings saved.')
-      setShowCampaignSettingsModal(false)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save campaign settings'
       setError(message)
     } finally {
       campaignSettingsActions.setIsSettingsSaving(false)
     }
+  }, [
+    apiUrl,
+    campaignSettingsActions,
+    settingsCampaignId,
+    settingsName,
+    settingsDescription,
+    settingsPosterUrl,
+    settingsVisibility,
+    settingsSpectatorsEnabled,
+    settingsSpectatorMax,
+    settingsSpectatorWaitlistEnabled,
+    settingsSpectatorReconnectGraceSecs,
+    settingsExtensionSyncPolicy,
+    settingsPostSessionChatEnabled,
+    settingsPostSessionChatDurationMinutes,
+    settingsDmAutoTargetOnFirstPlayerJoin,
+    settingsLateJoinPolicy,
+    settingsLateJoinGraceMinutes,
+    fetchWithAuthGuard,
+    token,
+  ])
+
+  const handleSaveCampaignSettings = (e: React.FormEvent<Element>) => {
+    e.preventDefault()
+    void (async () => {
+      await saveCampaignSettings()
+      setShowCampaignSettingsModal(false)
+    })()
   }
 
   const handleSaveCampaignInfoPanel = useCallback(
@@ -3446,6 +3482,127 @@ export function SessionInit({
               selectedCampaign
                 ? getCampaignEntryAction(selectedCampaign).reason
                 : 'Select a campaign first.'
+            }
+            settingsPanel={
+              membershipRole === Role.DM ? (
+                <LobbyCampaignSettingsPanel
+                  campaignName={selectedCampaign?.name}
+                  isLoading={isSettingsLoading}
+                  isSaving={isSettingsSaving}
+                  isInviteReissuing={isInviteReissuing}
+                  settingsData={settingsData}
+                  settingsName={settingsName}
+                  onSettingsNameChange={(value) => campaignSettingsActions.setSettingsName(value)}
+                  settingsDescription={settingsDescription}
+                  onSettingsDescriptionChange={(value) =>
+                    campaignSettingsActions.setSettingsDescription(value)
+                  }
+                  onPosterFileSelected={handlePosterFileSelected}
+                  settingsPosterUrl={settingsPosterUrl}
+                  onSettingsPosterUrlChange={(value) =>
+                    campaignSettingsActions.setSettingsPosterUrl(value)
+                  }
+                  onRemovePoster={() => campaignSettingsActions.setSettingsPosterUrl('')}
+                  settingsVisibility={settingsVisibility}
+                  onSettingsVisibilityChange={(value) =>
+                    campaignSettingsActions.setSettingsVisibility(value)
+                  }
+                  settingsSpectatorsEnabled={settingsSpectatorsEnabled}
+                  onSettingsSpectatorsEnabledChange={(value) =>
+                    campaignSettingsActions.setSettingsSpectatorsEnabled(value)
+                  }
+                  settingsSpectatorMax={settingsSpectatorMax}
+                  onSettingsSpectatorMaxChange={(value) =>
+                    campaignSettingsActions.setSettingsSpectatorMax(value)
+                  }
+                  settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
+                  onSettingsSpectatorWaitlistEnabledChange={(value) =>
+                    campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value)
+                  }
+                  settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
+                  onSettingsSpectatorReconnectGraceSecsChange={(value) =>
+                    campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value)
+                  }
+                  settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
+                  onSettingsPostSessionChatEnabledChange={(value) =>
+                    campaignSettingsActions.setSettingsPostSessionChatEnabled(value)
+                  }
+                  settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
+                  onSettingsPostSessionChatDurationMinutesChange={(value) =>
+                    campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
+                      toValidPostSessionDurationMinutes(value)
+                    )
+                  }
+                  settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
+                  onSettingsExtensionSyncPolicyChange={(value) =>
+                    campaignSettingsActions.setSettingsExtensionSyncPolicy(value)
+                  }
+                  settingsLateJoinPolicy={settingsLateJoinPolicy}
+                  onSettingsLateJoinPolicyChange={(value) =>
+                    campaignSettingsActions.setSettingsLateJoinPolicy(value)
+                  }
+                  settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
+                  onSettingsLateJoinGraceMinutesChange={(value) =>
+                    campaignSettingsActions.setSettingsLateJoinGraceMinutes(value)
+                  }
+                  settingsDmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
+                  onSettingsDmAutoTargetOnFirstPlayerJoinChange={(value) =>
+                    campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value)
+                  }
+                  onCopyInviteUrl={(inviteType) => {
+                    void copyInviteUrl(inviteType)
+                  }}
+                  onReissueInvite={(inviteType) => {
+                    void reissueInvite(inviteType)
+                  }}
+                  onSave={() => {
+                    void saveCampaignSettings()
+                  }}
+                />
+              ) : membershipRole === Role.PLAYER ? (
+                <CampaignRightbarSettings
+                  role="PLAYER"
+                  campaignId={selectedCampaignId || null}
+                  sessionName=""
+                  sessionDescription=""
+                  plannedDurationMinutes={DEFAULT_PLANNED_DURATION_MINUTES}
+                  sessionStateLabel="IDLE"
+                  canEditSessionSettings={false}
+                  onSessionNameChange={() => {
+                    // Offline player settings do not expose session controls.
+                  }}
+                  onSessionDescriptionChange={() => {
+                    // Offline player settings do not expose session controls.
+                  }}
+                  onPlannedDurationMinutesChange={() => {
+                    // Offline player settings do not expose session controls.
+                  }}
+                  onSaveSessionSettings={() => {
+                    // Offline player settings do not expose session controls.
+                  }}
+                  isSessionSaving={false}
+                  dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
+                  onDmAutoTargetChange={() => {
+                    // Offline player settings do not expose DM controls.
+                  }}
+                  onSaveDmAutoTarget={() => {
+                    // Offline player settings do not expose DM controls.
+                  }}
+                  isSaving={false}
+                  isLoading={false}
+                  characterDraft={characterSettingsDraft}
+                  onCharacterFieldChange={handleCharacterFieldChange}
+                  onSaveCharacterSettings={() => {
+                    void saveCharacterSettings()
+                  }}
+                  isCharacterLoading={isCharacterSettingsLoading}
+                  isCharacterSaving={isCharacterSettingsSaving}
+                />
+              ) : (
+                <div className="session-status-message">
+                  Spectators do not have editable campaign settings in offline mode.
+                </div>
+              )
             }
             onBackToLobby={() => {
               setLobbyViewMode('list')
