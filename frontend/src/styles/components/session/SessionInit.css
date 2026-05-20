@@ -3,6 +3,7 @@
   width: 100%;
   margin: 0 auto;
   padding: 8px 0.75rem;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
   display: flex;
@@ -14,7 +15,10 @@
   border-radius: 12px;
   background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
   flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -83,11 +87,58 @@
 
 .session-card--lobby-list {
   margin-bottom: 0;
-  flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.session-card--lobby-list-primary {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.session-lobby-view {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.session-card--lobby-list-primary {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.session-lobby-campaign-sections {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 0.4rem;
+  padding-right: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.session-lobby-campaign-section {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.session-lobby-campaign-section__title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.session-lobby-campaign-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-border-soft) 80%, transparent);
 }
 
 .session-card-header {
@@ -163,15 +214,6 @@
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding-top: 6px;
-}
-
-.session-campaign-grid--scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  align-content: start;
-  padding-right: 0.2rem;
 }
 
 .session-campaign-card {

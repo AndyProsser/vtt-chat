@@ -41,9 +41,10 @@ type SessionLobbyViewProps = {
 
 export function SessionLobbyView(props: SessionLobbyViewProps) {
   const discoverableCampaigns = props.discoverableCampaigns ?? []
+
   return (
     <TooltipProvider delayDuration={140}>
-      <>
+      <div className="session-lobby-view" data-testid="session-lobby-view">
         <div className="session-toolbar session-toolbar--lobby" data-testid="session-lobby-toolbar">
           <div className="session-toolbar__zone session-toolbar__zone--left">
             <div className="session-toolbar__brand" aria-label="Lobby toolbar">
@@ -245,70 +246,76 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
           </Tooltip>
         </section>
 
-        <div className="session-card session-card--lobby-list">
+        <div className="session-card session-card--lobby-list session-card--lobby-list-primary">
           <div className="session-card-header">
             <div>
               <h3 className="session-card-title">Campaigns</h3>
             </div>
           </div>
 
-          {props.isLoadingCampaigns ? (
-            <div className="session-status-message">Loading campaigns...</div>
-          ) : props.campaigns.length === 0 ? (
-            <div className="session-status-message">No campaigns available yet.</div>
-          ) : (
-            <div
-              className="session-campaign-grid session-campaign-grid--scroll"
-              role="list"
-              aria-label="Campaign list"
-            >
-              {props.campaigns.map((campaign) => (
-                <CampaignCard
-                  key={campaign.id}
-                  campaign={campaign}
-                  isSelected={props.selectedCampaignId === campaign.id}
-                  onSelectCampaign={props.onSelectCampaign}
-                  onOpenCampaignSettings={props.onOpenCampaignSettings}
-                  onEnterCampaign={props.onEnterCampaign}
-                  onJoinRequest={props.onJoinRequest}
-                  onWatchCampaign={props.onWatchCampaign}
-                  onError={props.onError}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          <div className="session-lobby-campaign-sections">
+            <section className="session-lobby-campaign-section" aria-label="Member or DM campaigns">
+              <h4 className="session-lobby-campaign-section__title">Member or DM Of</h4>
+              {props.isLoadingCampaigns ? (
+                <div className="session-status-message">Loading campaigns...</div>
+              ) : props.campaigns.length === 0 ? (
+                <div className="session-status-message">No campaigns available yet.</div>
+              ) : (
+                <div className="session-campaign-grid" role="list" aria-label="Campaign list">
+                  {props.campaigns.map((campaign) => (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      isSelected={props.selectedCampaignId === campaign.id}
+                      onSelectCampaign={props.onSelectCampaign}
+                      onOpenCampaignSettings={props.onOpenCampaignSettings}
+                      onEnterCampaign={props.onEnterCampaign}
+                      onJoinRequest={props.onJoinRequest}
+                      onWatchCampaign={props.onWatchCampaign}
+                      onError={props.onError}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
-        {/* Discoverable campaigns — campaigns the user is not yet a member of */}
-        {discoverableCampaigns.length > 0 && (
-          <div className="session-card session-card--lobby-list">
-            <div className="session-card-header">
-              <div>
-                <h3 className="session-card-title">Discover Campaigns</h3>
-              </div>
-            </div>
-            <div
-              className="session-campaign-grid session-campaign-grid--scroll"
-              role="list"
-              aria-label="Discoverable campaigns"
-            >
-              {discoverableCampaigns.map((campaign) => (
-                <CampaignCard
-                  key={campaign.id}
-                  campaign={campaign}
-                  isSelected={props.selectedCampaignId === campaign.id}
-                  onSelectCampaign={props.onSelectCampaign}
-                  onOpenCampaignSettings={props.onOpenCampaignSettings}
-                  onEnterCampaign={props.onEnterCampaign}
-                  onJoinRequest={props.onJoinRequest}
-                  onWatchCampaign={props.onWatchCampaign}
-                  onError={props.onError}
+            {discoverableCampaigns.length > 0 && (
+              <>
+                <div
+                  className="session-lobby-campaign-divider"
+                  role="separator"
+                  aria-hidden="true"
                 />
-              ))}
-            </div>
+                <section
+                  className="session-lobby-campaign-section"
+                  aria-label="Discoverable campaigns"
+                >
+                  <h4 className="session-lobby-campaign-section__title">Discoverable</h4>
+                  <div
+                    className="session-campaign-grid"
+                    role="list"
+                    aria-label="Discoverable campaigns"
+                  >
+                    {discoverableCampaigns.map((campaign) => (
+                      <CampaignCard
+                        key={campaign.id}
+                        campaign={campaign}
+                        isSelected={props.selectedCampaignId === campaign.id}
+                        onSelectCampaign={props.onSelectCampaign}
+                        onOpenCampaignSettings={props.onOpenCampaignSettings}
+                        onEnterCampaign={props.onEnterCampaign}
+                        onJoinRequest={props.onJoinRequest}
+                        onWatchCampaign={props.onWatchCampaign}
+                        onError={props.onError}
+                      />
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
           </div>
-        )}
-      </>
+        </div>
+      </div>
     </TooltipProvider>
   )
 }
