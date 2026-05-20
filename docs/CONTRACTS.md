@@ -622,6 +622,129 @@ These rules govern how campaign state is presented in the lobby and dashboard. T
 
 ---
 
-**Document Version**: 1.0
+## Campaign Visibility Model
+
+The `discoverable` boolean on the `Campaign` model is the backing field for campaign visibility. UI surfaces label it as **PUBLIC** (discoverable=true) or **PRIVATE** (discoverable=false).
+
+### Lobby card rendering rules
+
+| Viewer                 | PUBLIC campaign             | PRIVATE — spectators off, or no active session | PRIVATE — spectators on + active session with DM/players present |
+| ---------------------- | --------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
+| DM (owns campaign)     | Full card + EDIT            | Full card + EDIT                               | Full card + EDIT                                                 |
+| Existing member        | Full card + REVIEW/LAUNCH   | Full card + REVIEW/LAUNCH                      | Full card + REVIEW/LAUNCH                                        |
+| Non-member (full user) | Full card + REQUEST TO JOIN | Dimmed card + lock icon (no action)            | Normal card + lock icon + WATCH                                  |
+| Non-member (guest)     | Not shown                   | Not shown                                      | Not shown                                                        |
+
+Private card visual rules for non-members:
+
+- **Dimmed + lock icon**: campaign is PRIVATE and either spectators are disabled or no session is currently active with at least one DM or player present. No action available without an invite link.
+- **Normal card + lock icon + WATCH**: campaign is PRIVATE but spectators are enabled and an `ACTIVE` session exists with at least one DM or player connected. The lock icon remains to signal the campaign is not publicly joinable. The WATCH button is available without an invite link.
+- Guests are always scoped to the specific campaign they were invited to and do not see the lobby discovery list.
+
+### Request-to-Join Flow (PUBLIC campaigns only)
+
+- `POST /api/campaigns/:id/join-request` — authenticated full user submits a join request with an optional message (max 300 chars). Returns `201` with the pending request record.
+- If the user already has a pending or approved membership, return `409 Conflict`.
+- `POST /api/campaigns/:id/join-request/:requestId/approve` — DM-only. Converts pending request to `CampaignMembership` with role `PLAYER`.
+- `POST /api/campaigns/:id/join-request/:requestId/reject` — DM-only. Deletes the pending request.
+- WS event `CAMPAIGN:JOIN_REQUEST_RECEIVED` is broadcast to the DM immediately after a request is persisted. Payload: `{ campaignId, requestId, userId, displayName, avatarUrl, requestedAt, message? }`.
+- DM's campaign card in the lobby shows a notification badge with the count of pending join requests. Clicking the badge opens an inline approval panel showing: requester username, avatar, requested-at timestamp, and optional message with approve/reject buttons.
+- On approval, the WS event `CAMPAIGN:JOIN_REQUEST_RESOLVED` is broadcast to the requester so their lobby card updates immediately.
+
+### WATCH Entry for Full Users
+
+A full (non-guest) user may enter spectator view of a campaign without a spectator invite link if **all** of the following are true:
+
+1. The session is in `ACTIVE` state.
+2. The campaign has spectators enabled (`spectatorPolicy !== NONE`).
+3. At least one DM or player is currently connected in the session.
+4. The viewer is a full account (not a guest).
+
+Visibility applies to both PUBLIC and PRIVATE campaigns under these conditions. For PRIVATE campaigns the card is rendered at normal opacity with a lock icon (not dimmed) when all four conditions are met, making the WATCH button discoverable.
+
+- Backend `POST /api/campaigns/:id/watch` validates all four conditions and returns a LiveKit spectator token on success.
+- Guest users must still enter via a spectator invite link (`/watch/:code`); they cannot use the WATCH button flow.
+- `POST /api/campaigns/:id/watch` returns `403` with a descriptive reason if any condition is unmet (e.g. `"No active session"`, `"Spectators not enabled"`, `"No players currently connected"`).
+- The lobby query that populates campaign cards must include `activeSessionState`, `spectatorsEnabled`, and `activeConnectedCount` so the frontend can determine card treatment without an additional round-trip.
+
+---
+
+## Campaign Lifecycle: RETIRE and RESUME
+
+DMs can retire a campaign to remove it from their default lobby listing without permanently deleting it.
+
+- Schema: `retiredAt DateTime?` added to `Campaign`. Non-null value means the campaign is retired.
+- Default lobby listing excludes campaigns where `retiredAt IS NOT NULL`.
+- Retired campaigns are accessible from a separate "Retired campaigns" list visible only to the DM.
+
+### Endpoints
+
+- `POST /api/campaigns/:id/retire` — DM-only. Sets `retiredAt = now()`. Returns `200` with updated campaign. DM must own the campaign.
+- `POST /api/campaigns/:id/resume` — DM-only. Clears `retiredAt`. Returns `200` with updated campaign.
+- Both endpoints reject non-DM callers with `403`.
+
+### UI contract
+
+- RETIRE button is shown in the offline campaign workspace header (alongside Back and Launch).
+- Clicking RETIRE opens a confirmation dialog: _"This removes the campaign from your list. You can resume it any time."_ — with Cancel and Retire actions.
+- RESUME: No confirmation dialog. A dedicated icon/button at the top-right of the lobby campaign list opens a "Retired campaigns" drawer; clicking Resume on a card restores it immediately.
+
+### Deletion rules
+
+- DMs **cannot delete** a campaign. Retire is the DM lifecycle action.
+- Admin-only hard delete is available in the admin panel via `DELETE /api/admin/campaigns/:id`. This is irreversible and requires explicit confirmation in the admin UI.
+- If an active session exists for the campaign, `POST /api/campaigns/:id/retire` returns `409` — the session must be ended first.
+
+---
+
+## Guest Upgrade Flow
+
+Guests who exit a session are routed to an upgrade screen only — they do not see the campaign discovery lobby.
+
+### Upgrade screen contract
+
+- The upgrade screen presents a single form: display name, email, and password.
+- Submitting calls `POST /api/auth/upgrade` (authenticated as the current guest JWT).
+- On success: guest account is promoted to a full account; the user is issued a new full-account JWT and routed to the normal lobby.
+
+### Email conflict resolution
+
+| Email match                              | Outcome                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| No existing account with that email      | Upgrade succeeds.                                                                                                         |
+| Email matches another guest account      | Merge: the two guest accounts are merged; all campaign memberships from both accounts are unified under one account.      |
+| Email matches a full (non-guest) account | Block. Return `409` with message: _"An account with this email already exists. Log in to your existing account instead."_ |
+
+### Linked memberships
+
+- On upgrade, if the new email matches prior guest campaign memberships (from any merged guest account), those memberships are transferred to the new full account automatically.
+- The system never exposes matched email addresses in error messages beyond the generic conflict response above.
+
+---
+
+## Campaign Export and Import (Admin-Only)
+
+### Export
+
+- `GET /api/admin/campaigns/:id/export` — admin-only. Returns a JSON payload (or downloadable `.json` file).
+- Export scope:
+  - Campaign metadata (name, description, poster URL, visibility, policies)
+  - Groups/rooms and their environment assignments
+  - Session history and associated chat messages (all types: IC, OOC, system bookends)
+  - Notes and journal entries
+  - Member list with roles (no passwords; email addresses included for re-linking on import)
+- DMs cannot self-export. Only admin-authenticated callers may access this endpoint.
+
+### Import
+
+- `POST /api/admin/campaigns/import` — admin-only. Creates a **new** campaign from the export payload. Original IDs are discarded; all records receive fresh UUIDs.
+- The admin may optionally supply a member email-to-user mapping to link exported member records to existing accounts. Unmapped members are created as stubs with no active account link.
+- Import never overwrites an existing campaign. Each import always produces a new campaign record.
+- On success, returns `201` with the new campaign ID and a summary of imported records (groups, sessions, messages, members).
+
+---
+
+**Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
+**Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.

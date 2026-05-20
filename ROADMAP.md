@@ -222,20 +222,30 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Acceptance Criteria**:
 
 - [x] Home shows: your campaigns as cards (name, banner, DM, players, last active)
-- [ ] Campaign cards are private by default; only DM + joined members see them
 - [x] Campaign edit/review opens as an in-page offline workspace (no modal; topbar preserved)
 - [x] Campaign card action labels are role-aware: DM `EDIT`, Player `REVIEW`, Spectator `LAUNCH` only
 - [x] Create Campaign dialog uses right-aligned `CANCEL | EDIT | LAUNCH` actions and no description field
 - [x] Join dialog is top-offset and uses right-aligned actions (`CANCEL | JOIN`)
 - [x] Lobby body is full-height fixed layout with campaign-card list scroll only (topbar and page frame stay fixed)
 - [x] Compact lobby stats strip is shown between topbar and card list (active sessions, connected personas, total played, extra rollups)
+- [ ] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
+- [ ] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
+- [ ] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
+- [ ] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
+- [ ] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
 - [ ] Players can join via invite link or code
 - [ ] Spectators can only access active campaigns and cannot edit
 - [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period
+- [ ] DM can RETIRE a campaign from the offline workspace header (confirm dialog required); retired campaigns removed from main lobby list
+- [ ] DM can RESUME a retired campaign from a dedicated "Retired" drawer in the lobby (no confirm dialog); DM cannot delete campaigns
+- [ ] Guest accounts are not shown the campaign discovery list; on session exit they see the upgrade prompt only
+- [ ] Guest upgrade: `POST /api/auth/upgrade` (email + password); email matching another guest → merge accounts; email matching a full account → block with clear message
+- [ ] Campaign invite URL paths use `/join/:code` (player) and `/watch/:code` (spectator); backend and frontend call sites are consistent
 
 **Related Docs**:
 
 - [docs/ui/UI-FLOWS.md](docs/ui/UI-FLOWS.md)
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Visibility Model, Guest Upgrade Flow, Campaign Lifecycle: RETIRE and RESUME
 
 Evidence snapshot (2026-05-18):
 
@@ -249,6 +259,29 @@ Evidence snapshot (2026-05-20):
 - Lobby supports in-page offline campaign edit/review mode with campaign-like right-side icon dock and default `INFO` panel.
 - Offline mode hides rightbar `SETTINGS` and keeps role-based panel visibility aligned with campaign context.
 - Lobby card list now owns vertical scrolling while surrounding shell stays fixed-height.
+
+---
+
+### W0-Lobby-Admin: Campaign Export and Import
+
+**Status**: ⚪ Not Started
+**Priority**: 🟢 Low
+**Depends on**: W0-Lobby
+
+**Scope**: Admin-only campaign export (JSON) and import (creates new campaign from file). DMs cannot self-export.
+
+**Acceptance Criteria**:
+
+- [ ] `GET /api/admin/campaigns/:id/export` returns campaign JSON (metadata, groups/environments, session history/chat, notes/journal, member list)
+- [ ] Export does not include passwords; member emails are included for re-linking
+- [ ] `POST /api/admin/campaigns/import` creates a new campaign with fresh IDs from the export JSON
+- [ ] Admin may optionally map member emails to existing accounts during import; unmapped members become stubs
+- [ ] Import never overwrites an existing campaign
+- [ ] Admin UI surfaces Export and Import actions in campaign management panel
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section
 
 ---
 
