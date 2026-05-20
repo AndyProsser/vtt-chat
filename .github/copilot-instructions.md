@@ -443,6 +443,25 @@ Transcript/summary processing rule:
 
 The `handleEnvironmentSet` WS handler in `audioPresetsSlice.ts` must update `roomEnvironmentNames` even when `parameters` is absent. `roomEnvironmentNames` drives the environment sync effect in `SessionInit.tsx`.
 
+### Workspace Scroll Containment Requires A Definite Height Chain
+
+Recurring failure pattern: panel-level scroll unexpectedly escapes to page/html scroll when a workspace panel relies on `height: 100%` or `flex: 1` without a definite ancestor height.
+
+Rules:
+
+- Any panel that must scroll internally must have at least one ancestor with a definite block size (`height: <px>` or `height: calc(100dvh - <offset>)`).
+- Do not rely on `height: 100%`, `1fr`, or `flex: 1` alone unless the full ancestor chain resolves to a definite height.
+- Use `min-height: 0` and `overflow: hidden` on intermediate flex/grid wrappers, then put `overflow-y: auto` only on the intended inner scroll container.
+- For workspace campaign editing surfaces, prefer tuning a single viewport offset constant on the containing panel rather than scattering one-off padding hacks across child blocks.
+- Acceptance check: when content overflows, only the intended inner panel scrolls; document/html must remain non-scrolling for that interaction.
+
+### UI Error Surfacing: Toasts Are Canonical
+
+- User-facing operational errors (save, upload, network, validation failures during actions) must use the shared toast system (`useToast` / toast center / `SystemToasts`).
+- Do not introduce persistent inline error rows for transient action failures in workspace panels.
+- If a feature currently uses inline transient errors, migrate to toast-based reporting rather than adding new inline variants.
+- Error copy shown to users must be deterministic, concise, and safe (no stack traces or internal-only details).
+
 ---
 
 ## Code Quality Standards

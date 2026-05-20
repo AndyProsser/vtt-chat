@@ -282,6 +282,8 @@ Campaign-model compatibility addendum (2026-05-04 lock):
 - Message/history records preserve send-time character snapshot fields (for example name/avatar) so prior logs remain historically accurate after character replacement.
 - Spectators do not own characters and cannot create campaign-state mutations.
 - Campaign settings include `postSessionChatEnabled: boolean` (default true) and `postSessionChatDurationMs: integer` (default 300000 ms / 5 minutes, range 60000–3600000 ms).
+- Campaign settings PATCH compatibility: metadata-only saves are valid. Clients may send only changed metadata fields (for example `name`, `description`, `posterUrl`) without resending visibility/spectator policy booleans.
+- For omitted campaign settings fields on PATCH (for example `discoverable`, `spectatorsEnabled`, `lateJoinPolicy`), backend must retain current persisted values rather than rejecting the request.
 - GREENROOM (via RoomType) persists at campaign scope; shared across all sessions for that campaign.
 
 ---

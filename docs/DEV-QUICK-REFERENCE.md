@@ -137,6 +137,20 @@ Implementation boundaries:
 - Remove legacy CSS only after the replacement surface is verified
 - Keep persona logic out of shared primitive components
 
+### Workspace Panel Scroll Containment Guardrails
+
+- Internal scrolling requires a definite ancestor height (`height: <px>` or `height: calc(100dvh - <offset>)`).
+- Do not depend on `height: 100%` or `flex: 1` alone for scroll containment.
+- Apply `min-height: 0` on intermediate flex/grid wrappers.
+- Put `overflow-y: auto` only on the intended inner scroller; parent wrappers should generally use `overflow: hidden`.
+- Verify that overflowing content scrolls inside the panel and does not make document/html scroll.
+
+### Workspace Error Presentation Guardrails
+
+- Transient runtime failures (save/upload/network/submit) must use shared toast dispatch (`useToast` / toast center).
+- Avoid adding inline transient error blocks that change panel height and can perturb scroll behavior.
+- Keep user-facing messages deterministic and brief.
+
 ---
 
 ## Extension Rules
@@ -261,7 +275,7 @@ export PGPASSWORD='<postgres-password>'
 psql -h localhost -p "${DEV_POSTGRES_PORT:-5432}" -U postgres -d vttchat
 ```
 
-2. Quick sanity check query:
+1. Quick sanity check query:
 
 ```sql
 SELECT id, name, "postSessionChatEnabled", "postSessionChatDurationMs"
@@ -270,7 +284,7 @@ ORDER BY "createdAt" DESC
 LIMIT 5;
 ```
 
-3. Open Prisma Studio against DEV DB:
+1. Open Prisma Studio against DEV DB:
 
 ```bash
 cd backend
@@ -278,7 +292,7 @@ DATABASE_URL="postgresql://postgres:<postgres-password>@localhost:${DEV_POSTGRES
   npx prisma studio --schema prisma/schema.prisma --port 5555
 ```
 
-4. Open Studio in browser:
+1. Open Studio in browser:
 
 ```text
 http://localhost:5555

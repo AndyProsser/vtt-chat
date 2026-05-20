@@ -50,6 +50,12 @@ The UI does not create new categories.
 - Under the toolbar
 - Above all other UI
 
+### **2.2.1 Transient action errors must not use inline error rows**
+
+- Save/upload/submit failures are transient operational errors and must be surfaced as toasts.
+- Do not add persistent inline error banners inside workspace panels for these failures.
+- Reserve inline text for static guidance or field hints, not runtime failure reporting.
+
 ### **2.3 Errors must never reveal private or DM‑only data**
 
 - Player cannot see DM errors
@@ -315,6 +321,22 @@ Errors:
 UI:
 
 - Empty state only
+
+---
+
+### **5.7 `<CampaignInformationPanel />`**
+
+Errors:
+
+- Validation (empty campaign name)
+- Upload validation/read errors (non-image poster, unreadable file, oversized poster)
+- Save failures (`PATCH /api/campaigns/:campaignId/settings`)
+
+UI:
+
+- Use shared toast system for all transient errors
+- Keep panel layout stable (no inline transient error row insertion)
+- Do not block editing controls beyond existing save/upload disabled states
 
 ---
 
