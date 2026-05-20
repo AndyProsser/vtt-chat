@@ -32,11 +32,13 @@ import { verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { resolveTypingAudience } from '@/services/chat-visibility.service'
 import { listCampaignMemberIds } from '@/repositories/campaign.repository'
+import { findSessionById } from '@/repositories/session.repository'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
 import {
   ensurePresenceRecoveredFromSnapshots,
+  getSessionPresence,
   snapshotSessionPresence,
   updatePresenceState,
 } from '@/services/room.service'
@@ -341,12 +343,21 @@ export class WebSocketManager {
   private async recoverAndMarkConnected(sessionId: UUID, payload: TokenPayload): Promise<void> {
     try {
       await ensurePresenceRecoveredFromSnapshots(sessionId)
+      const previousPresence = await getSessionPresence(sessionId)
+      const wasOnline = previousPresence.some(
+        (entry) => entry.userId === (payload.userId as UUID) && entry.state === PresenceState.ONLINE
+      )
+
       await updatePresenceState({
         sessionId,
         userId: payload.userId as UUID,
         username: payload.username,
         state: PresenceState.ONLINE,
       })
+
+      if (!wasOnline) {
+        await this.broadcastCampaignListInvalidated(sessionId, payload.userId as UUID)
+      }
     } catch (error) {
       logger.warn('ws', 'Failed to recover presence for connection', {
         sessionId,
@@ -611,18 +622,54 @@ export class WebSocketManager {
       })
 
       if (!this.hasActiveConnectionForUser(sessionId, userId)) {
-        void sessionDisconnectCascadeService.handleUserDisconnected({
-          sessionId,
-          userId,
-          username: ws.authPayload.username,
-          userRole: ws.authPayload.role,
-          wsManager: this,
-          isUserConnected: (candidateSessionId, candidateUserId) =>
-            this.hasActiveConnectionForUser(candidateSessionId, candidateUserId),
-          isSessionConnected: (candidateSessionId) =>
-            this.hasActiveConnectionsInSession(candidateSessionId),
-        })
+        void (async () => {
+          await sessionDisconnectCascadeService.handleUserDisconnected({
+            sessionId,
+            userId,
+            username: ws.authPayload!.username,
+            userRole: ws.authPayload!.role,
+            wsManager: this,
+            isUserConnected: (candidateSessionId, candidateUserId) =>
+              this.hasActiveConnectionForUser(candidateSessionId, candidateUserId),
+            isSessionConnected: (candidateSessionId) =>
+              this.hasActiveConnectionsInSession(candidateSessionId),
+          })
+          await this.broadcastCampaignListInvalidated(sessionId, userId)
+        })()
       }
+    }
+  }
+
+  private async broadcastCampaignListInvalidated(
+    sessionId: UUID,
+    actorUserId: UUID
+  ): Promise<void> {
+    try {
+      const session = await findSessionById(sessionId)
+      if (!session?.campaignId) {
+        return
+      }
+
+      eventBroadcaster.sendToAllAuthenticated({
+        id: crypto.randomUUID() as UUID,
+        type: 'CAMPAIGN:LIST_INVALIDATED',
+        version: 1,
+        userId: actorUserId,
+        userRole: Role.SYSTEM,
+        sessionId: null as unknown as UUID,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          campaignId: session.campaignId as UUID,
+          reason: 'RUNTIME_PRESENCE_CHANGED',
+        },
+      })
+    } catch (error) {
+      logger.warn('ws', 'Failed to broadcast campaign list invalidation', {
+        sessionId,
+        actorUserId,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
   }
 

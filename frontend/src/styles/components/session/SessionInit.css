@@ -218,7 +218,6 @@
 
 .session-campaign-card.has-poster .session-campaign-card__description,
 .session-campaign-card.has-poster .session-campaign-card__dm-name,
-.session-campaign-card.has-poster .session-campaign-card__dm-status,
 .session-campaign-card.has-poster .session-campaign-card__stat {
   color: rgba(241, 245, 249, 0.95);
 }
@@ -367,10 +366,13 @@
   color: var(--color-text-primary);
 }
 
-.session-campaign-card__dm-status {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.session-campaign-card__dm-presence-indicator {
+  display: inline-block;
+  width: 0.56rem;
+  height: 0.56rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 14%, transparent);
 }
 
 .session-campaign-card__dm--online {

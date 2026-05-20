@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { deriveCampaignDisplayState, type CampaignDisplayState, type SessionState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
+import { logger } from '@/utils/logger'
 
 const prisma = getPrismaClient()
 
@@ -20,6 +21,22 @@ function toPresenceCountLabel(count: number, rounded: number): string {
 
 function generateInviteCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
+}
+
+function isCampaignSchemaDriftError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+  return [
+    'retiredat',
+    'campaignjoinrequest',
+    'joinrequests',
+    'column',
+    'table',
+    'does not exist',
+  ].some((token) => message.includes(token))
 }
 
 export async function upsertUserAccount(params: {
@@ -122,46 +139,96 @@ export async function listCampaignsForUser(userId: string): Promise<
     pendingJoinRequests: number
   }>
 > {
-  const memberships = await prisma.campaignMembership.findMany({
-    where: { userId },
-    include: {
-      campaign: {
-        include: {
-          currentDm: {
-            select: {
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
-          members: {
-            select: {
-              userId: true,
-              role: true,
-            },
-          },
-          sessions: {
-            select: {
-              state: true,
-              presence: {
-                select: {
-                  userId: true,
-                  state: true,
-                },
+  let memberships: any[]
+
+  try {
+    memberships = await prisma.campaignMembership.findMany({
+      where: { userId },
+      include: {
+        campaign: {
+          include: {
+            currentDm: {
+              select: {
+                username: true,
+                displayName: true,
+                avatarUrl: true,
               },
             },
-            orderBy: [{ createdAt: 'desc' }],
-            take: 1,
-          },
-          joinRequests: {
-            where: { status: 'PENDING' },
-            select: { id: true },
+            members: {
+              select: {
+                userId: true,
+                role: true,
+              },
+            },
+            sessions: {
+              select: {
+                state: true,
+                presence: {
+                  select: {
+                    userId: true,
+                    state: true,
+                  },
+                },
+              },
+              orderBy: [{ createdAt: 'desc' }],
+              take: 1,
+            },
+            joinRequests: {
+              where: { status: 'PENDING' },
+              select: { id: true },
+            },
           },
         },
       },
-    },
-    orderBy: { joinedAt: 'desc' },
-  })
+      orderBy: { joinedAt: 'desc' },
+    })
+  } catch (error) {
+    if (!isCampaignSchemaDriftError(error)) {
+      throw error
+    }
+
+    logger.warn('campaign.repository', 'Campaign list falling back to legacy schema query', {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    memberships = await prisma.campaignMembership.findMany({
+      where: { userId },
+      include: {
+        campaign: {
+          include: {
+            currentDm: {
+              select: {
+                username: true,
+                displayName: true,
+                avatarUrl: true,
+              },
+            },
+            members: {
+              select: {
+                userId: true,
+                role: true,
+              },
+            },
+            sessions: {
+              select: {
+                state: true,
+                presence: {
+                  select: {
+                    userId: true,
+                    state: true,
+                  },
+                },
+              },
+              orderBy: [{ createdAt: 'desc' }],
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { joinedAt: 'desc' },
+    })
+  }
 
   return memberships.map((m: any) => ({
     ...(() => {
@@ -221,8 +288,8 @@ export async function listCampaignsForUser(userId: string): Promise<
     memberRole: m.role,
     createdAt: m.campaign.createdAt,
     updatedAt: m.campaign.updatedAt,
-    discoverable: m.campaign.discoverable,
-    retiredAt: m.campaign.retiredAt,
+    discoverable: m.campaign.discoverable ?? false,
+    retiredAt: m.campaign.retiredAt ?? null,
     pendingJoinRequests: (m.campaign.joinRequests || []).length,
   }))
 }
@@ -637,43 +704,58 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
     .findMany({ where: { userId }, select: { campaignId: true } })
     .then((rows) => rows.map((r) => r.campaignId))
 
-  const campaigns = await prisma.campaign.findMany({
-    where: {
-      retiredAt: null,
-      id: { notIn: memberCampaignIds.length > 0 ? memberCampaignIds : ['__none__'] },
-      OR: [
-        { discoverable: true },
-        {
-          discoverable: false,
-          spectatorPolicy: { not: 'NONE' },
-          sessions: {
-            some: {
-              state: 'ACTIVE',
+  let campaigns: any[]
+
+  try {
+    campaigns = await prisma.campaign.findMany({
+      where: {
+        retiredAt: null,
+        id: { notIn: memberCampaignIds.length > 0 ? memberCampaignIds : ['__none__'] },
+        OR: [
+          { discoverable: true },
+          {
+            discoverable: false,
+            spectatorPolicy: { not: 'NONE' },
+            sessions: {
+              some: {
+                state: 'ACTIVE',
+              },
             },
           },
+        ],
+      },
+      include: {
+        currentDm: {
+          select: { username: true, displayName: true, avatarUrl: true },
         },
-      ],
-    },
-    include: {
-      currentDm: {
-        select: { username: true, displayName: true, avatarUrl: true },
-      },
-      members: {
-        select: { userId: true, role: true },
-      },
-      sessions: {
-        where: { state: 'ACTIVE' },
-        select: {
-          state: true,
-          presence: {
-            select: { userId: true, state: true },
+        members: {
+          select: { userId: true, role: true },
+        },
+        sessions: {
+          where: { state: 'ACTIVE' },
+          select: {
+            state: true,
+            presence: {
+              select: { userId: true, state: true },
+            },
           },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
         },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
       },
-    },
-  })
+    })
+  } catch (error) {
+    if (!isCampaignSchemaDriftError(error)) {
+      throw error
+    }
+
+    logger.warn('campaign.repository', 'Campaign discover query falling back to legacy schema', {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
+    return []
+  }
 
   return campaigns
     .map((c: any) => {

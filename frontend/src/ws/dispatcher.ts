@@ -22,7 +22,7 @@ export class EventDispatcher {
 
   private isSessionlessEventAllowed(event: EventEnvelope): boolean {
     // Campaign-scoped greenroom chat events may intentionally omit sessionId.
-    return event.type === 'CHAT:MESSAGE_SENT'
+    return event.type === 'CHAT:MESSAGE_SENT' || event.type === 'CAMPAIGN:LIST_INVALIDATED'
   }
 
   /**

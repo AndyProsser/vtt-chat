@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
+import { randomUUID } from 'crypto'
 import { getPrismaClient } from '@/infra/db'
 import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
@@ -33,6 +34,7 @@ import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
   SESSION_COOLDOWN_EXTENSION_MIN_MS,
 } from '@/constants/session.constants'
+import eventBroadcaster from '@/ws/event-broadcaster'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -366,6 +368,23 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     description: typeof description === 'string' ? description.trim() : undefined,
     currentDmId: user.userId as UUID,
   })
+
+  if (eventBroadcaster.isReady()) {
+    eventBroadcaster.sendToAllAuthenticated({
+      id: randomUUID() as UUID,
+      type: 'CAMPAIGN:LIST_INVALIDATED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: user.role,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: Date.now(),
+      payload: {
+        campaignId: campaign.id as UUID,
+        reason: 'CREATED',
+      },
+    })
+  }
 
   return res.status(201).json({ campaign })
 })

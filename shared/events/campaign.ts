@@ -14,6 +14,7 @@ export type CampaignEventType =
   | 'CAMPAIGN:JOIN_REQUEST_RESOLVED'
   | 'CAMPAIGN:RETIRED'
   | 'CAMPAIGN:RESUMED'
+  | 'CAMPAIGN:LIST_INVALIDATED'
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:JOIN_REQUEST_RECEIVED
@@ -67,8 +68,21 @@ export interface CampaignResumedPayload {
 
 export type CampaignResumedEvent = EventEnvelope<CampaignResumedPayload>
 
+// ---------------------------------------------------------------------------
+// CAMPAIGN:LIST_INVALIDATED
+// Lightweight lobby refresh signal. Frontend should refetch /api/campaigns
+// (and any discover list) rather than trusting stale card state.
+// ---------------------------------------------------------------------------
+export interface CampaignListInvalidatedPayload {
+  campaignId: UUID | null
+  reason: 'CREATED' | 'RUNTIME_PRESENCE_CHANGED'
+}
+
+export type CampaignListInvalidatedEvent = EventEnvelope<CampaignListInvalidatedPayload>
+
 export type CampaignEvent =
   | CampaignJoinRequestReceivedEvent
   | CampaignJoinRequestResolvedEvent
   | CampaignRetiredEvent
   | CampaignResumedEvent
+  | CampaignListInvalidatedEvent

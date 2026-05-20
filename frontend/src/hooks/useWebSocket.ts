@@ -20,6 +20,7 @@ export interface UseWebSocketOptions {
   sessionId?: UUID | null
   enabled?: boolean
   onAuthFailure?: (reason: string) => void
+  onCampaignListInvalidated?: (event: EventEnvelope) => void
 }
 
 export interface UseWebSocketReturn {
@@ -36,7 +37,14 @@ export interface UseWebSocketReturn {
  * Registers event handlers with the store.
  */
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
-  const { url, token, sessionId = null, enabled = true, onAuthFailure } = options
+  const {
+    url,
+    token,
+    sessionId = null,
+    enabled = true,
+    onAuthFailure,
+    onCampaignListInvalidated,
+  } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
   const [error, setError] = useState<Error | null>(null)
@@ -299,6 +307,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleUserUnmuted(event)
     })
 
+    // Campaign events
+    dispatcher.register('CAMPAIGN:LIST_INVALIDATED', (event) => {
+      onCampaignListInvalidated?.(event)
+    })
+
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
       useStore.getState().handleConnectionEstablished(event)
@@ -332,7 +345,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [enabled, onAuthFailure, sessionId, token, url])
+  }, [enabled, onAuthFailure, onCampaignListInvalidated, sessionId, token, url])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {

@@ -507,6 +507,7 @@ export function SessionInit({
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
+  const lobbyCampaignReloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Campaign settings hook
   const [campaignSettings, campaignSettingsActions] = useCampaignSettings()
@@ -764,6 +765,80 @@ export function SessionInit({
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
 
+  const loadCampaigns = useCallback(
+    async ({ showLoading = true, surfaceError = true } = {}) => {
+      if (showLoading) {
+        setIsLoadingCampaigns(true)
+      }
+      if (surfaceError) {
+        setError(null)
+      }
+
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to load campaigns')
+        }
+
+        const data = await response.json()
+        const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
+        const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
+        const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
+        setCampaigns(nextCampaigns)
+
+        if (pendingNotice) {
+          setLobbyNotice(pendingNotice)
+          sessionStorage.removeItem(LOBBY_NOTICE_STORAGE_KEY)
+        }
+
+        if (nextCampaigns.length > 0) {
+          const pendingCampaign = pendingCampaignId
+            ? nextCampaigns.find((campaign) => campaign.id === pendingCampaignId)
+            : null
+
+          if (pendingCampaign) {
+            setSelectedCampaignId(pendingCampaign.id)
+          } else {
+            setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
+          }
+        } else {
+          setSelectedCampaignId('')
+          clearSessions()
+        }
+
+        sessionStorage.removeItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
+        return nextCampaigns
+      } catch (err) {
+        if (surfaceError) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
+        }
+        return null
+      } finally {
+        if (showLoading) {
+          setIsLoadingCampaigns(false)
+        }
+      }
+    },
+    [apiUrl, clearSessions, fetchWithAuthGuard, token]
+  )
+
+  const handleCampaignListInvalidated = useCallback(() => {
+    if (lobbyCampaignReloadTimeoutRef.current) {
+      clearTimeout(lobbyCampaignReloadTimeoutRef.current)
+    }
+
+    lobbyCampaignReloadTimeoutRef.current = setTimeout(() => {
+      void loadCampaigns({ showLoading: false, surfaceError: false })
+    }, 250)
+  }, [loadCampaigns])
+
   // WebSocket connection
   const {
     state: wsState,
@@ -776,7 +851,16 @@ export function SessionInit({
     sessionId: currentSessionId,
     enabled: shouldEnableWs,
     onAuthFailure: handleWebSocketAuthFailure,
+    onCampaignListInvalidated: handleCampaignListInvalidated,
   })
+
+  useEffect(() => {
+    return () => {
+      if (lobbyCampaignReloadTimeoutRef.current) {
+        clearTimeout(lobbyCampaignReloadTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const currentPauseStats = currentSessionId
     ? (pauseStats[currentSessionId] ?? {
@@ -1589,59 +1673,8 @@ export function SessionInit({
   }, [activeTransitionNotice, hideTransitionToast])
 
   useEffect(() => {
-    const loadCampaigns = async () => {
-      setIsLoadingCampaigns(true)
-      setError(null)
-
-      try {
-        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'Failed to load sessions')
-        }
-
-        const data = await response.json()
-        const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
-        const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
-        const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
-        setCampaigns(nextCampaigns)
-
-        if (pendingNotice) {
-          setLobbyNotice(pendingNotice)
-          sessionStorage.removeItem(LOBBY_NOTICE_STORAGE_KEY)
-        }
-
-        if (nextCampaigns.length > 0) {
-          const pendingCampaign = pendingCampaignId
-            ? nextCampaigns.find((campaign) => campaign.id === pendingCampaignId)
-            : null
-
-          if (pendingCampaign) {
-            setSelectedCampaignId(pendingCampaign.id)
-          } else {
-            setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
-          }
-        } else {
-          setSelectedCampaignId('')
-          clearSessions()
-        }
-
-        sessionStorage.removeItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'An error occurred'
-        setError(message)
-      } finally {
-        setIsLoadingCampaigns(false)
-      }
-    }
-
     void loadCampaigns()
-  }, [apiUrl, clearSessions, fetchWithAuthGuard, token])
+  }, [loadCampaigns])
 
   useEffect(() => {
     const loadCampaignSessions = async () => {

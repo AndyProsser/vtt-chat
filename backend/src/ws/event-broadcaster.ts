@@ -57,6 +57,24 @@ class EventBroadcaster {
   }
 
   /**
+   * Broadcast an event to every authenticated websocket client.
+   * Use for global lobby invalidation signals where the frontend should refetch.
+   */
+  sendToAllAuthenticated(event: EventEnvelope): void {
+    if (!this.wsManager) {
+      throw new Error('WebSocketManager not initialized in broadcaster')
+    }
+    const OPEN_STATE = 1
+    const wss = (this.wsManager as any).wss
+    if (!wss) return
+    wss.clients.forEach((client: any) => {
+      if (client.readyState === OPEN_STATE && client.authPayload?.userId) {
+        client.send(JSON.stringify({ type: 'WS:EVENT', event }))
+      }
+    })
+  }
+
+  /**
    * Check if broadcaster is ready
    */
   isReady(): boolean {

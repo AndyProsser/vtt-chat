@@ -57,7 +57,9 @@ export function CampaignCard({
 }: CampaignCardProps) {
   const state = getCampaignDisplayState(campaign)
   const entryAction = getCampaignEntryAction(campaign)
-  const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
+  const dmStatus = campaign.dmOnline
+    ? 'DM online in runtime session'
+    : 'DM offline in runtime session'
   const playersLabel = getPrivacyCounterLabel(
     campaign.connectedPlayersLabel,
     campaign.connectedPlayersRounded
@@ -181,7 +183,12 @@ export function CampaignCard({
           </span>
         )}
         <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
-        <span className="session-campaign-card__dm-status">{dmStatus}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="session-campaign-card__dm-presence-indicator" aria-label={dmStatus} />
+          </TooltipTrigger>
+          <TooltipContent side="top">{dmStatus}</TooltipContent>
+        </Tooltip>
       </span>
 
       <span className="session-campaign-card__description">
