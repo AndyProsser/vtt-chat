@@ -42,6 +42,7 @@ import {
   getRooms,
   getSessionPresence,
   joinRoom,
+  removePresenceProjection,
 } from '@/services/room.service'
 import {
   clearRoomEnvironmentState,
@@ -138,7 +139,7 @@ async function broadcastCampaignListInvalidatedForSession(params: {
   sessionId: UUID
   actorUserId: UUID
   actorUserRole: Role
-  reason: 'SESSION_STATE_CHANGED' | 'SESSION_COOLDOWN_ENDED'
+  reason: 'SESSION_STATE_CHANGED' | 'SESSION_COOLDOWN_ENDED' | 'EXPLICIT_EXIT'
 }): Promise<void> {
   if (!eventBroadcaster.isReady()) {
     return
@@ -649,9 +650,95 @@ async function leaveSessionHandler(req: Request, res: Response) {
     }
 
     if (session.dmId === (user.userId as UUID)) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'DM cannot leave their own session',
+      const previousPresence = (await getSessionPresence(id as UUID)).find(
+        (entry) => entry.userId === (user.userId as UUID)
+      )
+
+      await removePresenceProjection({
+        sessionId: id as UUID,
+        userId: user.userId as UUID,
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager) {
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'PRESENCE:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: previousPresence?.primaryRoomId || null,
+          timestamp: Date.now(),
+          payload: {
+            roomId: previousPresence?.primaryRoomId || null,
+            userId: user.userId as UUID,
+            username: user.username,
+            presence: PresenceState.OFFLINE,
+            previousState: previousPresence?.state || PresenceState.ONLINE,
+            newState: PresenceState.OFFLINE,
+            changedAt: Date.now(),
+            previousGroupId: previousPresence?.previousGroupId || null,
+          },
+        })
+
+        if (previousPresence?.primaryRoomId) {
+          wsManager.broadcastEventToSession(id as UUID, {
+            id: crypto.randomUUID() as UUID,
+            type: 'ROOM:USER_LEFT',
+            version: 1,
+            userId: user.userId as UUID,
+            userRole: user.role,
+            sessionId: id as UUID,
+            roomId: previousPresence.primaryRoomId,
+            timestamp: Date.now(),
+            payload: {
+              roomId: previousPresence.primaryRoomId,
+              userId: user.userId as UUID,
+              username: user.username,
+              leftAt: Date.now(),
+              reason: 'EXIT_SESSION',
+            },
+          })
+        }
+
+        await broadcastSessionStatsSnapshot({
+          wsManager,
+          sessionId: id as UUID,
+          actorUserId: user.userId as UUID,
+          actorUserRole: user.role,
+        })
+      }
+
+      await appendSessionAuditEvent({
+        sessionId: id as UUID,
+        actorUserId: user.userId as UUID,
+        actorRole: user.role,
+        actionType: 'SESSION_DM_EXITED_TO_LOBBY',
+        targetType: 'USER',
+        targetId: user.userId as UUID,
+        visibilityClass: 'SYSTEM',
+        metadata: {
+          clearedPresenceProjection: true,
+        },
+      })
+
+      await broadcastCampaignListInvalidatedForSession({
+        sessionId: id as UUID,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role as Role,
+        reason: 'EXPLICIT_EXIT',
+      })
+      await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+
+      const users = await getSessionUsers(id as UUID)
+      return res.status(200).json({
+        session,
+        users: users.map((u) => ({
+          id: u.id,
+          username: u.username,
+          role: u.role,
+        })),
       })
     }
 
@@ -740,6 +827,15 @@ async function leaveSessionHandler(req: Request, res: Response) {
     }
 
     const updatedUsers = await getSessionUsers(id as UUID)
+
+    await broadcastCampaignListInvalidatedForSession({
+      sessionId: id as UUID,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'EXPLICIT_EXIT',
+    })
+    await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+
     return res.status(200).json({
       session,
       users: updatedUsers.map((u) => ({

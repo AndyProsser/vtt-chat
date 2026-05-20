@@ -3095,7 +3095,7 @@ export function SessionInit({
   }
 
   const returnToCampaignSelector = async () => {
-    if (currentSession && currentSession.dmId !== user.id) {
+    if (currentSession) {
       try {
         await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}/members/leave`, {
           method: 'POST',
