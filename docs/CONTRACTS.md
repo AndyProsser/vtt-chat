@@ -208,7 +208,7 @@ GREENROOM is a calculated runtime state, not an enum member:
 - `PAUSED` → `ACTIVE`: DM explicit action (resume session)
 - `PAUSED` → `COOLDOWN`: DM explicit action (end session from paused state)
 - `COOLDOWN` → `ENDED`: Automatic when cooldown timer expires (default 60 seconds, configurable per campaign, range 1-60 minutes)
-- `ENDED` → `CLEANUP`: Automatic when all players and DM disconnect (background scheduled job detects and transitions)
+- `ENDED` → `CLEANUP`: Automatic after all players and DM disconnect and remain away for 60 seconds (spectators do not block this; background scheduled job detects and transitions)
 
 Archive lock rules:
 
@@ -222,7 +222,7 @@ Archive lock rules:
 - Every new session starts with a clean session-scoped chat timeline (no prior session chat).
 - Campaign Greenroom chat persists across session boundaries at the campaign level and is always separate from session-scoped chat.
 - On `IDLE` → `ACTIVE`: session-scoped chat starts clean, but campaign Greenroom remains visible as a persistent context.
-- New IDLE sessions are created automatically when the first player reconnects to a campaign with an ENDED session in CLEANUP state.
+- New IDLE sessions are created on the next DM or PLAYER reconnect to a campaign whose latest runtime sessions are all in `CLEANUP`.
 - Cleanup job runs once per campaign after all users disconnect from an ENDED session, purges ephemeral session-scoped data (Whisper, Paused runtime, Cooldown runtime), and archives the session record.
 - Chat hydration supports lazy paging for late-join and long timelines: `limit` (default `20`, max `100`) and `before` (unix ms cursor). Response includes `pagination.hasMore` and `pagination.nextBefore` so clients can continuously load older messages while scrolling.
 
@@ -247,8 +247,8 @@ Archive lock rules:
 
 - ENDED is the archive-locked terminal state for that session record (session can never be restarted).
 - The session remains in ENDED until all players and DM disconnect.
-- Once all disconnect, the session transitions to CLEANUP (automatic, triggered by background job).
-- The next time a player reconnects to the campaign, a new IDLE session is created.
+- Once all DM/player table members disconnect, a 60 second buffer starts. If none reconnect during that buffer, the session transitions to CLEANUP automatically. Spectator presence does not block cleanup.
+- The next time a DM or player reconnects to the campaign, a new IDLE session is created.
 
 ### Other Enums
 

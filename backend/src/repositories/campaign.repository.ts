@@ -366,6 +366,7 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
   description: string | null
   inviteCode: string
   currentDmId: string
+  memberRole: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
   postSessionChatEnabled: boolean
   postSessionChatDurationMs: number
   latestSessionState: SessionState | null
@@ -404,6 +405,7 @@ export async function getCampaignForUser(params: { campaignId: string; userId: s
     description: membership.campaign.description,
     inviteCode: membership.campaign.inviteCode,
     currentDmId: membership.campaign.currentDmId,
+    memberRole: membership.role,
     postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
     postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
     latestSessionState: (membership.campaign.sessions[0]?.state || null) as SessionState | null,

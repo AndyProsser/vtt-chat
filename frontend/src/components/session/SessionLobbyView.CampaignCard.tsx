@@ -8,10 +8,49 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 import {
   type CampaignSummary,
-  getCampaignDisplayState,
   getCampaignEntryAction,
   getPrivacyCounterLabel,
 } from './sessionInit.shared'
+
+type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'ENDED' | 'INACTIVE'
+
+function getCampaignVisualState(campaign: CampaignSummary): CampaignVisualState {
+  const hasConnectedTable = Boolean(campaign.dmOnline) || (campaign.connectedPlayers ?? 0) > 0
+
+  if (!hasConnectedTable || campaign.latestSessionState === 'CLEANUP') {
+    return 'INACTIVE'
+  }
+
+  if (campaign.latestSessionState === 'ACTIVE' || campaign.latestSessionState === 'PAUSED') {
+    return 'ACTIVE'
+  }
+
+  if (campaign.latestSessionState === 'COOLDOWN') {
+    return 'COOLDOWN'
+  }
+
+  if (campaign.latestSessionState === 'ENDED') {
+    return 'ENDED'
+  }
+
+  return 'IDLE'
+}
+
+function getCampaignVisualStateLabel(state: CampaignVisualState): string {
+  if (state === 'IDLE') {
+    return 'Ready'
+  }
+
+  if (state === 'INACTIVE') {
+    return 'Offline'
+  }
+
+  if (state === 'COOLDOWN') {
+    return 'Finishing'
+  }
+
+  return state.charAt(0) + state.slice(1).toLowerCase()
+}
 
 function formatLastActiveLabel(campaign: CampaignSummary): string {
   const rawTimestamp = campaign.updatedAt ?? campaign.createdAt
@@ -55,11 +94,12 @@ export function CampaignCard({
   onWatchCampaign,
   onError,
 }: CampaignCardProps) {
-  const state = getCampaignDisplayState(campaign)
+  const state = getCampaignVisualState(campaign)
   const entryAction = getCampaignEntryAction(campaign)
-  const dmStatus = campaign.dmOnline
-    ? 'DM online in runtime session'
-    : 'DM offline in runtime session'
+  const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
+  const dmTooltipClassName = campaign.dmOnline
+    ? 'session-campaign-card__tooltip-status-online'
+    : 'session-campaign-card__tooltip-status-offline'
   const playersLabel = getPrivacyCounterLabel(
     campaign.connectedPlayersLabel,
     campaign.connectedPlayersRounded
@@ -129,7 +169,8 @@ export function CampaignCard({
         <span className="session-campaign-card__title">
           <span
             className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
-            aria-label={`Campaign ${state.toLowerCase()}`}
+            aria-label={`Campaign ${getCampaignVisualStateLabel(state).toLowerCase()}`}
+            title={getCampaignVisualStateLabel(state)}
           />
           <span>{campaign.name}</span>
           {showLock && (
@@ -185,9 +226,13 @@ export function CampaignCard({
         <span className="session-campaign-card__dm-name">{dmDisplayName}</span>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="session-campaign-card__dm-presence-indicator" aria-label={dmStatus} />
+            <span className="session-campaign-card__dm-status-pill" aria-label={`DM ${dmStatus}`}>
+              {dmStatus}
+            </span>
           </TooltipTrigger>
-          <TooltipContent side="top">{dmStatus}</TooltipContent>
+          <TooltipContent side="top">
+            DM Status: <span className={dmTooltipClassName}>{dmStatus.toUpperCase()}</span>
+          </TooltipContent>
         </Tooltip>
       </span>
 

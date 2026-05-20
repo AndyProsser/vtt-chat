@@ -260,9 +260,24 @@
   border-color: rgba(22, 163, 74, 0.45);
 }
 
+.session-campaign-card__state-dot.state-idle {
+  background: #2563eb;
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
 .session-campaign-card__state-dot.state-paused {
   background: #f59e0b;
   border-color: rgba(245, 158, 11, 0.45);
+}
+
+.session-campaign-card__state-dot.state-cooldown {
+  background: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.42);
+}
+
+.session-campaign-card__state-dot.state-ended {
+  background: #ea580c;
+  border-color: rgba(234, 88, 12, 0.42);
 }
 
 .session-campaign-card__state-dot.state-greenroom {
@@ -339,15 +354,16 @@
 .session-campaign-card__dm {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
   width: fit-content;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
+  min-height: 1.35rem;
 }
 
 .session-campaign-card__dm-avatar {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.2rem;
+  height: 1.2rem;
   border-radius: 999px;
   object-fit: cover;
   border: 1px solid var(--color-border-soft);
@@ -357,22 +373,40 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   background: color-mix(in srgb, var(--color-surface-subtle) 75%, var(--color-surface));
   color: var(--color-text-secondary);
 }
 
 .session-campaign-card__dm-name {
+  display: inline-flex;
+  align-items: center;
   color: var(--color-text-primary);
+  margin-right: 0.1rem;
 }
 
-.session-campaign-card__dm-presence-indicator {
-  display: inline-block;
-  width: 0.56rem;
-  height: 0.56rem;
+.session-campaign-card__dm-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.05rem;
+  padding: 0.02rem 0.36rem;
   border-radius: 999px;
   border: 1px solid currentColor;
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 14%, transparent);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, currentColor 14%, var(--color-surface));
+  line-height: 1;
+}
+
+.session-campaign-card__tooltip-status-online {
+  color: #16a34a;
+}
+
+.session-campaign-card__tooltip-status-offline {
+  color: #ef4444;
 }
 
 .session-campaign-card__dm--online {

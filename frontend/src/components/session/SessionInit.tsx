@@ -302,7 +302,7 @@ function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
   const ended = sessions.find((session) => session.state === SessionState.ENDED)
   if (ended) return ended
 
-  // CLEANUP sessions are terminal; backend provisions a fresh IDLE session after archiving.
+  // CLEANUP sessions are terminal; the next DM/player reconnect provisions a fresh IDLE session.
   return null
 }
 
@@ -857,6 +857,11 @@ export function SessionInit({
 
   const loadDiscoverableCampaigns = useCallback(
     async ({ surfaceError = false } = {}) => {
+      if (user.authType === 'GUEST') {
+        setDiscoverableCampaigns([])
+        return []
+      }
+
       try {
         const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/discover`, {
           headers: {
@@ -887,7 +892,7 @@ export function SessionInit({
         return null
       }
     },
-    [apiUrl, fetchWithAuthGuard, token]
+    [apiUrl, fetchWithAuthGuard, token, user.authType]
   )
 
   const loadLobbyCampaignData = useCallback(

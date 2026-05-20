@@ -372,16 +372,12 @@ async function joinSessionHandler(req: Request, res: Response) {
       })
     }
 
-    if (session.state === SessionStateEnum.CLEANUP && session.dmId === (user.userId as UUID)) {
-      const restoredSession = await updateSessionState(
-        id as UUID,
-        SessionStateEnum.IDLE,
-        session.dmId
-      )
-
-      if (restoredSession) {
-        session = restoredSession
-      }
+    if (session.state === SessionStateEnum.CLEANUP) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_STATE_TRANSITION,
+        message:
+          'This session is archived. Refresh the campaign to get the next available session.',
+      })
     }
 
     const currentUsers = await getSessionUsers(id as UUID)

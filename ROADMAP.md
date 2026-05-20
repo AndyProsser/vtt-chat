@@ -259,6 +259,10 @@ Evidence snapshot (2026-05-20):
 - Lobby supports in-page offline campaign edit/review mode with campaign-like right-side icon dock and default `INFO` panel.
 - Offline mode hides rightbar `SETTINGS` and keeps role-based panel visibility aligned with campaign context.
 - Lobby card list now owns vertical scrolling while surrounding shell stays fixed-height.
+- Discovery routing is now stable: `/api/campaigns/discover` resolves ahead of generic `/:campaignId` routes, and guest accounts no longer request the discovery list.
+- Lobby campaign cards now show a smaller DM `ONLINE`/`OFFLINE` status pill with color-coded tooltip text and vertically aligned DM metadata.
+- Lobby campaign state indicators now map runtime presence to user-facing states: `OFFLINE` when no DM/player is connected, `READY` for connected `IDLE`, `ACTIVE` for connected `ACTIVE`/`PAUSED`, `FINISHING` for connected `COOLDOWN`, and `ENDED` for connected `ENDED`.
+- Post-session cleanup no longer pre-provisions an IDLE session in the background; after the 60 second DM/player disconnect buffer elapses, the next DM/player reconnect creates the fresh IDLE session.
 
 ---
 

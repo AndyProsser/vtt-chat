@@ -1337,12 +1337,31 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   }
 
   const sessions = await listSessionsByCampaign(campaignId as UUID)
+  let effectiveSessions = sessions
+
+  if (
+    effectiveSessions.length > 0 &&
+    effectiveSessions.every((session) => session.state === 'CLEANUP') &&
+    (campaign.memberRole === 'DM' || campaign.memberRole === 'PLAYER')
+  ) {
+    const dateLabel = new Date().toLocaleDateString('en-CA')
+    const sessionName = `Session ${effectiveSessions.length + 1} - ${dateLabel}`
+    const newSession = await createSession(
+      sessionName,
+      campaign.currentDmId as UUID,
+      undefined,
+      campaignId as UUID
+    )
+    await ensureSessionDefaultRoomsForSession(newSession.id as UUID, newSession.dmId as UUID)
+    effectiveSessions = await listSessionsByCampaign(campaignId as UUID)
+  }
+
   const cooldownDurationMs = Math.max(
     SESSION_COOLDOWN_EXTENSION_MIN_MS,
     Math.min(SESSION_COOLDOWN_EXTENSION_MAX_MS, campaign.postSessionChatDurationMs)
   )
   const sessionsWithCooldownExtensionCount = await Promise.all(
-    sessions.map(async (session) => {
+    effectiveSessions.map(async (session) => {
       const cooldownExpiresAt =
         session.state === 'COOLDOWN' && Number.isFinite(Number(session.endedAt))
           ? Number(session.endedAt) + cooldownDurationMs

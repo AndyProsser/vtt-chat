@@ -147,8 +147,8 @@ The live session and cooldown have concluded.
 - No new activities are possible (no chat, no audio effects, no group changes).
 - Participants are still rendered in the room state with presence indicators.
 - The session remains in `ENDED` state until all players and DM disconnect.
-- Once all participants have disconnected, the session transitions to `CLEANUP`.
-- The next time a player returns to this campaign, a new IDLE session is automatically created.
+- Once all DM/player table members disconnect, a 60 second buffer starts. If none reconnect during that buffer, the session transitions to `CLEANUP`. Spectators do not block this transition.
+- The next time a DM or player returns to this campaign, a new IDLE session is automatically created.
 
 ---
 
@@ -156,7 +156,7 @@ The live session and cooldown have concluded.
 
 The session is fully archived and all runtime session-scoped data is purged.
 
-- Cleanup runs after all players and DM have disconnected from the `ENDED` session.
+- Cleanup runs after all players and DM have disconnected from the `ENDED` session and the 60 second disconnect buffer has elapsed.
 - Cleanup purges session-scoped runtime data:
   - Whisper Bubble chat (ephemeral, off-the-record).
   - Paused runtime chat (if marked ephemeral by DM).
@@ -164,7 +164,7 @@ The session is fully archived and all runtime session-scoped data is purged.
   - Any other ephemeral session-scoped message context.
 - Campaign Greenroom chat is NOT purged (it is campaign-scoped, not session-scoped, and persists across sessions).
 - Cleanup is terminal for that session record.
-- A new IDLE session is created the next time a player reconnects to the campaign.
+- A new IDLE session is created the next time a DM or player reconnects to the campaign.
 
 ---
 
