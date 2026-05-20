@@ -67,7 +67,22 @@ function clean_logs_and_artifacts() {
   echo "Cleaning custom logs and workspace artifacts..."
   # Remove logs in root, backend, frontend, admin (e.g. *.log, logs/*, coverage, dist, etc.)
   find "$INSTALL_DIR" -type f -name "*.log" -exec rm -f {} +
-  find "$INSTALL_DIR" -type d -name "logs" -exec rm -rf {} +
+
+  # Only remove known runtime log directories. Never wildcard-delete any folder named
+  # "logs" because source code paths like admin/src/features/logs must be preserved.
+  local log_dirs=(
+    "$INSTALL_DIR/logs"
+    "$INSTALL_DIR/backend/logs"
+    "$INSTALL_DIR/frontend/logs"
+    "$INSTALL_DIR/admin/logs"
+  )
+  local log_dir
+  for log_dir in "${log_dirs[@]}"; do
+    if [[ -d "$log_dir" ]]; then
+      rm -rf "$log_dir"
+    fi
+  done
+
   find "$INSTALL_DIR" -type d \( -name "dist" -o -name "coverage" -o -name ".turbo" -o -name ".vite" \) -exec rm -rf {} +
 
   # Run npm run clean in root, backend, frontend, admin if package.json exists
