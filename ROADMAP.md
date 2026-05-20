@@ -183,9 +183,9 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 **Acceptance Criteria**:
 
-- [ ] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS
-- [ ] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
-- [ ] INFO is readable by all personas; DM can edit campaign name/description/poster
+- [x] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS
+- [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
+- [x] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
 - [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions (same visible fields for players and spectators)
 - [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
@@ -196,11 +196,11 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [ ] JOURNAL is readable by all personas; DM-only edit
 - [ ] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
 - [ ] HISTORY never includes messages from the current active session
-- [ ] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
+- [x] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
 - [ ] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
 - [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
 - [ ] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
-- [ ] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
+- [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [ ] Right-panel dismisses on backdrop click
 - [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
 
@@ -208,6 +208,15 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 - [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md)
 - [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
+
+**Evidence snapshot (2026-05-20):**
+
+- CampaignInformationPanel now integrates toast-based error handling (vs. inline error state) for consistent UX with rest of app.
+- Campaign name and description editing now use controlled input with draft state and cancel/save flow.
+- Poster image upload validation: file type check (images only), size limit (≤2MB), immediate user feedback via toast.
+- Campaign info panel layout refined with responsive scrolling and workspace mode integration.
+- Markdown rendering support for campaign descriptions with improved styling visibility.
+- All campaign edit errors now surface via `useToast()` instead of inline state management.
 
 ---
 
@@ -233,14 +242,14 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [ ] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
 - [ ] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
 - [ ] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
-- [ ] Players can join via invite link or code
-- [ ] Spectators can only access active campaigns and cannot edit
+- [x] Players can join via invite link or code
+- [x] Spectators can only access active campaigns and cannot edit
 - [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period
-- [ ] DM can RETIRE a campaign from the offline workspace header (confirm dialog required); retired campaigns removed from main lobby list
-- [ ] DM can RESUME a retired campaign from a dedicated "Retired" drawer in the lobby (no confirm dialog); DM cannot delete campaigns
-- [ ] Guest accounts are not shown the campaign discovery list; on session exit they see the upgrade prompt only
-- [ ] Guest upgrade: `POST /api/auth/upgrade` (email + password); email matching another guest → merge accounts; email matching a full account → block with clear message
-- [ ] Campaign invite URL paths use `/join/:code` (player) and `/watch/:code` (spectator); backend and frontend call sites are consistent
+- [x] DM can RETIRE a campaign from the offline workspace header (confirm dialog required); retired campaigns removed from main lobby list
+- [x] DM can RESUME a retired campaign from a dedicated "Retired" drawer in the lobby (no confirm dialog); DM cannot delete campaigns
+- [x] Guest accounts are not shown the campaign discovery list; on session exit they see the upgrade prompt only
+- [x] Guest upgrade: `POST /api/auth/upgrade` (email + password); email matching another guest → merge accounts; email matching a full account → block with clear message
+- [x] Campaign invite URL paths use `/join/:code` (player) and `/watch/:code` (spectator); backend and frontend call sites are consistent
 
 **Related Docs**:
 
@@ -252,7 +261,7 @@ Evidence snapshot (2026-05-18):
 - Lobby campaign cards now render a visible "Last active" date using campaign `updatedAt`/`createdAt` fallback metadata in the card surface.
 - Greenroom chat timeline now hydrates on first screen load (no initial `todayOnly` bootstrap gate), so users see recent persisted greenroom messages immediately without waiting for the first outbound chat event.
 
-Evidence snapshot (2026-05-20):
+Evidence snapshot (2026-05-20 - Part 1):
 
 - Lobby create flow now removes description input and supports intent-based create actions: `EDIT` (save + open offline workspace) or `LAUNCH` (save + enter runtime).
 - Join dialog and create dialog now use top-offset placement and right-aligned button rows to match other dialogs.
@@ -263,6 +272,14 @@ Evidence snapshot (2026-05-20):
 - Lobby campaign cards now show a smaller DM `ONLINE`/`OFFLINE` status pill with color-coded tooltip text and vertically aligned DM metadata.
 - Lobby campaign state indicators now map runtime presence to user-facing states: `OFFLINE` when no DM/player is connected, `READY` for connected `IDLE`, `ACTIVE` for connected `ACTIVE`/`PAUSED`, `FINISHING` for connected `COOLDOWN`, and `ENDED` for connected `ENDED`.
 - Post-session cleanup no longer pre-provisions an IDLE session in the background; after the 60 second DM/player disconnect buffer elapses, the next DM/player reconnect creates the fresh IDLE session.
+
+Evidence snapshot (2026-05-20 - Part 2):
+
+- Campaign description popover now renders markdown-formatted descriptions with improved styling for visibility and readability.
+- Campaign settings management in `LobbyCampaignSettingsPanel` streamlined: removed unused invite URL duplication, consolidated form controls.
+- Error handling migration complete for campaign operations: all validation/save errors now surface via toast notifications instead of inline error states.
+- Session lobby workspace panel layout refined with CSS grid and flex adjustments to maintain full-height viewport without overflow leakage to document scroll.
+- Campaign info panel now supports edit mode with textarea for description (height increased for better usability) and poster image upload with validation (type check, size limit ≤2MB).
 
 ---
 

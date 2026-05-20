@@ -73,11 +73,14 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
     )
   }
 
+  // Campaign is now non-null for the rest of this component
+  const campaign = props.campaign
+
   const renderPanel = () => {
     if (resolvedActiveTab === 'information') {
       return (
         <CampaignInformationPanel
-          campaign={props.campaign}
+          campaign={campaign}
           sessionCount={props.sessionCount}
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEdit={props.canEditCampaignInfo}
@@ -97,7 +100,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
             'Manage sharing targets before launch',
             'Review tagged references by topic',
           ]}
-          campaignName={props.campaign.name}
+          campaignName={campaign.name}
         />
       )
     }
@@ -112,7 +115,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
             'Prepare next-session recap points',
             'Track searchable hashtags and chapter notes',
           ]}
-          campaignName={props.campaign.name}
+          campaignName={campaign.name}
         />
       )
     }
@@ -127,7 +130,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
             'Current active-session messages are excluded',
             'Use this view for prep and recap context',
           ]}
-          campaignName={props.campaign.name}
+          campaignName={campaign.name}
         />
       )
     }
@@ -142,7 +145,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
             'Prepare room-level environment defaults',
             'Validate room naming before launch',
           ]}
-          campaignName={props.campaign.name}
+          campaignName={campaign.name}
         />
       )
     }
@@ -160,7 +163,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
           'Validate DM audio behavior defaults',
           'Confirm player-facing audio expectations',
         ]}
-        campaignName={props.campaign.name}
+        campaignName={campaign.name}
       />
     )
   }
@@ -297,10 +300,6 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
           <header className="session-lobby-workspace__header">
             <div>
               <h3 className="session-card-title">{props.campaign.name}</h3>
-              <p className="session-card-subtitle">
-                Offline campaign {props.role === 'DM' ? 'edit' : 'review'} mode. No session state is
-                active in this workspace.
-              </p>
             </div>
             <div className="session-action-row session-action-row--right session-action-row--compact">
               <button
