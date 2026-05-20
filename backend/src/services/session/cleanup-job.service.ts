@@ -18,7 +18,35 @@ import {
 } from '@/constants/session.constants'
 import { logger, isGreenRoomName } from '@/utils'
 
-const LIFECYCLE_POLL_INTERVAL_MS = 60_000
+const LIFECYCLE_FALLBACK_POLL_INTERVAL_MS = 60_000
+
+function getSessionCooldownDurationMs(session: {
+  campaign: {
+    postSessionChatEnabled: boolean
+    postSessionChatDurationMs: number
+  } | null
+}): number {
+  return session.campaign?.postSessionChatDurationMs == null
+    ? STANDALONE_SESSION_COOLDOWN_MS
+    : Math.max(
+        SESSION_COOLDOWN_EXTENSION_MIN_MS,
+        Math.min(SESSION_COOLDOWN_EXTENSION_MAX_MS, session.campaign.postSessionChatDurationMs)
+      )
+}
+
+function getCooldownExpiryAtMs(
+  session: {
+    endedAt: Date | null
+    campaign: {
+      postSessionChatEnabled: boolean
+      postSessionChatDurationMs: number
+    } | null
+  },
+  now: number
+): number {
+  const cooldownStartedAtMs = session.endedAt?.getTime() ?? now
+  return cooldownStartedAtMs + getSessionCooldownDurationMs(session)
+}
 
 async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
   const [members, presence] = await Promise.all([
@@ -126,7 +154,8 @@ async function transitionToCleanup(session: {
 }
 
 export class SessionCleanupJobService {
-  private lifecycleIntervalId: ReturnType<typeof setInterval> | null = null
+  private lifecycleTimeoutId: ReturnType<typeof setTimeout> | null = null
+  private lifecycleNextRunAtMs: number | null = null
   private archiveIntervalId: ReturnType<typeof setInterval> | null = null
   private lifecycleWorkerRunning = false
   private archiveWorkerRunning = false
@@ -150,10 +179,7 @@ export class SessionCleanupJobService {
   }
 
   stop(): void {
-    if (this.lifecycleIntervalId !== null) {
-      clearInterval(this.lifecycleIntervalId)
-      this.lifecycleIntervalId = null
-    }
+    this.clearLifecycleScheduler('stopped')
 
     if (this.archiveIntervalId !== null) {
       clearInterval(this.archiveIntervalId)
@@ -172,57 +198,118 @@ export class SessionCleanupJobService {
 
   private async refreshLifecycleScheduler(reason: string): Promise<void> {
     await this.runLifecycleSweepOnce()
+    await this.scheduleNextLifecycleSweep(reason)
+  }
 
-    const hasPending = await this.hasPendingLifecycleWork()
-    if (!hasPending) {
-      this.clearLifecycleScheduler('idle')
+  private async handleLifecycleTick(): Promise<void> {
+    this.lifecycleTimeoutId = null
+    this.lifecycleNextRunAtMs = null
+
+    await this.runLifecycleSweepOnce()
+
+    await this.scheduleNextLifecycleSweep('tick')
+  }
+
+  private async scheduleNextLifecycleSweep(reason: string): Promise<void> {
+    const nextDelayMs = await this.getNextLifecycleDelayMs()
+    if (nextDelayMs === null) {
+      this.clearLifecycleScheduler(reason === 'tick' ? 'drained' : 'idle')
       return
     }
 
-    if (this.lifecycleIntervalId !== null) {
+    const nextRunAtMs = Date.now() + nextDelayMs
+    if (
+      this.lifecycleTimeoutId !== null &&
+      this.lifecycleNextRunAtMs !== null &&
+      this.lifecycleNextRunAtMs <= nextRunAtMs
+    ) {
       return
     }
 
-    this.lifecycleIntervalId = setInterval(() => {
+    if (this.lifecycleTimeoutId !== null) {
+      clearTimeout(this.lifecycleTimeoutId)
+    }
+
+    this.lifecycleNextRunAtMs = nextRunAtMs
+    this.lifecycleTimeoutId = setTimeout(() => {
       void this.handleLifecycleTick()
-    }, LIFECYCLE_POLL_INTERVAL_MS)
+    }, nextDelayMs)
 
-    logger.info('session-cleanup-job', 'Started on-demand lifecycle cleanup scheduler', {
+    logger.info('session-cleanup-job', 'Scheduled on-demand lifecycle cleanup sweep', {
       reason,
-      intervalMs: LIFECYCLE_POLL_INTERVAL_MS,
+      nextDelayMs,
+      nextRunAtMs,
       endedDisconnectGraceMs: config.sessionCleanup.endedDisconnectGraceMs,
     })
   }
 
-  private async handleLifecycleTick(): Promise<void> {
-    await this.runLifecycleSweepOnce()
-
-    const hasPending = await this.hasPendingLifecycleWork()
-    if (!hasPending) {
-      this.clearLifecycleScheduler('drained')
-    }
-  }
-
-  private clearLifecycleScheduler(reason: 'idle' | 'drained'): void {
-    if (this.lifecycleIntervalId === null) {
+  private clearLifecycleScheduler(reason: 'idle' | 'drained' | 'stopped'): void {
+    if (this.lifecycleTimeoutId === null) {
       return
     }
 
-    clearInterval(this.lifecycleIntervalId)
-    this.lifecycleIntervalId = null
+    clearTimeout(this.lifecycleTimeoutId)
+    this.lifecycleTimeoutId = null
+    this.lifecycleNextRunAtMs = null
 
     logger.info('session-cleanup-job', 'Stopped on-demand lifecycle cleanup scheduler', {
       reason,
     })
   }
 
-  private async hasPendingLifecycleWork(): Promise<boolean> {
+  private async getNextLifecycleDelayMs(): Promise<number | null> {
     const [cooldownSessions, endedSessions] = await Promise.all([
       listCooldownSessionsWithCampaign(),
       listEndedSessionsWithCampaign(),
     ])
 
-    return cooldownSessions.length > 0 || endedSessions.length > 0
+    if (cooldownSessions.length === 0 && endedSessions.length === 0) {
+      return null
+    }
+
+    const now = Date.now()
+    let nearestKnownDeadlineMs = Number.POSITIVE_INFINITY
+    let hasUnknownDeadline = false
+    const campaignActiveSessionCache = new Map<string, boolean>()
+
+    for (const session of cooldownSessions) {
+      nearestKnownDeadlineMs = Math.min(nearestKnownDeadlineMs, getCooldownExpiryAtMs(session, now))
+    }
+
+    for (const session of endedSessions) {
+      const sessionId = session.id as UUID
+      const tableStillConnected = await hasConnectedTableMembers(sessionId)
+      if (tableStillConnected) {
+        hasUnknownDeadline = true
+        continue
+      }
+
+      if (session.campaignId) {
+        let hasActiveSiblings = campaignActiveSessionCache.get(session.campaignId)
+        if (hasActiveSiblings === undefined) {
+          hasActiveSiblings = await campaignHasActiveSessions(session.campaignId)
+          campaignActiveSessionCache.set(session.campaignId, hasActiveSiblings)
+        }
+
+        if (hasActiveSiblings) {
+          hasUnknownDeadline = true
+          continue
+        }
+      }
+
+      const latestSeenAt = await getLatestTableMemberLastSeenAt(sessionId)
+      const fallbackSeenAt = session.endedAt?.getTime() ?? now
+      nearestKnownDeadlineMs = Math.min(
+        nearestKnownDeadlineMs,
+        (latestSeenAt ?? fallbackSeenAt) + config.sessionCleanup.endedDisconnectGraceMs
+      )
+    }
+
+    if (Number.isFinite(nearestKnownDeadlineMs)) {
+      return Math.max(0, nearestKnownDeadlineMs - now)
+    }
+
+    return hasUnknownDeadline ? LIFECYCLE_FALLBACK_POLL_INTERVAL_MS : null
   }
 
   private async runLifecycleSweepOnce(): Promise<void> {
@@ -279,19 +366,7 @@ export class SessionCleanupJobService {
       const sessionId = session.id as UUID
 
       try {
-        const cooldownMs =
-          session.campaign?.postSessionChatDurationMs == null
-            ? STANDALONE_SESSION_COOLDOWN_MS
-            : Math.max(
-                SESSION_COOLDOWN_EXTENSION_MIN_MS,
-                Math.min(
-                  SESSION_COOLDOWN_EXTENSION_MAX_MS,
-                  session.campaign.postSessionChatDurationMs
-                )
-              )
-
-        const cooldownStartedAtMs = session.endedAt?.getTime() ?? 0
-        const cooldownExpiresAt = cooldownStartedAtMs + cooldownMs
+        const cooldownExpiresAt = getCooldownExpiryAtMs(session, now)
 
         if (now < cooldownExpiresAt) {
           // Timer still running — check back later.

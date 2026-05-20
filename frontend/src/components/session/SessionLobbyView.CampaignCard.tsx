@@ -167,20 +167,28 @@ export function CampaignCard({
     >
       <span className="session-campaign-card__header">
         <span className="session-campaign-card__title">
-          <span
-            className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
-            aria-label={`Campaign ${getCampaignVisualStateLabel(state).toLowerCase()}`}
-            title={getCampaignVisualStateLabel(state)}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
+                aria-label={`Campaign ${getCampaignVisualStateLabel(state).toLowerCase()}`}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top">{getCampaignVisualStateLabel(state)}</TooltipContent>
+          </Tooltip>
           <span>{campaign.name}</span>
           {showLock && (
-            <span
-              className="material-symbols-outlined session-campaign-card__lock-icon"
-              aria-label="Private campaign"
-              title="Private campaign"
-            >
-              lock
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="material-symbols-outlined session-campaign-card__lock-icon"
+                  aria-label="Private campaign"
+                >
+                  lock
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">Private campaign</TooltipContent>
+            </Tooltip>
           )}
         </span>
         <span className="session-campaign-card__stats" aria-label="Campaign activity stats">

@@ -1,4 +1,5 @@
 import type { DeviceSessionEntity } from '@shared'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 
 interface ParticipantDeviceListProps {
   deviceSessions?: DeviceSessionEntity[]
@@ -17,19 +18,22 @@ export function ParticipantDeviceList({ deviceSessions }: ParticipantDeviceListP
   return (
     <ul className="room-selector-profile__devices" aria-label="Connected devices">
       {deviceSessions.map((device) => (
-        <li
-          key={device.deviceSessionId}
-          className="room-selector-profile__device-row"
-          title={`${device.label} — ${device.isActive ? 'Active' : 'Muted'}`}
-        >
-          <span
-            className={`material-symbols-outlined room-selector-profile__device-mic-icon ${device.isActive ? 'is-active' : 'is-muted'}`}
-            aria-label={device.isActive ? 'Active mic' : 'Muted'}
-          >
-            {device.isActive ? 'mic' : 'mic_off'}
-          </span>
-          <span className="room-selector-profile__device-label">{device.label}</span>
-        </li>
+        <Tooltip key={device.deviceSessionId}>
+          <TooltipTrigger asChild>
+            <li className="room-selector-profile__device-row">
+              <span
+                className={`material-symbols-outlined room-selector-profile__device-mic-icon ${device.isActive ? 'is-active' : 'is-muted'}`}
+                aria-label={device.isActive ? 'Active mic' : 'Muted'}
+              >
+                {device.isActive ? 'mic' : 'mic_off'}
+              </span>
+              <span className="room-selector-profile__device-label">{device.label}</span>
+            </li>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {device.label} — {device.isActive ? 'Active' : 'Muted'}
+          </TooltipContent>
+        </Tooltip>
       ))}
     </ul>
   )

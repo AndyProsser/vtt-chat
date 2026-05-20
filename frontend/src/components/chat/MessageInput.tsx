@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType } from '@shared'
 import type { Role } from '@shared'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
 
 interface WhisperRecipientOption {
   id: string
@@ -248,33 +249,36 @@ export function MessageInput({
                 messageType === MessageType.WHISPER && !isWhisperGroupMode && !selectedRecipient
 
               return (
-                <button
-                  key={messageType}
-                  type="button"
-                  role="radio"
-                  aria-checked={isActive}
-                  disabled={disabled || isSending || isDisabled}
-                  onClick={() => {
-                    if (isDisabled) return
-                    setSelectedType(messageType)
-                    if (messageType !== MessageType.WHISPER) {
-                      setIsWhisperPickerOpen(false)
-                    }
-                    if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
-                      setIsWhisperPickerOpen(true)
-                    }
-                  }}
-                  className={`chat-input__type-toggle chat-input__type-toggle--${tone} ${isActive ? 'chat-input__type-toggle--active' : ''}`}
-                  title={meta.label}
-                >
-                  <span
-                    className={`chat-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'chat-input__type-toggle-icon--muted' : ''}`}
-                    aria-hidden="true"
-                  >
-                    {meta.icon}
-                  </span>
-                  <span className="chat-input__type-toggle-label">{meta.label}</span>
-                </button>
+                <Tooltip key={messageType}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      disabled={disabled || isSending || isDisabled}
+                      onClick={() => {
+                        if (isDisabled) return
+                        setSelectedType(messageType)
+                        if (messageType !== MessageType.WHISPER) {
+                          setIsWhisperPickerOpen(false)
+                        }
+                        if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
+                          setIsWhisperPickerOpen(true)
+                        }
+                      }}
+                      className={`chat-input__type-toggle chat-input__type-toggle--${tone} ${isActive ? 'chat-input__type-toggle--active' : ''}`}
+                    >
+                      <span
+                        className={`chat-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'chat-input__type-toggle-icon--muted' : ''}`}
+                        aria-hidden="true"
+                      >
+                        {meta.icon}
+                      </span>
+                      <span className="chat-input__type-toggle-label">{meta.label}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{meta.label}</TooltipContent>
+                </Tooltip>
               )
             })}
           </div>

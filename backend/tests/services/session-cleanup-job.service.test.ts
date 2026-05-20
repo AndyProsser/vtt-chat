@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const DM_ID = '22222222-2222-4222-8222-222222222222'
@@ -64,7 +64,10 @@ vi.mock('@/utils', () => ({
   isGreenRoomName: (name: string) => name.toLowerCase().includes('green room'),
 }))
 
-import { sessionCleanupJobService } from '@/services/session/cleanup-job.service'
+import {
+  SessionCleanupJobService,
+  sessionCleanupJobService,
+} from '@/services/session/cleanup-job.service'
 
 describe('session-cleanup-job.service grace timing', () => {
   beforeEach(() => {
@@ -89,6 +92,11 @@ describe('session-cleanup-job.service grace timing', () => {
       state: 'CLEANUP',
       name: 'Session 1',
     })
+  })
+
+  afterEach(() => {
+    sessionCleanupJobService.stop()
+    vi.useRealTimers()
   })
 
   it('does not transition ENDED session to CLEANUP when all table members were offline for 59s', async () => {
@@ -147,5 +155,120 @@ describe('session-cleanup-job.service grace timing', () => {
     await sessionCleanupJobService.runLifecycleWorkerOnce()
 
     expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'CLEANUP', DM_ID)
+  })
+
+  it('schedules the next lifecycle sweep for the nearest pending deadline', async () => {
+    const service = new SessionCleanupJobService()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+    mocks.listCooldownSessionsWithCampaign.mockResolvedValue([
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        dmId: DM_ID,
+        name: 'Cooldown Session',
+        campaignId: null,
+        endedAt: new Date(NOW - 80_000),
+        campaign: {
+          postSessionChatEnabled: true,
+          postSessionChatDurationMs: 90_000,
+        },
+      },
+    ])
+
+    mocks.listEndedSessionsWithCampaign.mockResolvedValue([
+      {
+        id: SESSION_ID,
+        dmId: DM_ID,
+        name: 'Ended Session',
+        campaignId: null,
+        endedAt: new Date(NOW - 10 * 60_000),
+        campaign: null,
+      },
+    ])
+
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        userId: DM_ID,
+        state: 'OFFLINE',
+        lastSeenAt: NOW - 48_000,
+      },
+      {
+        userId: PLAYER_ID,
+        state: 'OFFLINE',
+        lastSeenAt: NOW - 48_000,
+      },
+    ])
+
+    await (service as any).refreshLifecycleScheduler('test')
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1)
+    expect(setTimeoutSpy.mock.calls[0]?.[1]).toBe(10_000)
+
+    service.stop()
+  })
+
+  it('keeps a single scheduler for multiple ENDED sessions and stops after draining them', async () => {
+    const service = new SessionCleanupJobService()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+    let endedSessions = [
+      {
+        id: SESSION_ID,
+        dmId: DM_ID,
+        name: 'Session 1',
+        campaignId: null,
+        endedAt: new Date(NOW - 10 * 60_000),
+        campaign: null,
+      },
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        dmId: DM_ID,
+        name: 'Session 2',
+        campaignId: null,
+        endedAt: new Date(NOW - 10 * 60_000),
+        campaign: null,
+      },
+    ]
+
+    mocks.listEndedSessionsWithCampaign.mockImplementation(async () => endedSessions)
+    mocks.getSessionPresence.mockResolvedValue([
+      {
+        userId: DM_ID,
+        state: 'OFFLINE',
+        lastSeenAt: NOW - 50_000,
+      },
+      {
+        userId: PLAYER_ID,
+        state: 'OFFLINE',
+        lastSeenAt: NOW - 50_000,
+      },
+    ])
+
+    mocks.updateSessionState.mockImplementation(async (sessionId: string) => {
+      endedSessions = endedSessions.filter((session) => session.id !== sessionId)
+
+      return {
+        id: sessionId,
+        dmId: DM_ID,
+        state: 'CLEANUP',
+        name: sessionId === SESSION_ID ? 'Session 1' : 'Session 2',
+      }
+    })
+
+    await (service as any).refreshLifecycleScheduler('test')
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1)
+    expect(setTimeoutSpy.mock.calls[0]?.[1]).toBe(10_000)
+
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(mocks.updateSessionState).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(mocks.updateSessionState).toHaveBeenCalledTimes(2)
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+
+    service.stop()
   })
 })
