@@ -615,6 +615,7 @@ function detect_distro_family() {
 }
 
 function _configure_firewall_ufw() {
+  local enable_now="$1"
   echo "  Firewall: UFW (Debian-based)"
   if ! command -v ufw &>/dev/null; then
     echo "  WARNING: ufw not found. Skipping firewall configuration."
@@ -625,42 +626,76 @@ function _configure_firewall_ufw() {
   sudo ufw allow "${HTTPS_PORT}/tcp"
   sudo ufw allow "${LIVEKIT_PORT}/tcp"
   sudo ufw allow "${LIVEKIT_UDP_START}:${LIVEKIT_UDP_END}/udp"
-  sudo ufw --force enable
+  if [[ "$enable_now" == "true" ]]; then
+    sudo ufw --force enable
+  elif sudo ufw status 2>/dev/null | grep -qi '^Status: active'; then
+    echo "  UFW is already active; leaving it enabled."
+  else
+    echo "  DEV mode: UFW rules added but firewall not auto-enabled."
+  fi
 }
 
 function _configure_firewall_firewalld() {
   local distro_label="$1"
+  local enable_now="$2"
   echo "  Firewall: firewalld (${distro_label}-based)"
   if ! command -v firewall-cmd &>/dev/null; then
     echo "  WARNING: firewall-cmd not found. Skipping firewall configuration."
     echo "  Install firewalld to enable automatic port management."
     return
   fi
-  if ! sudo systemctl is-active --quiet firewalld; then
-    echo "  Starting firewalld service..."
-    sudo systemctl enable --now firewalld
+
+  if [[ "$enable_now" == "true" ]]; then
+    if ! sudo systemctl is-active --quiet firewalld; then
+      echo "  Starting firewalld service..."
+      sudo systemctl enable --now firewalld
+    fi
+    sudo firewall-cmd --permanent --add-service=ssh
+    sudo firewall-cmd --permanent --add-port="${HTTPS_PORT}/tcp"
+    sudo firewall-cmd --permanent --add-port="${LIVEKIT_PORT}/tcp"
+    sudo firewall-cmd --permanent --add-port="${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+    sudo firewall-cmd --reload
+    return
   fi
-  sudo firewall-cmd --permanent --add-service=ssh
-  sudo firewall-cmd --permanent --add-port="${HTTPS_PORT}/tcp"
-  sudo firewall-cmd --permanent --add-port="${LIVEKIT_PORT}/tcp"
-  sudo firewall-cmd --permanent --add-port="${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
-  sudo firewall-cmd --reload
+
+  if sudo systemctl is-active --quiet firewalld; then
+    sudo firewall-cmd --permanent --add-service=ssh
+    sudo firewall-cmd --permanent --add-port="${HTTPS_PORT}/tcp"
+    sudo firewall-cmd --permanent --add-port="${LIVEKIT_PORT}/tcp"
+    sudo firewall-cmd --permanent --add-port="${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+    sudo firewall-cmd --reload
+    echo "  firewalld is already active; rules updated."
+  elif command -v firewall-offline-cmd &>/dev/null; then
+    sudo firewall-offline-cmd --add-service=ssh
+    sudo firewall-offline-cmd --add-port="${HTTPS_PORT}/tcp"
+    sudo firewall-offline-cmd --add-port="${LIVEKIT_PORT}/tcp"
+    sudo firewall-offline-cmd --add-port="${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+    echo "  DEV mode: firewalld offline rules added; service not auto-enabled."
+  else
+    echo "  WARNING: firewalld is installed but not active, and firewall-offline-cmd is unavailable."
+    echo "  Rules were not applied."
+  fi
 }
 
 function configure_firewall() {
   echo "Configuring firewall for current install ports..."
   local distro_family
+  local enable_now="true"
   distro_family=$(detect_distro_family)
+
+  if [[ "$DEV_MODE" == "true" ]]; then
+    enable_now="false"
+  fi
 
   case "$distro_family" in
     debian)
-      _configure_firewall_ufw
+      _configure_firewall_ufw "$enable_now"
       ;;
     arch)
-      _configure_firewall_firewalld "Arch"
+      _configure_firewall_firewalld "Arch" "$enable_now"
       ;;
     fedora)
-      _configure_firewall_firewalld "Fedora"
+      _configure_firewall_firewalld "Fedora" "$enable_now"
       ;;
     *)
       echo "  WARNING: Unknown distro family. Skipping automatic firewall configuration."

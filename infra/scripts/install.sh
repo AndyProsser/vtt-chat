@@ -418,7 +418,12 @@ function install_docker() {
 }
 
 function configure_firewall_admin() {
-  echo "[3/7] Configuring firewall for server profile..."
+  local enable_now="true"
+  if [[ "$DEV_PROFILE" == "true" ]]; then
+    enable_now="false"
+  fi
+
+  echo "[3/7] Configuring firewall rules for current profile..."
 
   local https_port
   local livekit_port
@@ -438,19 +443,42 @@ function configure_firewall_admin() {
         sudo ufw allow "${https_port}/tcp"
         sudo ufw allow "${livekit_port}/tcp"
         sudo ufw allow "${udp_start}:${udp_end}/udp"
-        sudo ufw --force enable
+        if [[ "$enable_now" == "true" ]]; then
+          sudo ufw --force enable
+        elif sudo ufw status 2>/dev/null | grep -qi '^Status: active'; then
+          echo "UFW is already active; leaving it enabled."
+        else
+          echo "DEV profile: UFW rules added but firewall not auto-enabled."
+        fi
       else
         add_warning "UFW not available; firewall rules were not applied."
       fi
       ;;
     arch)
       if command -v firewall-cmd >/dev/null 2>&1; then
-        sudo systemctl enable --now firewalld
-        sudo firewall-cmd --permanent --add-service=ssh
-        sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-        sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-        sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-        sudo firewall-cmd --reload
+        if [[ "$enable_now" == "true" ]]; then
+          sudo systemctl enable --now firewalld
+          sudo firewall-cmd --permanent --add-service=ssh
+          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          sudo firewall-cmd --reload
+        elif sudo systemctl is-active --quiet firewalld; then
+          sudo firewall-cmd --permanent --add-service=ssh
+          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          sudo firewall-cmd --reload
+          echo "firewalld is already active; rules updated."
+        elif command -v firewall-offline-cmd >/dev/null 2>&1; then
+          sudo firewall-offline-cmd --add-service=ssh
+          sudo firewall-offline-cmd --add-port="${https_port}/tcp"
+          sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
+          sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
+          echo "DEV profile: firewalld offline rules added; service not auto-enabled."
+        else
+          add_warning "firewalld is installed but not active, and firewall-offline-cmd is unavailable; rules were not applied."
+        fi
       elif command -v ufw >/dev/null 2>&1; then
         add_warning "firewalld not available on Arch/CachyOS. Falling back to UFW."
         sudo ufw default deny incoming
@@ -459,19 +487,42 @@ function configure_firewall_admin() {
         sudo ufw allow "${https_port}/tcp"
         sudo ufw allow "${livekit_port}/tcp"
         sudo ufw allow "${udp_start}:${udp_end}/udp"
-        sudo ufw --force enable
+        if [[ "$enable_now" == "true" ]]; then
+          sudo ufw --force enable
+        elif sudo ufw status 2>/dev/null | grep -qi '^Status: active'; then
+          echo "UFW is already active; leaving it enabled."
+        else
+          echo "DEV profile: UFW rules added but firewall not auto-enabled."
+        fi
       else
         add_warning "Neither firewalld nor UFW is available on Arch/CachyOS; firewall rules were not applied."
       fi
       ;;
     fedora)
       if command -v firewall-cmd >/dev/null 2>&1; then
-        sudo systemctl enable --now firewalld
-        sudo firewall-cmd --permanent --add-service=ssh
-        sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-        sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-        sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-        sudo firewall-cmd --reload
+        if [[ "$enable_now" == "true" ]]; then
+          sudo systemctl enable --now firewalld
+          sudo firewall-cmd --permanent --add-service=ssh
+          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          sudo firewall-cmd --reload
+        elif sudo systemctl is-active --quiet firewalld; then
+          sudo firewall-cmd --permanent --add-service=ssh
+          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          sudo firewall-cmd --reload
+          echo "firewalld is already active; rules updated."
+        elif command -v firewall-offline-cmd >/dev/null 2>&1; then
+          sudo firewall-offline-cmd --add-service=ssh
+          sudo firewall-offline-cmd --add-port="${https_port}/tcp"
+          sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
+          sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
+          echo "DEV profile: firewalld offline rules added; service not auto-enabled."
+        else
+          add_warning "firewalld is installed but not active, and firewall-offline-cmd is unavailable; rules were not applied."
+        fi
       else
         add_warning "firewalld not available; firewall rules were not applied."
       fi
@@ -680,10 +731,9 @@ function run_setup() {
 
   install_base_packages
   install_docker
+  configure_firewall_admin
   if [[ "$DEV_PROFILE" == "true" ]]; then
     install_dev_stack
-  else
-    configure_firewall_admin
   fi
   create_install_dir
   download_source
