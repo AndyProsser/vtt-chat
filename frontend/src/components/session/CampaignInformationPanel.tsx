@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { useToast } from '../../hooks/useToast'
 import '../../styles/components/session/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
@@ -100,9 +101,9 @@ export function CampaignInformationPanel({
   workspaceMode = false,
   onSaveCampaignInfo,
 }: CampaignInformationPanelProps) {
+  const showToast = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [posterUrlDraft, setPosterUrlDraft] = useState<string | null>(null)
@@ -117,7 +118,6 @@ export function CampaignInformationPanel({
     setDescriptionDraft(campaign.description || '')
     setPosterUrlDraft(campaign.posterUrl || null)
     setIsEditing(Boolean(workspaceMode && canEdit))
-    setSaveError(null)
   }, [campaign, workspaceMode, canEdit])
 
   if (!campaign) {
@@ -179,7 +179,7 @@ export function CampaignInformationPanel({
     }
 
     if (!file.type.startsWith('image/')) {
-      setSaveError('Poster must be an image file.')
+      showToast({ variant: 'error', message: 'Poster must be an image file.' })
       return
     }
 
@@ -187,19 +187,22 @@ export function CampaignInformationPanel({
     reader.onload = () => {
       const value = typeof reader.result === 'string' ? reader.result : null
       if (!value) {
-        setSaveError('Unable to read poster image.')
+        showToast({ variant: 'error', message: 'Unable to read poster image.' })
         return
       }
 
       if (value.length > 2_000_000) {
-        setSaveError('Poster image is too large. Please choose a smaller file.')
+        showToast({
+          variant: 'error',
+          message: 'Poster image is too large. Please choose a smaller file.',
+        })
         return
       }
 
       setPosterUrlDraft(value)
     }
     reader.onerror = () => {
-      setSaveError('Unable to read poster image.')
+      showToast({ variant: 'error', message: 'Unable to read poster image.' })
     }
     reader.readAsDataURL(file)
   }
@@ -209,16 +212,14 @@ export function CampaignInformationPanel({
     setDescriptionDraft(campaign.description || '')
     setPosterUrlDraft(campaign.posterUrl || null)
     setIsEditing(false)
-    setSaveError(null)
   }
 
   const handleSave = async () => {
     if (!nameDraft.trim()) {
-      setSaveError('Campaign name is required.')
+      showToast({ variant: 'error', message: 'Campaign name is required.' })
       return
     }
 
-    setSaveError(null)
     setIsSaving(true)
 
     try {
@@ -230,7 +231,10 @@ export function CampaignInformationPanel({
       })
       setIsEditing(false)
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save campaign info.')
+      showToast({
+        variant: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save campaign info.',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -577,8 +581,6 @@ export function CampaignInformationPanel({
             ''
           )}
         </div>
-
-        {saveError ? <p className="cip-error">{saveError}</p> : null}
       </TooltipProvider>
     </section>
   )

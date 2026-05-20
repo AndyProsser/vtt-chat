@@ -493,25 +493,36 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
   }
 
-  if (typeof discoverable !== 'boolean') {
+  if (posterUrl != null && (typeof posterUrl !== 'string' || posterUrl.trim().length > 2_000_000)) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
-      message: 'discoverable must be a boolean',
-      field: 'discoverable',
+      message: 'posterUrl must be a string up to 2,000,000 characters or null',
+      field: 'posterUrl',
     })
   }
 
-  if (typeof spectatorsEnabled !== 'boolean') {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_INPUT,
-      message: 'spectatorsEnabled must be a boolean',
-      field: 'spectatorsEnabled',
-    })
+  // Fetch campaign early so optional fields can fall back to existing values
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
   }
 
-  const parsedSpectatorMax = Number(spectatorMax)
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
+  }
+
+  // Optional boolean fields — fall back to existing campaign values if not provided
+  const effectiveDiscoverable =
+    typeof discoverable === 'boolean' ? discoverable : (campaign.discoverable ?? false)
+
+  const effectiveSpectatorsEnabled =
+    typeof spectatorsEnabled === 'boolean' ? spectatorsEnabled : campaign.spectatorPolicy !== 'NONE'
+
+  const parsedSpectatorMax = Number(spectatorMax ?? campaign.spectatorMax ?? 10)
   if (
-    spectatorsEnabled &&
+    effectiveSpectatorsEnabled &&
     (!Number.isFinite(parsedSpectatorMax) ||
       parsedSpectatorMax < 5 ||
       parsedSpectatorMax > 50 ||
@@ -524,21 +535,14 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
-  const normalizedSpectatorWaitlistEnabled =
-    spectatorsEnabled && typeof spectatorWaitlistEnabled === 'boolean'
+  const effectiveSpectatorWaitlistEnabled =
+    effectiveSpectatorsEnabled &&
+    (typeof spectatorWaitlistEnabled === 'boolean'
       ? spectatorWaitlistEnabled
-      : false
-
-  if (spectatorsEnabled && typeof spectatorWaitlistEnabled !== 'boolean') {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_INPUT,
-      message: 'spectatorWaitlistEnabled must be a boolean',
-      field: 'spectatorWaitlistEnabled',
-    })
-  }
+      : (campaign.spectatorWaitlistEnabled ?? false))
 
   const parsedReconnectGraceSecs = Number(
-    spectatorsEnabled ? spectatorReconnectGraceSecs : (spectatorReconnectGraceSecs ?? 60)
+    spectatorReconnectGraceSecs ?? campaign.spectatorReconnectGraceSecs ?? 60
   )
   if (
     !Number.isFinite(parsedReconnectGraceSecs) ||
@@ -563,7 +567,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
-  if (!['OPEN', 'SCREENED', 'BLOCKED'].includes(String(lateJoinPolicy || ''))) {
+  const effectiveLateJoinPolicy = lateJoinPolicy ?? campaign.lateJoinPolicy ?? 'OPEN'
+  if (!['OPEN', 'SCREENED', 'BLOCKED'].includes(String(effectiveLateJoinPolicy))) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'lateJoinPolicy must be OPEN, SCREENED, or BLOCKED',
@@ -571,9 +576,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
-  const parsedGraceMinutes = Number(
-    lateJoinPolicy === 'OPEN' ? (lateJoinGraceMinutes ?? 30) : lateJoinGraceMinutes
-  )
+  const parsedGraceMinutes = Number(lateJoinGraceMinutes ?? campaign.lateJoinGraceMinutes ?? 30)
   if (
     !Number.isFinite(parsedGraceMinutes) ||
     parsedGraceMinutes < 30 ||
@@ -587,27 +590,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
-  if (posterUrl != null && (typeof posterUrl !== 'string' || posterUrl.trim().length > 2_000_000)) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_INPUT,
-      message: 'posterUrl must be a string up to 2,000,000 characters or null',
-      field: 'posterUrl',
-    })
-  }
-
   const normalizedPosterUrl =
     typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
-
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
-  if (!campaign) {
-    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
-  }
-
-  if (campaign.currentDmId !== (user.userId as UUID)) {
-    return res
-      .status(403)
-      .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
-  }
 
   const normalizedPostSessionChatEnabled =
     typeof postSessionChatEnabled === 'boolean'
@@ -673,17 +657,17 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
           ? description.trim()
           : null,
       posterUrl: normalizedPosterUrl,
-      discoverable,
-      spectatorPolicy: spectatorsEnabled ? 'GUESTS' : 'NONE',
-      spectatorInviteActive: spectatorsEnabled,
-      spectatorMax: spectatorsEnabled ? Math.round(parsedSpectatorMax) : null,
-      spectatorWaitlistEnabled: normalizedSpectatorWaitlistEnabled,
+      discoverable: effectiveDiscoverable,
+      spectatorPolicy: effectiveSpectatorsEnabled ? 'GUESTS' : 'NONE',
+      spectatorInviteActive: effectiveSpectatorsEnabled,
+      spectatorMax: effectiveSpectatorsEnabled ? Math.round(parsedSpectatorMax) : null,
+      spectatorWaitlistEnabled: effectiveSpectatorWaitlistEnabled,
       spectatorReconnectGraceSecs: Math.round(parsedReconnectGraceSecs),
       dmAutoTargetOnFirstPlayerJoin: normalizedDmAutoTargetOnFirstPlayerJoin,
       postSessionChatEnabled: normalizedPostSessionChatEnabled,
       postSessionChatDurationMs: Math.round(parsedPostSessionChatDurationMs),
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
-      lateJoinPolicy,
+      lateJoinPolicy: effectiveLateJoinPolicy,
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
     },
     select: {
