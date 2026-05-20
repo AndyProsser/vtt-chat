@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsRouteView'
@@ -12,6 +12,7 @@ import type { UUID } from '@shared'
 import './styles/components/app/AppShell.css'
 
 export default function App() {
+  const bootstrapLoggedRef = useRef(false)
   const normalizeWsUrl = (rawWsUrl: string): string => {
     try {
       const parsed = new URL(rawWsUrl)
@@ -115,6 +116,9 @@ export default function App() {
   })
 
   useEffect(() => {
+    if (bootstrapLoggedRef.current) return
+    bootstrapLoggedRef.current = true
+
     logger.info('app.bootstrap', 'Resolved client endpoints', {
       browserOrigin,
       apiUrl,
@@ -143,8 +147,8 @@ export default function App() {
     configuredAdminUrl,
     configuredApiUrl,
     configuredLivekitUrl,
-    isConfiguredLivekitLoopbackTarget,
     configuredWsUrl,
+    isConfiguredLivekitLoopbackTarget,
     livekitUrl,
     shouldPreferBrowserWsOrigin,
     shouldUseBrowserProxyOrigin,
