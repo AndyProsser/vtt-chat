@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import { Icon } from '../ui/Icon'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
 import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
+import { InvitePopoverWidget } from './InvitePopoverWidget'
 import {
   type WorkspaceTab,
   getTabIcon,
@@ -28,6 +29,12 @@ type LobbyCampaignWorkspaceViewProps = {
   canEditCampaignInfo: boolean
   isLaunchDisabled: boolean
   launchDisabledReason?: string
+  showInviteWidget: boolean
+  joinCode: string | null
+  joinUrl: string
+  watchCode: string | null
+  watchUrl: string
+  spectatorsEnabled: boolean
   settingsPanel: ReactNode
   onBackToLobby: () => void
   onCreateCampaign: () => void
@@ -36,6 +43,7 @@ type LobbyCampaignWorkspaceViewProps = {
   onOpenUserSettings: () => void
   onLogoff: () => void
   onLaunch: (campaignId: UUID) => void
+  onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignInfo: (
     campaignId: UUID,
     updates: {
@@ -298,9 +306,18 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
 
         <section className="session-lobby-workspace" aria-label="Campaign review workspace">
           <header className="session-lobby-workspace__header">
-            <div>
+            <div className="session-lobby-workspace__title-wrap">
               <h3 className="session-card-title">{props.campaign.name}</h3>
             </div>
+            <InvitePopoverWidget
+              show={props.showInviteWidget}
+              joinCode={props.joinCode}
+              joinUrl={props.joinUrl}
+              spectatorsEnabled={props.spectatorsEnabled}
+              watchCode={props.watchCode}
+              watchUrl={props.watchUrl}
+              onCopyInviteUrl={props.onCopyInviteUrl}
+            />
             <div className="session-action-row session-action-row--right session-action-row--compact">
               <button
                 type="button"
@@ -316,7 +333,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
                       type="button"
                       className="session-button session-button-brand"
                       disabled={props.isLaunchDisabled}
-                      onClick={() => props.onLaunch(props.campaign!.id)}
+                      onClick={() => props.onLaunch(campaign.id)}
                     >
                       Launch
                     </button>

@@ -1075,6 +1075,85 @@
   gap: 0.8rem;
 }
 
+.session-lobby-workspace__title-wrap {
+  min-width: 0;
+}
+
+.session-lobby-invite {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-self: center;
+  min-width: 14rem;
+}
+
+.session-lobby-invite__trigger {
+  min-width: 8.5rem;
+  justify-content: center;
+}
+
+.session-lobby-invite__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(33rem, 72vw);
+  z-index: 24;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.22);
+  padding: 0.72rem;
+}
+
+.session-lobby-invite__title {
+  margin-bottom: 0.45rem;
+}
+
+.session-lobby-invite__row {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+}
+
+.session-lobby-invite__row + .session-lobby-invite__row {
+  margin-top: 0.45rem;
+}
+
+.session-lobby-invite__row-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
+  font-size: 0.75rem;
+}
+
+.session-lobby-invite__row-heading span {
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+}
+
+.session-lobby-invite__row-value {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  grid-column: 1 / 2;
+}
+
+.session-lobby-invite__copy {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  padding: 0.38rem 0.5rem;
+}
+
 .session-lobby-workspace__body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1819,6 +1898,18 @@
 
   .session-lobby-workspace__header {
     flex-direction: column;
+  }
+
+  .session-lobby-invite {
+    width: 100%;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .session-lobby-invite__panel {
+    width: min(100%, 32rem);
+    left: 0;
+    transform: none;
   }
 
   .session-lobby-workspace__body {
