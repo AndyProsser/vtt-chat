@@ -897,10 +897,11 @@ export function SessionInit({
 
   const loadLobbyCampaignData = useCallback(
     async ({ showLoading = true, surfaceError = true } = {}) => {
-      const [nextCampaigns] = await Promise.all([
-        loadCampaigns({ showLoading, surfaceError }),
-        loadDiscoverableCampaigns({ surfaceError: false }),
-      ])
+      const nextCampaigns = await loadCampaigns({ showLoading, surfaceError })
+
+      // Discover campaigns are secondary UX data. Never let discover failures
+      // block or delay the member campaign list from rendering.
+      void loadDiscoverableCampaigns({ surfaceError: false })
 
       return nextCampaigns
     },

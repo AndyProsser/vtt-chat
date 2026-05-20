@@ -75,6 +75,30 @@ class EventBroadcaster {
   }
 
   /**
+   * Returns true when the user has at least one authenticated live websocket connection.
+   * This is used by lobby APIs to show online state independent of session-scoped presence.
+   */
+  isUserConnected(userId: UUID): boolean {
+    if (!this.wsManager) {
+      return false
+    }
+
+    const OPEN_STATE = 1
+    const wss = (this.wsManager as any).wss
+    if (!wss) {
+      return false
+    }
+
+    for (const client of wss.clients as Iterable<any>) {
+      if (client.readyState === OPEN_STATE && client.authPayload?.userId === userId) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
    * Check if broadcaster is ready
    */
   isReady(): boolean {

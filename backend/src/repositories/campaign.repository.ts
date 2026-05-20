@@ -1,9 +1,28 @@
 import { Prisma } from '@prisma/client'
 import { deriveCampaignDisplayState, type CampaignDisplayState, type SessionState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
+import { DEV_MOCK_PREFIX } from '@/constants/dev-mock.constants'
 import { logger } from '@/utils/logger'
 
 const prisma = getPrismaClient()
+const PRESENCE_FLAP_GRACE_MS = 8_000
+
+function isRealtimeSessionState(state: SessionState | null): boolean {
+  return state === 'ACTIVE' || state === 'PAUSED' || state === 'COOLDOWN'
+}
+
+function isLikelyConnectedPresence(params: {
+  state: 'ONLINE' | 'TYPING' | 'SPEAKING' | 'IDLE' | 'OFFLINE'
+  lastSeenAt: Date
+  nowMs: number
+}): boolean {
+  if (params.state !== 'OFFLINE') {
+    return true
+  }
+
+  const lastSeenAtMs = params.lastSeenAt.getTime()
+  return Number.isFinite(lastSeenAtMs) && params.nowMs - lastSeenAtMs <= PRESENCE_FLAP_GRACE_MS
+}
 
 function roundPresenceCountForPrivacy(count: number): number {
   if (count <= 0) return 0
@@ -158,6 +177,11 @@ export async function listCampaignsForUser(userId: string): Promise<
               select: {
                 userId: true,
                 role: true,
+                user: {
+                  select: {
+                    username: true,
+                  },
+                },
               },
             },
             sessions: {
@@ -167,6 +191,7 @@ export async function listCampaignsForUser(userId: string): Promise<
                   select: {
                     userId: true,
                     state: true,
+                    lastSeenAt: true,
                   },
                 },
               },
@@ -208,6 +233,11 @@ export async function listCampaignsForUser(userId: string): Promise<
               select: {
                 userId: true,
                 role: true,
+                user: {
+                  select: {
+                    username: true,
+                  },
+                },
               },
             },
             sessions: {
@@ -217,6 +247,7 @@ export async function listCampaignsForUser(userId: string): Promise<
                   select: {
                     userId: true,
                     state: true,
+                    lastSeenAt: true,
                   },
                 },
               },
@@ -233,15 +264,27 @@ export async function listCampaignsForUser(userId: string): Promise<
   return memberships.map((m: any) => ({
     ...(() => {
       const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as SessionState | null
+      const nowMs = Date.now()
 
       const latestSessionPresence = (m.campaign.sessions?.[0]?.presence || []) as Array<{
         userId: string
-        state: 'ONLINE' | 'IDLE' | 'OFFLINE'
+        state: 'ONLINE' | 'TYPING' | 'SPEAKING' | 'IDLE' | 'OFFLINE'
+        lastSeenAt: Date
       }>
+      const nonMockMemberUserIds = new Set<string>(
+        (m.campaign.members || [])
+          .filter(
+            (member: { user?: { username?: string | null } | null }) =>
+              !member.user?.username?.startsWith(DEV_MOCK_PREFIX)
+          )
+          .map((member: { userId: string }) => member.userId)
+      )
+
       const onlineUserIds = new Set<string>(
         latestSessionPresence
-          .filter((entry) => entry.state === 'ONLINE')
+          .filter((entry) => isLikelyConnectedPresence({ ...entry, nowMs }))
           .map((entry) => entry.userId)
+          .filter((userId) => nonMockMemberUserIds.has(userId))
       )
       const roleByUserId = new Map<string, 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'>(
         (m.campaign.members || []).map((member: { userId: string; role: string }) => [
@@ -257,21 +300,25 @@ export async function listCampaignsForUser(userId: string): Promise<
         (id) => roleByUserId.get(id) === 'SPECTATOR'
       ).length
 
+      const hasRealtimeSession = isRealtimeSessionState(latestSessionState)
+
       const connectedPlayersRounded = roundPresenceCountForPrivacy(connectedPlayers)
       const connectedSpectatorsRounded = roundPresenceCountForPrivacy(connectedSpectators)
 
       return {
         latestSessionState,
         displayState: deriveCampaignDisplayState(latestSessionState),
-        dmOnline: onlineUserIds.has(m.campaign.currentDmId),
-        connectedPlayers,
-        connectedPlayersRounded,
-        connectedPlayersLabel: toPresenceCountLabel(connectedPlayers, connectedPlayersRounded),
-        connectedSpectators,
-        connectedSpectatorsRounded,
+        dmOnline: hasRealtimeSession && onlineUserIds.has(m.campaign.currentDmId),
+        connectedPlayers: hasRealtimeSession ? connectedPlayers : 0,
+        connectedPlayersRounded: hasRealtimeSession ? connectedPlayersRounded : 0,
+        connectedPlayersLabel: hasRealtimeSession
+          ? toPresenceCountLabel(connectedPlayers, connectedPlayersRounded)
+          : '0',
+        connectedSpectators: hasRealtimeSession ? connectedSpectators : 0,
+        connectedSpectatorsRounded: hasRealtimeSession ? connectedSpectatorsRounded : 0,
         connectedSpectatorsLabel: toPresenceCountLabel(
-          connectedSpectators,
-          connectedSpectatorsRounded
+          hasRealtimeSession ? connectedSpectators : 0,
+          hasRealtimeSession ? connectedSpectatorsRounded : 0
         ),
       }
     })(),

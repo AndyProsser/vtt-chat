@@ -4,15 +4,17 @@ import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
-import { useAuthSession } from './hooks/useAuthSession'
-import { resolveRoute, type RouteView } from './utils/route-view'
 import { ToastViewport } from './components/ui/ToastViewport'
-import { logger } from './utils/logger'
+import { TooltipProvider } from './core-ui'
+import { useAuthSession } from './hooks/useAuthSession'
 import type { UUID } from '@shared'
+import { logger } from './utils/logger'
+import { resolveRoute, type RouteView } from './utils/route-view'
 import './styles/components/app/AppShell.css'
 
 export default function App() {
   const bootstrapLoggedRef = useRef(false)
+
   const normalizeWsUrl = (rawWsUrl: string): string => {
     try {
       const parsed = new URL(rawWsUrl)
@@ -31,6 +33,7 @@ export default function App() {
   const [routeView, setRouteView] = useState<RouteView>(() =>
     resolveRoute(window.location.pathname)
   )
+
   const browserOrigin = window.location.origin
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
   const configuredWsUrl = import.meta.env.VITE_WS_URL?.trim()
@@ -41,10 +44,7 @@ export default function App() {
     host === 'localhost' || host === '127.0.0.1' || host === '::1'
 
   const parsedConfiguredApiUrl = (() => {
-    if (!configuredApiUrl) {
-      return null
-    }
-
+    if (!configuredApiUrl) return null
     try {
       return new URL(configuredApiUrl)
     } catch {
@@ -53,10 +53,7 @@ export default function App() {
   })()
 
   const parsedConfiguredLivekitUrl = (() => {
-    if (!configuredLivekitUrl) {
-      return null
-    }
-
+    if (!configuredLivekitUrl) return null
     try {
       return new URL(configuredLivekitUrl)
     } catch {
@@ -75,6 +72,7 @@ export default function App() {
     parsedConfiguredApiUrl!.origin !== parsedBrowserOrigin.origin
   const isStaleHttpDevProxy =
     browserOrigin.startsWith('https://') && configuredApiUrl === 'http://localhost:8080'
+
   const shouldUseBrowserProxyOrigin =
     isStaleHttpDevProxy ||
     (isConfiguredApiLoopbackTarget && isBrowserOnNonLoopbackHost) ||
@@ -240,26 +238,28 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="app-shell__orb--brand absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl" />
-        <div className="app-shell__orb--info absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl" />
-      </div>
+    <TooltipProvider delayDuration={140}>
+      <div className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary">
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="app-shell__orb--brand absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl" />
+          <div className="app-shell__orb--info absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl" />
+        </div>
 
-      <div className="relative flex h-full flex-col items-center">
-        {authMessage && (
-          <div className="app-shell__frame mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
-            {authMessage}
-          </div>
-        )}
+        <div className="relative flex h-full flex-col items-center">
+          {authMessage && (
+            <div className="app-shell__frame mt-4 rounded-ui-md border border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-ui-sm">
+              {authMessage}
+            </div>
+          )}
 
-        <main className="app-shell__frame font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0">
-          <ToastViewport />
-          <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
-            {renderRouteView()}
-          </section>
-        </main>
+          <main className="app-shell__frame font-sans mx-auto flex min-h-0 flex-1 flex-col px-3 pt-0">
+            <ToastViewport />
+            <section className="flex h-full min-h-0 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
+              {renderRouteView()}
+            </section>
+          </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }

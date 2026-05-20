@@ -75,6 +75,7 @@ import {
 } from '@/constants/session.constants'
 import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
+import eventBroadcaster from '@/ws/event-broadcaster'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -131,6 +132,41 @@ function computeCooldownExpiresAt(params: {
   }
 
   return endedAtMs + params.cooldownDurationMs
+}
+
+async function broadcastCampaignListInvalidatedForSession(params: {
+  sessionId: UUID
+  actorUserId: UUID
+  actorUserRole: Role
+  reason: 'SESSION_STATE_CHANGED' | 'SESSION_COOLDOWN_ENDED'
+}): Promise<void> {
+  if (!eventBroadcaster.isReady()) {
+    return
+  }
+
+  const sessionCampaign = await prisma.session.findUnique({
+    where: { id: params.sessionId },
+    select: { campaignId: true },
+  })
+
+  if (!sessionCampaign?.campaignId) {
+    return
+  }
+
+  eventBroadcaster.sendToAllAuthenticated({
+    id: crypto.randomUUID() as UUID,
+    type: 'CAMPAIGN:LIST_INVALIDATED',
+    version: 1,
+    userId: params.actorUserId,
+    userRole: params.actorUserRole,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: sessionCampaign.campaignId as UUID,
+      reason: params.reason,
+    },
+  })
 }
 
 /**
@@ -1187,6 +1223,12 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     }
 
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await broadcastCampaignListInvalidatedForSession({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'SESSION_STATE_CHANGED',
+    })
 
     res.status(200).json({
       ...session,
@@ -1503,6 +1545,12 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
     sessionCleanupJobService.notifyLifecycleTrigger('SESSION_ENDED')
 
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await broadcastCampaignListInvalidatedForSession({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'SESSION_COOLDOWN_ENDED',
+    })
 
     return res.status(200).json({ session })
   } catch (err: any) {
