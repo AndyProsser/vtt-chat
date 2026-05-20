@@ -1038,7 +1038,9 @@ function status() {
     fi
   fi
 
-  echo "Access URL: $access_url"
+  if [[ "$stack_running" == "true" ]]; then
+    echo "Access URL: $access_url"
+  fi
 
   echo ""
 }

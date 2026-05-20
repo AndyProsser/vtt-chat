@@ -17,10 +17,71 @@ DISTRO_FAMILY=""
 LOCAL_REPO_MODE=false
 WSL_MODE=false
 DOCKER_CMD=""
+LOG_FILE="${TMPDIR:-/tmp}/vtt-chat-install.log"
+
+COLOR_RED=""
+COLOR_GREEN=""
+COLOR_YELLOW=""
+COLOR_BLUE=""
+COLOR_BOLD=""
+COLOR_RESET=""
 
 ACTIONS=()
 WARNINGS=()
 ERRORS=()
+
+function initialize_output() {
+  if [[ -t 1 ]]; then
+    COLOR_RED=$'\033[0;31m'
+    COLOR_GREEN=$'\033[0;32m'
+    COLOR_YELLOW=$'\033[1;33m'
+    COLOR_BLUE=$'\033[0;34m'
+    COLOR_BOLD=$'\033[1m'
+    COLOR_RESET=$'\033[0m'
+  fi
+}
+
+function print_stage() {
+  printf '%b\n' "${COLOR_BLUE}${COLOR_BOLD}$1${COLOR_RESET}"
+}
+
+function print_info() {
+  printf '%b\n' "$1"
+}
+
+function print_ok() {
+  printf '%b\n' "${COLOR_GREEN}[OK]${COLOR_RESET} $1"
+}
+
+function print_warn() {
+  printf '%b\n' "${COLOR_YELLOW}[WARN]${COLOR_RESET} $1"
+}
+
+function print_fail() {
+  printf '%b\n' "${COLOR_RED}[FAIL]${COLOR_RESET} $1"
+}
+
+function print_step_ok() {
+  printf '%b\n' "  - $1 ... ${COLOR_GREEN}OK${COLOR_RESET}"
+}
+
+function print_step_warn() {
+  printf '%b\n' "  - $1 ... ${COLOR_YELLOW}WARN${COLOR_RESET}"
+}
+
+function run_logged_step() {
+  local label="$1"
+  shift
+
+  printf '%b' "  - ${label} ... "
+  if "$@" >>"$LOG_FILE" 2>&1; then
+    printf '%b\n' "${COLOR_GREEN}OK${COLOR_RESET}"
+  else
+    printf '%b\n' "${COLOR_RED}FAIL${COLOR_RESET}"
+    print_fail "${label} failed. See $LOG_FILE"
+    exit 1
+  fi
+}
 
 function show_help() {
   cat <<HELP
@@ -78,8 +139,15 @@ function is_interactive_shell() {
 
 function prompt_user() {
   local question="$1"
+  local default="${2:-y}"
   local response
-  read -r -p "$question (y/n): " response
+  if [[ "$default" == "y" ]]; then
+    read -r -p "$question [Y/n]: " response
+    response="${response:-y}"
+  else
+    read -r -p "$question [y/N]: " response
+    response="${response:-n}"
+  fi
   [[ "$response" == "y" || "$response" == "Y" ]]
 }
 
@@ -197,7 +265,7 @@ function print_list() {
     return
   fi
 
-  echo "$title"
+  printf '%b\n' "${COLOR_BOLD}${title}${COLOR_RESET}"
   for item in "${items[@]}"; do
     echo "  - $item"
   done
@@ -306,7 +374,17 @@ function collect_preflight_findings() {
     if ! command -v npm >/dev/null 2>&1; then
       add_action "Install npm"
     else
-      add_action "Update npm to latest"
+      local npm_current
+      local npm_latest
+      npm_current=$(npm --version 2>/dev/null || true)
+      printf '%b' "  Checking npm version..."
+      npm_latest=$(npm view npm version 2>/dev/null || true)
+      printf '\r%-40s\r' ""
+      if [[ -z "$npm_latest" ]]; then
+        add_warning "Could not check latest npm version (network unavailable); current: ${npm_current:-unknown}"
+      elif [[ "$npm_current" != "$npm_latest" ]]; then
+        add_action "Update npm (current: $npm_current, latest: $npm_latest)"
+      fi
     fi
   fi
 
@@ -322,24 +400,30 @@ function collect_preflight_findings() {
 }
 
 function print_preflight_report() {
-  local profile="ADMIN"
+  local profile="${COLOR_BLUE}PROD${COLOR_RESET}"
   if [[ "$DEV_PROFILE" == "true" ]]; then
-    profile="DEV"
+    profile="${COLOR_YELLOW}DEV${COLOR_RESET}"
   fi
 
-  echo "Preflight Report"
-  echo "  Profile: $profile"
-  echo "  Distro: $DISTRO_FAMILY"
-  echo "  WSL: $WSL_MODE"
-  echo "  Install dir: $INSTALL_DIR"
+  print_stage "Preflight Report"
+  echo "  Profile: ${COLOR_BOLD}$profile${COLOR_RESET}"
+  echo "  Distro: ${COLOR_BOLD}$DISTRO_FAMILY${COLOR_RESET}"
+  echo "  WSL: ${COLOR_BOLD}$WSL_MODE${COLOR_RESET}"
+  echo "  Install dir: ${COLOR_BOLD}$INSTALL_DIR${COLOR_RESET}"
   echo ""
 
-  print_list "Actions needed:" "${ACTIONS[@]}"
-  print_list "Warnings:" "${WARNINGS[@]}"
-  print_list "Blocking issues:" "${ERRORS[@]}"
+  if [[ ${#ACTIONS[@]} -gt 0 ]]; then
+    print_list "${COLOR_BLUE}Actions Needed:${COLOR_RESET}" "${ACTIONS[@]}"
+  fi
+  if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+    print_list "${COLOR_YELLOW}Warnings:${COLOR_RESET}" "${WARNINGS[@]}"
+  fi
+  if [[ ${#ERRORS[@]} -gt 0 ]]; then
+    print_list "${COLOR_RED}Blocking Issues:${COLOR_RESET}" "${ERRORS[@]}"
+  fi
 
   if [[ ${#ACTIONS[@]} -eq 0 && ${#WARNINGS[@]} -eq 0 && ${#ERRORS[@]} -eq 0 ]]; then
-    echo "All good, nothing to do."
+    print_ok "All good, nothing to do."
   fi
 
   echo ""
@@ -355,7 +439,11 @@ function maybe_confirm_proceed() {
   fi
 
   if is_interactive_shell; then
-    if ! prompt_user "Proceed with setup changes?"; then
+    local default="n"
+    if [[ ${#ACTIONS[@]} -gt 0 ]]; then
+      default="y"
+    fi
+    if ! prompt_user "Proceed with setup changes?" "$default"; then
       echo "Aborted."
       exit 1
     fi
@@ -363,21 +451,22 @@ function maybe_confirm_proceed() {
 }
 
 function install_base_packages_debian() {
-  sudo apt update -y
-  sudo apt install -y curl rsync ufw openssl apt-transport-https ca-certificates gnupg lsb-release git jq unzip make
+  run_logged_step "Update apt package index" sudo apt update -y
+  run_logged_step "Install Debian base packages" sudo apt install -y curl rsync ufw openssl apt-transport-https ca-certificates gnupg lsb-release git jq unzip make
 }
 
 function install_base_packages_fedora() {
-  sudo dnf makecache -y
-  sudo dnf install -y curl rsync openssl ca-certificates gnupg2 git jq unzip make firewalld
+  run_logged_step "Refresh dnf metadata" sudo dnf makecache -y
+  run_logged_step "Install Fedora base packages" sudo dnf install -y curl rsync openssl ca-certificates gnupg2 git jq unzip make firewalld
 }
 
 function install_base_packages_arch() {
-  sudo pacman -Sy --noconfirm curl rsync openssl ca-certificates gnupg git jq unzip make firewalld
+  run_logged_step "Refresh pacman package index" sudo pacman -Sy --noconfirm
+  run_logged_step "Install Arch base packages" sudo pacman -S --noconfirm curl rsync openssl ca-certificates gnupg git jq unzip make firewalld
 }
 
 function install_base_packages() {
-  echo "[1/7] Installing base packages..."
+  print_stage "[1/7] Installing base packages"
   case "$DISTRO_FAMILY" in
     debian)
       install_base_packages_debian
@@ -392,28 +481,32 @@ function install_base_packages() {
 }
 
 function install_docker() {
-  echo "[2/7] Installing/configuring Docker..."
+  print_stage "[2/7] Installing/configuring Docker"
   if docker_cli_available; then
-    echo "Docker CLI already available via '$DOCKER_CMD'. Skipping Docker Engine install."
+    print_step_ok "Docker CLI already available via '$DOCKER_CMD' (skipping install)"
     return
   fi
 
   if [[ "$WSL_MODE" == "true" ]]; then
-    echo "WARNING: Running Docker Engine install inside WSL. This may fail or conflict with Docker Desktop integration."
-    echo "If this step fails, enable Docker Desktop WSL integration and rerun ./install check."
+    print_step_warn "Running Docker Engine install inside WSL (may fail/conflict with Docker Desktop integration)"
+    print_step_warn "If this step fails, enable Docker Desktop WSL integration and rerun ./install check"
   fi
 
   if ! docker_cli_available; then
-    curl -fsSL https://get.docker.com | sudo sh
+    run_logged_step "Install Docker Engine" bash -lc "curl -fsSL https://get.docker.com | sudo sh"
   fi
 
   if [[ "$WSL_MODE" == "false" ]]; then
-    sudo systemctl enable --now docker
+    run_logged_step "Enable/start Docker service" sudo systemctl enable --now docker
     if [[ -n "${TARGET_USER:-}" ]]; then
-      sudo usermod -aG docker "$TARGET_USER" || true
+      if sudo usermod -aG docker "$TARGET_USER" >>"$LOG_FILE" 2>&1; then
+        print_ok "Added $TARGET_USER to docker group"
+      else
+        print_warn "Could not add $TARGET_USER to docker group"
+      fi
     fi
   else
-    echo "WSL detected: skipping systemctl enable/start and docker group modification."
+    print_step_warn "WSL detected: skipping systemctl enable/start and docker group modification"
   fi
 }
 
@@ -423,7 +516,7 @@ function configure_firewall_admin() {
     enable_now="false"
   fi
 
-  echo "[3/7] Configuring firewall rules for current profile..."
+  print_stage "[3/7] Configuring firewall rules for current profile"
 
   local https_port
   local livekit_port
@@ -462,18 +555,18 @@ function configure_firewall_admin() {
   case "$DISTRO_FAMILY" in
     debian)
       if command -v ufw >/dev/null 2>&1; then
-        sudo ufw default deny incoming
-        sudo ufw default allow outgoing
+        run_logged_step "Set UFW default deny incoming" sudo ufw default deny incoming
+        run_logged_step "Set UFW default allow outgoing" sudo ufw default allow outgoing
         _ufw_allow_ssh || true
-        sudo ufw allow "${https_port}/tcp"
-        sudo ufw allow "${livekit_port}/tcp"
-        sudo ufw allow "${udp_start}:${udp_end}/udp"
+        run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo ufw allow "${https_port}/tcp"
+        run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo ufw allow "${livekit_port}/tcp"
+        run_logged_step "Allow LiveKit UDP range ${udp_start}:${udp_end}/udp" sudo ufw allow "${udp_start}:${udp_end}/udp"
         if [[ "$enable_now" == "true" ]]; then
-          sudo ufw --force enable
+          run_logged_step "Enable UFW" sudo ufw --force enable
         elif sudo ufw status 2>/dev/null | grep -qi '^Status: active'; then
-          echo "UFW is already active; leaving it enabled."
+          print_step_ok "UFW already active"
         else
-          echo "DEV profile: UFW rules added but firewall not auto-enabled."
+          print_step_warn "DEV profile leaves UFW disabled (rules are saved)"
         fi
       else
         add_warning "UFW not available; firewall rules were not applied."
@@ -482,42 +575,42 @@ function configure_firewall_admin() {
     arch)
       if command -v firewall-cmd >/dev/null 2>&1; then
         if [[ "$enable_now" == "true" ]]; then
-          sudo systemctl enable --now firewalld
+          run_logged_step "Enable/start firewalld" sudo systemctl enable --now firewalld
           _firewalld_allow_ssh || true
-          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-          sudo firewall-cmd --reload
+          run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          run_logged_step "Allow LiveKit UDP range ${udp_start}-${udp_end}/udp" sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          run_logged_step "Reload firewalld" sudo firewall-cmd --reload
         elif sudo systemctl is-active --quiet firewalld; then
           _firewalld_allow_ssh || true
-          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-          sudo firewall-cmd --reload
-          echo "firewalld is already active; rules updated."
+          run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          run_logged_step "Allow LiveKit UDP range ${udp_start}-${udp_end}/udp" sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          run_logged_step "Reload firewalld" sudo firewall-cmd --reload
+          print_step_ok "firewalld already active; rules updated"
         elif command -v firewall-offline-cmd >/dev/null 2>&1; then
           _firewalld_offline_allow_ssh || true
-          sudo firewall-offline-cmd --add-port="${https_port}/tcp"
-          sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
-          sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
-          echo "DEV profile: firewalld offline rules added; service not auto-enabled."
+          run_logged_step "Queue HTTPS port ${https_port}/tcp offline" sudo firewall-offline-cmd --add-port="${https_port}/tcp"
+          run_logged_step "Queue LiveKit TCP port ${livekit_port}/tcp offline" sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
+          run_logged_step "Queue LiveKit UDP range ${udp_start}-${udp_end}/udp offline" sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
+          print_step_warn "DEV profile keeps firewalld disabled (offline rules saved)"
         else
           add_warning "firewalld is installed but not active, and firewall-offline-cmd is unavailable; rules were not applied."
         fi
       elif command -v ufw >/dev/null 2>&1; then
         add_warning "firewalld not available on Arch/CachyOS. Falling back to UFW."
-        sudo ufw default deny incoming
-        sudo ufw default allow outgoing
+        run_logged_step "Set UFW default deny incoming" sudo ufw default deny incoming
+        run_logged_step "Set UFW default allow outgoing" sudo ufw default allow outgoing
         _ufw_allow_ssh || true
-        sudo ufw allow "${https_port}/tcp"
-        sudo ufw allow "${livekit_port}/tcp"
-        sudo ufw allow "${udp_start}:${udp_end}/udp"
+        run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo ufw allow "${https_port}/tcp"
+        run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo ufw allow "${livekit_port}/tcp"
+        run_logged_step "Allow LiveKit UDP range ${udp_start}:${udp_end}/udp" sudo ufw allow "${udp_start}:${udp_end}/udp"
         if [[ "$enable_now" == "true" ]]; then
-          sudo ufw --force enable
+          run_logged_step "Enable UFW" sudo ufw --force enable
         elif sudo ufw status 2>/dev/null | grep -qi '^Status: active'; then
-          echo "UFW is already active; leaving it enabled."
+          print_step_ok "UFW already active"
         else
-          echo "DEV profile: UFW rules added but firewall not auto-enabled."
+          print_step_warn "DEV profile leaves UFW disabled (rules are saved)"
         fi
       else
         add_warning "Neither firewalld nor UFW is available on Arch/CachyOS; firewall rules were not applied."
@@ -526,25 +619,25 @@ function configure_firewall_admin() {
     fedora)
       if command -v firewall-cmd >/dev/null 2>&1; then
         if [[ "$enable_now" == "true" ]]; then
-          sudo systemctl enable --now firewalld
+          run_logged_step "Enable/start firewalld" sudo systemctl enable --now firewalld
           _firewalld_allow_ssh || true
-          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-          sudo firewall-cmd --reload
+          run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          run_logged_step "Allow LiveKit UDP range ${udp_start}-${udp_end}/udp" sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          run_logged_step "Reload firewalld" sudo firewall-cmd --reload
         elif sudo systemctl is-active --quiet firewalld; then
           _firewalld_allow_ssh || true
-          sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
-          sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
-          sudo firewall-cmd --reload
-          echo "firewalld is already active; rules updated."
+          run_logged_step "Allow HTTPS port ${https_port}/tcp" sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
+          run_logged_step "Allow LiveKit TCP port ${livekit_port}/tcp" sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
+          run_logged_step "Allow LiveKit UDP range ${udp_start}-${udp_end}/udp" sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
+          run_logged_step "Reload firewalld" sudo firewall-cmd --reload
+          print_step_ok "firewalld already active; rules updated"
         elif command -v firewall-offline-cmd >/dev/null 2>&1; then
           _firewalld_offline_allow_ssh || true
-          sudo firewall-offline-cmd --add-port="${https_port}/tcp"
-          sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
-          sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
-          echo "DEV profile: firewalld offline rules added; service not auto-enabled."
+          run_logged_step "Queue HTTPS port ${https_port}/tcp offline" sudo firewall-offline-cmd --add-port="${https_port}/tcp"
+          run_logged_step "Queue LiveKit TCP port ${livekit_port}/tcp offline" sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
+          run_logged_step "Queue LiveKit UDP range ${udp_start}-${udp_end}/udp offline" sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
+          print_step_warn "DEV profile keeps firewalld disabled (offline rules saved)"
         else
           add_warning "firewalld is installed but not active, and firewall-offline-cmd is unavailable; rules were not applied."
         fi
@@ -556,24 +649,24 @@ function configure_firewall_admin() {
 }
 
 function install_nodejs_v26_debian() {
-  curl -fsSL https://deb.nodesource.com/setup_26.x -o /tmp/nodesource_setup.sh
-  sudo bash /tmp/nodesource_setup.sh
-  sudo apt install -y nodejs
-  rm -f /tmp/nodesource_setup.sh
+  run_logged_step "Download NodeSource setup script" curl -fsSL https://deb.nodesource.com/setup_26.x -o /tmp/nodesource_setup.sh
+  run_logged_step "Configure NodeSource repository" sudo bash /tmp/nodesource_setup.sh
+  run_logged_step "Install Node.js 26" sudo apt install -y nodejs
+  rm -f /tmp/nodesource_setup.sh >>"$LOG_FILE" 2>&1 || true
 }
 
 function install_nodejs_v26_fedora() {
-  curl -fsSL https://rpm.nodesource.com/setup_26.x | sudo bash -
-  sudo dnf install -y nodejs
+  run_logged_step "Configure NodeSource repository" bash -lc "curl -fsSL https://rpm.nodesource.com/setup_26.x | sudo bash -"
+  run_logged_step "Install Node.js 26" sudo dnf install -y nodejs
 }
 
 function install_nodejs_v26_arch() {
-  sudo pacman -S --noconfirm nvm
-  sudo -u "$TARGET_USER" bash -lc 'export NVM_DIR="$HOME/.nvm"; if [[ -s /usr/share/nvm/init-nvm.sh ]]; then . /usr/share/nvm/init-nvm.sh; fi; nvm install 26; nvm alias default 26'
+  run_logged_step "Install nvm" sudo pacman -S --noconfirm nvm
+  run_logged_step "Install Node.js 26 via nvm" sudo -u "$TARGET_USER" bash -lc 'export NVM_DIR="$HOME/.nvm"; if [[ -s /usr/share/nvm/init-nvm.sh ]]; then . /usr/share/nvm/init-nvm.sh; fi; nvm install 26; nvm alias default 26'
 }
 
 function install_dev_stack() {
-  echo "[3/7] Installing DEV toolchain (Node.js v26 + npm latest + utilities)..."
+  print_stage "[3/7] Installing DEV toolchain (Node.js v26 + npm latest + utilities)"
 
   case "$DISTRO_FAMILY" in
     debian)
@@ -589,36 +682,37 @@ function install_dev_stack() {
 
   if command -v npm >/dev/null 2>&1; then
     if [[ "$DISTRO_FAMILY" == "arch" ]]; then
-      sudo -u "$TARGET_USER" bash -lc 'export NVM_DIR="$HOME/.nvm"; if [[ -s /usr/share/nvm/init-nvm.sh ]]; then . /usr/share/nvm/init-nvm.sh; fi; npm install -g npm@latest'
+      run_logged_step "Update npm to latest" sudo -u "$TARGET_USER" bash -lc 'export NVM_DIR="$HOME/.nvm"; if [[ -s /usr/share/nvm/init-nvm.sh ]]; then . /usr/share/nvm/init-nvm.sh; fi; npm install -g npm@latest'
     else
-      sudo npm install -g npm@latest
+      run_logged_step "Update npm to latest" sudo npm install -g npm@latest
     fi
   fi
 }
 
 function create_install_dir() {
-  echo "[4/7] Ensuring install directory at $INSTALL_DIR..."
+  print_stage "[4/7] Ensuring install directory at $INSTALL_DIR"
   if [[ "$LOCAL_REPO_MODE" == "true" ]]; then
     mkdir -p "$INSTALL_DIR"
+    print_step_ok "Using repo-local install directory"
   else
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo chown "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
+    run_logged_step "Create install directory" sudo mkdir -p "$INSTALL_DIR"
+    run_logged_step "Set install directory ownership" sudo chown "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
   fi
 }
 
 function download_source() {
-  echo "[5/7] Syncing VTT-Chat files into $INSTALL_DIR..."
+  print_stage "[5/7] Syncing VTT-Chat files into $INSTALL_DIR"
 
   if [[ "$LOCAL_REPO_MODE" == "true" ]]; then
-    echo "Repo-local mode detected. Skipping source sync; using current clone at $REPO_ROOT."
+    print_step_ok "Repo-local mode detected. Skipping source sync; using current clone at $REPO_ROOT"
     return
   fi
 
   mkdir -p "$INSTALL_DIR"
 
   if [[ -d "$REPO_ROOT/backend" && -d "$REPO_ROOT/frontend" && -f "$REPO_ROOT/infra/install-config.yml" ]]; then
-    echo "Using local repository source (repo-safe copy to install dir)."
-    rsync -a --delete \
+    print_info "Using local repository source (repo-safe copy to install dir)."
+    run_logged_step "Sync repository into install directory" rsync -a --delete \
       --exclude '.git' \
       --exclude 'node_modules' \
       --exclude 'backend/node_modules' \
@@ -634,11 +728,11 @@ function download_source() {
       --exclude 'frontend/.env' \
       "$REPO_ROOT/" "$INSTALL_DIR/"
   else
-    echo "Downloading repository archive from $REPO_ARCHIVE_URL..."
+    print_info "Downloading repository archive from $REPO_ARCHIVE_URL"
     local tmpdir
     tmpdir=$(mktemp -d)
-    curl -fsSL "$REPO_ARCHIVE_URL" | tar -xz --strip-components=1 -C "$tmpdir"
-    rsync -a --delete \
+    run_logged_step "Download repository archive" bash -lc "curl -fsSL '$REPO_ARCHIVE_URL' | tar -xz --strip-components=1 -C '$tmpdir'"
+    run_logged_step "Sync extracted archive into install directory" rsync -a --delete \
       --exclude '.git' \
       --exclude 'node_modules' \
       --exclude 'backend/node_modules' \
@@ -653,19 +747,20 @@ function download_source() {
       --exclude 'backend/.env' \
       --exclude 'frontend/.env' \
       "$tmpdir/" "$INSTALL_DIR/"
-    rm -rf "$tmpdir"
+    rm -rf "$tmpdir" >>"$LOG_FILE" 2>&1 || true
   fi
 
-  sudo chown -R "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
+  run_logged_step "Set install tree ownership" sudo chown -R "$TARGET_USER":"$TARGET_USER" "$INSTALL_DIR"
 }
 
 function write_install_config() {
   if [[ -f "$CONFIG_FILE" ]]; then
-    echo "[6/7] Preserving existing install-config.yml"
+    print_stage "[6/7] Preserving existing install-config.yml"
+    print_step_ok "$CONFIG_FILE already exists"
     return
   fi
 
-  echo "[6/7] Writing default install-config.yml..."
+  print_stage "[6/7] Writing default install-config.yml"
   mkdir -p "$INSTALL_DIR/infra"
   cat <<EOF >"$CONFIG_FILE"
 install_dir: $INSTALL_DIR
@@ -687,49 +782,57 @@ dns_provider: ""
 dns_token: ""
 use_self_signed: true
 EOF
+  print_step_ok "Wrote $CONFIG_FILE"
 }
 
 function make_scripts_executable() {
-  echo "[7/7] Making launcher scripts executable..."
+  print_stage "[7/7] Making launcher scripts executable"
   if [[ "$LOCAL_REPO_MODE" == "true" ]]; then
     chmod +x "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/infra/scripts/server" "$INSTALL_DIR/install"
+    print_step_ok "Updated executable bits in repo-local mode"
   else
-    sudo chmod +x "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/infra/scripts/server"
-    ln -sf "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/install"
-    ln -sf "$INSTALL_DIR/infra/scripts/server" "$INSTALL_DIR/server"
+    run_logged_step "Set installed script permissions" sudo chmod +x "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/infra/scripts/server"
+    run_logged_step "Link install launcher" ln -sf "$INSTALL_DIR/infra/scripts/install.sh" "$INSTALL_DIR/install"
+    run_logged_step "Link server launcher" ln -sf "$INSTALL_DIR/infra/scripts/server" "$INSTALL_DIR/server"
   fi
 }
 
 function print_post_setup_instructions() {
   echo ""
-  echo "[Done] Environment bootstrap complete."
+  echo "${COLOR_GREEN}[Done]${COLOR_RESET} Environment bootstrap complete."
   echo ""
-  echo "Next steps:"
-  echo "  1) Edit config: $CONFIG_FILE"
+  echo "${COLOR_BLUE}Next steps:${COLOR_RESET}"
+  echo "  1) Change into the install directory:"
+  echo "       cd $INSTALL_DIR"
+  echo "  2) Edit config:"
+  echo "       nano infra/install-config.yml"
   if [[ "$DEV_PROFILE" == "true" ]]; then
-    echo "  2) Validate mode files and env keys:"
-    echo "       cd $INSTALL_DIR && ./server --dev doctor"
-    echo "  3) Build DEV stack from tested repo configs:"
-    echo "       cd $INSTALL_DIR && ./server --dev build"
-    echo "  4) Manage DEV runtime:"
-    echo "       cd $INSTALL_DIR && ./server --dev start"
-    echo "       cd $INSTALL_DIR && ./server --dev status"
-    echo "       cd $INSTALL_DIR && ./server --dev stop"
+    echo "  3) Validate mode files and env keys:"
+    echo "       ./server --dev doctor"
+    echo "  4) Build ${COLOR_YELLOW}DEV${COLOR_RESET} stack from tested repo configs:"
+    echo "       ./server --dev build"
+    echo "  5) Manage ${COLOR_YELLOW}DEV${COLOR_RESET} runtime:"
+    echo "       ./server --dev start"
+    echo "       ./server --dev status"
+    echo "       ./server --dev stop"
   else
-    echo "  2) Validate mode files and env keys:"
-    echo "       cd $INSTALL_DIR && ./server doctor"
-    echo "  3) Build PROD stack from tested repo configs:"
-    echo "       cd $INSTALL_DIR && ./server build"
-    echo "  4) Manage PROD runtime:"
-    echo "       cd $INSTALL_DIR && ./server start"
-    echo "       cd $INSTALL_DIR && ./server status"
-    echo "       cd $INSTALL_DIR && ./server stop"
+    echo "  3) Validate mode files and env keys:"
+    echo "       ./server doctor"
+    echo "  4) Build ${COLOR_BLUE}PROD${COLOR_RESET} stack from tested repo configs:"
+    echo "       ./server build"
+    echo "  5) Manage ${COLOR_BLUE}PROD${COLOR_RESET} runtime:"
+    echo "       ./server start"
+    echo "       ./server status"
+    echo "       ./server stop"
   fi
   echo ""
-  echo "Note: Docker group changes may require logout/login for non-root users."
+  echo "${COLOR_YELLOW}Note:${COLOR_RESET} Docker group changes may require logout/login for non-root users."
+  echo ""
 }
 
 function run_check() {
+  initialize_output
+  printf '%b\n' "Running preflight checks..."
   collect_preflight_findings
   print_preflight_report
 
@@ -739,6 +842,11 @@ function run_check() {
 }
 
 function run_setup() {
+  initialize_output
+  : >"$LOG_FILE"
+  print_info "Detailed install log: $LOG_FILE"
+
+  printf '%b\n' "Running preflight checks..."
   collect_preflight_findings
   print_preflight_report
 
@@ -764,6 +872,7 @@ function run_setup() {
   download_source
   write_install_config
   make_scripts_executable
+  print_step_ok "Setup stages completed successfully"
   print_post_setup_instructions
 }
 
