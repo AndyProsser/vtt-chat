@@ -429,6 +429,31 @@ function configure_firewall_admin() {
   local livekit_port
   local udp_start
   local udp_end
+
+  function _ufw_allow_ssh() {
+    if sudo ufw allow OpenSSH >/dev/null 2>&1; then
+      return 0
+    fi
+    add_warning "UFW profile 'OpenSSH' not found; skipping SSH firewall rule."
+    return 1
+  }
+
+  function _firewalld_allow_ssh() {
+    if sudo firewall-cmd --permanent --add-service=ssh >/dev/null 2>&1; then
+      return 0
+    fi
+    add_warning "firewalld service 'ssh' not found; skipping SSH firewall rule."
+    return 1
+  }
+
+  function _firewalld_offline_allow_ssh() {
+    if sudo firewall-offline-cmd --add-service=ssh >/dev/null 2>&1; then
+      return 0
+    fi
+    add_warning "firewalld offline service 'ssh' not found; skipping SSH firewall rule."
+    return 1
+  }
+
   https_port=$(get_config_value_or_default "https_port" "8443")
   livekit_port=$(get_config_value_or_default "livekit_port" "7880")
   udp_start=$(get_config_value_or_default "livekit_udp_start" "7881")
@@ -439,7 +464,7 @@ function configure_firewall_admin() {
       if command -v ufw >/dev/null 2>&1; then
         sudo ufw default deny incoming
         sudo ufw default allow outgoing
-        sudo ufw allow OpenSSH
+        _ufw_allow_ssh || true
         sudo ufw allow "${https_port}/tcp"
         sudo ufw allow "${livekit_port}/tcp"
         sudo ufw allow "${udp_start}:${udp_end}/udp"
@@ -458,20 +483,20 @@ function configure_firewall_admin() {
       if command -v firewall-cmd >/dev/null 2>&1; then
         if [[ "$enable_now" == "true" ]]; then
           sudo systemctl enable --now firewalld
-          sudo firewall-cmd --permanent --add-service=ssh
+          _firewalld_allow_ssh || true
           sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
           sudo firewall-cmd --reload
         elif sudo systemctl is-active --quiet firewalld; then
-          sudo firewall-cmd --permanent --add-service=ssh
+          _firewalld_allow_ssh || true
           sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
           sudo firewall-cmd --reload
           echo "firewalld is already active; rules updated."
         elif command -v firewall-offline-cmd >/dev/null 2>&1; then
-          sudo firewall-offline-cmd --add-service=ssh
+          _firewalld_offline_allow_ssh || true
           sudo firewall-offline-cmd --add-port="${https_port}/tcp"
           sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
           sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
@@ -483,7 +508,7 @@ function configure_firewall_admin() {
         add_warning "firewalld not available on Arch/CachyOS. Falling back to UFW."
         sudo ufw default deny incoming
         sudo ufw default allow outgoing
-        sudo ufw allow OpenSSH
+        _ufw_allow_ssh || true
         sudo ufw allow "${https_port}/tcp"
         sudo ufw allow "${livekit_port}/tcp"
         sudo ufw allow "${udp_start}:${udp_end}/udp"
@@ -502,20 +527,20 @@ function configure_firewall_admin() {
       if command -v firewall-cmd >/dev/null 2>&1; then
         if [[ "$enable_now" == "true" ]]; then
           sudo systemctl enable --now firewalld
-          sudo firewall-cmd --permanent --add-service=ssh
+          _firewalld_allow_ssh || true
           sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
           sudo firewall-cmd --reload
         elif sudo systemctl is-active --quiet firewalld; then
-          sudo firewall-cmd --permanent --add-service=ssh
+          _firewalld_allow_ssh || true
           sudo firewall-cmd --permanent --add-port="${https_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${livekit_port}/tcp"
           sudo firewall-cmd --permanent --add-port="${udp_start}-${udp_end}/udp"
           sudo firewall-cmd --reload
           echo "firewalld is already active; rules updated."
         elif command -v firewall-offline-cmd >/dev/null 2>&1; then
-          sudo firewall-offline-cmd --add-service=ssh
+          _firewalld_offline_allow_ssh || true
           sudo firewall-offline-cmd --add-port="${https_port}/tcp"
           sudo firewall-offline-cmd --add-port="${livekit_port}/tcp"
           sudo firewall-offline-cmd --add-port="${udp_start}-${udp_end}/udp"
