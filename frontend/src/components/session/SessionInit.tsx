@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, Role, MessageType, isGreenroomSessionState } from '@shared'
-import type { UUID } from '@shared'
+import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '../../hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
@@ -144,6 +144,16 @@ interface ApiBroadcastState {
 interface ApiAudioEnvironmentState {
   roomId: UUID
   environmentName: string
+}
+
+interface ApiPlatformStatusResponse {
+  activeSessions?: number
+  peakConcurrentUsers24h?: number
+  lobbyStats?: CampaignLobbyStatsUpdatedPayload
+}
+
+interface ApiDiscoverableCampaign extends Omit<CampaignSummary, 'latestSessionState'> {
+  activeSessionState?: SessionState | null
 }
 
 function safeLocalStorageGetItem(key: string): string | null {
@@ -472,6 +482,7 @@ export function SessionInit({
   }
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
+  const [discoverableCampaigns, setDiscoverableCampaigns] = useState<CampaignSummary[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState<UUID | ''>('')
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
@@ -765,6 +776,21 @@ export function SessionInit({
   const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
 
+  const applyLobbyStatsSnapshot = useCallback((snapshot: CampaignLobbyStatsUpdatedPayload) => {
+    setLobbyStats({
+      activeSessions: Math.max(0, Math.floor(snapshot.activeSessions || 0)),
+      connectedPlayersAndDms: Math.max(0, Math.floor(snapshot.connectedPlayersAndDms || 0)),
+      connectedSpectators: Math.max(0, Math.floor(snapshot.connectedSpectators || 0)),
+      peakConcurrentUsers24h: Math.max(0, Math.floor(snapshot.peakConcurrentUsers24h || 0)),
+      totalTimePlayedLabel: formatDurationCompact(snapshot.totalEndedSessionDurationMs || 0),
+      activeCampaigns: Math.max(0, Math.floor(snapshot.activeCampaigns || 0)),
+      pausedCampaigns: Math.max(0, Math.floor(snapshot.pausedCampaigns || 0)),
+      averageSessionDurationLabel: formatDurationCompact(
+        snapshot.averageEndedSessionDurationMs || 0
+      ),
+    })
+  }, [])
+
   const loadCampaigns = useCallback(
     async ({ showLoading = true, surfaceError = true } = {}) => {
       if (showLoading) {
@@ -829,15 +855,109 @@ export function SessionInit({
     [apiUrl, clearSessions, fetchWithAuthGuard, token]
   )
 
+  const loadDiscoverableCampaigns = useCallback(
+    async ({ surfaceError = false } = {}) => {
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/discover`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to load discoverable campaigns')
+        }
+
+        const data = (await response.json()) as { campaigns?: ApiDiscoverableCampaign[] }
+        const nextCampaigns = (data.campaigns || []).map((campaign) => ({
+          ...campaign,
+          latestSessionState: campaign.activeSessionState ?? null,
+          isMember: false,
+        })) as CampaignSummary[]
+
+        setDiscoverableCampaigns(nextCampaigns)
+        return nextCampaigns
+      } catch (err) {
+        setDiscoverableCampaigns([])
+        if (surfaceError) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
+        }
+        return null
+      }
+    },
+    [apiUrl, fetchWithAuthGuard, token]
+  )
+
+  const loadLobbyCampaignData = useCallback(
+    async ({ showLoading = true, surfaceError = true } = {}) => {
+      const [nextCampaigns] = await Promise.all([
+        loadCampaigns({ showLoading, surfaceError }),
+        loadDiscoverableCampaigns({ surfaceError: false }),
+      ])
+
+      return nextCampaigns
+    },
+    [loadCampaigns, loadDiscoverableCampaigns]
+  )
+
+  const loadLobbyStats = useCallback(async () => {
+    try {
+      const statusResponse = await fetchWithAuthGuard(`${apiUrl}/api/platform/status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!statusResponse.ok) {
+        const errorData = await statusResponse.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to load lobby stats')
+      }
+
+      const statusPayload = (await statusResponse.json()) as ApiPlatformStatusResponse
+      if (statusPayload.lobbyStats) {
+        applyLobbyStatsSnapshot(statusPayload.lobbyStats)
+        return
+      }
+
+      setLobbyStats((current) => ({
+        ...current,
+        activeSessions:
+          typeof statusPayload.activeSessions === 'number'
+            ? Math.max(0, Math.floor(statusPayload.activeSessions))
+            : current.activeSessions,
+        peakConcurrentUsers24h:
+          typeof statusPayload.peakConcurrentUsers24h === 'number'
+            ? Math.max(0, Math.floor(statusPayload.peakConcurrentUsers24h))
+            : current.peakConcurrentUsers24h,
+      }))
+    } catch {
+      // Keep the existing lobby snapshot when refresh fails.
+    }
+  }, [apiUrl, applyLobbyStatsSnapshot, fetchWithAuthGuard, token])
+
   const handleCampaignListInvalidated = useCallback(() => {
     if (lobbyCampaignReloadTimeoutRef.current) {
       clearTimeout(lobbyCampaignReloadTimeoutRef.current)
     }
 
     lobbyCampaignReloadTimeoutRef.current = setTimeout(() => {
-      void loadCampaigns({ showLoading: false, surfaceError: false })
+      void loadLobbyCampaignData({ showLoading: false, surfaceError: false })
     }, 250)
-  }, [loadCampaigns])
+  }, [loadLobbyCampaignData])
+
+  const handleLobbyStatsUpdated = useCallback(
+    (event: EventEnvelope) => {
+      const payload = event.payload as Partial<CampaignLobbyStatsUpdatedPayload>
+      if (typeof payload.activeSessions !== 'number') {
+        return
+      }
+
+      applyLobbyStatsSnapshot(payload as CampaignLobbyStatsUpdatedPayload)
+    },
+    [applyLobbyStatsSnapshot]
+  )
 
   // WebSocket connection
   const {
@@ -852,6 +972,7 @@ export function SessionInit({
     enabled: shouldEnableWs,
     onAuthFailure: handleWebSocketAuthFailure,
     onCampaignListInvalidated: handleCampaignListInvalidated,
+    onLobbyStatsUpdated: handleLobbyStatsUpdated,
   })
 
   useEffect(() => {
@@ -1673,8 +1794,8 @@ export function SessionInit({
   }, [activeTransitionNotice, hideTransitionToast])
 
   useEffect(() => {
-    void loadCampaigns()
-  }, [loadCampaigns])
+    void Promise.all([loadLobbyCampaignData(), loadLobbyStats()])
+  }, [loadLobbyCampaignData, loadLobbyStats])
 
   useEffect(() => {
     const loadCampaignSessions = async () => {
@@ -1696,112 +1817,6 @@ export function SessionInit({
 
     void loadCampaignSessions()
   }, [selectedCampaignId, clearSessions, replaceSessions, fetchCampaignSessionsData])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadLobbyStats = async () => {
-      const connectedPlayersAndDms = campaigns.reduce(
-        (sum, campaign) => sum + (campaign.connectedPlayers || 0) + (campaign.dmOnline ? 1 : 0),
-        0
-      )
-      const connectedSpectators = campaigns.reduce(
-        (sum, campaign) => sum + (campaign.connectedSpectatorsRounded || 0),
-        0
-      )
-      const activeCampaigns = campaigns.filter(
-        (campaign) => getCampaignDisplayState(campaign) === 'ACTIVE'
-      ).length
-      const pausedCampaigns = campaigns.filter(
-        (campaign) => getCampaignDisplayState(campaign) === 'PAUSED'
-      ).length
-
-      let activeSessions = activeCampaigns
-      let peakConcurrentUsers24h = 0
-
-      try {
-        const statusResponse = await fetchWithAuthGuard(`${apiUrl}/api/platform/status`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (statusResponse.ok) {
-          const statusPayload = (await statusResponse.json()) as {
-            activeSessions?: number
-            peakConcurrentUsers24h?: number
-          }
-          if (typeof statusPayload.activeSessions === 'number') {
-            activeSessions = Math.max(0, Math.floor(statusPayload.activeSessions))
-          }
-          if (typeof statusPayload.peakConcurrentUsers24h === 'number') {
-            peakConcurrentUsers24h = Math.max(0, Math.floor(statusPayload.peakConcurrentUsers24h))
-          }
-        }
-      } catch {
-        // Fall back to campaign-derived count when status endpoint is unavailable.
-      }
-
-      const nowMs = Date.now()
-      let totalSessionDurationMs = 0
-      let sevenDayDurationMs = 0
-      let sevenDaySessionCount = 0
-      const sevenDaysAgo = nowMs - 7 * 24 * 60 * 60 * 1000
-
-      if (campaigns.length > 0) {
-        const sessionLists = await Promise.all(
-          campaigns.map(async (campaign) => {
-            try {
-              return await fetchCampaignSessionsData(campaign.id)
-            } catch {
-              return [] as SessionRecord[]
-            }
-          })
-        )
-
-        for (const sessionList of sessionLists) {
-          for (const rawSession of sessionList) {
-            const session = normalizeSessionRecord(rawSession)
-            const playedMs = resolveSessionPlayedDurationMs(session, nowMs)
-            if (playedMs <= 0) {
-              continue
-            }
-
-            totalSessionDurationMs += playedMs
-
-            const startedAt = session.startedAt || 0
-            if (startedAt >= sevenDaysAgo) {
-              sevenDayDurationMs += playedMs
-              sevenDaySessionCount += 1
-            }
-          }
-        }
-      }
-
-      if (cancelled) {
-        return
-      }
-
-      setLobbyStats({
-        activeSessions,
-        connectedPlayersAndDms,
-        connectedSpectators,
-        peakConcurrentUsers24h,
-        totalTimePlayedLabel: formatDurationCompact(totalSessionDurationMs),
-        activeCampaigns,
-        pausedCampaigns,
-        averageSessionDurationLabel: formatDurationCompact(
-          sevenDaySessionCount > 0 ? sevenDayDurationMs / sevenDaySessionCount : 0
-        ),
-      })
-    }
-
-    void loadLobbyStats()
-
-    return () => {
-      cancelled = true
-    }
-  }, [apiUrl, campaigns, fetchCampaignSessionsData, fetchWithAuthGuard, token])
 
   useEffect(() => {
     if (!showCampaignSettingsModal || !settingsReferenceSessionId) {
@@ -3460,7 +3475,7 @@ export function SessionInit({
         {!hasSessionSelected && lobbyViewMode === 'list' && (
           <SessionLobbyView
             campaigns={campaigns}
-            discoverableCampaigns={[]}
+            discoverableCampaigns={discoverableCampaigns}
             lobbyStats={lobbyStats}
             selectedCampaignId={selectedCampaignId}
             isLoadingCampaigns={isLoadingCampaigns}

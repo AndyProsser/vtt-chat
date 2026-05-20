@@ -33,6 +33,7 @@ import { getSession } from '@/services/session/core.service'
 import { resolveTypingAudience } from '@/services/chat-visibility.service'
 import { listCampaignMemberIds } from '@/repositories/campaign.repository'
 import { findSessionById } from '@/repositories/session.repository'
+import { broadcastLobbyStatsUpdated } from '@/services/lobby/lobby-stats.service'
 import { logger } from '@/utils'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
@@ -337,6 +338,8 @@ export class WebSocketManager {
         payload.userId as UUID
       )
       void this.recoverAndMarkConnected(connectionState.sessionId, payload)
+    } else {
+      void broadcastLobbyStatsUpdated(payload.userId as UUID, payload.role as Role)
     }
   }
 
@@ -358,6 +361,8 @@ export class WebSocketManager {
       if (!wasOnline) {
         await this.broadcastCampaignListInvalidated(sessionId, payload.userId as UUID)
       }
+
+      await broadcastLobbyStatsUpdated(payload.userId as UUID, payload.role as Role)
     } catch (error) {
       logger.warn('ws', 'Failed to recover presence for connection', {
         sessionId,
@@ -635,8 +640,14 @@ export class WebSocketManager {
               this.hasActiveConnectionsInSession(candidateSessionId),
           })
           await this.broadcastCampaignListInvalidated(sessionId, userId)
+          await broadcastLobbyStatsUpdated(userId, ws.authPayload!.role as Role)
         })()
+        return
       }
+    }
+
+    if (ws.authPayload) {
+      void broadcastLobbyStatsUpdated(ws.authPayload.userId as UUID, ws.authPayload.role as Role)
     }
   }
 

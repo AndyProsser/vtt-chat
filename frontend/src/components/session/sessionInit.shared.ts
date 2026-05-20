@@ -9,8 +9,8 @@ export interface CampaignSummary {
   updatedAt?: number | string
   posterUrl?: string | null
   extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
-  inviteCode: string
-  currentDmId: UUID
+  inviteCode?: string
+  currentDmId?: UUID
   memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
   dmUsername?: string
   dmDisplayName?: string

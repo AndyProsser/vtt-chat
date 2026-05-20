@@ -21,6 +21,7 @@ export interface UseWebSocketOptions {
   enabled?: boolean
   onAuthFailure?: (reason: string) => void
   onCampaignListInvalidated?: (event: EventEnvelope) => void
+  onLobbyStatsUpdated?: (event: EventEnvelope) => void
 }
 
 export interface UseWebSocketReturn {
@@ -44,6 +45,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     enabled = true,
     onAuthFailure,
     onCampaignListInvalidated,
+    onLobbyStatsUpdated,
   } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
@@ -311,6 +313,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('CAMPAIGN:LIST_INVALIDATED', (event) => {
       onCampaignListInvalidated?.(event)
     })
+    dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) => onLobbyStatsUpdated?.(event))
 
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
@@ -345,7 +348,15 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [enabled, onAuthFailure, onCampaignListInvalidated, sessionId, token, url])
+  }, [
+    enabled,
+    onAuthFailure,
+    onCampaignListInvalidated,
+    onLobbyStatsUpdated,
+    sessionId,
+    token,
+    url,
+  ])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {

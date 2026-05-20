@@ -14,6 +14,7 @@ export type CampaignEventType =
   | 'CAMPAIGN:JOIN_REQUEST_RESOLVED'
   | 'CAMPAIGN:RETIRED'
   | 'CAMPAIGN:RESUMED'
+  | 'CAMPAIGN:LOBBY_STATS_UPDATED'
   | 'CAMPAIGN:LIST_INVALIDATED'
 
 // ---------------------------------------------------------------------------
@@ -80,9 +81,28 @@ export interface CampaignListInvalidatedPayload {
 
 export type CampaignListInvalidatedEvent = EventEnvelope<CampaignListInvalidatedPayload>
 
+// ---------------------------------------------------------------------------
+// CAMPAIGN:LOBBY_STATS_UPDATED
+// Sessionless lobby snapshot. Frontend consumes this directly for the top
+// stats instead of deriving them from stale local card state.
+// ---------------------------------------------------------------------------
+export interface CampaignLobbyStatsUpdatedPayload {
+  activeSessions: number
+  connectedPlayersAndDms: number
+  connectedSpectators: number
+  peakConcurrentUsers24h: number
+  activeCampaigns: number
+  pausedCampaigns: number
+  totalEndedSessionDurationMs: number
+  averageEndedSessionDurationMs: number
+}
+
+export type CampaignLobbyStatsUpdatedEvent = EventEnvelope<CampaignLobbyStatsUpdatedPayload>
+
 export type CampaignEvent =
   | CampaignJoinRequestReceivedEvent
   | CampaignJoinRequestResolvedEvent
   | CampaignRetiredEvent
   | CampaignResumedEvent
+  | CampaignLobbyStatsUpdatedEvent
   | CampaignListInvalidatedEvent

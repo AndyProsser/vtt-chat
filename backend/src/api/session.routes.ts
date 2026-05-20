@@ -64,6 +64,7 @@ import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
+import { broadcastLobbyStatsUpdated } from '@/services/lobby/lobby-stats.service'
 import {
   isSessionActiveOrPaused,
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
@@ -1184,6 +1185,8 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       cooldownDurationMs,
     })
 
+    await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+
     res.status(200).json({
       ...session,
       cooldownExpiresAt,
@@ -1495,6 +1498,8 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
       previousSession?.state || 'UNKNOWN',
       toPublicSessionState(session.state) ?? session.state
     )
+
+    await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
 
     return res.status(200).json({ session })
   } catch (err: any) {
