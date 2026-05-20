@@ -1133,6 +1133,11 @@
   padding-right: 0.15rem; /* thin scroll gutter */
 }
 
+.session-campaign-settings-workspace-root
+  > .session-campaign-settings-grid.session-campaign-settings-grid-dialog {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Tighten interior density inside the workspace settings grid */
 .session-campaign-settings-workspace-root .session-campaign-settings-panel {
   padding: 0.6rem;

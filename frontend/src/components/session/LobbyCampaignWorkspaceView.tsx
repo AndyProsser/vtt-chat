@@ -82,9 +82,6 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEdit={props.canEditCampaignInfo}
           workspaceMode
-          onEditCampaign={() => {
-            // Offline workspace keeps editing in-page instead of opening a modal.
-          }}
           onSaveCampaignInfo={props.onSaveCampaignInfo}
         />
       )

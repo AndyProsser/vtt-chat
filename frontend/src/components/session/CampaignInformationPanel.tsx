@@ -9,11 +9,16 @@ interface CampaignInformationPanelProps {
   campaign: {
     id: UUID
     name: string
+    createdAt?: number | string
+    updatedAt?: number | string
     description?: string | null
     posterUrl?: string | null
     dmDisplayName?: string
     dmUsername?: string
     dmAvatarUrl?: string | null
+    connectedPlayers?: number
+    connectedSpectators?: number
+    registeredPlayersCount?: number
     connectedPlayersRounded?: number
     connectedSpectatorsRounded?: number
     latestSessionState?: SessionLifecycleState | null
@@ -23,7 +28,6 @@ interface CampaignInformationPanelProps {
   totalSessionDurationMs: number
   canEdit: boolean
   workspaceMode?: boolean
-  onEditCampaign: (campaignId: UUID) => void
   onSaveCampaignInfo: (
     campaignId: UUID,
     updates: {
@@ -45,18 +49,6 @@ function toUiIntegrationPolicy(
   return 'ALLOW'
 }
 
-function integrationPolicyLabel(value: IntegrationSyncPolicy): string {
-  if (value === 'DM_ONLY') {
-    return 'DM only'
-  }
-
-  if (value === 'NONE') {
-    return 'Blocked'
-  }
-
-  return 'Allowed'
-}
-
 function formatDuration(totalMs: number): string {
   if (!Number.isFinite(totalMs) || totalMs <= 0) {
     return '0m'
@@ -73,12 +65,31 @@ function formatDuration(totalMs: number): string {
   return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
 }
 
-function formatSessionState(state?: SessionLifecycleState | null): string {
-  if (!state) {
+function formatDmLastSeen(rawTimestamp?: number | string): string {
+  if (rawTimestamp === undefined || rawTimestamp === null) {
     return 'Unknown'
   }
 
-  return state === 'IDLE' ? 'Idle' : state
+  const numeric =
+    typeof rawTimestamp === 'number'
+      ? rawTimestamp
+      : Number.isFinite(Number(rawTimestamp))
+        ? Number(rawTimestamp)
+        : Date.parse(String(rawTimestamp))
+
+  if (!Number.isFinite(numeric)) {
+    return 'Unknown'
+  }
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(numeric))
+  } catch {
+    return 'Unknown'
+  }
 }
 
 export function CampaignInformationPanel({
@@ -87,7 +98,6 @@ export function CampaignInformationPanel({
   totalSessionDurationMs,
   canEdit,
   workspaceMode = false,
-  onEditCampaign,
   onSaveCampaignInfo,
 }: CampaignInformationPanelProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -96,8 +106,6 @@ export function CampaignInformationPanel({
   const [nameDraft, setNameDraft] = useState('')
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [posterUrlDraft, setPosterUrlDraft] = useState<string | null>(null)
-  const [integrationSyncPolicyDraft, setIntegrationSyncPolicyDraft] =
-    useState<IntegrationSyncPolicy>('ALLOW')
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
@@ -108,7 +116,6 @@ export function CampaignInformationPanel({
     setNameDraft(campaign.name)
     setDescriptionDraft(campaign.description || '')
     setPosterUrlDraft(campaign.posterUrl || null)
-    setIntegrationSyncPolicyDraft(toUiIntegrationPolicy(campaign.extensionSyncPolicy))
     setIsEditing(Boolean(workspaceMode && canEdit))
     setSaveError(null)
   }, [campaign, workspaceMode, canEdit])
@@ -116,7 +123,7 @@ export function CampaignInformationPanel({
   if (!campaign) {
     return (
       <section className="cip-panel" aria-label="Campaign information">
-        <h3 className="cip-heading">Campaign Information</h3>
+        <h3 className="cip-heading">Campaign Info</h3>
         <p className="cip-muted">Select a campaign to view its metadata and activity summary.</p>
       </section>
     )
@@ -201,7 +208,6 @@ export function CampaignInformationPanel({
     setNameDraft(campaign.name)
     setDescriptionDraft(campaign.description || '')
     setPosterUrlDraft(campaign.posterUrl || null)
-    setIntegrationSyncPolicyDraft(toUiIntegrationPolicy(campaign.extensionSyncPolicy))
     setIsEditing(false)
     setSaveError(null)
   }
@@ -220,7 +226,7 @@ export function CampaignInformationPanel({
         name: nameDraft.trim(),
         description: descriptionDraft,
         posterUrl: posterUrlDraft?.trim() ? posterUrlDraft.trim() : null,
-        integrationSyncPolicy: integrationSyncPolicyDraft,
+        integrationSyncPolicy: toUiIntegrationPolicy(campaign.extensionSyncPolicy),
       })
       setIsEditing(false)
     } catch (err) {
@@ -232,20 +238,156 @@ export function CampaignInformationPanel({
 
   const displayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
   const dmInitial = displayName.charAt(0).toUpperCase()
+  const dmStatusLabel = campaign.dmOnline ? 'Online' : 'Offline'
+  const dmLastSeenLabel = formatDmLastSeen(campaign.updatedAt ?? campaign.createdAt)
+  const onlinePlayers = campaign.connectedPlayers ?? campaign.connectedPlayersRounded ?? 0
+  const registeredPlayers =
+    campaign.registeredPlayersCount ?? campaign.connectedPlayersRounded ?? onlinePlayers
+  const onlineSpectators = campaign.connectedSpectators ?? campaign.connectedSpectatorsRounded ?? 0
+  const averageSessionDurationMs = sessionCount > 0 ? totalSessionDurationMs / sessionCount : 0
   const isDirty =
     nameDraft.trim() !== campaign.name ||
     descriptionDraft !== (campaign.description || '') ||
-    (posterUrlDraft?.trim() || '') !== (campaign.posterUrl?.trim() || '') ||
-    integrationSyncPolicyDraft !== toUiIntegrationPolicy(campaign.extensionSyncPolicy)
+    (posterUrlDraft?.trim() || '') !== (campaign.posterUrl?.trim() || '')
+
+  const currentPoster = isEditing ? posterUrlDraft : campaign.posterUrl
+  const totalTimeLabel = formatDuration(totalSessionDurationMs)
+  const averageSessionLabel = formatDuration(averageSessionDurationMs)
+
+  const statusLine = (
+    <div className="cip-status-line" role="list" aria-label="Campaign status summary">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cip-status-chip" aria-label="DM details">
+            {campaign.dmAvatarUrl ? (
+              <img
+                className="cip-dm-avatar"
+                src={campaign.dmAvatarUrl}
+                alt={`${displayName} avatar`}
+              />
+            ) : (
+              <span className="cip-dm-avatar cip-dm-avatar--fallback">{dmInitial}</span>
+            )}
+            <span className="cip-status-chip__text">DM: {displayName}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="start">
+          <div className="cip-dm-popper">
+            <p className="cip-dm-popper__line">
+              <span className="cip-dm-popper__label">Status</span>
+              <span
+                className={`cip-dm-popper__value ${campaign.dmOnline ? 'cip-dm-popper__value--online' : ''}`}
+              >
+                {dmStatusLabel}
+              </span>
+            </p>
+            <p className="cip-dm-popper__line">
+              <span className="cip-dm-popper__label">Last seen</span>
+              <span className="cip-dm-popper__value">{dmLastSeenLabel}</span>
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cip-status-chip" aria-label="Sessions stat">
+            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
+              history
+            </span>
+            <span className="cip-status-chip__text">{sessionCount} Sessions</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Total sessions recorded for this campaign.</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cip-status-chip" aria-label="Total time stat">
+            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
+              schedule
+            </span>
+            <span className="cip-status-chip__text">{totalTimeLabel} Total played</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Average session: {averageSessionLabel}.</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cip-status-chip" aria-label="Players stat">
+            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
+              groups
+            </span>
+            <span className="cip-status-chip__text">
+              {onlinePlayers}/{registeredPlayers} Players
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Online players / registered campaign players.</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cip-status-chip" aria-label="Spectators stat">
+            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
+              visibility
+            </span>
+            <span className="cip-status-chip__text">{onlineSpectators} Spectators</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Spectators online right now.</TooltipContent>
+      </Tooltip>
+    </div>
+  )
 
   return (
     <section
-      className={`cip-panel ${workspaceMode ? 'cip-panel--workspace' : ''}`}
+      className={`cip-panel ${workspaceMode ? 'cip-panel--workspace' : 'cip-panel--session'}`}
       aria-label="Campaign information"
     >
-      <div className="cip-hero">
+      <TooltipProvider delayDuration={140}>
+        <div className="cip-header-row">
+          <h3 className="cip-heading">Campaign Info</h3>
+          {canEdit && isEditing ? (
+            <div className="cip-inline-actions" aria-label="Campaign info actions">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action"
+                    aria-label={isSaving ? 'Saving campaign info' : 'Save campaign info'}
+                    onClick={() => void handleSave()}
+                    disabled={isSaving || !isDirty || !nameDraft.trim()}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {isSaving ? 'hourglass_top' : 'save'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Save changes</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action"
+                    aria-label="Undo campaign edits"
+                    onClick={handleCancel}
+                    disabled={isSaving || !isDirty}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      undo
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Undo unsaved edits</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : null}
+        </div>
+
         <div className="cip-copy">
-          <p className="cip-kicker">Campaign</p>
           {isEditing ? (
             <>
               <label className="cip-field-label" htmlFor="cip-name">
@@ -263,38 +405,70 @@ export function CampaignInformationPanel({
                 Description
               </label>
               <div className="cip-toolbar" role="toolbar" aria-label="Description formatting">
-                <button
-                  type="button"
-                  className="cip-toolbar__button"
-                  onClick={() => applyMarkdown('bold')}
-                  disabled={isSaving}
-                >
-                  Bold
-                </button>
-                <button
-                  type="button"
-                  className="cip-toolbar__button"
-                  onClick={() => applyMarkdown('italic')}
-                  disabled={isSaving}
-                >
-                  Italic
-                </button>
-                <button
-                  type="button"
-                  className="cip-toolbar__button"
-                  onClick={() => applyMarkdown('ul')}
-                  disabled={isSaving}
-                >
-                  Bullet List
-                </button>
-                <button
-                  type="button"
-                  className="cip-toolbar__button"
-                  onClick={() => applyMarkdown('ol')}
-                  disabled={isSaving}
-                >
-                  Numbered List
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="cip-toolbar__button"
+                      onClick={() => applyMarkdown('bold')}
+                      disabled={isSaving}
+                      aria-label="Bold"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        format_bold
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Bold</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="cip-toolbar__button"
+                      onClick={() => applyMarkdown('italic')}
+                      disabled={isSaving}
+                      aria-label="Italic"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        format_italic
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Italic</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="cip-toolbar__button"
+                      onClick={() => applyMarkdown('ul')}
+                      disabled={isSaving}
+                      aria-label="Bullet list"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        format_list_bulleted
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Bullet list</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="cip-toolbar__button"
+                      onClick={() => applyMarkdown('ol')}
+                      disabled={isSaving}
+                      aria-label="Numbered list"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        format_list_numbered
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Numbered list</TooltipContent>
+                </Tooltip>
               </div>
               <textarea
                 id="cip-description"
@@ -305,256 +479,107 @@ export function CampaignInformationPanel({
                 onChange={(event) => setDescriptionDraft(event.target.value)}
                 disabled={isSaving}
               />
-              {workspaceMode ? (
-                <div className="cip-inline-actions" aria-label="Campaign info actions">
-                  <button
-                    type="button"
-                    className="session-icon-action"
-                    aria-label={isSaving ? 'Saving campaign info' : 'Save campaign info'}
-                    onClick={() => void handleSave()}
-                    disabled={isSaving || !isDirty || !nameDraft.trim()}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {isSaving ? 'hourglass_top' : 'save'}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="session-icon-action"
-                    aria-label="Reset campaign edits"
-                    onClick={handleCancel}
-                    disabled={isSaving || !isDirty}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      restart_alt
-                    </span>
-                  </button>
+
+              {statusLine}
+
+              <div className="cip-poster-controls">
+                <label className="cip-field-label" htmlFor="cip-poster-file">
+                  Poster image
+                </label>
+                <div
+                  className={`cip-poster-surface cip-poster-surface--editable ${currentPoster ? 'has-image' : ''}`}
+                  style={currentPoster ? { backgroundImage: `url(${currentPoster})` } : undefined}
+                  aria-label="Poster preview"
+                >
+                  {!currentPoster ? (
+                    <div className="cip-poster__placeholder">
+                      {campaign.name.charAt(0).toUpperCase()}
+                    </div>
+                  ) : null}
+                  <div className="cip-poster-overlay" aria-hidden="true">
+                    {posterUrlDraft ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cip-poster-clear"
+                            aria-label="Clear poster image"
+                            onClick={() => setPosterUrlDraft(null)}
+                            disabled={isSaving}
+                          >
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              close
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Remove poster image</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    <label
+                      htmlFor="cip-poster-file"
+                      className="session-button session-button-neutral cip-browse-button"
+                    >
+                      Browse...
+                    </label>
+                  </div>
+                  <input
+                    id="cip-poster-file"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePosterUpload}
+                    disabled={isSaving}
+                    className="cip-visually-hidden"
+                  />
                 </div>
-              ) : null}
+                <p className="cip-muted">External poster sync stores a local copy.</p>
+              </div>
             </>
           ) : (
             <>
-              <h3 className="cip-heading">{campaign.name}</h3>
+              <p className="cip-kicker">Campaign</p>
+              <p className="cip-name-value">{campaign.name}</p>
               <p className="cip-description">
                 {campaign.description || 'No description provided.'}
               </p>
+
+              {statusLine}
+
+              <div className="cip-poster-controls">
+                <span className="cip-field-label">Poster image</span>
+                <div
+                  className={`cip-poster-surface ${currentPoster ? 'has-image' : ''}`}
+                  style={currentPoster ? { backgroundImage: `url(${currentPoster})` } : undefined}
+                  aria-hidden="true"
+                >
+                  {!currentPoster ? (
+                    <div className="cip-poster__placeholder">
+                      {campaign.name.charAt(0).toUpperCase()}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </>
           )}
         </div>
 
-        <div className="cip-poster" aria-hidden="true">
-          {(isEditing ? posterUrlDraft : campaign.posterUrl) ? (
-            <img
-              className="cip-poster__image"
-              src={(isEditing ? posterUrlDraft : campaign.posterUrl) || ''}
-              alt=""
-            />
-          ) : (
-            <div className="cip-poster__placeholder">{campaign.name.charAt(0).toUpperCase()}</div>
-          )}
-        </div>
-      </div>
-
-      {isEditing ? (
-        <div className="cip-poster-controls">
-          <label className="cip-field-label" htmlFor="cip-poster-file">
-            Poster image
-          </label>
-          <input
-            id="cip-poster-file"
-            type="file"
-            accept="image/*"
-            onChange={handlePosterUpload}
-            disabled={isSaving}
-          />
-          <label className="cip-field-label" htmlFor="cip-poster-url">
-            Poster URL (optional)
-          </label>
-          <input
-            id="cip-poster-url"
-            className="cip-input"
-            type="text"
-            value={posterUrlDraft || ''}
-            onChange={(event) => setPosterUrlDraft(event.target.value)}
-            placeholder="https://..."
-            disabled={isSaving}
-          />
-          <button
-            type="button"
-            className="session-button session-button-neutral"
-            onClick={() => setPosterUrlDraft(null)}
-            disabled={isSaving}
-          >
-            Remove poster
-          </button>
-        </div>
-      ) : null}
-
-      <TooltipProvider delayDuration={140}>
-        <div
-          className={`cip-stats ${workspaceMode ? 'cip-stats--compact' : ''}`}
-          role="list"
-          aria-label="Campaign stats"
-        >
-          <div className="cip-stat" role="listitem">
-            <span className="cip-stat__value">{sessionCount}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cip-stat__label">
-                  Sessions <span className="cip-stat__hint">?</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">Total sessions created in this campaign.</TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="cip-stat" role="listitem">
-            <span className="cip-stat__value">{formatDuration(totalSessionDurationMs)}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cip-stat__label">
-                  Total length <span className="cip-stat__hint">?</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Sum of active session durations across this campaign.
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="cip-stat" role="listitem">
-            <span className="cip-stat__value">{campaign.connectedPlayersRounded ?? 0}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cip-stat__label">
-                  Players <span className="cip-stat__hint">?</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">Connected campaign players.</TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="cip-stat" role="listitem">
-            <span className="cip-stat__value">{campaign.connectedSpectatorsRounded ?? 0}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cip-stat__label">
-                  Spectators <span className="cip-stat__hint">?</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">Connected campaign spectators.</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-      </TooltipProvider>
-
-      <div className="cip-meta">
-        <div className="cip-meta__row">
-          <span className="cip-meta__label">Integration updates</span>
-          {isEditing ? (
-            <div className="session-toggle-group" role="group" aria-label="Integration updates">
-              <button
-                type="button"
-                className={`session-toggle-button ${integrationSyncPolicyDraft === 'ALLOW' ? 'is-active' : ''}`}
-                aria-pressed={integrationSyncPolicyDraft === 'ALLOW'}
-                onClick={() => setIntegrationSyncPolicyDraft('ALLOW')}
-                disabled={isSaving}
-              >
-                ALLOW
-              </button>
-              <button
-                type="button"
-                className={`session-toggle-button ${integrationSyncPolicyDraft === 'DM_ONLY' ? 'is-active' : ''}`}
-                aria-pressed={integrationSyncPolicyDraft === 'DM_ONLY'}
-                onClick={() => setIntegrationSyncPolicyDraft('DM_ONLY')}
-                disabled={isSaving}
-              >
-                DM_ONLY
-              </button>
-              <button
-                type="button"
-                className={`session-toggle-button ${integrationSyncPolicyDraft === 'NONE' ? 'is-active' : ''}`}
-                aria-pressed={integrationSyncPolicyDraft === 'NONE'}
-                onClick={() => setIntegrationSyncPolicyDraft('NONE')}
-                disabled={isSaving}
-              >
-                BLOCK
-              </button>
-            </div>
-          ) : (
-            <span className="cip-meta__value">
-              {integrationPolicyLabel(toUiIntegrationPolicy(campaign.extensionSyncPolicy))}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="cip-meta">
-        <div className="cip-meta__row">
-          <span className="cip-meta__label">DM</span>
-          <span className="cip-meta__value">
-            {campaign.dmAvatarUrl ? (
-              <img
-                className="cip-dm-avatar"
-                src={campaign.dmAvatarUrl}
-                alt={`${displayName} avatar`}
-              />
-            ) : (
-              <span className="cip-dm-avatar cip-dm-avatar--fallback">{dmInitial}</span>
-            )}
-            <span>{displayName}</span>
-          </span>
-        </div>
-        <div className="cip-meta__row">
-          <span className="cip-meta__label">Last session</span>
-          <span className="cip-meta__value">{formatSessionState(campaign.latestSessionState)}</span>
-        </div>
-      </div>
-
-      <div className="cip-actions">
-        {workspaceMode ? null : canEdit && isEditing ? (
-          <>
+        <div className="cip-actions">
+          {!workspaceMode && canEdit && !isEditing ? (
             <button
               type="button"
               className="session-button session-button-brand"
-              onClick={() => void handleSave()}
-              disabled={isSaving}
+              onClick={() => setIsEditing(true)}
             >
-              {isSaving ? 'Saving...' : 'Save'}
+              Edit campaign info
             </button>
-            <button
-              type="button"
-              className="session-button session-button-neutral"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-          </>
-        ) : canEdit ? (
-          <button
-            type="button"
-            className="session-button session-button-brand"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit campaign info
-          </button>
-        ) : (
-          <p className="cip-muted">Campaign metadata is read-only for your role.</p>
-        )}
+          ) : !canEdit ? (
+            <p className="cip-muted">Campaign metadata is read-only for your role.</p>
+          ) : (
+            ''
+          )}
+        </div>
 
-        {canEdit ? (
-          <button
-            type="button"
-            className="session-button session-button-neutral"
-            onClick={() => onEditCampaign(campaign.id)}
-            disabled={isSaving}
-          >
-            Open full settings
-          </button>
-        ) : (
-          ''
-        )}
-      </div>
-
-      {saveError ? <p className="cip-error">{saveError}</p> : null}
+        {saveError ? <p className="cip-error">{saveError}</p> : null}
+      </TooltipProvider>
     </section>
   )
 }

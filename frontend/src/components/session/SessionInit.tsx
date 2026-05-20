@@ -3837,7 +3837,6 @@ export function SessionInit({
                         canEdit={Boolean(
                           selectedCampaign && selectedCampaign.currentDmId === user.id
                         )}
-                        onEditCampaign={openCampaignSettingsModal}
                         onSaveCampaignInfo={handleSaveCampaignInfoPanel}
                       />
                     }
