@@ -7,6 +7,7 @@ type InvitePopoverWidgetProps = {
   joinUrl: string
   spectatorsEnabled: boolean
   watchUrl: string
+  canRefreshInvites?: boolean
   onCopyInviteUrl: (inviteType: InviteType) => void
   onReissueInvite: (inviteType: InviteType) => void
   isInviteReissuing?: boolean
@@ -19,6 +20,7 @@ type InviteLinkRowProps = {
   refreshAriaLabel: string
   canCopy?: boolean
   canRefresh?: boolean
+  showRefresh?: boolean
   onCopy: () => void
   onRefresh: () => void
 }
@@ -39,17 +41,19 @@ function InviteLinkRow(props: InviteLinkRowProps) {
           content_copy
         </span>
       </button>
-      <button
-        type="button"
-        className="session-icon-action session-lobby-invite__refresh"
-        aria-label={props.refreshAriaLabel}
-        onClick={props.onRefresh}
-        disabled={props.canRefresh === false}
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          refresh
-        </span>
-      </button>
+      {props.showRefresh ? (
+        <button
+          type="button"
+          className="session-icon-action session-lobby-invite__refresh"
+          aria-label={props.refreshAriaLabel}
+          onClick={props.onRefresh}
+          disabled={props.canRefresh === false}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            refresh
+          </span>
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -86,7 +90,6 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
 
   const handleCopy = (inviteType: InviteType) => {
     props.onCopyInviteUrl(inviteType)
-    setIsOpen(false)
   }
 
   const handleRefresh = (inviteType: InviteType) => {
@@ -119,6 +122,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
             url={props.joinUrl}
             ariaLabel="Copy join invite URL"
             refreshAriaLabel="Refresh join invite URL"
+            showRefresh={props.canRefreshInvites === true}
             canRefresh={!props.isInviteReissuing}
             onCopy={() => handleCopy('PLAYER')}
             onRefresh={() => handleRefresh('PLAYER')}
@@ -130,6 +134,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
               url={props.watchUrl || 'Watch link unavailable'}
               ariaLabel={props.watchUrl ? 'Copy watch invite URL' : 'Watch invite URL unavailable'}
               refreshAriaLabel="Refresh watch invite URL"
+              showRefresh={props.canRefreshInvites === true}
               canCopy={Boolean(props.watchUrl)}
               canRefresh={!props.isInviteReissuing}
               onCopy={() => handleCopy('SPECTATOR')}

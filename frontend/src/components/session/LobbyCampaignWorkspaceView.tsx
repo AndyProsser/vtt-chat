@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react'
-import type { Role, UUID } from '@shared'
+import { Role, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
@@ -314,6 +314,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
               joinUrl={props.joinUrl}
               spectatorsEnabled={props.spectatorsEnabled}
               watchUrl={props.watchUrl}
+              canRefreshInvites={props.role === Role.DM}
               onCopyInviteUrl={props.onCopyInviteUrl}
               onReissueInvite={props.onReissueInvite}
               isInviteReissuing={props.isInviteReissuing}

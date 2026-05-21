@@ -727,7 +727,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1200;
   padding: 1rem;
 }
 
@@ -742,11 +742,11 @@
 
 .session-modal-backdrop--top-offset {
   align-items: flex-start;
-  padding-top: 112px;
+  padding-top: 72px;
 }
 
 .session-modal--confirm-dialog {
-  width: min(520px, 100%);
+  width: min(440px, 100%);
 }
 
 /* Radix Dialog variants — overlay is pure backdrop, content is self-centered */
@@ -757,10 +757,10 @@
 
 .session-modal--floating {
   position: fixed;
-  top: 50%;
+  top: 21%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 1001;
+  z-index: 1201;
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
 }
@@ -1151,7 +1151,7 @@
 }
 
 .session-lobby-workspace__panel {
-  height: calc(100dvh - 188px);
+  height: calc(100dvh - 170px);
   min-height: 180px;
   min-width: 0;
   overflow: hidden;

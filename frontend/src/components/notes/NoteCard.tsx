@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
 import type { Note } from '@/types/notes'
@@ -42,6 +43,7 @@ export function NoteCard({
   const [allowedUsers, setAllowedUsers] = useState<string[]>(note.allowedUsers || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const cancelEdit = () => {
     setTitle(note.title)
@@ -80,11 +82,11 @@ export function NoteCard({
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this note?')) return
     setIsSaving(true)
     setError(null)
     try {
       await onDelete(note.id)
+      setShowDeleteConfirm(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete note')
     } finally {
@@ -288,7 +290,7 @@ export function NoteCard({
                   </button>
                 )}
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteConfirm(true)}
                   disabled={isSaving}
                   className="rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
@@ -299,6 +301,45 @@ export function NoteCard({
           </>
         )}
       </article>
+
+      <DialogPrimitive.Root
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!isSaving) {
+            setShowDeleteConfirm(open)
+          }
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-1200 bg-slate-900/45" />
+          <DialogPrimitive.Content className="fixed left-1/2 top-[42%] z-1201 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-ui-md border border-ui-border bg-ui-surface p-4 shadow-xl">
+            <DialogPrimitive.Title className="text-base font-semibold text-ui-primary">
+              Delete Note
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="mt-2 text-sm text-ui-secondary">
+              Delete this note? This action cannot be undone.
+            </DialogPrimitive.Description>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isSaving}
+                className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isSaving}
+                className="rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                {isSaving ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </TooltipProvider>
   )
 }

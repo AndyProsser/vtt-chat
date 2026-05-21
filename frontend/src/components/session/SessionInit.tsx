@@ -514,6 +514,9 @@ export function SessionInit({
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
   const [showExitSessionModal, setShowExitSessionModal] = useState(false)
   const [showStopSessionModal, setShowStopSessionModal] = useState(false)
+  const [pendingInviteReissueType, setPendingInviteReissueType] = useState<
+    'PLAYER' | 'SPECTATOR' | null
+  >(null)
   const [exitUpgradePassword, setExitUpgradePassword] = useState('')
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
@@ -2761,13 +2764,6 @@ export function SessionInit({
       return
     }
 
-    const confirmed = window.confirm(
-      `Refresh ${inviteType.toLowerCase()} invite? Existing links will stop working for new joins.`
-    )
-    if (!confirmed) {
-      return
-    }
-
     setError(null)
     campaignSettingsActions.setIsInviteReissuing(true)
 
@@ -2797,6 +2793,20 @@ export function SessionInit({
     } finally {
       campaignSettingsActions.setIsInviteReissuing(false)
     }
+  }
+
+  const requestInviteReissue = (inviteType: 'PLAYER' | 'SPECTATOR') => {
+    setPendingInviteReissueType(inviteType)
+  }
+
+  const handleConfirmInviteReissue = async () => {
+    if (!pendingInviteReissueType) {
+      return
+    }
+
+    const inviteType = pendingInviteReissueType
+    setPendingInviteReissueType(null)
+    await reissueInvite(inviteType)
   }
 
   const handleToggleTheme = () => {
@@ -3633,7 +3643,7 @@ export function SessionInit({
                     void copyInviteUrl(inviteType)
                   }}
                   onReissueInvite={(inviteType) => {
-                    void reissueInvite(inviteType)
+                    requestInviteReissue(inviteType)
                   }}
                   onSave={() => {
                     void saveCampaignSettings()
@@ -3700,7 +3710,7 @@ export function SessionInit({
               void copyInviteUrl(inviteType)
             }}
             onReissueInvite={(inviteType) => {
-              void reissueInvite(inviteType)
+              requestInviteReissue(inviteType)
             }}
             onSaveCampaignInfo={handleSaveCampaignInfoPanel}
           />
@@ -4008,7 +4018,13 @@ export function SessionInit({
           void copyInviteUrl(inviteType)
         }}
         onReissueInvite={(inviteType) => {
-          void reissueInvite(inviteType)
+          requestInviteReissue(inviteType)
+        }}
+        showReissueInviteModal={pendingInviteReissueType !== null}
+        reissueInviteType={pendingInviteReissueType}
+        onCloseReissueInviteModal={() => setPendingInviteReissueType(null)}
+        onConfirmReissueInvite={() => {
+          void handleConfirmInviteReissue()
         }}
         settingsVisibility={settingsVisibility}
         onSettingsVisibilityChange={(vis) => campaignSettingsActions.setSettingsVisibility(vis)}
