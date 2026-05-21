@@ -3553,11 +3553,16 @@ export function SessionInit({
                   : ''
             }
             watchUrl={
-              settingsSpectatorsEnabled && settingsData?.spectatorInviteCode
-                ? `${window.location.origin}/watch/${encodeURIComponent(settingsData.spectatorInviteCode)}`
+              settingsData?.spectatorInviteCode || selectedCampaign?.spectatorInviteCode
+                ? `${window.location.origin}/watch/${encodeURIComponent(settingsData?.spectatorInviteCode || selectedCampaign?.spectatorInviteCode || '')}`
                 : ''
             }
-            spectatorsEnabled={settingsSpectatorsEnabled}
+            spectatorsEnabled={
+              settingsData
+                ? settingsData.spectatorPolicy !== 'NONE'
+                : Boolean(selectedCampaign?.spectatorsEnabled)
+            }
+            isInviteReissuing={isInviteReissuing}
             settingsPanel={
               membershipRole === Role.DM ? (
                 <LobbyCampaignSettingsPanel
@@ -3693,6 +3698,9 @@ export function SessionInit({
             }}
             onCopyInviteUrl={(inviteType) => {
               void copyInviteUrl(inviteType)
+            }}
+            onReissueInvite={(inviteType) => {
+              void reissueInvite(inviteType)
             }}
             onSaveCampaignInfo={handleSaveCampaignInfoPanel}
           />

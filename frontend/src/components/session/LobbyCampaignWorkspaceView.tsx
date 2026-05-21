@@ -33,6 +33,7 @@ type LobbyCampaignWorkspaceViewProps = {
   joinUrl: string
   watchUrl: string
   spectatorsEnabled: boolean
+  isInviteReissuing: boolean
   settingsPanel: ReactNode
   onBackToLobby: () => void
   onCreateCampaign: () => void
@@ -42,6 +43,7 @@ type LobbyCampaignWorkspaceViewProps = {
   onLogoff: () => void
   onLaunch: (campaignId: UUID) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignInfo: (
     campaignId: UUID,
     updates: {
@@ -313,6 +315,8 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
               spectatorsEnabled={props.spectatorsEnabled}
               watchUrl={props.watchUrl}
               onCopyInviteUrl={props.onCopyInviteUrl}
+              onReissueInvite={props.onReissueInvite}
+              isInviteReissuing={props.isInviteReissuing}
             />
             <div className="session-action-row session-action-row--right session-action-row--compact">
               <button

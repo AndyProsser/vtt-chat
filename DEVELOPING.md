@@ -77,7 +77,7 @@ git clone https://github.com/AndyProsser/vtt-chat.git ~/vtt-chat
 cd ~/vtt-chat
 ```
 
-### **4. Continue with [Required Tools](#-required-tools) section below**
+### **4. Continue with the Required Tools section below**
 
 From here, use the Linux-native instructions in WSL bash, not PowerShell.
 
@@ -608,6 +608,34 @@ Use the dev compose file:
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
+
+### Hot reload configuration (Linux vs Windows/WSL)
+
+The dev compose stack supports configurable file-watch polling for **Backend, Frontend, and Admin**.
+
+By default (`.env.dev.example`):
+
+- `DEV_WATCH_USE_POLLING=false`
+- `DEV_WATCH_INTERVAL_MS=150`
+
+This default is best for Linux hosts (native filesystem events, lower CPU).
+
+For Windows + WSL + Docker bind mounts, if hot reload is missing or inconsistent:
+
+1. Set `DEV_WATCH_USE_POLLING=true` in your `.env`
+2. Keep `DEV_WATCH_INTERVAL_MS=150` (or tune to `200-300` if CPU is high)
+3. Recreate containers:
+
+```bash
+docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Notes:
+
+- These vars apply to backend/frontend/admin dev containers.
+- Polling improves reliability on Windows bind mounts, but can increase CPU usage.
+- If possible, store the repo in the WSL filesystem (for example under `~/`) for best watcher performance.
 
 This gives you:
 

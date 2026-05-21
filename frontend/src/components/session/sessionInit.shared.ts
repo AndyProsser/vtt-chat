@@ -10,6 +10,7 @@ export interface CampaignSummary {
   posterUrl?: string | null
   extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   inviteCode?: string
+  spectatorInviteCode?: string | null
   currentDmId?: UUID
   memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
   dmUsername?: string

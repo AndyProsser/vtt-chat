@@ -19,6 +19,8 @@ services:
       NODE_ENV: development
       PRISMA_SCHEMA_SYNC_MODE: push
       ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
+      CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
+      CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
       - ./backend/src:/workspace/backend/src
       - ./backend/prisma:/workspace/backend/prisma
@@ -64,6 +66,8 @@ services:
       VITE_LIVEKIT_URL: ws://localhost:7880
       VITE_ENABLE_PASSWORDLESS_LOGIN: ${ENABLE_PASSWORDLESS_LOGIN:-1}
       VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-DEBUG}
+      CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
+      CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
       - ./frontend/src:/workspace/frontend/src
       - ./frontend/public:/workspace/frontend/public
@@ -98,6 +102,8 @@ services:
     restart: unless-stopped
     environment:
       VITE_BACKEND_URL: http://backend:3000
+      CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
+      CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
       - ./admin/src:/workspace/admin/src
       - admin_node_modules:/workspace/admin/node_modules

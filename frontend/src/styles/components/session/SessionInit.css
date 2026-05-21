@@ -287,9 +287,6 @@
 
 :root.light .session-campaign-card.has-poster {
   border-color: var(--color-border-soft);
-  box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.18),
-    0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 :root.light .session-campaign-card.has-poster > * {
@@ -450,16 +447,7 @@
   right: 0;
   bottom: 0;
   height: 1.2rem;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    color-mix(in srgb, var(--color-surface) 92%, transparent)
-  );
   pointer-events: none;
-}
-
-.session-campaign-card.has-poster .session-campaign-card__description::after {
-  background: linear-gradient(to bottom, transparent, rgba(9, 14, 24, 0.92));
 }
 
 .session-campaign-card__description--preview {
@@ -1089,6 +1077,9 @@
 
 .session-lobby-invite__trigger {
   min-width: 8.5rem;
+  height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
   justify-content: center;
 }
 
@@ -1112,7 +1103,7 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
   padding: 0.4rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.25rem;
 }
 
@@ -1136,6 +1127,14 @@
 
 .session-lobby-invite__copy {
   grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  padding: 0.3rem 0.4rem;
+}
+
+.session-lobby-invite__refresh {
+  grid-column: 3 / 4;
   grid-row: 1 / span 2;
   align-self: center;
   justify-self: end;
