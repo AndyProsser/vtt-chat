@@ -113,6 +113,46 @@ function list_build_history_refs() {
     | sort -u || true
 }
 
+function clean_failed_build_history() {
+  if ! docker buildx history ls >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Buildx output shape can vary by Docker version. Try common fields and
+  # only remove clearly failed/canceled records.
+  mapfile -t failed_refs < <(
+    docker buildx history ls --format '{{json .}}' 2>/dev/null \
+      | awk '
+        {
+          ref = ""
+          status = ""
+
+          if (match($0, /"ref":"[^"]+"/)) {
+            ref = substr($0, RSTART + 7, RLENGTH - 8)
+          }
+
+          if (match($0, /"status":"[^"]+"/)) {
+            status = substr($0, RSTART + 10, RLENGTH - 11)
+          } else if (match($0, /"result":"[^"]+"/)) {
+            status = substr($0, RSTART + 10, RLENGTH - 11)
+          } else if (match($0, /"state":"[^"]+"/)) {
+            status = substr($0, RSTART + 9, RLENGTH - 10)
+          }
+
+          lower_status = tolower(status)
+          if (ref != "" && (lower_status ~ /fail|error|cancel/)) {
+            print ref
+          }
+        }
+      ' \
+      | sort -u
+  )
+
+  if [[ ${#failed_refs[@]} -gt 0 ]]; then
+    docker buildx history rm "${failed_refs[@]}" >/dev/null 2>&1 || true
+  fi
+}
+
 function list_build_history_refs_older_than() {
   local cutoff_epoch="$1"
   local keep_recent="$2"
