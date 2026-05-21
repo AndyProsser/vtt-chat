@@ -717,6 +717,98 @@ export async function listCampaignMemberIds(campaignId: string): Promise<string[
   return memberships.map((m) => m.userId)
 }
 
+export interface CampaignMemberPresenceProfile {
+  userId: string
+  username: string
+  role: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
+  playerName: string
+  avatarUrl: string | null
+  characterName: string | null
+  characterClass: string | null
+  characterRace: string | null
+  level: number | null
+  characterStats: Prisma.JsonValue | null
+}
+
+/**
+ * Returns campaign members with the most useful profile fields for PARTY presence rendering.
+ * Character fields prefer the active character when present.
+ */
+export async function listCampaignMembersForPresence(
+  campaignId: string
+): Promise<CampaignMemberPresenceProfile[]> {
+  const memberships = await prisma.campaignMembership.findMany({
+    where: { campaignId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          characterName: true,
+          characterClass: true,
+          characterRace: true,
+          level: true,
+          characterStats: true,
+        },
+      },
+      campaign: {
+        select: {
+          currentDmId: true,
+        },
+      },
+    },
+    orderBy: [{ role: 'asc' }, { user: { username: 'asc' } }],
+  })
+
+  const userIds = memberships.map((membership) => membership.userId)
+  const activeCharacters =
+    userIds.length > 0
+      ? await prisma.character.findMany({
+          where: {
+            campaignId,
+            userId: { in: userIds },
+            isActive: true,
+          },
+          select: {
+            userId: true,
+            name: true,
+            class: true,
+            race: true,
+            metadata: true,
+            avatarUrl: true,
+          },
+        })
+      : []
+
+  const characterByUser = new Map(
+    activeCharacters.map((character) => [character.userId, character] as const)
+  )
+
+  return memberships.map((membership) => {
+    const activeCharacter = characterByUser.get(membership.userId)
+    const metadata = (activeCharacter?.metadata as Record<string, unknown> | null) || null
+    const rawLevel = metadata && typeof metadata.level === 'number' ? metadata.level : null
+
+    return {
+      userId: membership.userId,
+      username: membership.user.username,
+      role: membership.role,
+      playerName: membership.user.displayName || membership.user.username,
+      avatarUrl: activeCharacter?.avatarUrl || membership.user.avatarUrl || null,
+      characterName: activeCharacter?.name || membership.user.characterName || null,
+      characterClass: activeCharacter?.class || membership.user.characterClass || null,
+      characterRace: activeCharacter?.race || membership.user.characterRace || null,
+      level:
+        rawLevel !== null
+          ? Math.max(1, Math.min(20, Math.round(rawLevel)))
+          : (membership.user.level ?? null),
+      characterStats: membership.user.characterStats || null,
+    }
+  })
+}
+
 export async function getCampaignDmId(campaignId: string): Promise<string | null> {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },

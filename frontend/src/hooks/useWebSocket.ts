@@ -22,6 +22,7 @@ export interface UseWebSocketOptions {
   onAuthFailure?: (reason: string) => void
   onCampaignListInvalidated?: (event: EventEnvelope) => void
   onLobbyStatsUpdated?: (event: EventEnvelope) => void
+  onPartyPresenceUpdated?: (event: EventEnvelope) => void
 }
 
 export interface UseWebSocketReturn {
@@ -46,6 +47,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     onAuthFailure,
     onCampaignListInvalidated,
     onLobbyStatsUpdated,
+    onPartyPresenceUpdated,
   } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
@@ -314,6 +316,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       onCampaignListInvalidated?.(event)
     })
     dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) => onLobbyStatsUpdated?.(event))
+    dispatcher.register('CAMPAIGN:PARTY_PRESENCE_UPDATED', (event) => {
+      onPartyPresenceUpdated?.(event)
+    })
 
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
@@ -353,6 +358,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     onAuthFailure,
     onCampaignListInvalidated,
     onLobbyStatsUpdated,
+    onPartyPresenceUpdated,
     sessionId,
     token,
     url,

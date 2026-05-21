@@ -168,6 +168,23 @@ async function broadcastCampaignListInvalidatedForSession(params: {
       reason: params.reason,
     },
   })
+
+  await eventBroadcaster.broadcastToCampaignMembers(sessionCampaign.campaignId as UUID, {
+    id: crypto.randomUUID() as UUID,
+    type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED',
+    version: 1,
+    userId: params.actorUserId,
+    userRole: params.actorUserRole,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: sessionCampaign.campaignId as UUID,
+      sessionId: params.sessionId,
+      reason: params.reason,
+      changedAt: Date.now(),
+    },
+  })
 }
 
 /**

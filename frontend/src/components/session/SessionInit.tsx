@@ -174,6 +174,7 @@ function safeLocalStorageSetItem(key: string, value: string): void {
 
 function safeLocalStorageRemoveItem(key: string): void {
   if (typeof window === 'undefined' || typeof window.localStorage?.removeItem !== 'function') {
+    const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
     return
   }
 
@@ -967,6 +968,17 @@ export function SessionInit({
     },
     [applyLobbyStatsSnapshot]
   )
+  const handlePartyPresenceUpdated = useCallback(
+    (event: EventEnvelope) => {
+      const payload = event.payload as { campaignId?: UUID }
+      if (!payload.campaignId || payload.campaignId !== selectedCampaignId) {
+        return
+      }
+
+      setPartyPresenceRefreshVersion((current) => current + 1)
+    },
+    [selectedCampaignId]
+  )
 
   // WebSocket connection
   const {
@@ -982,6 +994,7 @@ export function SessionInit({
     onAuthFailure: handleWebSocketAuthFailure,
     onCampaignListInvalidated: handleCampaignListInvalidated,
     onLobbyStatsUpdated: handleLobbyStatsUpdated,
+    onPartyPresenceUpdated: handlePartyPresenceUpdated,
   })
 
   useEffect(() => {
@@ -3549,6 +3562,13 @@ export function SessionInit({
             themeMode={themeMode}
             isCreatingCampaign={isCreatingCampaign}
             isJoiningCampaign={isJoiningCampaign}
+            apiUrl={apiUrl}
+            authToken={token}
+            currentSessionId={currentSession?.id || null}
+            currentSessionState={currentSession?.state || null}
+            currentUserId={user.id}
+            partyPresenceRefreshVersion={partyPresenceRefreshVersion}
+            fetchWithAuthGuard={fetchWithAuthGuard}
             connectionStatus={{
               statusColorKey: connectionStatus.statusColorKey,
               label: connectionStatus.label,

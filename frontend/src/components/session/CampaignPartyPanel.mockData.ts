@@ -3,7 +3,7 @@
  * Generated players are discarded when the component unmounts.
  */
 
-export type MockPlayerStatus = 'online' | 'offline' | 'away'
+export type MockPlayerStatus = 'here' | 'away' | 'lobby' | 'not-here' | 'offline'
 
 export interface MockPartyMember {
   id: string
@@ -98,7 +98,7 @@ const CLASSES = [
   'Barbarian',
 ]
 
-const STATUS_POOL: MockPlayerStatus[] = ['online', 'online', 'online', 'away', 'offline', 'offline']
+const STATUS_POOL: MockPlayerStatus[] = ['here', 'here', 'away', 'lobby', 'not-here', 'offline']
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -135,8 +135,10 @@ function randomStat(): number {
 
 function randomLastSeen(status: MockPlayerStatus): number {
   const now = Date.now()
-  if (status === 'online') return now - rnd(0, 5 * 60 * 1000) // up to 5 min ago
-  if (status === 'away') return now - rnd(5 * 60 * 1000, 60 * 60 * 1000) // 5 min – 1 hr
+  if (status === 'here') return now - rnd(0, 3 * 60 * 1000) // up to 3 min ago
+  if (status === 'away') return now - rnd(8 * 60 * 1000, 90 * 60 * 1000) // 8 min – 1.5 hr
+  if (status === 'lobby') return now - rnd(0, 10 * 60 * 1000) // up to 10 min ago
+  if (status === 'not-here') return now - rnd(2 * 60 * 1000, 24 * 60 * 60 * 1000) // 2 min – 24 hr
   return now - rnd(60 * 60 * 1000, 14 * 24 * 60 * 60 * 1000) // 1 hr – 14 days
 }
 

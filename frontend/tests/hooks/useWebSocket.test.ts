@@ -718,6 +718,33 @@ describe('useWebSocket', () => {
     expect(store.handleBroadcastStateChanged).toHaveBeenCalledTimes(1)
   })
 
+  it('forwards CAMPAIGN:PARTY_PRESENCE_UPDATED to the provided callback', async () => {
+    const { useWebSocket } = await import('../../src/hooks/useWebSocket')
+    const onPartyPresenceUpdated = vi.fn()
+
+    renderHook(() =>
+      useWebSocket({
+        url: 'ws://localhost:3000/ws',
+        token: 'jwt-token',
+        enabled: true,
+        onPartyPresenceUpdated,
+      })
+    )
+
+    await waitFor(() => {
+      expect(clientInstances).toHaveLength(1)
+    })
+
+    act(() => {
+      clientInstances[0].options.onEvent?.(makeEvent('CAMPAIGN:PARTY_PRESENCE_UPDATED'))
+    })
+
+    expect(onPartyPresenceUpdated).toHaveBeenCalledTimes(1)
+    expect(onPartyPresenceUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED' })
+    )
+  })
+
   it('routes ROOM:USER_LEFT and ROOM:USER_JOINED before ROOM:DELETED reconciliation', async () => {
     const { useWebSocket } = await import('../../src/hooks/useWebSocket')
     const store = mockUseStore()

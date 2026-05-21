@@ -16,6 +16,7 @@ export type CampaignEventType =
   | 'CAMPAIGN:RESUMED'
   | 'CAMPAIGN:LOBBY_STATS_UPDATED'
   | 'CAMPAIGN:LIST_INVALIDATED'
+  | 'CAMPAIGN:PARTY_PRESENCE_UPDATED'
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:JOIN_REQUEST_RECEIVED
@@ -99,6 +100,25 @@ export interface CampaignLobbyStatsUpdatedPayload {
 
 export type CampaignLobbyStatsUpdatedEvent = EventEnvelope<CampaignLobbyStatsUpdatedPayload>
 
+// ---------------------------------------------------------------------------
+// CAMPAIGN:PARTY_PRESENCE_UPDATED
+// Campaign-scoped signal used by PARTY panel to refresh campaign roster presence
+// immediately without waiting for periodic polling.
+// ---------------------------------------------------------------------------
+export interface CampaignPartyPresenceUpdatedPayload {
+  campaignId: UUID
+  sessionId: UUID | null
+  reason:
+    | 'PRESENCE_STATE_CHANGED'
+    | 'SESSION_STATE_CHANGED'
+    | 'SESSION_COOLDOWN_ENDED'
+    | 'EXPLICIT_EXIT'
+    | 'RUNTIME_PRESENCE_CHANGED'
+  changedAt: number
+}
+
+export type CampaignPartyPresenceUpdatedEvent = EventEnvelope<CampaignPartyPresenceUpdatedPayload>
+
 export type CampaignEvent =
   | CampaignJoinRequestReceivedEvent
   | CampaignJoinRequestResolvedEvent
@@ -106,3 +126,4 @@ export type CampaignEvent =
   | CampaignResumedEvent
   | CampaignLobbyStatsUpdatedEvent
   | CampaignListInvalidatedEvent
+  | CampaignPartyPresenceUpdatedEvent

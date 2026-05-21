@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react'
-import { Role, type UUID } from '@shared'
+import { Role, type SessionState, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
@@ -35,6 +35,13 @@ type LobbyCampaignWorkspaceViewProps = {
   watchUrl: string
   spectatorsEnabled: boolean
   isInviteReissuing: boolean
+  apiUrl: string
+  authToken: string
+  currentSessionId: UUID | null
+  currentSessionState: SessionState | null
+  currentUserId: UUID
+  partyPresenceRefreshVersion: number
+  fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   settingsPanel: ReactNode
   onBackToLobby: () => void
   onCreateCampaign: () => void
@@ -100,7 +107,20 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
     }
 
     if (resolvedActiveTab === 'party') {
-      return <CampaignPartyPanel campaignName={campaign.name} />
+      return (
+        <CampaignPartyPanel
+          key={`${campaign.id}:${props.currentSessionId || 'none'}:${props.currentUserId}`}
+          campaignId={campaign.id}
+          campaignName={campaign.name}
+          apiUrl={props.apiUrl}
+          authToken={props.authToken}
+          currentSessionId={props.currentSessionId}
+          currentSessionState={props.currentSessionState}
+          currentUserId={props.currentUserId}
+          partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
+          fetchWithAuthGuard={props.fetchWithAuthGuard}
+        />
+      )
     }
 
     if (resolvedActiveTab === 'notes') {

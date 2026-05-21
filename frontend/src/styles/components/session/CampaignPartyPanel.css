@@ -19,6 +19,12 @@
   gap: var(--space-3);
 }
 
+.party-sheet__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .party-sheet__header-info {
   display: flex;
   align-items: baseline;
@@ -86,6 +92,36 @@
   line-height: 1;
 }
 
+.party-sheet__away-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  padding: 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
+}
+
+.party-sheet__away-btn:hover:enabled {
+  background: var(--color-surface-hover, var(--color-surface));
+  border-color: var(--color-border);
+}
+
+.party-sheet__away-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ─── Empty state ─────────────────────────────────────────────────────────────── */
 
 .party-sheet__empty {
@@ -94,6 +130,12 @@
   color: var(--color-text-secondary);
   font-size: 0.875rem;
   text-align: center;
+}
+
+.party-sheet__error {
+  margin: 0;
+  color: var(--color-danger, #ef4444);
+  font-size: 0.8rem;
 }
 
 /* ─── Table wrapper — scrollable ─────────────────────────────────────────────── */
@@ -214,12 +256,20 @@
   line-height: 1;
 }
 
-.party-sheet__status-icon--online .material-symbols-outlined {
+.party-sheet__status-icon--here .material-symbols-outlined {
   color: var(--color-success, #22c55e);
 }
 
 .party-sheet__status-icon--away .material-symbols-outlined {
   color: var(--color-warning, #f59e0b);
+}
+
+.party-sheet__status-icon--lobby .material-symbols-outlined {
+  color: color-mix(in srgb, var(--color-accent-primary, #6366f1) 72%, #fff 28%);
+}
+
+.party-sheet__status-icon--not-here .material-symbols-outlined {
+  color: color-mix(in srgb, var(--color-text-secondary) 85%, #fff 15%);
 }
 
 .party-sheet__status-icon--offline .material-symbols-outlined {
@@ -253,6 +303,13 @@
   opacity: 0.6;
 }
 
+.party-sheet__avatar--not-here,
+.party-sheet__avatar--lobby {
+  background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface) 30%);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-soft);
+}
+
 /* ─── Character name ──────────────────────────────────────────────────────────── */
 
 .party-sheet__char-name {
@@ -264,6 +321,58 @@
   text-overflow: ellipsis;
   display: block;
   max-width: 14rem;
+}
+
+.party-sheet__name-stack {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.party-sheet__status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.04rem 0.34rem;
+  font-size: 0.58rem;
+  line-height: 1.3;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.party-sheet__status-chip--here {
+  color: var(--color-success, #22c55e);
+  border-color: color-mix(in srgb, var(--color-success, #22c55e) 38%, transparent);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 14%, transparent);
+}
+
+.party-sheet__status-chip--away {
+  color: var(--color-warning, #f59e0b);
+  border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 38%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 14%, transparent);
+}
+
+.party-sheet__status-chip--lobby {
+  color: color-mix(in srgb, var(--color-accent-primary, #6366f1) 75%, #fff 25%);
+  border-color: color-mix(in srgb, var(--color-accent-primary, #6366f1) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent-primary, #6366f1) 12%, transparent);
+}
+
+.party-sheet__status-chip--not-here {
+  color: var(--color-text-secondary);
+  border-color: color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 72%, transparent);
+}
+
+.party-sheet__status-chip--offline {
+  color: var(--color-text-secondary);
+  border-color: color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  opacity: 0.75;
 }
 
 .party-sheet__char-name:hover {

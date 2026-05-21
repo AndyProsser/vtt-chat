@@ -20,6 +20,7 @@ import {
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { ensureMockSimulationRunning } from '@/services/dev-mock/simulation.service'
 import type { WebSocketManager } from '@/ws'
+import eventBroadcaster from '@/ws/event-broadcaster'
 
 const router = Router()
 
@@ -70,6 +71,11 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     const allowed = await canAccessSessionPresence(sessionId as UUID, user)
     if (!allowed) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
+    const currentSession = await getSession(sessionId as UUID)
+    if (!currentSession) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
     ensureMockSimulationRunning(sessionId as UUID)
@@ -141,6 +147,11 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
     const allowed = await canAccessSessionPresence(sessionId as UUID, user)
     if (!allowed) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
+    const currentSession = await getSession(sessionId as UUID)
+    if (!currentSession) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
     if (roomId) {
@@ -241,6 +252,25 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
         sessionId: sessionId as UUID,
         actorUserId: user.userId as UUID,
         actorUserRole: user.role,
+      })
+    }
+
+    if (eventBroadcaster.isReady() && currentSession.campaignId) {
+      await eventBroadcaster.broadcastToCampaignMembers(currentSession.campaignId as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: null as unknown as UUID,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          campaignId: currentSession.campaignId as UUID,
+          sessionId: sessionId as UUID,
+          reason: 'PRESENCE_STATE_CHANGED',
+          changedAt: Date.now(),
+        },
       })
     }
 

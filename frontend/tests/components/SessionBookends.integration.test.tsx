@@ -142,6 +142,8 @@ function createDefaultFetchMock(options: {
               name: 'Iron Keep',
               currentDmId: DM_ID,
               inviteCode: 'KEEP-01',
+              isMember: true,
+              memberRole: 'DM',
             },
           ],
         }),

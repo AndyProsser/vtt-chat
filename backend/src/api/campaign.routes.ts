@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { randomUUID } from 'crypto'
 import { getPrismaClient } from '@/infra/db'
-import { ErrorCode, isValidSessionName, isValidUUID } from '@shared'
+import { ErrorCode, PresenceState, SessionState, isValidSessionName, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { createSession } from '@/services/session/core.service'
@@ -15,6 +15,7 @@ import {
   getCampaignForUser,
   isUserInCampaign,
   joinCampaignForUser,
+  listCampaignMembersForPresence,
   listCampaignsForUser,
   updateCharacterForCampaignMember,
 } from '@/repositories/campaign.repository'
@@ -387,6 +388,119 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   }
 
   return res.status(201).json({ campaign })
+})
+
+router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const allowed = await isUserInCampaign({
+    campaignId: campaignId as UUID,
+    userId: user.userId as UUID,
+  })
+
+  if (!allowed) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+
+  const campaignMembers = await listCampaignMembersForPresence(campaignId as UUID)
+
+  const latestRuntimeSession = await prisma.session.findFirst({
+    where: {
+      campaignId: campaignId as UUID,
+      state: {
+        in: [SessionState.IDLE, SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      state: true,
+    },
+  })
+
+  const runtimePresence = latestRuntimeSession
+    ? await getSessionPresence(latestRuntimeSession.id as UUID)
+    : []
+  const runtimePresenceByUser = new Map(runtimePresence.map((entry) => [entry.userId, entry]))
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const activeRuntimeByUser = wsManager?.getActiveRuntimeSessionsByUser() || {}
+  const unassignedConnectedUsers = new Set<UUID>(
+    wsManager?.getUsersWithUnassignedConnections() || []
+  )
+
+  const runtimeSessionIds = Array.from(new Set(Object.values(activeRuntimeByUser).flat()))
+  const runtimeSessionRows =
+    runtimeSessionIds.length > 0
+      ? await prisma.session.findMany({
+          where: {
+            id: { in: runtimeSessionIds },
+          },
+          select: {
+            id: true,
+            campaignId: true,
+            state: true,
+          },
+        })
+      : []
+
+  const runtimeSessionCampaignById = new Map(
+    runtimeSessionRows.map((row) => [row.id as UUID, row.campaignId as UUID | null] as const)
+  )
+
+  const members = campaignMembers.map((member) => {
+    const userRuntimeSessionIds = activeRuntimeByUser[member.userId as UUID] || []
+    const hasRuntimeHere = userRuntimeSessionIds.some(
+      (sessionId) => runtimeSessionCampaignById.get(sessionId) === (campaignId as UUID)
+    )
+    const hasRuntimeElsewhere = userRuntimeSessionIds.some(
+      (sessionId) => runtimeSessionCampaignById.get(sessionId) !== (campaignId as UUID)
+    )
+
+    const runtimeEntry = runtimePresenceByUser.get(member.userId as UUID)
+    const runtimeState = runtimeEntry?.state
+
+    let status: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE' = 'OFFLINE'
+    if (hasRuntimeHere || runtimeState) {
+      status = runtimeState === PresenceState.IDLE ? 'AWAY' : 'HERE'
+    } else if (hasRuntimeElsewhere) {
+      status = 'NOT_HERE'
+    } else if (unassignedConnectedUsers.has(member.userId as UUID)) {
+      status = 'LOBBY'
+    }
+
+    return {
+      userId: member.userId,
+      username: member.username,
+      role: member.role,
+      playerName: member.playerName,
+      avatarUrl: member.avatarUrl,
+      characterName: member.characterName,
+      characterClass: member.characterClass,
+      characterRace: member.characterRace,
+      level: member.level,
+      characterStats: member.characterStats,
+      status,
+      runtimePresenceState: runtimeState || null,
+      lastSeenAt: runtimeEntry?.lastSeenAt || null,
+      currentRuntimeSessionId: hasRuntimeHere ? latestRuntimeSession?.id || null : null,
+      manualAway: runtimeState === PresenceState.IDLE,
+    }
+  })
+
+  return res.status(200).json({
+    campaignId,
+    sessionId: latestRuntimeSession?.id || null,
+    members,
+    snapshotAt: Date.now(),
+  })
 })
 
 router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Response) => {

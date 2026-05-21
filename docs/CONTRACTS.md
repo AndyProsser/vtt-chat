@@ -82,6 +82,41 @@ Visibility and editability contract:
 - `SETTINGS` character fields for race/class use D&D 5.5e SRD as the default autocomplete source, allow free-text override, and support admin-configured pluggable source providers.
 - `SETTINGS` DM campaign/session forms expose only safe editable fields in rightbar; sync-complex fields stay in dedicated management surfaces.
 
+Party presence status contract:
+
+- PARTY rows use canonical campaign-context labels: `HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE`.
+- `HERE` means runtime-connected in the same campaign session.
+- `AWAY` maps to runtime presence `IDLE` in the same campaign session.
+- `LOBBY` means connected to platform transport but not runtime-bound.
+- `NOT HERE` means runtime-connected in another campaign context.
+- `OFFLINE` means no active runtime/lobby transport presence detected.
+
+Authoritative PARTY snapshot API:
+
+- Endpoint: `GET /api/campaigns/:campaignId/party-presence`
+- Access: campaign members only.
+- Response:
+  - `campaignId: UUID`
+  - `sessionId: UUID | null` (latest runtime session for status projection)
+  - `snapshotAt: number` (epoch ms)
+  - `members: Array<{ userId, username, role, playerName, avatarUrl, characterName, characterClass, characterRace, level, characterStats, status, runtimePresenceState, lastSeenAt, currentRuntimeSessionId, manualAway }>`
+- Source-of-truth order: campaign membership + active character profile + runtime presence projection + websocket connection snapshot.
+- Reconnect/rehydrate: frontend must treat this endpoint as authoritative snapshot after reconnect or suspected WS gap.
+
+PARTY refresh signal event:
+
+- WebSocket event: `CAMPAIGN:PARTY_PRESENCE_UPDATED`
+- Scope: campaign members only.
+- Purpose: trigger immediate PARTY panel snapshot refetch so presence chips update without waiting for poll cadence.
+- Payload: `{ campaignId, sessionId, reason, changedAt }`
+- This event is a refresh signal; client still hydrates authoritative row content via `GET /api/campaigns/:campaignId/party-presence`.
+
+Away control contract:
+
+- Manual away toggle uses existing endpoint `PUT /api/presence/:sessionId/state` with `state: IDLE` to set away and `state: ONLINE` to clear.
+- Lightweight client inactivity timer may auto-apply away by setting `state: IDLE` after threshold inactivity while runtime-connected.
+- Any user activity may clear auto-away by setting `state: ONLINE` unless manual-away lock is still active.
+
 Offline workspace settings parity contract:
 
 - In offline campaign workspace mode, the same role-routed settings contract applies to the `SETTINGS` tab.

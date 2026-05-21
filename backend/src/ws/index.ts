@@ -675,6 +675,23 @@ export class WebSocketManager {
           reason: 'RUNTIME_PRESENCE_CHANGED',
         },
       })
+
+      await eventBroadcaster.broadcastToCampaignMembers(session.campaignId as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED',
+        version: 1,
+        userId: actorUserId,
+        userRole: Role.SYSTEM,
+        sessionId: null as unknown as UUID,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          campaignId: session.campaignId as UUID,
+          sessionId,
+          reason: 'RUNTIME_PRESENCE_CHANGED',
+          changedAt: Date.now(),
+        },
+      })
     } catch (error) {
       logger.warn('ws', 'Failed to broadcast campaign list invalidation', {
         sessionId,
@@ -696,6 +713,57 @@ export class WebSocketManager {
     }
 
     return false
+  }
+
+  /**
+   * Snapshot of active runtime session bindings by user.
+   * Unassigned (lobby) sockets are excluded from this map.
+   */
+  getActiveRuntimeSessionsByUser(): Record<UUID, UUID[]> {
+    const byUser = new Map<UUID, Set<UUID>>()
+
+    for (const ws of this.connections.values()) {
+      if (ws.readyState !== WebSocket.OPEN || !ws.authPayload?.userId) {
+        continue
+      }
+
+      const boundSessionId = ws.connectionState?.sessionId
+      if (!boundSessionId || boundSessionId === UNASSIGNED_SESSION_ID) {
+        continue
+      }
+
+      const userId = ws.authPayload.userId as UUID
+      const existing = byUser.get(userId) || new Set<UUID>()
+      existing.add(boundSessionId)
+      byUser.set(userId, existing)
+    }
+
+    const snapshot: Record<UUID, UUID[]> = {}
+    for (const [userId, sessionIds] of byUser.entries()) {
+      snapshot[userId] = Array.from(sessionIds)
+    }
+
+    return snapshot
+  }
+
+  /**
+   * Snapshot of users with at least one open WS connection not bound to a runtime session.
+   */
+  getUsersWithUnassignedConnections(): UUID[] {
+    const users = new Set<UUID>()
+
+    for (const ws of this.connections.values()) {
+      if (ws.readyState !== WebSocket.OPEN || !ws.authPayload?.userId) {
+        continue
+      }
+
+      const boundSessionId = ws.connectionState?.sessionId
+      if (boundSessionId === UNASSIGNED_SESSION_ID) {
+        users.add(ws.authPayload.userId as UUID)
+      }
+    }
+
+    return Array.from(users)
   }
 
   hasActiveConnectionsInSession(sessionId: UUID): boolean {

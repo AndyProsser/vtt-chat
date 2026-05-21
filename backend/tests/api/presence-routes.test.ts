@@ -26,6 +26,9 @@ const mocks = vi.hoisted(() => ({
   mockEnsurePresenceRecoveredFromSnapshots: vi.fn(),
   mockSnapshotSessionPresence: vi.fn(),
   mockEnsureMockSimulationRunning: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
+  mockEventBroadcasterIsReady: vi.fn(),
+  mockBroadcastToCampaignMembers: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -57,6 +60,17 @@ vi.mock('@/services/dev-mock/takeover.service', () => ({
 
 vi.mock('@/services/dev-mock/simulation.service', () => ({
   ensureMockSimulationRunning: mocks.mockEnsureMockSimulationRunning,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
+}))
+
+vi.mock('@/ws/event-broadcaster', () => ({
+  default: {
+    isReady: mocks.mockEventBroadcasterIsReady,
+    broadcastToCampaignMembers: mocks.mockBroadcastToCampaignMembers,
+  },
 }))
 
 import presenceRoutes from '@/api/presence.routes'
@@ -94,6 +108,7 @@ describe('presence routes', () => {
       id: SESSION_ID,
       name: 'Session',
       dmId: DM_ID,
+      campaignId: '66666666-6666-4666-8666-666666666666',
       state: 'ACTIVE',
       createdAt: Date.now(),
     })
@@ -112,6 +127,9 @@ describe('presence routes', () => {
       staleRecovered: false,
     })
     mocks.mockEnsureMockSimulationRunning.mockReturnValue(true)
+    mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
+    mocks.mockEventBroadcasterIsReady.mockReturnValue(true)
+    mocks.mockBroadcastToCampaignMembers.mockResolvedValue(undefined)
   })
 
   // ── GET /:sessionId ──────────────────────────────────────────────────────────
@@ -545,6 +563,28 @@ describe('presence routes', () => {
         .set('Authorization', 'Bearer token')
         .send({ state: 'IDLE', roomId: null, privateRoomId: null })
       expect(res.status).toBe(200)
+    })
+
+    it('broadcasts CAMPAIGN:PARTY_PRESENCE_UPDATED when campaign scope is available', async () => {
+      const app = buildAppWithWS()
+
+      const res = await request(app)
+        .put(`/api/presence/${SESSION_ID}/state`)
+        .set('Authorization', 'Bearer token')
+        .send({ state: 'IDLE' })
+
+      expect(res.status).toBe(200)
+      expect(mocks.mockBroadcastToCampaignMembers).toHaveBeenCalledWith(
+        '66666666-6666-4666-8666-666666666666',
+        expect.objectContaining({
+          type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED',
+          payload: expect.objectContaining({
+            campaignId: '66666666-6666-4666-8666-666666666666',
+            sessionId: SESSION_ID,
+            reason: 'PRESENCE_STATE_CHANGED',
+          }),
+        })
+      )
     })
   })
 

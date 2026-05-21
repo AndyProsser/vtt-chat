@@ -1972,7 +1972,7 @@ describe('SessionInit integration', () => {
     )
 
     await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Watch campaign' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
 
     await screen.findByTestId('session-toolbar')
     expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()

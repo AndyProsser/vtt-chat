@@ -219,6 +219,8 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - Campaign info panel layout refined with responsive scrolling and workspace mode integration.
 - Markdown rendering support for campaign descriptions with improved styling visibility.
 - All campaign edit errors now surface via `useToast()` instead of inline state management.
+- PARTY panel now consumes a real campaign party-presence snapshot (`GET /api/campaigns/:campaignId/party-presence`) and renders canonical labels (`HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE`) from authoritative runtime/session presence data.
+- PARTY panel now supports a client-side manual away toggle and lightweight inactivity auto-away timer (maps to runtime `PresenceState.IDLE`/`ONLINE` via existing presence API; no new persistence fields required).
 
 ---
 
