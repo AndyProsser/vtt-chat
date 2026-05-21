@@ -26,6 +26,38 @@ The goal: make Wizards of the Coast ask to collaborate.
 
 ---
 
+## Developer Environment Awareness (Windows Users)
+
+**When working with a developer on Windows**, check the environment and advise accordingly:
+
+### **WSL 2 + Docker Desktop Recommended for Windows**
+
+VTT-Chat is optimized for **Linux development**. When running on Windows:
+
+1. **Check if WSL is available** — In your initial response or when running terminal commands, ask or check:
+   - "Are you running this in WSL (Ubuntu) or native PowerShell?"
+   - If native Windows: advise the user to use WSL instead
+
+2. **If WSL is NOT installed**, provide this guidance:
+   - WSL 2 gives native Linux shell compatibility and Docker integration
+   - Install: `wsl --install` in PowerShell (admin) + restart
+   - Then: Install Docker Desktop and enable WSL 2 integration
+   - See full setup: [DEVELOPING.md — Windows + WSL Setup](../DEVELOPING.md#-windows--wsl-setup)
+
+3. **Best practice**: Always run build, dev, and deployment commands in **WSL bash**, not PowerShell
+   - Example correction: Instead of `npm run build` in PowerShell, recommend `wsl -e npm run build` or work directly in WSL terminal
+   - Shell scripts (`.sh` files) must run in WSL/bash, not PowerShell
+
+4. **If WSL is installed**: Affirm it's the right choice and ensure all subsequent commands use WSL context
+
+**Why WSL is critical:**
+- All backend/frontend build scripts assume Unix-like paths and commands
+- Docker Desktop integrates seamlessly with WSL 2
+- Development experience is near-identical to native Linux
+- Prevents path escaping issues and weird cross-environment bugs
+
+---
+
 ## Non-Negotiables
 
 ### State Management

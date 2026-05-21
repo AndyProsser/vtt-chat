@@ -1,13 +1,93 @@
-# 🛠️ VTT‑Chat — Developer Setup Guide (Linux)
+# 🛠️ VTT‑Chat — Developer Setup Guide
 
 Welcome to the VTT‑Chat development environment.
-This guide walks you through everything you need to get productive on **Linux**, including recommended tools, apps, and workflows.
+This guide walks you through everything you need to get productive, with a focus on **Linux** and **WSL (Windows Subsystem for Linux)** for Windows users.
 
-It assumes you’re using:
+It assumes you're using:
 
-- Ubuntu 22.04+ (or any modern Debian‑based distro)
+- **Ubuntu 22.04+** (or any modern Debian‑based distro)
+- **WSL 2** (if on Windows — see [Windows Setup](#-windows--wsl-setup) section below)
 - Docker‑based local development
 - VS Code as the primary editor
+
+---
+
+## 🪟 Windows + WSL Setup
+
+**Recommendation:** We recommend developing on Linux natively or via WSL for the best experience. Native Windows development is not officially supported due to path handling, Docker integration, and shell script incompatibilities.
+
+### **Prerequisites for Windows Developers**
+
+- Windows 10 (Build 19041+) or Windows 11
+- Administrator privileges
+
+### **1. Install WSL 2**
+
+WSL 2 provides a full Linux kernel and native Docker support.
+
+**PowerShell (as Administrator):**
+
+```powershell
+wsl --install
+```
+
+This installs WSL 2 with Ubuntu by default. If you need to specify a version or distro:
+
+```powershell
+wsl --install -d Ubuntu-24.04
+```
+
+**Restart your computer after installation.**
+
+Verify installation:
+
+```powershell
+wsl --version
+```
+
+### **2. Install Docker Desktop**
+
+Docker Desktop integrates with WSL 2 and is required for local development.
+
+1. Download from [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop)
+2. Install and start Docker Desktop
+3. In Docker Desktop settings:
+   - Go to **Resources > WSL Integration**
+   - Enable integration with your WSL distro (e.g., Ubuntu-24.04)
+
+Verify Docker works in WSL:
+
+```bash
+wsl -e docker --version
+```
+
+### **3. Access Your Project from WSL**
+
+Clone the repo or mount your Windows drive:
+
+```bash
+# From WSL bash
+cd /mnt/c/Users/YourUsername/dev/vtt-chat
+```
+
+Or clone directly in WSL:
+
+```bash
+git clone https://github.com/AndyProsser/vtt-chat.git ~/vtt-chat
+cd ~/vtt-chat
+```
+
+### **4. Continue with [Required Tools](#-required-tools) section below**
+
+From here, use the Linux-native instructions in WSL bash, not PowerShell.
+
+All backend, frontend, and infrastructure scripts are designed to run in WSL/Linux. When working on Windows:
+
+- Run npm scripts in WSL (not PowerShell)
+- Run `./infra/scripts/server` commands in WSL
+- Use VS Code with the **Remote - WSL** extension for seamless editing
+
+---
 
 ---
 
