@@ -139,7 +139,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin-bottom: 0.4rem;
+  margin: 0rem;
 }
 
 .cip-toolbar__button {

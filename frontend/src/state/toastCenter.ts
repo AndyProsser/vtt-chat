@@ -1,7 +1,7 @@
 import type { ToastVariant } from '@/types/ui'
 import { generateClientId } from '@/utils/uuid'
 
-const DEFAULT_TOAST_DURATION_MS = 10_000
+const DEFAULT_TOAST_DURATION_MS = 5_000
 
 export interface ToastCenterItem {
   id: string

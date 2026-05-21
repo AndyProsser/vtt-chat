@@ -11,6 +11,7 @@ type InvitePopoverWidgetProps = {
   onCopyInviteUrl: (inviteType: InviteType) => void
   onReissueInvite: (inviteType: InviteType) => void
   isInviteReissuing?: boolean
+  onClosePopover?: () => void
 }
 
 type InviteLinkRowProps = {
@@ -90,6 +91,10 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
 
   const handleCopy = (inviteType: InviteType) => {
     props.onCopyInviteUrl(inviteType)
+    setIsOpen(false)
+    if (props.onClosePopover) {
+      props.onClosePopover()
+    }
   }
 
   const handleRefresh = (inviteType: InviteType) => {

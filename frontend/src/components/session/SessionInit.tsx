@@ -2807,6 +2807,22 @@ export function SessionInit({
     const inviteType = pendingInviteReissueType
     setPendingInviteReissueType(null)
     await reissueInvite(inviteType)
+
+    // After reissuing, copy the new invite link to clipboard
+    if (settingsData) {
+      const code =
+        inviteType === 'PLAYER' ? settingsData.inviteCode : settingsData.spectatorInviteCode
+      if (code) {
+        const basePath = inviteType === 'PLAYER' ? '/join/' : '/watch/'
+        const inviteUrl = `${window.location.origin}${basePath}${encodeURIComponent(code)}`
+        try {
+          await navigator.clipboard.writeText(inviteUrl)
+          setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite URL copied.`)
+        } catch {
+          setError('Failed to copy invite URL to clipboard.')
+        }
+      }
+    }
   }
 
   const handleToggleTheme = () => {
