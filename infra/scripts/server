@@ -65,8 +65,45 @@ HELP
 # --- CLEAN COMMAND IMPLEMENTATION ---
 function clean_logs_and_artifacts() {
   echo "Cleaning custom logs and workspace artifacts..."
-  # Remove logs in root, backend, frontend, admin (e.g. *.log, logs/*, coverage, dist, etc.)
-  find "$INSTALL_DIR" -type f -name "*.log" -exec rm -f {} +
+  # Keep cleanup surgical: never traverse dependency/metadata trees.
+  local -a protected_dirs=(
+    "node_modules"
+    ".git"
+    ".vscode"
+    ".idea"
+  )
+
+  # Limit artifact cleanup to the main workspace app roots.
+  local -a artifact_roots=(
+    "$INSTALL_DIR"
+    "$INSTALL_DIR/backend"
+    "$INSTALL_DIR/frontend"
+    "$INSTALL_DIR/admin"
+  )
+
+  local root
+  for root in "${artifact_roots[@]}"; do
+    [[ -d "$root" ]] || continue
+
+    local -a prune_args=(
+      "("
+      "-type" "d"
+      "("
+    )
+
+    local protected_dir
+    for protected_dir in "${protected_dirs[@]}"; do
+      prune_args+=("-name" "$protected_dir" "-o")
+    done
+    unset 'prune_args[${#prune_args[@]}-1]'
+    prune_args+=(")" "-prune" ")" "-o")
+
+    # Remove log files while skipping protected directories.
+    find "$root" "${prune_args[@]}" -type f -name "*.log" -exec rm -f {} +
+
+    # Remove common build artifacts while skipping protected directories.
+    find "$root" "${prune_args[@]}" -type d \( -name "dist" -o -name "coverage" -o -name ".turbo" -o -name ".vite" \) -exec rm -rf {} +
+  done
 
   # Only remove known runtime log directories. Never wildcard-delete any folder named
   # "logs" because source code paths like admin/src/features/logs must be preserved.
@@ -82,8 +119,6 @@ function clean_logs_and_artifacts() {
       rm -rf "$log_dir"
     fi
   done
-
-  find "$INSTALL_DIR" -type d \( -name "dist" -o -name "coverage" -o -name ".turbo" -o -name ".vite" \) -exec rm -rf {} +
 
   # Run npm run clean in root, backend, frontend, admin if package.json exists
   for d in "$INSTALL_DIR" "$INSTALL_DIR/backend" "$INSTALL_DIR/frontend" "$INSTALL_DIR/admin"; do
