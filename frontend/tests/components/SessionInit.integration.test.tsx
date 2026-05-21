@@ -491,6 +491,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -811,6 +812,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -970,6 +972,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -1121,6 +1124,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -1621,6 +1625,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -1810,6 +1815,7 @@ describe('SessionInit integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
@@ -1878,7 +1884,7 @@ describe('SessionInit integration', () => {
       target: { value: 'https://example.test/join/abcd12?source=mail' },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Join Campaign' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }))
 
     await waitFor(() => {
       expect(

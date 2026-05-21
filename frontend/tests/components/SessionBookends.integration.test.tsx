@@ -578,6 +578,7 @@ describe('Session bookend integration', () => {
                 name: 'Iron Keep',
                 currentDmId: DM_ID,
                 inviteCode: 'KEEP-01',
+                memberRole: 'DM',
               },
             ],
           }),
