@@ -98,6 +98,21 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
       )
     }
 
+    if (resolvedActiveTab === 'party') {
+      return (
+        <CampaignScaffoldPanel
+          title="Party"
+          subtitle="Campaign members and their current status."
+          sections={[
+            'Review all campaign players including offline members',
+            'Check connection status and last seen timestamps',
+            'View active conditions and character stats',
+          ]}
+          campaignName={campaign.name}
+        />
+      )
+    }
+
     if (resolvedActiveTab === 'notes') {
       return (
         <CampaignScaffoldPanel

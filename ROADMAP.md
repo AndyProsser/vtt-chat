@@ -179,21 +179,21 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
-**Scope**: Implement a rightbar toolbar with one button per surface: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS. Replace the single Information tab model with dedicated panel entry points. Keep topbar Settings for user profile/system defaults; rightbar SETTINGS remains campaign/session/character context.
+**Scope**: Implement a rightbar toolbar with one button per surface in this canonical order: INFO, PARTY, ROOMS, JOURNAL, NOTES, HISTORY, SETTINGS. Replace the single Information tab model with dedicated panel entry points. Keep topbar Settings for user profile/system defaults; rightbar SETTINGS remains campaign/session/character context.
 
 **Acceptance Criteria**:
 
-- [x] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, NOTES, JOURNAL, HISTORY, SETTINGS
+- [x] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, JOURNAL, NOTES, HISTORY, SETTINGS (PARTY is 2nd; JOURNAL comes before NOTES)
 - [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [x] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
 - [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions (same visible fields for players and spectators)
 - [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
+- [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
+- [ ] JOURNAL is readable by all personas; DM-only edit
 - [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
 - [ ] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
 - [ ] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
-- [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
-- [ ] JOURNAL is readable by all personas; DM-only edit
 - [ ] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
 - [ ] HISTORY never includes messages from the current active session
 - [x] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS

@@ -25,6 +25,7 @@ type IconName =
   | 'mic_off'
   | 'effects'
   | 'overrides'
+  | 'party'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -55,6 +56,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   mic_off: 'mic_off',
   effects: 'tune',
   overrides: 'supervisor_account',
+  party: 'groups',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

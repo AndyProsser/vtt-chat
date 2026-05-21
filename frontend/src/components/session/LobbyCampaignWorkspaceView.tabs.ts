@@ -2,19 +2,20 @@ import type { Role } from '@shared'
 
 export type WorkspaceTab =
   | 'information'
-  | 'notes'
-  | 'journal'
-  | 'history'
+  | 'party'
   | 'rooms'
+  | 'journal'
+  | 'notes'
+  | 'history'
   | 'audio'
   | 'settings'
 
 export function getTabsForRole(role: Role): WorkspaceTab[] {
   if (role === 'DM') {
-    return ['information', 'notes', 'journal', 'history', 'rooms', 'audio', 'settings']
+    return ['information', 'party', 'rooms', 'journal', 'notes', 'history', 'audio', 'settings']
   }
   if (role === 'PLAYER') {
-    return ['information', 'notes', 'journal', 'history', 'settings']
+    return ['information', 'party', 'journal', 'notes', 'history', 'settings']
   }
   return ['information', 'journal', 'history']
 }
@@ -23,14 +24,16 @@ export function getTabLabel(tab: WorkspaceTab): string {
   switch (tab) {
     case 'information':
       return 'Info'
-    case 'notes':
-      return 'Notes'
-    case 'journal':
-      return 'Journal'
-    case 'history':
-      return 'History'
+    case 'party':
+      return 'Party'
     case 'rooms':
       return 'Rooms'
+    case 'journal':
+      return 'Journal'
+    case 'notes':
+      return 'Notes'
+    case 'history':
+      return 'History'
     case 'audio':
       return 'Audio'
     case 'settings':
@@ -42,18 +45,20 @@ export function getTabLabel(tab: WorkspaceTab): string {
 
 export function getTabIcon(
   tab: WorkspaceTab
-): 'panel' | 'notes' | 'journal' | 'history' | 'rooms' | 'voice' | 'settings' {
+): 'panel' | 'party' | 'rooms' | 'journal' | 'notes' | 'history' | 'voice' | 'settings' {
   switch (tab) {
     case 'information':
       return 'panel'
-    case 'notes':
-      return 'notes'
-    case 'journal':
-      return 'journal'
-    case 'history':
-      return 'history'
+    case 'party':
+      return 'party'
     case 'rooms':
       return 'rooms'
+    case 'journal':
+      return 'journal'
+    case 'notes':
+      return 'notes'
+    case 'history':
+      return 'history'
     case 'audio':
       return 'voice'
     case 'settings':
