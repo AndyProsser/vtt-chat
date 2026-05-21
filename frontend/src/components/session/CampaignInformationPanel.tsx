@@ -359,7 +359,7 @@ export function CampaignInformationPanel({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="session-icon-action"
+                    className="session-icon-action session-icon-action--icon"
                     aria-label={isSaving ? 'Saving campaign info' : 'Save campaign info'}
                     onClick={() => void handleSave()}
                     disabled={isSaving || !isDirty || !nameDraft.trim()}
@@ -375,7 +375,7 @@ export function CampaignInformationPanel({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="session-icon-action"
+                    className="session-icon-action session-icon-action--icon"
                     aria-label="Undo campaign edits"
                     onClick={handleCancel}
                     disabled={isSaving || !isDirty}

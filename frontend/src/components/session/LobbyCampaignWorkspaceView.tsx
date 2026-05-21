@@ -3,6 +3,7 @@ import { Role, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import { Icon } from '../ui/Icon'
 import { CampaignInformationPanel } from './CampaignInformationPanel'
+import { CampaignPartyPanel } from './CampaignPartyPanel'
 import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
 import { InvitePopoverWidget } from './InvitePopoverWidget'
 import {
@@ -99,18 +100,7 @@ export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProp
     }
 
     if (resolvedActiveTab === 'party') {
-      return (
-        <CampaignScaffoldPanel
-          title="Party"
-          subtitle="Campaign members and their current status."
-          sections={[
-            'Review all campaign players including offline members',
-            'Check connection status and last seen timestamps',
-            'View active conditions and character stats',
-          ]}
-          campaignName={campaign.name}
-        />
-      )
+      return <CampaignPartyPanel campaignName={campaign.name} />
     }
 
     if (resolvedActiveTab === 'notes') {

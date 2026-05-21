@@ -720,6 +720,31 @@
   font-size: 18px;
 }
 
+.session-icon-action--icon {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  justify-content: center;
+  border-color: var(--color-border-soft);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  transition:
+    background 120ms,
+    color 120ms,
+    border-color 120ms;
+}
+
+.session-icon-action--icon:hover:not(:disabled) {
+  background: var(--color-surface-hover, var(--color-surface));
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.session-icon-action--icon .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
 .session-modal-backdrop {
   position: fixed;
   inset: 0;

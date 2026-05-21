@@ -6,11 +6,15 @@
 }
 
 .cip-panel--workspace {
-  gap: 0.65rem;
-  padding-bottom: 0.25rem;
+  gap: 0.4rem;
+  padding: 0;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+}
+
+.cip-panel--workspace .cip-header-row {
+  align-items: flex-start;
 }
 
 .cip-header-row {
@@ -26,6 +30,10 @@
   gap: 0.35rem;
   width: 100%;
   margin: 0.35rem 0 0.5rem;
+}
+
+.cip-panel--workspace .cip-status-line {
+  margin: 0.1rem 0 0.15rem;
 }
 
 .cip-status-line .cip-status-item {
@@ -117,6 +125,10 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.cip-panel--workspace .cip-field-label {
+  margin: 0.25rem 0 0.15rem;
 }
 
 .cip-input,
@@ -479,7 +491,6 @@
 }
 
 .cip-inline-actions {
-  margin-top: 0.45rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
