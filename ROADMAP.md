@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-19
+**Last Updated**: 2026-05-21
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -187,7 +187,8 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [x] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
-- [ ] PARTY row fields include: name, class, level, race, connection status (connected/offline), last seen, stats, and active conditions (same visible fields for players and spectators)
+- [ ] PARTY row fields include: name, class, level, race, presence status (`HERE` | `AWAY` | `LOBBY` | `NOT HERE` | `OFFLINE`), last seen, stats, and active conditions (same visible fields for players and spectators)
+- [ ] PARTY/Lobby presence labels and transitions follow the shared model in `docs/ui/PRESENCE-STATUS-MODEL.md`
 - [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
 - [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
 - [ ] JOURNAL is readable by all personas; DM-only edit
@@ -208,6 +209,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 - [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md)
 - [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
+- [docs/ui/PRESENCE-STATUS-MODEL.md](docs/ui/PRESENCE-STATUS-MODEL.md)
 
 **Evidence snapshot (2026-05-20):**
 
