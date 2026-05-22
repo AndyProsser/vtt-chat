@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType } from '@shared'
 import type { Role } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 interface WhisperRecipientOption {
   id: string

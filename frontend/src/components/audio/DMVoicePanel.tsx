@@ -1,5 +1,5 @@
 import { AUDIO_CONTROL_COPY, getDMVoiceChannelButtonLabel } from '../../constants/audioUi.constants'
-import { Slider } from '../../core-ui'
+import { Slider } from '@/components/ui'
 
 interface DMVoicePanelProps {
   isEnabled: boolean

@@ -1,18 +1,18 @@
 import { type ReactNode, useMemo, useState } from 'react'
 import { Role, type SessionState, type UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '../ui/Icon'
-import { CampaignInformationPanel } from '../campaign-shared/CampaignInformationPanel'
-import { CampaignPartyPanel } from '../campaign-shared/CampaignPartyPanel'
-import { CampaignScaffoldPanel } from '../campaign-shared/CampaignScaffoldPanel'
-import { InvitePopoverWidget } from '../campaign-shared/InvitePopoverWidget'
+import { CampaignInformationPanel } from '../shared/CampaignInformationPanel'
+import { CampaignPartyPanel } from '../shared/CampaignPartyPanel'
+import { CampaignScaffoldPanel } from '../shared/CampaignScaffoldPanel'
+import { InvitePopoverWidget } from '../shared/InvitePopoverWidget'
 import {
   type WorkspaceTab,
   getTabIcon,
   getTabLabel,
   getTabsForRole,
 } from './LobbyCampaignWorkspaceView.tabs'
-import type { CampaignSummary } from '../campaign-runtime/sessionInit.shared'
+import type { CampaignSummary } from '@/types/session/campaign'
 
 type LobbyCampaignWorkspaceViewProps = {
   campaign: CampaignSummary | null

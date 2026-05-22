@@ -10,8 +10,8 @@ import type { Session as SessionRecord } from '@/types/session'
 import type {
   CampaignSettingsPayload,
   CampaignSettingsHomeTab,
-} from '@/components/campaign-runtime/sessionInit.shared'
-import { toValidPostSessionDurationMinutes } from '@/components/campaign-runtime/sessionController'
+} from '@/types/session/campaign'
+import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionController'
 
 interface UseCampaignSettingsState {
   isSettingsLoading: boolean

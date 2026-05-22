@@ -1,6 +1,6 @@
 import { Icon } from '../ui/Icon'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
-import { type CampaignSummary } from '../campaign-runtime/sessionInit.shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { type CampaignSummary } from '@/types/session/campaign'
 import { CampaignCard } from './SessionLobbyView.CampaignCard'
 
 type SessionLobbyViewProps = {

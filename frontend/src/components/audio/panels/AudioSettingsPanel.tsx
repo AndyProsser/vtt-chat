@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
-import { Slider } from '../../../core-ui'
+import { Slider } from '@/components/ui'
 import type { AudioDeviceState } from '@/types/audio'
 import {
   AUDIO_CONTROL_COPY,

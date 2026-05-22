@@ -1,6 +1,6 @@
 import type { PresenceState, UUID } from '@shared'
 import { getPresenceLabel, RADIAL_MENU_COPY } from '../../constants/roomPresence.constants'
-import { Slider } from '../../core-ui'
+import { Slider } from '@/components/ui'
 
 interface AudioPreset {
   id: string

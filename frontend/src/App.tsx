@@ -5,7 +5,7 @@ import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsR
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
 import { ToastViewport } from './components/ui/ToastViewport'
-import { TooltipProvider } from './core-ui'
+import { TooltipProvider } from '@/components/ui'
 import { useAuthSession } from './hooks/useAuthSession'
 import type { UUID } from '@shared'
 import { logger } from './utils/logger'

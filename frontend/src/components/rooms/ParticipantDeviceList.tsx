@@ -1,5 +1,5 @@
 import type { DeviceSessionEntity } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 interface ParticipantDeviceListProps {
   deviceSessions?: DeviceSessionEntity[]

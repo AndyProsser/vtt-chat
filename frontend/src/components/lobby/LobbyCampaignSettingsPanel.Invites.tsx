@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 type LobbyCampaignSettingsPanelInvitesProps = {
   isInviteReissuing: boolean

@@ -1,4 +1,4 @@
-import { TooltipProvider } from '../../core-ui'
+import { TooltipProvider } from '@/components/ui'
 import { LobbyCampaignSettingsPanelPolicy } from './LobbyCampaignSettingsPanel.Policy'
 import type { LobbyCampaignSettingsPanelProps } from './LobbyCampaignSettingsPanel.types'
 

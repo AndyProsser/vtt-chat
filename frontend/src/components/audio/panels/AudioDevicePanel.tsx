@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { AudioDeviceState } from '@/types/audio'
 import {
   AUDIO_CONNECTION_STATUS_TITLES,

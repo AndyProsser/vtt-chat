@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CreateGroupModal } from './CreateGroupModal'
 import { MockTestingPanel } from '../dev/MockTestingPanel'
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '../../constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '../../constants/voiceGroupStatus.constants'
 import { AvatarOverlay } from './AvatarOverlay'

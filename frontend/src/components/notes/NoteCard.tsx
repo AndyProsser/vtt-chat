@@ -3,7 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
 import type { Note } from '@/types/notes'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 
 interface NoteCardProps {
   note: Note

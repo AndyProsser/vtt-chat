@@ -8,7 +8,7 @@ import { Fragment } from 'react'
 import type { RefObject, UIEventHandler } from 'react'
 import type { Message } from '@/types/chat'
 import { MessageType } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 interface MessageListProps {
   messages: Message[]
   currentUserId: string

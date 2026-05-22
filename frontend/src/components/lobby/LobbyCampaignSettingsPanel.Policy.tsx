@@ -1,4 +1,4 @@
-import { Slider } from '../../core-ui'
+import { Slider } from '@/components/ui'
 
 type LobbyCampaignSettingsPanelPolicyProps = {
   isSaving: boolean

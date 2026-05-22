@@ -21,7 +21,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useState, useCallback } from 'react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import '../../styles/components/notes/MarkdownEditor.css'
 
 export type MarkdownEditorVariant = 'full' | 'restricted'

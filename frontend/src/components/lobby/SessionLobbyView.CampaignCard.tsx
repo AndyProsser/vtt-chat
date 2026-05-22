@@ -5,13 +5,13 @@
  * and discoverable non-member cards (dimmed/lock/request-to-join/watch flows).
  */
 
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../core-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useState } from 'react'
 import {
   type CampaignSummary,
   getCampaignEntryAction,
   getPrivacyCounterLabel,
-} from '../campaign-runtime/sessionInit.shared'
+} from '@/types/session/campaign'
 
 type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'ENDED' | 'INACTIVE'
 

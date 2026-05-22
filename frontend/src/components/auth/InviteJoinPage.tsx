@@ -2,7 +2,7 @@ import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
-import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
+import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { PolicyNotice } from './PolicyNotice'
 import {
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,

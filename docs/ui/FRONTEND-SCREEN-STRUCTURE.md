@@ -52,29 +52,36 @@ Route layer responsibilities:
 
 ### Campaign Editor Screen
 
-- `frontend/src/components/campaign-editor/CampaignSettingsPage.tsx`
-- `frontend/src/components/campaign-editor/CampaignRightbarSettings.tsx`
+- `frontend/src/components/editor/CampaignSettingsPage.tsx`
+- `frontend/src/components/editor/CampaignRightbarSettings.tsx`
 
 ### Campaign Runtime Screen
 
-- `frontend/src/components/campaign-runtime/SessionInit.tsx`
-- `frontend/src/components/campaign-runtime/SessionInitCommandCenter.tsx`
-- `frontend/src/components/campaign-runtime/SessionInitLobbyWorkspaceBranch.tsx`
-- `frontend/src/components/campaign-runtime/SessionInitModals.tsx`
-- `frontend/src/components/campaign-runtime/CommandCenterFrame.tsx`
-- `frontend/src/components/campaign-runtime/SessionToolbar.tsx`
-- `frontend/src/components/campaign-runtime/SessionLeftRailPanel.tsx`
-- `frontend/src/components/campaign-runtime/SessionRightRailContent.tsx`
-- `frontend/src/components/campaign-runtime/*` (remaining runtime panels, hooks, and orchestration helpers)
+- `frontend/src/components/session/SessionInit.tsx`
+- `frontend/src/components/session/SessionInitCommandCenter.tsx`
+- `frontend/src/components/session/SessionInitLobbyWorkspaceBranch.tsx`
+- `frontend/src/components/session/SessionInitModals.tsx`
+- `frontend/src/components/session/CommandCenterFrame.tsx`
+- `frontend/src/components/session/SessionToolbar.tsx`
+- `frontend/src/components/session/SessionLeftRailPanel.tsx`
+- `frontend/src/components/session/SessionRightRailContent.tsx`
+- `frontend/src/components/session/*` (remaining runtime panels)
+- `frontend/src/hooks/session/*` (runtime orchestration hooks)
 
 ### Shared Campaign Surfaces (Editor + Runtime)
 
-- `frontend/src/components/campaign-shared/CampaignInformationPanel.tsx`
-- `frontend/src/components/campaign-shared/CampaignPartyPanel.tsx`
-- `frontend/src/components/campaign-shared/CampaignPartyPanel.mockData.ts`
-- `frontend/src/components/campaign-shared/CampaignScaffoldPanel.tsx`
-- `frontend/src/components/campaign-shared/InvitePopoverWidget.tsx`
-- `frontend/src/components/campaign-shared/CampaignInfo.tsx`
+- `frontend/src/components/shared/CampaignInformationPanel.tsx`
+- `frontend/src/components/shared/CampaignPartyPanel.tsx`
+- `frontend/src/components/shared/CampaignPartyPanel.mockData.ts`
+- `frontend/src/components/shared/CampaignScaffoldPanel.tsx`
+- `frontend/src/components/shared/InvitePopoverWidget.tsx`
+- `frontend/src/components/shared/CampaignInfo.tsx`
+
+### Centralized Non-UI Modules
+
+- `frontend/src/hooks/session/*` for SessionInit orchestration hooks.
+- `frontend/src/types/session/campaign.ts` and `frontend/src/types/session/session-init.ts` for session/campaign types.
+- `frontend/src/utils/session/sessionController.ts`, `frontend/src/utils/session/sessionInit.ts`, and `frontend/src/utils/session/sessionSettings.ts` for runtime/session utility logic.
 
 ## Placement Rules (How to Decide Where a New File Belongs)
 
@@ -86,26 +93,25 @@ Use this order:
 
 Rules:
 
-- Single-screen UI: place in that screen folder (`lobby`, `campaign-editor`, `campaign-runtime`, `auth`).
-- Multi-screen campaign UI: place in `campaign-shared`.
-- Cross-domain primitives: place in `components/ui` or `core-ui`.
+- Single-screen UI: place in that screen folder (`lobby`, `editor`, `session`, `auth`).
+- Multi-screen campaign UI: place in `shared`.
+- Cross-domain primitives: place in `components/ui`.
 - Data/state/transport logic that is not UI: keep in `hooks`, `state`, `utils`, `types`, `ws`.
 
 ## Recommended Naming Conventions
 
-- Screen roots use noun-based names: `campaign-runtime`, `campaign-editor`, `lobby`.
+- Screen roots use noun-based names: `session`, `editor`, `lobby`, `shared`.
 - Subcomponents use `ScreenName.Part.tsx` when tightly coupled.
-- Hooks in screen folders should be prefixed by screen context, for example: `useRuntime...`, `useLobby...`.
+- Hooks should live in `src/hooks/*` (screen-specific hooks under `src/hooks/session/*`).
 - Keep route wrappers thin and avoid embedding screen logic into `components/routes/*`.
 
 ## Suggested Next Cleanup Passes
 
-1. Split `campaign-runtime` internals into subfolders:
-   - `campaign-runtime/layout`
-   - `campaign-runtime/panels`
-   - `campaign-runtime/modals`
-   - `campaign-runtime/hooks`
-   - `campaign-runtime/model`
-2. Move runtime-only CSS under `styles/components/campaign-runtime/*` and keep temporary imports for compatibility.
-3. Add folder-level `index.ts` barrels for each screen folder.
-4. Add one short owner/intent `README.md` in each screen folder.
+1. Split `session` internals into subfolders:
+   - `session/layout`
+   - `session/panels`
+   - `session/modals`
+2. Add a typed re-export barrel for `src/types/session/*`.
+3. Add a typed re-export barrel for `src/utils/session/*`.
+4. Add folder-level `index.ts` barrels for each screen folder.
+5. Add one short owner/intent `README.md` in each screen folder.

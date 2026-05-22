@@ -114,7 +114,7 @@ SECTION 6 — SESSION LIFECYCLE
 ████████████████████████████████████████████████████████████████████████████████
 
  ┌──────┐   start  ┌────────┐   pause   ┌────────┐  end   ┌──────┐
- │ idle │─────────▶│ active │──────────▶│ paused │───────▶│ ended│
+ │ idle │────────▶│ active │──────────▶│ paused │───────▶│ ended│
  └──────┘          └────────┘           └────────┘        └──────┘
                        ▲                         │
                        └──────── resume ─────────┘
@@ -149,8 +149,8 @@ Current shipped note:
    so orchestration stays in the component while pure helpers and normalization logic live
    beside it.
    Frontend screen ownership is now normalized by UI surface:
-   `components/lobby`, `components/campaign-editor`, `components/campaign-runtime`,
-   and `components/campaign-shared` (cross-surface campaign panels).
+   `components/lobby`, `components/editor`, `components/session`,
+   and `components/shared` (cross-surface campaign panels).
 
 
 ████████████████████████████████████████████████████████████████████████████████
