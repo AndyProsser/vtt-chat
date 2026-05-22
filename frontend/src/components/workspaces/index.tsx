@@ -41,6 +41,8 @@ import { useWorkspacesActiveSessionContext } from '@/hooks/session/useWorkspaces
 import { useWorkspacesUiEffects } from '@/hooks/session/useWorkspacesUiEffects'
 import { useWorkspacesApiBootstrap } from '@/hooks/session/useWorkspacesApiBootstrap'
 import { useWorkspacesSessionAnchors } from '@/hooks/session/useWorkspacesSessionAnchors'
+import { useWorkspacesGreenroomCarryLifecycle } from '@/hooks/session/useWorkspacesGreenroomCarryLifecycle'
+import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -56,7 +58,6 @@ import {
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
 } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
-import type { Message } from '@/types/chat'
 import type {
   Room as RoomRecord,
   RoomUser as RoomMember,
@@ -69,7 +70,6 @@ import type {
 } from '@/types/session/workspaces'
 import {
   buildCharacterDraft,
-  buildRoomEnvironmentPreset,
   getVisibleRoomsForSessionState,
   isGreenRoom,
   safeLocalStorageGetItem,
@@ -232,7 +232,6 @@ export function WorkspaceInitialization({
   const sessionPresence = useStore((state) => state.sessionPresence)
   const sessionStatsBySessionId = useStore((state) => state.sessionStatsBySessionId)
   const roomMembers = useStore((state) => state.roomMembers)
-  const messages = useStore((state) => state.messages)
   const notes = useStore((state) => state.notes)
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
@@ -420,7 +419,6 @@ export function WorkspaceInitialization({
   const currentSessionNoteCount = currentSession
     ? Object.keys(notes[currentSession.id] ?? {}).length
     : 0
-  const typedMessagesBySession = messages as Record<UUID, Record<UUID, Message>>
   const takeoverPresence = useMemo(
     () =>
       activeTakeoverUserId
@@ -468,78 +466,18 @@ export function WorkspaceInitialization({
     return ownPresence?.primaryRoomId || ''
   }, [currentPresence, effectiveActorUserId])
 
-  useEffect(() => {
-    if (!currentSession) {
-      setPrivateRoomCleanMode(false)
-      return
-    }
-
-    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
-    const ownRoomType = ownPresence?.primaryRoomId
-      ? currentRooms.find((room) => room.id === ownPresence.primaryRoomId)?.type
-      : undefined
-
-    setPrivateRoomCleanMode(ownRoomType === RoomType.PRIVATE)
-  }, [currentPresence, currentRooms, currentSession, effectiveActorUserId, setPrivateRoomCleanMode])
-
-  useEffect(() => {
-    if (!currentSession || !connectedRoomId) {
-      if (currentEnvironment) {
-        clearEnvironment()
-      }
-      return
-    }
-
-    const connectedRoom = currentRooms.find((room) => room.id === connectedRoomId)
-    if (!connectedRoom) {
-      if (currentEnvironment) {
-        clearEnvironment()
-      }
-      return
-    }
-
-    if (connectedRoom && (isGreenRoom(connectedRoom) || connectedRoom.type === RoomType.PRIVATE)) {
-      if (currentEnvironment) {
-        clearEnvironment()
-      }
-      return
-    }
-
-    const hasSelectedRoomEnvironment = Object.prototype.hasOwnProperty.call(
-      roomEnvironmentNames,
-      connectedRoomId
-    )
-    if (!hasSelectedRoomEnvironment) {
-      if (currentEnvironment) {
-        clearEnvironment()
-      }
-      return
-    }
-
-    const roomEnvironmentName = roomEnvironmentNames[connectedRoomId]
-    if (!roomEnvironmentName || roomEnvironmentName.trim().toLowerCase() === 'default') {
-      if (currentEnvironment) {
-        clearEnvironment()
-      }
-      return
-    }
-
-    if (
-      currentEnvironment?.name?.trim().toLowerCase() === roomEnvironmentName.trim().toLowerCase()
-    ) {
-      return
-    }
-
-    setEnvironment(buildRoomEnvironmentPreset(connectedRoomId, roomEnvironmentName))
-  }, [
-    clearEnvironment,
+  useWorkspacesAudioProjection({
+    currentSession,
+    currentPresence,
+    effectiveActorUserId,
+    currentRooms,
+    setPrivateRoomCleanMode,
     connectedRoomId,
     currentEnvironment,
-    currentRooms,
-    currentSession,
+    clearEnvironment,
     roomEnvironmentNames,
     setEnvironment,
-  ])
+  })
 
   const { restoreSessionBookendsFromHistory } = useWorkspacesSessionAnchors({
     apiUrl,
@@ -563,35 +501,12 @@ export function WorkspaceInitialization({
     [activeTransitionNotice, currentSessionNoteCount]
   )
 
-  useEffect(() => {
-    if (!currentSession) {
-      return
-    }
-
-    const fromSessionId = pendingGreenroomCarryBySessionIdRef.current.get(currentSession.id)
-    if (!fromSessionId) {
-      return
-    }
-
-    const targetGreenroom = currentRooms.find((room) => isGreenRoom(room))
-    if (!targetGreenroom) {
-      return
-    }
-
-    const fromRooms = Object.values(typedRoomsBySession[fromSessionId] || {})
-    const fromGreenroom = fromRooms.find((room) => isGreenRoom(room))
-    if (!fromGreenroom) {
-      pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
-      return
-    }
-
-    // Contract: session boundary markers are runtime-session only and must never
-    // appear in Greenroom. We intentionally do not carry any boundary markers.
-    void targetGreenroom
-    void fromGreenroom
-
-    pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
-  }, [addMessage, currentRooms, currentSession, typedMessagesBySession, typedRoomsBySession])
+  useWorkspacesGreenroomCarryLifecycle({
+    currentSession,
+    currentRooms,
+    typedRoomsBySession,
+    pendingGreenroomCarryBySessionIdRef,
+  })
 
   const {
     loadCampaignSettings,
