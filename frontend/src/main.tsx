@@ -6,7 +6,7 @@ import App from './App'
 import { installFetchDebugLogging } from './utils/fetchDebug'
 import { initUiDiagnosticsFlag } from './utils/uiDiagnostics'
 import { initFrontendThemeMode } from './tokens/themeMode'
-import './styles/components/dev/UiDiagnostics.css'
+import './styles/utils/UiDiagnostics.css'
 import './styles/tailwind.css'
 
 initFrontendThemeMode()

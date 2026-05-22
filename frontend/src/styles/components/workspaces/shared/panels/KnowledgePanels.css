@@ -1,4 +1,4 @@
-@import './theme.css';
+@import '../../session/theme.css';
 
 .knowledge-panel {
   display: grid;

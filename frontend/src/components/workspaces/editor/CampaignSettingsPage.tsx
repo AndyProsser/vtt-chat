@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import type { UUID } from '@shared'
 import { useToast } from '@/hooks/useToast'
 import { Slider } from '@/components/ui'
-import '@/styles/components/session/SessionInit.css'
+import '@/styles/components/workspaces/session/session-init/SessionInit.css'
 
 type CampaignSettingsPageProps = {
   apiUrl: string

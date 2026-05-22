@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import '@/styles/components/audio/MockPlayerControlPanel.css'
+import '@/styles/components/workspaces/session/audio/MockPlayerControlPanel.css'
 
 interface MockSimulationConfig {
   speakingSimulatorEnabled: boolean

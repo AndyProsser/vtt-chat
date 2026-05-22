@@ -22,7 +22,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useState, useCallback } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import '@/styles/components/notes/MarkdownEditor.css'
+import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
 export type MarkdownEditorVariant = 'full' | 'restricted'
 

@@ -13,7 +13,7 @@ import { Icon } from '@/components/ui/Icon'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import type { ToolbarActionModel } from '@/types/toolbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
-import '@/styles/components/session/SessionToolbar.css'
+import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel

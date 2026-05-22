@@ -1,6 +1,6 @@
 import { SessionState } from '@shared'
 import { useEffect, useState } from 'react'
-import '@/styles/components/session/SpectatorWaitScreen.css'
+import '@/styles/components/workspaces/session/SpectatorWaitScreen.css'
 
 interface SpectatorWaitScreenProps {
   /** Current session state */

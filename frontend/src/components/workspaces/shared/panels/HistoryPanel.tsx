@@ -9,7 +9,7 @@ import {
   getHistoryControlStorageKey,
   parsePersistedHistoryControls,
 } from '@/utils/history'
-import '@/styles/components/session/KnowledgePanels.css'
+import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface HistoryPanelProps {
   apiUrl: string

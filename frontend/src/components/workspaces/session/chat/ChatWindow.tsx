@@ -15,7 +15,7 @@ import { MessageInput } from './MessageInput'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
 import type { Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
-import '@/styles/components/chat/ChatWindow.css'
+import '@/styles/components/workspaces/session/chat/ChatWindow.css'
 
 interface ChatWindowProps {
   apiUrl: string

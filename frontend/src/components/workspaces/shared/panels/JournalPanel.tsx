@@ -14,8 +14,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
-import '@/styles/components/session/KnowledgePanels.css'
-import '@/styles/components/notes/MarkdownEditor.css'
+import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
+import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
 interface JournalPanelProps {
   apiUrl: string

@@ -1,5 +1,5 @@
 import * as TabsPrimitive from '@radix-ui/react-tabs'
-import '@/styles/components/editor/CampaignRightbarSettings.css'
+import '@/styles/components/workspaces/shared/panels/CampaignRightbarSettings.css'
 
 export interface CharacterSettingsDraft {
   name: string

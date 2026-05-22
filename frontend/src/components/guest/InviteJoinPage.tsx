@@ -23,7 +23,7 @@ import {
   getStateLabel,
   isValidEmailFormat,
 } from '@/utils/inviteJoin'
-import '@/styles/components/auth/InviteJoinPage.css'
+import '@/styles/components/guest/InviteJoinPage.css'
 
 export function InviteJoinPage({
   apiUrl,

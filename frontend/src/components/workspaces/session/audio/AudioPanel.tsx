@@ -28,7 +28,7 @@ import {
 } from '@/constants/audioPanel.constants'
 import { AudioDevicePanel } from './panels/AudioDevicePanel'
 import { AudioSettingsPanel } from './panels/AudioSettingsPanel'
-import '@/styles/components/audio/AudioPanel.css'
+import '@/styles/components/workspaces/session/audio/AudioPanel.css'
 
 interface AudioPanelProps {
   sessionId: UUID

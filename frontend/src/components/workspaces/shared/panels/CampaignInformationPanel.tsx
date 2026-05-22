@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useToast } from '@/hooks/useToast'
-import '@/styles/components/shared/CampaignInformationPanel.css'
+import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
 

@@ -5,7 +5,7 @@ import type { Role, UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchSessionNotesOnce } from '@/utils/notesFetch'
-import '@/styles/components/session/KnowledgePanels.css'
+import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface NotesRailPanelProps {
   apiUrl: string

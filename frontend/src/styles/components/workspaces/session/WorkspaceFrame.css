@@ -5,7 +5,7 @@
  * Import theme.css from this file so all CommandCenter sub-trees inherit tokens.
  */
 
-@import './theme.css';
+@import '../../session/theme.css';
 
 .command-center-frame {
   position: relative;

@@ -1,6 +1,6 @@
 import type { PresenceState } from '@shared'
 import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
-import '@/styles/components/rooms/AvatarOverlay.css'
+import '@/styles/components/workspaces/session/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
   username: string

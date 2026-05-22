@@ -96,7 +96,7 @@ import {
   toSessionStateValue,
   toValidPostSessionDurationMinutes,
 } from '@/utils/session/sessionInit'
-import '@/styles/components/session/SessionInit.css'
+import '@/styles/components/workspaces/session/session-init/SessionInit.css'
 
 export function WorkspaceInitialization({
   apiUrl,

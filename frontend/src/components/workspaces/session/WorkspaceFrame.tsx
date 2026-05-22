@@ -20,7 +20,7 @@ import type { CenterPaneView, RightRailTab } from '@/types/ui'
 import { Icon } from '@/components/ui/Icon'
 import { telemetryClient } from '@/utils/telemetry'
 import type { ToolbarActionModel, ToolbarPlaceholderAction } from '@/types/toolbar'
-import '@/styles/components/session/CommandCenterFrame.css'
+import '@/styles/components/workspaces/session/WorkspaceFrame.css'
 
 export type { CenterPaneView, RightRailTab } from '@/types/ui'
 

@@ -10,7 +10,7 @@ import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { WorkspaceInitialization } from '@/components/workspaces'
-import '@/styles/components/auth/AuthSurface.css'
+import '@/styles/components/routes/AuthSurface.css'
 
 type AppMainRouteViewProps = {
   apiUrl: string
