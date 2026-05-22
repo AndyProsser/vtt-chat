@@ -31,6 +31,7 @@ export interface RoomSlice {
   clearRooms: (sessionId?: UUID) => void
 
   handleRoomCreated: (event: EventEnvelope) => void
+  handleRoomClosed: (event: EventEnvelope) => void
   handleUserJoined: (event: EventEnvelope) => void
   handleUserLeft: (event: EventEnvelope) => void
   handlePresenceStateChanged: (event: EventEnvelope) => void
@@ -324,6 +325,35 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         [room.id]: state.roomMembers[room.id] || [],
       },
     }))
+  },
+
+  handleRoomClosed: (event) => {
+    /**
+     * ROOM:CLOSED event indicates a group was closed (emptied) by the DM.
+     * Members have been moved to MAIN. The room still exists but is now empty.
+     * This typically precedes a ROOM:DELETED event when the DM deletes the empty group.
+     * Update the room state to reflect that it's been closed (optional flag or just
+     * acknowledge that members moved). No need to delete the room yet.
+     */
+    const payload = event.payload as {
+      closedGroupId: UUID
+      movedUsers?: Array<{
+        userId: UUID
+        username: string
+        fromGroupId: UUID
+        toGroupId: UUID
+      }>
+    }
+
+    // Clear members from the closed room (they've been moved to MAIN)
+    set((state) => {
+      const nextMembers = { ...state.roomMembers }
+      delete nextMembers[payload.closedGroupId]
+
+      return {
+        roomMembers: nextMembers,
+      }
+    })
   },
 
   handleUserJoined: (event) => {

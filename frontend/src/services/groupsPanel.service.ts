@@ -61,9 +61,7 @@ export async function createCampaignGroup(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `Failed to create campaign group: ${res.status}`
-      )
+      throw new Error(errorData.message || `Failed to create campaign group: ${res.status}`)
     }
 
     const data = await res.json()
@@ -120,9 +118,7 @@ export async function deleteCampaignGroup(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `Failed to delete campaign group: ${res.status}`
-      )
+      throw new Error(errorData.message || `Failed to delete campaign group: ${res.status}`)
     }
 
     return true
@@ -186,9 +182,7 @@ export async function closeGroup(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `Failed to close group: ${res.status}`
-      )
+      throw new Error(errorData.message || `Failed to close group: ${res.status}`)
     }
 
     return await res.json()
@@ -222,9 +216,7 @@ export async function deleteGroup(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `Failed to delete group: ${res.status}`
-      )
+      throw new Error(errorData.message || `Failed to delete group: ${res.status}`)
     }
 
     return await res.json()
@@ -267,9 +259,7 @@ export async function applyGroupEnvironment(
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `Failed to apply environment: ${res.status}`
-      )
+      throw new Error(errorData.message || `Failed to apply environment: ${res.status}`)
     }
 
     return await res.json()

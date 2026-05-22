@@ -5,7 +5,7 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { UUID } from '@shared'
+import type { UUID, EventEnvelope } from '@shared'
 import type { Room } from '@/types/room'
 
 /**
@@ -32,6 +32,10 @@ export interface SessionGroupsSlice {
   snapshotGroupStateBeforePause: (sessionId: UUID, rooms: Room[]) => void
   restoreGroupStateOnResume: (sessionId: UUID) => PrePauseGroupSnapshot | null
   clearSessionGroups: (sessionId?: UUID) => void
+
+  // WS Event Handlers
+  handleSessionPaused: (event: EventEnvelope) => void
+  handleSessionResumed: (event: EventEnvelope) => void
 }
 
 export const createSessionGroupsSlice: StateCreator<SessionGroupsSlice> = (set, get) => ({
@@ -160,5 +164,30 @@ export const createSessionGroupsSlice: StateCreator<SessionGroupsSlice> = (set, 
         prePauseGroupState: nextSnapshots,
       }
     })
+  },
+
+  /**
+   * Handle SESSION:PAUSED event - snapshot current group state before pause.
+   */
+  handleSessionPaused: (event) => {
+    const payload = event.payload as {
+      sessionId: UUID
+    }
+
+    const state = get()
+    const rooms = Object.values(state.sessionRoomsById[payload.sessionId] || {})
+
+    state.snapshotGroupStateBeforePause(payload.sessionId, rooms)
+  },
+
+  /**
+   * Handle SESSION:RESUMED event - restore group state from snapshot.
+   */
+  handleSessionResumed: (event) => {
+    const payload = event.payload as {
+      sessionId: UUID
+    }
+
+    get().restoreGroupStateOnResume(payload.sessionId)
   },
 })
