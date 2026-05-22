@@ -102,13 +102,15 @@ export function EditorJournalPanel({
     [sessions]
   )
   const fallbackSession = sortedSessions[0] ?? null
-  const effectiveSessionId = selectedSessionId ?? fallbackSession?.id ?? null
+  const [localSelectedSessionId, setLocalSelectedSessionId] = useState<UUID | null>(
+    selectedSessionId ?? fallbackSession?.id ?? null
+  )
+
+  const effectiveSessionId =
+    localSelectedSessionId ?? selectedSessionId ?? fallbackSession?.id ?? null
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
   const recentSessions = sortedSessions
-  const effectiveStatus = effectiveSessionId
-    ? journalStatusBySession[effectiveSessionId]
-    : undefined
   const sessionIndexById = useMemo(
     () => new Map(sortedSessions.map((session, index) => [session.id, index])),
     [sortedSessions]
@@ -232,11 +234,18 @@ export function EditorJournalPanel({
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
-              <div key={session.id} role="listitem" className="knowledge-panel-session-item">
+              <div
+                key={session.id}
+                role="listitem"
+                className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
+              >
                 <button
                   type="button"
                   className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
-                  onClick={() => onSessionChange(session.id)}
+                  onClick={() => {
+                    setLocalSelectedSessionId(session.id)
+                    onSessionChange(session.id)
+                  }}
                   aria-pressed={isSelected}
                 >
                   <div className="knowledge-panel-card-header">
@@ -273,6 +282,7 @@ export function EditorJournalPanel({
                       role={role}
                       autoEdit
                       autoSave
+                      hideHeader
                       onSaved={({ hasContent, hasJournal }) => {
                         updateJournalStatus(session.id, { hasContent, hasJournal })
                       }}

@@ -37,6 +37,7 @@ interface JournalPanelProps {
   userId?: UUID
   autoEdit?: boolean
   autoSave?: boolean
+  hideHeader?: boolean
   onSaved?: (payload: { sessionId: UUID; hasContent: boolean; hasJournal: boolean }) => void
 }
 
@@ -234,6 +235,7 @@ export function JournalPanel({
   role,
   autoEdit = false,
   autoSave = false,
+  hideHeader = false,
   onSaved,
 }: JournalPanelProps) {
   const isDm = role === 'DM'
@@ -596,33 +598,39 @@ export function JournalPanel({
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
 
   return (
-    <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
-      <header className="knowledge-panel-header">
-        <div>
-          <h3 className="knowledge-panel-title">{sessionName || 'Session Journal'}</h3>
-          <div className="knowledge-panel-chip-row">
-            {lastUpdated && !isEditing ? (
-              <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
-                Last updated {lastUpdated}
-              </p>
-            ) : null}
+    <section
+      className={`knowledge-panel ${hideHeader ? 'knowledge-panel--journal-embedded' : ''}`}
+      aria-label="Journal"
+      data-testid="journal-panel"
+    >
+      {!hideHeader ? (
+        <header className="knowledge-panel-header">
+          <div>
+            <h3 className="knowledge-panel-title">{sessionName || 'Session Journal'}</h3>
+            <div className="knowledge-panel-chip-row">
+              {lastUpdated && !isEditing ? (
+                <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
+                  Last updated {lastUpdated}
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        {isDm && !isEditing ? (
-          <button
-            type="button"
-            className="knowledge-panel-chip"
-            onClick={() => setIsEditing(true)}
-            aria-label="Edit journal"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              edit
-            </span>
-            Edit
-          </button>
-        ) : null}
-      </header>
+          {isDm && !isEditing ? (
+            <button
+              type="button"
+              className="knowledge-panel-chip"
+              onClick={() => setIsEditing(true)}
+              aria-label="Edit journal"
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                edit
+              </span>
+              Edit
+            </button>
+          ) : null}
+        </header>
+      ) : null}
 
       {saveError ? (
         <p className="knowledge-panel-copy knowledge-panel-copy--error">{saveError}</p>

@@ -81,6 +81,10 @@
   color: var(--color-error, #f87171);
 }
 
+.knowledge-panel--journal-embedded {
+  padding: 0;
+}
+
 .knowledge-panel-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -335,10 +339,25 @@
   gap: var(--space-2);
 }
 
+.knowledge-panel-session-item.is-selected {
+  gap: 0;
+  border: 1px solid color-mix(in srgb, var(--color-border-focus) 46%, var(--color-border-soft));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
+  overflow: hidden;
+}
+
+.knowledge-panel-session-item.is-selected .knowledge-panel-card.selected {
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .knowledge-panel-session-item__editor {
   margin: -0.2rem 0 0;
-  padding: 0.25rem 0 0.5rem 1rem;
-  border-left: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
+  padding: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-focus) 28%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
 }
 
 .knowledge-panel-card-header {
