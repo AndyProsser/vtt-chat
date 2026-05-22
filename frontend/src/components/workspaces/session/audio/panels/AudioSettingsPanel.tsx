@@ -86,17 +86,17 @@ export function AudioSettingsPanel({
 
   return (
     <div
-      className="audio-settings-panel"
+      className="session-audio-settings-panel"
       role="dialog"
       aria-label={AUDIO_SETTINGS_COPY.title}
-      data-audio-settings-panel="true"
+      data-session-audio-settings-panel="true"
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <header className="audio-settings-panel__header">
-        <span className="audio-settings-panel__title">{AUDIO_SETTINGS_COPY.title}</span>
+      <header className="session-audio-settings-panel__header">
+        <span className="session-audio-settings-panel__title">{AUDIO_SETTINGS_COPY.title}</span>
         <button
           type="button"
-          className="audio-settings-panel__close"
+          className="session-audio-settings-panel__close"
           onClick={onClose}
           aria-label={AUDIO_SETTINGS_COPY.close}
         >
@@ -104,17 +104,17 @@ export function AudioSettingsPanel({
         </button>
       </header>
 
-      <div className="audio-settings-panel__body">
+      <div className="session-audio-settings-panel__body">
         {/* Device Selection */}
-        <section className="audio-settings-panel__section">
-          <label className="audio-settings-panel__label">
-            <span className="audio-settings-panel__label-text">
-              <Icon name="signal" className="audio-settings-panel__label-icon" />
+        <section className="session-audio-settings-panel__section">
+          <label className="session-audio-settings-panel__label">
+            <span className="session-audio-settings-panel__label-text">
+              <Icon name="signal" className="session-audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.speaker}
             </span>
-            <span className="audio-settings-panel__select-wrap">
+            <span className="session-audio-settings-panel__select-wrap">
               <select
-                className="audio-settings-panel__select"
+                className="session-audio-settings-panel__select"
                 value={device.selectedSpeakerDeviceId ?? ''}
                 onChange={(e) =>
                   onDeviceChange({ selectedSpeakerDeviceId: e.target.value || undefined })
@@ -127,20 +127,20 @@ export function AudioSettingsPanel({
                   </option>
                 ))}
               </select>
-              <span className="audio-settings-panel__select-icon" aria-hidden="true">
+              <span className="session-audio-settings-panel__select-icon" aria-hidden="true">
                 <span className="material-symbols-outlined">arrow_drop_down</span>
               </span>
             </span>
           </label>
 
-          <label className="audio-settings-panel__label">
-            <span className="audio-settings-panel__label-text">
-              <Icon name="mic" className="audio-settings-panel__label-icon" />
+          <label className="session-audio-settings-panel__label">
+            <span className="session-audio-settings-panel__label-text">
+              <Icon name="mic" className="session-audio-settings-panel__label-icon" />
               {AUDIO_SETTINGS_COPY.microphone}
             </span>
-            <span className="audio-settings-panel__select-wrap">
+            <span className="session-audio-settings-panel__select-wrap">
               <select
-                className="audio-settings-panel__select"
+                className="session-audio-settings-panel__select"
                 value={device.selectedMicDeviceId ?? ''}
                 onChange={(e) =>
                   onDeviceChange({ selectedMicDeviceId: e.target.value || undefined })
@@ -153,59 +153,59 @@ export function AudioSettingsPanel({
                   </option>
                 ))}
               </select>
-              <span className="audio-settings-panel__select-icon" aria-hidden="true">
+              <span className="session-audio-settings-panel__select-icon" aria-hidden="true">
                 <span className="material-symbols-outlined">arrow_drop_down</span>
               </span>
             </span>
           </label>
 
           <div
-            className="audio-settings-panel__mic-meter"
+            className="session-audio-settings-panel__mic-meter"
             aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneSignal}
           >
-            <span ref={micMeterFillRef} className="audio-settings-panel__mic-meter-fill" />
+            <span ref={micMeterFillRef} className="session-audio-settings-panel__mic-meter-fill" />
           </div>
         </section>
 
         {/* Gain / Sensitivity */}
-        <section className="audio-settings-panel__section">
-          <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">{AUDIO_SETTINGS_COPY.autoGain}</span>
+        <section className="session-audio-settings-panel__section">
+          <div className="session-audio-settings-panel__row">
+            <span className="session-audio-settings-panel__label-text">{AUDIO_SETTINGS_COPY.autoGain}</span>
             <button
               type="button"
               role="switch"
               aria-checked={device.autoGainEnabled}
               onClick={() => onDeviceChange({ autoGainEnabled: !device.autoGainEnabled })}
-              className={`audio-settings-panel__toggle ${device.autoGainEnabled ? 'is-on' : ''}`}
+              className={`session-audio-settings-panel__toggle ${device.autoGainEnabled ? 'is-on' : ''}`}
             >
               {device.autoGainEnabled ? 'ON' : 'OFF'}
             </button>
           </div>
 
           {!device.autoGainEnabled && (
-            <label className="audio-settings-panel__label">
-              <span className="audio-settings-panel__label-text">
+            <label className="session-audio-settings-panel__label">
+              <span className="session-audio-settings-panel__label-text">
                 {AUDIO_SETTINGS_COPY.sensitivity}
               </span>
-              <div className="audio-settings-panel__slider-row">
+              <div className="session-audio-settings-panel__slider-row">
                 <Slider
                   min={0}
                   max={100}
                   value={device.micGain}
                   onValueChange={(nextValue) => onDeviceChange({ micGain: nextValue })}
-                  className="audio-settings-panel__slider"
+                  className="session-audio-settings-panel__slider"
                   aria-label={AUDIO_SETTINGS_COPY.microphoneSensitivity}
                 />
-                <span className="audio-settings-panel__slider-value">{device.micGain}</span>
+                <span className="session-audio-settings-panel__slider-value">{device.micGain}</span>
               </div>
             </label>
           )}
         </section>
 
         {/* Push to Talk */}
-        <section className="audio-settings-panel__section">
-          <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">
+        <section className="session-audio-settings-panel__section">
+          <div className="session-audio-settings-panel__row">
+            <span className="session-audio-settings-panel__label-text">
               {AUDIO_CONTROL_COPY.pushToTalk}
             </span>
             <button
@@ -213,7 +213,7 @@ export function AudioSettingsPanel({
               role="switch"
               aria-checked={device.pttEnabled}
               onClick={() => onDeviceChange({ pttEnabled: !device.pttEnabled })}
-              className={`audio-settings-panel__toggle ${device.pttEnabled ? 'is-on' : ''}`}
+              className={`session-audio-settings-panel__toggle ${device.pttEnabled ? 'is-on' : ''}`}
             >
               {device.pttEnabled ? 'ON' : 'OFF'}
             </button>
@@ -221,14 +221,14 @@ export function AudioSettingsPanel({
         </section>
 
         {/* Noise Filter */}
-        <section className="audio-settings-panel__section">
-          <div className="audio-settings-panel__row">
-            <span className="audio-settings-panel__label-text">
+        <section className="session-audio-settings-panel__section">
+          <div className="session-audio-settings-panel__row">
+            <span className="session-audio-settings-panel__label-text">
               {AUDIO_SETTINGS_COPY.noiseFilter}
             </span>
           </div>
           <div
-            className="audio-settings-panel__segment"
+            className="session-audio-settings-panel__segment"
             role="group"
             aria-label={AUDIO_SETTINGS_COPY.noiseFilterLevel}
           >
@@ -237,7 +237,7 @@ export function AudioSettingsPanel({
                 key={value}
                 type="button"
                 onClick={() => onDeviceChange({ noiseFilterLevel: value })}
-                className={`audio-settings-panel__segment-btn ${device.noiseFilterLevel === value ? 'is-active' : ''}`}
+                className={`session-audio-settings-panel__segment-btn ${device.noiseFilterLevel === value ? 'is-active' : ''}`}
                 aria-pressed={device.noiseFilterLevel === value}
               >
                 {label}
@@ -248,26 +248,26 @@ export function AudioSettingsPanel({
 
         {/* DM Background Audio Level */}
         {isDm ? (
-          <section className="audio-settings-panel__section">
-            <label className="audio-settings-panel__label">
-              <span className="audio-settings-panel__label-text">
+          <section className="session-audio-settings-panel__section">
+            <label className="session-audio-settings-panel__label">
+              <span className="session-audio-settings-panel__label-text">
                 {AUDIO_SETTINGS_COPY.backgroundAudioLevel}
               </span>
-              <div className="audio-settings-panel__slider-row">
+              <div className="session-audio-settings-panel__slider-row">
                 <Slider
                   min={0}
                   max={100}
                   value={device.backgroundAudioLevel}
                   onValueChange={(nextValue) => onDeviceChange({ backgroundAudioLevel: nextValue })}
-                  className="audio-settings-panel__slider"
+                  className="session-audio-settings-panel__slider"
                   aria-label={AUDIO_SETTINGS_COPY.backgroundAudioLevelAria}
                 />
-                <span className="audio-settings-panel__slider-value">
+                <span className="session-audio-settings-panel__slider-value">
                   {device.backgroundAudioLevel}
                 </span>
               </div>
               {isWhisperMode ? (
-                <span className="audio-settings-panel__hint">
+                <span className="session-audio-settings-panel__hint">
                   {AUDIO_SETTINGS_COPY.backgroundAudioLevelWhisperHint}
                 </span>
               ) : null}
@@ -276,21 +276,21 @@ export function AudioSettingsPanel({
         ) : null}
 
         {/* Master Volume */}
-        <section className="audio-settings-panel__section">
-          <label className="audio-settings-panel__label">
-            <span className="audio-settings-panel__label-text">
+        <section className="session-audio-settings-panel__section">
+          <label className="session-audio-settings-panel__label">
+            <span className="session-audio-settings-panel__label-text">
               {AUDIO_SETTINGS_COPY.masterVolume}
             </span>
-            <div className="audio-settings-panel__slider-row">
+            <div className="session-audio-settings-panel__slider-row">
               <Slider
                 min={0}
                 max={100}
                 value={device.volumeLevel}
                 onValueChange={(nextValue) => onDeviceChange({ volumeLevel: nextValue })}
-                className="audio-settings-panel__slider"
+                className="session-audio-settings-panel__slider"
                 aria-label={AUDIO_SETTINGS_COPY.masterVolumeAria}
               />
-              <span className="audio-settings-panel__slider-value">{device.volumeLevel}</span>
+              <span className="session-audio-settings-panel__slider-value">{device.volumeLevel}</span>
             </div>
           </label>
         </section>

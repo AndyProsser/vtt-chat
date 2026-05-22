@@ -1,4 +1,4 @@
-.chat-message-list {
+.session-message-list {
   display: flex;
   flex: 1 1 0;
   min-height: 0;
@@ -10,7 +10,7 @@
   padding: 0.7rem 0.75rem;
 }
 
-.chat-message-list__empty {
+.session-message-list__empty {
   display: flex;
   flex: 1;
   align-items: center;
@@ -19,18 +19,18 @@
   font-size: 0.85rem;
 }
 
-.chat-message-list__sentinel {
+.session-message-list__sentinel {
   block-size: 1px;
 }
 
-.chat-session-marker {
+.session-message-list__session-marker {
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0.15rem 0 0.4rem;
 }
 
-.chat-session-marker__text {
+.session-message-list__session-marker-text {
   position: relative;
   z-index: 1;
   padding: 0;
@@ -41,7 +41,7 @@
   letter-spacing: 0.02em;
 }
 
-.chat-session-marker__content {
+.session-message-list__session-marker-content {
   display: flex;
   width: 100%;
   flex-direction: column;
@@ -50,19 +50,19 @@
   padding: 0;
 }
 
-.chat-session-marker__label-row {
+.session-message-list__session-marker-label-row {
   display: flex;
   width: 100%;
   align-items: center;
   gap: 0.4rem;
 }
 
-.chat-session-marker__line {
+.session-message-list__session-marker-line {
   flex: 1 1 auto;
   border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 68%, transparent);
 }
 
-.chat-session-marker__badge {
+.session-message-list__session-marker-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -71,50 +71,50 @@
   border-radius: 6px;
 }
 
-.chat-session-marker__icon {
+.session-message-list__session-marker-icon {
   font-size: 0.95rem;
   line-height: 1;
 }
 
-.chat-session-marker__time {
+.session-message-list__session-marker-time {
   font-size: 0.63rem;
   color: var(--color-text-muted);
   letter-spacing: 0.01em;
 }
 
-.chat-session-marker--note .chat-session-marker__text {
+.session-message-list__session-marker--note .session-message-list__session-marker-text {
   color: color-mix(in srgb, var(--color-warn-text, #78350f) 80%, var(--color-text-secondary));
 }
 
-.chat-session-marker--started .chat-session-marker__text,
-.chat-session-marker--started .chat-session-marker__icon {
+.session-message-list__session-marker--started .session-message-list__session-marker-text,
+.session-message-list__session-marker--started .session-message-list__session-marker-icon {
   color: color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-text-secondary));
 }
 
-.chat-session-marker--ended .chat-session-marker__text,
-.chat-session-marker--ended .chat-session-marker__icon {
+.session-message-list__session-marker--ended .session-message-list__session-marker-text,
+.session-message-list__session-marker--ended .session-message-list__session-marker-icon {
   color: color-mix(in srgb, var(--color-error, #ef4444) 72%, var(--color-text-secondary));
 }
 
-.chat-session-marker--paused .chat-session-marker__text,
-.chat-session-marker--paused .chat-session-marker__icon {
+.session-message-list__session-marker--paused .session-message-list__session-marker-text,
+.session-message-list__session-marker--paused .session-message-list__session-marker-icon {
   color: color-mix(in srgb, var(--color-warn, #f59e0b) 74%, var(--color-text-secondary));
 }
 
-.chat-session-marker--resumed .chat-session-marker__text,
-.chat-session-marker--resumed .chat-session-marker__icon {
+.session-message-list__session-marker--resumed .session-message-list__session-marker-text,
+.session-message-list__session-marker--resumed .session-message-list__session-marker-icon {
   color: color-mix(in srgb, var(--color-brand, #38bdf8) 72%, var(--color-text-secondary));
 }
 
-.chat-session-marker--cooldown .chat-session-marker__text,
-.chat-session-marker--cooldown .chat-session-marker__icon {
+.session-message-list__session-marker--cooldown .session-message-list__session-marker-text,
+.session-message-list__session-marker--cooldown .session-message-list__session-marker-icon {
   color: color-mix(in srgb, var(--color-accent, #14b8a6) 72%, var(--color-text-secondary));
 }
 
 /* ── Session Recap Card ─────────────────────────────────────────────────────── */
 /* Appears after [Session Started] bookend; shows previous session journal or   */
 /* a sarcastic fallback when the DM skipped journaling.                         */
-.chat-session-recap {
+.session-message-list__session-recap {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
@@ -126,19 +126,19 @@
   border-radius: 6px;
 }
 
-.chat-session-recap__icon {
+.session-message-list__session-recap-icon {
   flex: 0 0 auto;
   font-size: 1.05rem;
   color: color-mix(in srgb, var(--color-accent, #6366f1) 70%, var(--color-text-muted));
   margin-top: 0.05rem;
 }
 
-.chat-session-recap__body {
+.session-message-list__session-recap-body {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.chat-session-recap__label {
+.session-message-list__session-recap-label {
   display: block;
   font-size: 0.63rem;
   font-weight: 700;
@@ -148,7 +148,7 @@
   margin-bottom: 0.25rem;
 }
 
-.chat-session-recap__text {
+.session-message-list__session-recap-text {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.45;
@@ -159,7 +159,7 @@
 /* ── Session Summary Card ───────────────────────────────────────────────────── */
 /* Emitted to greenroom on COOLDOWN transition; shows key stats for the session  */
 /* that just ended: name, start time, player count, and pause time.              */
-.chat-session-summary {
+.session-message-list__session-summary {
   margin: 0.35rem 0.5rem 0.6rem;
   padding: 0.6rem 0.75rem;
   background: var(--color-surface-subtle);
@@ -168,20 +168,20 @@
   border-radius: 6px;
 }
 
-.chat-session-summary__header {
+.session-message-list__session-summary-header {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   margin-bottom: 0.55rem;
 }
 
-.chat-session-summary__icon {
+.session-message-list__session-summary-icon {
   flex: 0 0 auto;
   font-size: 1rem;
   color: color-mix(in srgb, var(--color-error, #ef4444) 65%, var(--color-text-muted));
 }
 
-.chat-session-summary__title {
+.session-message-list__session-summary-title {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -189,7 +189,7 @@
   color: color-mix(in srgb, var(--color-error, #ef4444) 70%, var(--color-text-secondary));
 }
 
-.chat-session-summary__stats {
+.session-message-list__session-summary-stats {
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 0.75rem;
@@ -197,7 +197,7 @@
   margin: 0;
 }
 
-.chat-session-summary__stats dt {
+.session-message-list__session-summary-stats dt {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -206,14 +206,14 @@
   align-self: baseline;
 }
 
-.chat-session-summary__stats dd {
+.session-message-list__session-summary-stats dd {
   margin: 0;
   font-size: 0.78rem;
   color: var(--color-text-secondary);
   align-self: baseline;
 }
 
-.chat-session-summary__quip {
+.session-message-list__session-summary-quip {
   margin: 0.55rem 0 0;
   font-size: 0.8rem;
   font-style: italic;
@@ -221,19 +221,19 @@
   line-height: 1.4;
 }
 
-.chat-day-separator {
+.session-message-list__day-separator {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   margin: 0.18rem 0 0.08rem;
 }
 
-.chat-day-separator__line {
+.session-message-list__day-separator-line {
   flex: 1 1 auto;
   border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
 }
 
-.chat-day-separator__pill {
+.session-message-list__day-separator-pill {
   flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
@@ -246,19 +246,19 @@
   padding: 0.14rem 0.5rem;
 }
 
-.chat-room-shift {
+.session-message-list__room-shift {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0.15rem 0 0.05rem;
 }
 
-.chat-room-shift__line {
+.session-message-list__room-shift-line {
   flex: 1 1 auto;
   border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 76%, transparent);
 }
 
-.chat-room-shift__pill {
+.session-message-list__room-shift-pill {
   flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
@@ -269,9 +269,8 @@
   background: var(--color-surface-subtle);
 }
 
-.chat-room-shift__pill--active {
+.session-message-list__room-shift-pill--active {
   border-color: color-mix(in srgb, var(--color-brand, #38bdf8) 28%, transparent);
   color: color-mix(in srgb, var(--color-brand, #38bdf8) 60%, var(--color-text-primary));
   background: color-mix(in srgb, var(--color-brand, #38bdf8) 12%, var(--color-surface) 88%);
 }
-

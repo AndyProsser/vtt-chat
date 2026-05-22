@@ -1,4 +1,4 @@
-.audio-settings-panel {
+.session-audio-settings-panel {
   position: absolute;
   bottom: calc(100% + 0.35rem);
   left: 0;
@@ -13,7 +13,7 @@
   overflow: hidden;
 }
 
-.audio-settings-panel__header {
+.session-audio-settings-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,7 +21,7 @@
   border-bottom: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.18));
 }
 
-.audio-settings-panel__title {
+.session-audio-settings-panel__title {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -29,7 +29,7 @@
   color: var(--color-text-secondary);
 }
 
-.audio-settings-panel__close {
+.session-audio-settings-panel__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -45,40 +45,40 @@
     background-color 100ms ease;
 }
 
-.audio-settings-panel__close:hover {
+.session-audio-settings-panel__close:hover {
   color: var(--color-text-primary);
   background: var(--color-surface-subtle);
 }
 
-.audio-settings-panel__close .ui-icon {
+.session-audio-settings-panel__close .ui-icon {
   font-size: 1rem;
 }
 
-.audio-settings-panel__body {
+.session-audio-settings-panel__body {
   padding: 0.5rem 0.75rem 0.65rem;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
-.audio-settings-panel__section {
+.session-audio-settings-panel__section {
   padding: 0.45rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
 }
 
-.audio-settings-panel__section + .audio-settings-panel__section {
+.session-audio-settings-panel__section + .session-audio-settings-panel__section {
   border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.14));
 }
 
-.audio-settings-panel__label {
+.session-audio-settings-panel__label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.audio-settings-panel__label-text {
+.session-audio-settings-panel__label-text {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -87,17 +87,17 @@
   color: var(--color-text-secondary);
 }
 
-.audio-settings-panel__label-icon {
+.session-audio-settings-panel__label-icon {
   font-size: 0.92rem;
   color: var(--color-text-muted);
 }
 
-.audio-settings-panel__select-wrap {
+.session-audio-settings-panel__select-wrap {
   position: relative;
   display: block;
 }
 
-.audio-settings-panel__select {
+.session-audio-settings-panel__select {
   width: 100%;
   min-width: 0;
   min-height: 1.72rem;
@@ -124,18 +124,18 @@
   color-scheme: dark;
 }
 
-.audio-settings-panel__select:hover {
+.session-audio-settings-panel__select:hover {
   border-color: color-mix(in srgb, var(--color-brand) 34%, var(--color-border-soft));
   background: color-mix(in srgb, var(--color-surface-subtle) 84%, var(--color-surface));
 }
 
-.audio-settings-panel__select:focus-visible {
+.session-audio-settings-panel__select:focus-visible {
   outline: none;
   border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
-.audio-settings-panel__select-icon {
+.session-audio-settings-panel__select-icon {
   position: absolute;
   top: 50%;
   right: 0.45rem;
@@ -147,18 +147,18 @@
   pointer-events: none;
 }
 
-.audio-settings-panel__select-icon .material-symbols-outlined {
+.session-audio-settings-panel__select-icon .material-symbols-outlined {
   font-size: 0.92rem;
 }
 
-.audio-settings-panel__select option {
+.session-audio-settings-panel__select option {
   background: color-mix(in srgb, var(--color-surface) 95%, transparent);
   color: var(--color-text-primary);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-.audio-settings-panel__mic-meter {
+.session-audio-settings-panel__mic-meter {
   position: relative;
   width: 100%;
   height: 0.42rem;
@@ -168,7 +168,7 @@
   overflow: hidden;
 }
 
-.audio-settings-panel__mic-meter-fill {
+.session-audio-settings-panel__mic-meter-fill {
   display: block;
   height: 100%;
   width: var(--audio-mic-level-width, 0%);
@@ -181,14 +181,14 @@
   transition: width 70ms linear;
 }
 
-.audio-settings-panel__row {
+.session-audio-settings-panel__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
-.audio-settings-panel__toggle {
+.session-audio-settings-panel__toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -209,24 +209,24 @@
     border-color 120ms ease;
 }
 
-.audio-settings-panel__toggle.is-on {
+.session-audio-settings-panel__toggle.is-on {
   background: var(--color-brand, #3b82f6);
   border-color: color-mix(in srgb, var(--color-brand, #3b82f6) 65%, transparent);
   color: #fff;
 }
 
-.audio-settings-panel__slider-row {
+.session-audio-settings-panel__slider-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.audio-settings-panel__slider {
+.session-audio-settings-panel__slider {
   flex: 1;
   height: 1rem;
 }
 
-.audio-settings-panel__slider .ui-slider__track {
+.session-audio-settings-panel__slider .ui-slider__track {
   background: color-mix(
     in srgb,
     var(--color-border-default, rgba(148, 163, 184, 0.28)) 78%,
@@ -234,36 +234,36 @@
   );
 }
 
-.audio-settings-panel__slider .ui-slider__range,
-.audio-settings-panel__slider .ui-slider__thumb {
+.session-audio-settings-panel__slider .ui-slider__range,
+.session-audio-settings-panel__slider .ui-slider__thumb {
   background: var(--color-primary-500, #3b82f6);
 }
 
-.audio-settings-panel__slider .ui-slider__thumb {
+.session-audio-settings-panel__slider .ui-slider__thumb {
   border-color: color-mix(in srgb, var(--color-primary-500, #3b82f6) 70%, #fff 30%);
 }
 
-.audio-settings-panel__slider-value {
+.session-audio-settings-panel__slider-value {
   font-size: 0.7rem;
   color: var(--color-text-muted);
   min-width: 1.8rem;
   text-align: right;
 }
 
-.audio-settings-panel__hint {
+.session-audio-settings-panel__hint {
   font-size: 0.64rem;
   color: var(--color-text-muted);
   line-height: 1.25;
 }
 
-.audio-settings-panel__segment {
+.session-audio-settings-panel__segment {
   display: flex;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   border-radius: 0.4rem;
   overflow: hidden;
 }
 
-.audio-settings-panel__segment-btn {
+.session-audio-settings-panel__segment-btn {
   flex: 1;
   padding: 0.28rem 0;
   background: var(--color-surface-subtle);
@@ -279,11 +279,11 @@
     color 100ms ease;
 }
 
-.audio-settings-panel__segment-btn:last-child {
+.session-audio-settings-panel__segment-btn:last-child {
   border-right: none;
 }
 
-.audio-settings-panel__segment-btn.is-active {
+.session-audio-settings-panel__segment-btn.is-active {
   background: var(--color-brand, #3b82f6);
   color: #fff;
 }

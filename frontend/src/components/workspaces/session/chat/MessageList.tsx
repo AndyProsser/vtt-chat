@@ -102,27 +102,27 @@ const BOOKEND_META: Record<
   started: {
     label: 'STARTED',
     icon: 'play_circle',
-    className: 'chat-session-marker--started',
+    className: 'session-message-list__session-marker--started',
   },
   ended: {
     label: 'ENDED',
     icon: 'stop_circle',
-    className: 'chat-session-marker--ended',
+    className: 'session-message-list__session-marker--ended',
   },
   paused: {
     label: 'PAUSED',
     icon: 'pause_circle',
-    className: 'chat-session-marker--paused',
+    className: 'session-message-list__session-marker--paused',
   },
   resumed: {
     label: 'RESUMED',
     icon: 'play_circle',
-    className: 'chat-session-marker--resumed',
+    className: 'session-message-list__session-marker--resumed',
   },
   cooldown: {
     label: 'CLOSED',
     icon: 'theaters',
-    className: 'chat-session-marker--cooldown',
+    className: 'session-message-list__session-marker--cooldown',
   },
 }
 
@@ -231,14 +231,14 @@ export function MessageList({
   const isDmViewer = currentUserRole === 'DM'
 
   if (messages.length === 0) {
-    return <div className="chat-message-list__empty">No messages yet. Say something!</div>
+    return <div className="session-message-list__empty">No messages yet. Say something!</div>
   }
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div ref={listRef} onScroll={onListScroll} className="chat-message-list">
+      <div ref={listRef} onScroll={onListScroll} className="session-message-list">
         {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
-        <div ref={topSentinelRef} aria-hidden="true" className="chat-message-list__sentinel" />
+        <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
         {messages.map((msg, index) => {
           const previous = index > 0 ? messages[index - 1] : undefined
           const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
@@ -291,9 +291,9 @@ export function MessageList({
               msg.authorId === sessionDmId)
           const bubbleWhisperClass =
             (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) && isDmWhisper
-              ? 'chat-message__bubble--whisper-dm'
+              ? 'session-message-list__message-bubble--whisper-dm'
               : ''
-          const typeIconClass = `chat-message__type-icon--${variant}`
+          const typeIconClass = `session-message-list__message-type-icon--${variant}`
           const typeIcon = TYPE_ICON_BY_VARIANT[variant]
           const isGroupedWithPrevious = Boolean(
             groupingWindowMs > 0 &&
@@ -329,17 +329,19 @@ export function MessageList({
                 })
               : null
             return (
-              <article key={msg.id} className="chat-session-summary">
-                <div className="chat-session-summary__header">
+              <article key={msg.id} className="session-message-list__session-summary">
+                <div className="session-message-list__session-summary-header">
                   <span
-                    className="chat-session-summary__icon material-symbols-outlined"
+                    className="session-message-list__session-summary-icon material-symbols-outlined"
                     aria-hidden="true"
                   >
                     summarize
                   </span>
-                  <span className="chat-session-summary__title">{stats.sessionName}</span>
+                  <span className="session-message-list__session-summary-title">
+                    {stats.sessionName}
+                  </span>
                 </div>
-                <dl className="chat-session-summary__stats">
+                <dl className="session-message-list__session-summary-stats">
                   {startedDisplay && (
                     <>
                       <dt>Started</dt>
@@ -364,7 +366,9 @@ export function MessageList({
                     </>
                   )}
                 </dl>
-                {stats.quip && <p className="chat-session-summary__quip">{stats.quip}</p>}
+                {stats.quip && (
+                  <p className="session-message-list__session-summary-quip">{stats.quip}</p>
+                )}
               </article>
             )
           }
@@ -374,16 +378,16 @@ export function MessageList({
             const recapLabel =
               recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
             return (
-              <article key={msg.id} className="chat-session-recap">
+              <article key={msg.id} className="session-message-list__session-recap">
                 <span
-                  className="chat-session-recap__icon material-symbols-outlined"
+                  className="session-message-list__session-recap-icon material-symbols-outlined"
                   aria-hidden="true"
                 >
                   menu_book
                 </span>
-                <div className="chat-session-recap__body">
-                  <span className="chat-session-recap__label">{recapLabel}</span>
-                  <p className="chat-session-recap__text">{recapBody}</p>
+                <div className="session-message-list__session-recap-body">
+                  <span className="session-message-list__session-recap-label">{recapLabel}</span>
+                  <p className="session-message-list__session-recap-text">{recapBody}</p>
                 </div>
               </article>
             )
@@ -394,38 +398,46 @@ export function MessageList({
             return (
               <article
                 key={msg.id}
-                className={`chat-session-marker ${isSessionBookend ? 'chat-session-marker--bookend' : 'chat-session-marker--note'} ${markerMeta?.className || ''}`}
+                className={`session-message-list__session-marker ${isSessionBookend ? 'session-message-list__session-marker--bookend' : 'session-message-list__session-marker--note'} ${markerMeta?.className || ''}`}
               >
                 {isSessionBookend && markerMeta ? (
-                  <div className="chat-session-marker__content">
-                    <div className="chat-session-marker__label-row">
-                      <span className="chat-session-marker__line" aria-hidden="true" />
-                      <span className="chat-session-marker__badge">
+                  <div className="session-message-list__session-marker-content">
+                    <div className="session-message-list__session-marker-label-row">
+                      <span
+                        className="session-message-list__session-marker-line"
+                        aria-hidden="true"
+                      />
+                      <span className="session-message-list__session-marker-badge">
                         <span
-                          className="chat-session-marker__icon material-symbols-outlined"
+                          className="session-message-list__session-marker-icon material-symbols-outlined"
                           aria-hidden="true"
                         >
                           {markerMeta.icon}
                         </span>
-                        <span className="chat-session-marker__text">{markerMeta.label}</span>
+                        <span className="session-message-list__session-marker-text">
+                          {markerMeta.label}
+                        </span>
                         <span
-                          className="chat-session-marker__icon material-symbols-outlined"
+                          className="session-message-list__session-marker-icon material-symbols-outlined"
                           aria-hidden="true"
                         >
                           {markerMeta.icon}
                         </span>
                       </span>
-                      <span className="chat-session-marker__line" aria-hidden="true" />
+                      <span
+                        className="session-message-list__session-marker-line"
+                        aria-hidden="true"
+                      />
                     </div>
                     <time
-                      className="chat-session-marker__time"
+                      className="session-message-list__session-marker-time"
                       dateTime={new Date(msg.createdAt).toISOString()}
                     >
                       {formatBookendTimestamp(msg.createdAt)}
                     </time>
                   </div>
                 ) : (
-                  <span className="chat-session-marker__text">{msg.content}</span>
+                  <span className="session-message-list__session-marker-text">{msg.content}</span>
                 )}
               </article>
             )
@@ -435,20 +447,25 @@ export function MessageList({
             <Fragment key={msg.id}>
               {showDaySeparator ? (
                 <div
-                  className="chat-day-separator"
+                  className="session-message-list__day-separator"
                   aria-label={`Messages from ${formatDayLabel(msg.createdAt)}`}
                 >
-                  <span className="chat-day-separator__line" aria-hidden="true" />
-                  <span className="chat-day-separator__pill">{formatDayLabel(msg.createdAt)}</span>
-                  <span className="chat-day-separator__line" aria-hidden="true" />
+                  <span className="session-message-list__day-separator-line" aria-hidden="true" />
+                  <span className="session-message-list__day-separator-pill">
+                    {formatDayLabel(msg.createdAt)}
+                  </span>
+                  <span className="session-message-list__day-separator-line" aria-hidden="true" />
                 </div>
               ) : null}
 
               {showRoomShift ? (
-                <div className="chat-room-shift" aria-label={`Room shift to ${roomName}`}>
-                  <span className="chat-room-shift__line" aria-hidden="true" />
+                <div
+                  className="session-message-list__room-shift"
+                  aria-label={`Room shift to ${roomName}`}
+                >
+                  <span className="session-message-list__room-shift-line" aria-hidden="true" />
                   <span
-                    className={`chat-room-shift__pill ${msg.roomId === activeRoomId ? 'chat-room-shift__pill--active' : ''}`}
+                    className={`session-message-list__room-shift-pill ${msg.roomId === activeRoomId ? 'session-message-list__room-shift-pill--active' : ''}`}
                   >
                     {msg.roomId === activeRoomId ? 'In ' : 'From '}
                     {roomName}
@@ -457,12 +474,12 @@ export function MessageList({
               ) : null}
 
               <article
-                className={`chat-message ${msg.type === MessageType.WHISPER ? 'chat-message--whisper' : ''} ${isSelf ? 'chat-message--self' : ''} ${isGroupedWithPrevious ? 'chat-message--grouped' : ''}`}
+                className={`session-message-list__message ${msg.type === MessageType.WHISPER ? 'session-message-list__message--whisper' : ''} ${isSelf ? 'session-message-list__message--self' : ''} ${isGroupedWithPrevious ? 'session-message-list__message--grouped' : ''}`}
               >
-                <div className="chat-message__row">
+                <div className="session-message-list__message-row">
                   {!isSelf && !isGroupedWithPrevious ? (
                     <span
-                      className={`chat-message__avatar ${isSystem ? 'chat-message__avatar--system' : ''}`}
+                      className={`session-message-list__message-avatar ${isSystem ? 'session-message-list__message-avatar--system' : ''}`}
                       aria-hidden="true"
                     >
                       {authorAvatarUrl ? (
@@ -473,26 +490,26 @@ export function MessageList({
                     </span>
                   ) : (
                     <span
-                      className="chat-message__avatar chat-message__avatar--spacer"
+                      className="session-message-list__message-avatar session-message-list__message-avatar--spacer"
                       aria-hidden="true"
                     />
                   )}
 
-                  <div className="chat-message__content">
+                  <div className="session-message-list__message-content">
                     {!isGroupedWithPrevious ? (
-                      <div className="chat-message__meta">
-                        <span className="chat-message__author">{authorName}</span>
+                      <div className="session-message-list__message-meta">
+                        <span className="session-message-list__message-author">{authorName}</span>
                       </div>
                     ) : null}
 
                     <div
-                      className={`chat-message__bubble chat-message__bubble--${variant} ${bubbleWhisperClass} ${isSelf ? 'chat-message__bubble--self' : ''}`}
+                      className={`session-message-list__message-bubble session-message-list__message-bubble--${variant} ${bubbleWhisperClass} ${isSelf ? 'session-message-list__message-bubble--self' : ''}`}
                     >
                       {msg.type !== MessageType.WHISPER ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span
-                              className={`chat-message__type-icon ${typeIconClass} material-symbols-outlined`}
+                              className={`session-message-list__message-type-icon ${typeIconClass} material-symbols-outlined`}
                               aria-hidden="true"
                             >
                               {typeIcon}
@@ -503,32 +520,34 @@ export function MessageList({
                           </TooltipContent>
                         </Tooltip>
                       ) : null}
-                      <span className="chat-message__bubble-text">{msg.content}</span>
+                      <span className="session-message-list__message-bubble-text">
+                        {msg.content}
+                      </span>
                     </div>
 
                     <div
-                      className={`chat-message__footer ${hasWhisperRoute ? `chat-message__footer--whisper ${isSelf ? 'chat-message__footer--whisper-outgoing' : 'chat-message__footer--whisper-incoming'}` : ''}`}
+                      className={`session-message-list__message-footer ${hasWhisperRoute ? `session-message-list__message-footer--whisper ${isSelf ? 'session-message-list__message-footer--whisper-outgoing' : 'session-message-list__message-footer--whisper-incoming'}` : ''}`}
                     >
                       {hasWhisperRoute ? (
                         <div
-                          className={`chat-message__whisper-meta ${isSelf ? 'chat-message__whisper-meta--outgoing' : 'chat-message__whisper-meta--incoming'}`}
+                          className={`session-message-list__message-whisper-meta ${isSelf ? 'session-message-list__message-whisper-meta--outgoing' : 'session-message-list__message-whisper-meta--incoming'}`}
                         >
                           {!isSelf ? (
-                            <div className="chat-message__whisper-meta-row chat-message__whisper-meta-row--incoming">
-                              <div className="chat-message__timestamp chat-message__timestamp--whisper">
+                            <div className="session-message-list__message-whisper-meta-row session-message-list__message-whisper-meta-row--incoming">
+                              <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                                 {msg.editedAt ? 'edited · ' : ''}
                                 {formatRelativeTime(msg.createdAt)}
                               </div>
                               <div
-                                className={`chat-message__whisper-route chat-message__whisper-route--incoming-list ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                                className={`session-message-list__message-whisper-route session-message-list__message-whisper-route--incoming-list ${isDmWhisper ? 'session-message-list__message-whisper-route--dm' : ''}`}
                               >
                                 {whisperRouteEntries.map((line, index) => (
                                   <div
                                     key={`${msg.id}-whisper-${index}`}
-                                    className="chat-message__whisper-route-line"
+                                    className="session-message-list__message-whisper-route-line"
                                   >
                                     <span
-                                      className="chat-message__whisper-connector"
+                                      className="session-message-list__message-whisper-connector"
                                       aria-hidden="true"
                                     >
                                       <span
@@ -538,7 +557,7 @@ export function MessageList({
                                         subdirectory_arrow_right
                                       </span>
                                     </span>
-                                    <span className="chat-message__whisper-route-label">
+                                    <span className="session-message-list__message-whisper-route-label">
                                       {line}
                                     </span>
                                   </div>
@@ -548,18 +567,18 @@ export function MessageList({
                           ) : (
                             <>
                               <div
-                                className={`chat-message__whisper-route chat-message__whisper-route--stacked chat-message__whisper-route--outgoing ${isDmWhisper ? 'chat-message__whisper-route--dm' : ''}`}
+                                className={`session-message-list__message-whisper-route session-message-list__message-whisper-route--stacked session-message-list__message-whisper-route--outgoing ${isDmWhisper ? 'session-message-list__message-whisper-route--dm' : ''}`}
                               >
                                 {whisperRouteEntries.map((line, index) => (
                                   <div
                                     key={`${msg.id}-whisper-${index}`}
-                                    className="chat-message__whisper-route-line"
+                                    className="session-message-list__message-whisper-route-line"
                                   >
-                                    <span className="chat-message__whisper-route-label">
+                                    <span className="session-message-list__message-whisper-route-label">
                                       {line}
                                     </span>
                                     <span
-                                      className="chat-message__whisper-connector"
+                                      className="session-message-list__message-whisper-connector"
                                       aria-hidden="true"
                                     >
                                       <span
@@ -572,7 +591,7 @@ export function MessageList({
                                   </div>
                                 ))}
                               </div>
-                              <div className="chat-message__timestamp chat-message__timestamp--whisper">
+                              <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                                 {msg.editedAt ? 'edited · ' : ''}
                                 {formatRelativeTime(msg.createdAt)}
                               </div>
@@ -581,7 +600,7 @@ export function MessageList({
                         </div>
                       ) : null}
                       {!hasWhisperRoute ? (
-                        <div className="chat-message__timestamp">
+                        <div className="session-message-list__message-timestamp">
                           {msg.editedAt ? 'edited · ' : ''}
                           {formatRelativeTime(msg.createdAt)}
                         </div>

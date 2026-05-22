@@ -111,12 +111,12 @@ export function MessageInput({
     type === MessageType.WHISPER && !isWhisperGroupMode && !forceMessageType
 
   const inputToneClass = useMemo(() => {
-    if (type === MessageType.IC) return 'chat-input__textarea--ic'
-    if (type === MessageType.OOC) return 'chat-input__textarea--ooc'
+    if (type === MessageType.IC) return 'session-message-input__textarea--ic'
+    if (type === MessageType.OOC) return 'session-message-input__textarea--ooc'
     if (type === MessageType.WHISPER) {
-      return isDmRole ? 'chat-input__textarea--whisper-dm' : 'chat-input__textarea--whisper'
+      return isDmRole ? 'session-message-input__textarea--whisper-dm' : 'session-message-input__textarea--whisper'
     }
-    if (type === MessageType.DM) return 'chat-input__textarea--dm'
+    if (type === MessageType.DM) return 'session-message-input__textarea--dm'
     return ''
   }, [isDmRole, type])
 
@@ -220,10 +220,10 @@ export function MessageInput({
   }
 
   return (
-    <div className="chat-input">
+    <div className="session-message-input">
       {!forceMessageType ? (
         <div
-          className={`chat-input__type-stack ${canShowWhisperPicker && isWhisperPickerOpen ? 'chat-input__type-stack--picker-open' : ''}`}
+          className={`session-message-input__type-stack ${canShowWhisperPicker && isWhisperPickerOpen ? 'session-message-input__type-stack--picker-open' : ''}`}
           onMouseEnter={() => {
             if (canShowWhisperPicker) {
               setIsWhisperPickerOpen(true)
@@ -234,7 +234,7 @@ export function MessageInput({
           }}
         >
           <div
-            className="chat-input__types"
+            className="session-message-input__types"
             data-count={visibleTypes.length}
             role="radiogroup"
             aria-label="Message type"
@@ -266,15 +266,15 @@ export function MessageInput({
                           setIsWhisperPickerOpen(true)
                         }
                       }}
-                      className={`chat-input__type-toggle chat-input__type-toggle--${tone} ${isActive ? 'chat-input__type-toggle--active' : ''}`}
+                      className={`session-message-input__type-toggle session-message-input__type-toggle--${tone} ${isActive ? 'session-message-input__type-toggle--active' : ''}`}
                     >
                       <span
-                        className={`chat-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'chat-input__type-toggle-icon--muted' : ''}`}
+                        className={`session-message-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'session-message-input__type-toggle-icon--muted' : ''}`}
                         aria-hidden="true"
                       >
                         {meta.icon}
                       </span>
-                      <span className="chat-input__type-toggle-label">{meta.label}</span>
+                      <span className="session-message-input__type-toggle-label">{meta.label}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top">{meta.label}</TooltipContent>
@@ -285,17 +285,17 @@ export function MessageInput({
 
           {canShowWhisperPicker && isWhisperPickerOpen ? (
             <div
-              className={`chat-input__whisper-picker chat-input__whisper-picker--open ${isDmRole ? 'chat-input__whisper-picker--dm' : ''}`.trim()}
+              className={`session-message-input__whisper-picker session-message-input__whisper-picker--open ${isDmRole ? 'session-message-input__whisper-picker--dm' : ''}`.trim()}
               onMouseEnter={() => setIsWhisperPickerOpen(true)}
             >
-              <div className="chat-input__whisper-picker-header">
-                <span className="chat-input__whisper-picker-title">Whisper to</span>
-                <span className="chat-input__whisper-picker-current">
+              <div className="session-message-input__whisper-picker-header">
+                <span className="session-message-input__whisper-picker-title">Whisper to</span>
+                <span className="session-message-input__whisper-picker-current">
                   {selectedRecipient?.label ?? 'Select a player'}
                 </span>
               </div>
               <div
-                className="chat-input__whisper-picker-list"
+                className="session-message-input__whisper-picker-list"
                 role="listbox"
                 aria-label="Whisper recipients"
               >
@@ -313,21 +313,21 @@ export function MessageInput({
                           setRecipientId(option.id)
                           setIsWhisperPickerOpen(false)
                         }}
-                        className={`chat-input__whisper-recipient ${isSelected ? 'chat-input__whisper-recipient--selected' : ''}`}
+                        className={`session-message-input__whisper-recipient ${isSelected ? 'session-message-input__whisper-recipient--selected' : ''}`}
                       >
-                        <span className="chat-input__whisper-recipient-avatar" aria-hidden="true">
+                        <span className="session-message-input__whisper-recipient-avatar" aria-hidden="true">
                           {option.avatarUrl ? (
                             <img src={option.avatarUrl} alt="" />
                           ) : (
                             (option.label.trim()[0] || '?').toUpperCase()
                           )}
                         </span>
-                        <span className="chat-input__whisper-recipient-name">{option.label}</span>
+                        <span className="session-message-input__whisper-recipient-name">{option.label}</span>
                       </button>
                     )
                   })
                 ) : (
-                  <div className="chat-input__whisper-empty">No visible players to whisper to.</div>
+                  <div className="session-message-input__whisper-empty">No visible players to whisper to.</div>
                 )}
               </div>
             </div>
@@ -336,7 +336,7 @@ export function MessageInput({
       ) : null}
 
       {/* Input row */}
-      <div className="chat-input__composer">
+      <div className="session-message-input__composer">
         <textarea
           ref={textareaRef}
           value={content}
@@ -360,9 +360,9 @@ export function MessageInput({
           placeholder={inputPlaceholder}
           rows={2}
           maxLength={4000}
-          className={`chat-input__textarea ${inputToneClass}`.trim()}
+          className={`session-message-input__textarea ${inputToneClass}`.trim()}
         />
-        <button onClick={() => void handleSend()} disabled={!canSend} className="chat-input__send">
+        <button onClick={() => void handleSend()} disabled={!canSend} className="session-message-input__send">
           {isSending ? '…' : 'Send'}
         </button>
       </div>
