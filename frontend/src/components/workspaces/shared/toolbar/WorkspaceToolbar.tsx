@@ -39,17 +39,10 @@ export function WorkspaceToolbar({
         </div>
       </div>
 
-      {centerContent ? (
-        <div className="session-toolbar__zone session-toolbar__zone--center">{centerContent}</div>
-      ) : null}
+      {centerContent ? <div className="session-toolbar__center-slot">{centerContent}</div> : null}
 
       <div className="session-toolbar__zone session-toolbar__zone--right">
-        {extraActions ? (
-          <>
-            <div className="session-toolbar__extra-buttons">{extraActions}</div>
-            <span className="session-toolbar__separator" aria-hidden="true" />
-          </>
-        ) : null}
+        {extraActions ? <div className="session-toolbar__extra-buttons">{extraActions}</div> : null}
 
         <Tooltip>
           <TooltipTrigger asChild>

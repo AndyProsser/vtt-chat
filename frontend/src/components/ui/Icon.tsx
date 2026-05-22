@@ -18,6 +18,7 @@ type IconName =
   | 'stop'
   | 'timer'
   | 'hourglass'
+  | 'rocket_launch'
   | 'moon'
   | 'sun'
   | 'signal'
@@ -51,6 +52,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   stop: 'stop',
   timer: 'timer',
   hourglass: 'hourglass_top',
+  rocket_launch: 'rocket_launch',
   moon: 'dark_mode',
   sun: 'light_mode',
   signal: 'signal_cellular_alt',

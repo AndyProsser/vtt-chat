@@ -1,11 +1,14 @@
 import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
 import { InvitePopoverWidget } from '@/components/workspaces/shared/toolbar/InvitePopoverWidget'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { Icon } from '@/components/ui/Icon'
 import { useEditorWorkspaceToolbarActions } from '@/hooks/workspaces/useEditorWorkspaceToolbarActions'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 
 type EditorWorkspaceToolbarProps = {
   themeMode: 'light' | 'dark'
   dataUiState?: string
+  launchLabel?: string
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
   connectionStatus: LobbyConnectionStatus
@@ -14,6 +17,9 @@ type EditorWorkspaceToolbarProps = {
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onReturnToLobby: () => void
+  onLaunch?: () => void
+  isLaunchDisabled?: boolean
+  launchDisabledReason?: string
   showInviteWidget: boolean
   joinUrl: string
   spectatorsEnabled: boolean
@@ -46,6 +52,27 @@ export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
     />
   ) : undefined
 
+  const centerContent = props.onLaunch ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span>
+          <button
+            type="button"
+            className="session-toolbar__action session-toolbar__action--launch"
+            onClick={props.onLaunch}
+            disabled={props.isLaunchDisabled}
+          >
+            <Icon name="rocket_launch" />
+            <span>{props.launchLabel || 'Launch'}</span>
+          </button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="center">
+        {props.launchDisabledReason || props.launchLabel || 'Launch campaign'}
+      </TooltipContent>
+    </Tooltip>
+  ) : undefined
+
   return (
     <WorkspaceToolbar
       className="session-toolbar--lobby"
@@ -53,6 +80,7 @@ export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
       dataUiComponent="EditorWorkspaceToolbar"
       dataUiState={props.dataUiState}
       brandAriaLabel="Editor toolbar"
+      centerContent={centerContent}
       extraActions={inviteActions}
       themeMode={props.themeMode}
       onToggleTheme={props.onToggleTheme}

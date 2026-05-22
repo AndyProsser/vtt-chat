@@ -1,9 +1,9 @@
 .session-toolbar {
   width: 100%;
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto minmax(260px, 1fr);
+  display: flex;
   align-items: center;
   gap: 0.6rem;
+  position: relative;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 0.5rem 0.65rem;
@@ -23,16 +23,28 @@
 }
 
 .session-toolbar__zone--left {
+  flex: 1 1 auto;
   justify-content: flex-start;
+  min-width: 0;
 }
 
-.session-toolbar__zone--center {
-  justify-content: center;
-  min-width: 13.2rem;
+.session-toolbar__center-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 1;
 }
 
 .session-toolbar__zone--right {
+  flex: 0 0 auto;
   justify-content: flex-end;
+  margin-left: auto;
+  position: relative;
+  z-index: 2;
 }
 
 .session-toolbar__brand {
@@ -221,6 +233,13 @@
   min-width: 4.5rem;
 }
 
+.session-toolbar__action--launch {
+  background: color-mix(in srgb, #2563eb 78%, var(--color-surface));
+  border-color: color-mix(in srgb, #1e3a8a 56%, var(--color-border));
+  color: #eff6ff;
+  min-width: 7.25rem;
+}
+
 .session-toolbar__action--stop {
   background: color-mix(in srgb, #dc2626 82%, var(--color-surface));
   border-color: color-mix(in srgb, #7f1d1d 55%, var(--color-border));
@@ -308,6 +327,10 @@
   min-width: 1.95rem;
   padding-left: 0.42rem;
   padding-right: 0.42rem;
+}
+
+.session-toolbar__zone--center .session-toolbar__action--launch {
+  min-height: 1.95rem;
 }
 
 .session-toolbar__timer-pill strong {
@@ -519,25 +542,23 @@
 
 @media (max-width: 1080px) {
   .session-toolbar {
-    grid-template-columns: 1fr;
     gap: 0.46rem;
     padding: 0.5rem 0.56rem;
   }
 
   .session-toolbar__zone {
     justify-content: flex-start;
-    flex-wrap: wrap;
-    row-gap: 0.34rem;
+    flex-wrap: nowrap;
+    row-gap: 0;
   }
 
   .session-toolbar__campaign-pill {
     max-width: 100%;
   }
 
-  .session-toolbar__zone--center {
-    border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
-    padding: 0.34rem 0;
+  .session-toolbar__center-slot {
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .session-toolbar__timer-group {
@@ -549,7 +570,7 @@
   }
 
   .session-lobby-invite {
-    width: 100%;
+    width: auto;
     justify-content: flex-start;
     min-width: 0;
     margin-right: 0;

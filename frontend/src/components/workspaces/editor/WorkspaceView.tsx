@@ -65,6 +65,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         <EditorWorkspaceToolbar
           themeMode={props.themeMode}
           dataUiState="no-campaign"
+          launchLabel={props.campaign ? `Launch ${props.campaign.name}` : 'Launch'}
           isCreatingCampaign={props.isCreatingCampaign}
           isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
@@ -73,6 +74,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
+          onLaunch={props.campaign ? () => props.onLaunch(props.campaign.id) : undefined}
+          isLaunchDisabled={props.isLaunchDisabled}
+          launchDisabledReason={props.launchDisabledReason}
           showInviteWidget={props.showInviteWidget}
           joinUrl={props.joinUrl}
           spectatorsEnabled={props.spectatorsEnabled}
@@ -212,6 +216,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         <EditorWorkspaceToolbar
           themeMode={props.themeMode}
           dataUiState={resolvedActiveTab}
+          launchLabel={`Launch ${campaign.name}`}
           isCreatingCampaign={props.isCreatingCampaign}
           isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
@@ -220,6 +225,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
+          onLaunch={() => props.onLaunch(campaign.id)}
+          isLaunchDisabled={props.isLaunchDisabled}
+          launchDisabledReason={props.launchDisabledReason}
           showInviteWidget={props.showInviteWidget}
           joinUrl={props.joinUrl}
           spectatorsEnabled={props.spectatorsEnabled}
@@ -239,32 +247,6 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           <header className="session-lobby-workspace__header">
             <div className="session-lobby-workspace__title-wrap">
               <h3 className="session-card-title">{props.campaign.name}</h3>
-            </div>
-            <div className="session-action-row session-action-row--right session-action-row--compact">
-              <button
-                type="button"
-                className="session-button session-button-neutral"
-                onClick={props.onBackToLobby}
-              >
-                Back
-              </button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <button
-                      type="button"
-                      className="session-button session-button-brand"
-                      disabled={props.isLaunchDisabled}
-                      onClick={() => props.onLaunch(campaign.id)}
-                    >
-                      Launch
-                    </button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end">
-                  {props.launchDisabledReason || 'Launch campaign'}
-                </TooltipContent>
-              </Tooltip>
             </div>
           </header>
 
