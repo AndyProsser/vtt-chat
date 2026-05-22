@@ -106,3 +106,44 @@ export const JOURNAL_DM_ROASTS = [
   'The page is so empty it echoes.',
   'The heroes advanced the plot. The chronicler advanced excuses.',
 ] as const
+
+const JOURNAL_PLAYER_ROAST_PREFIXES = [
+  'We were apparently expected to remember all of this ourselves.',
+  "From the players' side of the table, this is looking suspiciously under-documented.",
+  'We survived the session. The recap did not.',
+  'Respectfully, our DM left the lore in initiative order and never came back for it.',
+  'As players, we would like to report a critical shortage of recap.',
+  'The party can confirm events occurred. The paperwork refuses to corroborate.',
+  'We brought character sheets. The DM brought confidence and no summary.',
+  'From where we are sitting, this feels less like mystery and more like missing admin.',
+  'The table remembers fragments. The journal remembers absolutely nothing.',
+  'We would ask the DM what happened last session, but apparently that was a stealth mission.',
+] as const
+
+function hashJournalSeed(seed: string): number {
+  let hash = 0
+
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0
+  }
+
+  return hash
+}
+
+export function getRandomJournalDmRoast(): string {
+  const index = Math.floor(Math.random() * JOURNAL_DM_ROASTS.length)
+  return JOURNAL_DM_ROASTS[index] ?? JOURNAL_DM_ROASTS[0]
+}
+
+export function getPlayerPerspectiveJournalRoast(seed: string, sessionName?: string): string {
+  const roastIndex = hashJournalSeed(`${seed}:roast`) % JOURNAL_DM_ROASTS.length
+  const prefixIndex = hashJournalSeed(`${seed}:prefix`) % JOURNAL_PLAYER_ROAST_PREFIXES.length
+  const prefix = JOURNAL_PLAYER_ROAST_PREFIXES[prefixIndex] ?? JOURNAL_PLAYER_ROAST_PREFIXES[0]
+  const roast = JOURNAL_DM_ROASTS[roastIndex] ?? JOURNAL_DM_ROASTS[0]
+
+  if (!sessionName) {
+    return `${prefix} ${roast}`
+  }
+
+  return `${prefix} Last session, ${sessionName} deserved better notes. ${roast}`
+}

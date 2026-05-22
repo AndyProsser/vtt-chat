@@ -26,6 +26,13 @@ import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
 export type MarkdownEditorVariant = 'full' | 'restricted'
 
+export interface MarkdownEditorInsertAction {
+  id: string
+  icon: string
+  label: string
+  onSelect: (currentMarkdown: string) => string | Promise<string>
+}
+
 export interface MarkdownEditorProps {
   value: string
   onChange?: (markdown: string) => void
@@ -33,6 +40,7 @@ export interface MarkdownEditorProps {
   placeholder?: string
   readOnly?: boolean
   variant?: MarkdownEditorVariant
+  insertActions?: MarkdownEditorInsertAction[]
   /** Additional className on the root element */
   className?: string
 }
@@ -51,10 +59,12 @@ export function MarkdownEditor({
   placeholder = 'Start writing…',
   readOnly = false,
   variant = 'full',
+  insertActions = [],
   className,
 }: MarkdownEditorProps) {
   const [mode, setMode] = useState<'rich' | 'raw'>('rich')
   const [rawValue, setRawValue] = useState(value)
+  const [pendingInsertActionId, setPendingInsertActionId] = useState<string | null>(null)
 
   const starterKitConfig =
     variant === 'restricted'
@@ -130,6 +140,35 @@ export function MarkdownEditor({
     setRawValue(sanitized)
     onChange?.(sanitized)
   }
+
+  const handleInsertAction = useCallback(
+    async (action: MarkdownEditorInsertAction) => {
+      if (pendingInsertActionId) {
+        return
+      }
+
+      setPendingInsertActionId(action.id)
+
+      try {
+        const insertedText = (await action.onSelect(mode === 'raw' ? rawValue : value)).trim()
+        if (!insertedText) {
+          return
+        }
+
+        if (mode === 'raw') {
+          const merged = [rawValue.trimEnd(), insertedText].filter(Boolean).join('\n\n')
+          setRawValue(merged)
+          onChange?.(merged)
+          return
+        }
+
+        editor?.chain().focus().insertContent(insertedText).run()
+      } finally {
+        setPendingInsertActionId(null)
+      }
+    },
+    [editor, mode, onChange, pendingInsertActionId, rawValue, value]
+  )
 
   const isActive = (name: string, attrs?: Record<string, unknown>) =>
     editor?.isActive(name, attrs) ?? false
@@ -264,6 +303,27 @@ export function MarkdownEditor({
         )}
 
         <span className="md-editor__toolbar-sep" aria-hidden="true" />
+
+        {insertActions.map((action) => (
+          <Tooltip key={action.id}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="md-editor__tool"
+                onClick={() => {
+                  void handleInsertAction(action)
+                }}
+                disabled={Boolean(pendingInsertActionId)}
+                aria-label={action.label}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{action.label}</TooltipContent>
+          </Tooltip>
+        ))}
 
         <Tooltip>
           <TooltipTrigger asChild>

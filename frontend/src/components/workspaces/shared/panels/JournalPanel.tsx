@@ -12,9 +12,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Role, UUID } from '@shared'
-import { JOURNAL_AI_UNAVAILABLE_COPY, JOURNAL_DM_ROASTS } from '@/constants/journal.constants'
+import {
+  JOURNAL_AI_UNAVAILABLE_COPY,
+  getPlayerPerspectiveJournalRoast,
+  getRandomJournalDmRoast,
+} from '@/constants/journal.constants'
 import { useStore } from '@/hooks/useStore'
-import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import {
+  MarkdownEditor,
+  type MarkdownEditorInsertAction,
+} from '@/components/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
@@ -453,9 +460,12 @@ export function JournalPanel({
   }, [contentHashtagSuggestions, hashtagSuggestions])
 
   const handleRoastDm = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * JOURNAL_DM_ROASTS.length)
-    setHelperMessage(JOURNAL_DM_ROASTS[randomIndex] ?? JOURNAL_DM_ROASTS[0])
+    setHelperMessage(getRandomJournalDmRoast())
   }, [])
+
+  const handleInsertRoast = useCallback(async () => {
+    return `> ${getPlayerPerspectiveJournalRoast(`${sessionId}:${draft}`, sessionName)}`
+  }, [draft, sessionId, sessionName])
 
   const mergedHashtagSuggestions = useMemo(
     () =>
@@ -463,6 +473,21 @@ export function JournalPanel({
         (tag, index, tags) => tags.indexOf(tag) === index
       ),
     [contentHashtagSuggestions, hashtagSuggestions]
+  )
+  const insertActions = useMemo<MarkdownEditorInsertAction[]>(
+    () => [
+      {
+        id: 'insert-dm-roast',
+        icon: 'theater_comedy',
+        label: 'Insert DM roast',
+        onSelect: handleInsertRoast,
+      },
+    ],
+    [handleInsertRoast]
+  )
+  const playerFacingRoast = useMemo(
+    () => getPlayerPerspectiveJournalRoast(String(sessionId), sessionName),
+    [sessionId, sessionName]
   )
 
   if (isLoading) {
@@ -516,10 +541,11 @@ export function JournalPanel({
         placeholder={
           isDm
             ? 'Write your session journal here — what happened, who was there, what changed…'
-            : 'No journal entry yet.'
+            : playerFacingRoast
         }
         readOnly={!isDm || !isEditing}
         variant="full"
+        insertActions={isDm && isEditing ? insertActions : []}
       />
 
       <div className="knowledge-panel__journal-meta">
@@ -618,9 +644,7 @@ export function JournalPanel({
         </div>
       ) : null}
 
-      {!isDm && !entry ? (
-        <p className="knowledge-panel-copy">The DM has not written a session journal entry yet.</p>
-      ) : null}
+      {!isDm && !entry ? <p className="knowledge-panel-copy">{playerFacingRoast}</p> : null}
     </section>
   )
 }
