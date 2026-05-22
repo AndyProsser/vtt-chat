@@ -99,6 +99,11 @@
   gap: var(--space-2);
 }
 
+.knowledge-panel__journal-edit-fields--single {
+  margin-top: var(--space-2);
+  max-width: 18rem;
+}
+
 .knowledge-panel-toolbar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -649,6 +654,16 @@
   font-size: 0.84rem;
   font-weight: 500;
   outline: none;
+}
+
+.knowledge-panel__journal-tag-input--wide {
+  width: min(100%, 28rem);
+}
+
+.knowledge-panel__journal-meta {
+  display: grid;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
 }
 
 .knowledge-panel__journal-title-input:focus {

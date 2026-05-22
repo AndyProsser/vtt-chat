@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionState, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -104,12 +104,15 @@ export function EditorJournalPanel({
     }))
   }, [])
 
-  const sortedSessions = [...sessions].sort((left, right) => right.createdAt - left.createdAt)
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((left, right) => right.createdAt - left.createdAt),
+    [sessions]
+  )
   const fallbackSession = sortedSessions[0] ?? null
   const effectiveSessionId = selectedSessionId ?? fallbackSession?.id ?? null
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
-  const recentSessions = sortedSessions.slice(0, 6)
+  const recentSessions = useMemo(() => sortedSessions.slice(0, 6), [sortedSessions])
   const effectiveStatus = effectiveSessionId
     ? journalStatusBySession[effectiveSessionId]
     : undefined

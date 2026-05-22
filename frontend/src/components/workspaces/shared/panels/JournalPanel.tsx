@@ -19,6 +19,7 @@ import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
 const AUTO_SAVE_DEBOUNCE_MS = 900
+const JOURNAL_TAG = '_journal'
 
 interface JournalPanelProps {
   apiUrl: string
@@ -34,19 +35,16 @@ interface JournalPanelProps {
 
 interface JournalEntry {
   id: string
-  name: string
-  hashtag: string
+  hashtags: string[]
   markdown: string
   updatedAt: number
   authorUsername?: string
 }
 
-// Shape returned by the current notes API (legacy NoteEntity)
 interface RawNote {
   id: string
   title?: string
   content?: string
-  // new contract fields (may not exist yet on backend)
   name?: string
   markdown?: string
   tags?: string[]
@@ -57,8 +55,6 @@ interface RawNote {
   authorId?: string
   authorUsername?: string
 }
-
-const JOURNAL_TAG = '_journal'
 
 function normalizeJournalHashtag(value: string, fallbackSeed = 'session-journal'): string {
   const stripped = value.trim().replace(/^#+/, '')
@@ -77,23 +73,51 @@ function buildDefaultJournalHashtag(sessionName?: string, sessionId?: UUID): str
   return normalizeJournalHashtag(sessionName || fallbackSeed, fallbackSeed)
 }
 
+function parseJournalHashtags(value: string, fallbackSeed: string): string[] {
+  const matches = value.match(/#?[a-z0-9][a-z0-9\s_-]*/gi) ?? []
+  const normalized = matches
+    .map((match) => normalizeJournalHashtag(match, fallbackSeed))
+    .filter((tag, index, tags) => tags.indexOf(tag) === index)
+
+  return normalized.length > 0 ? normalized : [normalizeJournalHashtag('', fallbackSeed)]
+}
+
+function serializeJournalHashtags(tags: string[]): string {
+  return tags.join(' ')
+}
+
+function buildHashtagSuggestions(sessionName?: string, sessionId?: UUID): string[] {
+  const base = buildDefaultJournalHashtag(sessionName, sessionId)
+  const sessionWords = (sessionName ?? '')
+    .split(/[^a-z0-9]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3)
+    .slice(0, 4)
+    .map((token) => normalizeJournalHashtag(token, token))
+
+  return [base, '#recap', '#cliffhanger', '#loot', '#npc', ...sessionWords].filter(
+    (tag, index, tags) => tags.indexOf(tag) === index
+  )
+}
+
 function extractJournalHashtag(
   tags: string[] | undefined,
   sessionName?: string,
   sessionId?: UUID
-): string {
-  const journalHashtag = (tags ?? []).find((tag) => tag !== JOURNAL_TAG)
-  return normalizeJournalHashtag(
-    journalHashtag || '',
-    buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
-  )
+): string[] {
+  const fallbackSeed = buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
+  const journalTags = (tags ?? [])
+    .filter((tag) => tag !== JOURNAL_TAG)
+    .map((tag) => normalizeJournalHashtag(tag, fallbackSeed))
+    .filter((tag, index, allTags) => allTags.indexOf(tag) === index)
+
+  return journalTags.length > 0 ? journalTags : [normalizeJournalHashtag('', fallbackSeed)]
 }
 
 function noteToEntry(note: RawNote, sessionName?: string, sessionId?: UUID): JournalEntry {
   return {
     id: note.id,
-    name: note.name ?? note.title ?? 'Session Journal',
-    hashtag: extractJournalHashtag(note.tags, sessionName, sessionId),
+    hashtags: extractJournalHashtag(note.tags, sessionName, sessionId),
     markdown: note.markdown ?? note.content ?? '',
     updatedAt: note.updatedAt ?? note.createdAt ?? Date.now(),
     authorUsername: note.authorUsername,
@@ -111,104 +135,108 @@ export function JournalPanel({
   onSaved,
 }: JournalPanelProps) {
   const isDm = role === 'DM'
+  const resolvedJournalTitle = sessionName ? `Journal - ${sessionName}` : 'Session Journal'
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
-  const [draft, setDraft] = useState<string>('')
-  const [draftName, setDraftName] = useState<string>('')
-  const [draftHashtag, setDraftHashtag] = useState<string>('')
+  const [draft, setDraft] = useState('')
+  const [draftHashtagsInput, setDraftHashtagsInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const addNote = useStore((state) => state.addNote)
-  const defaultName = useMemo(
-    () => (sessionName ? `Journal — ${sessionName}` : 'Session Journal'),
-    [sessionName]
-  )
   const defaultHashtag = useMemo(
     () => buildDefaultJournalHashtag(sessionName, sessionId),
     [sessionId, sessionName]
   )
+  const hashtagSuggestions = useMemo(
+    () => buildHashtagSuggestions(sessionName, sessionId),
+    [sessionId, sessionName]
+  )
+  const hashtagInputId = useMemo(() => `journal-hashtags-${String(sessionId)}`, [sessionId])
 
-  // ── Load journal entry for this session ──────────────────────────
   useEffect(() => {
     let cancelled = false
 
     const load = async () => {
       setIsLoading(true)
       setSaveError(null)
+
       try {
-        // Future: GET /api/journal/:sessionId
         const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        if (!res.ok) return
+
+        if (!res.ok) {
+          return
+        }
 
         const data = (await res.json()) as { notes?: RawNote[] }
         const notes = data.notes ?? []
-
-        // Find the note tagged as the session journal
         const journalNote = notes.find(
-          (n) => n.tags?.includes(JOURNAL_TAG) || n.title === 'Session Journal'
+          (note) =>
+            note.tags?.includes(JOURNAL_TAG) ||
+            note.title === 'Session Journal' ||
+            note.title === resolvedJournalTitle
         )
 
-        if (!cancelled) {
-          if (journalNote) {
-            const mapped = noteToEntry(journalNote, sessionName, sessionId)
-            setEntry(mapped)
-            setDraft(mapped.markdown)
-            setDraftName(mapped.name)
-            setDraftHashtag(mapped.hashtag)
-          } else {
-            // No journal note yet — seed an empty draft
-            setEntry(null)
-            setDraft('')
-            setDraftName(defaultName)
-            setDraftHashtag(defaultHashtag)
-          }
+        if (cancelled) {
+          return
+        }
+
+        if (journalNote) {
+          const mapped = noteToEntry(journalNote, sessionName, sessionId)
+          setEntry(mapped)
+          setDraft(mapped.markdown)
+          setDraftHashtagsInput(serializeJournalHashtags(mapped.hashtags))
+        } else {
+          setEntry(null)
+          setDraft('')
+          setDraftHashtagsInput(defaultHashtag)
         }
       } catch {
         // Non-critical: editor still usable
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     void load()
+
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, sessionName, defaultHashtag, defaultName])
+  }, [apiUrl, token, sessionId, sessionName, defaultHashtag, resolvedJournalTitle])
 
   useEffect(() => {
     setIsEditing(isDm && autoEdit)
   }, [autoEdit, isDm, sessionId])
 
-  const normalizedDraftHashtag = useMemo(
-    () => normalizeJournalHashtag(draftHashtag, defaultHashtag.slice(1)),
-    [defaultHashtag, draftHashtag]
+  const normalizedDraftHashtags = useMemo(
+    () => parseJournalHashtags(draftHashtagsInput, defaultHashtag.slice(1)),
+    [defaultHashtag, draftHashtagsInput]
   )
   const hasDraftContent = draft.trim().length > 0
   const hasUnsavedChanges = entry
     ? draft !== entry.markdown ||
-      draftName !== entry.name ||
-      normalizedDraftHashtag !== entry.hashtag
+      serializeJournalHashtags(normalizedDraftHashtags) !== serializeJournalHashtags(entry.hashtags)
     : hasDraftContent
 
-  // ── Save (create or update) ──────────────────────────────────────
   const handleSave = useCallback(async () => {
-    if (!isDm || isSaving || !hasUnsavedChanges) return
+    if (!isDm || isSaving || !hasUnsavedChanges) {
+      return
+    }
+
     setIsSaving(true)
     setSaveError(null)
-    const normalizedHashtag = normalizedDraftHashtag
 
     try {
       let res: Response
 
       if (entry) {
-        // Update existing note
-        // Future: PUT /api/journal/:sessionId
         res = await fetch(`${apiUrl}/api/notes/${sessionId}/${entry.id}`, {
           method: 'PATCH',
           headers: {
@@ -216,16 +244,14 @@ export function JournalPanel({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            title: draftName,
+            title: resolvedJournalTitle,
+            name: resolvedJournalTitle,
             content: draft,
-            // new contract fields
-            name: draftName,
             markdown: draft,
-            tags: [JOURNAL_TAG, normalizedHashtag],
+            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
           }),
         })
       } else {
-        // Create new journal note
         res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
           method: 'POST',
           headers: {
@@ -233,13 +259,12 @@ export function JournalPanel({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            title: draftName,
+            title: resolvedJournalTitle,
+            name: resolvedJournalTitle,
             content: draft,
-            // new contract fields
-            name: draftName,
             markdown: draft,
             visibility: 'PLAYERS_VISIBLE',
-            tags: [JOURNAL_TAG, normalizedHashtag],
+            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
           }),
         })
       }
@@ -250,31 +275,33 @@ export function JournalPanel({
       }
 
       const data = (await res.json()) as { note?: RawNote }
-      if (data.note) {
-        const saved = noteToEntry(data.note, sessionName, sessionId)
-        setEntry(saved)
-        setDraft(saved.markdown)
-        setDraftName(saved.name)
-        setDraftHashtag(saved.hashtag)
-        // Sync into notes store so other panels see it
-        addNote(sessionId, {
-          id: saved.id as UUID,
-          ownerId: undefined,
-          ownerUsername: saved.authorUsername,
-          title: saved.name,
-          content: saved.markdown,
-          visibility: 'PLAYERS_VISIBLE' as any,
-          tags: [JOURNAL_TAG, saved.hashtag],
-          allowedUsers: [],
-          createdAt: saved.updatedAt,
-          updatedAt: saved.updatedAt,
-        })
-        onSaved?.({
-          sessionId,
-          hasJournal: true,
-          hasContent: saved.markdown.trim().length > 0,
-        })
+      if (!data.note) {
+        return
       }
+
+      const saved = noteToEntry(data.note, sessionName, sessionId)
+      setEntry(saved)
+      setDraft(saved.markdown)
+      setDraftHashtagsInput(serializeJournalHashtags(saved.hashtags))
+
+      addNote(sessionId, {
+        id: saved.id as UUID,
+        ownerId: undefined,
+        ownerUsername: saved.authorUsername,
+        title: resolvedJournalTitle,
+        content: saved.markdown,
+        visibility: 'PLAYERS_VISIBLE' as any,
+        tags: [JOURNAL_TAG, ...saved.hashtags],
+        allowedUsers: [],
+        createdAt: saved.updatedAt,
+        updatedAt: saved.updatedAt,
+      })
+
+      onSaved?.({
+        sessionId,
+        hasJournal: true,
+        hasContent: saved.markdown.trim().length > 0,
+      })
 
       if (!autoEdit) {
         setIsEditing(false)
@@ -285,20 +312,20 @@ export function JournalPanel({
       setIsSaving(false)
     }
   }, [
-    apiUrl,
-    token,
-    sessionId,
-    entry,
-    draft,
-    draftName,
-    isDm,
     addNote,
-    sessionName,
-    normalizedDraftHashtag,
+    apiUrl,
     autoEdit,
-    onSaved,
-    isSaving,
+    draft,
+    entry,
     hasUnsavedChanges,
+    isDm,
+    isSaving,
+    normalizedDraftHashtags,
+    onSaved,
+    resolvedJournalTitle,
+    sessionId,
+    sessionName,
+    token,
   ])
 
   useEffect(() => {
@@ -313,7 +340,7 @@ export function JournalPanel({
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [autoSave, isDm, isLoading, isEditing, isSaving, hasUnsavedChanges, handleSave])
+  }, [autoSave, handleSave, hasUnsavedChanges, isDm, isEditing, isLoading, isSaving])
 
   const handleBlurSave = useCallback(
     (event?: React.FocusEvent<HTMLElement>) => {
@@ -328,23 +355,21 @@ export function JournalPanel({
 
       void handleSave()
     },
-    [autoSave, hasUnsavedChanges, handleSave, isDm, isSaving]
+    [autoSave, handleSave, hasUnsavedChanges, isDm, isSaving]
   )
 
   const handleCancel = useCallback(() => {
     if (entry) {
       setDraft(entry.markdown)
-      setDraftName(entry.name)
-      setDraftHashtag(entry.hashtag)
+      setDraftHashtagsInput(serializeJournalHashtags(entry.hashtags))
     } else {
-      setDraftName(defaultName)
-      setDraftHashtag(defaultHashtag)
+      setDraft('')
+      setDraftHashtagsInput(defaultHashtag)
     }
+
     setIsEditing(false)
     setSaveError(null)
-  }, [defaultHashtag, defaultName, entry])
-
-  // ── Render ───────────────────────────────────────────────────────
+  }, [defaultHashtag, entry])
 
   if (isLoading) {
     return (
@@ -354,8 +379,7 @@ export function JournalPanel({
     )
   }
 
-  const displayName = entry?.name ?? draftName
-  const displayHashtag = entry?.hashtag ?? draftHashtag
+  const displayHashtags = entry?.hashtags ?? normalizedDraftHashtags
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
 
   return (
@@ -363,37 +387,11 @@ export function JournalPanel({
       <header className="knowledge-panel-header">
         <div>
           <p className="knowledge-panel-eyebrow">Session Journal</p>
-          {isEditing ? (
-            <div className="knowledge-panel__journal-edit-fields">
-              <input
-                className="knowledge-panel__journal-title-input"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                onBlur={handleBlurSave}
-                placeholder="Journal title…"
-                maxLength={120}
-                aria-label="Journal title"
-              />
-              <input
-                className="knowledge-panel__journal-tag-input"
-                value={draftHashtag}
-                onChange={(e) => setDraftHashtag(e.target.value)}
-                onBlur={handleBlurSave}
-                placeholder="#last-session"
-                maxLength={64}
-                aria-label="Journal hashtag"
-              />
-            </div>
-          ) : (
-            <h3 className="knowledge-panel-title">
-              <Icon name="journal" />
-              {displayName || 'Session Journal'}
-            </h3>
-          )}
+          <h3 className="knowledge-panel-title">
+            <Icon name="journal" />
+            {sessionName || 'Session Journal'}
+          </h3>
           <div className="knowledge-panel-chip-row">
-            {displayHashtag ? (
-              <span className="knowledge-panel-chip muted">{displayHashtag}</span>
-            ) : null}
             {lastUpdated && !isEditing ? (
               <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
                 Last updated {lastUpdated}
@@ -402,7 +400,7 @@ export function JournalPanel({
           </div>
         </div>
 
-        {isDm && !isEditing && (
+        {isDm && !isEditing ? (
           <button
             type="button"
             className="knowledge-panel-chip"
@@ -414,10 +412,12 @@ export function JournalPanel({
             </span>
             Edit
           </button>
-        )}
+        ) : null}
       </header>
 
-      {saveError && <p className="knowledge-panel-copy knowledge-panel-copy--error">{saveError}</p>}
+      {saveError ? (
+        <p className="knowledge-panel-copy knowledge-panel-copy--error">{saveError}</p>
+      ) : null}
 
       <MarkdownEditor
         value={draft}
@@ -432,7 +432,41 @@ export function JournalPanel({
         variant="full"
       />
 
-      {isDm && isEditing && !autoSave && (
+      <div className="knowledge-panel__journal-meta">
+        <span className="knowledge-panel-group-title">Hashtags</span>
+        {isEditing ? (
+          <>
+            <input
+              className="knowledge-panel__journal-tag-input knowledge-panel__journal-tag-input--wide"
+              value={draftHashtagsInput}
+              onChange={(event) => setDraftHashtagsInput(event.target.value)}
+              onBlur={handleBlurSave}
+              placeholder="#recap #loot #npc"
+              maxLength={160}
+              aria-label="Journal hashtags"
+              list={hashtagInputId}
+            />
+            <datalist id={hashtagInputId}>
+              {hashtagSuggestions.map((tag) => (
+                <option key={tag} value={`${draftHashtagsInput.trim()} ${tag}`.trim()} />
+              ))}
+            </datalist>
+            <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
+              Separate tags with spaces, like `#recap #npc #loot`.
+            </p>
+          </>
+        ) : (
+          <div className="knowledge-panel-chip-row">
+            {displayHashtags.map((tag) => (
+              <span key={tag} className="knowledge-panel-chip muted">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isDm && isEditing && !autoSave ? (
         <div className="knowledge-panel__journal-actions">
           <button
             type="button"
@@ -453,11 +487,11 @@ export function JournalPanel({
             Cancel
           </button>
         </div>
-      )}
+      ) : null}
 
-      {!isDm && !entry && (
+      {!isDm && !entry ? (
         <p className="knowledge-panel-copy">The DM has not written a session journal entry yet.</p>
-      )}
+      ) : null}
     </section>
   )
 }
