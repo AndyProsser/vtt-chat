@@ -11,6 +11,7 @@ import {
   parsePlayerInviteCode,
 } from '@/utils/session/sessionInit'
 import { getCampaignDisplayState, getCampaignEntryAction } from '@/types/session/campaign'
+import type { EditorWorkspaceView } from '@/types/workspaces'
 
 type UseSessionInitCampaignEntryOrchestrationParams = {
   apiUrl: string
@@ -27,7 +28,7 @@ type UseSessionInitCampaignEntryOrchestrationParams = {
   setShowJoinCampaignModal: Dispatch<SetStateAction<boolean>>
   setNewCampaignName: Dispatch<SetStateAction<string>>
   setJoinInviteInput: Dispatch<SetStateAction<string>>
-  setEditorWorkspaceView: Dispatch<SetStateAction<'lobby' | 'editor'>>
+  setEditorWorkspaceView: Dispatch<SetStateAction<EditorWorkspaceView>>
   setIsCreatingCampaign: Dispatch<SetStateAction<boolean>>
   setIsJoiningCampaign: Dispatch<SetStateAction<boolean>>
   setError: Dispatch<SetStateAction<string | null>>

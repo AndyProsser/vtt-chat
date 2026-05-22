@@ -8,10 +8,11 @@ import {
 import { CampaignSettingsPanel } from '@/components/workspaces/shared/panels/CampaignSettingsPanel'
 import { WorkspaceView } from '@/components/workspaces/editor/WorkspaceView'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
+import type { EditorWorkspaceView } from '@/types/workspaces'
 
 type EditorWorkspaceProps = {
   hasSessionSelected: boolean
-  editorWorkspaceView: 'lobby' | 'editor'
+  editorWorkspaceView: EditorWorkspaceView
   selectedCampaign: CampaignSummary | null
   membershipRole: Role
   themeMode: 'light' | 'dark'

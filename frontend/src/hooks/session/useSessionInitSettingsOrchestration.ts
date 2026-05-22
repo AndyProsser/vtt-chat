@@ -14,6 +14,7 @@ import {
   normalizeSessionRecord,
 } from '@/utils/session/sessionInit'
 import { createCampaignSettingsController } from '@/utils/session/sessionController'
+import type { EditorWorkspaceView } from '@/types/workspaces'
 
 type UseSessionInitSettingsOrchestrationParams = {
   apiUrl: string
@@ -45,7 +46,7 @@ type UseSessionInitSettingsOrchestrationParams = {
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
-  setEditorWorkspaceView: Dispatch<SetStateAction<'lobby' | 'editor'>>
+  setEditorWorkspaceView: Dispatch<SetStateAction<EditorWorkspaceView>>
   setError: Dispatch<SetStateAction<string | null>>
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
 }

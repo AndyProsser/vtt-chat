@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, Role, MessageType, isGreenroomSessionState } from '@shared'
-import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
+import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
@@ -30,12 +30,13 @@ import { EditorWorkspace } from './EditorWorkspace'
 import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
 import type { ModalsProps } from '@/types/modals'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
-import type { LobbyStats } from '@/types/session/lobby'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
 import { useSessionInitSettingsOrchestration } from '@/hooks/session/useSessionInitSettingsOrchestration'
 import { useSessionInitWsRetryToast } from '@/hooks/session/useSessionInitWsRetryToast'
+import { useSessionInitLobbyData } from '@/hooks/session/useSessionInitLobbyData'
+import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import {
   ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
@@ -44,15 +45,12 @@ import {
   DEFAULT_CHAT_GROUPING_WINDOW_MS,
   DEFAULT_PLANNED_DURATION_MINUTES,
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
-  LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
-  LOBBY_NOTICE_STORAGE_KEY,
   MAX_POSTER_DATA_URL_CHARS,
   MAX_POSTER_WIDTH_PX,
 } from '@/constants/sessionInit.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '@/utils/telemetry'
 import { fetchSessionNotesOnce } from '../../utils/notesFetch'
 import { generateClientId } from '../../utils/uuid'
-import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Note } from '@/types/notes'
 import type { Message } from '@/types/chat'
@@ -64,38 +62,25 @@ import type {
 import type {
   ActiveSessionContext,
   ApiBroadcastState,
-  ApiDiscoverableCampaign,
-  ApiPlatformStatusResponse,
   ApiSessionStats,
   SessionInitProps as WorkspaceInitializationProps,
 } from '@/types/session/session-init'
-import {
-  type CampaignSettingsPayload,
-  type CampaignSummary,
-  getCampaignEntryAction,
-  getCampaignDisplayState,
-  resolveMembershipRole,
-} from '@/types/session/campaign'
+import { getCampaignEntryAction, resolveMembershipRole } from '@/types/session/campaign'
 import {
   buildCharacterDraft,
-  buildDefaultChapterName,
   buildRoomEnvironmentPreset,
-  DEFAULT_CHARACTER_SETTINGS,
-  formatDurationCompact,
-  getPreferredSession,
   getVisibleRoomsForSessionState,
   isGreenRoom,
   isSessionBookendMessage,
   normalizeSessionRecord,
-  parsePlayerInviteCode,
   resolveGreenroomCacheTtlMs,
   safeLocalStorageGetItem,
   safeLocalStorageRemoveItem,
   safeLocalStorageSetItem,
   SESSION_TIMER_SYNC_POLL_MS,
-  toSessionStateValue,
   toValidPostSessionDurationMinutes,
 } from '@/utils/session/sessionInit'
+import type { EditorWorkspaceView } from '@/types/workspaces'
 import '@/styles/components/workspaces/session/session-init/SessionInit.css'
 
 export function WorkspaceInitialization({
@@ -107,36 +92,12 @@ export function WorkspaceInitialization({
   onReady,
 }: WorkspaceInitializationProps) {
   const showToast = useToast()
-
-  const detectThemeMode = (): FrontendThemeMode => {
-    if (typeof document === 'undefined') {
-      return 'light'
-    }
-
-    return document.documentElement.classList.contains(FRONTEND_THEME_CLASSES.dark)
-      ? 'dark'
-      : 'light'
-  }
-
-  const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
-  const [discoverableCampaigns, setDiscoverableCampaigns] = useState<CampaignSummary[]>([])
-  const [selectedCampaignId, setSelectedCampaignId] = useState<UUID | ''>('')
-  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
+  const { themeMode, toggleThemeMode } = useFrontendThemeMode()
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
   const [newCampaignName, setNewCampaignName] = useState('')
   const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
-  const [editorWorkspaceView, setEditorWorkspaceView] = useState<'lobby' | 'editor'>('lobby')
-  const [lobbyStats, setLobbyStats] = useState<LobbyStats>({
-    activeSessions: 0,
-    connectedPlayersAndDms: 0,
-    connectedSpectators: 0,
-    peakConcurrentUsers24h: 0,
-    totalTimePlayedLabel: '0m',
-    activeCampaigns: 0,
-    pausedCampaigns: 0,
-    averageSessionDurationLabel: '0m',
-  })
+  const [editorWorkspaceView, setEditorWorkspaceView] = useState<EditorWorkspaceView>('lobby')
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false)
   const [showJoinCampaignModal, setShowJoinCampaignModal] = useState(false)
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
@@ -149,8 +110,6 @@ export function WorkspaceInitialization({
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
-  const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
-  const lobbyCampaignReloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Campaign settings hook
   const [campaignSettings, campaignSettingsActions] = useCampaignSettings()
@@ -212,7 +171,6 @@ export function WorkspaceInitialization({
   const [error, setError] = useState<string | null>(null)
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
-  const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
     if (typeof window === 'undefined') {
       return DEFAULT_CHAT_GROUPING_WINDOW_MS
@@ -409,206 +367,29 @@ export function WorkspaceInitialization({
     ? (typedSessions[currentSessionId] ?? null)
     : null
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
-
-  const applyLobbyStatsSnapshot = useCallback((snapshot: CampaignLobbyStatsUpdatedPayload) => {
-    setLobbyStats({
-      activeSessions: Math.max(0, Math.floor(snapshot.activeSessions || 0)),
-      connectedPlayersAndDms: Math.max(0, Math.floor(snapshot.connectedPlayersAndDms || 0)),
-      connectedSpectators: Math.max(0, Math.floor(snapshot.connectedSpectators || 0)),
-      peakConcurrentUsers24h: Math.max(0, Math.floor(snapshot.peakConcurrentUsers24h || 0)),
-      totalTimePlayedLabel: formatDurationCompact(snapshot.totalEndedSessionDurationMs || 0),
-      activeCampaigns: Math.max(0, Math.floor(snapshot.activeCampaigns || 0)),
-      pausedCampaigns: Math.max(0, Math.floor(snapshot.pausedCampaigns || 0)),
-      averageSessionDurationLabel: formatDurationCompact(
-        snapshot.averageEndedSessionDurationMs || 0
-      ),
-    })
-  }, [])
-
-  const loadCampaigns = useCallback(
-    async ({ showLoading = true, surfaceError = true } = {}) => {
-      if (showLoading) {
-        setIsLoadingCampaigns(true)
-      }
-      if (surfaceError) {
-        setError(null)
-      }
-
-      try {
-        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to load campaigns')
-        }
-
-        const data = await response.json()
-        const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
-        const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
-        const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
-        setCampaigns(nextCampaigns)
-
-        if (pendingNotice) {
-          setLobbyNotice(pendingNotice)
-          sessionStorage.removeItem(LOBBY_NOTICE_STORAGE_KEY)
-        }
-
-        if (nextCampaigns.length > 0) {
-          const pendingCampaign = pendingCampaignId
-            ? nextCampaigns.find((campaign) => campaign.id === pendingCampaignId)
-            : null
-
-          if (pendingCampaign) {
-            setSelectedCampaignId(pendingCampaign.id)
-          } else {
-            setSelectedCampaignId((prev) => prev || (nextCampaigns[0].id as UUID))
-          }
-        } else {
-          setSelectedCampaignId('')
-          clearSessions()
-        }
-
-        sessionStorage.removeItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
-        return nextCampaigns
-      } catch (err) {
-        if (surfaceError) {
-          const message = err instanceof Error ? err.message : 'An error occurred'
-          setError(message)
-        }
-        return null
-      } finally {
-        if (showLoading) {
-          setIsLoadingCampaigns(false)
-        }
-      }
-    },
-    [apiUrl, clearSessions, fetchWithAuthGuard, token]
-  )
-
-  const loadDiscoverableCampaigns = useCallback(
-    async ({ surfaceError = false } = {}) => {
-      if (user.authType === 'GUEST') {
-        setDiscoverableCampaigns([])
-        return []
-      }
-
-      try {
-        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/discover`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to load discoverable campaigns')
-        }
-
-        const data = (await response.json()) as { campaigns?: ApiDiscoverableCampaign[] }
-        const nextCampaigns = (data.campaigns || []).map((campaign) => ({
-          ...campaign,
-          latestSessionState: campaign.activeSessionState ?? null,
-          isMember: false,
-        })) as CampaignSummary[]
-
-        setDiscoverableCampaigns(nextCampaigns)
-        return nextCampaigns
-      } catch (err) {
-        setDiscoverableCampaigns([])
-        if (surfaceError) {
-          const message = err instanceof Error ? err.message : 'An error occurred'
-          setError(message)
-        }
-        return null
-      }
-    },
-    [apiUrl, fetchWithAuthGuard, token, user.authType]
-  )
-
-  const loadLobbyCampaignData = useCallback(
-    async ({ showLoading = true, surfaceError = true } = {}) => {
-      const nextCampaigns = await loadCampaigns({ showLoading, surfaceError })
-
-      // Discover campaigns are secondary UX data. Never let discover failures
-      // block or delay the member campaign list from rendering.
-      void loadDiscoverableCampaigns({ surfaceError: false })
-
-      return nextCampaigns
-    },
-    [loadCampaigns, loadDiscoverableCampaigns]
-  )
-
-  const loadLobbyStats = useCallback(async () => {
-    try {
-      const statusResponse = await fetchWithAuthGuard(`${apiUrl}/api/platform/status`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!statusResponse.ok) {
-        const errorData = await statusResponse.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to load lobby stats')
-      }
-
-      const statusPayload = (await statusResponse.json()) as ApiPlatformStatusResponse
-      if (statusPayload.lobbyStats) {
-        applyLobbyStatsSnapshot(statusPayload.lobbyStats)
-        return
-      }
-
-      setLobbyStats((current) => ({
-        ...current,
-        activeSessions:
-          typeof statusPayload.activeSessions === 'number'
-            ? Math.max(0, Math.floor(statusPayload.activeSessions))
-            : current.activeSessions,
-        peakConcurrentUsers24h:
-          typeof statusPayload.peakConcurrentUsers24h === 'number'
-            ? Math.max(0, Math.floor(statusPayload.peakConcurrentUsers24h))
-            : current.peakConcurrentUsers24h,
-      }))
-    } catch {
-      // Keep the existing lobby snapshot when refresh fails.
-    }
-  }, [apiUrl, applyLobbyStatsSnapshot, fetchWithAuthGuard, token])
-
-  const handleCampaignListInvalidated = useCallback(() => {
-    if (lobbyCampaignReloadTimeoutRef.current) {
-      clearTimeout(lobbyCampaignReloadTimeoutRef.current)
-    }
-
-    lobbyCampaignReloadTimeoutRef.current = setTimeout(() => {
-      void loadLobbyCampaignData({ showLoading: false, surfaceError: false })
-    }, 250)
-  }, [loadLobbyCampaignData])
-
-  const handleLobbyStatsUpdated = useCallback(
-    (event: EventEnvelope) => {
-      const payload = event.payload as Partial<CampaignLobbyStatsUpdatedPayload>
-      if (typeof payload.activeSessions !== 'number') {
-        return
-      }
-
-      applyLobbyStatsSnapshot(payload as CampaignLobbyStatsUpdatedPayload)
-    },
-    [applyLobbyStatsSnapshot]
-  )
-  const handlePartyPresenceUpdated = useCallback(
-    (event: EventEnvelope) => {
-      const payload = event.payload as { campaignId?: UUID }
-      if (!payload.campaignId || payload.campaignId !== selectedCampaignId) {
-        return
-      }
-
-      setPartyPresenceRefreshVersion((current) => current + 1)
-    },
-    [selectedCampaignId]
-  )
+  const {
+    campaigns,
+    setCampaigns,
+    discoverableCampaigns,
+    selectedCampaignId,
+    setSelectedCampaignId,
+    isLoadingCampaigns,
+    lobbyStats,
+    partyPresenceRefreshVersion,
+    handleCampaignListInvalidated,
+    handleLobbyStatsUpdated,
+    handlePartyPresenceUpdated,
+  } = useSessionInitLobbyData({
+    apiUrl,
+    token,
+    userAuthType: user.authType,
+    fetchWithAuthGuard,
+    clearSessions,
+    replaceSessions,
+    fetchCampaignSessionsData,
+    setError,
+    setLobbyNotice,
+  })
 
   // WebSocket connection
   const {
@@ -626,14 +407,6 @@ export function WorkspaceInitialization({
     onLobbyStatsUpdated: handleLobbyStatsUpdated,
     onPartyPresenceUpdated: handlePartyPresenceUpdated,
   })
-
-  useEffect(() => {
-    return () => {
-      if (lobbyCampaignReloadTimeoutRef.current) {
-        clearTimeout(lobbyCampaignReloadTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const currentPauseStats = currentSessionId
     ? (pauseStats[currentSessionId] ?? {
@@ -1226,31 +999,6 @@ export function WorkspaceInitialization({
   }, [activeTransitionNotice, hideTransitionToast])
 
   useEffect(() => {
-    void Promise.all([loadLobbyCampaignData(), loadLobbyStats()])
-  }, [loadLobbyCampaignData, loadLobbyStats])
-
-  useEffect(() => {
-    const loadCampaignSessions = async () => {
-      if (!selectedCampaignId) {
-        clearSessions()
-        return
-      }
-
-      setError(null)
-
-      try {
-        const nextSessions = await fetchCampaignSessionsData(selectedCampaignId)
-        replaceSessions(nextSessions)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'An error occurred'
-        setError(message)
-      }
-    }
-
-    void loadCampaignSessions()
-  }, [selectedCampaignId, clearSessions, replaceSessions, fetchCampaignSessionsData])
-
-  useEffect(() => {
     if (!showCampaignSettingsModal || !settingsReferenceSessionId) {
       campaignSettingsActions.setIsSettingsReferenceNotesLoading(false)
       campaignSettingsActions.setSettingsReferenceNotesError(null)
@@ -1674,16 +1422,7 @@ export function WorkspaceInitialization({
     }
   }
 
-  const handleToggleTheme = () => {
-    const nextTheme: FrontendThemeMode = themeMode === 'dark' ? 'light' : 'dark'
-    document.documentElement.classList.remove(
-      FRONTEND_THEME_CLASSES.light,
-      FRONTEND_THEME_CLASSES.dark
-    )
-    document.documentElement.classList.add(FRONTEND_THEME_CLASSES[nextTheme])
-    safeLocalStorageSetItem('vtt-theme-mode', nextTheme)
-    setThemeMode(nextTheme)
-  }
+  const handleToggleTheme = toggleThemeMode
 
   const handleLogoff = () => {
     if (currentSession && currentSession.dmId !== user.id) {
