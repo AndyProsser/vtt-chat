@@ -74,14 +74,15 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
             )}
           </section>
         </div>
-      ) : (
+      ) : props.campaignId ? (
         <NotesPanel
           apiUrl={props.apiUrl}
           token={props.token}
+          campaignId={props.campaignId}
           sessionId={props.currentSessionId}
           user={props.effectiveSessionUser}
         />
-      )}
+      ) : null}
     </div>
   )
 }

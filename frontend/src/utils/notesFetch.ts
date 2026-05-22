@@ -16,6 +16,7 @@ type ApiNote = {
 }
 
 const inFlightSessionNotes = new Map<string, Promise<Note[]>>()
+const inFlightCampaignNotes = new Map<string, Promise<Note[]>>()
 
 function toNote(note: ApiNote): Note {
   return {
@@ -67,6 +68,49 @@ export function fetchSessionNotesOnce(
     .finally(() => {
       if (inFlightSessionNotes.get(key) === request) {
         inFlightSessionNotes.delete(key)
+      }
+    })
+    .catch(() => {
+      // The caller observes the request failure; this cleanup chain should not rethrow.
+    })
+
+  return request
+}
+
+/**
+ * Fetches campaign-linked notes with in-flight dedupe so multiple notes surfaces
+ * do not trigger duplicate campaign note requests.
+ */
+export function fetchCampaignNotesOnce(
+  apiUrl: string,
+  campaignId: UUID,
+  token: string
+): Promise<Note[]> {
+  const key = `${apiUrl}|${campaignId}|${token}`
+  const existing = inFlightCampaignNotes.get(key)
+  if (existing) {
+    return existing
+  }
+
+  const request = (async () => {
+    const response = await fetch(`${apiUrl}/api/notes/campaign/${campaignId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.message ?? `HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+    return (data.notes || []).map((note: ApiNote) => toNote(note))
+  })()
+
+  inFlightCampaignNotes.set(key, request)
+  void request
+    .finally(() => {
+      if (inFlightCampaignNotes.get(key) === request) {
+        inFlightCampaignNotes.delete(key)
       }
     })
     .catch(() => {

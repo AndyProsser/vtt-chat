@@ -4,6 +4,7 @@ import type { StoredNote } from '@/types/notes.types'
 
 export interface NoteRecordRow {
   id: string
+  campaignId: string | null
   sessionId: string
   authorId: string
   authorUsername: string
@@ -45,6 +46,7 @@ export function canViewNote(note: StoredNote, requesterId: UUID, requesterRole: 
 export function mapStoredNote(row: NoteRecordRow): StoredNote {
   return {
     id: row.id as UUID,
+    campaignId: row.campaignId ? (row.campaignId as UUID) : undefined,
     sessionId: row.sessionId as UUID,
     authorId: row.authorId as UUID,
     authorUsername: row.authorUsername,

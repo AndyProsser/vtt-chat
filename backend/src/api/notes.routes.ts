@@ -14,10 +14,13 @@ import {
   createNote,
   deleteNote,
   getNoteById,
+  getVisibleCampaignNotes,
   getVisibleNotes,
   markNotePublished,
   updateNote,
 } from '@/services/notes.service'
+import { getCampaignForUser } from '@/repositories/campaign.repository'
+import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { MessageType } from '@shared'
 import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
@@ -72,6 +75,51 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
+async function resolveCampaignRole(
+  campaignId: UUID,
+  userId: UUID
+): Promise<'DM' | 'PLAYER' | 'SPECTATOR' | null> {
+  const campaign = await getCampaignForUser({ campaignId, userId })
+  if (!campaign) {
+    return null
+  }
+
+  if (campaign.currentDmId === userId || campaign.memberRole === 'DM') {
+    return 'DM'
+  }
+
+  if (campaign.memberRole === 'PLAYER') {
+    return 'PLAYER'
+  }
+
+  if (campaign.memberRole === 'SPECTATOR') {
+    return 'SPECTATOR'
+  }
+
+  return null
+}
+
+router.get('/campaign/:campaignId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  const requesterRole = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+
+  const notes = await getVisibleCampaignNotes(
+    campaignId as UUID,
+    user.userId as UUID,
+    requesterRole
+  )
+  return res.status(200).json({ notes })
+})
+
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { sessionId } = req.params
@@ -102,12 +150,11 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { sessionId, title, content, visibility, tags, allowedUsers } = parseCreateNoteRequest(
-    req.body
-  )
+  const { campaignId, sessionId, title, content, visibility, tags, allowedUsers } =
+    parseCreateNoteRequest(req.body)
 
-  if (!isValidUUID(sessionId)) {
-    return res.status(400).json({ code: ErrorCode.INVALID_SESSION, message: 'Invalid sessionId' })
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
   }
   if (!isValidNoteTitle(title)) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid note title' })
@@ -121,22 +168,43 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid note visibility' })
   }
 
-  const session = await getSession(sessionId as UUID)
-  if (!session) {
-    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  const requesterRole = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
 
-  const authz = await resolveEffectiveSessionRole({
-    sessionId: session.id,
-    userId: user.userId as UUID,
-  })
-  if (!authz.ok) {
-    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
-      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
-      message: authz.message,
+  let noteSession = null as Awaited<ReturnType<typeof getSession>>
+  if (sessionId) {
+    if (!isValidUUID(sessionId)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_SESSION, message: 'Invalid sessionId' })
+    }
+
+    noteSession = await getSession(sessionId as UUID)
+    if (!noteSession) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (getSessionCampaignId(noteSession) !== (campaignId as UUID)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Session does not belong to campaign',
+      })
+    }
+  }
+
+  if (!noteSession) {
+    const sessions = await listSessionsByCampaign(campaignId)
+    noteSession = sessions[0] ? await getSession(sessions[0].id as UUID) : null
+  }
+
+  if (!noteSession) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'Create a session first to anchor campaign notes',
     })
   }
-  const requesterRole = authz.role
 
   if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
@@ -145,7 +213,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   }
 
   const note = await createNote({
-    sessionId: session.id,
+    campaignId: campaignId as UUID,
+    sessionId: noteSession.id,
     authorId: user.userId as UUID,
     authorUsername: user.username,
     title,
@@ -156,8 +225,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   })
 
   await appendSessionAuditEvent({
-    sessionId: session.id,
-    campaignId: getSessionCampaignId(session),
+    sessionId: noteSession.id,
+    campaignId: getSessionCampaignId(noteSession),
     actorUserId: user.userId as UUID,
     actorRole: requesterRole,
     actionType: 'NOTES.CREATED',
@@ -181,7 +250,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       version: 1,
       userId: user.userId as UUID,
       userRole: requesterRole as any,
-      sessionId: session.id,
+      sessionId: noteSession.id,
       roomId: null,
       timestamp: note.createdAt,
       payload: {
@@ -197,13 +266,13 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     wsManager.broadcastEventToSession(
-      session.id,
+      noteSession.id,
       event,
       noteVisibleTo({
         authorId: note.authorId,
         visibility: note.visibility,
         allowedUsers: note.allowedUsers,
-        dmId: session.dmId,
+        dmId: noteSession.dmId,
       })
     )
   }

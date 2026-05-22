@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import { NoteVisibility, Role, RoomType, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
-import { fetchSessionNotesOnce } from '@/utils/notesFetch'
+import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 
 interface NotesPanelProps {
   apiUrl: string
   token: string
-  sessionId: UUID
+  campaignId: UUID
+  sessionId?: UUID | null
   user: { id: UUID; role: Role | string }
 }
 
@@ -25,8 +26,8 @@ interface SessionRoomShareOption {
   type: RoomType
 }
 
-export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) {
-  const notesBySession = useStore((state) => (state.notes as any)[sessionId]) as
+export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: NotesPanelProps) {
+  const notesByCampaign = useStore((state) => (state.notes as any)[campaignId]) as
     | Record<UUID, Note>
     | undefined
   const addNote = useStore((state) => state.addNote)
@@ -34,8 +35,8 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   const updateNote = useStore((state) => state.updateNote)
   const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
-    () => Object.values(notesBySession || {}).sort((a, b) => b.updatedAt - a.updatedAt),
-    [notesBySession]
+    () => Object.values(notesByCampaign || {}).sort((a, b) => b.updatedAt - a.updatedAt),
+    [notesByCampaign]
   )
 
   const [isLoading, setIsLoading] = useState(true)
@@ -66,11 +67,11 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       setError(null)
 
       try {
-        const fetchedNotes = await fetchSessionNotesOnce(apiUrl, sessionId, token)
+        const fetchedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
         if (!cancelled) {
-          clearNotes(sessionId)
+          clearNotes(campaignId)
           for (const note of fetchedNotes) {
-            addNote(sessionId, note)
+            addNote(campaignId, note)
           }
         }
       } catch (err) {
@@ -88,37 +89,45 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     return () => {
       cancelled = true
     }
-  }, [addNote, apiUrl, clearNotes, sessionId, token])
+  }, [addNote, apiUrl, campaignId, clearNotes, token])
 
   useEffect(() => {
     let cancelled = false
 
     const loadShareContext = async () => {
       try {
-        const [membersRes, roomsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/session/${sessionId}/members`, {
+        const [partyRes, roomsRes] = await Promise.all([
+          fetch(`${apiUrl}/api/campaign/${campaignId}/party-presence`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          sessionId
+            ? fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            : Promise.resolve(null),
         ])
 
-        if (!membersRes.ok) {
+        if (!partyRes.ok) {
           return
         }
 
-        const membersData = await membersRes.json()
-        const users = Array.isArray(membersData.users) ? membersData.users : []
-        const playerUsers = users.filter(
-          (candidate: SessionUserSummary) =>
-            candidate.id !== user.id && candidate.role === Role.PLAYER
-        )
+        const membersData = await partyRes.json()
+        const users = Array.isArray(membersData.members) ? membersData.members : []
+        const playerUsers = users
+          .filter(
+            (candidate: { userId: UUID; username: string; role: Role | string }) =>
+              candidate.userId !== user.id && candidate.role === Role.PLAYER
+          )
+          .map((candidate: { userId: UUID; username: string; role: Role | string }) => ({
+            id: candidate.userId,
+            username: candidate.username,
+            role: candidate.role,
+          }))
 
         let shareableRooms: SessionRoomShareOption[] = []
         let nextRoomMembers: Record<UUID, UUID[]> = {}
 
-        if (roomsRes.ok) {
+        if (roomsRes && roomsRes.ok) {
           const roomsData = await roomsRes.json()
           const rooms = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
           shareableRooms = rooms.filter(
@@ -172,7 +181,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     return () => {
       cancelled = true
     }
-  }, [apiUrl, sessionId, token, user.id])
+  }, [apiUrl, campaignId, sessionId, token, user.id])
 
   const addAllowedUsers = (candidateIds: string[]) => {
     const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)
@@ -217,6 +226,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          campaignId,
           sessionId,
           title,
           content,
@@ -233,7 +243,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
       const data = await res.json()
       const note = data.note
-      addNote(sessionId, {
+      addNote(campaignId, {
         id: note.id,
         ownerId: note.authorId,
         ownerUsername: note.authorUsername,
@@ -281,7 +291,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
 
     const data = await res.json()
     const note = data.note
-    updateNote(sessionId, note.id, {
+    updateNote(campaignId, note.id, {
       title: note.title,
       content: note.content,
       visibility: note.visibility,
@@ -299,7 +309,6 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ sessionId }),
     })
 
     if (!res.ok) {
@@ -319,7 +328,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
 
-    deleteNote(sessionId, noteId as UUID)
+    deleteNote(campaignId, noteId as UUID)
   }
 
   return (

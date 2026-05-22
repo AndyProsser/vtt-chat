@@ -35,6 +35,7 @@ export function noteVisibleTo(note: {
 export function parseCreateNoteRequest(body: unknown): NotesCreateRequest {
   const candidate = (body || {}) as Record<string, unknown>
   return {
+    campaignId: String(candidate.campaignId || '') as UUID,
     sessionId: String(candidate.sessionId || '') as UUID,
     title: String(candidate.title || ''),
     content: String(candidate.content || ''),

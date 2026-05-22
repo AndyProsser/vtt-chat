@@ -80,6 +80,7 @@ export interface MessageEntity {
 
 export interface NoteEntity {
   id: UUID
+  campaignId?: UUID
   sessionId?: UUID
   authorId?: UUID
   ownerId?: UUID

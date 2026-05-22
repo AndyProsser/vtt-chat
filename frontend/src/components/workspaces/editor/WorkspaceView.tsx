@@ -132,27 +132,12 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     }
 
     if (resolvedActiveTab === 'notes') {
-      if (!notesSessionId) {
-        return (
-          <CampaignScaffoldPanel
-            title="Campaign Notes"
-            iconName="notes"
-            subtitle="Create a session before drafting player-shareable notes."
-            sections={[
-              'Notes are linked to a session and a note title',
-              'Custom sharing can target specific players',
-              'Group sharing expands to the players currently in that group',
-            ]}
-            campaignName={campaign.name}
-          />
-        )
-      }
-
       return (
         <NotesPanel
-          key={notesSessionId}
+          key={`${campaign.id}:${notesSessionId || 'no-session-context'}`}
           apiUrl={props.apiUrl}
           token={props.authToken}
+          campaignId={campaign.id}
           sessionId={notesSessionId}
           user={{ id: props.currentUserId, role: props.role }}
         />

@@ -5,6 +5,7 @@ import type { StoredNote } from '@/types/notes.types'
 import { createNoteRecord } from '@/repositories/notes.repository'
 
 export async function createNote(params: {
+  campaignId?: UUID
   sessionId: UUID
   authorId: UUID
   authorUsername: string
@@ -17,6 +18,7 @@ export async function createNote(params: {
   const now = Date.now()
   const note: StoredNote = {
     id: randomUUID() as UUID,
+    campaignId: params.campaignId,
     sessionId: params.sessionId,
     authorId: params.authorId,
     authorUsername: params.authorUsername,

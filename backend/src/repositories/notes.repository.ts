@@ -36,6 +36,7 @@ export async function createNoteRecord(params: {
 export async function listSessionNotes(sessionId: string): Promise<
   Array<{
     id: string
+    campaignId: string | null
     sessionId: string
     authorId: string
     authorUsername: string
@@ -52,10 +53,68 @@ export async function listSessionNotes(sessionId: string): Promise<
   const rows = await prisma.note.findMany({
     where: { sessionId },
     orderBy: { updatedAt: 'desc' },
+    include: {
+      session: {
+        select: {
+          campaignId: true,
+        },
+      },
+    },
   })
 
   return rows.map((row: any) => ({
     id: row.id,
+    campaignId: row.session.campaignId,
+    sessionId: row.sessionId,
+    authorId: row.authorId,
+    authorUsername: row.authorUsername,
+    title: row.title,
+    content: row.content,
+    visibility: row.visibility,
+    tags: row.tags,
+    allowedUsers: row.allowedUsers,
+    publishedAt: row.publishedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }))
+}
+
+export async function listCampaignNotes(campaignId: string): Promise<
+  Array<{
+    id: string
+    campaignId: string | null
+    sessionId: string
+    authorId: string
+    authorUsername: string
+    title: string
+    content: string
+    visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
+    tags: unknown
+    allowedUsers: unknown
+    publishedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+  }>
+> {
+  const rows = await prisma.note.findMany({
+    where: {
+      session: {
+        campaignId,
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      session: {
+        select: {
+          campaignId: true,
+        },
+      },
+    },
+  })
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    campaignId: row.session.campaignId,
     sessionId: row.sessionId,
     authorId: row.authorId,
     authorUsername: row.authorUsername,
@@ -72,6 +131,7 @@ export async function listSessionNotes(sessionId: string): Promise<
 
 export async function findNoteById(noteId: string): Promise<{
   id: string
+  campaignId: string | null
   sessionId: string
   authorId: string
   authorUsername: string
@@ -86,12 +146,20 @@ export async function findNoteById(noteId: string): Promise<{
 } | null> {
   const row = await prisma.note.findUnique({
     where: { id: noteId },
+    include: {
+      session: {
+        select: {
+          campaignId: true,
+        },
+      },
+    },
   })
 
   if (!row) return null
 
   return {
     id: row.id,
+    campaignId: row.session.campaignId,
     sessionId: row.sessionId,
     authorId: row.authorId,
     authorUsername: row.authorUsername,

@@ -1,6 +1,7 @@
 import type { NoteVisibility, UUID } from '@shared'
 
 export interface NotesCreateRequest {
+  campaignId: UUID
   sessionId: UUID
   title: string
   content: string
