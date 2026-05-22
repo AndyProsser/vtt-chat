@@ -42,6 +42,7 @@ import { useWorkspacesSettingsReferenceNotes } from '@/hooks/session/useWorkspac
 import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryToast'
 import { useWorkspacesTelemetry } from '@/hooks/session/useWorkspacesTelemetry'
 import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
+import { useWorkspacesActiveSessionContext } from '@/hooks/session/useWorkspacesActiveSessionContext'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -65,7 +66,6 @@ import type {
   SessionPresence as PresenceRecord,
 } from '@/types/room'
 import type {
-  ActiveSessionContext,
   ApiBroadcastState,
   ApiSessionStats,
   WorkspacesProps as WorkspaceInitializationProps,
@@ -79,7 +79,6 @@ import {
   normalizeSessionRecord,
   safeLocalStorageGetItem,
   safeLocalStorageRemoveItem,
-  safeLocalStorageSetItem,
   SESSION_TIMER_SYNC_POLL_MS,
 } from '@/utils/session/workspaces'
 import type { EditorWorkspaceView } from '@/types/workspaces'
@@ -1070,87 +1069,17 @@ export function WorkspaceInitialization({
     setError,
   })
 
-  useEffect(() => {
-    if (isLoadingCampaigns || currentSessionId || lobbyAutoEnterTriggeredRef.current) {
-      return
-    }
-
-    setIsCampaignRestorePending(true)
-
-    const pendingAutoEnterCampaignId = sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
-    const rawActiveSessionContext =
-      sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY) ||
-      safeLocalStorageGetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-
-    let activeSessionContext: ActiveSessionContext | null = null
-    if (rawActiveSessionContext) {
-      try {
-        const parsed = JSON.parse(rawActiveSessionContext) as Partial<ActiveSessionContext>
-        if (parsed.campaignId && parsed.sessionId) {
-          activeSessionContext = {
-            campaignId: parsed.campaignId,
-            sessionId: parsed.sessionId,
-          }
-
-          // Keep session storage warm after hard refresh if local storage carried context.
-          sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, rawActiveSessionContext)
-        }
-      } catch {
-        clearPersistedActiveSessionContext()
-      }
-    }
-
-    const restoreCampaignId =
-      activeSessionContext?.campaignId || (pendingAutoEnterCampaignId as UUID | null)
-    if (!restoreCampaignId) {
-      setIsCampaignRestorePending(false)
-      return
-    }
-
-    const pendingCampaign = campaigns.find((campaign) => campaign.id === restoreCampaignId)
-
-    sessionStorage.removeItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
-
-    if (!pendingCampaign) {
-      clearPersistedActiveSessionContext()
-      setIsCampaignRestorePending(false)
-      return
-    }
-
-    lobbyAutoEnterTriggeredRef.current = true
-    void (async () => {
-      try {
-        await handleEnterCampaign(pendingCampaign.id, activeSessionContext?.sessionId)
-      } finally {
-        setIsCampaignRestorePending(false)
-      }
-    })()
-  }, [
+  useWorkspacesActiveSessionContext({
+    isLoadingCampaigns,
+    currentSessionId,
+    lobbyAutoEnterTriggeredRef,
     campaigns,
     clearPersistedActiveSessionContext,
-    currentSessionId,
+    setIsCampaignRestorePending,
     handleEnterCampaign,
-    isLoadingCampaigns,
-  ])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    if (!currentSession || !selectedCampaignId) {
-      return
-    }
-
-    const context: ActiveSessionContext = {
-      campaignId: selectedCampaignId,
-      sessionId: currentSession.id,
-    }
-
-    const serializedContext = JSON.stringify(context)
-    window.sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
-    safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
-  }, [currentSession, selectedCampaignId])
+    currentSession,
+    selectedCampaignId,
+  })
 
   const {
     pendingInviteReissueType,
