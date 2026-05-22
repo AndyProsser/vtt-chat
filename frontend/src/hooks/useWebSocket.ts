@@ -14,6 +14,8 @@ import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
 import { logger } from '../utils/logger'
 
+const WS_CONNECT_DEFER_MS = 75
+
 export interface UseWebSocketOptions {
   url: string
   token: string
@@ -55,6 +57,27 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const clientRef = useRef<WebSocketClient | null>(null)
   const dispatcherRef = useRef<EventDispatcher | null>(null)
+  const onAuthFailureRef = useRef<typeof onAuthFailure>(onAuthFailure)
+  const onCampaignListInvalidatedRef =
+    useRef<typeof onCampaignListInvalidated>(onCampaignListInvalidated)
+  const onLobbyStatsUpdatedRef = useRef<typeof onLobbyStatsUpdated>(onLobbyStatsUpdated)
+  const onPartyPresenceUpdatedRef = useRef<typeof onPartyPresenceUpdated>(onPartyPresenceUpdated)
+
+  useEffect(() => {
+    onAuthFailureRef.current = onAuthFailure
+  }, [onAuthFailure])
+
+  useEffect(() => {
+    onCampaignListInvalidatedRef.current = onCampaignListInvalidated
+  }, [onCampaignListInvalidated])
+
+  useEffect(() => {
+    onLobbyStatsUpdatedRef.current = onLobbyStatsUpdated
+  }, [onLobbyStatsUpdated])
+
+  useEffect(() => {
+    onPartyPresenceUpdatedRef.current = onPartyPresenceUpdated
+  }, [onPartyPresenceUpdated])
 
   // Initialize WebSocket client and dispatcher
   useEffect(() => {
@@ -78,7 +101,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         }
       },
       onError: setError,
-      onAuthFailure,
+      onAuthFailure: (reason) => {
+        onAuthFailureRef.current?.(reason)
+      },
       onEvent: (event) => {
         if (dispatcherRef.current) {
           dispatcherRef.current.dispatch(event)
@@ -313,11 +338,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     // Campaign events
     dispatcher.register('CAMPAIGN:LIST_INVALIDATED', (event) => {
-      onCampaignListInvalidated?.(event)
+      onCampaignListInvalidatedRef.current?.(event)
     })
-    dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) => onLobbyStatsUpdated?.(event))
+    dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) =>
+      onLobbyStatsUpdatedRef.current?.(event)
+    )
     dispatcher.register('CAMPAIGN:PARTY_PRESENCE_UPDATED', (event) => {
-      onPartyPresenceUpdated?.(event)
+      onPartyPresenceUpdatedRef.current?.(event)
     })
 
     // Metadata events (WS internal)
@@ -328,8 +355,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     clientRef.current = client
     dispatcherRef.current = dispatcher
 
-    // Delay connect by one tick so StrictMode mount/unmount churn can cancel
-    // before transport starts, reducing noisy refresh-time browser WS warnings.
+    // Delay connect briefly so StrictMode probe mount/unmount churn can cancel
+    // before transport starts, reducing page-load connect/disconnect flapping.
     let cancelled = false
     const connectTimeoutId = setTimeout(() => {
       if (cancelled) {
@@ -340,7 +367,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         logger.error('ws.hook', 'Failed to connect', err)
         setError(err)
       })
-    }, 0)
+    }, WS_CONNECT_DEFER_MS)
 
     // Cleanup
     return () => {
@@ -353,16 +380,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       }
       dispatcherRef.current = null
     }
-  }, [
-    enabled,
-    onAuthFailure,
-    onCampaignListInvalidated,
-    onLobbyStatsUpdated,
-    onPartyPresenceUpdated,
-    sessionId,
-    token,
-    url,
-  ])
+  }, [enabled, sessionId, token, url])
 
   const send = (event: EventEnvelope) => {
     if (clientRef.current) {
