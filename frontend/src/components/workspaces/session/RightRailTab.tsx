@@ -8,6 +8,7 @@ import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/Cam
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { NotesRailPanel } from '@/components/workspaces/shared/panels/NotesRailPanel'
+import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
 import type { CampaignSummary } from '@/types/session/campaign'
 
@@ -100,18 +101,23 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         )
       }
       roomsPanel={
-        <CampaignScaffoldPanel
-          title="Groups"
-          iconName="rooms"
-          subtitle="Voice group configuration is being rebuilt around campaign-level controls."
-          sections={[
-            'DM-only group management',
-            'Greenroom pre-create support',
-            'Group defaults and templates',
-            'Campaign routing and policy',
-          ]}
-          campaignName={props.selectedCampaign?.name}
-        />
+        props.selectedCampaign && props.campaignId ? (
+          <GroupsPanelSession
+            sessionId={props.currentSessionId}
+            sessionState={props.currentSessionState}
+            campaignId={props.campaignId}
+            apiUrl={props.apiUrl}
+            token={props.token}
+          />
+        ) : (
+          <CampaignScaffoldPanel
+            title="Groups"
+            iconName="rooms"
+            subtitle="Groups panel unavailable."
+            sections={['Load a campaign and start a session to manage groups.']}
+            campaignName={props.selectedCampaign?.name}
+          />
+        )
       }
       audioPanel={
         <CampaignScaffoldPanel

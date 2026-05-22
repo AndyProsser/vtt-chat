@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { UUID } from '@shared'
 import { useStore } from '@/state/store'
-import { useToast } from '@/core-ui/Toast'
+import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
 import {
   fetchCampaignGroups,
@@ -40,7 +40,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
   token,
   isLoading = false,
 }) => {
-  const toast = useToast()
+  const showToast = useToast()
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleteConfirming, setIsDeleteConfirming] = useState<UUID | null>(null)
   const [environmentPickerTarget, setEnvironmentPickerTarget] = useState<UUID | null>(null)
@@ -57,12 +57,12 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
         setCampaignGroups(campaignId, groups)
       } catch (err) {
         logger.error('GroupsPanelEditor', 'Failed to load campaign groups', err)
-        toast.error('Failed to load groups. Please try again.')
+        showToast({ message: 'Failed to load groups. Please try again.', variant: 'error' })
       }
     }
 
     loadGroups()
-  }, [campaignId, token, apiUrl, setCampaignGroups, toast])
+  }, [campaignId, token, apiUrl, setCampaignGroups, showToast])
 
   const handleCreateGroup = async (name: string) => {
     try {
@@ -73,11 +73,11 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       const updated = [...campaignGroups, newGroup]
       setCampaignGroups(campaignId, updated)
 
-      toast.success(`Group "${name}" created`)
+      showToast({ message: `Group "${name}" created`, variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelEditor', 'Failed to create group', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to create group'
-      toast.error(errorMsg)
+      showToast({ message: errorMsg, variant: 'error' })
     } finally {
       setIsCreating(false)
     }
@@ -92,11 +92,11 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       const updated = campaignGroups.filter((g) => g.id !== groupId)
       setCampaignGroups(campaignId, updated)
 
-      toast.success('Group deleted')
+      showToast({ message: 'Group deleted', variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelEditor', 'Failed to delete group', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete group'
-      toast.error(errorMsg)
+      showToast({ message: errorMsg, variant: 'error' })
     }
   }
 
@@ -111,11 +111,11 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       )
       setCampaignGroups(campaignId, updated)
 
-      toast.success(`Environment set to "${environmentName}"`)
+      showToast({ message: `Environment set to "${environmentName}"`, variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelEditor', 'Failed to set environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
-      toast.error(errorMsg)
+      showToast({ message: errorMsg, variant: 'error' })
     }
   }
 
@@ -129,11 +129,11 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       )
       setCampaignGroups(campaignId, updated)
 
-      toast.success('Environment cleared')
+      showToast({ message: 'Environment cleared', variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelEditor', 'Failed to clear environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to clear environment'
-      toast.error(errorMsg)
+      showToast({ message: errorMsg, variant: 'error' })
     }
   }
 

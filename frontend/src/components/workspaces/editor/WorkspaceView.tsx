@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { GroupsPanelEditor } from '@/components/workspaces/editor/GroupsPanel.editor'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
@@ -172,17 +173,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
     if (resolvedActiveTab === 'rooms') {
       return (
-        <CampaignScaffoldPanel
-          title="Rooms"
-          iconName="rooms"
-          subtitle="Campaign room planning outside a live session."
-          sections={[
-            'Review persistent group structure',
-            'Prepare room-level environment defaults',
-            'Validate room naming before launch',
-          ]}
-          campaignName={campaign.name}
-        />
+        <GroupsPanelEditor campaignId={campaign.id} apiUrl={props.apiUrl} token={props.authToken} />
       )
     }
 
