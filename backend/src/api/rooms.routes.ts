@@ -14,6 +14,7 @@ import { addUserToSession, getSession, getSessionUsers } from '@/services/sessio
 import { clearRoomMessages } from '@/services/chat.service'
 import { config } from '@/infra/config'
 import {
+  closeRoom,
   createRoom,
   deleteRoom,
   endWhisperBubbleForSession,
@@ -1181,6 +1182,192 @@ async function deleteRoomHandler(req: Request, res: Response) {
   }
 }
 
+async function closeRoomHandler(req: Request, res: Response) {
+  const user = (req as any).user
+  const { roomId } = req.params
+  const sessionId = req.body?.sessionId || req.query?.sessionId
+
+  if (!isValidUUID(roomId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid roomId' })
+  }
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
+  }
+
+  try {
+    const room = await getRoom(roomId as UUID)
+    if (!room) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (room.sessionId !== (sessionId as UUID)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'roomId does not belong to sessionId' })
+    }
+
+    const session = await getSession(sessionId as UUID)
+    if (!session) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+    }
+
+    if (
+      await rejectRoomMutationDuringTakeover({
+        sessionId: sessionId as UUID,
+        userId: user.userId as UUID,
+        res,
+      })
+    ) {
+      return
+    }
+
+    if (session.dmId !== (user.userId as UUID)) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM can close rooms' })
+    }
+
+    if (room.type === RoomType.MAIN) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be closed' })
+    }
+
+    if (room.type === RoomType.PRIVATE) {
+      return endWhisperHandler(req, res)
+    }
+
+    if (isGreenRoomName(room.name)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Greenroom cannot be closed' })
+    }
+
+    let mainRoom = (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN)
+    if (!mainRoom) {
+      await ensureSessionDefaultRoomsForSession(sessionId as UUID, session.dmId)
+      mainRoom = (await getRooms(sessionId as UUID)).find((entry) => entry.type === RoomType.MAIN)
+    }
+
+    if (!mainRoom) {
+      return internalErrorResponse(res)
+    }
+
+    const reconciledMoves = await ensureNoHomelessPresence(sessionId as UUID, session.dmId)
+    const closed = await closeRoom({
+      sessionId: sessionId as UUID,
+      roomId: room.id,
+      mainRoomId: mainRoom.id,
+    })
+
+    await appendSessionAuditEvent({
+      sessionId: sessionId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: user.role,
+      actionType: 'ROOM_CLOSED',
+      targetType: 'ROOM',
+      targetId: room.id,
+      roomId: room.id,
+      visibilityClass: 'SYSTEM',
+      metadata: {
+        movedToRoomId: mainRoom.id,
+        movedUserCount: closed.movedUserIds.length,
+      },
+    })
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      broadcastReconciledMoves({
+        wsManager,
+        sessionId: sessionId as UUID,
+        movedUsers: reconciledMoves,
+        actorUserId: user.userId as UUID,
+        actorUserRole: user.role as Role,
+        reason: 'ROOM_FAILBACK_RECONCILE',
+      })
+
+      const timestamp = Date.now()
+
+      for (const moved of closed.movedUsers) {
+        const leftEvent: EventEnvelope = {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_LEFT',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: room.id,
+          timestamp,
+          payload: {
+            roomId: room.id,
+            userId: moved.userId,
+            username: moved.username,
+            leftAt: timestamp,
+            reason: 'ROOM_CLOSED',
+            movedBy: user.userId,
+          },
+        }
+        wsManager.broadcastEventToSession(sessionId as UUID, leftEvent)
+
+        const joinedEvent: EventEnvelope = {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:USER_JOINED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: sessionId as UUID,
+          roomId: mainRoom.id,
+          timestamp,
+          payload: {
+            roomId: mainRoom.id,
+            userId: moved.userId,
+            username: moved.username,
+            joinedAt: timestamp,
+            movedBy: user.userId,
+            reason: 'ROOM_CLOSED',
+          },
+        }
+        wsManager.broadcastEventToSession(sessionId as UUID, joinedEvent)
+      }
+
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'ROOM:CLOSED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: sessionId as UUID,
+        roomId: room.id,
+        timestamp,
+        payload: {
+          closedGroupId: room.id,
+          movedUsers: closed.movedUsers.map((entry) => ({
+            userId: entry.userId,
+            username: entry.username,
+            fromGroupId: room.id,
+            toGroupId: mainRoom.id,
+          })),
+        },
+      }
+      wsManager.broadcastEventToSession(sessionId as UUID, event)
+    }
+
+    return res.status(200).json({
+      ok: true,
+      closedGroupId: room.id,
+      movedUsers: closed.movedUsers.map((entry) => ({
+        userId: entry.userId,
+        username: entry.username,
+        fromGroupId: room.id,
+        toGroupId: mainRoom.id,
+      })),
+    })
+  } catch {
+    return internalErrorResponse(res)
+  }
+}
+
 router.get('/:sessionId', requireAuth, listSessionRoomsHandler)
 router.get('/session/:sessionId', requireAuth, listSessionRoomsHandler)
 
@@ -1195,6 +1382,7 @@ router.post('/:roomId/members/leave', requireAuth, leaveRoomHandler)
 
 router.post('/:roomId/move-user', requireAuth, moveRoomMemberHandler)
 router.post('/:roomId/members/move', requireAuth, moveRoomMemberHandler)
+router.post('/:roomId/close', requireAuth, closeRoomHandler)
 router.post('/:roomId/end-whisper', requireAuth, endWhisperHandler)
 
 router.get('/:roomId/members', requireAuth, listRoomMembersHandler)

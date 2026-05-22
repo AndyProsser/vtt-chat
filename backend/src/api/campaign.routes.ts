@@ -1,14 +1,36 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { randomUUID } from 'crypto'
 import { getPrismaClient } from '@/infra/db'
-import { ErrorCode, PresenceState, SessionState, isValidSessionName, isValidUUID } from '@shared'
+import {
+  ErrorCode,
+  PresenceState,
+  RoomType,
+  SessionState,
+  isValidRoomName,
+  isValidSessionName,
+  isValidUUID,
+} from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { createSession } from '@/services/session/core.service'
-import { ensureSessionDefaultRoomsForSession, getSessionPresence } from '@/services/room.service'
+import {
+  createRoom,
+  deleteRoom,
+  ensureSessionDefaultRoomsForSession,
+  getRoom,
+  getRoomMemberIds,
+  getRooms,
+  getSessionPresence,
+} from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
+import {
+  listAudioRoomStateBySession,
+  removeAudioRoomStateRecord,
+  upsertAudioRoomStateRecord,
+} from '@/repositories/audio.repository'
 import { countSessionCooldownExtensions } from '@/services/session/logs.service'
 import { restoreRememberedDevMockPlayersForSession } from '@/services/dev-mock/players.service'
+import { isCampaignPersistentRoom, normalizeRoomName } from '@/services/room/shared'
 import {
   createCampaignForUser,
   createCharacterForCampaign,
@@ -67,6 +89,98 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 function internalErrorResponse(res: Response) {
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, error: 'Internal server error' })
+}
+
+type CampaignGroupDto = {
+  id: UUID
+  campaignId: UUID
+  name: string
+  type: 'GROUP'
+  defaultEnvironmentName?: string
+  createdAt: number
+  createdBy: UUID
+  updatedAt: number
+}
+
+function isReservedCampaignGroupName(name: string): boolean {
+  const normalized = normalizeRoomName(name)
+  return (
+    normalized === 'main' ||
+    normalized === 'main room' ||
+    normalized === 'whisper' ||
+    normalized === 'greenroom' ||
+    normalized === 'green room' ||
+    normalized === 'green-room'
+  )
+}
+
+function toCampaignGroupDto(params: {
+  campaignId: UUID
+  room: Awaited<ReturnType<typeof getRoom>> extends infer T ? Exclude<T, null> : never
+  environmentName?: string
+}): CampaignGroupDto {
+  return {
+    id: params.room.id,
+    campaignId: params.campaignId,
+    name: params.room.name,
+    type: 'GROUP',
+    defaultEnvironmentName: params.environmentName,
+    createdAt: params.room.createdAt,
+    createdBy: params.room.createdBy,
+    updatedAt: params.room.updatedAt,
+  }
+}
+
+async function getCampaignGroupsReferenceSession(params: {
+  campaignId: UUID
+  dmUserId: UUID
+  createIfMissing?: boolean
+}) {
+  const sessions = await listSessionsByCampaign(params.campaignId)
+  const existingSession = sessions[0]
+  if (existingSession) {
+    return existingSession
+  }
+
+  if (!params.createIfMissing) {
+    return null
+  }
+
+  const dateLabel = new Date().toLocaleDateString('en-CA')
+  const session = await createSession(
+    `Session 1 - ${dateLabel}`,
+    params.dmUserId,
+    undefined,
+    params.campaignId
+  )
+
+  await ensureSessionDefaultRoomsForSession(session.id as UUID, session.dmId as UUID)
+
+  return session
+}
+
+async function listCampaignGroupsForReferenceSession(campaignId: UUID, sessionId: UUID) {
+  const [rooms, environmentStates] = await Promise.all([
+    getRooms(sessionId),
+    listAudioRoomStateBySession(sessionId),
+  ])
+
+  const environmentByRoomId = new Map<string, string>()
+  for (const state of environmentStates) {
+    if (!environmentByRoomId.has(state.roomId)) {
+      environmentByRoomId.set(state.roomId, state.environmentName)
+    }
+  }
+
+  return rooms
+    .filter((room) => isCampaignPersistentRoom(room))
+    .map((room) =>
+      toCampaignGroupDto({
+        campaignId,
+        room,
+        environmentName: environmentByRoomId.get(room.id),
+      })
+    )
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
@@ -526,6 +640,295 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
     })
   } catch (error) {
     logger.error('campaign.routes', 'Failed to build campaign party presence snapshot', error)
+    return internalErrorResponse(res)
+  }
+})
+
+router.get('/:campaignId/groups', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  try {
+    const allowed = await isUserInCampaign({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+    }
+
+    const referenceSession = await getCampaignGroupsReferenceSession({
+      campaignId: campaignId as UUID,
+      dmUserId: user.userId as UUID,
+      createIfMissing: false,
+    })
+
+    if (!referenceSession) {
+      return res.status(200).json({
+        campaignId,
+        referenceSessionId: null,
+        groups: [],
+      })
+    }
+
+    const groups = await listCampaignGroupsForReferenceSession(
+      campaignId as UUID,
+      referenceSession.id as UUID
+    )
+
+    return res.status(200).json({
+      campaignId,
+      referenceSessionId: referenceSession.id,
+      groups,
+    })
+  } catch (error) {
+    logger.error('campaign.routes', 'Failed to list campaign groups', error)
+    return internalErrorResponse(res)
+  }
+})
+
+router.post('/:campaignId/groups', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const { name, defaultEnvironmentName } = req.body || {}
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (!isValidRoomName(name) || isReservedCampaignGroupName(String(name || ''))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid or reserved group name',
+      field: 'name',
+    })
+  }
+
+  try {
+    const campaign = await getCampaignForUser({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only campaign DM can manage campaign groups',
+      })
+    }
+
+    const referenceSession = await getCampaignGroupsReferenceSession({
+      campaignId: campaignId as UUID,
+      dmUserId: user.userId as UUID,
+      createIfMissing: true,
+    })
+
+    if (!referenceSession) {
+      return internalErrorResponse(res)
+    }
+
+    const existingRooms = await getRooms(referenceSession.id as UUID)
+    const duplicate = existingRooms.some(
+      (room) =>
+        isCampaignPersistentRoom(room) &&
+        normalizeRoomName(room.name) === normalizeRoomName(String(name))
+    )
+
+    if (duplicate) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'A group with that name already exists',
+        field: 'name',
+      })
+    }
+
+    const room = await createRoom({
+      sessionId: referenceSession.id as UUID,
+      name: String(name).trim(),
+      type: RoomType.GROUP,
+      createdBy: user.userId as UUID,
+    })
+
+    const normalizedEnvironment =
+      typeof defaultEnvironmentName === 'string' &&
+      defaultEnvironmentName.trim().length > 0 &&
+      defaultEnvironmentName !== 'Default'
+        ? defaultEnvironmentName.trim()
+        : undefined
+
+    if (normalizedEnvironment) {
+      await upsertAudioRoomStateRecord({
+        sessionId: referenceSession.id,
+        roomId: room.id,
+        environmentName: normalizedEnvironment,
+        environmentId: `env-${normalizedEnvironment}`,
+        parameters: {},
+        setBy: user.userId as UUID,
+        setAt: new Date(),
+      })
+    }
+
+    return res.status(201).json({
+      group: toCampaignGroupDto({
+        campaignId: campaignId as UUID,
+        room,
+        environmentName: normalizedEnvironment,
+      }),
+    })
+  } catch (error) {
+    logger.error('campaign.routes', 'Failed to create campaign group', error)
+    return internalErrorResponse(res)
+  }
+})
+
+router.patch('/:campaignId/groups/:groupId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId, groupId } = req.params
+  const { defaultEnvironmentName } = req.body || {}
+
+  if (!isValidUUID(campaignId) || !isValidUUID(groupId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid campaignId or groupId',
+    })
+  }
+
+  try {
+    const campaign = await getCampaignForUser({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only campaign DM can manage campaign groups',
+      })
+    }
+
+    const room = await getRoom(groupId as UUID)
+    if (!room || !isCampaignPersistentRoom(room)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Group not found' })
+    }
+
+    const referenceSession = await getCampaignGroupsReferenceSession({
+      campaignId: campaignId as UUID,
+      dmUserId: user.userId as UUID,
+      createIfMissing: false,
+    })
+
+    if (!referenceSession || room.sessionId !== (referenceSession.id as UUID)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Group not found' })
+    }
+
+    const normalizedEnvironment =
+      typeof defaultEnvironmentName === 'string' &&
+      defaultEnvironmentName.trim().length > 0 &&
+      defaultEnvironmentName !== 'Default'
+        ? defaultEnvironmentName.trim()
+        : undefined
+
+    if (normalizedEnvironment) {
+      await upsertAudioRoomStateRecord({
+        sessionId: room.sessionId,
+        roomId: room.id,
+        environmentName: normalizedEnvironment,
+        environmentId: `env-${normalizedEnvironment}`,
+        parameters: {},
+        setBy: user.userId as UUID,
+        setAt: new Date(),
+      })
+    } else {
+      await removeAudioRoomStateRecord({ sessionId: room.sessionId, roomId: room.id })
+    }
+
+    return res.status(200).json({
+      group: toCampaignGroupDto({
+        campaignId: campaignId as UUID,
+        room,
+        environmentName: normalizedEnvironment,
+      }),
+    })
+  } catch (error) {
+    logger.error('campaign.routes', 'Failed to update campaign group environment', error)
+    return internalErrorResponse(res)
+  }
+})
+
+router.delete('/:campaignId/groups/:groupId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId, groupId } = req.params
+
+  if (!isValidUUID(campaignId) || !isValidUUID(groupId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid campaignId or groupId',
+    })
+  }
+
+  try {
+    const campaign = await getCampaignForUser({
+      campaignId: campaignId as UUID,
+      userId: user.userId as UUID,
+    })
+
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only campaign DM can manage campaign groups',
+      })
+    }
+
+    const room = await getRoom(groupId as UUID)
+    if (!room || !isCampaignPersistentRoom(room)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Group not found' })
+    }
+
+    const referenceSession = await getCampaignGroupsReferenceSession({
+      campaignId: campaignId as UUID,
+      dmUserId: user.userId as UUID,
+      createIfMissing: false,
+    })
+
+    if (!referenceSession || room.sessionId !== (referenceSession.id as UUID)) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Group not found' })
+    }
+
+    const memberIds = await getRoomMemberIds(room.sessionId, room.id)
+    if (memberIds.length > 0) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Group must be empty before deletion',
+      })
+    }
+
+    await removeAudioRoomStateRecord({ sessionId: room.sessionId, roomId: room.id })
+    await deleteRoom({ sessionId: room.sessionId, roomId: room.id })
+
+    return res.status(200).json({ ok: true, deletedGroupId: room.id })
+  } catch (error) {
+    logger.error('campaign.routes', 'Failed to delete campaign group', error)
     return internalErrorResponse(res)
   }
 })

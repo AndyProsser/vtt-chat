@@ -138,7 +138,7 @@ export async function fetchSessionGroups(
   apiUrl: string
 ): Promise<Room[]> {
   try {
-    const res = await fetch(`${apiUrl}/api/sessions/${sessionId}/groups`, {
+    const res = await fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -151,7 +151,7 @@ export async function fetchSessionGroups(
     }
 
     const data = await res.json()
-    return data.groups || []
+    return data.rooms || []
   } catch (err) {
     logger.error('groupsPanel.service', 'Failed to fetch session groups', err)
     throw err
@@ -171,13 +171,13 @@ export async function closeGroup(
   apiUrl: string
 ): Promise<CloseGroupResponse> {
   try {
-    const res = await fetch(`${apiUrl}/api/sessions/${sessionId}/groups/${groupId}/close`, {
+    const res = await fetch(`${apiUrl}/api/rooms/${groupId}/close`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ sessionId }),
     })
 
     if (!res.ok) {
@@ -205,7 +205,7 @@ export async function deleteGroup(
   apiUrl: string
 ): Promise<DeleteGroupResponse> {
   try {
-    const res = await fetch(`${apiUrl}/api/sessions/${sessionId}/groups/${groupId}`, {
+    const res = await fetch(`${apiUrl}/api/rooms/${groupId}?sessionId=${sessionId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -219,7 +219,11 @@ export async function deleteGroup(
       throw new Error(errorData.message || `Failed to delete group: ${res.status}`)
     }
 
-    return await res.json()
+    const data = await res.json()
+    return {
+      ok: Boolean(data.ok),
+      deletedGroupId: (data.deletedGroupId || data.deletedRoomId) as UUID,
+    }
   } catch (err) {
     logger.error('groupsPanel.service', 'Failed to delete group', err)
     throw err

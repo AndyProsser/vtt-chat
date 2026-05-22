@@ -289,6 +289,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         store.clearActiveEffects()
       }
     })
+    dispatcher.register('ROOM:CLOSED', (event) => {
+      useStore.getState().handleRoomClosed(event)
+    })
 
     // Presence events
     dispatcher.register('PRESENCE:STATE_CHANGED', (event) => {
