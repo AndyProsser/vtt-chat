@@ -35,14 +35,22 @@ const GroupEnvironmentPicker: React.FC<GroupEnvironmentPickerProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md shadow-lg">
-        <h2 className="text-lg font-semibold mb-4">Select Environment</h2>
+      <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-6 text-slate-100 shadow-[0_30px_80px_rgba(2,6,23,0.55)]">
+        <div className="mb-5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300">
+            Environment Default
+          </p>
+          <h2 className="mt-2 text-lg font-semibold">Select Environment</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Set the baseline atmosphere for this group before the session starts.
+          </p>
+        </div>
 
         <div className="space-y-2 mb-6">
           {ENVIRONMENT_OPTIONS.map((option) => (
             <label
               key={option}
-              className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer"
+              className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/70 p-3 transition hover:border-slate-600 hover:bg-slate-900"
             >
               <input
                 type="radio"
@@ -52,7 +60,7 @@ const GroupEnvironmentPicker: React.FC<GroupEnvironmentPickerProps> = ({
                 onChange={(e) => setSelected(e.target.value)}
                 disabled={isLoading}
               />
-              <span className="text-sm">{option}</span>
+              <span className="text-sm text-slate-100">{option}</span>
             </label>
           ))}
         </div>
@@ -61,14 +69,14 @@ const GroupEnvironmentPicker: React.FC<GroupEnvironmentPickerProps> = ({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-xl border border-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-900 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={!selected || isLoading}
-            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
           >
             Set
           </button>

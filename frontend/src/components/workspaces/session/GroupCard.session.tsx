@@ -8,6 +8,7 @@ import React from 'react'
 import { PresenceState, RoomType } from '@shared'
 import type { Room, RoomUser } from '@/types/room'
 import { ENVIRONMENT_OPTIONS } from '@/types/groupPanel'
+import { GroupMemberProfileCard } from './rooms/GroupMemberProfileCard'
 
 function getDisplayName(member: RoomUser): string {
   return member.characterName || member.username || member.playerName || 'Player'
@@ -64,6 +65,10 @@ function getPresenceIcon(presenceState: RoomUser['presenceState']): string {
   }
 
   return 'circle'
+}
+
+function getPresenceLabel(presenceState: RoomUser['presenceState']): string {
+  return String(presenceState)
 }
 
 interface SessionGroupCardProps {
@@ -170,7 +175,6 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
           <p className="text-xs text-gray-400 mb-1">Players:</p>
           <div className="space-y-2">
             {members.map((member) => {
-              const displayName = getDisplayName(member)
               const roleLabel = getRoleLabel(member)
               const presenceDotState = getPresenceDotState(member.presenceState)
               const metaLine = getMetaLine(member)
@@ -182,77 +186,18 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                   className="rounded border border-gray-600 bg-gray-700/60 px-3 py-2"
                   data-ui-component="SessionGroupMemberCard"
                 >
-                  <div className="flex gap-3">
-                    <div className="room-selector-profile__avatar" aria-hidden="true">
-                      {member.avatarUrl ? (
-                        <img src={member.avatarUrl} alt="" />
-                      ) : (
-                        displayName.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="room-selector-profile__title-row">
-                        <span className="room-selector-profile__name-wrap">
-                          <strong>{displayName}</strong>
-                          <span className="room-selector-status-pill role compact">
-                            {roleLabel}
-                          </span>
-                        </span>
-                        <span
-                          className="room-selector-presence-dot"
-                          data-state={presenceDotState}
-                          role="status"
-                          aria-label={String(member.presenceState)}
-                        >
-                          <span className="room-selector-presence-dot__inner" aria-hidden="true" />
-                        </span>
-                      </div>
-
-                      {member.playerName && member.playerName !== displayName ? (
-                        <span className="room-selector-profile__player-name">
-                          {member.playerName}
-                        </span>
-                      ) : null}
-
-                      {metaLine ? <p className="mt-2 text-xs text-gray-300">{metaLine}</p> : null}
-
-                      {statEntries.length > 0 ? (
-                        <div className="room-selector-profile__stats mt-2">
-                          {statEntries.map(([key, value]) => (
-                            <span key={key} className="room-selector-profile__stat">
-                              <strong className="room-selector-profile__stat-value">{value}</strong>
-                              <span className="room-selector-profile__stat-label">{key}</span>
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <div className="room-selector-profile__status-pills mt-2">
-                        <span
-                          className={`room-selector-status-pill presence ${String(member.presenceState).toLowerCase()}`}
-                        >
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            {getPresenceIcon(member.presenceState)}
-                          </span>
-                          {String(member.presenceState)}
-                        </span>
-                        <span className="room-selector-status-pill environment">
-                          <span className="material-symbols-outlined" aria-hidden="true">
-                            forest
-                          </span>
-                          Env: {environment || 'Default'}
-                        </span>
-                        {member.ghost ? (
-                          <span className="room-selector-status-pill ghost">
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              visibility_off
-                            </span>
-                            Ghost Mode
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
+                  <GroupMemberProfileCard
+                    member={{
+                      ...member,
+                      roleLabel,
+                    }}
+                    metaLine={metaLine}
+                    statEntries={statEntries}
+                    environmentName={environment || 'Default'}
+                    presenceLabel={getPresenceLabel(member.presenceState)}
+                    presenceDotState={presenceDotState}
+                    presenceIconName={getPresenceIcon(member.presenceState)}
+                  />
                 </div>
               )
             })}

@@ -51,8 +51,15 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md shadow-lg">
-        <h2 className="text-lg font-semibold mb-4">Create Group</h2>
+      <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-6 text-slate-100 shadow-[0_30px_80px_rgba(2,6,23,0.55)]">
+        <div className="mb-5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300">Campaign Planning</p>
+          <h2 className="mt-2 text-lg font-semibold">Create Group</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Create a persistent group name now. Player membership is assigned later, during the
+            session.
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <input
@@ -65,24 +72,24 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             }}
             disabled={isLoading}
             autoFocus
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 disabled:opacity-50"
+            className="mb-4 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-3 text-slate-100 placeholder:text-slate-500 disabled:opacity-50"
           />
 
-          {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+          {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
 
           <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={onCancel}
               disabled={isLoading}
-              className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-xl border border-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-900 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-xl bg-cyan-400 px-4 py-2 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
             >
               Create
             </button>
