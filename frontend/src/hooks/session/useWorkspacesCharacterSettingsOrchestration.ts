@@ -10,7 +10,7 @@ import {
 import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import { createCharacterSettingsController } from '@/utils/session/sessionController'
 
-type UseSessionInitCharacterSettingsOrchestrationParams = {
+type UseWorkspacesCharacterSettingsOrchestrationParams = {
   characterSettingsController: ReturnType<typeof createCharacterSettingsController>
   characterSettingsActions: UseCharacterSettingsActions
   selectedCampaignId: UUID | ''
@@ -20,8 +20,8 @@ type UseSessionInitCharacterSettingsOrchestrationParams = {
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
 }
 
-export function useSessionInitCharacterSettingsOrchestration(
-  params: UseSessionInitCharacterSettingsOrchestrationParams
+export function useWorkspacesCharacterSettingsOrchestration(
+  params: UseWorkspacesCharacterSettingsOrchestrationParams
 ) {
   const {
     characterSettingsController,

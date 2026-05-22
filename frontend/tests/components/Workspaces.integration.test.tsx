@@ -3,7 +3,7 @@ import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { ConnectionState } from 'livekit-client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SessionInit } from '../../src/components/session/SessionInit'
+import { Workspaces } from '../../src/components/session/Workspaces'
 import { buildLiveKitConnectionKey } from '../../src/hooks/useLiveKit'
 import { useStore } from '../../src/state/store'
 import { getUserDMOverride } from '@/utils/audioOverrides'
@@ -59,7 +59,7 @@ vi.mock('../../src/components/ui/ReconnectBanner', () => ({
   ReconnectBanner: () => null,
 }))
 
-describe('SessionInit integration', () => {
+describe('Workspaces integration', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -279,7 +279,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000/ws/connect"
         token="jwt-token"
@@ -451,7 +451,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000/ws/connect"
         token="jwt-token"
@@ -646,7 +646,7 @@ describe('SessionInit integration', () => {
           vi.stubGlobal('fetch', fetchMock)
 
           render(
-            <SessionInit
+            <Workspaces
               apiUrl="http://localhost:3000"
               wsUrl="ws://localhost:3000"
               token="token"
@@ -722,7 +722,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -923,7 +923,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1003,7 +1003,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1155,7 +1155,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1279,7 +1279,7 @@ describe('SessionInit integration', () => {
       vi.stubGlobal('fetch', fetchMock)
 
       render(
-        <SessionInit
+        <Workspaces
           apiUrl="http://localhost:3000"
           wsUrl="ws://localhost:3000"
           token="token"
@@ -1392,7 +1392,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1547,7 +1547,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1737,7 +1737,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1864,7 +1864,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -1965,7 +1965,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2034,7 +2034,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2112,7 +2112,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2198,7 +2198,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2312,7 +2312,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2482,7 +2482,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2719,7 +2719,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { rerender } = render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2754,7 +2754,7 @@ describe('SessionInit integration', () => {
     // Simulate WebSocket reconnect by changing wsState
     wsConnectionState = 'reconnecting'
     rerender(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2764,7 +2764,7 @@ describe('SessionInit integration', () => {
 
     wsConnectionState = 'connected'
     rerender(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2938,7 +2938,7 @@ describe('SessionInit integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { rerender } = render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2955,7 +2955,7 @@ describe('SessionInit integration', () => {
 
     wsConnectionState = 'reconnecting'
     rerender(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -2965,7 +2965,7 @@ describe('SessionInit integration', () => {
 
     wsConnectionState = 'connected'
     rerender(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"

@@ -6,18 +6,18 @@ import type { CampaignSummary } from '@/types/session/campaign'
 import type {
   ApiDiscoverableCampaign,
   ApiPlatformStatusResponse,
-} from '@/types/session/session-init'
-import { formatDurationCompact } from '@/utils/session/sessionInit'
+} from '@/types/session/workspaces'
+import { formatDurationCompact } from '@/utils/session/workspaces'
 import {
   LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
   LOBBY_NOTICE_STORAGE_KEY,
-} from '@/constants/sessionInit.constants'
+} from '@/constants/workspaces.constants'
 import {
   INITIAL_LOBBY_STATS,
   LOBBY_CAMPAIGN_LIST_RELOAD_DEBOUNCE_MS,
 } from '@/constants/lobby.constants'
 
-export type UseSessionInitLobbyDataParams = {
+export type UseWorkspacesLobbyDataParams = {
   apiUrl: string
   token: string
   userAuthType?: 'FULL' | 'GUEST'
@@ -33,7 +33,7 @@ export type UseSessionInitLobbyDataParams = {
  * Owns lobby campaign discovery/loading and lobby stats refresh logic.
  * Exposes websocket callback handlers so the shell can pass stable lobby handlers into useWebSocket.
  */
-export function useSessionInitLobbyData(params: UseSessionInitLobbyDataParams) {
+export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   const {
     apiUrl,
     token,

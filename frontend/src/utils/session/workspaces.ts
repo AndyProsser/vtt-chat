@@ -5,11 +5,11 @@ import {
   DEFAULT_GREENROOM_CACHE_TTL_MS,
   ROOM_ENVIRONMENT_PRESET_FALLBACKS,
   SESSION_BOOKEND_PREFIXES,
-} from '../../constants/sessionInit.constants'
+} from '../../constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord } from '@/types/room'
 import { type CharacterSettingsDraft } from '../editor/CampaignRightbarSettings'
-import type { UserCharacterRecord } from '@/types/session/session-init'
+import type { UserCharacterRecord } from '@/types/session/workspaces'
 
 export function safeLocalStorageGetItem(key: string): string | null {
   if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {

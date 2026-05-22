@@ -373,7 +373,7 @@ Recovery updates stores with a strict ownership split:
 
 ```mermaid
 sequenceDiagram
-    participant Client as SessionInit
+    participant Client as Workspaces
     participant API as REST API
     participant Store as Zustand Store
     participant WS as WebSocket Stream

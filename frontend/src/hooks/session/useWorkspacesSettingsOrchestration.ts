@@ -12,11 +12,11 @@ import type { Session as SessionRecord } from '@/types/session'
 import {
   getLatestSessionChronologically,
   normalizeSessionRecord,
-} from '@/utils/session/sessionInit'
+} from '@/utils/session/workspaces'
 import { createCampaignSettingsController } from '@/utils/session/sessionController'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 
-type UseSessionInitSettingsOrchestrationParams = {
+type UseWorkspacesSettingsOrchestrationParams = {
   apiUrl: string
   token: string
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -51,8 +51,8 @@ type UseSessionInitSettingsOrchestrationParams = {
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
 }
 
-export function useSessionInitSettingsOrchestration(
-  params: UseSessionInitSettingsOrchestrationParams
+export function useWorkspacesSettingsOrchestration(
+  params: UseWorkspacesSettingsOrchestrationParams
 ) {
   const {
     apiUrl,

@@ -2,7 +2,7 @@ import type { CampaignLobbyStatsUpdatedPayload, UUID } from '@shared'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { CampaignSummary } from '@/types/session/campaign'
 
-export interface SessionInitProps {
+export interface WorkspacesProps {
   apiUrl: string
   wsUrl: string
   token: string

@@ -21,7 +21,7 @@
 | **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                             | Implement scheduled job for CLEANUP detection/transition                                   |
 | **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts`         | Scheduled job runs periodically                                          | Detect ENDED sessions with no connected users; transition to CLEANUP; purge greenroom chat |
 | **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                       | Handle CLEANUP state on hydration and WS events                                            |
-| **Frontend API**    | `frontend/src/components/session/SessionInit.tsx` | Calls `PUT /api/session/:id/state`                                       | No change (endpoint stays same)                                                            |
+| **Frontend API**    | `frontend/src/components/session/Workspaces.tsx` | Calls `PUT /api/session/:id/state`                                       | No change (endpoint stays same)                                                            |
 
 **Action Items:**
 
@@ -172,7 +172,7 @@
 **Action Items:**
 
 - [ ] Verify environment is included in room join response
-- [ ] Ensure `SessionInit.tsx` applies environment on group change (already does?)
+- [ ] Ensure `Workspaces.tsx` applies environment on group change (already does?)
 - [ ] Test: join room → environment applies immediately (no refresh)
 
 ---
@@ -190,7 +190,7 @@
 | **Backend Chat**      | `backend/src/services/chat.service.ts`            | Message creation exists                | Ensure SYSTEM messages created on state transition |
 | **Session State**     | `backend/src/services/session.service.ts`         | On updateSessionState()                | Call `createSystemMessage()` for each transition   |
 | **Frontend Chat**     | `frontend/src/state/chatSlice.ts`                 | Chat timeline                          | Renders SYSTEM messages (if already implemented)   |
-| **Frontend Bookends** | `frontend/src/components/session/SessionInit.tsx` | Calls `appendSessionBookendMessages()` | Remove client-side creation; rely on WS event      |
+| **Frontend Bookends** | `frontend/src/components/session/Workspaces.tsx` | Calls `appendSessionBookendMessages()` | Remove client-side creation; rely on WS event      |
 
 **Action Items:**
 
@@ -250,9 +250,9 @@
 - [x] `endSessionCooldown()` service function in `session.service.ts` — sets `endedAt` to 4 min in past; cleanup job picks up on next poll
 - [x] `handleSessionCooldownEnded` handler in `sessionSlice.ts` — sets `endedAt = 0` so countdown reads as expired
 - [x] `SESSION:COOLDOWN_ENDED` registered in `useWebSocket.ts` dispatcher
-- [x] `handleCancelCooldown` in `SessionInit.tsx` now calls `POST /api/session/:id/cooldown/end` (was incorrectly calling IDLE transition)
+- [x] `handleCancelCooldown` in `Workspaces.tsx` now calls `POST /api/session/:id/cooldown/end` (was incorrectly calling IDLE transition)
 - [x] `SpectatorWaitScreen.tsx` created — shows intermission holding screen (PAUSED) or cooldown countdown (ENDED with active window) or session-ended message
-- [ ] Update spectator UI to show duration slider, disable toggle, and countdown timer — partially done via SpectatorWaitScreen countdown; slider/toggle in SessionInit campaign settings
+- [ ] Update spectator UI to show duration slider, disable toggle, and countdown timer — partially done via SpectatorWaitScreen countdown; slider/toggle in Workspaces campaign settings
 - [ ] Test: ENDED with chat enabled → spectators can chat during window → after expiry → all users disconnected → scheduled job transitions ENDED → CLEANUP
 
 ---

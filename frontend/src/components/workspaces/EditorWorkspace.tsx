@@ -1,6 +1,6 @@
 import { Role, type SessionState, type UUID } from '@shared'
-import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/sessionInit.constants'
-import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionInit'
+import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
+import { toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
 import {
   CampaignRightbarSettings,
   type CharacterSettingsDraft,

@@ -9,11 +9,11 @@ import {
   getPreferredSession,
   normalizeSessionRecord,
   parsePlayerInviteCode,
-} from '@/utils/session/sessionInit'
+} from '@/utils/session/workspaces'
 import { getCampaignDisplayState, getCampaignEntryAction } from '@/types/session/campaign'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 
-type UseSessionInitCampaignEntryOrchestrationParams = {
+type UseWorkspacesCampaignEntryOrchestrationParams = {
   apiUrl: string
   token: string
   userId: UUID
@@ -42,8 +42,8 @@ type UseSessionInitCampaignEntryOrchestrationParams = {
   onSessionCreated?: (sessionId: UUID) => void
 }
 
-export function useSessionInitCampaignEntryOrchestration(
-  params: UseSessionInitCampaignEntryOrchestrationParams
+export function useWorkspacesCampaignEntryOrchestration(
+  params: UseWorkspacesCampaignEntryOrchestrationParams
 ) {
   const {
     apiUrl,

@@ -43,8 +43,8 @@ vi.mock('../../src/components/auth/LoginForm', () => ({
   ),
 }))
 
-vi.mock('../../src/components/session/SessionInit', () => ({
-  SessionInit: ({ token, user }: { token: string; user: { username: string } }) => (
+vi.mock('../../src/components/session/Workspaces', () => ({
+  Workspaces: ({ token, user }: { token: string; user: { username: string } }) => (
     <div>
       Session Init Mounted: {token}:{user.username}
     </div>

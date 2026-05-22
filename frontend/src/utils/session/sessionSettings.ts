@@ -2,12 +2,12 @@ import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
 import type { CharacterSettingsDraft } from '../editor/CampaignRightbarSettings'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
-import type { UserCharacterRecord } from '@/types/session/session-init'
+import type { UserCharacterRecord } from '@/types/session/workspaces'
 import {
   buildCharacterDraft,
   DEFAULT_CHARACTER_SETTINGS,
   toValidPostSessionDurationMinutes,
-} from '@/utils/session/sessionInit'
+} from '@/utils/session/workspaces'
 
 export function applyCampaignSettingsPayload(
   campaignSettingsActions: UseCampaignSettingsActions,

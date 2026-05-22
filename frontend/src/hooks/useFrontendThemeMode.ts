@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
-import { safeLocalStorageSetItem } from '@/utils/session/sessionInit'
+import { safeLocalStorageSetItem } from '@/utils/session/workspaces'
 
 /**
  * Manages frontend theme detection and toggling in one place.

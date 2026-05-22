@@ -30,12 +30,12 @@ import { EditorWorkspace } from './EditorWorkspace'
 import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
 import type { ModalsProps } from '@/types/modals'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
-import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
-import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
-import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
-import { useSessionInitSettingsOrchestration } from '@/hooks/session/useSessionInitSettingsOrchestration'
-import { useSessionInitWsRetryToast } from '@/hooks/session/useSessionInitWsRetryToast'
-import { useSessionInitLobbyData } from '@/hooks/session/useSessionInitLobbyData'
+import { useWorkspacesCampaignEntryOrchestration } from '@/hooks/session/useWorkspacesCampaignEntryOrchestration'
+import { useWorkspacesCharacterSettingsOrchestration } from '@/hooks/session/useWorkspacesCharacterSettingsOrchestration'
+import { useWorkspacesHydrationLifecycle } from '@/hooks/session/useWorkspacesHydrationLifecycle'
+import { useWorkspacesSettingsOrchestration } from '@/hooks/session/useWorkspacesSettingsOrchestration'
+import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryToast'
+import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -47,7 +47,7 @@ import {
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
   MAX_POSTER_DATA_URL_CHARS,
   MAX_POSTER_WIDTH_PX,
-} from '@/constants/sessionInit.constants'
+} from '@/constants/workspaces.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '@/utils/telemetry'
 import { fetchSessionNotesOnce } from '../../utils/notesFetch'
 import { generateClientId } from '../../utils/uuid'
@@ -63,8 +63,8 @@ import type {
   ActiveSessionContext,
   ApiBroadcastState,
   ApiSessionStats,
-  SessionInitProps as WorkspaceInitializationProps,
-} from '@/types/session/session-init'
+  WorkspacesProps as WorkspaceInitializationProps,
+} from '@/types/session/workspaces'
 import { getCampaignEntryAction, resolveMembershipRole } from '@/types/session/campaign'
 import {
   buildCharacterDraft,
@@ -79,9 +79,9 @@ import {
   safeLocalStorageSetItem,
   SESSION_TIMER_SYNC_POLL_MS,
   toValidPostSessionDurationMinutes,
-} from '@/utils/session/sessionInit'
+} from '@/utils/session/workspaces'
 import type { EditorWorkspaceView } from '@/types/workspaces'
-import '@/styles/components/workspaces/session/session-init/SessionInit.css'
+import '@/styles/components/workspaces/session/workspaces/Workspaces.css'
 
 export function WorkspaceInitialization({
   apiUrl,
@@ -379,7 +379,7 @@ export function WorkspaceInitialization({
     handleCampaignListInvalidated,
     handleLobbyStatsUpdated,
     handlePartyPresenceUpdated,
-  } = useSessionInitLobbyData({
+  } = useWorkspacesLobbyData({
     apiUrl,
     token,
     userAuthType: user.authType,
@@ -862,7 +862,7 @@ export function WorkspaceInitialization({
     openEditorCampaignWorkspace,
     saveCampaignSettings,
     handleSaveCampaignInfoPanel,
-  } = useSessionInitSettingsOrchestration({
+  } = useWorkspacesSettingsOrchestration({
     apiUrl,
     token,
     fetchWithAuthGuard,
@@ -898,7 +898,7 @@ export function WorkspaceInitialization({
   })
 
   const { loadUserCharacters, saveCharacterSettings, handleCharacterFieldChange } =
-    useSessionInitCharacterSettingsOrchestration({
+    useWorkspacesCharacterSettingsOrchestration({
       characterSettingsController,
       characterSettingsActions,
       selectedCampaignId,
@@ -1085,7 +1085,7 @@ export function WorkspaceInitialization({
     wsTelemetryPrevRef.current = wsState
   }, [wsState, currentSession?.id, wsTelemetryPrevRef])
 
-  useSessionInitHydrationLifecycle({
+  useWorkspacesHydrationLifecycle({
     apiUrl,
     token,
     wsState,
@@ -1157,7 +1157,7 @@ export function WorkspaceInitialization({
   ])
 
   const { handleCreateCampaign, handleJoinCampaign, handleEnterCampaign, startCampaignSession } =
-    useSessionInitCampaignEntryOrchestration({
+    useWorkspacesCampaignEntryOrchestration({
       apiUrl,
       token,
       userId: user.id,
@@ -1869,7 +1869,7 @@ export function WorkspaceInitialization({
     if (!error) return
 
     showToast({
-      id: `session-init:error:${error}`,
+      id: `workspaces:error:${error}`,
       variant: 'error',
       message: error,
       onDismiss: () => {
@@ -1882,7 +1882,7 @@ export function WorkspaceInitialization({
     if (!lobbyNotice) return
 
     showToast({
-      id: `session-init:notice:${lobbyNotice}`,
+      id: `workspaces:notice:${lobbyNotice}`,
       variant: 'success',
       message: lobbyNotice,
       onDismiss: () => {
@@ -1902,7 +1902,7 @@ export function WorkspaceInitialization({
     [isTakeoverActive, setSelectedRoomIdOverride]
   )
 
-  useSessionInitWsRetryToast({
+  useWorkspacesWsRetryToast({
     wsState,
     wsError,
     wsRetryWindowExpired,
@@ -1917,7 +1917,7 @@ export function WorkspaceInitialization({
   return (
     <>
       <div
-        className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home session-init-shell--lobby'}`}
+        className={`workspaces-shell ${hasSessionSelected ? 'workspaces-shell-session' : 'workspaces-shell-home workspaces-shell--lobby'}`}
       >
         {!hasSessionSelected && editorWorkspaceView === 'lobby' && (
           <LobbyView
@@ -1948,10 +1948,10 @@ export function WorkspaceInitialization({
               void handleEnterCampaign(campaignId)
             }}
             onJoinRequest={() => {
-              setError('Join request flow is not wired into SessionInit yet.')
+              setError('Join request flow is not wired into Workspaces yet.')
             }}
             onWatchCampaign={() => {
-              setError('Watch flow is not wired into SessionInit yet.')
+              setError('Watch flow is not wired into Workspaces yet.')
             }}
             onError={setError}
           />

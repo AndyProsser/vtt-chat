@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { WS_AUTO_RETRY_WINDOW_MS, WS_ERROR_TOAST_ID } from '../../constants/sessionInit.constants'
+import { WS_AUTO_RETRY_WINDOW_MS, WS_ERROR_TOAST_ID } from '../../constants/workspaces.constants'
 import { dismissToast, type ShowToastInput } from '../../state/toastCenter'
 import type { UseSessionLifecycleActions } from '../../hooks/useSessionLifecycle'
 import type { ConnectionState } from '@/ws/client'
 
-type UseSessionInitWsRetryToastParams = {
+type UseWorkspacesWsRetryToastParams = {
   wsState: ConnectionState
   wsError: Error | null
   wsRetryWindowExpired: boolean
@@ -20,10 +20,10 @@ type UseSessionInitWsRetryToastParams = {
 }
 
 /**
- * Keeps SessionInit websocket retry timers and user-facing retry toast in sync.
+ * Keeps Workspaces websocket retry timers and user-facing retry toast in sync.
  * Runs whenever websocket connectivity changes or retry window state updates.
  */
-export function useSessionInitWsRetryToast({
+export function useWorkspacesWsRetryToast({
   wsState,
   wsError,
   wsRetryWindowExpired,
@@ -33,7 +33,7 @@ export function useSessionInitWsRetryToast({
   wsErrorMessageRef,
   retryConnection,
   showToast,
-}: UseSessionInitWsRetryToastParams): void {
+}: UseWorkspacesWsRetryToastParams): void {
   useEffect(() => {
     wsErrorMessageRef.current = wsError?.message || null
   }, [wsError, wsErrorMessageRef])

@@ -25,8 +25,8 @@ vi.mock('../../src/components/auth/auth-surface', () => ({
   resolveAuthSurfaceRoute: () => 'login',
 }))
 
-vi.mock('../../src/components/session/SessionInit', () => ({
-  SessionInit: ({ onReady }: { onReady?: () => void }) => {
+vi.mock('../../src/components/session/Workspaces', () => ({
+  Workspaces: ({ onReady }: { onReady?: () => void }) => {
     return (
       <div>
         <div>Mock Session Init</div>

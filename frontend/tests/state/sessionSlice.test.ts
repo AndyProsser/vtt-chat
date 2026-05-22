@@ -84,7 +84,7 @@ describe('sessionSlice', () => {
       const hydratedCount = useStore.getState().cooldownExtensionCounts[SESSION_ID_1]
       expect(hydratedCount).toBe(3)
 
-      // SessionInit computes canExtendCooldown as canManageCooldown && count < 3.
+      // Workspaces computes canExtendCooldown as canManageCooldown && count < 3.
       const canManageCooldown = true
       const canExtendCooldown = Boolean(canManageCooldown) && (hydratedCount ?? 0) < 3
       expect(canExtendCooldown).toBe(false)

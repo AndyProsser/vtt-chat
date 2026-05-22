@@ -11,7 +11,7 @@
  * Integration coverage: reconnect → hydration flow
  *  - Verifies that the banner transitions from "Reconnecting" to "Refreshing"
  *    and then disappears once hydration completes, reflecting the atomic
- *    domain-snapshot application sequence in SessionInit.
+ *    domain-snapshot application sequence in Workspaces.
  */
 
 import { render, screen } from '@testing-library/react'

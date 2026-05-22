@@ -57,10 +57,10 @@ Route layer responsibilities:
 
 ### Campaign Runtime Screen
 
-- `frontend/src/components/session/SessionInit.tsx`
-- `frontend/src/components/session/SessionInitCommandCenter.tsx`
-- `frontend/src/components/session/SessionInitLobbyWorkspaceBranch.tsx`
-- `frontend/src/components/session/SessionInitModals.tsx`
+- `frontend/src/components/session/Workspaces.tsx`
+- `frontend/src/components/session/WorkspacesCommandCenter.tsx`
+- `frontend/src/components/session/WorkspacesLobbyWorkspaceBranch.tsx`
+- `frontend/src/components/session/WorkspacesModals.tsx`
 - `frontend/src/components/session/CommandCenterFrame.tsx`
 - `frontend/src/components/session/SessionToolbar.tsx`
 - `frontend/src/components/session/SessionLeftRailPanel.tsx`
@@ -79,9 +79,9 @@ Route layer responsibilities:
 
 ### Centralized Non-UI Modules
 
-- `frontend/src/hooks/session/*` for SessionInit orchestration hooks.
-- `frontend/src/types/session/campaign.ts` and `frontend/src/types/session/session-init.ts` for session/campaign types.
-- `frontend/src/utils/session/sessionController.ts`, `frontend/src/utils/session/sessionInit.ts`, and `frontend/src/utils/session/sessionSettings.ts` for runtime/session utility logic.
+- `frontend/src/hooks/session/*` for Workspaces orchestration hooks.
+- `frontend/src/types/session/campaign.ts` and `frontend/src/types/session/workspaces.ts` for session/campaign types.
+- `frontend/src/utils/session/sessionController.ts`, `frontend/src/utils/session/workspaces.ts`, and `frontend/src/utils/session/sessionSettings.ts` for runtime/session utility logic.
 
 ## Placement Rules (How to Decide Where a New File Belongs)
 

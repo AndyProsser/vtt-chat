@@ -43,7 +43,7 @@ export default defineConfig({
         'src/hooks/useAudioEngine.ts',
         'src/App.tsx',
         'src/components/audio/AudioPanel.tsx',
-        'src/components/session/SessionInit.tsx',
+        'src/components/workspaces/index.tsx',
       ],
       thresholds: {
         branches: 60,

@@ -1,5 +1,5 @@
 @media (max-width: 760px) {
-  .session-init-shell-wide {
+  .workspaces-shell-wide {
     grid-template-columns: minmax(0, 1fr);
   }
 

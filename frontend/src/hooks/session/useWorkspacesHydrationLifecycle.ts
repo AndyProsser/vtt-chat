@@ -10,7 +10,7 @@ import type {
   ApiRoom,
   ApiSessionStats,
   ApiTakeoverIdentitySnapshot,
-} from '@/types/session/session-init'
+} from '@/types/session/workspaces'
 import type { UUID } from '@shared'
 
 type DmOverridePayload = {
@@ -34,7 +34,7 @@ type AudioStatePayload = {
   voiceOfGod?: ApiBroadcastState
 }
 
-type UseSessionInitHydrationLifecycleParams = {
+type UseWorkspacesHydrationLifecycleParams = {
   apiUrl: string
   token: string
   wsState: ConnectionState
@@ -70,8 +70,8 @@ type UseSessionInitHydrationLifecycleParams = {
  * Rehydrates session topology and audio state whenever the active session changes
  * or the websocket reconnects, keeping local state aligned with backend authority.
  */
-export function useSessionInitHydrationLifecycle(
-  params: UseSessionInitHydrationLifecycleParams
+export function useWorkspacesHydrationLifecycle(
+  params: UseWorkspacesHydrationLifecycleParams
 ): void {
   const {
     apiUrl,

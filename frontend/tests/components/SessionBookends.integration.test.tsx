@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SessionInit } from '../../src/components/session/SessionInit'
+import { Workspaces } from '../../src/components/session/Workspaces'
 import { MessageList } from '../../src/components/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
@@ -446,7 +446,7 @@ describe('Session bookend integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -702,7 +702,7 @@ describe('Session bookend integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -757,7 +757,7 @@ describe('Session bookend integration', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"
@@ -860,7 +860,7 @@ describe('Session bookend integration', () => {
 
     vi.stubGlobal('fetch', fetchMock)
     render(
-      <SessionInit
+      <Workspaces
         apiUrl="http://localhost:3000"
         wsUrl="ws://localhost:3000"
         token="token"

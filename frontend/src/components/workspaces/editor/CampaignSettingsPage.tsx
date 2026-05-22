@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import type { UUID } from '@shared'
 import { useToast } from '@/hooks/useToast'
 import { Slider } from '@/components/ui'
-import '@/styles/components/workspaces/session/session-init/SessionInit.css'
+import '@/styles/components/workspaces/session/workspaces/Workspaces.css'
 
 type CampaignSettingsPageProps = {
   apiUrl: string
@@ -211,7 +211,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
   }
 
   return (
-    <div className="session-init-shell">
+    <div className="workspaces-shell">
       <div className="session-card">
         <div className="session-campaign-settings-header">
           <div>
