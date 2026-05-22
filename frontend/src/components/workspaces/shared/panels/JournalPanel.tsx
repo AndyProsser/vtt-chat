@@ -12,10 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Role, UUID } from '@shared'
-import {
-  JOURNAL_AI_UNAVAILABLE_COPY,
-  JOURNAL_DM_ROASTS,
-} from '@/constants/journal.constants'
+import { JOURNAL_AI_UNAVAILABLE_COPY, JOURNAL_DM_ROASTS } from '@/constants/journal.constants'
 import { useStore } from '@/hooks/useStore'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
@@ -445,7 +442,9 @@ export function JournalPanel({
       .slice(0, 4)
 
     if (nextTags.length === 0) {
-      setHelperMessage('No obvious tags yet. Write a sentence first so the panel has something to steal.')
+      setHelperMessage(
+        'No obvious tags yet. Write a sentence first so the panel has something to steal.'
+      )
       return
     }
 
@@ -565,11 +564,7 @@ export function JournalPanel({
               </div>
             ) : null}
             <div className="knowledge-panel__journal-helper-actions">
-              <button
-                type="button"
-                className="knowledge-panel-chip muted"
-                onClick={handleAskAi}
-              >
+              <button type="button" className="knowledge-panel-chip muted" onClick={handleAskAi}>
                 Ask AI
               </button>
               <button
@@ -579,11 +574,7 @@ export function JournalPanel({
               >
                 Help with tags
               </button>
-              <button
-                type="button"
-                className="knowledge-panel-chip muted"
-                onClick={handleRoastDm}
-              >
+              <button type="button" className="knowledge-panel-chip muted" onClick={handleRoastDm}>
                 Roast the DM
               </button>
             </div>
