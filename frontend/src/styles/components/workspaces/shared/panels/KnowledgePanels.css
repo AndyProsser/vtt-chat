@@ -5,6 +5,13 @@
   gap: var(--space-3);
 }
 
+.knowledge-panel--compact {
+  height: calc(100dvh - 114px);
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
 .knowledge-panel-header {
   display: flex;
   align-items: flex-start;
@@ -374,6 +381,11 @@
 .knowledge-panel-group {
   display: grid;
   gap: var(--space-2);
+}
+
+.knowledge-panel--compact .knowledge-panel-group {
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .knowledge-panel-group-title {
