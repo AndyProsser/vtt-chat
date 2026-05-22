@@ -16,19 +16,25 @@ export function AudioDMOverridesPanel({ isDm, dmOverrides }: AudioDMOverridesPan
   const overrides = flattenAudioDMOverrides(dmOverrides)
 
   return (
-    <section className="audio-panel__section" aria-label={AUDIO_CONTROL_COPY.dmAudioOverrides}>
-      <h4 className="audio-panel__section-title">{AUDIO_CONTROL_COPY.dmOverrides}</h4>
+    <section
+      className="session-audio-panel__section"
+      aria-label={AUDIO_CONTROL_COPY.dmAudioOverrides}
+    >
+      <h4 className="session-audio-panel__section-title">{AUDIO_CONTROL_COPY.dmOverrides}</h4>
       {overrides.length === 0 ? (
-        <p className="audio-panel__section-empty">{AUDIO_CONTROL_COPY.noActiveOverrides}</p>
+        <p className="session-audio-panel__section-empty">{AUDIO_CONTROL_COPY.noActiveOverrides}</p>
       ) : (
-        <ul className="audio-panel__chips">
+        <ul className="session-audio-panel__chips">
           {overrides.slice(0, 4).map((override) => (
-            <li key={`${override.userId}-${override.overrideType}`} className="audio-panel__chip">
+            <li
+              key={`${override.userId}-${override.overrideType}`}
+              className="session-audio-panel__chip"
+            >
               {override.overrideType}
             </li>
           ))}
           {overrides.length > 4 ? (
-            <li className="audio-panel__chip">
+            <li className="session-audio-panel__chip">
               +{overrides.length - 4} {AUDIO_CONTROL_COPY.moreSuffix}
             </li>
           ) : null}

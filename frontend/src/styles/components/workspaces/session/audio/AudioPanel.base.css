@@ -59,12 +59,12 @@
   list-style: none;
 }
 
-.audio-panel__section {
+.session-audio-panel__section {
   border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
   padding-top: 0.55rem;
 }
 
-.audio-panel__section-title {
+.session-audio-panel__section-title {
   margin: 0 0 0.35rem;
   font-size: 0.74rem;
   font-weight: 700;
@@ -73,13 +73,13 @@
   color: var(--color-text-secondary);
 }
 
-.audio-panel__section-empty {
+.session-audio-panel__section-empty {
   margin: 0;
   font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
-.audio-panel__chips {
+.session-audio-panel__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -88,7 +88,7 @@
   list-style: none;
 }
 
-.audio-panel__chip {
+.session-audio-panel__chip {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
