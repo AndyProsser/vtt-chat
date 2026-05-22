@@ -18,6 +18,9 @@ import type { MetadataSlice } from './metadataSlice'
 import type { LiveKitSlice } from './livekitSlice'
 import type { UISlice } from './uiSlice'
 import type { UserMuteSlice } from './userMuteSlice'
+import type { CampaignGroupsSlice } from './campaignGroupsSlice'
+import type { SessionGroupsSlice } from './sessionGroupsSlice'
+import type { GroupPanelUISlice } from './groupPanelUISlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
@@ -30,6 +33,9 @@ import { createMetadataSlice } from './metadataSlice'
 import { createLiveKitSlice } from './livekitSlice'
 import { createUISlice } from './uiSlice'
 import { createUserMuteSlice } from './userMuteSlice'
+import { createCampaignGroupsSlice } from './campaignGroupsSlice'
+import { createSessionGroupsSlice } from './sessionGroupsSlice'
+import { createGroupPanelUISlice } from './groupPanelUISlice'
 
 declare global {
   interface Window {
@@ -50,7 +56,10 @@ export type Store = SessionSlice &
   MetadataSlice &
   UISlice &
   LiveKitSlice &
-  UserMuteSlice
+  UserMuteSlice &
+  CampaignGroupsSlice &
+  SessionGroupsSlice &
+  GroupPanelUISlice
 
 /**
  * Root Zustand store.
@@ -68,6 +77,9 @@ export const useStore = create<Store>()((...args) => ({
   ...createUISlice(...args),
   ...createLiveKitSlice(...args),
   ...createUserMuteSlice(...args),
+  ...createCampaignGroupsSlice(...args),
+  ...createSessionGroupsSlice(...args),
+  ...createGroupPanelUISlice(...args),
 }))
 
 if (typeof window !== 'undefined') {

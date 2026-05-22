@@ -387,16 +387,24 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 - `ROOM:CREATED` — DM creates room
 - `ROOM:USER_JOINED` — User joins (system message generated)
 - `ROOM:USER_LEFT` — User leaves (system message generated)
-- `ROOM:DELETED` — DM cleanup (must occur only after Close -> Delete flow)
+- `ROOM:CLOSED` — DM closes room (moves all members to MAIN, group remains but empty) _New event_
+- `ROOM:DELETED` — DM cleanup (must occur only after Close → Delete flow)
 - `PRESENCE:STATE_CHANGED` — User state transition (ONLINE→TYPING→SPEAKING, etc.)
 - `PRESENCE:HEARTBEAT` — Internal keepalive
 - `PRESENCE:RECONNECTED` — Restore state after disconnect
 
 Room close/delete sequencing contract:
 
-- For GROUP room removal, backend must execute Close -> Delete.
-- Close step moves every remaining member to MAIN and emits `ROOM:USER_LEFT` + `ROOM:USER_JOINED` with reason `ROOM_CLOSED`.
-- Delete step runs only when the room is empty and then emits `ROOM:DELETED`.
+- For GROUP room removal, backend must execute Close → Delete as two separate steps.
+- **Close step**: Moves every remaining member to MAIN, emits `ROOM:USER_LEFT` (reason: `ROOM_CLOSED`) for each member from old room, then `ROOM:USER_JOINED` for each member to MAIN. Room remains in group list but is now empty. `ROOM:CLOSED` event emitted. Delete button becomes available on group card.
+- **Delete step**: Runs only when the room is empty. Removes room from both session AND campaign DB (permanent campaign deletion). Emits `ROOM:DELETED`. Room card disappears from UI. Group no longer available in future sessions.
+- Example flow:
+  1. DM clicks "Close" on "Scouts" group (has 2 members)
+  2. Backend moves alice and bob to MAIN, broadcasts ROOM:USER_LEFT + ROOM:USER_JOINED events, emits ROOM:CLOSED
+  3. UI: Scouts card empties, "Delete" button appears
+  4. DM clicks "Delete" on now-empty Scouts group
+  5. Backend deletes Scouts from campaign, broadcasts ROOM:DELETED
+  6. UI: Scouts card disappears, no longer available next session
 
 **Notes** (file: `events/audio.ts`)
 
@@ -412,8 +420,54 @@ Room close/delete sequencing contract:
 - `AUDIO:EFFECT_REMOVED` — DM removes effect
 - `AUDIO:PRESET_LOADED` — Load audio preset
 - `AUDIO:ENVIRONMENT_SET` — DM sets room ambience
+- `AUDIO:ENVIRONMENT_CLEARED` — DM clears room ambience (revert to default) _New event_
 - `AUDIO:DM_OVERRIDE_APPLIED` — Mute, gain, filter, gate (DM only)
 - `AUDIO:DM_OVERRIDE_REMOVED` — Remove override
+
+### Group Environment API Contracts
+
+**Campaign-Level Groups** (persistent structure)
+
+- `GET /api/campaigns/:campaignId/groups` → List all groups for campaign with their default environments
+- `POST /api/campaigns/:campaignId/groups` → Create new campaign group (name, optional defaultEnvironmentName)
+- `PATCH /api/campaigns/:campaignId/groups/:groupId` → Update group (defaultEnvironmentName, etc.)
+- `DELETE /api/campaigns/:campaignId/groups/:groupId` → Delete campaign group (only if no active sessions using it; return 409 if session active)
+
+**Session-Level Groups** (runtime state)
+
+- `GET /api/sessions/:sessionId/groups` → List all groups in session with member counts and current environments
+- `POST /api/sessions/:sessionId/groups` → Create new group mid-session (name, optional defaultEnvironmentName)
+- `POST /api/sessions/:sessionId/groups/:groupId/close` → Close group (move all members to MAIN, group remains empty, delete button appears)
+  - Response: list of moved users `{ userId, username, fromGroupId, toGroupId }`
+  - Emits: `ROOM:USER_LEFT` (reason: `ROOM_CLOSED`), `ROOM:USER_JOINED`, `ROOM:CLOSED`
+- `DELETE /api/sessions/:sessionId/groups/:groupId` → Delete group (only if empty or force=true; permanent campaign deletion)
+  - Response: deleted groupId
+  - Emits: `ROOM:DELETED`
+
+**Environment Application**
+
+- `POST /api/audio/environments/apply` → Set environment for a session group
+  - Request: `{ sessionId, groupId, environmentName }`
+  - Response: `{ ok, groupId, environmentName }`
+  - Emits: `AUDIO:ENVIRONMENT_SET` to all players in that group
+  - Broadcast to all session members (all clients update roomEnvironmentNames in Zustand)
+  - Valid environments: `Default, Forest, Cave, Tavern, City, Dungeon, Night, Storm` (extensible)
+- `DELETE /api/audio/environments/:groupId` → Clear environment for a group
+  - Response: `{ ok, groupId }`
+  - Emits: `AUDIO:ENVIRONMENT_CLEARED`
+  - Note: environment still persists at campaign level; this clears session-level override
+
+**Environment Lifecycle**
+
+- Campaign groups have a `defaultEnvironmentName` that persists across sessions
+- On session start, campaign groups are carried into session; session environment defaults to campaign default
+- DM can override session environment (does not affect campaign default)
+- On session PAUSE: all environments cleared
+- On session RESUME: pre-pause environments reapply from session snapshot (not campaign default)
+- On session END: session environments discarded; campaign environments remain unchanged
+- MAIN always has neutral environment (cannot be changed)
+- WHISPER uses no environment (system-managed)
+- GREENROOM uses neutral environment (cannot be changed)
 
 **Metadata** (future expansion)
 

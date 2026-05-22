@@ -348,6 +348,45 @@ Evidence snapshot (2026-05-20 - Part 2):
 
 _DM superpowers: move players between groups, apply conditions, set environments, control distance. All within 2 clicks._
 
+### W-Groups-Panel: Editor Mode + Session Mode Groups Management
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High (blocking all audio work)
+**Depends on**: W0-Rightbar
+
+**Scope**: Implement comprehensive Groups (Rooms) panel for both editor (pre-session planning) and session (runtime) modes. Editor allows DM to pre-create groups and set default environments before players join. Session mode allows DM to drag players between groups, close groups (empty to MAIN), delete empty groups (permanent campaign deletion), and apply/change environments. Groups persist across sessions at campaign level; environment clears on pause and reapplies on resume.
+
+**Acceptance Criteria**:
+
+- [ ] Editor mode: DM can view, create, delete campaign-level groups before session starts
+- [ ] Editor mode: DM can set default environment per group (persistent, survives session boundaries)
+- [ ] Editor mode: Player list is not visible (players only joinable in-session)
+- [ ] Session mode: Group cards show member count, environment icon, and player list (collapsible)
+- [ ] Session mode: DM drag player from one group card to another (one player at a time)
+- [ ] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
+- [ ] Session mode: Environment icon in group header; click to open environment picker modal
+- [ ] Session mode: Environment selection applies to all players in group within 200ms
+- [ ] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
+- [ ] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
+- [ ] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
+- [ ] Session pause: all players move to MAIN, all group environments clear, pre-pause membership is snapshotted
+- [ ] Session resume: players return to pre-pause groups, pre-pause environments reapply
+- [ ] Session end: all groups except MAIN deleted, all members moved to greenroom
+- [ ] Spectators: can see groups (read-only), cannot drag or interact
+- [ ] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
+- [ ] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
+- [ ] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
+- [ ] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` (detailed spec)
+- [ ] Documentation: `docs/CONTRACTS.md` updated with group close, environment contracts
+
+**Related Docs**:
+
+- [docs/architecture/GROUPS-PANEL-ARCHITECTURE.md](docs/architecture/GROUPS-PANEL-ARCHITECTURE.md)
+- [docs/CONTRACTS.md](docs/CONTRACTS.md)
+- [.github/copilot-instructions.md](.github/copilot-instructions.md) (Whisper Bubble, Group Visibility Rules sections)
+
+---
+
 ### W-Audio-Voice: DM Voice Targeting and Broadcast Mode
 
 **Status**: ⚪ Not Started
