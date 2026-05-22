@@ -12,7 +12,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Role, UUID } from '@shared'
-import { Icon } from '@/components/ui/Icon'
+import {
+  JOURNAL_AI_UNAVAILABLE_COPY,
+  JOURNAL_DM_ROASTS,
+} from '@/constants/journal.constants'
 import { useStore } from '@/hooks/useStore'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
@@ -202,6 +205,7 @@ export function JournalPanel({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [helperMessage, setHelperMessage] = useState<string | null>(null)
 
   const addNote = useStore((state) => state.addNote)
   const defaultHashtag = useMemo(
@@ -428,7 +432,39 @@ export function JournalPanel({
 
     setIsEditing(false)
     setSaveError(null)
+    setHelperMessage(null)
   }, [defaultHashtag, entry])
+
+  const handleAskAi = useCallback(() => {
+    setHelperMessage(JOURNAL_AI_UNAVAILABLE_COPY)
+  }, [])
+
+  const handleApplyTagHelp = useCallback(() => {
+    const nextTags = [...contentHashtagSuggestions, ...hashtagSuggestions]
+      .filter((tag, index, tags) => tags.indexOf(tag) === index)
+      .slice(0, 4)
+
+    if (nextTags.length === 0) {
+      setHelperMessage('No obvious tags yet. Write a sentence first so the panel has something to steal.')
+      return
+    }
+
+    setDraftHashtagsInput(serializeJournalHashtags(nextTags))
+    setHelperMessage(`Suggested tags applied: ${nextTags.join(' ')}`)
+  }, [contentHashtagSuggestions, hashtagSuggestions])
+
+  const handleRoastDm = useCallback(() => {
+    const randomIndex = Math.floor(Math.random() * JOURNAL_DM_ROASTS.length)
+    setHelperMessage(JOURNAL_DM_ROASTS[randomIndex] ?? JOURNAL_DM_ROASTS[0])
+  }, [])
+
+  const mergedHashtagSuggestions = useMemo(
+    () =>
+      [...contentHashtagSuggestions, ...hashtagSuggestions].filter(
+        (tag, index, tags) => tags.indexOf(tag) === index
+      ),
+    [contentHashtagSuggestions, hashtagSuggestions]
+  )
 
   if (isLoading) {
     return (
@@ -440,13 +476,6 @@ export function JournalPanel({
 
   const displayHashtags = entry?.hashtags ?? normalizedDraftHashtags
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
-  const mergedHashtagSuggestions = useMemo(
-    () =>
-      [...contentHashtagSuggestions, ...hashtagSuggestions].filter(
-        (tag, index, tags) => tags.indexOf(tag) === index
-      ),
-    [contentHashtagSuggestions, hashtagSuggestions]
-  )
 
   return (
     <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
@@ -534,6 +563,34 @@ export function JournalPanel({
                   </button>
                 ))}
               </div>
+            ) : null}
+            <div className="knowledge-panel__journal-helper-actions">
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onClick={handleAskAi}
+              >
+                Ask AI
+              </button>
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onClick={handleApplyTagHelp}
+              >
+                Help with tags
+              </button>
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onClick={handleRoastDm}
+              >
+                Roast the DM
+              </button>
+            </div>
+            {helperMessage ? (
+              <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
+                {helperMessage}
+              </p>
             ) : null}
           </>
         ) : (

@@ -666,6 +666,12 @@
   margin-top: var(--space-2, 8px);
 }
 
+.knowledge-panel__journal-helper-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+}
+
 .knowledge-panel__journal-title-input:focus {
   border-color: var(--color-accent-border, rgba(99, 102, 241, 0.5));
 }
