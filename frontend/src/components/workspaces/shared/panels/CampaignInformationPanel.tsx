@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
 import { Icon } from '@/components/ui/Icon'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { TooltipProvider } from '@/components/ui'
 import { useToast } from '@/hooks/useToast'
 import { CampaignInformationStatusLine } from './CampaignInformationPanel.StatusLine'
 import { CampaignInformationEditBody } from './CampaignInformationPanel.EditBody'
 import { CampaignInformationReadOnlyBody } from './CampaignInformationPanel.ReadOnlyBody'
+import { CampaignInformationHeader } from './CampaignInformationPanel.Header'
+import { CampaignInformationFooterActions } from './CampaignInformationPanel.FooterActions'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
@@ -225,50 +227,17 @@ export function CampaignInformationPanel({
       aria-label="Campaign information"
     >
       <TooltipProvider delayDuration={140}>
-        <div className="cip-header-row">
-          <h3 className="cip-heading">
-            <Icon name="panel" />
-            Campaign Information
-          </h3>
-          {canEdit && isEditing ? (
-            <div className="cip-inline-actions" aria-label="Campaign information actions">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="session-icon-action session-icon-action--icon"
-                    aria-label={
-                      isSaving ? 'Saving campaign information' : 'Save campaign information'
-                    }
-                    onClick={() => void handleSave()}
-                    disabled={isSaving || !isDirty || !nameDraft.trim()}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {isSaving ? 'hourglass_top' : 'save'}
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Save changes</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="session-icon-action session-icon-action--icon"
-                    aria-label="Undo campaign edits"
-                    onClick={handleCancel}
-                    disabled={isSaving || !isDirty}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      undo
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Undo unsaved edits</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : null}
-        </div>
+        <CampaignInformationHeader
+          canEdit={canEdit}
+          isEditing={isEditing}
+          isSaving={isSaving}
+          isDirty={isDirty}
+          nameDraft={nameDraft}
+          onSave={() => {
+            void handleSave()
+          }}
+          onCancel={handleCancel}
+        />
 
         <div className="cip-copy">
           {isEditing ? (
@@ -298,19 +267,12 @@ export function CampaignInformationPanel({
         </div>
 
         <div className="cip-actions">
-          {!workspaceMode && canEdit && !isEditing ? (
-            <button
-              type="button"
-              className="session-button session-button-brand"
-              onClick={() => setIsEditing(true)}
-            >
-              Edit campaign information
-            </button>
-          ) : !canEdit ? (
-            <p className="cip-muted">Campaign metadata is read-only for your role.</p>
-          ) : (
-            ''
-          )}
+          <CampaignInformationFooterActions
+            workspaceMode={workspaceMode}
+            canEdit={canEdit}
+            isEditing={isEditing}
+            onStartEditing={() => setIsEditing(true)}
+          />
         </div>
       </TooltipProvider>
     </section>
