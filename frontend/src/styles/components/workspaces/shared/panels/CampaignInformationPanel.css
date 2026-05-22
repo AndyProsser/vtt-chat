@@ -154,6 +154,16 @@
   resize: vertical;
 }
 
+.cip-markdown-editor {
+  min-height: 168px;
+}
+
+.cip-markdown-editor .md-editor__surface,
+.cip-markdown-editor .md-editor__content,
+.cip-markdown-editor .md-editor__content .ProseMirror {
+  min-height: 132px;
+}
+
 .cip-toolbar {
   display: flex;
   flex-wrap: wrap;

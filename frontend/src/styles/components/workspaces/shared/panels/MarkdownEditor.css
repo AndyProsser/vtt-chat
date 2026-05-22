@@ -4,9 +4,19 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-default);
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-accent-border, rgba(99, 102, 241, 0.5)) 72%,
+      var(--color-border-soft)
+    );
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-subtle) 72%, var(--color-surface-default)),
+    color-mix(in srgb, var(--color-surface-default) 94%, transparent)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
 }
 
@@ -16,9 +26,9 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--color-border-soft);
-  background: var(--color-surface-subtle);
+  padding: 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 88%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 78%, var(--color-surface-default));
   flex-wrap: wrap;
 }
 
@@ -26,16 +36,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: none;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: 7px;
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 0.85rem;
   line-height: 1;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
   flex-shrink: 0;
 }
 
@@ -44,13 +56,21 @@
 }
 
 .md-editor__tool:hover:not(:disabled) {
-  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+  background: color-mix(
+    in srgb,
+    var(--color-surface-hover, rgba(255, 255, 255, 0.06)) 80%,
+    var(--color-surface-default)
+  );
   color: var(--color-text-primary);
 }
 
 .md-editor__tool.is-active {
-  background: var(--color-surface-active, rgba(99, 102, 241, 0.18));
-  color: var(--color-accent, #818cf8);
+  background: color-mix(
+    in srgb,
+    var(--color-accent-ring, rgba(99, 102, 241, 0.15)) 88%,
+    transparent
+  );
+  color: var(--color-accent, #93c5fd);
 }
 
 .md-editor__tool:disabled {
@@ -61,9 +81,9 @@
 .md-editor__toolbar-sep {
   display: inline-block;
   width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: var(--color-border-soft);
+  height: 20px;
+  margin: 0 6px;
+  background: color-mix(in srgb, var(--color-border-soft) 84%, transparent);
   align-self: center;
 }
 
@@ -75,12 +95,13 @@
 
 .md-editor__surface {
   position: relative;
-  min-height: 120px;
+  min-height: 132px;
+  background: color-mix(in srgb, var(--color-surface-default) 96%, transparent);
 }
 
 .md-editor__content {
-  min-height: 120px;
-  padding: 10px 12px;
+  min-height: 132px;
+  padding: 14px 14px 12px;
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--color-text-primary);
@@ -91,7 +112,7 @@
 /* ProseMirror reset */
 .md-editor__content .ProseMirror {
   outline: none;
-  min-height: 100px;
+  min-height: 108px;
 }
 
 .md-editor__content .ProseMirror p {
@@ -168,8 +189,8 @@
 
 .md-editor__placeholder {
   position: absolute;
-  top: 10px;
-  left: 12px;
+  top: 14px;
+  left: 14px;
   color: var(--color-text-muted, rgba(255, 255, 255, 0.3));
   pointer-events: none;
   font-size: 0.9rem;
@@ -179,8 +200,8 @@
 
 .md-editor__raw {
   width: 100%;
-  min-height: 140px;
-  padding: 10px 12px;
+  min-height: 144px;
+  padding: 14px;
   border: none;
   background: transparent;
   color: var(--color-text-primary);
@@ -216,5 +237,7 @@
 
 .md-editor:not(.md-editor--readonly):focus-within {
   border-color: var(--color-accent-border, rgba(99, 102, 241, 0.5));
-  box-shadow: 0 0 0 2px var(--color-accent-ring, rgba(99, 102, 241, 0.15));
+  box-shadow:
+    0 0 0 2px var(--color-accent-ring, rgba(99, 102, 241, 0.15)),
+    0 8px 24px rgba(15, 23, 42, 0.18);
 }

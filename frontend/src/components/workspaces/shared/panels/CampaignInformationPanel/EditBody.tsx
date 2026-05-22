@@ -1,7 +1,5 @@
-import type { ReactNode, RefObject } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-
-type MarkdownMode = 'bold' | 'italic' | 'ul' | 'ol'
+import type { ReactNode } from 'react'
+import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 
 type CampaignInformationEditBodyProps = {
   nameDraft: string
@@ -9,8 +7,6 @@ type CampaignInformationEditBodyProps = {
   isSaving: boolean
   onNameChange: (value: string) => void
   onDescriptionChange: (value: string) => void
-  onApplyMarkdown: (mode: MarkdownMode) => void
-  descriptionInputRef: RefObject<HTMLTextAreaElement | null>
   currentPoster: string | null | undefined
   campaignName: string
   posterUrlDraft: string | null
@@ -28,8 +24,6 @@ export function CampaignInformationEditBody({
   isSaving,
   onNameChange,
   onDescriptionChange,
-  onApplyMarkdown,
-  descriptionInputRef,
   currentPoster,
   campaignName,
   posterUrlDraft,
@@ -53,81 +47,16 @@ export function CampaignInformationEditBody({
       <label className="cip-field-label" htmlFor="cip-description">
         Description
       </label>
-      <div className="cip-toolbar" role="toolbar" aria-label="Description formatting">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="cip-toolbar__button"
-              onClick={() => onApplyMarkdown('bold')}
-              disabled={isSaving}
-              aria-label="Bold"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_bold
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Bold</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="cip-toolbar__button"
-              onClick={() => onApplyMarkdown('italic')}
-              disabled={isSaving}
-              aria-label="Italic"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_italic
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Italic</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="cip-toolbar__button"
-              onClick={() => onApplyMarkdown('ul')}
-              disabled={isSaving}
-              aria-label="Bullet list"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_list_bulleted
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Bullet list</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="cip-toolbar__button"
-              onClick={() => onApplyMarkdown('ol')}
-              disabled={isSaving}
-              aria-label="Numbered list"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_list_numbered
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Numbered list</TooltipContent>
-        </Tooltip>
+      <div id="cip-description">
+        <MarkdownEditor
+          value={descriptionDraft}
+          onChange={onDescriptionChange}
+          readOnly={isSaving}
+          variant="full"
+          className="cip-markdown-editor"
+          placeholder="Describe the campaign, current arc, tone, and prep notes…"
+        />
       </div>
-      <textarea
-        id="cip-description"
-        ref={descriptionInputRef}
-        className="cip-textarea"
-        rows={7}
-        value={descriptionDraft}
-        onChange={(event) => onDescriptionChange(event.target.value)}
-        disabled={isSaving}
-      />
 
       {statusLine}
 

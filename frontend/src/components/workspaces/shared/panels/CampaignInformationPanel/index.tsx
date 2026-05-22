@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { TooltipProvider } from '@/components/ui'
@@ -71,7 +71,6 @@ export function CampaignInformationPanel({
   const [nameDraft, setNameDraft] = useState('')
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [posterUrlDraft, setPosterUrlDraft] = useState<string | null>(null)
-  const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     if (!campaign) {
@@ -94,49 +93,6 @@ export function CampaignInformationPanel({
         <p className="cip-muted">Select a campaign to view its metadata and activity summary.</p>
       </section>
     )
-  }
-
-  const applyMarkdown = (mode: 'bold' | 'italic' | 'ul' | 'ol') => {
-    const input = descriptionInputRef.current
-    if (!input) {
-      return
-    }
-
-    const start = input.selectionStart || 0
-    const end = input.selectionEnd || 0
-    const selected = descriptionDraft.slice(start, end)
-
-    let next = descriptionDraft
-    let replacement = selected
-
-    if (mode === 'bold') {
-      replacement = `**${selected || 'text'}**`
-    } else if (mode === 'italic') {
-      replacement = `*${selected || 'text'}*`
-    } else if (mode === 'ul') {
-      replacement = selected
-        ? selected
-            .split('\n')
-            .map((line) => (line.trim().length ? `- ${line}` : '- '))
-            .join('\n')
-        : '- '
-    } else {
-      replacement = selected
-        ? selected
-            .split('\n')
-            .map((line, index) => `${index + 1}. ${line || ''}`)
-            .join('\n')
-        : '1. '
-    }
-
-    next = `${descriptionDraft.slice(0, start)}${replacement}${descriptionDraft.slice(end)}`
-    setDescriptionDraft(next)
-
-    requestAnimationFrame(() => {
-      const cursor = start + replacement.length
-      input.focus()
-      input.setSelectionRange(cursor, cursor)
-    })
   }
 
   const handlePosterUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,8 +203,6 @@ export function CampaignInformationPanel({
               isSaving={isSaving}
               onNameChange={setNameDraft}
               onDescriptionChange={setDescriptionDraft}
-              onApplyMarkdown={applyMarkdown}
-              descriptionInputRef={descriptionInputRef}
               currentPoster={currentPoster}
               campaignName={campaign.name}
               posterUrlDraft={posterUrlDraft}
