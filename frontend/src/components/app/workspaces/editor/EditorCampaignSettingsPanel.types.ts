@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react'
 import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
-export type LobbyCampaignSettingsPanelProps = {
+export type EditorCampaignSettingsPanelProps = {
   campaignName?: string
   isLoading: boolean
   isSaving: boolean

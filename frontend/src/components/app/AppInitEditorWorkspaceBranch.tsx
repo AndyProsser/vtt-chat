@@ -5,11 +5,11 @@ import {
   CampaignRightbarSettings,
   type CharacterSettingsDraft,
 } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { LobbyCampaignSettingsPanel } from '@/components/app/workspaces/lobby/LobbyCampaignSettingsPanel'
-import { LobbyCampaignWorkspaceView } from '@/components/app/workspaces/lobby/LobbyCampaignWorkspaceView'
+import { EditorCampaignSettingsPanel } from '@/components/app/workspaces/editor/EditorCampaignSettingsPanel'
+import { EditorCampaignWorkspaceView } from '@/components/app/workspaces/editor/EditorCampaignWorkspaceView'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 
-type AppInitLobbyWorkspaceBranchProps = {
+type AppInitEditorWorkspaceBranchProps = {
   hasSessionSelected: boolean
   lobbyViewMode: 'list' | 'workspace'
   selectedCampaign: CampaignSummary | null
@@ -93,13 +93,13 @@ type AppInitLobbyWorkspaceBranchProps = {
   launchDisabledReason: string
 }
 
-export function AppInitLobbyWorkspaceBranch(props: AppInitLobbyWorkspaceBranchProps) {
+export function AppInitEditorWorkspaceBranch(props: AppInitEditorWorkspaceBranchProps) {
   if (props.hasSessionSelected || props.lobbyViewMode !== 'workspace') {
     return null
   }
 
   return (
-    <LobbyCampaignWorkspaceView
+    <EditorCampaignWorkspaceView
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}
@@ -143,7 +143,7 @@ export function AppInitLobbyWorkspaceBranch(props: AppInitLobbyWorkspaceBranchPr
       isInviteReissuing={props.isInviteReissuing}
       settingsPanel={
         props.membershipRole === Role.DM ? (
-          <LobbyCampaignSettingsPanel
+          <EditorCampaignSettingsPanel
             campaignName={props.selectedCampaign?.name}
             isLoading={props.isSettingsLoading}
             isSaving={props.isSettingsSaving}

@@ -11,10 +11,10 @@ import {
   getTabIcon,
   getTabLabel,
   getTabsForRole,
-} from './LobbyCampaignWorkspaceView.tabs'
+} from './EditorCampaignWorkspaceView.tabs'
 import type { CampaignSummary } from '@/types/session/campaign'
 
-type LobbyCampaignWorkspaceViewProps = {
+type EditorCampaignWorkspaceViewProps = {
   campaign: CampaignSummary | null
   role: Role
   themeMode: 'light' | 'dark'
@@ -63,7 +63,7 @@ type LobbyCampaignWorkspaceViewProps = {
   ) => Promise<void>
 }
 
-export function LobbyCampaignWorkspaceView(props: LobbyCampaignWorkspaceViewProps) {
+export function EditorCampaignWorkspaceView(props: EditorCampaignWorkspaceViewProps) {
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
 

@@ -152,8 +152,10 @@ Current shipped note:
    `components/auth`, `components/guest`, `components/watch`, `components/app`.
    Main app workspaces live under
    `components/app/workspaces/{lobby,editor,session}`.
-   Shared rightbar panels for editor/session live under
-   `components/app/shared/rightbar`.
+   Shared rightbar and toolbar panels for editor/session live under
+   `components/app/workspaces/shared/{rightbar,toolbar}`.
+   `components/app/workspaces/editor` is edit-flow owned.
+   `components/app/workspaces/session` is launch/runtime owned.
 
 
 ████████████████████████████████████████████████████████████████████████████████

@@ -25,7 +25,7 @@ import { SessionLobbyView } from '@/components/app/workspaces/lobby/SessionLobby
 import { AppInitModals } from './AppInitModals'
 import { AppInitCommandCenter } from './AppInitCommandCenter'
 import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { AppInitLobbyWorkspaceBranch } from './AppInitLobbyWorkspaceBranch'
+import { AppInitEditorWorkspaceBranch } from './AppInitEditorWorkspaceBranch'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
@@ -2214,7 +2214,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           />
         )}
 
-        <AppInitLobbyWorkspaceBranch
+        <AppInitEditorWorkspaceBranch
           hasSessionSelected={hasSessionSelected}
           lobbyViewMode={lobbyViewMode}
           selectedCampaign={selectedCampaign || null}

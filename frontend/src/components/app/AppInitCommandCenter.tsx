@@ -112,6 +112,8 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
     return null
   }
 
+  const currentSession = props.currentSession
+
   return (
     <div className="session-command-center">
       <CommandCenterFrame
@@ -130,13 +132,13 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
             statusLabel={props.connectionStatus.label}
             coreWsState={props.connectionStatus.coreWsState}
             livekitState={props.connectionStatus.livekitState}
-            sessionState={props.currentSession.state}
-            sessionStartedAt={props.currentSession.startedAt}
+            sessionState={currentSession.state}
+            sessionStartedAt={currentSession.startedAt}
             sessionPausedAt={
-              props.currentSession.pausedAt ?? props.currentPauseStats.pauseStartedAt
+              currentSession.pausedAt ?? props.currentPauseStats.pauseStartedAt
             }
-            sessionEndedAt={props.currentSession.endedAt}
-            cooldownEndsAt={props.currentSession.cooldownExpiresAt}
+            sessionEndedAt={currentSession.endedAt}
+            cooldownEndsAt={currentSession.cooldownExpiresAt}
             cumulativePauseMs={props.currentPauseStats.cumulativePauseMs}
             pauseCount={props.currentPauseStats.pauseCount}
             cooldownDurationMs={props.configuredCooldownDurationMs}
@@ -148,12 +150,12 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
             cooldownControlLockedReason={props.cooldownControlLockedReason}
             canExtendCooldown={props.canExtendCooldown}
             extendCooldownLockedReason={props.extendCooldownLockedReason}
-            onStartSession={() => props.onStartSession(props.currentSession.id)}
-            onPauseSession={() => props.onPauseSession(props.currentSession.id)}
+            onStartSession={() => props.onStartSession(currentSession.id)}
+            onPauseSession={() => props.onPauseSession(currentSession.id)}
             onStopSession={props.onStopSession}
-            onCancelCooldown={() => props.onCancelCooldown(props.currentSession.id)}
+            onCancelCooldown={() => props.onCancelCooldown(currentSession.id)}
             onExtendCooldown={() =>
-              props.onExtendCooldown(props.currentSession.id, props.configuredCooldownDurationMs)
+              props.onExtendCooldown(currentSession.id, props.configuredCooldownDurationMs)
             }
             onOpenUserSettings={props.onOpenUserSettings}
             onExitToSelector={props.onExitToSelector}
@@ -164,16 +166,16 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
             <SessionLeftRailPanel
               apiUrl={props.apiUrl}
               token={props.token}
-              sessionId={props.currentSession.id}
+              sessionId={currentSession.id}
               campaignName={props.selectedCampaign?.name || 'Campaign'}
               campaignDescription={props.selectedCampaign?.description}
               role={props.effectiveSessionRole}
-              sessionName={props.currentSession.name}
-              sessionState={props.currentSession.state}
+              sessionName={currentSession.name}
+              sessionState={currentSession.state}
               sessionCount={props.sessionCount}
               connectedPlayersCount={props.connectedPlayers}
               connectedSpectatorsCount={props.connectedSpectatorsCount}
-              dmUserId={props.currentSession.dmId}
+              dmUserId={currentSession.dmId}
               currentUserId={props.effectiveSessionUser.id}
               rooms={props.visibleRooms.map((room) => ({
                 id: room.id,
@@ -181,7 +183,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                 type: room.type,
               }))}
               roomMembersByRoomId={props.roomMembersByRoomId}
-              sessionEndedAt={props.currentSession.endedAt}
+              sessionEndedAt={currentSession.endedAt}
               cooldownDurationMs={props.configuredCooldownDurationMs}
               selectedRoomId={props.selectedRoomId}
               onSelectRoom={props.onSelectRoom}
@@ -198,7 +200,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                 aria-label="Voice panel"
               >
                 <AudioPanel
-                  sessionId={props.currentSession.id}
+                  sessionId={currentSession.id}
                   roomId={props.selectedRoomId}
                   role={props.effectiveSessionRole}
                 />
@@ -209,14 +211,14 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
         renderCenterPane={(view) => (
           <div className="session-command-center-pane">
             {props.effectiveSessionRole === Role.SPECTATOR &&
-            (props.currentSession.state === SessionState.IDLE ||
-              props.currentSession.state === SessionState.PAUSED ||
-              props.currentSession.state === SessionState.COOLDOWN ||
-              props.currentSession.state === SessionState.ENDED ||
-              props.currentSession.state === SessionState.CLEANUP) ? (
+            (currentSession.state === SessionState.IDLE ||
+              currentSession.state === SessionState.PAUSED ||
+              currentSession.state === SessionState.COOLDOWN ||
+              currentSession.state === SessionState.ENDED ||
+              currentSession.state === SessionState.CLEANUP) ? (
               <SpectatorWaitScreen
-                sessionState={props.currentSession.state}
-                sessionEndedAt={props.currentSession.endedAt}
+                sessionState={currentSession.state}
+                sessionEndedAt={currentSession.endedAt}
                 cooldownDurationMs={props.configuredCooldownDurationMs}
               />
             ) : view === 'chat' ? (
@@ -226,7 +228,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                     <ChatWindow
                       apiUrl={props.apiUrl}
                       token={props.token}
-                      sessionId={props.currentSession.id}
+                      sessionId={currentSession.id}
                       roomId={props.selectedRoomId}
                       campaignId={props.campaignId}
                       roomName={props.selectedRoom?.name}
@@ -251,7 +253,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
               <NotesPanel
                 apiUrl={props.apiUrl}
                 token={props.token}
-                sessionId={props.currentSession.id}
+                sessionId={currentSession.id}
                 user={props.effectiveSessionUser}
               />
             )}
@@ -299,7 +301,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                 <NotesRailPanel
                   apiUrl={props.apiUrl}
                   token={props.token}
-                  sessionId={props.currentSession.id}
+                  sessionId={currentSession.id}
                   role={props.effectiveSessionRole}
                   onOpenNotesWorkspace={props.onOpenNotesWorkspace}
                 />
@@ -308,8 +310,8 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                 <JournalPanel
                   apiUrl={props.apiUrl}
                   token={props.token}
-                  sessionId={props.currentSession.id}
-                  sessionName={props.currentSession.name}
+                  sessionId={currentSession.id}
+                  sessionName={currentSession.name}
                   role={props.effectiveSessionRole}
                   userId={props.userId}
                 />
@@ -318,7 +320,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                 <HistoryPanel
                   apiUrl={props.apiUrl}
                   token={props.token}
-                  sessionId={props.currentSession.id}
+                  sessionId={currentSession.id}
                   role={props.effectiveSessionRole}
                   userId={props.userId}
                 />
@@ -336,7 +338,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
                   sessionName={props.sessionSettingsName}
                   sessionDescription={props.sessionSettingsDescription}
                   plannedDurationMinutes={props.sessionSettingsPlannedDurationMinutes}
-                  sessionStateLabel={props.currentSession.state}
+                  sessionStateLabel={currentSession.state}
                   canEditSessionSettings={props.canEditSessionSettings}
                   onSessionNameChange={props.onSessionNameChange}
                   onSessionDescriptionChange={props.onSessionDescriptionChange}
