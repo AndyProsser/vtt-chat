@@ -49,6 +49,7 @@ import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
 import { useWorkspacesCampaignSettingsActions } from '@/hooks/session/useWorkspacesCampaignSettingsActions'
+import { useWorkspacesUiCallbacks } from '@/hooks/session/useWorkspacesUiCallbacks'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -706,7 +707,25 @@ export function WorkspaceInitialization({
   const handleSaveCampaignSettingsSubmit: NonNullable<ModalsProps['onSaveCampaignSettings']> =
     handleSaveCampaignSettings
 
-  const handleToggleTheme = toggleThemeMode
+  const {
+    handleToggleTheme,
+    handleOpenCreateCampaignModal,
+    handleOpenJoinCampaignModal,
+    handleOpenUserSettingsModal,
+    handleBackToLobbyWorkspace,
+    handleLaunchFromEditor,
+    handleJoinRequestUnavailable,
+    handleWatchUnavailable,
+  } = useWorkspacesUiCallbacks({
+    toggleThemeMode,
+    setShowCreateCampaignModal,
+    setShowJoinCampaignModal,
+    setShowUserSettingsModal,
+    setEditorWorkspaceView,
+    setError,
+    handleEnterCampaign,
+  })
+
   const {
     hasSessionSelected,
     connectionStatus,
@@ -786,21 +805,17 @@ export function WorkspaceInitialization({
     themeMode,
     connectionStatus,
     onSelectCampaign: setSelectedCampaignId,
-    onCreateCampaign: () => setShowCreateCampaignModal(true),
-    onJoinCampaign: () => setShowJoinCampaignModal(true),
+    onCreateCampaign: handleOpenCreateCampaignModal,
+    onJoinCampaign: handleOpenJoinCampaignModal,
     onToggleTheme: handleToggleTheme,
-    onOpenUserSettings: () => setShowUserSettingsModal(true),
+    onOpenUserSettings: handleOpenUserSettingsModal,
     onLogoff: handleLogoff,
     onOpenCampaignSettings: openEditorCampaignWorkspace,
     onEnterCampaign: (campaignId) => {
       void handleEnterCampaign(campaignId)
     },
-    onJoinRequest: () => {
-      setError('Join request flow is not wired into Workspaces yet.')
-    },
-    onWatchCampaign: () => {
-      setError('Watch flow is not wired into Workspaces yet.')
-    },
+    onJoinRequest: handleJoinRequestUnavailable,
+    onWatchCampaign: handleWatchUnavailable,
     onError: setError,
   })
 
@@ -879,16 +894,11 @@ export function WorkspaceInitialization({
     onSaveCharacterSettings: () => {
       void saveCharacterSettings()
     },
-    onBackToLobby: () => {
-      setEditorWorkspaceView('lobby')
-    },
+    onBackToLobby: handleBackToLobbyWorkspace,
     onToggleTheme: handleToggleTheme,
-    onOpenUserSettings: () => setShowUserSettingsModal(true),
+    onOpenUserSettings: handleOpenUserSettingsModal,
     onLogoff: handleLogoff,
-    onLaunch: (campaignId) => {
-      setEditorWorkspaceView('lobby')
-      void handleEnterCampaign(campaignId)
-    },
+    onLaunch: handleLaunchFromEditor,
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
   })
 
@@ -912,7 +922,7 @@ export function WorkspaceInitialization({
     onExtendCooldown: (sessionId, durationMs) => {
       void handleExtendCooldown(sessionId, durationMs)
     },
-    onOpenUserSettings: () => setShowUserSettingsModal(true),
+    onOpenUserSettings: handleOpenUserSettingsModal,
     onExitToSelector: handleExitToCampaignSelector,
     apiUrl,
     token,
