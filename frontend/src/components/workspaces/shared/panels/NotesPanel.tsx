@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
-import { NoteVisibility, Role, RoomType, type UUID } from '@shared'
+import { NoteVisibility, Role, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
+import { useNotesShareContext } from './useNotesShareContext'
+import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface NotesPanelProps {
   apiUrl: string
@@ -13,18 +15,6 @@ interface NotesPanelProps {
   campaignId: UUID
   sessionId?: UUID | null
   user: { id: UUID; role: Role | string }
-}
-
-interface SessionUserSummary {
-  id: UUID
-  username: string
-  role: Role | string
-}
-
-interface SessionRoomShareOption {
-  id: UUID
-  name: string
-  type: RoomType
 }
 
 export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: NotesPanelProps) {
@@ -46,9 +36,13 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.PLAYERS_VISIBLE)
   const [tagsText, setTagsText] = useState('')
-  const [shareUsers, setShareUsers] = useState<SessionUserSummary[]>([])
-  const [shareRooms, setShareRooms] = useState<SessionRoomShareOption[]>([])
-  const [roomMemberIdsByRoomId, setRoomMemberIdsByRoomId] = useState<Record<UUID, UUID[]>>({})
+  const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
+    apiUrl,
+    token,
+    campaignId,
+    sessionId,
+    currentUserId: user.id,
+  })
   const [selectedShareUserId, setSelectedShareUserId] = useState('')
   const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>([])
@@ -130,98 +124,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       cancelled = true
     }
   }, [addNote, apiUrl, campaignId, clearNotes, token])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadShareContext = async () => {
-      try {
-        const [partyRes, roomsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/campaigns/${campaignId}/party-presence`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          sessionId
-            ? fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              })
-            : Promise.resolve(null),
-        ])
-
-        if (!partyRes.ok) {
-          return
-        }
-
-        const membersData = await partyRes.json()
-        const users = Array.isArray(membersData.members) ? membersData.members : []
-        const playerUsers = users
-          .filter(
-            (candidate: { userId: UUID; username: string; role: Role | string }) =>
-              candidate.userId !== user.id && candidate.role === Role.PLAYER
-          )
-          .map((candidate: { userId: UUID; username: string; role: Role | string }) => ({
-            id: candidate.userId,
-            username: candidate.username,
-            role: candidate.role,
-          }))
-
-        let shareableRooms: SessionRoomShareOption[] = []
-        let nextRoomMembers: Record<UUID, UUID[]> = {}
-
-        if (roomsRes && roomsRes.ok) {
-          const roomsData = await roomsRes.json()
-          const rooms = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
-          shareableRooms = rooms.filter(
-            (room: SessionRoomShareOption) =>
-              room.type === RoomType.GROUP || room.type === RoomType.MAIN
-          )
-
-          const roomMemberEntries = await Promise.all(
-            shareableRooms.map(async (room) => {
-              try {
-                const roomMembersRes = await fetch(`${apiUrl}/api/rooms/${room.id}/members`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                })
-
-                if (!roomMembersRes.ok) {
-                  return [room.id, []] as const
-                }
-
-                const roomMembersData = await roomMembersRes.json()
-                const memberIds = Array.isArray(roomMembersData.members)
-                  ? roomMembersData.members.filter((memberId): memberId is UUID =>
-                      playerUsers.some((player) => player.id === memberId)
-                    )
-                  : []
-
-                return [room.id, memberIds] as const
-              } catch {
-                return [room.id, []] as const
-              }
-            })
-          )
-
-          nextRoomMembers = Object.fromEntries(roomMemberEntries)
-        }
-
-        if (!cancelled) {
-          setShareUsers(playerUsers)
-          setShareRooms(shareableRooms)
-          setRoomMemberIdsByRoomId(nextRoomMembers)
-        }
-      } catch {
-        if (!cancelled) {
-          setShareUsers([])
-          setShareRooms([])
-          setRoomMemberIdsByRoomId({})
-        }
-      }
-    }
-
-    void loadShareContext()
-    return () => {
-      cancelled = true
-    }
-  }, [apiUrl, campaignId, sessionId, token, user.id])
 
   const addAllowedUsers = (candidateIds: string[]) => {
     const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)

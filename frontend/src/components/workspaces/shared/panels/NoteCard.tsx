@@ -240,7 +240,7 @@ export function NoteCard({
                 </div>
                 {shareRooms.length === 0 ? (
                   <p className="mb-1.5 text-xs text-ui-secondary">
-                    No shareable groups are available for this session yet.
+                    No shareable groups are available in the current campaign context yet.
                   </p>
                 ) : null}
                 <div className="flex flex-wrap gap-1.5">
@@ -299,7 +299,9 @@ export function NoteCard({
                 </span>
               </div>
             </div>
-            <p className="my-2 whitespace-pre-wrap text-sm text-ui-primary">{note.content}</p>
+            <div className="my-2">
+              <MarkdownEditor value={note.content} readOnly variant="full" />
+            </div>
             <p className="mb-2 text-xs text-ui-secondary">by {note.ownerUsername}</p>
             <p className="mb-2 text-xs text-ui-secondary">Shared with: {sharedWithLabel}</p>
             {note.publishedAt && (

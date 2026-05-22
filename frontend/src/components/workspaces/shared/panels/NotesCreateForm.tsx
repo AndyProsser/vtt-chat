@@ -131,7 +131,7 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
           ) : null}
           {props.shareRooms.length === 0 ? (
             <p className="m-0 text-xs text-ui-secondary">
-              No shareable groups are available for this session yet.
+              No shareable groups are available in the current campaign context yet.
             </p>
           ) : null}
 
