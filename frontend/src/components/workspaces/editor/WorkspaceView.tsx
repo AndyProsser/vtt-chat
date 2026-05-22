@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { EditorJournalPanel } from '@/components/workspaces/editor/EditorJournalPanel'
 import { GroupsPanelEditor } from '@/components/workspaces/editor/GroupsPanel.editor'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
@@ -60,6 +61,8 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   const campaign = props.campaign
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
+  const latestSettingsSession = props.settingsCampaignSessions[0] ?? null
+  const notesSessionId = props.settingsReferenceSessionId ?? latestSettingsSession?.id ?? null
 
   const resolvedActiveTab = tabs.includes(activeTab) ? activeTab : tabs[0] || 'information'
   if (!campaign) {
@@ -129,17 +132,29 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     }
 
     if (resolvedActiveTab === 'notes') {
+      if (!notesSessionId) {
+        return (
+          <CampaignScaffoldPanel
+            title="Campaign Notes"
+            iconName="notes"
+            subtitle="Create a session before drafting player-shareable notes."
+            sections={[
+              'Notes are linked to a session and a note title',
+              'Custom sharing can target specific players',
+              'Group sharing expands to the players currently in that group',
+            ]}
+            campaignName={campaign.name}
+          />
+        )
+      }
+
       return (
-        <CampaignScaffoldPanel
-          title="Campaign Notes"
-          iconName="notes"
-          subtitle="Offline authoring space for handouts and prep notes."
-          sections={[
-            'Compose and organize campaign notes',
-            'Manage sharing targets before launch',
-            'Review tagged references by topic',
-          ]}
-          campaignName={campaign.name}
+        <NotesPanel
+          key={notesSessionId}
+          apiUrl={props.apiUrl}
+          token={props.authToken}
+          sessionId={notesSessionId}
+          user={{ id: props.currentUserId, role: props.role }}
         />
       )
     }

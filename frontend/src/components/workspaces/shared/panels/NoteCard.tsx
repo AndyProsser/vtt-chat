@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { NoteVisibility } from '@shared'
-import type { UUID, Role } from '@shared'
+import type { UUID, Role, RoomType } from '@shared'
 import type { Note } from '@/types/notes'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 
 interface NoteCardProps {
   note: Note
   canEdit: boolean
   canPublish: boolean
   shareUsers?: Array<{ id: UUID; username: string; role: Role | string }>
+  shareRooms?: Array<{ id: UUID; name: string; type: RoomType }>
+  roomMemberIdsByRoomId?: Record<UUID, UUID[]>
   onSave: (
     noteId: string,
     updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
@@ -29,6 +32,8 @@ export function NoteCard({
   canEdit,
   canPublish,
   shareUsers = [],
+  shareRooms = [],
+  roomMemberIdsByRoomId = {},
   onSave,
   onDelete,
   onPublish,
@@ -40,6 +45,7 @@ export function NoteCard({
   const [tagsText, setTagsText] = useState(note.tags.join(', '))
   const [shareWithInput, setShareWithInput] = useState('')
   const [selectedShareUserId, setSelectedShareUserId] = useState('')
+  const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>(note.allowedUsers || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +59,7 @@ export function NoteCard({
     setAllowedUsers(note.allowedUsers || [])
     setShareWithInput('')
     setSelectedShareUserId('')
+    setSelectedShareRoomId('')
     setError(null)
     setIsEditing(false)
   }
@@ -106,12 +113,15 @@ export function NoteCard({
     }
   }
 
+  const addAllowedUsers = (candidateIds: string[]) => {
+    const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)
+    if (nextIds.length === 0) return
+
+    setAllowedUsers((current) => Array.from(new Set([...current, ...nextIds])))
+  }
+
   const addAllowedUser = (candidate: string) => {
-    const next = candidate.trim()
-    if (!next) return
-    if (!allowedUsers.includes(next)) {
-      setAllowedUsers((prev) => [...prev, next])
-    }
+    addAllowedUsers([candidate])
   }
 
   const handleAddSelectedUser = () => {
@@ -119,6 +129,13 @@ export function NoteCard({
     if (!candidate) return
     addAllowedUser(candidate)
     setSelectedShareUserId('')
+  }
+
+  const handleAddSelectedRoom = () => {
+    const roomId = selectedShareRoomId.trim() as UUID
+    if (!roomId) return
+    addAllowedUsers(roomMemberIdsByRoomId[roomId] || [])
+    setSelectedShareRoomId('')
   }
 
   const handleAddManualUser = () => {
@@ -145,12 +162,14 @@ export function NoteCard({
               placeholder="Note title"
               className="mb-2 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
             />
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your note"
-              className="mb-2 min-h-25 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-            />
+            <div className="mb-2">
+              <MarkdownEditor
+                value={content}
+                onChange={setContent}
+                placeholder="Write your note"
+                variant="full"
+              />
+            </div>
             <div className="mb-2 flex gap-2">
               <select
                 value={visibility}
@@ -193,6 +212,28 @@ export function NoteCard({
                   </button>
                 </div>
                 <div className="mb-1.5 flex gap-2">
+                  <select
+                    value={selectedShareRoomId}
+                    onChange={(e) => setSelectedShareRoomId(e.target.value)}
+                    className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
+                  >
+                    <option value="">Select group to share with</option>
+                    {shareRooms.map((shareRoom) => (
+                      <option key={shareRoom.id} value={shareRoom.id}>
+                        {shareRoom.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddSelectedRoom}
+                    disabled={!selectedShareRoomId}
+                    className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Add group
+                  </button>
+                </div>
+                <div className="mb-1.5 flex gap-2">
                   <input
                     value={shareWithInput}
                     onChange={(e) => setShareWithInput(e.target.value)}
@@ -207,6 +248,11 @@ export function NoteCard({
                     Add
                   </button>
                 </div>
+                {shareRooms.length === 0 ? (
+                  <p className="mb-1.5 text-xs text-ui-secondary">
+                    No shareable groups are available for this session yet.
+                  </p>
+                ) : null}
                 <div className="flex flex-wrap gap-1.5">
                   {allowedUsers.map((userId) => (
                     <Tooltip key={userId}>

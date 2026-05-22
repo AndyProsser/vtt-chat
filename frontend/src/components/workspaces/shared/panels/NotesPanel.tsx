@@ -1,23 +1,28 @@
 import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
-import { NoteVisibility } from '@shared'
-import type { UUID, Role } from '@shared'
+import { NoteVisibility, Role, RoomType, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { Note } from '@/types/notes'
 import { fetchSessionNotesOnce } from '@/utils/notesFetch'
 import { NoteCard } from './NoteCard'
+import { NotesCreateForm } from './NotesCreateForm'
 
 interface NotesPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
-  user: { id: UUID; username: string; role: Role | string }
+  user: { id: UUID; role: Role | string }
 }
 
 interface SessionUserSummary {
   id: UUID
   username: string
   role: Role | string
+}
+
+interface SessionRoomShareOption {
+  id: UUID
+  name: string
+  type: RoomType
 }
 
 export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) {
@@ -29,10 +34,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   const updateNote = useStore((state) => state.updateNote)
   const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
-    () =>
-      Object.values(notesBySession || {}).sort((a, b) => {
-        return b.updatedAt - a.updatedAt
-      }),
+    () => Object.values(notesBySession || {}).sort((a, b) => b.updatedAt - a.updatedAt),
     [notesBySession]
   )
 
@@ -43,15 +45,18 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.PLAYERS_VISIBLE)
   const [tagsText, setTagsText] = useState('')
   const [shareUsers, setShareUsers] = useState<SessionUserSummary[]>([])
+  const [shareRooms, setShareRooms] = useState<SessionRoomShareOption[]>([])
+  const [roomMemberIdsByRoomId, setRoomMemberIdsByRoomId] = useState<Record<UUID, UUID[]>>({})
   const [selectedShareUserId, setSelectedShareUserId] = useState('')
+  const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showPublishedOnly, setShowPublishedOnly] = useState(false)
 
-  const displayedNotes = useMemo(() => {
-    if (!showPublishedOnly) return notes
-    return notes.filter((note) => !!note.publishedAt)
-  }, [notes, showPublishedOnly])
+  const displayedNotes = useMemo(
+    () => (showPublishedOnly ? notes.filter((note) => Boolean(note.publishedAt)) : notes),
+    [notes, showPublishedOnly]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -59,11 +64,12 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     const loadNotes = async () => {
       setIsLoading(true)
       setError(null)
+
       try {
-        const notes = await fetchSessionNotesOnce(apiUrl, sessionId, token)
+        const fetchedNotes = await fetchSessionNotesOnce(apiUrl, sessionId, token)
         if (!cancelled) {
           clearNotes(sessionId)
-          for (const note of notes) {
+          for (const note of fetchedNotes) {
             addNote(sessionId, note)
           }
         }
@@ -72,7 +78,9 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
           setError(err instanceof Error ? err.message : 'Failed to load notes')
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
@@ -85,36 +93,114 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
   useEffect(() => {
     let cancelled = false
 
-    const loadShareUsers = async () => {
+    const loadShareContext = async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/session/${sessionId}/members`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const [membersRes, roomsRes] = await Promise.all([
+          fetch(`${apiUrl}/api/session/${sessionId}/members`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${apiUrl}/api/rooms/session/${sessionId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ])
 
-        if (!res.ok) {
+        if (!membersRes.ok) {
           return
         }
 
-        const data = await res.json()
+        const membersData = await membersRes.json()
+        const users = Array.isArray(membersData.users) ? membersData.users : []
+        const playerUsers = users.filter(
+          (candidate: SessionUserSummary) =>
+            candidate.id !== user.id && candidate.role === Role.PLAYER
+        )
+
+        let shareableRooms: SessionRoomShareOption[] = []
+        let nextRoomMembers: Record<UUID, UUID[]> = {}
+
+        if (roomsRes.ok) {
+          const roomsData = await roomsRes.json()
+          const rooms = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
+          shareableRooms = rooms.filter(
+            (room: SessionRoomShareOption) =>
+              room.type === RoomType.GROUP || room.type === RoomType.MAIN
+          )
+
+          const roomMemberEntries = await Promise.all(
+            shareableRooms.map(async (room) => {
+              try {
+                const roomMembersRes = await fetch(`${apiUrl}/api/rooms/${room.id}/members`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                })
+
+                if (!roomMembersRes.ok) {
+                  return [room.id, []] as const
+                }
+
+                const roomMembersData = await roomMembersRes.json()
+                const memberIds = Array.isArray(roomMembersData.members)
+                  ? roomMembersData.members.filter((memberId): memberId is UUID =>
+                      playerUsers.some((player) => player.id === memberId)
+                    )
+                  : []
+
+                return [room.id, memberIds] as const
+              } catch {
+                return [room.id, []] as const
+              }
+            })
+          )
+
+          nextRoomMembers = Object.fromEntries(roomMemberEntries)
+        }
+
         if (!cancelled) {
-          const users = Array.isArray(data.users) ? data.users : []
-          setShareUsers(users.filter((u: SessionUserSummary) => u.id !== user.id))
+          setShareUsers(playerUsers)
+          setShareRooms(shareableRooms)
+          setRoomMemberIdsByRoomId(nextRoomMembers)
         }
       } catch {
         if (!cancelled) {
           setShareUsers([])
+          setShareRooms([])
+          setRoomMemberIdsByRoomId({})
         }
       }
     }
 
-    void loadShareUsers()
+    void loadShareContext()
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, user.id])
+  }, [apiUrl, sessionId, token, user.id])
 
-  const handleCreate: SubmitEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault()
+  const addAllowedUsers = (candidateIds: string[]) => {
+    const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)
+    if (nextIds.length === 0) return
+
+    setAllowedUsers((current) => Array.from(new Set([...current, ...nextIds])))
+  }
+
+  const handleAddSelectedUser = () => {
+    const candidate = selectedShareUserId.trim()
+    if (!candidate) return
+    addAllowedUsers([candidate])
+    setSelectedShareUserId('')
+  }
+
+  const handleAddSelectedRoom = () => {
+    const roomId = selectedShareRoomId.trim() as UUID
+    if (!roomId) return
+    addAllowedUsers(roomMemberIdsByRoomId[roomId] || [])
+    setSelectedShareRoomId('')
+  }
+
+  const removeAllowedUser = (userId: string) => {
+    setAllowedUsers((current) => current.filter((id) => id !== userId))
+  }
+
+  const handleCreate: SubmitEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault()
     setError(null)
     setIsCreating(true)
 
@@ -164,9 +250,10 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
       setTitle('')
       setContent('')
       setTagsText('')
+      setVisibility(NoteVisibility.PLAYERS_VISIBLE)
       setAllowedUsers([])
       setSelectedShareUserId('')
-      setVisibility(NoteVisibility.PLAYERS_VISIBLE)
+      setSelectedShareRoomId('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
     } finally {
@@ -221,31 +308,10 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     }
   }
 
-  const addAllowedUser = (candidate: string) => {
-    const next = candidate.trim()
-    if (!next) return
-    if (!allowedUsers.includes(next)) {
-      setAllowedUsers((prev) => [...prev, next])
-    }
-  }
-
-  const handleAddSelectedUser = () => {
-    const candidate = selectedShareUserId.trim()
-    if (!candidate) return
-    addAllowedUser(candidate)
-    setSelectedShareUserId('')
-  }
-
-  const removeAllowedUser = (userId: string) => {
-    setAllowedUsers((prev) => prev.filter((id) => id !== userId))
-  }
-
   const handleDelete = async (noteId: string) => {
     const res = await fetch(`${apiUrl}/api/notes/${noteId}`, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
 
     if (!res.ok) {
@@ -262,104 +328,38 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
         Notes
       </div>
 
-      <form onSubmit={handleCreate} className="space-y-2 border-b border-ui-border p-3">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title"
-          required
-          className="w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-        />
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write note content"
-          required
-          className="min-h-22 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-        />
-        <div className="flex gap-2">
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as NoteVisibility)}
-            className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-          >
-            <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
-            <option value={NoteVisibility.CUSTOM}>Custom</option>
-            {user.role === 'DM' && <option value={NoteVisibility.DM_ONLY}>DM Only</option>}
-          </select>
-          <input
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
-            placeholder="tag1, tag2"
-            className="flex-2 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-          />
-        </div>
-        {visibility === NoteVisibility.CUSTOM && (
-          <div className="mb-2 space-y-1.5">
-            <div className="flex gap-2">
-              <select
-                value={selectedShareUserId}
-                onChange={(e) => setSelectedShareUserId(e.target.value)}
-                className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-              >
-                <option value="">Select player to share with</option>
-                {shareUsers.map((shareUser) => (
-                  <option key={shareUser.id} value={shareUser.id}>
-                    {shareUser.username}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={handleAddSelectedUser}
-                disabled={!selectedShareUserId}
-                className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Add
-              </button>
-            </div>
-            {shareUsers.length === 0 && (
-              <p className="m-0 text-xs text-ui-secondary">
-                No session users available yet. Users appear here after joining the session.
-              </p>
-            )}
-            <TooltipProvider delayDuration={140}>
-              <div className="flex flex-wrap gap-1.5">
-                {allowedUsers.map((userId) => (
-                  <Tooltip key={userId}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => removeAllowedUser(userId)}
-                        className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
-                      >
-                        {shareUsers.find((u) => u.id === userId)?.username || userId} x
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Click to remove</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-            </TooltipProvider>
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={isCreating}
-          className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          {isCreating ? 'Creating...' : 'Create Note'}
-        </button>
-      </form>
+      <NotesCreateForm
+        title={title}
+        content={content}
+        visibility={visibility}
+        tagsText={tagsText}
+        shareUsers={shareUsers}
+        shareRooms={shareRooms}
+        selectedShareUserId={selectedShareUserId}
+        selectedShareRoomId={selectedShareRoomId}
+        allowedUsers={allowedUsers}
+        isCreating={isCreating}
+        userRole={user.role}
+        onSubmit={handleCreate}
+        onTitleChange={setTitle}
+        onContentChange={setContent}
+        onVisibilityChange={setVisibility}
+        onTagsTextChange={setTagsText}
+        onSelectedShareUserIdChange={setSelectedShareUserId}
+        onSelectedShareRoomIdChange={setSelectedShareRoomId}
+        onAddSelectedUser={handleAddSelectedUser}
+        onAddSelectedRoom={handleAddSelectedRoom}
+        onRemoveAllowedUser={removeAllowedUser}
+      />
 
-      {error && <p className="m-3 text-sm text-ui-error-text">{error}</p>}
+      {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
       <div className="flex items-center gap-2 border-b border-ui-border px-3 pb-3 text-sm text-ui-primary">
         <label className="inline-flex items-center gap-1.5">
           <input
             type="checkbox"
             checked={showPublishedOnly}
-            onChange={(e) => setShowPublishedOnly(e.target.checked)}
+            onChange={(event) => setShowPublishedOnly(event.target.checked)}
           />
           Show published only
         </label>
@@ -381,8 +381,10 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
               key={note.id}
               note={note}
               shareUsers={shareUsers}
-              canEdit={user.role === 'DM' || note.ownerId === user.id}
-              canPublish={user.role === 'DM' || note.ownerId === user.id}
+              shareRooms={shareRooms}
+              roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+              canEdit={user.role === Role.DM || note.ownerId === user.id}
+              canPublish={user.role === Role.DM || note.ownerId === user.id}
               onSave={handleSave}
               onDelete={handleDelete}
               onPublish={handlePublish}
