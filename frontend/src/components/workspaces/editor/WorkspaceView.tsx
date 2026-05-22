@@ -65,7 +65,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         <EditorWorkspaceToolbar
           themeMode={props.themeMode}
           dataUiState="no-campaign"
-          launchLabel={props.campaign ? `Launch ${props.campaign.name}` : 'Launch'}
+          launchLabel={props.campaign ? props.campaign.name : undefined}
           isCreatingCampaign={props.isCreatingCampaign}
           isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
@@ -216,7 +216,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         <EditorWorkspaceToolbar
           themeMode={props.themeMode}
           dataUiState={resolvedActiveTab}
-          launchLabel={`Launch ${campaign.name}`}
+          launchLabel={campaign.name}
           isCreatingCampaign={props.isCreatingCampaign}
           isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
@@ -244,12 +244,6 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           data-ui-component="EditorWorkspaceShell"
           data-ui-state={resolvedActiveTab}
         >
-          <header className="session-lobby-workspace__header">
-            <div className="session-lobby-workspace__title-wrap">
-              <h3 className="session-card-title">{props.campaign.name}</h3>
-            </div>
-          </header>
-
           <div className="session-lobby-workspace__body" data-ui-component="EditorWorkspaceBody">
             <div
               className="session-lobby-workspace__panel"

@@ -63,12 +63,12 @@ export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
             disabled={props.isLaunchDisabled}
           >
             <Icon name="rocket_launch" />
-            <span>{props.launchLabel || 'Launch'}</span>
+            <span>{props.launchLabel || 'Campaign'}</span>
           </button>
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" align="center">
-        {props.launchDisabledReason || props.launchLabel || 'Launch campaign'}
+        {`Launch: ${props.launchLabel || 'campaign'}`}
       </TooltipContent>
     </Tooltip>
   ) : undefined
