@@ -1,6 +1,6 @@
-import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
-import { InvitePopoverWidget } from '@/components/workspaces/shared/common/InvitePopoverWidget'
-import { useEditorWorkspaceToolbarActions } from './useEditorWorkspaceToolbarActions'
+import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
+import { InvitePopoverWidget } from '@/components/workspaces/shared/toolbar/InvitePopoverWidget'
+import { useEditorWorkspaceToolbarActions } from '@/hooks/workspaces/useEditorWorkspaceToolbarActions'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 
 type EditorWorkspaceToolbarProps = {
@@ -47,7 +47,7 @@ export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
   ) : undefined
 
   return (
-    <WorkspaceTopbar
+    <WorkspaceToolbar
       className="session-toolbar--lobby"
       dataTestId="session-lobby-toolbar"
       dataUiComponent="EditorWorkspaceToolbar"

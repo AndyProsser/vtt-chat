@@ -1,8 +1,8 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
-import type { WorkspaceTopbarProps } from './workspaceTopbar.types'
+import type { WorkspaceToolbarProps } from '@/types/workspaceToolbar'
 
-export function WorkspaceTopbar({
+export function WorkspaceToolbar({
   className,
   dataTestId,
   dataUiComponent,
@@ -20,7 +20,7 @@ export function WorkspaceTopbar({
   connectionStatusColorKey,
   connectionStatusLabel,
   connectionStatusRows,
-}: WorkspaceTopbarProps) {
+}: WorkspaceToolbarProps) {
   const resolvedClassName = ['session-toolbar', className].filter(Boolean).join(' ')
 
   return (

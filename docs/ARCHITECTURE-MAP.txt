@@ -152,10 +152,14 @@ Current shipped note:
    `components/auth`, `components/guest`, `components/watch`, `components/app`.
    Main app workspaces live under
    `components/app/workspaces/{lobby,editor,session}`.
-   Shared rightbar and toolbar panels for editor/session live under
-   `components/app/workspaces/shared/{rightbar,toolbar}`.
-   `components/app/workspaces/editor` is edit-flow owned.
-   `components/app/workspaces/session` is launch/runtime owned.
+   Shared panels and toolbar components for editor/session live under
+   `components/workspaces/shared/{panels,toolbar}`.
+   `components/workspaces/shared/toolbar` now holds the toolbar shells, workspace-specific
+   toolbar variants, and toolbar visual subcomponents such as the invite popover.
+   Toolbar types live in `frontend/src/types`, toolbar constants live in
+   `frontend/src/constants`, and toolbar hooks live in `frontend/src/hooks`.
+   `components/workspaces/editor` is edit-flow owned.
+   `components/workspaces/session` is launch/runtime owned.
 
 
 ████████████████████████████████████████████████████████████████████████████████

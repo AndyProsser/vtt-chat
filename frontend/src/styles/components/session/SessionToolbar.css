@@ -131,6 +131,77 @@
   margin: 0 0.12rem;
 }
 
+.session-lobby-invite {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-right: 0.08rem;
+}
+
+.session-lobby-invite__trigger {
+  min-width: 6.2rem;
+}
+
+.session-lobby-invite__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  left: auto;
+  transform: none;
+  width: min(28rem, 24vw);
+  z-index: 24;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.22);
+  padding: 0.5rem;
+}
+
+.session-lobby-invite__row {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
+  padding: 0.4rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.25rem;
+}
+
+.session-lobby-invite__row + .session-lobby-invite__row {
+  margin-top: 0.35rem;
+}
+
+.session-lobby-invite__row-label {
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.session-lobby-invite__row-value {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  grid-column: 1 / 2;
+}
+
+.session-lobby-invite__copy {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  padding: 0.3rem 0.4rem;
+}
+
+.session-lobby-invite__refresh {
+  grid-column: 3 / 4;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  padding: 0.3rem 0.4rem;
+}
+
 .session-toolbar__action .ui-icon,
 .session-toolbar__icon-btn .ui-icon,
 .session-toolbar__campaign-pill .ui-icon,
@@ -475,6 +546,19 @@
 
   .session-toolbar__separator {
     display: none;
+  }
+
+  .session-lobby-invite {
+    width: 100%;
+    justify-content: flex-start;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .session-lobby-invite__panel {
+    width: min(100%, 32rem);
+    right: 0;
+    left: auto;
   }
 }
 

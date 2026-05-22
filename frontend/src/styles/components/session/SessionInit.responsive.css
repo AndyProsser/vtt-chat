@@ -35,18 +35,6 @@
     flex-direction: column;
   }
 
-  .session-lobby-invite {
-    width: 100%;
-    justify-content: flex-start;
-    min-width: 0;
-  }
-
-  .session-lobby-invite__panel {
-    width: min(100%, 32rem);
-    left: 0;
-    transform: none;
-  }
-
   .session-lobby-workspace__body {
     grid-template-columns: minmax(0, 1fr);
   }

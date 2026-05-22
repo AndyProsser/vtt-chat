@@ -1,5 +1,5 @@
-import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
-import { useCampaignWorkspaceTopbarActions } from '@/components/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
+import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
+import { useCampaignWorkspaceToolbarActions } from '@/hooks/workspaces/useCampaignWorkspaceToolbarActions'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 
 type LobbyToolbarProps = {
@@ -15,7 +15,7 @@ type LobbyToolbarProps = {
 }
 
 export function LobbyToolbar(props: LobbyToolbarProps) {
-  const { coreStateToneClass, toolbarActions } = useCampaignWorkspaceTopbarActions({
+  const { coreStateToneClass, toolbarActions } = useCampaignWorkspaceToolbarActions({
     isCreatingCampaign: props.isCreatingCampaign,
     isJoiningCampaign: props.isJoiningCampaign,
     onCreateCampaign: props.onCreateCampaign,
@@ -33,7 +33,7 @@ export function LobbyToolbar(props: LobbyToolbarProps) {
   }
 
   return (
-    <WorkspaceTopbar
+    <WorkspaceToolbar
       className="session-toolbar--lobby"
       dataTestId="session-lobby-toolbar"
       dataUiComponent="LobbyToolbar"

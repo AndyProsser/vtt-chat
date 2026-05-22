@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 
-export type WorkspaceTopbarStatusRow = {
+export type WorkspaceToolbarStatusRow = {
   label: string
   value: string
   toneClassName?: string
 }
 
-export type WorkspaceTopbarProps = {
+export type WorkspaceToolbarProps = {
   className?: string
   dataTestId?: string
   dataUiComponent?: string
@@ -23,5 +23,5 @@ export type WorkspaceTopbarProps = {
   exitTooltipLabel: string
   connectionStatusColorKey: string
   connectionStatusLabel: string
-  connectionStatusRows: WorkspaceTopbarStatusRow[]
+  connectionStatusRows: WorkspaceToolbarStatusRow[]
 }

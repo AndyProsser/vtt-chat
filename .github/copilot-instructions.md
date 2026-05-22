@@ -533,6 +533,12 @@ Naming conventions for split files:
 
 The `shared/` package is the canonical source for anything used by two or more of: `backend`, `frontend`, `admin`.
 
+### Frontend Placement Rule
+
+- Keep React component folders focused on rendering and wiring only; move reusable types into `frontend/src/types`, constants into `frontend/src/constants`, and hooks into `frontend/src/hooks` or the nearest domain-specific hook folder.
+- Do not define new feature-local types, constants, or hooks inline inside component trees when they can live in a central frontend location.
+- Component entry points should import the supporting types, constants, and hooks they need rather than re-declaring them in the component folder.
+
 **Always lives in `shared/`:**
 - WS event names and payload types → `shared/events/`
 - Session, room, role, message type, and presence enums → `shared/types/`

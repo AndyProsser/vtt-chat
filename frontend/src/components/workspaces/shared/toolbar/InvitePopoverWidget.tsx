@@ -105,7 +105,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
     <div className="session-lobby-invite" ref={panelRef}>
       <button
         type="button"
-        className="session-icon-action session-lobby-invite__trigger"
+        className="session-toolbar__icon-btn session-lobby-invite__trigger"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         onClick={() => setIsOpen((value) => !value)}

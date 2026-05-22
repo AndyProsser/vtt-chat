@@ -10,8 +10,8 @@ import {
   toneFromCoreState,
 } from '@/constants/sessionToolbar.constants'
 import { Icon } from '@/components/ui/Icon'
-import { WorkspaceTopbar } from './WorkspaceTopbar'
-import type { ToolbarActionModel } from '@/components/workspaces/session/toolbar/sessionToolbar.types'
+import { WorkspaceToolbar } from './WorkspaceToolbar'
+import type { ToolbarActionModel } from '@/types/toolbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import '@/styles/components/session/SessionToolbar.css'
 
@@ -470,7 +470,7 @@ export function SessionToolbar({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <WorkspaceTopbar
+      <WorkspaceToolbar
         dataTestId="session-toolbar"
         centerContent={centerContent}
         extraActions={sessionActionButtons}

@@ -2,7 +2,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { type CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus, LobbyStats } from '@/types/session/lobby'
 import { CampaignCard } from './LobbyView.CampaignCard'
-import { LobbyToolbar } from './toolbar/LobbyToolbar'
+import { LobbyToolbar } from '@/components/workspaces/shared/toolbar/LobbyToolbar'
 
 type LobbyViewProps = {
   campaigns: CampaignSummary[]
