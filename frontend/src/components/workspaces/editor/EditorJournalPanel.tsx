@@ -105,7 +105,7 @@ export function EditorJournalPanel({
   const effectiveSessionId = selectedSessionId ?? fallbackSession?.id ?? null
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
-  const recentSessions = useMemo(() => sortedSessions.slice(0, 6), [sortedSessions])
+  const recentSessions = sortedSessions
   const effectiveStatus = effectiveSessionId
     ? journalStatusBySession[effectiveSessionId]
     : undefined
@@ -228,19 +228,14 @@ export function EditorJournalPanel({
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]
             const hasContent = Boolean(sessionStatus?.hasContent)
-            const hasJournal = Boolean(sessionStatus?.hasJournal)
             const nextSession = index > 0 ? recentSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
-              <div
-                key={session.id}
-                role="listitem"
-                className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
-              >
+              <div key={session.id} role="listitem" className="knowledge-panel-session-item">
                 <button
                   type="button"
-                  className={`knowledge-panel-card knowledge-panel-card--interactive knowledge-panel-session-item__trigger ${isSelected ? 'selected' : ''}`}
+                  className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSessionChange(session.id)}
                   aria-pressed={isSelected}
                 >
@@ -261,7 +256,9 @@ export function EditorJournalPanel({
                           Needs recap
                         </span>
                       ) : null}
-                      {isSelected ? <span className="knowledge-panel-chip muted">Open</span> : null}
+                      <span className="knowledge-panel-chip muted">
+                        {isSelected ? 'Open' : 'Open journal'}
+                      </span>
                     </div>
                   </div>
                 </button>

@@ -318,41 +318,20 @@
 .knowledge-panel-session-list {
   display: grid;
   gap: var(--space-2);
+  max-height: min(58vh, 42rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 .knowledge-panel-session-item {
   display: grid;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface-subtle));
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.knowledge-panel-session-item.is-selected {
-  border-color: var(--color-border-focus);
-  box-shadow: var(--shadow-md);
-}
-
-.knowledge-panel-session-item__trigger {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.knowledge-panel-session-item__trigger:hover,
-.knowledge-panel-session-item__trigger.selected {
-  border-color: transparent;
-  box-shadow: none;
+  gap: var(--space-2);
 }
 
 .knowledge-panel-session-item__editor {
-  margin: 0;
-  padding: 0.75rem 0.9rem 0.9rem;
-  border-top: 1px solid color-mix(in srgb, var(--color-border-focus) 28%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  margin: -0.2rem 0 0;
+  padding: 0.25rem 0 0.5rem 1rem;
+  border-left: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
 }
 
 .knowledge-panel-card-header {
