@@ -178,10 +178,6 @@
     gap: 0.35rem;
   }
 
-  .session-chat-window__timeline-bar {
-    padding: 0.5rem 0.68rem 0.58rem;
-  }
-
   .session-chat-window__title {
     font-size: 0.86rem;
   }

@@ -11,21 +11,6 @@
   color: var(--color-text-primary);
 }
 
-.audio-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.audio-panel__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-}
-
 .session-audio-device-panel__status-dot[data-state='connected'] {
   background-color: var(--color-success);
 }
@@ -48,15 +33,6 @@
 .session-audio-panel__error {
   color: var(--color-error-text, #991b1b);
   font-size: 0.8rem;
-}
-
-.audio-panel__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .session-audio-panel__section {

@@ -88,10 +88,6 @@
   transform: translateY(-0.02em);
 }
 
-.session-message-list__message-whisper-route--incoming {
-  margin-left: 0;
-}
-
 .session-message-list__message-whisper-route--outgoing {
   margin-left: 0;
 }

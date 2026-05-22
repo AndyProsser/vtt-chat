@@ -114,7 +114,9 @@ export function MessageInput({
     if (type === MessageType.IC) return 'session-message-input__textarea--ic'
     if (type === MessageType.OOC) return 'session-message-input__textarea--ooc'
     if (type === MessageType.WHISPER) {
-      return isDmRole ? 'session-message-input__textarea--whisper-dm' : 'session-message-input__textarea--whisper'
+      return isDmRole
+        ? 'session-message-input__textarea--whisper-dm'
+        : 'session-message-input__textarea--whisper'
     }
     if (type === MessageType.DM) return 'session-message-input__textarea--dm'
     return ''
@@ -223,7 +225,7 @@ export function MessageInput({
     <div className="session-message-input">
       {!forceMessageType ? (
         <div
-          className={`session-message-input__type-stack ${canShowWhisperPicker && isWhisperPickerOpen ? 'session-message-input__type-stack--picker-open' : ''}`}
+          className="session-message-input__type-stack"
           onMouseEnter={() => {
             if (canShowWhisperPicker) {
               setIsWhisperPickerOpen(true)
@@ -285,7 +287,7 @@ export function MessageInput({
 
           {canShowWhisperPicker && isWhisperPickerOpen ? (
             <div
-              className={`session-message-input__whisper-picker session-message-input__whisper-picker--open ${isDmRole ? 'session-message-input__whisper-picker--dm' : ''}`.trim()}
+              className={`session-message-input__whisper-picker ${isDmRole ? 'session-message-input__whisper-picker--dm' : ''}`.trim()}
               onMouseEnter={() => setIsWhisperPickerOpen(true)}
             >
               <div className="session-message-input__whisper-picker-header">
@@ -315,19 +317,26 @@ export function MessageInput({
                         }}
                         className={`session-message-input__whisper-recipient ${isSelected ? 'session-message-input__whisper-recipient--selected' : ''}`}
                       >
-                        <span className="session-message-input__whisper-recipient-avatar" aria-hidden="true">
+                        <span
+                          className="session-message-input__whisper-recipient-avatar"
+                          aria-hidden="true"
+                        >
                           {option.avatarUrl ? (
                             <img src={option.avatarUrl} alt="" />
                           ) : (
                             (option.label.trim()[0] || '?').toUpperCase()
                           )}
                         </span>
-                        <span className="session-message-input__whisper-recipient-name">{option.label}</span>
+                        <span className="session-message-input__whisper-recipient-name">
+                          {option.label}
+                        </span>
                       </button>
                     )
                   })
                 ) : (
-                  <div className="session-message-input__whisper-empty">No visible players to whisper to.</div>
+                  <div className="session-message-input__whisper-empty">
+                    No visible players to whisper to.
+                  </div>
                 )}
               </div>
             </div>
@@ -362,7 +371,11 @@ export function MessageInput({
           maxLength={4000}
           className={`session-message-input__textarea ${inputToneClass}`.trim()}
         />
-        <button onClick={() => void handleSend()} disabled={!canSend} className="session-message-input__send">
+        <button
+          onClick={() => void handleSend()}
+          disabled={!canSend}
+          className="session-message-input__send"
+        >
           {isSending ? '…' : 'Send'}
         </button>
       </div>
