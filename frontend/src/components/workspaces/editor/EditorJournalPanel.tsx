@@ -233,10 +233,14 @@ export function EditorJournalPanel({
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
-              <div key={session.id} role="listitem" className="knowledge-panel-session-item">
+              <div
+                key={session.id}
+                role="listitem"
+                className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
+              >
                 <button
                   type="button"
-                  className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
+                  className={`knowledge-panel-card knowledge-panel-card--interactive knowledge-panel-session-item__trigger ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSessionChange(session.id)}
                   aria-pressed={isSelected}
                 >
@@ -252,13 +256,11 @@ export function EditorJournalPanel({
                     </div>
                     <div className="knowledge-panel-chip-row">
                       {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
-                      {hasContent ? (
-                        <span className="knowledge-panel-chip muted">Has recap</span>
-                      ) : (
+                      {!hasContent ? (
                         <span className="knowledge-panel-chip knowledge-panel-chip--warn">
                           Needs recap
                         </span>
-                      )}
+                      ) : null}
                       {isSelected ? <span className="knowledge-panel-chip muted">Open</span> : null}
                     </div>
                   </div>

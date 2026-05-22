@@ -89,6 +89,43 @@ function parseJournalHashtags(value: string, fallbackSeed: string): string[] {
   return normalized.length > 0 ? normalized : [normalizeJournalHashtag('', fallbackSeed)]
 }
 
+function collectJournalHashtags(value: string, fallbackSeed: string): string[] {
+  const matches = value.match(/#?[a-z0-9][a-z0-9\s_-]*/gi) ?? []
+
+  return matches
+    .map((match) => normalizeJournalHashtag(match, fallbackSeed))
+    .filter((tag, index, tags) => tags.indexOf(tag) === index)
+}
+
+function getPendingJournalHashtag(value: string): string {
+  const trimmed = value.trimEnd()
+  if (!trimmed) {
+    return ''
+  }
+
+  const segments = trimmed.split(/\s+/)
+  return segments[segments.length - 1] ?? ''
+}
+
+function commitJournalHashtagInput(
+  value: string,
+  nextTag: string,
+  fallbackSeed: string
+): string | null {
+  const normalizedTag = normalizeJournalHashtag(nextTag, fallbackSeed)
+  const trimmed = value.trimEnd()
+  const hasTrailingBoundary = /\s$/.test(value)
+  const baseValue =
+    !trimmed || hasTrailingBoundary ? trimmed : trimmed.replace(/\S+$/, '').trimEnd()
+  const existingTags = collectJournalHashtags(baseValue, fallbackSeed)
+
+  if (existingTags.includes(normalizedTag)) {
+    return existingTags.length > 0 ? serializeJournalHashtags(existingTags) : normalizedTag
+  }
+
+  return serializeJournalHashtags([...existingTags, normalizedTag])
+}
+
 function serializeJournalHashtags(tags: string[]): string {
   return tags.join(' ')
 }
@@ -221,7 +258,6 @@ export function JournalPanel({
     [sessionId, sessionName]
   )
   const contentHashtagSuggestions = useMemo(() => buildContentHashtagSuggestions(draft), [draft])
-  const hashtagInputId = useMemo(() => `journal-hashtags-${String(sessionId)}`, [sessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -304,8 +340,8 @@ export function JournalPanel({
       let res: Response
 
       if (entry) {
-        res = await fetch(`${apiUrl}/api/notes/${sessionId}/${entry.id}`, {
-          method: 'PATCH',
+        res = await fetch(`${apiUrl}/api/notes/${entry.id}`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -319,13 +355,14 @@ export function JournalPanel({
           }),
         })
       } else {
-        res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
+        res = await fetch(`${apiUrl}/api/notes`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            sessionId,
             title: resolvedJournalTitle,
             name: resolvedJournalTitle,
             content: draft,
@@ -474,6 +511,63 @@ export function JournalPanel({
       ),
     [contentHashtagSuggestions, hashtagSuggestions]
   )
+  const hashtagFallbackSeed = defaultHashtag.slice(1)
+  const pendingHashtag = useMemo(
+    () => getPendingJournalHashtag(draftHashtagsInput),
+    [draftHashtagsInput]
+  )
+  const pendingHashtagQuery = useMemo(
+    () => pendingHashtag.trim().replace(/^#+/, '').toLowerCase(),
+    [pendingHashtag]
+  )
+  const autocompleteHashtagSuggestions = useMemo(() => {
+    const committedTags = collectJournalHashtags(
+      /\s$/.test(draftHashtagsInput)
+        ? draftHashtagsInput.trim()
+        : draftHashtagsInput.trimEnd().replace(/\S+$/, '').trim(),
+      hashtagFallbackSeed
+    )
+
+    return mergedHashtagSuggestions
+      .filter((tag) => !committedTags.includes(tag))
+      .filter((tag) => {
+        if (!pendingHashtagQuery) {
+          return true
+        }
+
+        return tag.slice(1).includes(pendingHashtagQuery)
+      })
+      .slice(0, 6)
+  }, [draftHashtagsInput, hashtagFallbackSeed, mergedHashtagSuggestions, pendingHashtagQuery])
+
+  const applyJournalHashtag = useCallback(
+    (rawTag: string) => {
+      const nextValue = commitJournalHashtagInput(draftHashtagsInput, rawTag, hashtagFallbackSeed)
+      if (!nextValue) {
+        return
+      }
+
+      setDraftHashtagsInput(nextValue)
+    },
+    [draftHashtagsInput, hashtagFallbackSeed]
+  )
+
+  const handleHashtagInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter') {
+        return
+      }
+
+      const rawTag = pendingHashtag.trim()
+      if (!rawTag) {
+        return
+      }
+
+      event.preventDefault()
+      applyJournalHashtag(rawTag)
+    },
+    [applyJournalHashtag, pendingHashtag]
+  )
   const insertActions = useMemo<MarkdownEditorInsertAction[]>(
     () => [
       {
@@ -555,17 +649,27 @@ export function JournalPanel({
               className="knowledge-panel__journal-tag-input knowledge-panel__journal-tag-input--wide"
               value={draftHashtagsInput}
               onChange={(event) => setDraftHashtagsInput(event.target.value)}
+              onKeyDown={handleHashtagInputKeyDown}
               onBlur={handleBlurSave}
               placeholder="#recap #loot #npc"
               maxLength={160}
               aria-label="Journal hashtags"
-              list={hashtagInputId}
             />
-            <datalist id={hashtagInputId}>
-              {mergedHashtagSuggestions.map((tag) => (
-                <option key={tag} value={`${draftHashtagsInput.trim()} ${tag}`.trim()} />
-              ))}
-            </datalist>
+            {autocompleteHashtagSuggestions.length > 0 ? (
+              <div className="knowledge-panel-chip-row">
+                {autocompleteHashtagSuggestions.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="knowledge-panel-chip muted"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyJournalHashtag(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {contentHashtagSuggestions.length > 0 ? (
               <div className="knowledge-panel-chip-row">
                 {contentHashtagSuggestions.slice(0, 4).map((tag) => (
@@ -573,16 +677,7 @@ export function JournalPanel({
                     key={tag}
                     type="button"
                     className="knowledge-panel-chip muted"
-                    onClick={() => {
-                      const existing = parseJournalHashtags(
-                        draftHashtagsInput,
-                        defaultHashtag.slice(1)
-                      )
-                      if (existing.includes(tag)) {
-                        return
-                      }
-                      setDraftHashtagsInput(serializeJournalHashtags([...existing, tag]))
-                    }}
+                    onClick={() => applyJournalHashtag(tag)}
                   >
                     {tag}
                   </button>
@@ -604,11 +699,12 @@ export function JournalPanel({
                 Roast the DM
               </button>
             </div>
-            {helperMessage ? (
-              <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
-                {helperMessage}
-              </p>
-            ) : null}
+            <p
+              className={`knowledge-panel-copy knowledge-panel-copy--meta-inline knowledge-panel__journal-helper-message ${helperMessage ? 'is-visible' : ''}`}
+              aria-live="polite"
+            >
+              {helperMessage ?? ' '}
+            </p>
           </>
         ) : (
           <div className="knowledge-panel-chip-row">

@@ -21,7 +21,7 @@ vi.mock('@/infra/db', () => ({
   getPrismaClient: () => mocks.prisma,
 }))
 
-import type { UUID } from '@shared'
+import { getPlayerPerspectiveJournalRoast, type UUID } from '@shared'
 import {
   emitSessionBoundarySystemMessage,
   emitSessionRecapMessage,
@@ -155,6 +155,36 @@ describe('system messages service', () => {
     expect(mocks.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('description blank'),
+      })
+    )
+  })
+
+  it('uses the shared journal roast when the previous session has no journal entry', async () => {
+    mocks.prisma.session.findUnique.mockResolvedValue({
+      campaignId: '99999999-9999-4999-8999-999999999999',
+      campaign: {
+        name: 'Shattered Crown',
+        description: 'The party is hunting fragments of an ancient crown across haunted ruins.',
+      },
+    })
+    mocks.prisma.session.findFirst.mockResolvedValue({
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Session 24 - 2026-05-13',
+    })
+    mocks.prisma.note.findMany.mockResolvedValue([])
+
+    await emitSessionRecapMessage({
+      sessionId: SESSION_ID,
+      mainRoomId: MAIN_ROOM_ID,
+      dmId: DM_ID,
+      dmUsername: 'gm',
+    })
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        roomId: MAIN_ROOM_ID,
+        content: `[Last Session] ${getPlayerPerspectiveJournalRoast('55555555-5555-4555-8555-555555555555', 'Session 24 - 2026-05-13')}`,
       })
     )
   })
