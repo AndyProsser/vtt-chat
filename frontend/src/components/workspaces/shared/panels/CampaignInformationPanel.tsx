@@ -4,6 +4,8 @@ import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useToast } from '@/hooks/useToast'
 import { CampaignInformationStatusLine } from './CampaignInformationPanel.StatusLine'
+import { CampaignInformationEditBody } from './CampaignInformationPanel.EditBody'
+import { CampaignInformationReadOnlyBody } from './CampaignInformationPanel.ReadOnlyBody'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
@@ -209,6 +211,13 @@ export function CampaignInformationPanel({
     (posterUrlDraft?.trim() || '') !== (campaign.posterUrl?.trim() || '')
 
   const currentPoster = isEditing ? posterUrlDraft : campaign.posterUrl
+  const statusLine = (
+    <CampaignInformationStatusLine
+      campaign={campaign}
+      sessionCount={sessionCount}
+      totalSessionDurationMs={totalSessionDurationMs}
+    />
+  )
 
   return (
     <section
@@ -263,184 +272,28 @@ export function CampaignInformationPanel({
 
         <div className="cip-copy">
           {isEditing ? (
-            <>
-              <label className="cip-field-label" htmlFor="cip-name">
-                Name
-              </label>
-              <input
-                id="cip-name"
-                className="cip-input"
-                type="text"
-                value={nameDraft}
-                onChange={(event) => setNameDraft(event.target.value)}
-                disabled={isSaving}
-              />
-              <label className="cip-field-label" htmlFor="cip-description">
-                Description
-              </label>
-              <div className="cip-toolbar" role="toolbar" aria-label="Description formatting">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="cip-toolbar__button"
-                      onClick={() => applyMarkdown('bold')}
-                      disabled={isSaving}
-                      aria-label="Bold"
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        format_bold
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Bold</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="cip-toolbar__button"
-                      onClick={() => applyMarkdown('italic')}
-                      disabled={isSaving}
-                      aria-label="Italic"
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        format_italic
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Italic</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="cip-toolbar__button"
-                      onClick={() => applyMarkdown('ul')}
-                      disabled={isSaving}
-                      aria-label="Bullet list"
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        format_list_bulleted
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Bullet list</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="cip-toolbar__button"
-                      onClick={() => applyMarkdown('ol')}
-                      disabled={isSaving}
-                      aria-label="Numbered list"
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        format_list_numbered
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Numbered list</TooltipContent>
-                </Tooltip>
-              </div>
-              <textarea
-                id="cip-description"
-                ref={descriptionInputRef}
-                className="cip-textarea"
-                rows={7}
-                value={descriptionDraft}
-                onChange={(event) => setDescriptionDraft(event.target.value)}
-                disabled={isSaving}
-              />
-
-              <CampaignInformationStatusLine
-                campaign={campaign}
-                sessionCount={sessionCount}
-                totalSessionDurationMs={totalSessionDurationMs}
-              />
-
-              <div className="cip-poster-controls">
-                <label className="cip-field-label" htmlFor="cip-poster-file">
-                  Poster image
-                </label>
-                <div
-                  className={`cip-poster-surface cip-poster-surface--editable ${currentPoster ? 'has-image' : ''}`}
-                  style={currentPoster ? { backgroundImage: `url(${currentPoster})` } : undefined}
-                  aria-label="Poster preview"
-                >
-                  {!currentPoster ? (
-                    <div className="cip-poster__placeholder">
-                      {campaign.name.charAt(0).toUpperCase()}
-                    </div>
-                  ) : null}
-                  <div className="cip-poster-overlay" aria-hidden="true">
-                    {posterUrlDraft ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="cip-poster-clear"
-                            aria-label="Clear poster image"
-                            onClick={() => setPosterUrlDraft(null)}
-                            disabled={isSaving}
-                          >
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              close
-                            </span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Remove poster image</TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                    <label
-                      htmlFor="cip-poster-file"
-                      className="session-button session-button-neutral cip-browse-button"
-                    >
-                      Browse...
-                    </label>
-                  </div>
-                  <input
-                    id="cip-poster-file"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePosterUpload}
-                    disabled={isSaving}
-                    className="cip-visually-hidden"
-                  />
-                </div>
-                <p className="cip-muted">External poster sync stores a local copy.</p>
-              </div>
-            </>
+            <CampaignInformationEditBody
+              nameDraft={nameDraft}
+              descriptionDraft={descriptionDraft}
+              isSaving={isSaving}
+              onNameChange={setNameDraft}
+              onDescriptionChange={setDescriptionDraft}
+              onApplyMarkdown={applyMarkdown}
+              descriptionInputRef={descriptionInputRef}
+              currentPoster={currentPoster}
+              campaignName={campaign.name}
+              posterUrlDraft={posterUrlDraft}
+              onClearPoster={() => setPosterUrlDraft(null)}
+              onPosterUpload={handlePosterUpload}
+              statusLine={statusLine}
+            />
           ) : (
-            <>
-              <p className="cip-kicker">Campaign</p>
-              <p className="cip-name-value">{campaign.name}</p>
-              <p className="cip-description">
-                {campaign.description || 'No description provided.'}
-              </p>
-
-              <CampaignInformationStatusLine
-                campaign={campaign}
-                sessionCount={sessionCount}
-                totalSessionDurationMs={totalSessionDurationMs}
-              />
-
-              <div className="cip-poster-controls">
-                <span className="cip-field-label">Poster image</span>
-                <div
-                  className={`cip-poster-surface ${currentPoster ? 'has-image' : ''}`}
-                  style={currentPoster ? { backgroundImage: `url(${currentPoster})` } : undefined}
-                  aria-hidden="true"
-                >
-                  {!currentPoster ? (
-                    <div className="cip-poster__placeholder">
-                      {campaign.name.charAt(0).toUpperCase()}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </>
+            <CampaignInformationReadOnlyBody
+              campaignName={campaign.name}
+              campaignDescription={campaign.description}
+              currentPoster={currentPoster}
+              statusLine={statusLine}
+            />
           )}
         </div>
 
