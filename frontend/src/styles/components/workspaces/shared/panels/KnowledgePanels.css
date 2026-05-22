@@ -329,9 +329,11 @@
 .knowledge-panel-session-list {
   display: grid;
   gap: var(--space-2);
-  max-height: min(58vh, 42rem);
+  min-height: 0;
+  height: 100%;
   overflow-y: auto;
   padding-right: 0.25rem;
+  align-content: start;
 }
 
 .knowledge-panel-session-item {
