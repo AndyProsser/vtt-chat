@@ -1,11 +1,14 @@
 /* AudioPanel — audio transport status and control surface */
 
-.audio-panel {
+.session-audio-panel {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.625rem 0.875rem;
   overflow: visible;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
 }
 
 .audio-panel__header {
@@ -42,7 +45,7 @@
   border-radius: 999px;
 }
 
-.audio-panel__error {
+.session-audio-panel__error {
   color: var(--color-error-text, #991b1b);
   font-size: 0.8rem;
 }
@@ -96,4 +99,3 @@
   color: var(--color-text-primary);
   background: var(--color-surface-subtle);
 }
-

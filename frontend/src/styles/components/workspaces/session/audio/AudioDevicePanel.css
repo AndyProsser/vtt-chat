@@ -241,7 +241,7 @@
 }
 
 /* Footer wrapper — anchors the settings panel */
-.audio-panel__footer {
+.session-audio-panel__footer {
   position: relative;
   z-index: 200;
   isolation: isolate;
@@ -319,4 +319,3 @@
 /* ============================================================
    Audio Settings Panel (popover above the control bar)
    ============================================================ */
-

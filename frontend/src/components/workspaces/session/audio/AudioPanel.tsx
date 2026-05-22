@@ -634,10 +634,10 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   }, [settingsOpen])
 
   return (
-    <section className="audio-panel border-t border-ui-border bg-ui-surface-subtle text-ui-primary">
-      {liveKitError && <p className="audio-panel__error">⚠ {liveKitError}</p>}
+    <section className="session-audio-panel">
+      {liveKitError && <p className="session-audio-panel__error">⚠ {liveKitError}</p>}
 
-      <div className="audio-panel__footer">
+      <div className="session-audio-panel__footer">
         {settingsOpen && (
           <AudioSettingsPanel
             device={device}

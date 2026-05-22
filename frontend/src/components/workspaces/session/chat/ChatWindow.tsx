@@ -774,36 +774,36 @@ export function ChatWindow({
   )
 
   return (
-    <section className="chat-window">
-      <header className="chat-window__header">
-        <div className="chat-window__header-copy">
-          <h3 className="chat-window__title">{headerTitle}</h3>
-          <p className="chat-window__subtitle">{headerSubtitle}</p>
+    <section className="session-chat-window">
+      <header className="session-chat-window__header">
+        <div className="session-chat-window__header-copy">
+          <h3 className="session-chat-window__title">{headerTitle}</h3>
+          <p className="session-chat-window__subtitle">{headerSubtitle}</p>
         </div>
-        <div className="chat-window__header-pills" aria-label="Timeline context">
-          <span className="chat-window__pill">{visibleRoomCount || 1} room focus</span>
-          <span className="chat-window__pill">
+        <div className="session-chat-window__header-pills" aria-label="Timeline context">
+          <span className="session-chat-window__pill">{visibleRoomCount || 1} room focus</span>
+          <span className="session-chat-window__pill">
             {visibleMessages.length} {visibleMessages.length === 1 ? 'entry' : 'entries'}
           </span>
         </div>
       </header>
 
       {/* Error banner */}
-      {error && <div className="chat-window__error">{error}</div>}
+      {error && <div className="session-chat-window__error">{error}</div>}
 
       {failedQueueItems.length > 0 ? (
-        <section className="chat-window__queue-debug" aria-live="polite">
-          <div className="chat-window__queue-debug-title">
+        <section className="session-chat-window__queue-debug" aria-live="polite">
+          <div className="session-chat-window__queue-debug-title">
             Failed sends ({failedQueueItems.length})
           </div>
-          <div className="chat-window__queue-debug-list">
+          <div className="session-chat-window__queue-debug-list">
             {failedQueueItems.slice(0, 3).map((entry) => (
-              <div key={entry.id} className="chat-window__queue-debug-item">
-                <p className="chat-window__queue-debug-content">{entry.content}</p>
-                <div className="chat-window__queue-debug-actions">
+              <div key={entry.id} className="session-chat-window__queue-debug-item">
+                <p className="session-chat-window__queue-debug-content">{entry.content}</p>
+                <div className="session-chat-window__queue-debug-actions">
                   <button
                     type="button"
-                    className="chat-window__queue-debug-button"
+                    className="session-chat-window__queue-debug-button"
                     onClick={() => {
                       void retryFailedMessage(entry)
                     }}
@@ -812,7 +812,7 @@ export function ChatWindow({
                   </button>
                   <button
                     type="button"
-                    className="chat-window__queue-debug-button chat-window__queue-debug-button--quiet"
+                    className="session-chat-window__queue-debug-button session-chat-window__queue-debug-button--quiet"
                     onClick={() => {
                       removeOutgoingMessage(sessionId, entry.id)
                     }}
@@ -821,7 +821,7 @@ export function ChatWindow({
                   </button>
                 </div>
                 {entry.error ? (
-                  <p className="chat-window__queue-debug-error">{entry.error}</p>
+                  <p className="session-chat-window__queue-debug-error">{entry.error}</p>
                 ) : null}
               </div>
             ))}
@@ -831,7 +831,7 @@ export function ChatWindow({
 
       {/* Message list */}
       {isLoading ? (
-        <div className="chat-window__loading-state">Loading messages…</div>
+        <div className="session-chat-window__loading-state">Loading messages…</div>
       ) : (
         <MessageList
           messages={visibleMessages}
@@ -855,7 +855,7 @@ export function ChatWindow({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className={`chat-window__jump-to-latest ${pendingNewMessageCount > 0 ? 'chat-window__jump-to-latest--new' : ''}`}
+                className={`session-chat-window__jump-to-latest ${pendingNewMessageCount > 0 ? 'session-chat-window__jump-to-latest--new' : ''}`}
                 onClick={() => {
                   scrollToLatest('smooth')
                   setIsUserPinnedToBottom(true)
@@ -876,15 +876,15 @@ export function ChatWindow({
         </TooltipProvider>
       ) : null}
 
-      <div className="chat-window__typing-slot" aria-live="polite">
+      <div className="session-chat-window__typing-slot" aria-live="polite">
         <div
-          className={`chat-window__typing-overlay ${typingUsers.length > 0 ? 'chat-window__typing-overlay--active' : ''}`}
+          className={`session-chat-window__typing-overlay ${typingUsers.length > 0 ? 'session-chat-window__typing-overlay--active' : ''}`}
           aria-hidden={typingUsers.length === 0}
         >
-          <span className="chat-window__typing-text">
+          <span className="session-chat-window__typing-text">
             {typingUsers.length > 0 ? typingSummary : ''}
           </span>
-          <span className="chat-window__typing-dots" aria-hidden="true">
+          <span className="session-chat-window__typing-dots" aria-hidden="true">
             <span />
             <span />
             <span />

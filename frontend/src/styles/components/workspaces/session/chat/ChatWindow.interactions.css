@@ -1,4 +1,4 @@
-.chat-window__jump-to-latest {
+.session-chat-window__jump-to-latest {
   position: absolute;
   right: 0.8rem;
   bottom: 4.9rem;
@@ -15,11 +15,11 @@
   z-index: 3;
 }
 
-.chat-window__jump-to-latest:hover {
+.session-chat-window__jump-to-latest:hover {
   background: color-mix(in srgb, var(--color-surface-subtle) 76%, var(--color-surface) 24%);
 }
 
-.chat-window__jump-to-latest--new {
+.session-chat-window__jump-to-latest--new {
   border-color: color-mix(in srgb, var(--color-brand, #38bdf8) 42%, var(--color-border-soft) 58%);
   background: color-mix(in srgb, var(--color-surface) 78%, var(--color-brand, #38bdf8) 22%);
   box-shadow:
@@ -27,7 +27,7 @@
     0 0 0 2px color-mix(in srgb, var(--color-brand, #38bdf8) 18%, transparent);
 }
 
-.chat-window__jump-to-latest--new::after {
+.session-chat-window__jump-to-latest--new::after {
   content: '';
   position: absolute;
   top: 0.28rem;
@@ -39,7 +39,7 @@
   opacity: 0.86;
 }
 
-.chat-window__typing-slot {
+.session-chat-window__typing-slot {
   flex: 0 0 auto;
   min-height: 1.9rem;
   padding: 0 0.72rem 0.18rem;
@@ -47,7 +47,7 @@
   align-items: flex-end;
 }
 
-.chat-window__typing-overlay {
+.session-chat-window__typing-overlay {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -65,7 +65,7 @@
     visibility 140ms ease;
 }
 
-.chat-window__typing-overlay--active {
+.session-chat-window__typing-overlay--active {
   border: 0;
   background: transparent;
   color: color-mix(in srgb, var(--color-text-secondary) 76%, transparent);
@@ -74,18 +74,18 @@
   visibility: visible;
 }
 
-.chat-window__typing-text {
+.session-chat-window__typing-text {
   font-size: 0.72rem;
   font-weight: 500;
 }
 
-.chat-window__typing-dots {
+.session-chat-window__typing-dots {
   display: inline-flex;
   align-items: center;
   gap: 0.16rem;
 }
 
-.chat-window__typing-dots > span {
+.session-chat-window__typing-dots > span {
   inline-size: 0.24rem;
   block-size: 0.24rem;
   border-radius: 999px;
@@ -94,11 +94,11 @@
   animation: chatTypingDot 1.2s infinite ease-in-out;
 }
 
-.chat-window__typing-dots > span:nth-child(2) {
+.session-chat-window__typing-dots > span:nth-child(2) {
   animation-delay: 0.18s;
 }
 
-.chat-window__typing-dots > span:nth-child(3) {
+.session-chat-window__typing-dots > span:nth-child(3) {
   animation-delay: 0.36s;
 }
 
@@ -115,4 +115,3 @@
     opacity: 0.95;
   }
 }
-
