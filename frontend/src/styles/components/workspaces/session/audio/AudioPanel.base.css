@@ -26,19 +26,19 @@
   color: var(--color-text-secondary);
 }
 
-.audio-panel__status-dot[data-state='connected'] {
+.session-audio-device-panel__status-dot[data-state='connected'] {
   background-color: var(--color-success);
 }
 
-.audio-panel__status-dot[data-state='connecting'] {
+.session-audio-device-panel__status-dot[data-state='connecting'] {
   background-color: var(--color-warn);
 }
 
-.audio-panel__status-dot[data-state='disconnected'] {
+.session-audio-device-panel__status-dot[data-state='disconnected'] {
   background-color: var(--color-text-muted);
 }
 
-.audio-panel__status-dot {
+.session-audio-device-panel__status-dot {
   display: inline-block;
   width: 0.5rem;
   height: 0.5rem;

@@ -80,8 +80,8 @@ export function AudioDevicePanel({
           ? 'connected-publishing'
           : 'connected-idle'
   const primaryControlClass = device.pttEnabled
-    ? `audio-panel__control audio-panel__control--ptt ${pttActive ? 'is-active' : ''}`
-    : `audio-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
+    ? `session-audio-device-panel__control session-audio-device-panel__control--ptt ${pttActive ? 'is-active' : ''}`
+    : `session-audio-device-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
 
   const handlePrimaryDown = () => {
     if (device.pttEnabled) {
@@ -109,39 +109,39 @@ export function AudioDevicePanel({
 
   const renderItemIcon = (kind: string) => {
     if (kind === 'environment') {
-      return <Icon name="rooms" className="audio-panel__detail-icon" />
+      return <Icon name="rooms" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'distance') {
-      return <Icon name="signal" className="audio-panel__detail-icon" />
+      return <Icon name="signal" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'condition') {
-      return <Icon name="status" className="audio-panel__detail-icon" />
+      return <Icon name="status" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'custom') {
-      return <Icon name="effects" className="audio-panel__detail-icon" />
+      return <Icon name="effects" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'voice' || kind === 'ic') {
-      return <Icon name="voice" className="audio-panel__detail-icon" />
+      return <Icon name="voice" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'mute') {
-      return <Icon name="mic_off" className="audio-panel__detail-icon" />
+      return <Icon name="mic_off" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'unmute') {
-      return <Icon name="mic" className="audio-panel__detail-icon" />
+      return <Icon name="mic" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'gain') {
-      return <Icon name="signal" className="audio-panel__detail-icon" />
+      return <Icon name="signal" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'gate') {
-      return <Icon name="timer" className="audio-panel__detail-icon" />
+      return <Icon name="timer" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'filter') {
-      return <Icon name="effects" className="audio-panel__detail-icon" />
+      return <Icon name="effects" className="session-audio-device-panel__detail-icon" />
     }
     if (kind === 'ptt') {
-      return <Icon name="mic" className="audio-panel__detail-icon" />
+      return <Icon name="mic" className="session-audio-device-panel__detail-icon" />
     }
-    return <Icon name="status" className="audio-panel__detail-icon" />
+    return <Icon name="status" className="session-audio-device-panel__detail-icon" />
   }
 
   const liveKitBadgeLabel = getLiveKitBadgeLabel({
@@ -151,12 +151,12 @@ export function AudioDevicePanel({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <footer className="audio-panel__controls">
+      <footer className="session-audio-device-panel__controls">
         {/* Connection status indicator */}
         <Tooltip>
           <TooltipTrigger asChild>
             <span
-              className="audio-panel__status-dot"
+              className="session-audio-device-panel__status-dot"
               data-state={statusState}
               aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
             />
@@ -204,18 +204,18 @@ export function AudioDevicePanel({
         </Tooltip>
 
         <span
-          className="audio-panel__tx-meter"
+          className="session-audio-device-panel__tx-meter"
           aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
         >
-          <span ref={txMeterFillRef} className="audio-panel__tx-meter-fill" />
+          <span ref={txMeterFillRef} className="session-audio-device-panel__tx-meter-fill" />
         </span>
 
-        <span className={`audio-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
+        <span className={`session-audio-device-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
           {mutedLabel}
           <Tooltip>
             <TooltipTrigger asChild>
               <span
-                className="audio-panel__mode-pill-badge"
+                className="session-audio-device-panel__mode-pill-badge"
                 data-state={lkBadgeState}
                 aria-label={liveKitBadgeLabel}
               />
@@ -225,25 +225,25 @@ export function AudioDevicePanel({
         </span>
 
         {/* Spacer pushes right-side controls to the edge */}
-        <span className="audio-panel__controls-spacer" aria-hidden="true" />
+        <span className="session-audio-device-panel__controls-spacer" aria-hidden="true" />
 
         {/* Effects indicator */}
         <div
-          className="audio-panel__control-group"
+          className="session-audio-device-panel__control-group"
           onMouseEnter={() => setEffectsHovered(true)}
           onMouseLeave={() => setEffectsHovered(false)}
         >
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className={`audio-panel__control audio-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
+                className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
                 aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
                 aria-expanded={effectsOpen}
                 type="button"
               >
                 <Icon name="effects" />
                 {activeEffectsCount > 0 ? (
-                  <span className="audio-panel__pip" aria-hidden="true">
+                  <span className="session-audio-device-panel__pip" aria-hidden="true">
                     {activeEffectsCount}
                   </span>
                 ) : null}
@@ -255,21 +255,21 @@ export function AudioDevicePanel({
           </Tooltip>
           {effectsOpen && (
             <div
-              className="audio-panel__quick-panel"
+              className="session-audio-device-panel__quick-panel"
               role="dialog"
               aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
             >
-              <p className="audio-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
+              <p className="session-audio-device-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
               {effectItems.length === 0 ? (
-                <p className="audio-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
+                <p className="session-audio-device-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
               ) : (
-                <ul className="audio-panel__quick-list">
+                <ul className="session-audio-device-panel__quick-list">
                   {effectItems.map((item) => (
-                    <li key={`${item.kind}-${item.name}`} className="audio-panel__quick-item">
+                    <li key={`${item.kind}-${item.name}`} className="session-audio-device-panel__quick-item">
                       {renderItemIcon(item.kind)}
-                      <span className="audio-panel__quick-main">
-                        <span className="audio-panel__quick-name">{item.name}</span>
-                        <span className="audio-panel__quick-desc">{item.description}</span>
+                      <span className="session-audio-device-panel__quick-main">
+                        <span className="session-audio-device-panel__quick-name">{item.name}</span>
+                        <span className="session-audio-device-panel__quick-desc">{item.description}</span>
                       </span>
                     </li>
                   ))}
@@ -284,7 +284,7 @@ export function AudioDevicePanel({
           <TooltipTrigger asChild>
             <button
               onClick={onToggleSettings}
-              className={`audio-panel__control audio-panel__control--icon ${settingsOpen ? 'is-active' : ''}`}
+              className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${settingsOpen ? 'is-active' : ''}`}
               aria-label={AUDIO_CONTROL_COPY.audioSettings}
               aria-expanded={settingsOpen}
               data-audio-settings-trigger="true"
