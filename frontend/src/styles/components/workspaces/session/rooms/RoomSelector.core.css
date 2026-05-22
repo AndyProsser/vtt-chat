@@ -188,33 +188,6 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.room-selector-header__voice {
-  font-size: 0.66rem;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 999px;
-  padding: 0.08rem 0.42rem;
-  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
-}
-
-.room-selector-header__voice.connected {
-  color: #14532d;
-  border-color: color-mix(in srgb, #16a34a 58%, var(--color-border-soft));
-  background: color-mix(in srgb, #22c55e 24%, var(--color-surface));
-}
-
-.room-selector-header__voice.connecting {
-  color: #78350f;
-  border-color: color-mix(in srgb, #d97706 56%, var(--color-border-soft));
-  background: color-mix(in srgb, #f59e0b 26%, var(--color-surface));
-}
-
-.room-selector-header__voice.disconnected {
-  color: #7f1d1d;
-  border-color: color-mix(in srgb, #dc2626 55%, var(--color-border-soft));
-  background: color-mix(in srgb, #ef4444 20%, var(--color-surface));
-}
-
 .room-selector-header h4,
 .room-selector-members h5 {
   margin: 0;
@@ -389,20 +362,6 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-brand) 18%, transparent);
 }
 
-.room-selector-item--private-divider {
-  margin-top: 0.35rem;
-  position: relative;
-}
-
-.room-selector-item--private-divider::before {
-  content: '';
-  position: absolute;
-  top: -0.28rem;
-  left: 0.2rem;
-  right: 0.2rem;
-  border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 58%, transparent);
-}
-
 .room-selector-item.selected {
   border-color: color-mix(in srgb, var(--color-brand) 65%, white 10%);
   background: color-mix(in srgb, var(--color-brand) 20%, transparent);
@@ -454,23 +413,6 @@
 
 .room-selector-item__env-icon .material-symbols-outlined {
   font-size: 0.9rem;
-}
-
-.room-selector-item__broadcast-badge {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--color-text-secondary);
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 84%, transparent);
-  border-radius: 999px;
-  padding: 0.08rem 0.36rem;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-}
-
-.room-selector-item__broadcast-badge.active {
-  color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-brand) 54%, var(--color-border-soft));
-  background: color-mix(in srgb, var(--color-brand) 22%, transparent);
 }
 
 .room-selector-item__icon-action {
@@ -640,29 +582,6 @@
   background: color-mix(in srgb, var(--color-brand) 18%, transparent);
 }
 
-.room-selector-item__voice-toggle {
-  width: fit-content;
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 88%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  color: var(--color-text-secondary);
-  font-size: 0.63rem;
-  font-weight: 500;
-  padding: 0.12rem 0.36rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.14rem;
-  cursor: pointer;
-  opacity: 0.78;
-}
-
-.room-selector-item__voice-toggle.active {
-  color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-brand) 44%, var(--color-border-soft));
-  background: color-mix(in srgb, var(--color-brand) 14%, transparent);
-  opacity: 0.92;
-}
-
 .room-selector-item-name {
   font-size: 0.82rem;
   font-weight: 600;
@@ -678,11 +597,6 @@
   line-height: 1;
 }
 
-.room-selector-item-meta {
-  font-size: 0.72rem;
-  color: var(--color-text-secondary);
-}
-
 .room-selector-members {
   border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 75%, transparent);
   padding-top: 0.28rem;
@@ -695,12 +609,6 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 0.22rem;
   min-height: 0;
-}
-
-.room-selector-members-list--constrained {
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
 }
 
 .room-selector-members-list--selected {
@@ -738,12 +646,6 @@
   border-color: color-mix(in srgb, #ea580c 64%, var(--color-border-soft));
   background: color-mix(in srgb, #ea580c 8%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, #ea580c 28%, transparent);
-}
-
-.room-selector-member__pending {
-  font-size: 0.68rem;
-  color: var(--color-text-secondary);
-  padding-left: 0.2rem;
 }
 
 .room-selector-profile-tooltip {
@@ -1018,36 +920,6 @@
   line-height: 1;
 }
 
-.room-selector-item__footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.1rem;
-}
-
-.room-selector-item__close-btn {
-  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 58%, var(--color-border-soft));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-error, #ef4444) 18%, transparent);
-  color: color-mix(in srgb, var(--color-error, #ef4444) 78%, var(--color-text-primary));
-  min-height: 1.5rem;
-  padding: 0 0.52rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.room-selector-item__close-btn .material-symbols-outlined {
-  font-size: 0.8rem;
-}
-
-.room-selector-item__close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .room-selector-status-pill.role {
   border-color: color-mix(in srgb, var(--color-brand) 34%, var(--color-border-soft));
   color: color-mix(in srgb, var(--color-brand) 72%, var(--color-text-primary));
@@ -1175,12 +1047,7 @@
 }
 
 @media (max-height: 820px) {
-  .room-selector-members-list--constrained {
-    max-height: none;
-  }
-
   .room-selector-members-list--selected {
     max-height: none;
   }
 }
-

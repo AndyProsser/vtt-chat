@@ -533,7 +533,7 @@ export function MessageList({
                           className={`session-message-list__message-whisper-meta ${isSelf ? 'session-message-list__message-whisper-meta--outgoing' : 'session-message-list__message-whisper-meta--incoming'}`}
                         >
                           {!isSelf ? (
-                            <div className="session-message-list__message-whisper-meta-row session-message-list__message-whisper-meta-row--incoming">
+                            <div className="session-message-list__message-whisper-meta-row--incoming">
                               <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                                 {msg.editedAt ? 'edited · ' : ''}
                                 {formatRelativeTime(msg.createdAt)}
