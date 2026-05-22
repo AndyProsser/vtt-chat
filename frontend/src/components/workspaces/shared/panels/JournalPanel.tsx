@@ -25,6 +25,7 @@ interface JournalPanelProps {
   sessionName?: string
   role: Role
   userId?: UUID
+  autoEdit?: boolean
 }
 
 interface JournalEntry {
@@ -95,7 +96,14 @@ function noteToEntry(note: RawNote, sessionName?: string, sessionId?: UUID): Jou
   }
 }
 
-export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: JournalPanelProps) {
+export function JournalPanel({
+  apiUrl,
+  token,
+  sessionId,
+  sessionName,
+  role,
+  autoEdit = false,
+}: JournalPanelProps) {
   const isDm = role === 'DM'
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
@@ -159,6 +167,10 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
       cancelled = true
     }
   }, [apiUrl, token, sessionId, sessionName])
+
+  useEffect(() => {
+    setIsEditing(isDm && autoEdit)
+  }, [autoEdit, isDm, sessionId])
 
   // ── Save (create or update) ──────────────────────────────────────
   const handleSave = useCallback(async () => {

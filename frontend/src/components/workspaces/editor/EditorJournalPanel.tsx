@@ -96,7 +96,6 @@ export function EditorJournalPanel({
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
-  const [isJournalExpanded, setIsJournalExpanded] = useState(true)
 
   const sortedSessions = [...sessions].sort((left, right) => right.createdAt - left.createdAt)
   const fallbackSession = sortedSessions[0] ?? null
@@ -121,10 +120,6 @@ export function EditorJournalPanel({
   const effectiveMissingCopy = effectiveSession
     ? buildMissingRecapCopy(effectiveSession, effectiveNextSession)
     : null
-
-  useEffect(() => {
-    setIsJournalExpanded(true)
-  }, [effectiveSessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -279,37 +274,26 @@ export function EditorJournalPanel({
       </div>
 
       <section className="knowledge-panel-group" aria-label="Selected session journal">
-        <button
-          type="button"
-          className="knowledge-panel-section-toggle"
-          onClick={() => setIsJournalExpanded((current) => !current)}
-          aria-expanded={isJournalExpanded}
-        >
-          <span>
-            <span className="knowledge-panel-group-title">Session Journal</span>
-            <strong className="knowledge-panel-section-toggle__title">
-              {effectiveSession.name}
-            </strong>
-            {!effectiveStatus?.hasContent && effectiveMissingCopy ? (
-              <span className="knowledge-panel-section-toggle__hint">
-                {effectiveMissingCopy.sectionHint}
-              </span>
-            ) : null}
-          </span>
-          <span className="material-symbols-outlined" aria-hidden="true">
-            {isJournalExpanded ? 'expand_less' : 'expand_more'}
-          </span>
-        </button>
+        <div className="knowledge-panel-section-summary">
+          <span className="knowledge-panel-group-title">Session Journal</span>
+          <strong className="knowledge-panel-section-summary__title">
+            {effectiveSession.name}
+          </strong>
+          {!effectiveStatus?.hasContent && effectiveMissingCopy ? (
+            <span className="knowledge-panel-section-summary__hint">
+              {effectiveMissingCopy.sectionHint}
+            </span>
+          ) : null}
+        </div>
 
-        {isJournalExpanded ? (
-          <JournalPanel
-            apiUrl={apiUrl}
-            token={token}
-            sessionId={effectiveSessionId}
-            sessionName={effectiveSession.name}
-            role={role}
-          />
-        ) : null}
+        <JournalPanel
+          apiUrl={apiUrl}
+          token={token}
+          sessionId={effectiveSessionId}
+          sessionName={effectiveSession.name}
+          role={role}
+          autoEdit
+        />
       </section>
     </section>
   )
