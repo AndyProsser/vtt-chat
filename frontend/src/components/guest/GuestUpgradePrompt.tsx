@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEventHandler } from 'react'
 import * as Form from '@radix-ui/react-form'
 
 interface GuestUpgradePromptProps {
@@ -17,7 +17,7 @@ export function GuestUpgradePrompt({
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const submitUpgrade = async (event: React.FormEvent) => {
+  const submitUpgrade: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
     setError(null)
 

@@ -2224,8 +2224,6 @@ export function WorkspaceInitialization({
           selectedCampaign={selectedCampaign || null}
           membershipRole={membershipRole}
           themeMode={themeMode}
-          isCreatingCampaign={isCreatingCampaign}
-          isJoiningCampaign={isJoiningCampaign}
           apiUrl={apiUrl}
           token={token}
           currentSessionId={currentSessionId || null}
@@ -2322,8 +2320,6 @@ export function WorkspaceInitialization({
           onBackToLobby={() => {
             setEditorWorkspaceView('lobby')
           }}
-          onCreateCampaign={() => setShowCreateCampaignModal(true)}
-          onJoinCampaign={() => setShowJoinCampaignModal(true)}
           onToggleTheme={handleToggleTheme}
           onOpenUserSettings={() => setShowUserSettingsModal(true)}
           onLogoff={handleLogoff}

@@ -140,14 +140,6 @@ function MemberAvatar({ initials, status }: { initials: string; status: MockPlay
   )
 }
 
-function StatusChip({ status }: { status: MockPlayerStatus }) {
-  return (
-    <span className={`party-sheet__status-chip party-sheet__status-chip--${status}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  )
-}
-
 function StatGrid({ stats }: { stats: MockPartyMember['stats'] }) {
   const entries: Array<[string, number]> = [
     ['STR', stats.str],
@@ -199,7 +191,6 @@ function MemberRow({ member }: { member: MockPartyMember }) {
               </span>
             </TooltipContent>
           </Tooltip>
-          <StatusChip status={member.status} />
         </div>
       </td>
 

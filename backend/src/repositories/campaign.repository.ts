@@ -746,11 +746,6 @@ export async function listCampaignMembersForPresence(
           username: true,
           displayName: true,
           avatarUrl: true,
-          characterName: true,
-          characterClass: true,
-          characterRace: true,
-          level: true,
-          characterStats: true,
         },
       },
       campaign: {
@@ -797,14 +792,11 @@ export async function listCampaignMembersForPresence(
       role: membership.role,
       playerName: membership.user.displayName || membership.user.username,
       avatarUrl: activeCharacter?.avatarUrl || membership.user.avatarUrl || null,
-      characterName: activeCharacter?.name || membership.user.characterName || null,
-      characterClass: activeCharacter?.class || membership.user.characterClass || null,
-      characterRace: activeCharacter?.race || membership.user.characterRace || null,
-      level:
-        rawLevel !== null
-          ? Math.max(1, Math.min(20, Math.round(rawLevel)))
-          : (membership.user.level ?? null),
-      characterStats: membership.user.characterStats || null,
+      characterName: activeCharacter?.name || null,
+      characterClass: activeCharacter?.class || null,
+      characterRace: activeCharacter?.race || null,
+      level: rawLevel !== null ? Math.max(1, Math.min(20, Math.round(rawLevel))) : null,
+      characterStats: (metadata as Prisma.JsonValue | null) ?? null,
     }
   })
 }

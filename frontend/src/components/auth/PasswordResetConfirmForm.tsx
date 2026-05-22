@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEventHandler } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { navigateAuthSurface, validateComplexPassword } from '@/components/auth/auth-surface'
 
@@ -51,7 +51,7 @@ export function PasswordResetConfirmForm({ apiUrl }: PasswordResetConfirmFormPro
 
   const passwordErrors = validateComplexPassword(password)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setVerifyError(null)
 

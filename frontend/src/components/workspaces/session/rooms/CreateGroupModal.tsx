@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useState, type FormEventHandler } from 'react'
 import { RoomType } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 
@@ -24,7 +24,7 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
     zIndex: 1300,
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
 
     const nextName = name.trim()

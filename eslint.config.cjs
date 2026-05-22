@@ -62,14 +62,15 @@ module.exports = [
   },
   {
     files: [
-      'frontend/src/components/rooms/RoomSelector.tsx',
-      'frontend/src/components/session/CampaignInformationPanel.tsx',
-      'frontend/src/components/session/CommandCenterFrame.tsx',
-      'frontend/src/components/session/DMAudioControls.tsx',
-      'frontend/src/components/session/SessionInit.tsx',
+      'frontend/src/components/workspaces/index.tsx',
+      'frontend/src/components/workspaces/session/WorkspaceFrame.tsx',
+      'frontend/src/components/workspaces/session/DMAudioControls.tsx',
+      'frontend/src/components/workspaces/session/rooms/RoomSelector.tsx',
+      'frontend/src/components/workspaces/shared/panels/CampaignInformationPanel.tsx',
     ],
     rules: {
       'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
     },
   },
 ]

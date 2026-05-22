@@ -52,7 +52,7 @@
 }
 
 .session-lobby-workspace__panel {
-  height: calc(100dvh - 170px);
+  height: calc(100dvh - 126px);
   min-height: 180px;
   min-width: 0;
   overflow: hidden;

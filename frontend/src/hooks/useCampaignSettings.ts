@@ -7,10 +7,7 @@
 import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
-import type {
-  CampaignSettingsPayload,
-  CampaignSettingsHomeTab,
-} from '@/types/session/campaign'
+import type { CampaignSettingsPayload, CampaignSettingsHomeTab } from '@/types/session/campaign'
 import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionController'
 
 interface UseCampaignSettingsState {

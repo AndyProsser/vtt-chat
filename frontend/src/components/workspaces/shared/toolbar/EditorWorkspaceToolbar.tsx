@@ -2,18 +2,13 @@ import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/Workspa
 import { InvitePopoverWidget } from '@/components/workspaces/shared/toolbar/InvitePopoverWidget'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
-import { useEditorWorkspaceToolbarActions } from '@/hooks/workspaces/useEditorWorkspaceToolbarActions'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 
 type EditorWorkspaceToolbarProps = {
   themeMode: 'light' | 'dark'
   dataUiState?: string
   launchLabel?: string
-  isCreatingCampaign: boolean
-  isJoiningCampaign: boolean
   connectionStatus: LobbyConnectionStatus
-  onCreateCampaign: () => void
-  onJoinCampaign: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onReturnToLobby: () => void
@@ -31,13 +26,12 @@ type EditorWorkspaceToolbarProps = {
 }
 
 export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
-  const { coreStateToneClass } = useEditorWorkspaceToolbarActions({
-    isCreatingCampaign: props.isCreatingCampaign,
-    isJoiningCampaign: props.isJoiningCampaign,
-    onCreateCampaign: props.onCreateCampaign,
-    onJoinCampaign: props.onJoinCampaign,
-    coreWsState: props.connectionStatus.coreWsState,
-  })
+  const coreStateToneClass =
+    props.connectionStatus.coreWsState === 'CONNECTED'
+      ? 'is-green'
+      : props.connectionStatus.coreWsState === 'CONNECTING'
+        ? 'is-yellow'
+        : 'is-red'
 
   const inviteActions = props.showInviteWidget ? (
     <InvitePopoverWidget

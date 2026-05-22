@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEventHandler } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
@@ -54,7 +54,7 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
 
   const passwordErrors = validateComplexPassword(password)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setError(null)
 

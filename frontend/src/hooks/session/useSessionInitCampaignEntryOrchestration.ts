@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import type { Dispatch, FormEventHandler, SetStateAction } from 'react'
 import type { UUID } from '@shared'
 import { SessionState } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
@@ -253,8 +253,8 @@ export function useSessionInitCampaignEntryOrchestration(
     ]
   )
 
-  const handleJoinCampaign = useCallback(
-    (event: FormEvent) => {
+  const handleJoinCampaign = useCallback<FormEventHandler<HTMLFormElement>>(
+    (event) => {
       event.preventDefault()
       setError(null)
       setLobbyNotice(null)

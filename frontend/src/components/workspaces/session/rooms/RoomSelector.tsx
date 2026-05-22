@@ -11,10 +11,7 @@ import {
 } from '@/constants/roomPresence.constants'
 import { CONDITION_PRESETS } from '@/constants/voiceGroup.constants'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '@/constants/voiceGroupStatus.constants'
-import {
-  DISTANCE_PRESETS,
-  getRoomSelectorDmFlavorLine,
-} from '@/constants/roomSelector.constants'
+import { DISTANCE_PRESETS, getRoomSelectorDmFlavorLine } from '@/constants/roomSelector.constants'
 import { useStore } from '@/hooks/useStore'
 import { Icon } from '@/components/ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'

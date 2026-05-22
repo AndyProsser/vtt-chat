@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { ErrorCode, PresenceState, isValidPresenceState, isValidUUID } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { getSessionParticipantProfiles } from '@/repositories/session.repository'
+import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session/core.service'
 import {
@@ -23,6 +24,7 @@ import type { WebSocketManager } from '@/ws'
 import eventBroadcaster from '@/ws/event-broadcaster'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -77,6 +79,11 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
     if (!currentSession) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
+
+    const currentSessionRecord = await prisma.session.findUnique({
+      where: { id: sessionId as UUID },
+      select: { campaignId: true },
+    })
 
     ensureMockSimulationRunning(sessionId as UUID)
 
@@ -153,6 +160,11 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
     if (!currentSession) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
+
+    const currentSessionCampaign = await prisma.session.findUnique({
+      where: { id: sessionId as UUID },
+      select: { campaignId: true },
+    })
 
     if (roomId) {
       const room = await getRoom(roomId as UUID)
@@ -255,8 +267,8 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
       })
     }
 
-    if (eventBroadcaster.isReady() && currentSession.campaignId) {
-      await eventBroadcaster.broadcastToCampaignMembers(currentSession.campaignId as UUID, {
+    if (eventBroadcaster.isReady() && currentSessionCampaign?.campaignId) {
+      await eventBroadcaster.broadcastToCampaignMembers(currentSessionCampaign.campaignId as UUID, {
         id: crypto.randomUUID() as UUID,
         type: 'CAMPAIGN:PARTY_PRESENCE_UPDATED',
         version: 1,
@@ -266,7 +278,7 @@ router.put('/:sessionId/state', requireAuth, async (req: Request, res: Response)
         roomId: null,
         timestamp: Date.now(),
         payload: {
-          campaignId: currentSession.campaignId as UUID,
+          campaignId: currentSessionCampaign.campaignId as UUID,
           sessionId: sessionId as UUID,
           reason: 'PRESENCE_STATE_CHANGED',
           changedAt: Date.now(),

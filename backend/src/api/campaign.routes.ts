@@ -35,6 +35,8 @@ import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
   SESSION_COOLDOWN_EXTENSION_MIN_MS,
 } from '@/constants/session.constants'
+import { logger } from '@/utils/logger'
+import type { WebSocketManager } from '@/ws'
 import eventBroadcaster from '@/ws/event-broadcaster'
 
 const router = Router()
@@ -61,6 +63,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   ;(req as any).user = user
   next()
+}
+
+function internalErrorResponse(res: Response) {
+  return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, error: 'Internal server error' })
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
@@ -400,107 +406,128 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
   }
 
-  const allowed = await isUserInCampaign({
-    campaignId: campaignId as UUID,
-    userId: user.userId as UUID,
-  })
-
-  if (!allowed) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
-  }
-
-  const campaignMembers = await listCampaignMembersForPresence(campaignId as UUID)
-
-  const latestRuntimeSession = await prisma.session.findFirst({
-    where: {
+  try {
+    const allowed = await isUserInCampaign({
       campaignId: campaignId as UUID,
-      state: {
-        in: [SessionState.IDLE, SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
+      userId: user.userId as UUID,
+    })
+
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+    }
+
+    const campaignMembers = await listCampaignMembersForPresence(campaignId as UUID)
+
+    const latestRuntimeSession = await prisma.session.findFirst({
+      where: {
+        campaignId: campaignId as UUID,
+        state: {
+          in: [SessionState.IDLE, SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
+        },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      state: true,
-    },
-  })
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        state: true,
+      },
+    })
 
-  const runtimePresence = latestRuntimeSession
-    ? await getSessionPresence(latestRuntimeSession.id as UUID)
-    : []
-  const runtimePresenceByUser = new Map(runtimePresence.map((entry) => [entry.userId, entry]))
-
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  const activeRuntimeByUser = wsManager?.getActiveRuntimeSessionsByUser() || {}
-  const unassignedConnectedUsers = new Set<UUID>(
-    wsManager?.getUsersWithUnassignedConnections() || []
-  )
-
-  const runtimeSessionIds = Array.from(new Set(Object.values(activeRuntimeByUser).flat()))
-  const runtimeSessionRows =
-    runtimeSessionIds.length > 0
-      ? await prisma.session.findMany({
-          where: {
-            id: { in: runtimeSessionIds },
-          },
-          select: {
-            id: true,
-            campaignId: true,
-            state: true,
-          },
-        })
-      : []
-
-  const runtimeSessionCampaignById = new Map(
-    runtimeSessionRows.map((row) => [row.id as UUID, row.campaignId as UUID | null] as const)
-  )
-
-  const members = campaignMembers.map((member) => {
-    const userRuntimeSessionIds = activeRuntimeByUser[member.userId as UUID] || []
-    const hasRuntimeHere = userRuntimeSessionIds.some(
-      (sessionId) => runtimeSessionCampaignById.get(sessionId) === (campaignId as UUID)
-    )
-    const hasRuntimeElsewhere = userRuntimeSessionIds.some(
-      (sessionId) => runtimeSessionCampaignById.get(sessionId) !== (campaignId as UUID)
-    )
-
-    const runtimeEntry = runtimePresenceByUser.get(member.userId as UUID)
-    const runtimeState = runtimeEntry?.state
-
-    let status: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE' = 'OFFLINE'
-    if (hasRuntimeHere || runtimeState) {
-      status = runtimeState === PresenceState.IDLE ? 'AWAY' : 'HERE'
-    } else if (hasRuntimeElsewhere) {
-      status = 'NOT_HERE'
-    } else if (unassignedConnectedUsers.has(member.userId as UUID)) {
-      status = 'LOBBY'
+    let runtimePresence: Awaited<ReturnType<typeof getSessionPresence>> = []
+    if (latestRuntimeSession) {
+      try {
+        runtimePresence = await getSessionPresence(latestRuntimeSession.id as UUID)
+      } catch (error) {
+        logger.warn(
+          'campaign.routes',
+          'Failed to read runtime presence for party snapshot; falling back to websocket bindings',
+          {
+            campaignId,
+            sessionId: latestRuntimeSession.id,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        )
+      }
     }
 
-    return {
-      userId: member.userId,
-      username: member.username,
-      role: member.role,
-      playerName: member.playerName,
-      avatarUrl: member.avatarUrl,
-      characterName: member.characterName,
-      characterClass: member.characterClass,
-      characterRace: member.characterRace,
-      level: member.level,
-      characterStats: member.characterStats,
-      status,
-      runtimePresenceState: runtimeState || null,
-      lastSeenAt: runtimeEntry?.lastSeenAt || null,
-      currentRuntimeSessionId: hasRuntimeHere ? latestRuntimeSession?.id || null : null,
-      manualAway: runtimeState === PresenceState.IDLE,
-    }
-  })
+    const runtimePresenceByUser = new Map(runtimePresence.map((entry) => [entry.userId, entry]))
 
-  return res.status(200).json({
-    campaignId,
-    sessionId: latestRuntimeSession?.id || null,
-    members,
-    snapshotAt: Date.now(),
-  })
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    const activeRuntimeByUser = wsManager?.getActiveRuntimeSessionsByUser() || {}
+    const unassignedConnectedUsers = new Set<UUID>(
+      wsManager?.getUsersWithUnassignedConnections() || []
+    )
+
+    const runtimeSessionIds: UUID[] = Array.from(
+      new Set(Object.values(activeRuntimeByUser).flatMap((sessionIds: UUID[]) => sessionIds))
+    )
+    const runtimeSessionRows =
+      runtimeSessionIds.length > 0
+        ? await prisma.session.findMany({
+            where: {
+              id: { in: runtimeSessionIds },
+            },
+            select: {
+              id: true,
+              campaignId: true,
+              state: true,
+            },
+          })
+        : []
+
+    const runtimeSessionCampaignById = new Map(
+      runtimeSessionRows.map((row) => [row.id as UUID, row.campaignId as UUID | null] as const)
+    )
+
+    const members = campaignMembers.map((member) => {
+      const userRuntimeSessionIds = activeRuntimeByUser[member.userId as UUID] || []
+      const hasRuntimeHere = userRuntimeSessionIds.some(
+        (sessionId: UUID) => runtimeSessionCampaignById.get(sessionId) === (campaignId as UUID)
+      )
+      const hasRuntimeElsewhere = userRuntimeSessionIds.some(
+        (sessionId: UUID) => runtimeSessionCampaignById.get(sessionId) !== (campaignId as UUID)
+      )
+
+      const runtimeEntry = runtimePresenceByUser.get(member.userId as UUID)
+      const runtimeState = runtimeEntry?.state
+
+      let status: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE' = 'OFFLINE'
+      if (hasRuntimeHere || runtimeState) {
+        status = runtimeState === PresenceState.IDLE ? 'AWAY' : 'HERE'
+      } else if (hasRuntimeElsewhere) {
+        status = 'NOT_HERE'
+      } else if (unassignedConnectedUsers.has(member.userId as UUID)) {
+        status = 'LOBBY'
+      }
+
+      return {
+        userId: member.userId,
+        username: member.username,
+        role: member.role,
+        playerName: member.playerName,
+        avatarUrl: member.avatarUrl,
+        characterName: member.characterName,
+        characterClass: member.characterClass,
+        characterRace: member.characterRace,
+        level: member.level,
+        characterStats: member.characterStats,
+        status,
+        runtimePresenceState: runtimeState || null,
+        lastSeenAt: runtimeEntry?.lastSeenAt || null,
+        currentRuntimeSessionId: hasRuntimeHere ? latestRuntimeSession?.id || null : null,
+        manualAway: runtimeState === PresenceState.IDLE,
+      }
+    })
+
+    return res.status(200).json({
+      campaignId,
+      sessionId: latestRuntimeSession?.id || null,
+      members,
+      snapshotAt: Date.now(),
+    })
+  } catch (error) {
+    logger.error('campaign.routes', 'Failed to build campaign party presence snapshot', error)
+    return internalErrorResponse(res)
+  }
 })
 
 router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Response) => {

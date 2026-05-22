@@ -1,6 +1,6 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEventHandler } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { PolicyNotice } from '@/components/auth/PolicyNotice'
@@ -407,7 +407,7 @@ export function InviteJoinPage({
     continueToCampaignSession(data.campaignId || campaign.id)
   }
 
-  const submitJoin = async (event: React.FormEvent) => {
+  const submitJoin: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
 
     if (!campaign) {

@@ -15,8 +15,6 @@ type EditorWorkspaceProps = {
   selectedCampaign: CampaignSummary | null
   membershipRole: Role
   themeMode: 'light' | 'dark'
-  isCreatingCampaign: boolean
-  isJoiningCampaign: boolean
   apiUrl: string
   token: string
   currentSessionId: UUID | null
@@ -74,8 +72,6 @@ type EditorWorkspaceProps = {
   onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
   onSaveCharacterSettings: () => void
   onBackToLobby: () => void
-  onCreateCampaign: () => void
-  onJoinCampaign: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onLaunch: (campaignId: UUID) => void
@@ -102,8 +98,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}
-      isCreatingCampaign={props.isCreatingCampaign}
-      isJoiningCampaign={props.isJoiningCampaign}
       apiUrl={props.apiUrl}
       authToken={props.token}
       currentSessionId={props.currentSessionId}
@@ -236,11 +230,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         )
       }
       onBackToLobby={props.onBackToLobby}
-      onCreateCampaign={props.onCreateCampaign}
-      onJoinCampaign={props.onJoinCampaign}
       onToggleTheme={props.onToggleTheme}
       onOpenUserSettings={props.onOpenUserSettings}
-      onBackToLobby={props.onBackToLobby}
       onLaunch={props.onLaunch}
       onCopyInviteUrl={props.onCopyInviteUrl}
       onReissueInvite={props.onReissueInvite}

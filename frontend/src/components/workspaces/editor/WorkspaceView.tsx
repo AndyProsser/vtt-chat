@@ -14,8 +14,6 @@ type WorkspaceViewProps = {
   campaign: CampaignSummary | null
   role: Role
   themeMode: 'light' | 'dark'
-  isCreatingCampaign: boolean
-  isJoiningCampaign: boolean
   connectionStatus: LobbyConnectionStatus
   sessionCount: number
   totalSessionDurationMs: number
@@ -36,8 +34,6 @@ type WorkspaceViewProps = {
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   settingsPanel: ReactNode
   onBackToLobby: () => void
-  onCreateCampaign: () => void
-  onJoinCampaign: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onLaunch: (campaignId: UUID) => void
@@ -66,11 +62,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           themeMode={props.themeMode}
           dataUiState="no-campaign"
           launchLabel={props.campaign ? props.campaign.name : undefined}
-          isCreatingCampaign={props.isCreatingCampaign}
-          isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
-          onCreateCampaign={props.onCreateCampaign}
-          onJoinCampaign={props.onJoinCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
@@ -217,11 +209,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           themeMode={props.themeMode}
           dataUiState={resolvedActiveTab}
           launchLabel={campaign.name}
-          isCreatingCampaign={props.isCreatingCampaign}
-          isJoiningCampaign={props.isJoiningCampaign}
           connectionStatus={props.connectionStatus}
-          onCreateCampaign={props.onCreateCampaign}
-          onJoinCampaign={props.onJoinCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
