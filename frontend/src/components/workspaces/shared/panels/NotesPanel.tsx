@@ -53,11 +53,49 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [allowedUsers, setAllowedUsers] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showPublishedOnly, setShowPublishedOnly] = useState(false)
+  const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
 
   const displayedNotes = useMemo(
     () => (showPublishedOnly ? notes.filter((note) => Boolean(note.publishedAt)) : notes),
     [notes, showPublishedOnly]
   )
+
+  const selectedNote = useMemo(
+    () => displayedNotes.find((note) => note.id === selectedNoteId) ?? displayedNotes[0] ?? null,
+    [displayedNotes, selectedNoteId]
+  )
+
+  useEffect(() => {
+    if (displayedNotes.length === 0) {
+      setSelectedNoteId(null)
+      return
+    }
+
+    const stillVisible = displayedNotes.some((note) => note.id === selectedNoteId)
+    if (!stillVisible) {
+      setSelectedNoteId(displayedNotes[0].id)
+    }
+  }, [displayedNotes, selectedNoteId])
+
+  const getSharedWithLabel = (note: Note): string => {
+    if (note.visibility === NoteVisibility.DM_ONLY) {
+      return 'DM only'
+    }
+
+    if (note.visibility === NoteVisibility.PLAYERS_VISIBLE) {
+      return 'All players'
+    }
+
+    const names = (note.allowedUsers || []).map(
+      (userId) => shareUsers.find((candidate) => candidate.id === userId)?.username || userId
+    )
+
+    if (names.length === 0) {
+      return 'Custom list'
+    }
+
+    return names.join(', ')
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -243,8 +281,9 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
 
       const data = await res.json()
       const note = data.note
+      const createdNoteId = note.id as UUID
       addNote(campaignId, {
-        id: note.id,
+        id: createdNoteId,
         ownerId: note.authorId,
         ownerUsername: note.authorUsername,
         title: note.title,
@@ -256,6 +295,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
       })
+      setSelectedNoteId(createdNoteId)
 
       setTitle('')
       setContent('')
@@ -329,6 +369,9 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     }
 
     deleteNote(campaignId, noteId as UUID)
+    if (selectedNoteId === (noteId as UUID)) {
+      setSelectedNoteId(null)
+    }
   }
 
   return (
@@ -385,20 +428,45 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
             {showPublishedOnly ? 'No published notes yet.' : 'No notes yet.'}
           </p>
         ) : (
-          displayedNotes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              shareUsers={shareUsers}
-              shareRooms={shareRooms}
-              roomMemberIdsByRoomId={roomMemberIdsByRoomId}
-              canEdit={user.role === Role.DM || note.ownerId === user.id}
-              canPublish={user.role === Role.DM || note.ownerId === user.id}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onPublish={handlePublish}
-            />
-          ))
+          <>
+            <div className="mb-3 space-y-2">
+              {displayedNotes.map((note) => {
+                const isSelected = selectedNote?.id === note.id
+                return (
+                  <button
+                    key={note.id}
+                    type="button"
+                    onClick={() => setSelectedNoteId(note.id)}
+                    className={`w-full rounded-ui-sm border px-3 py-2 text-left ${
+                      isSelected
+                        ? 'border-ui-brand bg-ui-surface-subtle'
+                        : 'border-ui-border bg-ui-surface'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-ui-primary">{note.title}</div>
+                    <div className="text-xs text-ui-secondary">
+                      Shared with: {getSharedWithLabel(note)}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {selectedNote ? (
+              <NoteCard
+                key={selectedNote.id}
+                note={selectedNote}
+                shareUsers={shareUsers}
+                shareRooms={shareRooms}
+                roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+                canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
+                canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
+                onSave={handleSave}
+                onDelete={handleDelete}
+                onPublish={handlePublish}
+              />
+            ) : null}
+          </>
         )}
       </div>
     </section>
