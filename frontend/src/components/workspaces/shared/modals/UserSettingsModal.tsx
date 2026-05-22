@@ -1,6 +1,6 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { SessionUserSettingsPanel } from '@/components/workspaces/shared/panels/SessionUserSettingsPanel'
-import type { ModalsProps } from './types'
+import type { ModalsProps } from '@/types/modals'
 
 type UserSettingsModalProps = Pick<
   ModalsProps,

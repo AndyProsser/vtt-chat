@@ -1,4 +1,4 @@
-import type { ModalsProps } from './types'
+import type { ModalsProps } from '@/types/modals'
 
 type JoinCampaignModalProps = Pick<
   ModalsProps,

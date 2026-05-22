@@ -1,6 +1,6 @@
 import { Slider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
-import type { ModalsProps } from './types'
+import type { ModalsProps } from '@/types/modals'
 
 type CampaignSettingsHomeContentProps = Pick<
   ModalsProps,

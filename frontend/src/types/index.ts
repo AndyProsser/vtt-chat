@@ -48,3 +48,4 @@ export type {
 export type { ConnectionState, ConnectionOptions, EventHandler } from './ws'
 export type { SessionMetadata, MetadataSnapshot, MetadataTimelineEntry } from './metadata'
 export type { ToastVariant, CenterPaneView, RightRailTab } from './ui'
+export type { ModalsProps } from './modals'

@@ -5,7 +5,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ComponentProps } from 'react'
 import { SessionState, Role, MessageType, isGreenroomSessionState } from '@shared'
 import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -20,12 +19,16 @@ import {
   createCharacterSettingsController,
   createSessionMembershipController,
 } from '@/utils/session/sessionController'
+import { TooltipProvider } from '@/components/ui'
 import type { RightRailTab } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
 import { LobbyView } from '@/components/workspaces/lobby/LobbyView'
-import { Modals } from './Modals'
+import { LobbyModals } from '@/components/workspaces/lobby/modals/LobbyModals'
 import { SessionWorkspace } from './SessionWorkspace'
+import { SessionModals } from '@/components/workspaces/session/modals/SessionModals'
 import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import { EditorWorkspace } from './EditorWorkspace'
+import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
+import type { ModalsProps } from '@/types/modals'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
@@ -93,7 +96,14 @@ import {
 } from '@/utils/session/sessionInit'
 import '@/styles/components/session/SessionInit.css'
 
-export function WorkspaceInitialization({ apiUrl, wsUrl, token, user, onSessionCreated, onReady }: WorkspaceInitializationProps) {
+export function WorkspaceInitialization({
+  apiUrl,
+  wsUrl,
+  token,
+  user,
+  onSessionCreated,
+  onReady,
+}: WorkspaceInitializationProps) {
   const showToast = useToast()
 
   const detectThemeMode = (): FrontendThemeMode => {
@@ -1517,9 +1527,9 @@ export function WorkspaceInitialization({ apiUrl, wsUrl, token, user, onSessionC
     safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
-  const handleSaveCampaignSettings: NonNullable<
-    ComponentProps<typeof Modals>['onSaveCampaignSettings']
-  > = (event) => {
+  const handleSaveCampaignSettings: NonNullable<ModalsProps['onSaveCampaignSettings']> = (
+    event
+  ) => {
     event.preventDefault()
     void (async () => {
       await saveCampaignSettings()
@@ -2426,116 +2436,139 @@ export function WorkspaceInitialization({ apiUrl, wsUrl, token, user, onSessionC
         />
       </div>
 
-      <Modals
-        apiUrl={apiUrl}
-        token={token}
-        user={user}
-        selectedCampaignName={selectedCampaign?.name}
-        showCreateCampaignModal={showCreateCampaignModal}
-        isCreatingCampaign={isCreatingCampaign}
-        newCampaignName={newCampaignName}
-        onCreateCampaignSubmit={handleCreateCampaign}
-        onNewCampaignNameChange={setNewCampaignName}
-        onCloseCreateCampaign={() => setShowCreateCampaignModal(false)}
-        showJoinCampaignModal={showJoinCampaignModal}
-        joinInviteInput={joinInviteInput}
-        isJoiningCampaign={isJoiningCampaign}
-        onJoinCampaignSubmit={handleJoinCampaign}
-        onJoinInviteInputChange={setJoinInviteInput}
-        onCloseJoinCampaign={() => setShowJoinCampaignModal(false)}
-        showCampaignSettingsModal={showCampaignSettingsModal}
-        settingsHomeTab={settingsHomeTab}
-        onSettingsHomeTabChange={(tab) => campaignSettingsActions.setSettingsHomeTab(tab)}
-        settingsCampaignSessions={settingsCampaignSessions}
-        settingsReferenceSessionId={settingsReferenceSessionId}
-        onSettingsReferenceSessionChange={(sessionId) =>
-          campaignSettingsActions.setSettingsReferenceSessionId(sessionId)
-        }
-        settingsReferenceSession={settingsReferenceSession || null}
-        isSettingsLoading={isSettingsLoading}
-        settingsData={settingsData}
-        isSettingsSaving={isSettingsSaving}
-        onCloseCampaignSettings={() => setShowCampaignSettingsModal(false)}
-        onSaveCampaignSettings={handleSaveCampaignSettings}
-        settingsName={settingsName}
-        onSettingsNameChange={(name) => campaignSettingsActions.setSettingsName(name)}
-        settingsDescription={settingsDescription}
-        onSettingsDescriptionChange={(desc) => campaignSettingsActions.setSettingsDescription(desc)}
-        onPosterFileSelected={handlePosterFileSelected}
-        isInviteReissuing={isInviteReissuing}
-        onCopyInviteUrl={(inviteType) => {
-          void copyInviteUrl(inviteType)
-        }}
-        onReissueInvite={(inviteType) => {
-          requestInviteReissue(inviteType)
-        }}
-        showReissueInviteModal={pendingInviteReissueType !== null}
-        reissueInviteType={pendingInviteReissueType}
-        onCloseReissueInviteModal={() => setPendingInviteReissueType(null)}
-        onConfirmReissueInvite={() => {
-          void handleConfirmInviteReissue()
-        }}
-        settingsVisibility={settingsVisibility}
-        onSettingsVisibilityChange={(vis) => campaignSettingsActions.setSettingsVisibility(vis)}
-        settingsSpectatorsEnabled={settingsSpectatorsEnabled}
-        onSettingsSpectatorsEnabledChange={(enabled) =>
-          campaignSettingsActions.setSettingsSpectatorsEnabled(enabled)
-        }
-        settingsSpectatorMax={settingsSpectatorMax}
-        onSettingsSpectatorMaxChange={(max) => campaignSettingsActions.setSettingsSpectatorMax(max)}
-        settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
-        onSettingsSpectatorWaitlistEnabledChange={(enabled) =>
-          campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(enabled)
-        }
-        settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
-        onSettingsSpectatorReconnectGraceSecsChange={(secs) =>
-          campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(secs)
-        }
-        settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
-        onSettingsPostSessionChatEnabledChange={(enabled) =>
-          campaignSettingsActions.setSettingsPostSessionChatEnabled(enabled)
-        }
-        settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
-        onSettingsPostSessionChatDurationMinutesChange={(value) =>
-          campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
-            toValidPostSessionDurationMinutes(value)
-          )
-        }
-        settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
-        onSettingsExtensionSyncPolicyChange={(policy) =>
-          campaignSettingsActions.setSettingsExtensionSyncPolicy(policy)
-        }
-        settingsLateJoinPolicy={settingsLateJoinPolicy}
-        onSettingsLateJoinPolicyChange={(policy) =>
-          campaignSettingsActions.setSettingsLateJoinPolicy(policy)
-        }
-        settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
-        onSettingsLateJoinGraceMinutesChange={(mins) =>
-          campaignSettingsActions.setSettingsLateJoinGraceMinutes(mins)
-        }
-        showUserSettingsModal={showUserSettingsModal}
-        onUserSettingsOpenChange={setShowUserSettingsModal}
-        messageGroupingWindowMs={messageGroupingWindowMs}
-        onMessageGroupingWindowChange={setMessageGroupingWindowMs}
-        showExitSessionModal={showExitSessionModal}
-        currentSessionState={currentSession?.state}
-        effectiveSessionRole={effectiveSessionRole}
-        exitUpgradePassword={exitUpgradePassword}
-        onExitUpgradePasswordChange={setExitUpgradePassword}
-        exitUpgradeLoading={exitUpgradeLoading}
-        exitUpgradeError={exitUpgradeError}
-        onCloseExitSession={() => setShowExitSessionModal(false)}
-        onSkipGuestUpgrade={handleSkipGuestUpgrade}
-        onUpgradeAndExit={() => {
-          void handleUpgradeAndExit()
-        }}
-        onConfirmExitAsFullAccount={handleConfirmExitAsFullAccount}
-        showStopSessionModal={showStopSessionModal}
-        onCloseStopSession={() => setShowStopSessionModal(false)}
-        onConfirmStopSession={() => {
-          void handleConfirmStopSession()
-        }}
-      />
+      <TooltipProvider delayDuration={140}>
+        <>
+          <LobbyModals
+            showCreateCampaignModal={showCreateCampaignModal}
+            user={user}
+            newCampaignName={newCampaignName}
+            isCreatingCampaign={isCreatingCampaign}
+            onCloseCreateCampaign={() => setShowCreateCampaignModal(false)}
+            onCreateCampaignSubmit={handleCreateCampaign}
+            onNewCampaignNameChange={setNewCampaignName}
+            showJoinCampaignModal={showJoinCampaignModal}
+            joinInviteInput={joinInviteInput}
+            isJoiningCampaign={isJoiningCampaign}
+            onJoinCampaignSubmit={handleJoinCampaign}
+            onJoinInviteInputChange={setJoinInviteInput}
+            onCloseJoinCampaign={() => setShowJoinCampaignModal(false)}
+            showCampaignSettingsModal={showCampaignSettingsModal}
+            settingsHomeTab={settingsHomeTab}
+            onSettingsHomeTabChange={(tab) => campaignSettingsActions.setSettingsHomeTab(tab)}
+            settingsCampaignSessions={settingsCampaignSessions}
+            settingsReferenceSessionId={settingsReferenceSessionId}
+            onSettingsReferenceSessionChange={(sessionId) =>
+              campaignSettingsActions.setSettingsReferenceSessionId(sessionId)
+            }
+            settingsReferenceSession={settingsReferenceSession || null}
+            isSettingsLoading={isSettingsLoading}
+            settingsData={settingsData}
+            isSettingsSaving={isSettingsSaving}
+            onCloseCampaignSettings={() => setShowCampaignSettingsModal(false)}
+            onSaveCampaignSettings={handleSaveCampaignSettings}
+            settingsName={settingsName}
+            onSettingsNameChange={(name) => campaignSettingsActions.setSettingsName(name)}
+            settingsDescription={settingsDescription}
+            onSettingsDescriptionChange={(desc) =>
+              campaignSettingsActions.setSettingsDescription(desc)
+            }
+            onPosterFileSelected={handlePosterFileSelected}
+            isInviteReissuing={isInviteReissuing}
+            onCopyInviteUrl={(inviteType) => {
+              void copyInviteUrl(inviteType)
+            }}
+            onReissueInvite={(inviteType) => {
+              requestInviteReissue(inviteType)
+            }}
+            showReissueInviteModal={pendingInviteReissueType !== null}
+            reissueInviteType={pendingInviteReissueType}
+            onCloseReissueInviteModal={() => setPendingInviteReissueType(null)}
+            onConfirmReissueInvite={() => {
+              void handleConfirmInviteReissue()
+            }}
+            settingsVisibility={settingsVisibility}
+            onSettingsVisibilityChange={(vis) => campaignSettingsActions.setSettingsVisibility(vis)}
+            settingsSpectatorsEnabled={settingsSpectatorsEnabled}
+            onSettingsSpectatorsEnabledChange={(enabled) =>
+              campaignSettingsActions.setSettingsSpectatorsEnabled(enabled)
+            }
+            settingsSpectatorMax={settingsSpectatorMax}
+            onSettingsSpectatorMaxChange={(max) =>
+              campaignSettingsActions.setSettingsSpectatorMax(max)
+            }
+            settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
+            onSettingsSpectatorWaitlistEnabledChange={(enabled) =>
+              campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(enabled)
+            }
+            settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
+            onSettingsSpectatorReconnectGraceSecsChange={(secs) =>
+              campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(secs)
+            }
+            settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
+            onSettingsPostSessionChatEnabledChange={(enabled) =>
+              campaignSettingsActions.setSettingsPostSessionChatEnabled(enabled)
+            }
+            settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
+            onSettingsPostSessionChatDurationMinutesChange={(value) =>
+              campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
+                toValidPostSessionDurationMinutes(value)
+              )
+            }
+            settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
+            onSettingsExtensionSyncPolicyChange={(policy) =>
+              campaignSettingsActions.setSettingsExtensionSyncPolicy(policy)
+            }
+            settingsLateJoinPolicy={settingsLateJoinPolicy}
+            onSettingsLateJoinPolicyChange={(policy) =>
+              campaignSettingsActions.setSettingsLateJoinPolicy(policy)
+            }
+            settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
+            onSettingsLateJoinGraceMinutesChange={(mins) =>
+              campaignSettingsActions.setSettingsLateJoinGraceMinutes(mins)
+            }
+            selectedCampaignName={selectedCampaign?.name}
+          />
+
+          <SharedModals
+            showUserSettingsModal={showUserSettingsModal}
+            onUserSettingsOpenChange={setShowUserSettingsModal}
+            messageGroupingWindowMs={messageGroupingWindowMs}
+            onMessageGroupingWindowChange={setMessageGroupingWindowMs}
+            apiUrl={apiUrl}
+            token={token}
+            user={user}
+          />
+
+          <SessionModals
+            showExitSessionModal={showExitSessionModal}
+            leaveSessionWarning={
+              effectiveSessionRole === 'DM' &&
+              (currentSession?.state === SessionState.ACTIVE ||
+                currentSession?.state === SessionState.PAUSED)
+                ? 'If you leave now, everyone gets the surprise ending. Even if they were mid-scene.'
+                : effectiveSessionRole === 'DM' && currentSession?.state === SessionState.COOLDOWN
+                  ? 'If you can, stick around until the wrap-up finishes. The curtain is already falling.'
+                  : null
+            }
+            user={user}
+            exitUpgradePassword={exitUpgradePassword}
+            onExitUpgradePasswordChange={setExitUpgradePassword}
+            exitUpgradeLoading={exitUpgradeLoading}
+            exitUpgradeError={exitUpgradeError}
+            onCloseExitSession={() => setShowExitSessionModal(false)}
+            onSkipGuestUpgrade={handleSkipGuestUpgrade}
+            onUpgradeAndExit={() => {
+              void handleUpgradeAndExit()
+            }}
+            onConfirmExitAsFullAccount={handleConfirmExitAsFullAccount}
+            showStopSessionModal={showStopSessionModal}
+            onCloseStopSession={() => setShowStopSessionModal(false)}
+            onConfirmStopSession={() => {
+              void handleConfirmStopSession()
+            }}
+          />
+        </>
+      </TooltipProvider>
     </>
   )
 }

@@ -1,8 +1,8 @@
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import type { ModalsProps } from '@/types/modals'
 import { CampaignSettingsHomeContent } from './CampaignSettingsHomeContent'
-import type { ModalsProps } from './types'
 
 type CampaignSettingsModalProps = Pick<
   ModalsProps,
