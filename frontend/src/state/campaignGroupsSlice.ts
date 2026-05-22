@@ -57,7 +57,7 @@ export const createCampaignGroupsSlice: StateCreator<CampaignGroupsSlice> = (set
         type: 'GROUP',
         defaultEnvironmentName,
         createdAt: Date.now(),
-        createdBy: '', // Will be set by caller if needed
+        createdBy: crypto.randomUUID() as UUID, // Will be overridden by API if needed
       }
 
       return {
