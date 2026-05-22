@@ -5,7 +5,7 @@ import {
   getWorkspacePanelIcon,
   getWorkspacePanelLabel,
   getWorkspacePanelTabsForRole,
-} from '@/components/app/workspaces/shared/panels/workspacePanelPolicy'
+} from '@/components/workspaces/shared/panels/workspacePanelPolicy'
 import {
   Tabs,
   TabsContent,

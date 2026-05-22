@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import type { RightRailTab } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
 
-interface SessionRightRailContentProps {
+interface RightRailContentProps {
   tab: RightRailTab
   informationPanel: ReactNode
   partyPanel: ReactNode
@@ -13,7 +13,7 @@ interface SessionRightRailContentProps {
   settingsPanel: ReactNode
 }
 
-export function SessionRightRailContent({
+export function RightRailContent({
   tab,
   informationPanel,
   partyPanel,
@@ -23,7 +23,7 @@ export function SessionRightRailContent({
   journalPanel,
   historyPanel,
   settingsPanel,
-}: SessionRightRailContentProps) {
+}: RightRailContentProps) {
   switch (tab) {
     case 'information':
       return <>{informationPanel}</>

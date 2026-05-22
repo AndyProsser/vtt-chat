@@ -20,12 +20,12 @@ import {
   createCharacterSettingsController,
   createSessionMembershipController,
 } from '@/utils/session/sessionController'
-import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
-import { SessionLobbyView } from '@/components/app/workspaces/lobby/SessionLobbyView'
-import { AppInitModals } from './AppInitModals'
-import { AppInitSessionWorkspace } from './AppInitSessionWorkspace'
-import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
-import { AppInitEditorWorkspace } from './AppInitEditorWorkspace'
+import type { RightRailTab } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import { LobbyView } from '@/components/workspaces/lobby/LobbyView'
+import { Modals } from './Modals'
+import { SessionWorkspace } from './SessionWorkspace'
+import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import { EditorWorkspace } from './EditorWorkspace'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
@@ -62,7 +62,7 @@ import type {
   ApiDiscoverableCampaign,
   ApiPlatformStatusResponse,
   ApiSessionStats,
-  SessionInitProps as AppInitProps,
+  SessionInitProps as WorkspaceInitializationProps,
 } from '@/types/session/session-init'
 import {
   type CampaignSettingsPayload,
@@ -93,7 +93,7 @@ import {
 } from '@/utils/session/sessionInit'
 import '@/styles/components/session/SessionInit.css'
 
-export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady }: AppInitProps) {
+export function WorkspaceInitialization({ apiUrl, wsUrl, token, user, onSessionCreated, onReady }: WorkspaceInitializationProps) {
   const showToast = useToast()
 
   const detectThemeMode = (): FrontendThemeMode => {
@@ -1518,7 +1518,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
   }, [currentSession, selectedCampaignId])
 
   const handleSaveCampaignSettings: NonNullable<
-    ComponentProps<typeof AppInitModals>['onSaveCampaignSettings']
+    ComponentProps<typeof Modals>['onSaveCampaignSettings']
   > = (event) => {
     event.preventDefault()
     void (async () => {
@@ -2177,7 +2177,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home session-init-shell--lobby'}`}
       >
         {!hasSessionSelected && editorWorkspaceView === 'lobby' && (
-          <SessionLobbyView
+          <LobbyView
             campaigns={campaigns}
             discoverableCampaigns={discoverableCampaigns}
             lobbyStats={lobbyStats}
@@ -2214,7 +2214,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           />
         )}
 
-        <AppInitEditorWorkspace
+        <EditorWorkspace
           hasSessionSelected={hasSessionSelected}
           editorWorkspaceView={editorWorkspaceView}
           selectedCampaign={selectedCampaign || null}
@@ -2338,7 +2338,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           }
         />
 
-        <AppInitSessionWorkspace
+        <SessionWorkspace
           hasSessionSelected={hasSessionSelected}
           currentSession={currentSession}
           currentPauseStats={currentPauseStats}
@@ -2426,7 +2426,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
         />
       </div>
 
-      <AppInitModals
+      <Modals
         apiUrl={apiUrl}
         token={token}
         user={user}

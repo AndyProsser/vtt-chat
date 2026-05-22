@@ -2,21 +2,16 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { Role, type SessionState, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
-import { CampaignInformationPanel } from '@/components/app/workspaces/shared/panels/CampaignInformationPanel'
-import { CampaignPartyPanel } from '@/components/app/workspaces/shared/panels/CampaignPartyPanel'
-import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/panels/CampaignScaffoldPanel'
-import { InvitePopoverWidget } from '@/components/app/workspaces/shared/common/InvitePopoverWidget'
-import { WorkspaceTopbar } from '@/components/app/workspaces/shared/toolbar/WorkspaceTopbar'
-import { useCampaignWorkspaceTopbarActions } from '@/components/app/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
-import {
-  type WorkspaceTab,
-  getTabIcon,
-  getTabLabel,
-  getTabsForRole,
-} from './EditorCampaignWorkspaceView.tabs'
+import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
+import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
+import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { InvitePopoverWidget } from '@/components/workspaces/shared/common/InvitePopoverWidget'
+import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
+import { useCampaignWorkspaceTopbarActions } from '@/components/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
+import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from './WorkspaceView.tabs'
 import type { CampaignSummary } from '@/types/session/campaign'
 
-type EditorCampaignWorkspaceViewProps = {
+type WorkspaceViewProps = {
   campaign: CampaignSummary | null
   role: Role
   themeMode: 'light' | 'dark'
@@ -65,7 +60,7 @@ type EditorCampaignWorkspaceViewProps = {
   ) => Promise<void>
 }
 
-export function EditorCampaignWorkspaceView(props: EditorCampaignWorkspaceViewProps) {
+export function WorkspaceView(props: WorkspaceViewProps) {
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
 

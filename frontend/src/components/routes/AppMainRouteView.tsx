@@ -9,7 +9,7 @@ import type { AuthState } from '@/hooks/useAuthSession'
 import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { AppInit } from '@/components/app/AppInit'
+import { WorkspaceInitialization } from '@/components/workspaces'
 import '@/styles/components/auth/AuthSurface.css'
 
 type AppMainRouteViewProps = {
@@ -93,7 +93,7 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
         resetKey={props.auth.user?.id || 'anonymous'}
       />
 
-      <AppInit
+      <WorkspaceInitialization
         apiUrl={props.apiUrl}
         wsUrl={props.wsUrl}
         token={props.auth.token}

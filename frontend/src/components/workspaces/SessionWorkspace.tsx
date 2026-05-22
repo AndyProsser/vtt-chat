@@ -1,27 +1,27 @@
 import type { ComponentProps } from 'react'
 import { MessageType, Role, SessionState } from '@shared'
 import type { UUID } from '@shared'
-import { AudioPanel } from '@/components/app/workspaces/session/audio/AudioPanel'
-import { ChatWindow } from '@/components/app/workspaces/session/chat/ChatWindow'
-import { NotesPanel } from '@/components/app/workspaces/shared/panels/NotesPanel'
+import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
+import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
+import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
-import { CampaignInformationPanel } from '@/components/app/workspaces/shared/panels/CampaignInformationPanel'
-import { CampaignPartyPanel } from '@/components/app/workspaces/shared/panels/CampaignPartyPanel'
-import { CampaignRightbarSettings } from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
-import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/panels/CampaignScaffoldPanel'
-import { SessionWorkspaceFrame } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
-import { HistoryPanel } from '@/components/app/workspaces/shared/panels/HistoryPanel'
-import { JournalPanel } from '@/components/app/workspaces/shared/panels/JournalPanel'
-import { NotesRailPanel } from '@/components/app/workspaces/shared/panels/NotesRailPanel'
-import { SessionLeftRailPanel } from '@/components/app/workspaces/session/SessionLeftRailPanel'
-import { SessionRightRailContent } from '@/components/app/workspaces/session/SessionRightRailContent'
-import { SessionToolbar } from '@/components/app/workspaces/shared/toolbar/SessionToolbar'
-import { SpectatorWaitScreen } from '@/components/app/workspaces/session/SpectatorWaitScreen'
+import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
+import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
+import { CampaignRightbarSettings } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { SessionWorkspaceFrame } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
+import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
+import { NotesRailPanel } from '@/components/workspaces/shared/panels/NotesRailPanel'
+import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
+import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
+import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
+import { SpectatorWaitScreen } from '@/components/workspaces/session/SpectatorWaitScreen'
 import type { CampaignSummary } from '@/types/session/campaign'
 
-type AppInitSessionWorkspaceProps = {
+type SessionWorkspaceProps = {
   hasSessionSelected: boolean
   currentSession: SessionRecord | null
   currentPauseStats: {
@@ -63,11 +63,11 @@ type AppInitSessionWorkspaceProps = {
   selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
   broadcastModeEnabled: boolean
-  onToggleBroadcastMode: ComponentProps<typeof SessionLeftRailPanel>['onToggleBroadcastMode']
+  onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof SessionLeftRailPanel>['dmOverrides']
+  dmOverrides: ComponentProps<typeof LeftRailPanel>['dmOverrides']
   currentConditionName: string | undefined
-  roomEnvironmentNames: ComponentProps<typeof SessionLeftRailPanel>['roomEnvironmentNames']
+  roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
   connectionStatus: {
@@ -110,7 +110,7 @@ type AppInitSessionWorkspaceProps = {
   userId: UUID
 }
 
-export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
+export function SessionWorkspace(props: SessionWorkspaceProps) {
   if (!props.hasSessionSelected || !props.currentSession) {
     return null
   }
@@ -121,7 +121,7 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
   return (
     <div
       className="session-command-center"
-      data-ui-component="AppInitSessionWorkspace"
+      data-ui-component="SessionWorkspace"
       data-ui-state={workspaceDiagnosticState}
     >
       <SessionWorkspaceFrame
@@ -169,7 +169,7 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
         )}
         renderLeftRail={() => (
           <div className="session-left-rail-stack" data-ui-component="SessionLeftRailStack">
-            <SessionLeftRailPanel
+            <LeftRailPanel
               apiUrl={props.apiUrl}
               token={props.token}
               sessionId={currentSession.id}
@@ -271,7 +271,7 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
         )}
         renderRightRailTab={(tab) => {
           return (
-            <SessionRightRailContent
+            <RightRailContent
               tab={tab}
               informationPanel={
                 <CampaignInformationPanel

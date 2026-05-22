@@ -1,10 +1,10 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { type CampaignSummary } from '@/types/session/campaign'
-import { CampaignCard } from './SessionLobbyView.CampaignCard'
-import { WorkspaceTopbar } from '@/components/app/workspaces/shared/toolbar/WorkspaceTopbar'
-import { useCampaignWorkspaceTopbarActions } from '@/components/app/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
+import { CampaignCard } from './LobbyView.CampaignCard'
+import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
+import { useCampaignWorkspaceTopbarActions } from '@/components/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
 
-type SessionLobbyViewProps = {
+type LobbyViewProps = {
   campaigns: CampaignSummary[]
   discoverableCampaigns?: CampaignSummary[]
   lobbyStats: {
@@ -40,7 +40,7 @@ type SessionLobbyViewProps = {
   onWatchCampaign: (campaignId: CampaignSummary['id']) => void
 }
 
-export function SessionLobbyView(props: SessionLobbyViewProps) {
+export function LobbyView(props: LobbyViewProps) {
   const discoverableCampaigns = props.discoverableCampaigns ?? []
   const totalVisibleCampaigns = props.campaigns.length + discoverableCampaigns.length
   const shouldShowSparseFiller = !props.isLoadingCampaigns && totalVisibleCampaigns <= 3
@@ -57,7 +57,7 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
       <div
         className="session-lobby-view"
         data-testid="session-lobby-view"
-        data-ui-component="SessionLobbyView"
+        data-ui-component="LobbyView"
         data-ui-state={props.isLoadingCampaigns ? 'loading' : 'ready'}
       >
         <WorkspaceTopbar

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PresenceState, Role, RoomType, UUID } from '@shared'
 import { Slider } from '@/components/ui'
-import { DMEnvironmentSection } from '@/components/app/workspaces/session/audio/DMEnvironmentSection'
-import { DMPlayerOverridesSection } from '@/components/app/workspaces/session/audio/DMPlayerOverridesSection'
-import { DMRoomMovementSection } from '@/components/app/workspaces/session/audio/DMRoomMovementSection'
-import { DMVoicePresetSection } from '@/components/app/workspaces/session/audio/DMVoicePresetSection'
+import { DMEnvironmentSection } from '@/components/workspaces/session/audio/DMEnvironmentSection'
+import { DMPlayerOverridesSection } from '@/components/workspaces/session/audio/DMPlayerOverridesSection'
+import { DMRoomMovementSection } from '@/components/workspaces/session/audio/DMRoomMovementSection'
+import { DMVoicePresetSection } from '@/components/workspaces/session/audio/DMVoicePresetSection'
 import {
   FILTER_PRESETS,
   OVERRIDE_CONFIRMATION_TIMEOUT_MS,

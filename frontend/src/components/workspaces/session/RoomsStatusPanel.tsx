@@ -7,17 +7,17 @@ import {
   ROOM_PRESENCE_COPY,
 } from '@/constants/roomPresence.constants'
 
-interface SessionRoomsStatusPanelProps {
+interface RoomsStatusPanelProps {
   rooms: Array<{ id: UUID; name: string; type: RoomType }>
   roomMembersByRoomId: Record<UUID, RoomUser[]>
   presenceCount: number
 }
 
-export function SessionRoomsStatusPanel({
+export function RoomsStatusPanel({
   rooms,
   roomMembersByRoomId,
   presenceCount,
-}: SessionRoomsStatusPanelProps) {
+}: RoomsStatusPanelProps) {
   return (
     <div className="session-rooms-panel" data-testid="session-rooms-panel">
       <p className="session-rooms-panel-title">{ROOM_PRESENCE_COPY.presencePanelTitle}</p>

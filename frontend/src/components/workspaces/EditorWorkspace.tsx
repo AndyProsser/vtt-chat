@@ -4,12 +4,12 @@ import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionInit'
 import {
   CampaignRightbarSettings,
   type CharacterSettingsDraft,
-} from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
-import { CampaignSettingsPanel } from '@/components/app/workspaces/shared/panels/CampaignSettingsPanel'
-import { EditorCampaignWorkspaceView } from '@/components/app/workspaces/editor/EditorCampaignWorkspaceView'
+} from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import { CampaignSettingsPanel } from '@/components/workspaces/shared/panels/CampaignSettingsPanel'
+import { WorkspaceView } from '@/components/workspaces/editor/WorkspaceView'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 
-type AppInitEditorWorkspaceProps = {
+type EditorWorkspaceProps = {
   hasSessionSelected: boolean
   editorWorkspaceView: 'lobby' | 'editor'
   selectedCampaign: CampaignSummary | null
@@ -93,13 +93,13 @@ type AppInitEditorWorkspaceProps = {
   launchDisabledReason: string
 }
 
-export function AppInitEditorWorkspace(props: AppInitEditorWorkspaceProps) {
+export function EditorWorkspace(props: EditorWorkspaceProps) {
   if (props.hasSessionSelected || props.editorWorkspaceView !== 'editor') {
     return null
   }
 
   return (
-    <EditorCampaignWorkspaceView
+    <WorkspaceView
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}

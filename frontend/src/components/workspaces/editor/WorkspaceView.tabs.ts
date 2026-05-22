@@ -3,7 +3,7 @@ import {
   getWorkspacePanelIcon,
   getWorkspacePanelLabel,
   getWorkspacePanelTabsForRole,
-} from '@/components/app/workspaces/shared/panels/workspacePanelPolicy'
+} from '@/components/workspaces/shared/panels/workspacePanelPolicy'
 import type { WorkspacePanelTab } from '@/types/ui'
 
 export type WorkspaceTab = WorkspacePanelTab

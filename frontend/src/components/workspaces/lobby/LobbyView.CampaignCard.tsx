@@ -1,5 +1,5 @@
 /**
- * CampaignCard sub-component for SessionLobbyView.
+ * CampaignCard sub-component for LobbyView.
  *
  * Renders a single campaign card in the lobby list. Supports both member cards
  * and discoverable non-member cards (dimmed/lock/request-to-join/watch flows).

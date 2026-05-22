@@ -7,11 +7,11 @@ import { useStore } from '@/state/store'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
-import { GroupsPanel } from '@/components/app/workspaces/session/rooms/GroupsPanel'
+import { GroupsPanel } from '@/components/workspaces/session/rooms/GroupsPanel'
 
 // Stable empty object to avoid creating new references on every render
 const EMPTY_USER_MUTE_MAP: Record<UUID, boolean> = {}
-interface SessionLeftRailPanelProps {
+interface LeftRailPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
@@ -39,7 +39,7 @@ interface SessionLeftRailPanelProps {
   roomEnvironmentNames?: Record<UUID, string>
 }
 
-export function SessionLeftRailPanel({
+export function LeftRailPanel({
   apiUrl,
   token,
   sessionId,
@@ -65,7 +65,7 @@ export function SessionLeftRailPanel({
   dmOverrides,
   currentConditionName,
   roomEnvironmentNames,
-}: SessionLeftRailPanelProps) {
+}: LeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
   const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId])
