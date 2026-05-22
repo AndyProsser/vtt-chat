@@ -43,6 +43,7 @@ import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryT
 import { useWorkspacesTelemetry } from '@/hooks/session/useWorkspacesTelemetry'
 import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
 import { useWorkspacesActiveSessionContext } from '@/hooks/session/useWorkspacesActiveSessionContext'
+import { useWorkspacesUiEffects } from '@/hooks/session/useWorkspacesUiEffects'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -924,32 +925,16 @@ export function WorkspaceInitialization({
     [sessionMembershipController]
   )
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const localStorageApi = window.localStorage as Partial<Storage> | undefined
-    if (!localStorageApi || typeof localStorageApi.setItem !== 'function') {
-      return
-    }
-
-    localStorageApi.setItem(CHAT_GROUPING_STORAGE_KEY, String(messageGroupingWindowMs))
-  }, [messageGroupingWindowMs])
-
-  useEffect(() => {
-    if (!activeTransitionNotice) {
-      return
-    }
-
-    const timeoutId = setTimeout(() => {
-      hideTransitionToast()
-    }, 6000)
-
-    return () => {
-      clearTimeout(timeoutId)
-    }
-  }, [activeTransitionNotice, hideTransitionToast])
+  useWorkspacesUiEffects({
+    messageGroupingWindowMs,
+    activeTransitionNotice,
+    hideTransitionToast,
+    error,
+    setError,
+    lobbyNotice,
+    setLobbyNotice,
+    showToast,
+  })
 
   useWorkspacesSettingsReferenceNotes({
     showCampaignSettingsModal,
@@ -1150,32 +1135,6 @@ export function WorkspaceInitialization({
     settingsPostSessionChatDurationMinutes,
     cooldownExtensionCounts,
   })
-
-  useEffect(() => {
-    if (!error) return
-
-    showToast({
-      id: `workspaces:error:${error}`,
-      variant: 'error',
-      message: error,
-      onDismiss: () => {
-        setError((current) => (current === error ? null : current))
-      },
-    })
-  }, [error, showToast])
-
-  useEffect(() => {
-    if (!lobbyNotice) return
-
-    showToast({
-      id: `workspaces:notice:${lobbyNotice}`,
-      variant: 'success',
-      message: lobbyNotice,
-      onDismiss: () => {
-        setLobbyNotice((current) => (current === lobbyNotice ? null : current))
-      },
-    })
-  }, [lobbyNotice, showToast])
 
   const handleRoomSelection = useCallback(
     (roomId: UUID) => {
