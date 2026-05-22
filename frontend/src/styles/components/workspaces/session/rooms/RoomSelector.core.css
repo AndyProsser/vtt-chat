@@ -28,26 +28,6 @@
   gap: 0.45rem;
 }
 
-.room-selector-header__create {
-  border: 1px solid color-mix(in srgb, var(--color-brand) 56%, var(--color-border-soft));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
-  color: var(--color-text-primary);
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.16rem 0.52rem;
-  cursor: pointer;
-}
-
-.room-selector-header__create:hover {
-  background: color-mix(in srgb, var(--color-brand) 26%, transparent);
-}
-
-.room-selector-header__create:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .room-selector-header__create-icon {
   width: 1.7rem;
   height: 1.7rem;
@@ -188,8 +168,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.room-selector-header h4,
-.room-selector-members h5 {
+.room-selector-header h4 {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 700;
@@ -595,13 +574,6 @@
 .room-selector-item-name .material-symbols-outlined,
 .room-selector-item-name .ui-icon {
   line-height: 1;
-}
-
-.room-selector-members {
-  border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 75%, transparent);
-  padding-top: 0.28rem;
-  display: grid;
-  gap: 0.24rem;
 }
 
 .room-selector-members-list {
