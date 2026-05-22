@@ -20,44 +20,29 @@ import {
   createCharacterSettingsController,
   createSessionMembershipController,
 } from './sessionController'
-import { ChatWindow } from '../chat/ChatWindow'
-import { NotesPanel } from '../notes/NotesPanel'
-import { CommandCenterFrame, type RightRailTab } from './CommandCenterFrame'
-import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
-import { SessionLeftRailPanel } from './SessionLeftRailPanel'
-import { SessionLobbyView } from './SessionLobbyView'
-import { LobbyCampaignWorkspaceView } from './LobbyCampaignWorkspaceView'
-import { LobbyCampaignSettingsPanel } from './LobbyCampaignSettingsPanel'
+import type { RightRailTab } from './CommandCenterFrame'
+import { SessionLobbyView } from '../lobby/SessionLobbyView'
 import { SessionInitModals } from './SessionInitModals'
-import { SessionToolbar } from './SessionToolbar'
-import { ReconnectBanner } from '../ui/ReconnectBanner'
-import { AudioPanel } from '../audio/AudioPanel'
-import { NotesRailPanel } from './NotesRailPanel'
-import { JournalPanel } from './JournalPanel'
-import { HistoryPanel } from './HistoryPanel'
-import { SessionRightRailContent } from './SessionRightRailContent'
-import { CampaignRightbarSettings, type CharacterSettingsDraft } from './CampaignRightbarSettings'
-import { CampaignInformationPanel } from './CampaignInformationPanel'
-import { SpectatorWaitScreen } from './SpectatorWaitScreen'
+import { SessionInitCommandCenter } from './SessionInitCommandCenter'
+import type { CharacterSettingsDraft } from '../campaign-editor/CampaignRightbarSettings'
+import { SessionInitLobbyWorkspaceBranch } from './SessionInitLobbyWorkspaceBranch'
+import { useSessionInitCampaignEntryOrchestration } from './useSessionInitCampaignEntryOrchestration'
+import { useSessionInitCharacterSettingsOrchestration } from './useSessionInitCharacterSettingsOrchestration'
+import { useSessionInitHydrationLifecycle } from './useSessionInitHydrationLifecycle'
+import { useSessionInitSettingsOrchestration } from './useSessionInitSettingsOrchestration'
+import { useSessionInitWsRetryToast } from './useSessionInitWsRetryToast'
 import { useToast } from '../../hooks/useToast'
-import { dismissToast } from '../../state/toastCenter'
-import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import {
   ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
   ALLOWED_CHAT_GROUPING_WINDOWS,
   CHAT_GROUPING_STORAGE_KEY,
   DEFAULT_CHAT_GROUPING_WINDOW_MS,
-  DEFAULT_GREENROOM_CACHE_TTL_MS,
   DEFAULT_PLANNED_DURATION_MINUTES,
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
   LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
   LOBBY_NOTICE_STORAGE_KEY,
   MAX_POSTER_DATA_URL_CHARS,
   MAX_POSTER_WIDTH_PX,
-  ROOM_ENVIRONMENT_PRESET_FALLBACKS,
-  SESSION_BOOKEND_PREFIXES,
-  WS_AUTO_RETRY_WINDOW_MS,
-  WS_ERROR_TOAST_ID,
 } from '../../constants/sessionInit.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '../../utils/telemetry'
 import { fetchSessionNotesOnce } from '../../utils/notesFetch'
@@ -71,6 +56,14 @@ import type {
   RoomUser as RoomMember,
   SessionPresence as PresenceRecord,
 } from '@/types/room'
+import type {
+  ActiveSessionContext,
+  ApiBroadcastState,
+  ApiDiscoverableCampaign,
+  ApiPlatformStatusResponse,
+  ApiSessionStats,
+  SessionInitProps,
+} from './sessionInit.types'
 import {
   type CampaignSettingsPayload,
   type CampaignSummary,
@@ -78,370 +71,27 @@ import {
   getCampaignDisplayState,
   resolveMembershipRole,
 } from './sessionInit.shared'
+import {
+  buildCharacterDraft,
+  buildDefaultChapterName,
+  buildRoomEnvironmentPreset,
+  DEFAULT_CHARACTER_SETTINGS,
+  formatDurationCompact,
+  getPreferredSession,
+  getVisibleRoomsForSessionState,
+  isGreenRoom,
+  isSessionBookendMessage,
+  normalizeSessionRecord,
+  parsePlayerInviteCode,
+  resolveGreenroomCacheTtlMs,
+  safeLocalStorageGetItem,
+  safeLocalStorageRemoveItem,
+  safeLocalStorageSetItem,
+  SESSION_TIMER_SYNC_POLL_MS,
+  toSessionStateValue,
+  toValidPostSessionDurationMinutes,
+} from './sessionInit.utils'
 import '../../styles/components/session/SessionInit.css'
-
-interface SessionInitProps {
-  apiUrl: string
-  wsUrl: string
-  token: string
-  user: { id: UUID; username: string; role: Role; authType?: 'FULL' | 'GUEST' }
-  onSessionCreated?: (sessionId: UUID) => void
-  onReady?: () => void
-}
-
-interface ApiRoom {
-  id: UUID
-  sessionId: UUID
-  name: string
-  type: RoomType
-  createdBy: UUID
-  createdAt: number
-}
-
-interface ApiPresence {
-  sessionId: UUID
-  userId: UUID
-  username: string
-  role?: Role
-  playerName?: string
-  avatarUrl?: string | null
-  characterName?: string | null
-  characterClass?: string | null
-  characterSubclass?: string | null
-  characterRace?: string | null
-  level?: number | null
-  characterStats?: Record<string, unknown> | null
-  primaryRoomId?: UUID
-  privateRoomId?: UUID
-  state: PresenceState
-  lastSeenAt: number
-}
-
-interface ApiTakeoverIdentitySnapshot {
-  active: boolean
-  actorUserId: UUID
-  effectiveUserId: UUID
-  assumedUserId: UUID | null
-  assumedDisplayName: string | null
-  startedAt: number | null
-  staleRecovered: boolean
-}
-
-interface ApiSessionStats {
-  connectedPlayersWithDm: number
-  connectedPlayers: number
-  connectedSpectators: number
-  connectedTotal: number
-  updatedAt: number
-}
-
-interface ApiBroadcastState {
-  enabled: boolean
-  dmId?: UUID
-  broadcastRoomId?: string
-  changedAt?: number
-}
-
-interface ApiAudioEnvironmentState {
-  roomId: UUID
-  environmentName: string
-}
-
-interface ApiPlatformStatusResponse {
-  activeSessions?: number
-  peakConcurrentUsers24h?: number
-  lobbyStats?: CampaignLobbyStatsUpdatedPayload
-}
-
-interface ApiDiscoverableCampaign extends Omit<CampaignSummary, 'latestSessionState'> {
-  activeSessionState?: SessionState | null
-}
-
-function safeLocalStorageGetItem(key: string): string | null {
-  if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-    return null
-  }
-
-  return window.localStorage.getItem(key)
-}
-
-function safeLocalStorageSetItem(key: string, value: string): void {
-  if (typeof window === 'undefined' || typeof window.localStorage?.setItem !== 'function') {
-    return
-  }
-
-  window.localStorage.setItem(key, value)
-}
-
-function safeLocalStorageRemoveItem(key: string): void {
-  if (typeof window === 'undefined' || typeof window.localStorage?.removeItem !== 'function') {
-    return
-  }
-
-  window.localStorage.removeItem(key)
-}
-
-type ActiveSessionContext = {
-  campaignId: UUID
-  sessionId: UUID
-}
-
-function isSessionBookendMessage(content: string): boolean {
-  return SESSION_BOOKEND_PREFIXES.some((prefix) => content.startsWith(prefix))
-}
-
-function buildRoomEnvironmentPreset(roomId: UUID, environmentName: string) {
-  const key = environmentName.trim().toLowerCase()
-  const fallback =
-    ROOM_ENVIRONMENT_PRESET_FALLBACKS[key] || ROOM_ENVIRONMENT_PRESET_FALLBACKS.default
-
-  return {
-    id: roomId,
-    name: environmentName,
-    reverbSend: fallback.reverbSend,
-    lowpassFreq: fallback.lowpassFreq,
-    roomGain: fallback.roomGain,
-  }
-}
-
-function resolveGreenroomCacheTtlMs(): number {
-  const raw = Number(import.meta.env.VITE_GREENROOM_CACHE_TTL_MS)
-
-  if (!Number.isFinite(raw) || raw < 0) {
-    return DEFAULT_GREENROOM_CACHE_TTL_MS
-  }
-
-  return raw
-}
-
-type UserCharacterRecord = {
-  id: UUID
-  campaignId: UUID
-  userId: UUID
-  name: string
-  race: string | null
-  class: string | null
-  subclass: string | null
-  avatarUrl: string | null
-  metadata: Record<string, unknown> | null
-  isActive: boolean
-}
-
-const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
-  name: '',
-  race: 'Human',
-  className: 'Fighter',
-  subclass: '',
-  avatarUrl: '',
-  level: 1,
-  strength: 8,
-  dexterity: 8,
-  constitution: 8,
-  intelligence: 8,
-  wisdom: 8,
-  charisma: 8,
-}
-
-const SESSION_TIMER_SYNC_POLL_MS = 30_000
-
-function toValidStat(value: unknown, fallback = 8): number {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) {
-    return fallback
-  }
-
-  return Math.max(1, Math.min(30, Math.round(parsed)))
-}
-
-function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSettingsDraft {
-  if (!character) {
-    return { ...DEFAULT_CHARACTER_SETTINGS }
-  }
-
-  const metadata = character.metadata || {}
-
-  return {
-    name: character.name || '',
-    race: character.race || 'Human',
-    className: character.class || 'Fighter',
-    subclass: character.subclass || '',
-    avatarUrl: character.avatarUrl || '',
-    level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
-    strength: toValidStat(metadata.strength),
-    dexterity: toValidStat(metadata.dexterity),
-    constitution: toValidStat(metadata.constitution),
-    intelligence: toValidStat(metadata.intelligence),
-    wisdom: toValidStat(metadata.wisdom),
-    charisma: toValidStat(metadata.charisma),
-  }
-}
-
-function getPreferredSession(sessions: SessionRecord[]): SessionRecord | null {
-  if (sessions.length === 0) return null
-
-  // Live session — always preferred.
-  const active = sessions.find((session) => session.state === SessionState.ACTIVE)
-  if (active) return active
-
-  const paused = sessions.find((session) => session.state === SessionState.PAUSED)
-  if (paused) return paused
-
-  // Fresh lobby (never started).
-  const draftIdle = sessions.find(
-    (session) =>
-      session.state === SessionState.IDLE &&
-      session.startedAt === undefined &&
-      session.endedAt === undefined
-  )
-  if (draftIdle) return draftIdle
-
-  // Post-session cooldown window — reload should land back here, not stall.
-  const cooldown = sessions.find((session) => session.state === SessionState.COOLDOWN)
-  if (cooldown) return cooldown
-
-  // Session fully ended but cleanup hasn't archived it yet — land in greenroom rather than stall.
-  const ended = sessions.find((session) => session.state === SessionState.ENDED)
-  if (ended) return ended
-
-  // CLEANUP sessions are terminal; the next DM/player reconnect provisions a fresh IDLE session.
-  return null
-}
-
-function getSessionsSortedChronologically(sessions: SessionRecord[]): SessionRecord[] {
-  return [...sessions].sort((left, right) => {
-    if (left.createdAt !== right.createdAt) {
-      return left.createdAt - right.createdAt
-    }
-
-    return left.id.localeCompare(right.id)
-  })
-}
-
-function getLatestSessionChronologically(sessions: SessionRecord[]): SessionRecord | null {
-  const sorted = getSessionsSortedChronologically(sessions)
-  return sorted.length ? sorted[sorted.length - 1] : null
-}
-
-function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
-  const nextSessionNumber = existingSessions.length + 1
-  const dateLabel = new Date().toLocaleDateString('en-CA')
-  return `Session ${nextSessionNumber} - ${dateLabel}`
-}
-
-function normalizeTimestamp(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string') {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric)) {
-      return numeric
-    }
-
-    const parsed = Date.parse(value)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return undefined
-}
-
-function normalizeSessionRecord(raw: SessionRecord): SessionRecord {
-  const createdAt = normalizeTimestamp((raw as SessionRecord & { createdAt?: unknown }).createdAt)
-  const startedAt = normalizeTimestamp((raw as SessionRecord & { startedAt?: unknown }).startedAt)
-  const pausedAt = normalizeTimestamp((raw as SessionRecord & { pausedAt?: unknown }).pausedAt)
-  const endedAt = normalizeTimestamp((raw as SessionRecord & { endedAt?: unknown }).endedAt)
-  const updatedAt = normalizeTimestamp((raw as SessionRecord & { updatedAt?: unknown }).updatedAt)
-
-  return {
-    ...raw,
-    createdAt: createdAt ?? Date.now(),
-    startedAt,
-    pausedAt,
-    endedAt,
-    updatedAt,
-  }
-}
-
-function isGreenRoom(room: Pick<RoomRecord, 'type' | 'name'>): boolean {
-  if (room.type !== RoomType.GROUP) {
-    return false
-  }
-
-  return isGreenRoomName(room.name)
-}
-
-function getVisibleRoomsForSessionState(rooms: RoomRecord[], state: SessionState): RoomRecord[] {
-  if (!rooms.length) {
-    return rooms
-  }
-
-  if (isGreenroomSessionState(state)) {
-    const greenRooms = rooms.filter((room) => isGreenRoom(room))
-    return greenRooms.length ? greenRooms : rooms
-  }
-
-  if (state === SessionState.ACTIVE || state === SessionState.PAUSED) {
-    return rooms
-  }
-
-  return rooms
-}
-
-function toSessionStateValue(state: SessionState): SessionState {
-  return state
-}
-
-function parsePlayerInviteCode(input: string): string {
-  const raw = input.trim()
-  if (!raw) {
-    return ''
-  }
-
-  try {
-    const parsedUrl = new URL(raw)
-    const joinMatch = parsedUrl.pathname.match(/\/join\/([^/?#]+)/i)
-    if (joinMatch?.[1]) {
-      return decodeURIComponent(joinMatch[1]).trim().toUpperCase()
-    }
-  } catch {
-    // Input may be plain invite code or a relative join path.
-  }
-
-  const pathMatch = raw.match(/\/join\/([^/?#]+)/i)
-  if (pathMatch?.[1]) {
-    return decodeURIComponent(pathMatch[1]).trim().toUpperCase()
-  }
-
-  return raw.toUpperCase()
-}
-
-function toValidPostSessionDurationMinutes(value: unknown, fallback = 5): number {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) {
-    return fallback
-  }
-
-  return Math.max(1, Math.min(15, Math.round(parsed)))
-}
-
-function formatDurationCompact(durationMs: number): string {
-  if (!Number.isFinite(durationMs) || durationMs <= 0) {
-    return '0m'
-  }
-
-  const totalMinutes = Math.round(durationMs / 60_000)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-
-  if (hours <= 0) {
-    return `${minutes}m`
-  }
-
-  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-}
 
 export function SessionInit({
   apiUrl,
@@ -1435,216 +1085,59 @@ export function SessionInit({
     pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
   }, [addMessage, currentRooms, currentSession, typedMessagesBySession, typedRoomsBySession])
 
-  const loadCampaignSettings = useCallback(
-    async (campaignId: UUID): Promise<CampaignSettingsPayload | null> => {
-      campaignSettingsActions.setIsSettingsLoading(true)
-      setError(null)
-
-      const result = await campaignSettingsController.loadCampaignSettings(campaignId, {
-        onSettingsLoaded: (settings) => {
-          campaignSettingsActions.setSettingsData(settings)
-          campaignSettingsActions.setSettingsReferenceSessionId(settings.latestSessionId || '')
-          campaignSettingsActions.setSettingsName(settings.name)
-          campaignSettingsActions.setSettingsDescription(settings.description || '')
-          campaignSettingsActions.setSettingsVisibility(
-            settings.discoverable ? 'PUBLIC' : 'PRIVATE'
-          )
-          campaignSettingsActions.setSettingsSpectatorsEnabled(settings.spectatorPolicy !== 'NONE')
-          campaignSettingsActions.setSettingsSpectatorMax(settings.spectatorMax ?? 10)
-          campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(
-            settings.spectatorWaitlistEnabled
-          )
-          campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(
-            settings.spectatorReconnectGraceSecs
-          )
-          campaignSettingsActions.setSettingsPostSessionChatEnabled(settings.postSessionChatEnabled)
-          campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
-            toValidPostSessionDurationMinutes(settings.postSessionChatDurationMs / 60000)
-          )
-          campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(
-            settings.dmAutoTargetOnFirstPlayerJoin ?? true
-          )
-          campaignSettingsActions.setSettingsExtensionSyncPolicy(
-            settings.extensionSyncPolicy === 'DM_AND_PLAYERS'
-              ? 'ALLOW'
-              : settings.extensionSyncPolicy
-          )
-          campaignSettingsActions.setSettingsLateJoinPolicy(settings.lateJoinPolicy)
-          campaignSettingsActions.setSettingsLateJoinGraceMinutes(settings.lateJoinGraceMinutes)
-          campaignSettingsActions.setSettingsPosterUrl(settings.posterUrl || '')
-        },
-        onError: (message) => setError(message),
-      })
-
-      campaignSettingsActions.setIsSettingsLoading(false)
-      return result
-    },
-    [campaignSettingsController, campaignSettingsActions]
-  )
-
-  const loadDmVoiceTargetingSetting = useCallback(
-    async (campaignId: UUID): Promise<boolean | null> => {
-      campaignSettingsActions.setIsDmVoiceTargetingSettingLoading(true)
-
-      const result = await campaignSettingsController.loadDmVoiceTargetingSetting(campaignId, {
-        onDmVoiceTargetingLoaded: (enabled) => {
-          campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(enabled)
-        },
-      })
-
-      campaignSettingsActions.setIsDmVoiceTargetingSettingLoading(false)
-      return result
-    },
-    [campaignSettingsController, campaignSettingsActions]
-  )
-
-  const saveDmVoiceTargetingSetting = useCallback(
-    async (campaignId: UUID) => {
-      campaignSettingsActions.setIsDmVoiceTargetingSettingSaving(true)
-      setError(null)
-
-      await campaignSettingsController.saveDmVoiceTargetingSetting(
-        campaignId,
-        settingsDmAutoTargetOnFirstPlayerJoin,
-        {
-          onNotice: (message) => setLobbyNotice(message),
-          onError: (message) => setError(message),
-        }
-      )
-
-      campaignSettingsActions.setIsDmVoiceTargetingSettingSaving(false)
-    },
-    [campaignSettingsController, campaignSettingsActions, settingsDmAutoTargetOnFirstPlayerJoin]
-  )
-
-  const saveSessionSettings = useCallback(async () => {
-    if (!currentSession) {
-      return
-    }
-
-    setIsSessionSettingsSaving(true)
-    setError(null)
-
-    try {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: sessionSettingsName,
-          description: sessionSettingsDescription,
-          plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
-        }),
-      })
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to save session settings')
-      }
-
-      const payload = (await response.json()) as { session: SessionRecord }
-      if (payload.session) {
-        updateSession(payload.session.id, normalizeSessionRecord(payload.session))
-      }
-      setLobbyNotice('Session settings saved.')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save session settings'
-      setError(message)
-    } finally {
-      setIsSessionSettingsSaving(false)
-    }
-  }, [
+  const {
+    loadCampaignSettings,
+    loadDmVoiceTargetingSetting,
+    saveDmVoiceTargetingSetting,
+    saveSessionSettings,
+    openLobbyCampaignWorkspace,
+    saveCampaignSettings,
+    handleSaveCampaignInfoPanel,
+  } = useSessionInitSettingsOrchestration({
     apiUrl,
-    currentSession,
-    fetchWithAuthGuard,
-    sessionSettingsDescription,
-    sessionSettingsName,
-    sessionSettingsPlannedDurationMinutes,
     token,
+    fetchWithAuthGuard,
+    campaignSettingsController,
+    campaignSettingsActions,
+    currentSession,
+    sessionSettingsName,
+    sessionSettingsDescription,
+    sessionSettingsPlannedDurationMinutes,
+    setIsSessionSettingsSaving,
     updateSession,
-  ])
+    settingsDmAutoTargetOnFirstPlayerJoin,
+    settingsCampaignId,
+    settingsName,
+    settingsDescription,
+    settingsPosterUrl,
+    settingsVisibility,
+    settingsSpectatorsEnabled,
+    settingsSpectatorMax,
+    settingsSpectatorWaitlistEnabled,
+    settingsSpectatorReconnectGraceSecs,
+    settingsExtensionSyncPolicy,
+    settingsPostSessionChatEnabled,
+    settingsPostSessionChatDurationMinutes,
+    settingsLateJoinPolicy,
+    settingsLateJoinGraceMinutes,
+    settingsData,
+    setCampaigns,
+    setSelectedCampaignId,
+    setLobbyViewMode,
+    setError,
+    setLobbyNotice,
+  })
 
-  const loadUserCharacters = useCallback(async () => {
-    if (!selectedCampaignId) {
-      characterSettingsActions.setUserCharacters([])
-      characterSettingsActions.setSelectedCharacterId('')
-      characterSettingsActions.setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
-      return
-    }
-
-    characterSettingsActions.setIsCharacterSettingsLoading(true)
-
-    const characters = await characterSettingsController.loadUserCharacters(selectedCampaignId, {
-      onCharactersLoaded: (loadedCharacters) => {
-        characterSettingsActions.setUserCharacters(loadedCharacters)
-        const preferred =
-          loadedCharacters.find((character) => character.isActive) || loadedCharacters[0]
-        characterSettingsActions.setSelectedCharacterId(preferred?.id || '')
-        characterSettingsActions.setCharacterSettingsDraft(buildCharacterDraft(preferred || null))
-      },
-      onError: () => {
-        characterSettingsActions.setUserCharacters([])
-        characterSettingsActions.setSelectedCharacterId('')
-        characterSettingsActions.setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
-      },
-    })
-
-    if (characters.length === 0) {
-      characterSettingsActions.setUserCharacters([])
-      characterSettingsActions.setSelectedCharacterId('')
-      characterSettingsActions.setCharacterSettingsDraft({ ...DEFAULT_CHARACTER_SETTINGS })
-    }
-
-    characterSettingsActions.setIsCharacterSettingsLoading(false)
-  }, [characterSettingsController, characterSettingsActions, selectedCampaignId])
-
-  const saveCharacterSettings = useCallback(async () => {
-    if (!selectedCampaignId) {
-      return
-    }
-
-    characterSettingsActions.setIsCharacterSettingsSaving(true)
-    setError(null)
-
-    await characterSettingsController.saveCharacterSettings(
+  const { loadUserCharacters, saveCharacterSettings, handleCharacterFieldChange } =
+    useSessionInitCharacterSettingsOrchestration({
+      characterSettingsController,
+      characterSettingsActions,
       selectedCampaignId,
       selectedCharacterId,
       characterSettingsDraft,
-      {
-        onNotice: (message) => setLobbyNotice(message),
-        onError: (message) => setError(message),
-        onCharacterSaved: async () => {
-          await loadUserCharacters()
-        },
-      }
-    )
-
-    characterSettingsActions.setIsCharacterSettingsSaving(false)
-  }, [
-    characterSettingsController,
-    characterSettingsActions,
-    selectedCampaignId,
-    selectedCharacterId,
-    characterSettingsDraft,
-    loadUserCharacters,
-  ])
-
-  const handleCharacterFieldChange = useCallback(
-    (field: keyof CharacterSettingsDraft, value: string | number) => {
-      characterSettingsActions.setCharacterSettingsDraft({
-        ...characterSettingsDraft,
-        [field]:
-          typeof value === 'number'
-            ? Number.isFinite(value)
-              ? value
-              : characterSettingsDraft[field]
-            : value,
-      })
-    },
-    [characterSettingsDraft, characterSettingsActions]
-  )
+      setError,
+      setLobbyNotice,
+    })
 
   useEffect(() => {
     void loadUserCharacters()
@@ -1657,54 +1150,6 @@ export function SessionInit({
 
     void loadDmVoiceTargetingSetting(selectedCampaignId)
   }, [currentSession?.id, loadDmVoiceTargetingSetting, selectedCampaignId])
-
-  const loadCampaignSettingsSessionContext = useCallback(
-    async (campaignId: UUID, authoritativeLatestSessionId: UUID | '' = '') => {
-      try {
-        const sessions = await campaignSettingsController.fetchCampaignSessions(campaignId)
-        campaignSettingsActions.setSettingsCampaignSessions(sessions)
-
-        if (
-          authoritativeLatestSessionId &&
-          sessions.some((session) => session.id === authoritativeLatestSessionId)
-        ) {
-          campaignSettingsActions.setSettingsReferenceSessionId(authoritativeLatestSessionId)
-          return
-        }
-
-        const latestSession = getLatestSessionChronologically(sessions)
-        campaignSettingsActions.setSettingsReferenceSessionId(latestSession?.id || '')
-      } catch {
-        campaignSettingsActions.setSettingsCampaignSessions([])
-        if (!authoritativeLatestSessionId) {
-          campaignSettingsActions.setSettingsReferenceSessionId('')
-        }
-      }
-    },
-    [campaignSettingsController, campaignSettingsActions]
-  )
-
-  const openLobbyCampaignWorkspace = useCallback(
-    (campaignId: UUID) => {
-      setSelectedCampaignId(campaignId)
-      setLobbyViewMode('workspace')
-
-      campaignSettingsActions.setSettingsCampaignId(campaignId)
-      campaignSettingsActions.setSettingsHomeTab('home')
-
-      void (async () => {
-        const settingsPayload = await loadCampaignSettings(campaignId)
-        const authoritativeLatestSessionId = (settingsPayload?.latestSessionId || '') as UUID | ''
-        await loadCampaignSettingsSessionContext(campaignId, authoritativeLatestSessionId)
-      })()
-    },
-    [
-      campaignSettingsActions,
-      loadCampaignSettings,
-      loadCampaignSettingsSessionContext,
-      setSelectedCampaignId,
-    ]
-  )
 
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {
@@ -1896,204 +1341,26 @@ export function SessionInit({
     wsTelemetryPrevRef.current = wsState
   }, [wsState, currentSession?.id, wsTelemetryPrevRef])
 
-  useEffect(() => {
-    const prev = prevWsStateRef.current
-    prevWsStateRef.current = wsState
-
-    if (!currentSession) {
-      lastHydratedSessionFingerprintRef.current = null
-      return
-    }
-
-    const sessionFingerprint = `${currentSession.id}:${currentSession.state}`
-    const sessionChanged = lastHydratedSessionFingerprintRef.current !== sessionFingerprint
-    const isReconnect = wsState === 'connected' && prev !== 'connected'
-
-    if (!sessionChanged && !isReconnect) {
-      return
-    }
-
-    lastHydratedSessionFingerprintRef.current = sessionFingerprint
-
-    const loadPresenceAndRooms = async () => {
-      try {
-        const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
-          fetchWithAuthGuard(`${apiUrl}/api/rooms/session/${currentSession.id}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetchWithAuthGuard(`${apiUrl}/api/presence/${currentSession.id}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetchWithAuthGuard(`${apiUrl}/api/audio/sessions/${currentSession.id}/state`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ])
-
-        if (!roomsResponse.ok || !presenceResponse.ok || !audioStateResponse.ok) {
-          return
-        }
-
-        const roomsPayload = (await roomsResponse.json()) as { rooms?: ApiRoom[] }
-        const presencePayload = (await presenceResponse.json()) as {
-          presence?: ApiPresence[]
-          stats?: ApiSessionStats
-          identity?: ApiTakeoverIdentitySnapshot
-        }
-        const audioStatePayload = (await audioStateResponse.json()) as {
-          environment?: {
-            id: UUID
-            name: string
-            reverbSend?: number
-            lowpassFreq?: number
-            roomGain?: number
-          } | null
-          environments?: ApiAudioEnvironmentState[]
-          dmOverrides?: Array<{
-            userId: UUID
-            overrideType:
-              | 'MUTE'
-              | 'UNMUTE'
-              | 'GAIN'
-              | 'GATE'
-              | 'FILTER'
-              | 'CONDITION'
-              | 'VOICE_OF_GOD'
-            parameters?: Record<string, unknown>
-            appliedAt: number
-          }>
-          broadcast?: ApiBroadcastState
-          voiceOfGod?: ApiBroadcastState
-        }
-
-        const nextRooms = (roomsPayload.rooms || []).map((room) => ({
-          id: room.id,
-          sessionId: room.sessionId,
-          name: room.name,
-          type: room.type,
-          createdAt: room.createdAt,
-          createdBy: room.createdBy,
-        }))
-
-        const nextPresence = (presencePayload.presence || []).map((entry) => ({
-          userId: entry.userId,
-          username: entry.username,
-          role: entry.role,
-          playerName: entry.playerName,
-          avatarUrl: entry.avatarUrl,
-          characterName: entry.characterName,
-          characterClass: entry.characterClass,
-          characterSubclass: entry.characterSubclass,
-          characterRace: entry.characterRace,
-          level: entry.level,
-          characterStats: entry.characterStats,
-          state: entry.state,
-          primaryRoomId: entry.primaryRoomId,
-          privateRoomId: entry.privateRoomId,
-          lastSeenAt: entry.lastSeenAt,
-        }))
-
-        setSelectedRoomIdOverride('')
-
-        // Atomic: both rooms and presence replace in a single store update.
-        replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
-        if (presencePayload.stats) {
-          replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
-        }
-
-        if (import.meta.env.DEV) {
-          const identity = presencePayload.identity
-          setMockTakeoverUserId(
-            currentSession.id,
-            identity?.active ? identity.assumedUserId || null : null
-          )
-        }
-
-        // On session enter/reconnect, recover persisted backend-authored session markers
-        // before the rest of the session hydration completes.
-        await restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
-
-        // Clear any stale per-session audio state before re-hydrating from server.
-        // This prevents residual effects from a previous session bleeding through.
-        resetSessionAudioState()
-        clearActiveEffects()
-
-        // Rehydrate audio environment preset from server state.
-        const recoveredEnv = audioStatePayload.environment
-        if (recoveredEnv) {
-          setEnvironment({
-            id: recoveredEnv.id,
-            name: recoveredEnv.name,
-            reverbSend: recoveredEnv.reverbSend ?? 0.3,
-            lowpassFreq: recoveredEnv.lowpassFreq ?? 8000,
-            roomGain: recoveredEnv.roomGain ?? 0,
-          })
-        }
-
-        const nextEnvironmentNames: Record<UUID, string> = {}
-        for (const environmentState of audioStatePayload.environments || []) {
-          if (!nextEnvironmentNames[environmentState.roomId]) {
-            nextEnvironmentNames[environmentState.roomId] = environmentState.environmentName
-          }
-        }
-        replaceRoomEnvironmentNames(nextEnvironmentNames)
-
-        // Rehydrate DM overrides from server state (replaces any stale local copy).
-        const recoveredOverrides = audioStatePayload.dmOverrides
-        if (recoveredOverrides && recoveredOverrides.length > 0) {
-          replaceDMOverrides(recoveredOverrides)
-        }
-
-        const broadcastState = audioStatePayload.broadcast || audioStatePayload.voiceOfGod
-
-        if (broadcastState) {
-          setBroadcastState({
-            enabled: Boolean(broadcastState.enabled),
-            broadcastRoomId: broadcastState.broadcastRoomId,
-            dmId: broadcastState.dmId,
-            changedAt: broadcastState.changedAt,
-          })
-        }
-
-        // Fire-and-forget: trigger server-side presence snapshot recovery.
-        // Result is informational only; WS events remain authoritative.
-        fetchWithAuthGuard(`${apiUrl}/api/presence/${currentSession.id}/recover`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => {
-          // Non-critical: snapshot recovery failure doesn't block UI.
-        })
-      } catch {
-        // Event-driven WebSocket updates continue to flow even if hydration fails.
-      }
-    }
-
-    void loadPresenceAndRooms()
-  }, [
+  useSessionInitHydrationLifecycle({
     apiUrl,
+    token,
+    wsState,
     currentSession,
     fetchWithAuthGuard,
     setSelectedRoomIdOverride,
-    token,
-    wsState,
     replaceSessionTopology,
     replaceSessionStatsSnapshot,
     setMockTakeoverUserId,
     restoreSessionBookendsFromHistory,
-    setBroadcastState,
+    resetSessionAudioState,
+    clearActiveEffects,
     setEnvironment,
     replaceRoomEnvironmentNames,
     replaceDMOverrides,
-    resetSessionAudioState,
-    clearActiveEffects,
+    setBroadcastState,
     lastHydratedSessionFingerprintRef,
     prevWsStateRef,
-  ])
+  })
 
   useEffect(() => {
     if (!selectedCampaignId || !currentSession) {
@@ -2145,247 +1412,35 @@ export function SessionInit({
     typedRoomsBySession,
   ])
 
-  const handleCreateCampaign = async (intent: 'edit' | 'launch') => {
-    setError(null)
-    setLobbyNotice(null)
-
-    if (user.authType === 'GUEST') {
-      setError('Upgrade to a full account before creating a new campaign.')
-      return
-    }
-
-    setIsCreatingCampaign(true)
-    try {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: newCampaignName,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to create campaign')
-      }
-
-      const data = await response.json()
-      const campaign = data.campaign as CampaignSummary
-      const nextCampaigns = [campaign, ...campaigns]
-      setCampaigns(nextCampaigns)
-      setSelectedCampaignId(campaign.id)
-      setShowCreateCampaignModal(false)
-
-      if (intent === 'launch') {
-        setLobbyNotice('Campaign created. Launching now.')
-        setLobbyViewMode('list')
-        await handleEnterCampaign(campaign.id)
-      } else {
-        setLobbyNotice('Campaign created. Offline edit/review mode is ready.')
-        openLobbyCampaignWorkspace(campaign.id)
-      }
-
-      setNewCampaignName('')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'An error occurred'
-      setError(message)
-    } finally {
-      setIsCreatingCampaign(false)
-    }
-  }
-
-  const handleJoinCampaign: NonNullable<
-    ComponentProps<typeof SessionInitModals>['onJoinCampaignSubmit']
-  > = (event) => {
-    event.preventDefault()
-    setError(null)
-    setLobbyNotice(null)
-    setIsJoiningCampaign(true)
-
-    void (async () => {
-      try {
-        const inviteCode = parsePlayerInviteCode(joinInviteInput)
-        if (!inviteCode) {
-          throw new Error('Invite code or join link is required')
-        }
-
-        const validateResponse = await fetchWithAuthGuard(
-          `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
-        )
-
-        if (!validateResponse.ok) {
-          const validateErrorData = await validateResponse.json().catch(() => ({}))
-          throw new Error(validateErrorData.message || 'Invalid or expired invite code')
-        }
-
-        const validateData = (await validateResponse.json()) as {
-          valid?: boolean
-          campaign?: { id?: UUID }
-        }
-
-        const campaignId = validateData.campaign?.id
-        if (!validateData.valid || !campaignId) {
-          throw new Error('Invalid or expired invite code')
-        }
-
-        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/join`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ inviteCode }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to join campaign')
-        }
-
-        const campaignsResponse = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!campaignsResponse.ok) {
-          const errorData = await campaignsResponse.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Joined campaign but failed to reload campaigns')
-        }
-
-        const campaignsData = await campaignsResponse.json()
-        const nextCampaigns = (campaignsData.campaigns || []) as CampaignSummary[]
-        setCampaigns(nextCampaigns)
-        setSelectedCampaignId(campaignId as UUID)
-        setLobbyNotice('Campaign ready in your lobby. Continue when you are ready.')
-        setShowJoinCampaignModal(false)
-        setJoinInviteInput('')
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'An error occurred'
-        setError(message)
-      } finally {
-        setIsJoiningCampaign(false)
-      }
-    })()
-  }
-
-  const handleEnterCampaign = useCallback(
-    async (campaignId?: UUID, preferredSessionId?: UUID) => {
-      setError(null)
-      setLobbyNotice(null)
-
-      const targetCampaignId = campaignId || selectedCampaignId
-
-      if (!targetCampaignId) {
-        setError('Select a campaign before entering')
-        return
-      }
-
-      if (targetCampaignId !== selectedCampaignId) {
-        setSelectedCampaignId(targetCampaignId)
-      }
-
-      const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
-
-      if (targetCampaign) {
-        const launchAction = getCampaignEntryAction(targetCampaign)
-        if (launchAction.disabled) {
-          setError(launchAction.reason || 'Launch is currently unavailable for this campaign.')
-          return
-        }
-      }
-
-      if (targetCampaign?.memberRole === 'SPECTATOR') {
-        const state = getCampaignDisplayState(targetCampaign)
-        if (state !== 'ACTIVE') {
-          setError('Spectators can only watch active campaigns.')
-          return
-        }
-
-        const hasTableOnline =
-          Boolean(targetCampaign.dmOnline) || (targetCampaign.connectedPlayers || 0) > 0
-        if (!hasTableOnline) {
-          setError('Campaign is active but no DM/player is online yet. Please wait.')
-          return
-        }
-      }
-
-      let targetSessions: SessionRecord[] = []
-
-      try {
-        targetSessions = await fetchCampaignSessionsData(targetCampaignId)
-        replaceSessions(targetSessions)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load campaign sessions'
-        setError(message)
-        return
-      }
-
-      const preferredSession =
-        (preferredSessionId
-          ? targetSessions.find((session) => session.id === preferredSessionId) || null
-          : null) || getPreferredSession(targetSessions)
-
-      if (preferredSession) {
-        await ensureSessionMembership(preferredSession.id)
-        setCurrentSession(preferredSession.id)
-        return
-      }
-
-      const canStartAsDm = targetCampaign?.currentDmId === user.id
-
-      if (!canStartAsDm) {
-        setError('No campaign chapter is available yet. Wait for the DM to start the session.')
-        return
-      }
-
-      try {
-        const response = await fetchWithAuthGuard(
-          `${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: buildDefaultChapterName(targetSessions),
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to start campaign chapter')
-        }
-
-        const payload = (await response.json()) as { session: SessionRecord }
-        await ensureSessionMembership(payload.session.id)
-        replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
-        setCurrentSession(payload.session.id)
-        onSessionCreated?.(payload.session.id)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'An error occurred'
-        setError(message)
-      }
-    },
-    [
-      selectedCampaignId,
-      campaigns,
-      ensureSessionMembership,
-      fetchCampaignSessionsData,
-      fetchWithAuthGuard,
-      replaceSessions,
-      user.id,
+  const { handleCreateCampaign, handleJoinCampaign, handleEnterCampaign, startCampaignSession } =
+    useSessionInitCampaignEntryOrchestration({
       apiUrl,
       token,
+      userId: user.id,
+      userAuthType: user.authType,
+      campaigns,
+      selectedCampaignId,
+      newCampaignName,
+      joinInviteInput,
+      setCampaigns,
+      setSelectedCampaignId,
+      setShowCreateCampaignModal,
+      setShowJoinCampaignModal,
+      setNewCampaignName,
+      setJoinInviteInput,
+      setLobbyViewMode,
+      setIsCreatingCampaign,
+      setIsJoiningCampaign,
+      setError,
+      setLobbyNotice,
+      fetchWithAuthGuard,
+      fetchCampaignSessionsData,
+      ensureSessionMembership,
+      replaceSessions,
       setCurrentSession,
+      openLobbyCampaignWorkspace,
       onSessionCreated,
-    ]
-  )
+    })
 
   useEffect(() => {
     if (isLoadingCampaigns || currentSessionId || lobbyAutoEnterTriggeredRef.current) {
@@ -2469,132 +1524,6 @@ export function SessionInit({
     safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
-  const saveCampaignSettings = useCallback(async () => {
-    if (!settingsCampaignId) {
-      return
-    }
-
-    setError(null)
-    campaignSettingsActions.setIsSettingsSaving(true)
-
-    const normalizedPayload = {
-      name: settingsName,
-      description: settingsDescription,
-      posterUrl: settingsPosterUrl.trim().length > 0 ? settingsPosterUrl.trim() : null,
-      discoverable: settingsVisibility === 'PUBLIC',
-      spectatorsEnabled: settingsSpectatorsEnabled,
-      spectatorMax: settingsSpectatorsEnabled ? settingsSpectatorMax : null,
-      spectatorWaitlistEnabled: settingsSpectatorsEnabled
-        ? settingsSpectatorWaitlistEnabled
-        : false,
-      spectatorReconnectGraceSecs: settingsSpectatorsEnabled
-        ? settingsSpectatorReconnectGraceSecs
-        : 60,
-      extensionSyncPolicy: settingsExtensionSyncPolicy,
-      postSessionChatEnabled: Boolean(settingsPostSessionChatEnabled),
-      postSessionChatDurationMs:
-        toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000,
-      dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
-      lateJoinPolicy: settingsLateJoinPolicy,
-      lateJoinGraceMinutes: settingsLateJoinPolicy === 'OPEN' ? 30 : settingsLateJoinGraceMinutes,
-    }
-
-    try {
-      const response = await fetchWithAuthGuard(
-        `${apiUrl}/api/campaigns/${settingsCampaignId}/settings`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(normalizedPayload),
-        }
-      )
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to save campaign settings')
-      }
-
-      const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
-      campaignSettingsActions.setSettingsData(payload.campaign)
-      campaignSettingsActions.setSettingsName(payload.campaign.name)
-      campaignSettingsActions.setSettingsDescription(payload.campaign.description || '')
-      campaignSettingsActions.setSettingsVisibility(
-        payload.campaign.discoverable ? 'PUBLIC' : 'PRIVATE'
-      )
-      campaignSettingsActions.setSettingsSpectatorsEnabled(
-        payload.campaign.spectatorPolicy !== 'NONE'
-      )
-      campaignSettingsActions.setSettingsSpectatorMax(payload.campaign.spectatorMax ?? 10)
-      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(
-        payload.campaign.spectatorWaitlistEnabled
-      )
-      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(
-        payload.campaign.spectatorReconnectGraceSecs
-      )
-      campaignSettingsActions.setSettingsExtensionSyncPolicy(
-        payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
-          ? 'ALLOW'
-          : payload.campaign.extensionSyncPolicy
-      )
-      campaignSettingsActions.setSettingsPostSessionChatEnabled(
-        payload.campaign.postSessionChatEnabled
-      )
-      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
-        toValidPostSessionDurationMinutes(payload.campaign.postSessionChatDurationMs / 60000)
-      )
-      campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(
-        payload.campaign.dmAutoTargetOnFirstPlayerJoin ?? true
-      )
-      campaignSettingsActions.setSettingsLateJoinPolicy(payload.campaign.lateJoinPolicy)
-      campaignSettingsActions.setSettingsLateJoinGraceMinutes(payload.campaign.lateJoinGraceMinutes)
-      campaignSettingsActions.setSettingsPosterUrl(payload.campaign.posterUrl || '')
-
-      setCampaigns((prev) =>
-        prev.map((campaign) =>
-          campaign.id === payload.campaign.id
-            ? {
-                ...campaign,
-                name: payload.campaign.name,
-                description: payload.campaign.description,
-                posterUrl: payload.campaign.posterUrl,
-                extensionSyncPolicy: payload.campaign.extensionSyncPolicy,
-              }
-            : campaign
-        )
-      )
-
-      setLobbyNotice('Campaign settings saved.')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save campaign settings'
-      setError(message)
-    } finally {
-      campaignSettingsActions.setIsSettingsSaving(false)
-    }
-  }, [
-    apiUrl,
-    campaignSettingsActions,
-    settingsCampaignId,
-    settingsName,
-    settingsDescription,
-    settingsPosterUrl,
-    settingsVisibility,
-    settingsSpectatorsEnabled,
-    settingsSpectatorMax,
-    settingsSpectatorWaitlistEnabled,
-    settingsSpectatorReconnectGraceSecs,
-    settingsExtensionSyncPolicy,
-    settingsPostSessionChatEnabled,
-    settingsPostSessionChatDurationMinutes,
-    settingsDmAutoTargetOnFirstPlayerJoin,
-    settingsLateJoinPolicy,
-    settingsLateJoinGraceMinutes,
-    fetchWithAuthGuard,
-    token,
-  ])
-
   const handleSaveCampaignSettings: NonNullable<
     ComponentProps<typeof SessionInitModals>['onSaveCampaignSettings']
   > = (event) => {
@@ -2604,70 +1533,6 @@ export function SessionInit({
       setShowCampaignSettingsModal(false)
     })()
   }
-
-  const handleSaveCampaignInfoPanel = useCallback(
-    async (
-      campaignId: UUID,
-      updates: {
-        name: string
-        description: string
-        posterUrl: string | null
-        integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
-      }
-    ) => {
-      setError(null)
-
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/settings`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: updates.name,
-          description: updates.description,
-          posterUrl: updates.posterUrl,
-          extensionSyncPolicy: updates.integrationSyncPolicy,
-        }),
-      })
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to save campaign info')
-      }
-
-      const payload = (await response.json()) as { campaign: CampaignSettingsPayload }
-
-      setCampaigns((prev) =>
-        prev.map((campaign) =>
-          campaign.id === payload.campaign.id
-            ? {
-                ...campaign,
-                name: payload.campaign.name,
-                description: payload.campaign.description,
-                posterUrl: payload.campaign.posterUrl,
-                extensionSyncPolicy: payload.campaign.extensionSyncPolicy,
-              }
-            : campaign
-        )
-      )
-
-      if (settingsData?.id === payload.campaign.id) {
-        campaignSettingsActions.setSettingsData(payload.campaign)
-        campaignSettingsActions.setSettingsName(payload.campaign.name)
-        campaignSettingsActions.setSettingsDescription(payload.campaign.description || '')
-        campaignSettingsActions.setSettingsPosterUrl(payload.campaign.posterUrl || '')
-        campaignSettingsActions.setSettingsExtensionSyncPolicy(
-          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
-            ? 'ALLOW'
-            : payload.campaign.extensionSyncPolicy
-        )
-      }
-
-      setLobbyNotice('Campaign information saved.')
-    },
-    [apiUrl, fetchWithAuthGuard, settingsData?.id, token, campaignSettingsActions]
-  )
 
   const handlePosterFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -2839,79 +1704,6 @@ export function SessionInit({
     window.location.assign('/')
   }
 
-  const startCampaignSession = useCallback(
-    async (
-      campaignId: UUID,
-      existingSessions: SessionRecord[],
-      options?: { autoActivate?: boolean }
-    ): Promise<UUID | null> => {
-      try {
-        const response = await fetchWithAuthGuard(
-          `${apiUrl}/api/campaigns/${campaignId}/sessions/start`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: buildDefaultChapterName(existingSessions),
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to start campaign chapter')
-        }
-
-        const payload = (await response.json()) as { session: SessionRecord }
-        await ensureSessionMembership(payload.session.id)
-        replaceSessions([normalizeSessionRecord(payload.session), ...existingSessions])
-        setCurrentSession(payload.session.id)
-        onSessionCreated?.(payload.session.id)
-
-        if (options?.autoActivate) {
-          const transitionResponse = await fetchWithAuthGuard(
-            `${apiUrl}/api/session/${payload.session.id}/state`,
-            {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ state: SessionState.ACTIVE }),
-            }
-          )
-
-          if (!transitionResponse.ok) {
-            const errorData = await transitionResponse.json().catch(() => ({}))
-            throw new Error(errorData.message || 'Failed to activate new session')
-          }
-
-          const activeSession = await transitionResponse.json()
-          updateSession(payload.session.id, normalizeSessionRecord(activeSession as SessionRecord))
-        }
-
-        return payload.session.id
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'An error occurred'
-        setError(message)
-        return null
-      }
-    },
-    [
-      apiUrl,
-      ensureSessionMembership,
-      fetchWithAuthGuard,
-      onSessionCreated,
-      replaceSessions,
-      setCurrentSession,
-      token,
-      updateSession,
-    ]
-  )
-
   const handleStartSession = async (sessionId: UUID) => {
     if (currentSession?.id === sessionId && currentSession.state === SessionState.ENDED) {
       if (!selectedCampaignId) {
@@ -2919,9 +1711,10 @@ export function SessionInit({
         return
       }
 
-      await startCampaignSession(selectedCampaignId, sessionList, {
-        autoActivate: true,
-      })
+      const nextSessionId = await startCampaignSession(selectedCampaignId, sessionList)
+      if (nextSessionId) {
+        await handleTransitionSession(nextSessionId, SessionState.ACTIVE)
+      }
       return
     }
 
@@ -3373,119 +2166,17 @@ export function SessionInit({
     [isTakeoverActive, setSelectedRoomIdOverride]
   )
 
-  useEffect(() => {
-    wsErrorMessageRef.current = wsError?.message || null
-  }, [wsError, wsErrorMessageRef])
-
-  useEffect(() => {
-    if (wsState === 'connected') {
-      wsRetryWindowStartRef.current = null
-      sessionLifecycleActions.setWsRetryWindowExpired(false)
-      sessionLifecycleActions.setWsRetrySecondsRemaining(null)
-
-      if (wsRetryToastTimerRef.current !== null) {
-        window.clearTimeout(wsRetryToastTimerRef.current)
-        wsRetryToastTimerRef.current = null
-      }
-
-      dismissToast(WS_ERROR_TOAST_ID)
-      return
-    }
-
-    if (wsRetryWindowStartRef.current === null) {
-      wsRetryWindowStartRef.current = Date.now()
-    }
-
-    const elapsedMs = Date.now() - wsRetryWindowStartRef.current
-    const remainingMs = Math.max(0, WS_AUTO_RETRY_WINDOW_MS - elapsedMs)
-    sessionLifecycleActions.setWsRetrySecondsRemaining(Math.ceil(remainingMs / 1000))
-
-    if (remainingMs <= 0) {
-      sessionLifecycleActions.setWsRetryWindowExpired(true)
-      sessionLifecycleActions.setWsRetrySecondsRemaining(null)
-      return
-    }
-
-    if (wsRetryToastTimerRef.current !== null) {
-      window.clearTimeout(wsRetryToastTimerRef.current)
-    }
-
-    wsRetryToastTimerRef.current = window.setTimeout(() => {
-      sessionLifecycleActions.setWsRetryWindowExpired(true)
-    }, remainingMs)
-
-    return () => {
-      if (wsRetryToastTimerRef.current !== null) {
-        window.clearTimeout(wsRetryToastTimerRef.current)
-        wsRetryToastTimerRef.current = null
-      }
-    }
-  }, [wsState, sessionLifecycleActions, wsRetryToastTimerRef, wsRetryWindowStartRef])
-
-  useEffect(() => {
-    if (wsState === 'connected' || wsRetryWindowExpired || wsRetryWindowStartRef.current === null) {
-      return
-    }
-
-    const updateCountdown = () => {
-      if (wsRetryWindowStartRef.current === null) {
-        sessionLifecycleActions.setWsRetrySecondsRemaining(null)
-        return
-      }
-
-      const elapsedMs = Date.now() - wsRetryWindowStartRef.current
-      const remainingMs = Math.max(0, WS_AUTO_RETRY_WINDOW_MS - elapsedMs)
-      sessionLifecycleActions.setWsRetrySecondsRemaining(
-        remainingMs > 0 ? Math.ceil(remainingMs / 1000) : null
-      )
-    }
-
-    updateCountdown()
-    const intervalId = window.setInterval(updateCountdown, 1000)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [wsRetryWindowExpired, wsState, sessionLifecycleActions, wsRetryWindowStartRef])
-
-  useEffect(() => {
-    if (!wsRetryWindowExpired || wsState === 'connected') {
-      dismissToast(WS_ERROR_TOAST_ID)
-      return
-    }
-
-    const detail = wsErrorMessageRef.current
-      ? `Last log from the crystal: ${wsErrorMessageRef.current}.`
-      : ''
-
-    showToast({
-      id: WS_ERROR_TOAST_ID,
-      variant: 'error',
-      message:
-        `Our sending stone has tried for 30 seconds and now lies ominously silent. ` +
-        `The system appears to be down in this realm. Roll for patience, then press Retry now.` +
-        `\n${detail}`,
-      actionLabel: 'Retry now',
-      onAction: () => {
-        wsRetryWindowStartRef.current = Date.now()
-        sessionLifecycleActions.setWsRetryWindowExpired(false)
-        sessionLifecycleActions.setWsRetrySecondsRemaining(
-          Math.ceil(WS_AUTO_RETRY_WINDOW_MS / 1000)
-        )
-        dismissToast(WS_ERROR_TOAST_ID)
-        void retryConnection()
-      },
-      durationMs: null,
-    })
-  }, [
+  useSessionInitWsRetryToast({
+    wsState,
+    wsError,
+    wsRetryWindowExpired,
+    sessionLifecycleActions,
+    wsRetryWindowStartRef,
+    wsRetryToastTimerRef,
+    wsErrorMessageRef,
     retryConnection,
     showToast,
-    wsRetryWindowExpired,
-    wsState,
-    sessionLifecycleActions,
-    wsErrorMessageRef,
-    wsRetryWindowStartRef,
-  ])
+  })
 
   return (
     <>
@@ -3530,464 +2221,205 @@ export function SessionInit({
           />
         )}
 
-        {!hasSessionSelected && lobbyViewMode === 'workspace' && (
-          <LobbyCampaignWorkspaceView
-            campaign={selectedCampaign || null}
-            role={membershipRole}
-            themeMode={themeMode}
-            isCreatingCampaign={isCreatingCampaign}
-            isJoiningCampaign={isJoiningCampaign}
-            apiUrl={apiUrl}
-            authToken={token}
-            currentSessionId={currentSessionId || null}
-            currentSessionState={
-              currentSessionId ? (typedSessions[currentSessionId]?.state ?? null) : null
-            }
-            currentUserId={user.id}
-            partyPresenceRefreshVersion={partyPresenceRefreshVersion}
-            fetchWithAuthGuard={fetchWithAuthGuard}
-            connectionStatus={{
-              statusColorKey: connectionStatus.statusColorKey,
-              label: connectionStatus.label,
-              coreWsState: connectionStatus.coreWsState as
-                | 'CONNECTED'
-                | 'CONNECTING'
-                | 'DISCONNECTED',
-            }}
-            sessionCount={settingsCampaignSessions.length}
-            totalSessionDurationMs={settingsCampaignTotalDurationMs}
-            canEditCampaignInfo={Boolean(
-              selectedCampaign && selectedCampaign.currentDmId === user.id
-            )}
-            isLaunchDisabled={
-              selectedCampaign ? getCampaignEntryAction(selectedCampaign).disabled : true
-            }
-            launchDisabledReason={
-              selectedCampaign
-                ? getCampaignEntryAction(selectedCampaign).reason
-                : 'Select a campaign first.'
-            }
-            showInviteWidget={Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id)}
-            joinUrl={
-              settingsData?.inviteCode
-                ? `${window.location.origin}/join/${encodeURIComponent(settingsData.inviteCode)}`
-                : selectedCampaign?.inviteCode
-                  ? `${window.location.origin}/join/${encodeURIComponent(selectedCampaign.inviteCode)}`
-                  : ''
-            }
-            watchUrl={
-              settingsData?.spectatorInviteCode || selectedCampaign?.spectatorInviteCode
-                ? `${window.location.origin}/watch/${encodeURIComponent(settingsData?.spectatorInviteCode || selectedCampaign?.spectatorInviteCode || '')}`
-                : ''
-            }
-            spectatorsEnabled={
-              settingsData
-                ? settingsData.spectatorPolicy !== 'NONE'
-                : Boolean(selectedCampaign?.spectatorsEnabled)
-            }
-            isInviteReissuing={isInviteReissuing}
-            settingsPanel={
-              membershipRole === Role.DM ? (
-                <LobbyCampaignSettingsPanel
-                  campaignName={selectedCampaign?.name}
-                  isLoading={isSettingsLoading}
-                  isSaving={isSettingsSaving}
-                  isInviteReissuing={isInviteReissuing}
-                  settingsData={settingsData}
-                  settingsName={settingsName}
-                  onSettingsNameChange={(value) => campaignSettingsActions.setSettingsName(value)}
-                  settingsDescription={settingsDescription}
-                  onSettingsDescriptionChange={(value) =>
-                    campaignSettingsActions.setSettingsDescription(value)
-                  }
-                  onPosterFileSelected={handlePosterFileSelected}
-                  settingsPosterUrl={settingsPosterUrl}
-                  onSettingsPosterUrlChange={(value) =>
-                    campaignSettingsActions.setSettingsPosterUrl(value)
-                  }
-                  onRemovePoster={() => campaignSettingsActions.setSettingsPosterUrl('')}
-                  settingsVisibility={settingsVisibility}
-                  onSettingsVisibilityChange={(value) =>
-                    campaignSettingsActions.setSettingsVisibility(value)
-                  }
-                  settingsSpectatorsEnabled={settingsSpectatorsEnabled}
-                  onSettingsSpectatorsEnabledChange={(value) =>
-                    campaignSettingsActions.setSettingsSpectatorsEnabled(value)
-                  }
-                  settingsSpectatorMax={settingsSpectatorMax}
-                  onSettingsSpectatorMaxChange={(value) =>
-                    campaignSettingsActions.setSettingsSpectatorMax(value)
-                  }
-                  settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
-                  onSettingsSpectatorWaitlistEnabledChange={(value) =>
-                    campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value)
-                  }
-                  settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
-                  onSettingsSpectatorReconnectGraceSecsChange={(value) =>
-                    campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value)
-                  }
-                  settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
-                  onSettingsPostSessionChatEnabledChange={(value) =>
-                    campaignSettingsActions.setSettingsPostSessionChatEnabled(value)
-                  }
-                  settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
-                  onSettingsPostSessionChatDurationMinutesChange={(value) =>
-                    campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(
-                      toValidPostSessionDurationMinutes(value)
-                    )
-                  }
-                  settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
-                  onSettingsExtensionSyncPolicyChange={(value) =>
-                    campaignSettingsActions.setSettingsExtensionSyncPolicy(value)
-                  }
-                  settingsLateJoinPolicy={settingsLateJoinPolicy}
-                  onSettingsLateJoinPolicyChange={(value) =>
-                    campaignSettingsActions.setSettingsLateJoinPolicy(value)
-                  }
-                  settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
-                  onSettingsLateJoinGraceMinutesChange={(value) =>
-                    campaignSettingsActions.setSettingsLateJoinGraceMinutes(value)
-                  }
-                  settingsDmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
-                  onSettingsDmAutoTargetOnFirstPlayerJoinChange={(value) =>
-                    campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value)
-                  }
-                  onCopyInviteUrl={(inviteType) => {
-                    void copyInviteUrl(inviteType)
-                  }}
-                  onReissueInvite={(inviteType) => {
-                    requestInviteReissue(inviteType)
-                  }}
-                  onSave={() => {
-                    void saveCampaignSettings()
-                  }}
-                />
-              ) : membershipRole === Role.PLAYER ? (
-                <CampaignRightbarSettings
-                  role="PLAYER"
-                  campaignId={selectedCampaignId || null}
-                  sessionName=""
-                  sessionDescription=""
-                  plannedDurationMinutes={DEFAULT_PLANNED_DURATION_MINUTES}
-                  sessionStateLabel="IDLE"
-                  canEditSessionSettings={false}
-                  onSessionNameChange={() => {
-                    // Offline player settings do not expose session controls.
-                  }}
-                  onSessionDescriptionChange={() => {
-                    // Offline player settings do not expose session controls.
-                  }}
-                  onPlannedDurationMinutesChange={() => {
-                    // Offline player settings do not expose session controls.
-                  }}
-                  onSaveSessionSettings={() => {
-                    // Offline player settings do not expose session controls.
-                  }}
-                  isSessionSaving={false}
-                  dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
-                  onDmAutoTargetChange={() => {
-                    // Offline player settings do not expose DM controls.
-                  }}
-                  onSaveDmAutoTarget={() => {
-                    // Offline player settings do not expose DM controls.
-                  }}
-                  isSaving={false}
-                  isLoading={false}
-                  characterDraft={characterSettingsDraft}
-                  onCharacterFieldChange={handleCharacterFieldChange}
-                  onSaveCharacterSettings={() => {
-                    void saveCharacterSettings()
-                  }}
-                  isCharacterLoading={isCharacterSettingsLoading}
-                  isCharacterSaving={isCharacterSettingsSaving}
-                />
-              ) : (
-                <div className="session-status-message">
-                  Spectators do not have editable campaign settings in offline mode.
-                </div>
-              )
-            }
-            onBackToLobby={() => {
-              setLobbyViewMode('list')
-            }}
-            onCreateCampaign={() => setShowCreateCampaignModal(true)}
-            onJoinCampaign={() => setShowJoinCampaignModal(true)}
-            onToggleTheme={handleToggleTheme}
-            onOpenUserSettings={() => setShowUserSettingsModal(true)}
-            onLogoff={handleLogoff}
-            onLaunch={(campaignId) => {
-              setLobbyViewMode('list')
-              void handleEnterCampaign(campaignId)
-            }}
-            onCopyInviteUrl={(inviteType) => {
-              void copyInviteUrl(inviteType)
-            }}
-            onReissueInvite={(inviteType) => {
-              requestInviteReissue(inviteType)
-            }}
-            onSaveCampaignInfo={handleSaveCampaignInfoPanel}
-          />
-        )}
+        <SessionInitLobbyWorkspaceBranch
+          hasSessionSelected={hasSessionSelected}
+          lobbyViewMode={lobbyViewMode}
+          selectedCampaign={selectedCampaign || null}
+          membershipRole={membershipRole}
+          themeMode={themeMode}
+          isCreatingCampaign={isCreatingCampaign}
+          isJoiningCampaign={isJoiningCampaign}
+          apiUrl={apiUrl}
+          token={token}
+          currentSessionId={currentSessionId || null}
+          currentSessionState={
+            currentSessionId ? (typedSessions[currentSessionId]?.state ?? null) : null
+          }
+          userId={user.id}
+          partyPresenceRefreshVersion={partyPresenceRefreshVersion}
+          fetchWithAuthGuard={fetchWithAuthGuard}
+          connectionStatus={{
+            statusColorKey: connectionStatus.statusColorKey,
+            label: connectionStatus.label,
+            coreWsState: connectionStatus.coreWsState as 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED',
+          }}
+          settingsCampaignSessionsCount={settingsCampaignSessions.length}
+          settingsCampaignTotalDurationMs={settingsCampaignTotalDurationMs}
+          settingsData={settingsData}
+          isInviteReissuing={isInviteReissuing}
+          isSettingsLoading={isSettingsLoading}
+          isSettingsSaving={isSettingsSaving}
+          settingsName={settingsName}
+          settingsDescription={settingsDescription}
+          settingsPosterUrl={settingsPosterUrl}
+          settingsVisibility={settingsVisibility}
+          settingsSpectatorsEnabled={settingsSpectatorsEnabled}
+          settingsSpectatorMax={settingsSpectatorMax}
+          settingsSpectatorWaitlistEnabled={settingsSpectatorWaitlistEnabled}
+          settingsSpectatorReconnectGraceSecs={settingsSpectatorReconnectGraceSecs}
+          settingsPostSessionChatEnabled={settingsPostSessionChatEnabled}
+          settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
+          settingsExtensionSyncPolicy={settingsExtensionSyncPolicy}
+          settingsLateJoinPolicy={settingsLateJoinPolicy}
+          settingsLateJoinGraceMinutes={settingsLateJoinGraceMinutes}
+          settingsDmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
+          selectedCampaignId={selectedCampaignId}
+          characterSettingsDraft={characterSettingsDraft}
+          isCharacterSettingsLoading={isCharacterSettingsLoading}
+          isCharacterSettingsSaving={isCharacterSettingsSaving}
+          onSettingsNameChange={(value) => campaignSettingsActions.setSettingsName(value)}
+          onSettingsDescriptionChange={(value) =>
+            campaignSettingsActions.setSettingsDescription(value)
+          }
+          onPosterFileSelected={handlePosterFileSelected}
+          onSettingsPosterUrlChange={(value) => campaignSettingsActions.setSettingsPosterUrl(value)}
+          onSettingsVisibilityChange={(value) => campaignSettingsActions.setSettingsVisibility(value)}
+          onSettingsSpectatorsEnabledChange={(value) =>
+            campaignSettingsActions.setSettingsSpectatorsEnabled(value)
+          }
+          onSettingsSpectatorMaxChange={(value) =>
+            campaignSettingsActions.setSettingsSpectatorMax(value)
+          }
+          onSettingsSpectatorWaitlistEnabledChange={(value) =>
+            campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value)
+          }
+          onSettingsSpectatorReconnectGraceSecsChange={(value) =>
+            campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value)
+          }
+          onSettingsPostSessionChatEnabledChange={(value) =>
+            campaignSettingsActions.setSettingsPostSessionChatEnabled(value)
+          }
+          onSettingsPostSessionChatDurationMinutesChange={(value) =>
+            campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(value)
+          }
+          onSettingsExtensionSyncPolicyChange={(value) =>
+            campaignSettingsActions.setSettingsExtensionSyncPolicy(value)
+          }
+          onSettingsLateJoinPolicyChange={(value) =>
+            campaignSettingsActions.setSettingsLateJoinPolicy(value)
+          }
+          onSettingsLateJoinGraceMinutesChange={(value) =>
+            campaignSettingsActions.setSettingsLateJoinGraceMinutes(value)
+          }
+          onSettingsDmAutoTargetOnFirstPlayerJoinChange={(value) =>
+            campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value)
+          }
+          onCopyInviteUrl={(inviteType) => {
+            void copyInviteUrl(inviteType)
+          }}
+          onReissueInvite={(inviteType) => {
+            requestInviteReissue(inviteType)
+          }}
+          onSaveCampaignSettings={() => {
+            void saveCampaignSettings()
+          }}
+          onCharacterFieldChange={handleCharacterFieldChange}
+          onSaveCharacterSettings={() => {
+            void saveCharacterSettings()
+          }}
+          onBackToLobby={() => {
+            setLobbyViewMode('list')
+          }}
+          onCreateCampaign={() => setShowCreateCampaignModal(true)}
+          onJoinCampaign={() => setShowJoinCampaignModal(true)}
+          onToggleTheme={handleToggleTheme}
+          onOpenUserSettings={() => setShowUserSettingsModal(true)}
+          onLogoff={handleLogoff}
+          onLaunch={(campaignId) => {
+            setLobbyViewMode('list')
+            void handleEnterCampaign(campaignId)
+          }}
+          onSaveCampaignInfo={handleSaveCampaignInfoPanel}
+          isLaunchDisabled={selectedCampaign ? getCampaignEntryAction(selectedCampaign).disabled : true}
+          launchDisabledReason={
+            selectedCampaign
+              ? (getCampaignEntryAction(selectedCampaign).reason ?? 'Select a campaign first.')
+              : 'Select a campaign first.'
+          }
+        />
 
-        {/* Command center shown whenever a session is selected */}
-        {hasSessionSelected && currentSession && (
-          <div className="session-command-center">
-            <CommandCenterFrame
-              role={effectiveSessionRole}
-              rightRailIndicators={rightRailIndicators}
-              renderSystemToasts={() => (
-                <ReconnectBanner
-                  wsState={wsState}
-                  manualRetryCountdownSeconds={wsRetrySecondsRemaining}
-                />
-              )}
-              renderToolbar={(actions) => (
-                <SessionToolbar
-                  actions={actions}
-                  statusColorKey={connectionStatus.statusColorKey}
-                  statusLabel={connectionStatus.label}
-                  coreWsState={connectionStatus.coreWsState}
-                  livekitState={connectionStatus.livekitState}
-                  sessionState={toSessionStateValue(currentSession.state)}
-                  sessionStartedAt={currentSession.startedAt}
-                  sessionPausedAt={currentSession.pausedAt ?? currentPauseStats.pauseStartedAt}
-                  sessionEndedAt={currentSession.endedAt}
-                  cooldownEndsAt={currentSession.cooldownExpiresAt}
-                  cumulativePauseMs={currentPauseStats.cumulativePauseMs}
-                  pauseCount={currentPauseStats.pauseCount}
-                  cooldownDurationMs={configuredCooldownDurationMs}
-                  canStartSession={canStartFromGreenroom}
-                  canPauseSession={canPauseFromActive}
-                  canStopSession={canStopFromActive}
-                  showCooldownControls={cooldownControlVisible}
-                  canManageCooldown={Boolean(canManageCooldown)}
-                  cooldownControlLockedReason={cooldownControlLockedReason}
-                  canExtendCooldown={canExtendCooldown}
-                  extendCooldownLockedReason={extendCooldownLockedReason}
-                  onStartSession={() => handleStartSession(currentSession.id)}
-                  onPauseSession={() => handlePauseSession(currentSession.id)}
-                  onStopSession={() => handleStopSession()}
-                  onCancelCooldown={() => handleCancelCooldown(currentSession.id)}
-                  onExtendCooldown={() =>
-                    void handleExtendCooldown(currentSession.id, configuredCooldownDurationMs)
-                  }
-                  onOpenUserSettings={() => setShowUserSettingsModal(true)}
-                  onExitToSelector={handleExitToCampaignSelector}
-                />
-              )}
-              renderLeftRail={() => (
-                <div className="session-left-rail-stack">
-                  <SessionLeftRailPanel
-                    apiUrl={apiUrl}
-                    token={token}
-                    sessionId={currentSession.id}
-                    campaignName={selectedCampaign?.name || 'Campaign'}
-                    campaignDescription={selectedCampaign?.description}
-                    role={effectiveSessionRole}
-                    sessionName={currentSession.name}
-                    sessionState={toSessionStateValue(currentSession.state)}
-                    sessionCount={sessionList.length}
-                    connectedPlayersCount={connectedPlayers}
-                    connectedSpectatorsCount={connectedSpectatorsCount}
-                    dmUserId={currentSession.dmId}
-                    currentUserId={effectiveSessionUser.id}
-                    rooms={visibleRooms.map((room) => ({
-                      id: room.id,
-                      name: room.name,
-                      type: room.type,
-                    }))}
-                    roomMembersByRoomId={typedRoomMembers}
-                    sessionEndedAt={currentSession.endedAt}
-                    cooldownDurationMs={configuredCooldownDurationMs}
-                    selectedRoomId={selectedRoomId}
-                    onSelectRoom={handleRoomSelection}
-                    broadcastModeEnabled={broadcastModeEnabled}
-                    onToggleBroadcastMode={handleToggleBroadcastMode}
-                    dmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
-                    dmOverrides={dmOverrides}
-                    currentConditionName={currentConditionName}
-                    roomEnvironmentNames={roomEnvironmentNames}
-                  />
-                  {selectedRoomId ? (
-                    <aside
-                      className="session-left-rail-card session-left-rail-card--audio"
-                      aria-label="Voice panel"
-                    >
-                      <AudioPanel
-                        sessionId={currentSession.id}
-                        roomId={selectedRoomId}
-                        role={effectiveSessionRole}
-                      />
-                    </aside>
-                  ) : null}
-                </div>
-              )}
-              renderCenterPane={(view) => (
-                <div className="session-command-center-pane">
-                  {effectiveSessionRole === Role.SPECTATOR &&
-                  (currentSession.state === SessionState.IDLE ||
-                    currentSession.state === SessionState.PAUSED ||
-                    currentSession.state === SessionState.COOLDOWN ||
-                    currentSession.state === SessionState.ENDED ||
-                    currentSession.state === SessionState.CLEANUP) ? (
-                    <SpectatorWaitScreen
-                      sessionState={currentSession.state}
-                      sessionEndedAt={currentSession.endedAt}
-                      cooldownDurationMs={configuredCooldownDurationMs}
-                    />
-                  ) : view === 'chat' ? (
-                    <div className="session-live-comms">
-                      <section className="session-live-comms__chat" aria-label="Chat panel">
-                        {selectedRoomId ? (
-                          <ChatWindow
-                            apiUrl={apiUrl}
-                            token={token}
-                            sessionId={currentSession.id}
-                            roomId={selectedRoomId}
-                            campaignId={selectedCampaign?.id as UUID | undefined}
-                            roomName={selectedRoom?.name}
-                            roomType={selectedRoom?.type}
-                            user={effectiveSessionUser}
-                            messageGroupingWindowMs={messageGroupingWindowMs}
-                            sendWsEvent={send}
-                            forceMessageType={isGreenroomChatMode ? MessageType.OOC : undefined}
-                          />
-                        ) : (
-                          <div className="session-greenroom-placeholder">
-                            <h4>Greenroom Chat Standby</h4>
-                            <p>
-                              Start the session to open live chat and stream right-side tools over
-                              this workspace.
-                            </p>
-                          </div>
-                        )}
-                      </section>
-                    </div>
-                  ) : (
-                    <NotesPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={currentSession.id}
-                      user={effectiveSessionUser}
-                    />
-                  )}
-                </div>
-              )}
-              renderRightRailTab={(tab) => {
-                return (
-                  <SessionRightRailContent
-                    tab={tab}
-                    informationPanel={
-                      <CampaignInformationPanel
-                        campaign={selectedCampaign ?? null}
-                        sessionCount={settingsCampaignSessions.length}
-                        totalSessionDurationMs={settingsCampaignTotalDurationMs}
-                        canEdit={Boolean(
-                          selectedCampaign && selectedCampaign.currentDmId === user.id
-                        )}
-                        onSaveCampaignInfo={handleSaveCampaignInfoPanel}
-                      />
-                    }
-                    roomsPanel={
-                      <CampaignScaffoldPanel
-                        title="Groups"
-                        subtitle="Voice group configuration is being rebuilt around campaign-level controls."
-                        sections={[
-                          'DM-only group management',
-                          'Greenroom pre-create support',
-                          'Group defaults and templates',
-                          'Campaign routing and policy',
-                        ]}
-                        campaignName={selectedCampaign?.name}
-                      />
-                    }
-                    audioPanel={
-                      <CampaignScaffoldPanel
-                        title="Campaign Audio"
-                        subtitle="Audio policy controls are being reduced to a cleaner campaign-first surface."
-                        sections={[
-                          'Default campaign audio policy',
-                          'Environment and override presets',
-                          'Broadcast and moderation policy',
-                        ]}
-                        campaignName={selectedCampaign?.name}
-                      />
-                    }
-                    notesPanel={
-                      <NotesRailPanel
-                        apiUrl={apiUrl}
-                        token={token}
-                        sessionId={currentSession.id}
-                        role={effectiveSessionRole}
-                        onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
-                      />
-                    }
-                    journalPanel={
-                      <JournalPanel
-                        apiUrl={apiUrl}
-                        token={token}
-                        sessionId={currentSession.id}
-                        sessionName={currentSession.name}
-                        role={effectiveSessionRole}
-                        userId={user.id}
-                      />
-                    }
-                    historyPanel={
-                      <HistoryPanel
-                        apiUrl={apiUrl}
-                        token={token}
-                        sessionId={currentSession.id}
-                        role={effectiveSessionRole}
-                        userId={user.id}
-                      />
-                    }
-                    settingsPanel={
-                      <CampaignRightbarSettings
-                        role={
-                          effectiveSessionRole === 'DM'
-                            ? 'DM'
-                            : effectiveSessionRole === 'PLAYER'
-                              ? 'PLAYER'
-                              : 'SPECTATOR'
-                        }
-                        campaignId={selectedCampaignId || null}
-                        sessionName={sessionSettingsName}
-                        sessionDescription={sessionSettingsDescription}
-                        plannedDurationMinutes={sessionSettingsPlannedDurationMinutes}
-                        sessionStateLabel={currentSession.state}
-                        canEditSessionSettings={canEditSessionSettings}
-                        onSessionNameChange={setSessionSettingsName}
-                        onSessionDescriptionChange={setSessionSettingsDescription}
-                        onPlannedDurationMinutesChange={handlePlannedDurationMinutesChange}
-                        onSaveSessionSettings={() => {
-                          void saveSessionSettings()
-                        }}
-                        isSessionSaving={isSessionSettingsSaving}
-                        dmAutoTarget={settingsDmAutoTargetOnFirstPlayerJoin}
-                        onDmAutoTargetChange={(value) =>
-                          campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value)
-                        }
-                        onSaveDmAutoTarget={() => {
-                          if (selectedCampaignId)
-                            void saveDmVoiceTargetingSetting(selectedCampaignId)
-                        }}
-                        isSaving={isDmVoiceTargetingSettingSaving}
-                        isLoading={isDmVoiceTargetingSettingLoading}
-                        characterDraft={characterSettingsDraft}
-                        onCharacterFieldChange={handleCharacterFieldChange}
-                        onSaveCharacterSettings={() => {
-                          void saveCharacterSettings()
-                        }}
-                        isCharacterLoading={isCharacterSettingsLoading}
-                        isCharacterSaving={isCharacterSettingsSaving}
-                      />
-                    }
-                  />
-                )
-              }}
-            />
-          </div>
-        )}
+        <SessionInitCommandCenter
+          hasSessionSelected={hasSessionSelected}
+          currentSession={currentSession}
+          currentPauseStats={currentPauseStats}
+          configuredCooldownDurationMs={configuredCooldownDurationMs}
+          canStartFromGreenroom={canStartFromGreenroom}
+          canPauseFromActive={canPauseFromActive}
+          canStopFromActive={canStopFromActive}
+          cooldownControlVisible={cooldownControlVisible}
+          canManageCooldown={Boolean(canManageCooldown)}
+          cooldownControlLockedReason={cooldownControlLockedReason}
+          canExtendCooldown={canExtendCooldown}
+          extendCooldownLockedReason={extendCooldownLockedReason}
+          onStartSession={handleStartSession}
+          onPauseSession={handlePauseSession}
+          onStopSession={handleStopSession}
+          onCancelCooldown={handleCancelCooldown}
+          onExtendCooldown={(sessionId, durationMs) => {
+            void handleExtendCooldown(sessionId, durationMs)
+          }}
+          onOpenUserSettings={() => setShowUserSettingsModal(true)}
+          onExitToSelector={handleExitToCampaignSelector}
+          apiUrl={apiUrl}
+          token={token}
+          selectedCampaign={selectedCampaign ?? null}
+          sessionCount={sessionList.length}
+          connectedPlayers={connectedPlayers}
+          connectedSpectatorsCount={connectedSpectatorsCount}
+          effectiveSessionRole={effectiveSessionRole}
+          effectiveSessionUser={effectiveSessionUser}
+          visibleRooms={visibleRooms}
+          roomMembersByRoomId={typedRoomMembers}
+          selectedRoomId={selectedRoomId}
+          onSelectRoom={handleRoomSelection}
+          broadcastModeEnabled={broadcastModeEnabled}
+          onToggleBroadcastMode={handleToggleBroadcastMode}
+          dmAutoTargetOnFirstPlayerJoin={settingsDmAutoTargetOnFirstPlayerJoin}
+          dmOverrides={dmOverrides}
+          currentConditionName={currentConditionName}
+          roomEnvironmentNames={roomEnvironmentNames}
+          wsState={wsState}
+          wsRetrySecondsRemaining={wsRetrySecondsRemaining}
+          connectionStatus={connectionStatus}
+          rightRailIndicators={rightRailIndicators}
+          selectedRoom={selectedRoom ?? null}
+          campaignId={selectedCampaign?.id as UUID | undefined}
+          messageGroupingWindowMs={messageGroupingWindowMs}
+          sendWsEvent={send}
+          isGreenroomChatMode={isGreenroomChatMode}
+          onOpenNotesWorkspace={() => setToolbarCenterPaneView('notes')}
+          totalSessionDurationMs={settingsCampaignTotalDurationMs}
+          canEditCampaignInfo={Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id)}
+          onSaveCampaignInfo={handleSaveCampaignInfoPanel}
+          campaignIdForSettings={selectedCampaignId}
+          sessionSettingsName={sessionSettingsName}
+          sessionSettingsDescription={sessionSettingsDescription}
+          sessionSettingsPlannedDurationMinutes={sessionSettingsPlannedDurationMinutes}
+          canEditSessionSettings={canEditSessionSettings}
+          onSessionNameChange={setSessionSettingsName}
+          onSessionDescriptionChange={setSessionSettingsDescription}
+          onPlannedDurationMinutesChange={handlePlannedDurationMinutesChange}
+          onSaveSessionSettings={() => {
+            void saveSessionSettings()
+          }}
+          isSessionSettingsSaving={isSessionSettingsSaving}
+          onDmAutoTargetChange={(value) =>
+            campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value)
+          }
+          onSaveDmAutoTarget={() => {
+            if (selectedCampaignId) void saveDmVoiceTargetingSetting(selectedCampaignId)
+          }}
+          isDmVoiceTargetingSettingSaving={isDmVoiceTargetingSettingSaving}
+          isDmVoiceTargetingSettingLoading={isDmVoiceTargetingSettingLoading}
+          characterDraft={characterSettingsDraft}
+          onCharacterFieldChange={handleCharacterFieldChange}
+          onSaveCharacterSettings={() => {
+            void saveCharacterSettings()
+          }}
+          isCharacterSettingsLoading={isCharacterSettingsLoading}
+          isCharacterSettingsSaving={isCharacterSettingsSaving}
+          userId={user.id}
+        />
       </div>
 
       <SessionInitModals

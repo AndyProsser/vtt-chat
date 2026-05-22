@@ -4,7 +4,7 @@ import type { Role, SessionState, UUID } from '@shared'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../core-ui'
 import type { Session as SessionRecord } from '@/types/session'
 import { SessionUserSettingsPanel } from './SessionUserSettingsPanel'
-import { CampaignScaffoldPanel } from './CampaignScaffoldPanel'
+import { CampaignScaffoldPanel } from '../campaign-shared/CampaignScaffoldPanel'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from './sessionInit.shared'
 
 type SessionInitModalsProps = {

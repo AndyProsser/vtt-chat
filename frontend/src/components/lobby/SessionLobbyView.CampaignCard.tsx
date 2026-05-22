@@ -11,7 +11,7 @@ import {
   type CampaignSummary,
   getCampaignEntryAction,
   getPrivacyCounterLabel,
-} from './sessionInit.shared'
+} from '../campaign-runtime/sessionInit.shared'
 
 type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'ENDED' | 'INACTIVE'
 

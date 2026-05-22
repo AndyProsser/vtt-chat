@@ -9,7 +9,7 @@ import type { AuthState } from '@/hooks/useAuthSession'
 import { APP_SPLASH_TITLES } from '@/constants/appMainRoute.constants'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { SessionInit } from '@/components/session/SessionInit'
+import { SessionInit } from '@/components/campaign-runtime/SessionInit'
 import '@/styles/components/auth/AuthSurface.css'
 
 type AppMainRouteViewProps = {

@@ -144,6 +144,13 @@ Current shipped note:
    over a rolling 24h window (authoritative platform status source).
    Offline campaign workspace exposes role-routed settings surfaces (DM campaign settings,
    player character settings, spectator read-only).
+   Session shell helpers are being decomposed out of `SessionInit.tsx` into co-located
+   modules (`sessionInit.types.ts`, `sessionInit.utils.ts`, `sessionInit.settings.ts`)
+   so orchestration stays in the component while pure helpers and normalization logic live
+   beside it.
+   Frontend screen ownership is now normalized by UI surface:
+   `components/lobby`, `components/campaign-editor`, `components/campaign-runtime`,
+   and `components/campaign-shared` (cross-surface campaign panels).
 
 
 ████████████████████████████████████████████████████████████████████████████████

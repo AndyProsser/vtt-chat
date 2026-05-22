@@ -1,0 +1,303 @@
+.session-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.session-modal {
+  width: min(560px, 100%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  padding: 1rem;
+}
+
+.session-modal-backdrop--top-offset {
+  align-items: flex-start;
+  padding-top: 72px;
+}
+
+.session-modal--confirm-dialog {
+  width: min(440px, 100%);
+}
+
+/* Radix Dialog variants — overlay is pure backdrop, content is self-centered */
+.session-modal-backdrop--overlay {
+  display: block;
+  padding: 0;
+}
+
+.session-modal--floating {
+  position: fixed;
+  top: 21%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1201;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+.session-campaign-settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.session-campaign-settings-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.session-campaign-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.session-campaign-settings-panel {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
+}
+
+.session-campaign-settings-column {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.session-campaign-invite-panel {
+  margin-top: 0;
+}
+
+.session-toolbar--lobby {
+  margin-bottom: 1rem;
+  grid-template-columns: minmax(280px, 1fr) auto;
+}
+
+.session-lobby-stats {
+  margin-bottom: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.session-lobby-stats__chip {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  padding: 0.45rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.session-lobby-stats__chip .material-symbols-outlined {
+  font-size: 15px;
+}
+
+.session-lobby-stats__chip strong {
+  font-size: 0.78rem;
+}
+
+.session-toolbar--lobby .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.session-toolbar__brand-logo {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+}
+
+.session-inline-form-title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.session-button {
+  padding: 0.5rem 0.75rem;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.session-button[disabled] {
+  background-color: var(--color-border-soft);
+  cursor: not-allowed;
+}
+
+.session-button-brand {
+  background-color: #0284c7;
+}
+
+.session-button-indigo {
+  background-color: #6366f1;
+}
+
+.session-button-success {
+  background-color: #10b981;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.session-button-primary {
+  background-color: #3b82f6;
+}
+
+.session-button-warn {
+  background-color: #f59e0b;
+}
+
+.session-button-violet {
+  background-color: #7c3aed;
+}
+
+.session-button-danger {
+  background-color: #ef4444;
+}
+
+.session-button-neutral {
+  background-color: #6b7280;
+}
+
+.session-status-message {
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.session-error-banner {
+  margin-bottom: 1rem;
+}
+
+.session-list-item {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: #f9fafb;
+}
+
+.session-list-item.current {
+  background-color: #dbeafe;
+}
+
+.session-list-title {
+  margin: 0.25rem 0;
+  font-weight: 500;
+}
+
+.session-list-meta,
+.session-list-description,
+.session-dm-copy,
+.session-placeholder-copy {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.session-campaign-scaffold {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.2rem 0.25rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.session-campaign-scaffold__header {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.session-campaign-scaffold__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.session-campaign-scaffold__subtitle,
+.session-campaign-scaffold__context {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.session-campaign-scaffold__list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.session-campaign-scaffold__list li + li {
+  margin-top: 0.22rem;
+}
+
+.session-action-row {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-action-row--right {
+  justify-content: flex-end;
+}
+
+.session-action-row--compact {
+  margin-top: 0;
+}
+
+.session-action-row--confirm-dialog {
+  justify-content: flex-end;
+}
+
+.session-action-row .session-button {
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.session-create-campaign-note {
+  margin-top: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 28%, var(--color-border-soft));
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--color-brand) 6%, var(--color-surface));
+}
+
+.session-create-campaign-note__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.session-create-campaign-note__list {
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+}
+
+.session-create-campaign-note__list li + li {
+  margin-top: 0.25rem;
+}
+

@@ -1,0 +1,82 @@
+@media (max-width: 760px) {
+  .session-init-shell-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-live-comms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-live-comms__voice {
+    position: static;
+  }
+
+  .session-left-rail-audio {
+    position: static;
+  }
+
+  .session-action-row {
+    flex-direction: column;
+  }
+
+  .session-action-row .session-button {
+    width: 100%;
+  }
+
+  .session-campaign-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-lobby-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-lobby-workspace__header {
+    flex-direction: column;
+  }
+
+  .session-lobby-invite {
+    width: 100%;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .session-lobby-invite__panel {
+    width: min(100%, 32rem);
+    left: 0;
+    transform: none;
+  }
+
+  .session-lobby-workspace__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-lobby-workspace__dock {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  /* Settings tab — switch to single column and relax density on narrow screens */
+  .session-campaign-settings-grid-dialog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-campaign-settings-workspace-root > .session-campaign-settings-grid {
+    overflow-y: visible;
+  }
+
+  .session-campaign-settings-workspace-root .session-toggle-group {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 980px) {
+  .session-command-center {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+}

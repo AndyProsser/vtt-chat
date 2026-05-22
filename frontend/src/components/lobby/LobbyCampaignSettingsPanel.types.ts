@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import type { CampaignSettingsPayload } from './sessionInit.shared'
+import type { CampaignSettingsPayload } from '../campaign-runtime/sessionInit.shared'
 
 export type LobbyCampaignSettingsPanelProps = {
   campaignName?: string
