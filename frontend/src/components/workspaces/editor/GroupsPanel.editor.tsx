@@ -18,6 +18,7 @@ import {
   updateCampaignGroupEnvironment,
 } from '@/services/groupsPanel.service'
 import type { CampaignGroup } from '@/state/campaignGroupsSlice'
+import '@/styles/components/workspaces/session/workspaces/EditorGroupsPanel.css'
 import GroupCard from './GroupCard.editor'
 import CreateGroupModal from './CreateGroupModal'
 import GroupEnvironmentPicker from './GroupEnvironmentPicker'
@@ -141,80 +142,70 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden p-4 text-slate-100">
-      <div className="rounded-2xl border border-slate-700/80 bg-slate-900/70 px-4 py-4 shadow-[0_16px_60px_rgba(2,6,23,0.28)]">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">
+    <section className="editor-groups-panel" aria-label="Campaign groups planner">
+      <header className="editor-groups-panel__hero">
+        <div className="editor-groups-panel__hero-header">
+          <div>
+            <div className="editor-groups-panel__eyebrow">
               <span className="material-symbols-outlined text-sm" aria-hidden="true">
                 widgets
               </span>
               Campaign Group Planner
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-50">Groups Outside Session</h2>
-              <p className="mt-1 max-w-2xl text-sm text-slate-300">
-                Define persistent groups, validate naming, and set default environments before the
-                table goes live. Player assignment only appears inside an active session.
-              </p>
-            </div>
+            <h2 className="editor-groups-panel__title">Groups Outside Session</h2>
+            <p className="editor-groups-panel__subtitle">
+              Define persistent groups, validate naming, and set default environments before the
+              table goes live. Player assignment only appears inside an active session.
+            </p>
           </div>
           <button
             onClick={() => setIsCreating(true)}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:opacity-50"
+            className="editor-groups-button editor-groups-button--primary"
           >
-            <span className="material-symbols-outlined text-base" aria-hidden="true">
+            <span className="material-symbols-outlined" aria-hidden="true">
               add
             </span>
             Create Group
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-700 bg-slate-950/55 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-              Persistent Groups
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-50">{campaignGroups.length}</p>
+        <div className="editor-groups-panel__summary">
+          <div className="editor-groups-panel__summary-count">
+            <span className="editor-groups-panel__summary-label">Persistent Groups</span>
+            <strong className="editor-groups-panel__summary-value">{campaignGroups.length}</strong>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-950/55 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-              Environment Defaults
+          <div className="editor-groups-panel__summary-items">
+            <p className="editor-groups-panel__summary-pill">
+              Set environment defaults before session start.
             </p>
-            <p className="mt-2 text-sm text-slate-200">
-              Attach ambience now so each session starts with the right room mood.
-            </p>
-          </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-950/55 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Session Rule</p>
-            <p className="mt-2 text-sm text-slate-200">
-              No players appear here. Membership and movement stay runtime-only.
+            <p className="editor-groups-panel__summary-pill">
+              Players only appear here during an active session.
             </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/55 p-3 shadow-inner shadow-slate-950/50">
+      <div className="editor-groups-panel__body">
         {campaignGroups.length === 0 ? (
-          <div className="flex h-full min-h-64 items-center justify-center">
-            <div className="max-w-md rounded-2xl border border-dashed border-slate-700 bg-slate-900/55 px-6 py-8 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/12 text-cyan-200">
-                <span className="material-symbols-outlined text-3xl" aria-hidden="true">
+          <div className="editor-groups-panel__empty">
+            <div className="editor-groups-panel__empty-card">
+              <div className="editor-groups-panel__empty-icon">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   groups
                 </span>
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-100">No groups planned yet</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
+              <h3 className="editor-groups-panel__empty-title">No groups planned yet</h3>
+              <p className="editor-groups-panel__empty-copy">
                 Create a group to define table splits, prep atmosphere defaults, and keep the
                 session workspace focused on live player movement.
               </p>
               <button
                 onClick={() => setIsCreating(true)}
                 disabled={isLoading}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
+                className="editor-groups-button editor-groups-button--primary"
               >
-                <span className="material-symbols-outlined text-base" aria-hidden="true">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   add
                 </span>
                 Create First Group
@@ -222,7 +213,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="editor-groups-panel__grid">
             {campaignGroups.map((group) => (
               <GroupCard
                 key={group.id}
@@ -257,22 +248,22 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
 
       {/* Delete Confirmation Modal */}
       {isDeleteConfirming && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="max-w-sm rounded-2xl border border-slate-700 bg-slate-950 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)]">
-            <h3 className="mb-4 text-lg font-semibold text-slate-100">Delete Group?</h3>
-            <p className="mb-6 text-sm leading-6 text-slate-400">
+        <div className="session-modal-backdrop">
+          <div className="session-modal session-modal--confirm-dialog">
+            <h3 className="editor-groups-modal__title">Delete Group?</h3>
+            <p className="editor-groups-panel__confirm-copy">
               This will permanently delete this group and all its settings.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="editor-groups-modal__actions">
               <button
                 onClick={() => setIsDeleteConfirming(null)}
-                className="rounded-xl border border-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-900"
+                className="editor-groups-button editor-groups-button--ghost"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteGroup(isDeleteConfirming)}
-                className="rounded-xl bg-red-500 px-4 py-2 font-semibold text-white transition hover:bg-red-400"
+                className="editor-groups-button editor-groups-button--danger"
               >
                 Delete
               </button>
@@ -280,7 +271,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
