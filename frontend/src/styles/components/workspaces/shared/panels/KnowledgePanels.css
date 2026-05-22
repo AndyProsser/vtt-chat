@@ -289,9 +289,25 @@
   border-left: 3px solid var(--color-brand);
 }
 
+.knowledge-panel-card--interactive {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-panel-card--interactive:hover {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-md);
+}
+
 .knowledge-panel-card.selected {
   border-color: var(--color-border-focus);
   box-shadow: var(--shadow-md);
+}
+
+.knowledge-panel-session-list {
+  display: grid;
+  gap: var(--space-2);
 }
 
 .knowledge-panel-card-header {
@@ -546,7 +562,29 @@
   margin-top: 0.15rem;
 }
 
+.knowledge-panel__journal-edit-fields {
+  display: grid;
+  gap: var(--space-2, 8px);
+  margin-top: 0.15rem;
+}
+
+.knowledge-panel__journal-tag-input {
+  width: min(18rem, 100%);
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface-default);
+  color: var(--color-text-primary);
+  font-size: 0.84rem;
+  font-weight: 500;
+  outline: none;
+}
+
 .knowledge-panel__journal-title-input:focus {
+  border-color: var(--color-accent-border, rgba(99, 102, 241, 0.5));
+}
+
+.knowledge-panel__journal-tag-input:focus {
   border-color: var(--color-accent-border, rgba(99, 102, 241, 0.5));
 }
 

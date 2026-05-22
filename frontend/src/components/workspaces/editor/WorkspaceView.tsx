@@ -5,8 +5,10 @@ import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { EditorJournalPanel } from '@/components/workspaces/editor/EditorJournalPanel'
 import { GroupsPanelEditor } from '@/components/workspaces/editor/GroupsPanel.editor'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
+import type { Session } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from '@/utils/workspaceTabs'
@@ -33,6 +35,9 @@ type WorkspaceViewProps = {
   currentUserId: UUID
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+  settingsCampaignSessions: Session[]
+  settingsReferenceSessionId: UUID | null
+  onSettingsReferenceSessionChange: (sessionId: UUID) => void
   settingsPanel: ReactNode
   onBackToLobby: () => void
   onToggleTheme: () => void
@@ -141,16 +146,13 @@ export function WorkspaceView(props: WorkspaceViewProps) {
 
     if (resolvedActiveTab === 'journal') {
       return (
-        <CampaignScaffoldPanel
-          title="Campaign Journal"
-          iconName="journal"
-          subtitle="Session journal timeline in pre-session review mode."
-          sections={[
-            'Review reverse-chronological entries',
-            'Prepare next-session recap points',
-            'Track searchable hashtags and chapter notes',
-          ]}
-          campaignName={campaign.name}
+        <EditorJournalPanel
+          apiUrl={props.apiUrl}
+          token={props.authToken}
+          role={props.role}
+          sessions={props.settingsCampaignSessions}
+          selectedSessionId={props.settingsReferenceSessionId}
+          onSessionChange={props.onSettingsReferenceSessionChange}
         />
       )
     }

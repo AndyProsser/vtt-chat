@@ -835,6 +835,8 @@ export function WorkspaceInitialization({
     connectionStatus,
     settingsCampaignSessionsCount: settingsCampaignSessions.length,
     settingsCampaignTotalDurationMs,
+    settingsCampaignSessions,
+    settingsReferenceSessionId,
     settingsData,
     isInviteReissuing,
     isSettingsLoading,
@@ -894,6 +896,8 @@ export function WorkspaceInitialization({
     onSaveCharacterSettings: () => {
       void saveCharacterSettings()
     },
+    onSettingsReferenceSessionChange: (sessionId) =>
+      campaignSettingsActions.setSettingsReferenceSessionId(sessionId),
     onBackToLobby: handleBackToLobbyWorkspace,
     onToggleTheme: handleToggleTheme,
     onOpenUserSettings: handleOpenUserSettingsModal,

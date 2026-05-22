@@ -22,6 +22,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       connectionStatus={props.connectionStatus}
       sessionCount={props.settingsCampaignSessionsCount}
       totalSessionDurationMs={props.settingsCampaignTotalDurationMs}
+      settingsCampaignSessions={props.settingsCampaignSessions}
+      settingsReferenceSessionId={props.settingsReferenceSessionId}
       canEditCampaignInfo={Boolean(
         props.selectedCampaign && props.selectedCampaign.currentDmId === props.userId
       )}
@@ -110,6 +112,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       onCopyInviteUrl={props.onCopyInviteUrl}
       onReissueInvite={props.onReissueInvite}
       onSaveCampaignInfo={props.onSaveCampaignInfo}
+      onSettingsReferenceSessionChange={props.onSettingsReferenceSessionChange}
     />
   )
 }

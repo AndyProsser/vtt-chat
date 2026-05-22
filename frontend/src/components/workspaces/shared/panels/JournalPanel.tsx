@@ -30,6 +30,7 @@ interface JournalPanelProps {
 interface JournalEntry {
   id: string
   name: string
+  hashtag: string
   markdown: string
   updatedAt: number
   authorUsername?: string
@@ -54,10 +55,40 @@ interface RawNote {
 
 const JOURNAL_TAG = '_journal'
 
-function noteToEntry(note: RawNote): JournalEntry {
+function normalizeJournalHashtag(value: string, fallbackSeed = 'session-journal'): string {
+  const stripped = value.trim().replace(/^#+/, '')
+  const normalized = stripped
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, '')
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+
+  return `#${normalized || fallbackSeed}`
+}
+
+function buildDefaultJournalHashtag(sessionName?: string, sessionId?: UUID): string {
+  const fallbackSeed = sessionId ? `session-${String(sessionId).slice(0, 8)}` : 'session-journal'
+  return normalizeJournalHashtag(sessionName || fallbackSeed, fallbackSeed)
+}
+
+function extractJournalHashtag(
+  tags: string[] | undefined,
+  sessionName?: string,
+  sessionId?: UUID
+): string {
+  const journalHashtag = (tags ?? []).find((tag) => tag !== JOURNAL_TAG)
+  return normalizeJournalHashtag(
+    journalHashtag || '',
+    buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
+  )
+}
+
+function noteToEntry(note: RawNote, sessionName?: string, sessionId?: UUID): JournalEntry {
   return {
     id: note.id,
     name: note.name ?? note.title ?? 'Session Journal',
+    hashtag: extractJournalHashtag(note.tags, sessionName, sessionId),
     markdown: note.markdown ?? note.content ?? '',
     updatedAt: note.updatedAt ?? note.createdAt ?? Date.now(),
     authorUsername: note.authorUsername,
@@ -70,6 +101,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [draft, setDraft] = useState<string>('')
   const [draftName, setDraftName] = useState<string>('')
+  const [draftHashtag, setDraftHashtag] = useState<string>('')
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -101,16 +133,18 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
 
         if (!cancelled) {
           if (journalNote) {
-            const mapped = noteToEntry(journalNote)
+            const mapped = noteToEntry(journalNote, sessionName, sessionId)
             setEntry(mapped)
             setDraft(mapped.markdown)
             setDraftName(mapped.name)
+            setDraftHashtag(mapped.hashtag)
           } else {
             // No journal note yet — seed an empty draft
             const defaultName = sessionName ? `Journal — ${sessionName}` : 'Session Journal'
             setEntry(null)
             setDraft('')
             setDraftName(defaultName)
+            setDraftHashtag(buildDefaultJournalHashtag(sessionName, sessionId))
           }
         }
       } catch {
@@ -131,6 +165,10 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
     if (!isDm) return
     setIsSaving(true)
     setSaveError(null)
+    const normalizedHashtag = normalizeJournalHashtag(
+      draftHashtag,
+      buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
+    )
 
     try {
       let res: Response
@@ -150,7 +188,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
             // new contract fields
             name: draftName,
             markdown: draft,
-            tags: [JOURNAL_TAG],
+            tags: [JOURNAL_TAG, normalizedHashtag],
           }),
         })
       } else {
@@ -168,7 +206,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
             name: draftName,
             markdown: draft,
             visibility: 'PLAYERS_VISIBLE',
-            tags: [JOURNAL_TAG],
+            tags: [JOURNAL_TAG, normalizedHashtag],
           }),
         })
       }
@@ -180,10 +218,11 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
 
       const data = (await res.json()) as { note?: RawNote }
       if (data.note) {
-        const saved = noteToEntry(data.note)
+        const saved = noteToEntry(data.note, sessionName, sessionId)
         setEntry(saved)
         setDraft(saved.markdown)
         setDraftName(saved.name)
+        setDraftHashtag(saved.hashtag)
         // Sync into notes store so other panels see it
         addNote(sessionId, {
           id: saved.id as UUID,
@@ -192,7 +231,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
           title: saved.name,
           content: saved.markdown,
           visibility: 'PLAYERS_VISIBLE' as any,
-          tags: [JOURNAL_TAG],
+          tags: [JOURNAL_TAG, saved.hashtag],
           allowedUsers: [],
           createdAt: saved.updatedAt,
           updatedAt: saved.updatedAt,
@@ -205,16 +244,19 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
     } finally {
       setIsSaving(false)
     }
-  }, [apiUrl, token, sessionId, entry, draft, draftName, isDm, addNote])
+  }, [apiUrl, token, sessionId, entry, draft, draftName, draftHashtag, isDm, addNote, sessionName])
 
   const handleCancel = useCallback(() => {
     if (entry) {
       setDraft(entry.markdown)
       setDraftName(entry.name)
+      setDraftHashtag(entry.hashtag)
+    } else {
+      setDraftHashtag(buildDefaultJournalHashtag(sessionName, sessionId))
     }
     setIsEditing(false)
     setSaveError(null)
-  }, [entry])
+  }, [entry, sessionId, sessionName])
 
   // ── Render ───────────────────────────────────────────────────────
 
@@ -227,6 +269,7 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
   }
 
   const displayName = entry?.name ?? draftName
+  const displayHashtag = entry?.hashtag ?? draftHashtag
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
 
   return (
@@ -235,25 +278,40 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
         <div>
           <p className="knowledge-panel-eyebrow">Session Journal</p>
           {isEditing ? (
-            <input
-              className="knowledge-panel__journal-title-input"
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              placeholder="Journal title…"
-              maxLength={120}
-              aria-label="Journal title"
-            />
+            <div className="knowledge-panel__journal-edit-fields">
+              <input
+                className="knowledge-panel__journal-title-input"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="Journal title…"
+                maxLength={120}
+                aria-label="Journal title"
+              />
+              <input
+                className="knowledge-panel__journal-tag-input"
+                value={draftHashtag}
+                onChange={(e) => setDraftHashtag(e.target.value)}
+                placeholder="#last-session"
+                maxLength={64}
+                aria-label="Journal hashtag"
+              />
+            </div>
           ) : (
             <h3 className="knowledge-panel-title">
               <Icon name="journal" />
               {displayName || 'Session Journal'}
             </h3>
           )}
-          {lastUpdated && !isEditing && (
-            <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
-              Last updated {lastUpdated}
-            </p>
-          )}
+          <div className="knowledge-panel-chip-row">
+            {displayHashtag ? (
+              <span className="knowledge-panel-chip muted">{displayHashtag}</span>
+            ) : null}
+            {lastUpdated && !isEditing ? (
+              <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
+                Last updated {lastUpdated}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         {isDm && !isEditing && (

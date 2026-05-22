@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { UUID } from '@shared'
 import { EditorWorkspace } from '@/components/workspaces/EditorWorkspace'
+import type { Session } from '@/types/session'
 import { getCampaignEntryAction } from '@/types/session/campaign'
 
 type BuildEditorWorkspacePropsParams = {
@@ -23,6 +24,8 @@ type BuildEditorWorkspacePropsParams = {
   }
   settingsCampaignSessionsCount: number
   settingsCampaignTotalDurationMs: number
+  settingsCampaignSessions: Session[]
+  settingsReferenceSessionId: UUID | null
   settingsData: ComponentProps<typeof EditorWorkspace>['settingsData']
   isInviteReissuing: boolean
   isSettingsLoading: boolean
@@ -85,6 +88,9 @@ type BuildEditorWorkspacePropsParams = {
   onSaveCampaignSettings: ComponentProps<typeof EditorWorkspace>['onSaveCampaignSettings']
   onCharacterFieldChange: ComponentProps<typeof EditorWorkspace>['onCharacterFieldChange']
   onSaveCharacterSettings: ComponentProps<typeof EditorWorkspace>['onSaveCharacterSettings']
+  onSettingsReferenceSessionChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsReferenceSessionChange']
   onBackToLobby: ComponentProps<typeof EditorWorkspace>['onBackToLobby']
   onToggleTheme: ComponentProps<typeof EditorWorkspace>['onToggleTheme']
   onOpenUserSettings: ComponentProps<typeof EditorWorkspace>['onOpenUserSettings']
@@ -119,6 +125,8 @@ export function buildEditorWorkspaceProps(
     },
     settingsCampaignSessionsCount: params.settingsCampaignSessionsCount,
     settingsCampaignTotalDurationMs: params.settingsCampaignTotalDurationMs,
+    settingsCampaignSessions: params.settingsCampaignSessions,
+    settingsReferenceSessionId: params.settingsReferenceSessionId,
     settingsData: params.settingsData,
     isInviteReissuing: params.isInviteReissuing,
     isSettingsLoading: params.isSettingsLoading,
@@ -163,6 +171,7 @@ export function buildEditorWorkspaceProps(
     onSaveCampaignSettings: params.onSaveCampaignSettings,
     onCharacterFieldChange: params.onCharacterFieldChange,
     onSaveCharacterSettings: params.onSaveCharacterSettings,
+    onSettingsReferenceSessionChange: params.onSettingsReferenceSessionChange,
     onBackToLobby: params.onBackToLobby,
     onToggleTheme: params.onToggleTheme,
     onOpenUserSettings: params.onOpenUserSettings,

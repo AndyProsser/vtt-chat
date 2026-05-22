@@ -1,6 +1,7 @@
 import { type Role, type SessionState, type UUID } from '@shared'
 import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
+import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 
 export type EditorWorkspaceProps = {
@@ -23,6 +24,8 @@ export type EditorWorkspaceProps = {
   }
   settingsCampaignSessionsCount: number
   settingsCampaignTotalDurationMs: number
+  settingsCampaignSessions: Session[]
+  settingsReferenceSessionId: UUID | null
   settingsData: CampaignSettingsPayload | null
   isInviteReissuing: boolean
   isSettingsLoading: boolean
@@ -65,6 +68,7 @@ export type EditorWorkspaceProps = {
   onSaveCampaignSettings: () => void
   onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
   onSaveCharacterSettings: () => void
+  onSettingsReferenceSessionChange: (sessionId: UUID) => void
   onBackToLobby: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
