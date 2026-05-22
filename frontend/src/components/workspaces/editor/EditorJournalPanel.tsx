@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionState, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -94,7 +94,6 @@ export function EditorJournalPanel({
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
-  const sessionItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
     setJournalStatusBySession((current) => ({
@@ -135,19 +134,6 @@ export function EditorJournalPanel({
     typeof effectiveSessionIndex === 'number' && effectiveSessionIndex > 0
       ? sortedSessions[effectiveSessionIndex - 1]
       : undefined
-
-  useEffect(() => {
-    if (!effectiveSessionId) {
-      return
-    }
-
-    const selectedItem = sessionItemRefs.current[effectiveSessionId]
-    if (!selectedItem) {
-      return
-    }
-
-    selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [effectiveSessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -260,14 +246,7 @@ export function EditorJournalPanel({
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
-              <div
-                key={session.id}
-                role="listitem"
-                className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
-                ref={(node) => {
-                  sessionItemRefs.current[session.id] = node
-                }}
-              >
+              <div key={session.id} role="listitem" className="knowledge-panel-session-item">
                 <button
                   type="button"
                   className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
@@ -306,15 +285,7 @@ export function EditorJournalPanel({
 
                 {isSelected ? (
                   <div className="knowledge-panel-session-item__editor">
-                    {!hasContent ? (
-                      <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
-                        No recap yet for this session. Open the markdown journal below and write
-                        what happened.
-                      </p>
-                    ) : null}
-
                     <JournalPanel
-                      key={session.id}
                       apiUrl={apiUrl}
                       token={token}
                       sessionId={session.id}
@@ -322,7 +293,6 @@ export function EditorJournalPanel({
                       role={role}
                       autoEdit
                       autoSave
-                      hideHeader
                       onSaved={({ hasContent: nextHasContent, hasJournal }) => {
                         updateJournalStatus(session.id, {
                           hasContent: nextHasContent,
