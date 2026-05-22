@@ -9,7 +9,7 @@ import {
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
-import { getSession } from '@/services/session/core.service'
+import { getSession, getSessionUsers } from '@/services/session/core.service'
 import {
   createNote,
   deleteNote,
@@ -36,6 +36,7 @@ import {
   parseUpdateNoteRequest,
 } from '@/services/notes/route-helpers.service'
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
+import { createSessionLog } from '@/repositories/session-logs.repository'
 
 const router = Router()
 
@@ -54,6 +55,37 @@ function toNoteAuditVisibilityClass(visibility: NoteVisibility): SessionAuditVis
     default:
       return 'PUBLIC'
   }
+}
+
+function summarizeSharedWith(params: {
+  visibility: NoteVisibility
+  allowedUsers?: UUID[]
+  sessionDmId: UUID
+  sessionUsernamesById: Map<UUID, string>
+}): string {
+  if (params.visibility === NoteVisibility.DM_ONLY) {
+    return 'DM only'
+  }
+
+  if (params.visibility === NoteVisibility.PLAYERS_VISIBLE) {
+    return 'All players'
+  }
+
+  const allowed = (params.allowedUsers || []).filter((userId) => userId !== params.sessionDmId)
+  if (allowed.length === 0) {
+    return 'Custom share list (none selected)'
+  }
+
+  const names = allowed.map((userId) => params.sessionUsernamesById.get(userId) || userId)
+  return names.join(', ')
+}
+
+function summarizeHashtags(tags: string[]): string {
+  if (tags.length === 0) {
+    return 'None'
+  }
+
+  return tags.map((tag) => (tag.startsWith('#') ? tag : `#${tag}`)).join(', ')
 }
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -480,13 +512,45 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     published.content.length > NOTE_PUBLISH_SNIPPET_MAX_LENGTH
       ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
       : published.content
+
+  const sessionUsers = await getSessionUsers(published.sessionId)
+  const sessionUsernamesById = new Map(
+    sessionUsers.map((sessionUser) => [sessionUser.id as UUID, sessionUser.username] as const)
+  )
+  const sharedWithSummary = summarizeSharedWith({
+    visibility: published.visibility,
+    allowedUsers: published.allowedUsers,
+    sessionDmId: session.dmId,
+    sessionUsernamesById,
+  })
+  const hashtagsSummary = summarizeHashtags(published.tags || [])
+
+  const historyContentPreview =
+    published.content.length > NOTE_PUBLISH_SNIPPET_MAX_LENGTH
+      ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
+      : published.content
+
   const message = await sendMessage({
     sessionId: published.sessionId,
     authorId: user.userId as UUID,
     authorUsername: user.username,
     dmId: session.dmId,
-    content: `[Note] ${published.title}: ${snippet}`,
+    content:
+      `[Note Shared] ${published.title}\n` +
+      `Shared with: ${sharedWithSummary}\n` +
+      `Hashtags: ${hashtagsSummary}\n` +
+      `${snippet}`,
     type: MessageType.SYSTEM,
+  })
+
+  await createSessionLog({
+    sessionId: published.sessionId,
+    userId: user.userId as UUID,
+    username: user.username,
+    eventType: 'STATE_CHANGED',
+    detail:
+      `Note shared | Name: ${published.title} | Content: ${historyContentPreview} | ` +
+      `Shared with: ${sharedWithSummary} | Hashtags: ${hashtagsSummary}`,
   })
 
   await appendSessionAuditEvent({

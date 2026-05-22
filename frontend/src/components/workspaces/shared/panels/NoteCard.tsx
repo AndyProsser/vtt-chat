@@ -43,7 +43,6 @@ export function NoteCard({
   const [content, setContent] = useState(note.content)
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
   const [tagsText, setTagsText] = useState(note.tags.join(', '))
-  const [shareWithInput, setShareWithInput] = useState('')
   const [selectedShareUserId, setSelectedShareUserId] = useState('')
   const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>(note.allowedUsers || [])
@@ -57,7 +56,6 @@ export function NoteCard({
     setVisibility(note.visibility)
     setTagsText(note.tags.join(', '))
     setAllowedUsers(note.allowedUsers || [])
-    setShareWithInput('')
     setSelectedShareUserId('')
     setSelectedShareRoomId('')
     setError(null)
@@ -138,16 +136,23 @@ export function NoteCard({
     setSelectedShareRoomId('')
   }
 
-  const handleAddManualUser = () => {
-    const candidate = shareWithInput.trim()
-    if (!candidate) return
-    addAllowedUser(candidate)
-    setShareWithInput('')
-  }
-
   const removeAllowedUser = (userId: string) => {
     setAllowedUsers((prev) => prev.filter((id) => id !== userId))
   }
+
+  const sharedWithLabel =
+    note.visibility === NoteVisibility.DM_ONLY
+      ? 'DM only'
+      : note.visibility === NoteVisibility.PLAYERS_VISIBLE
+        ? 'All players'
+        : note.allowedUsers && note.allowedUsers.length > 0
+          ? note.allowedUsers
+              .map(
+                (userId) =>
+                  shareUsers.find((candidate) => candidate.id === userId)?.username || userId
+              )
+              .join(', ')
+          : 'Custom list (none selected)'
 
   const publishedLabel = note.publishedAt ? new Date(note.publishedAt).toLocaleString() : null
 
@@ -195,7 +200,7 @@ export function NoteCard({
                     onChange={(e) => setSelectedShareUserId(e.target.value)}
                     className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
                   >
-                    <option value="">Select player to share with</option>
+                    <option value="">Share with player</option>
                     {shareUsers.map((shareUser) => (
                       <option key={shareUser.id} value={shareUser.id}>
                         {shareUser.username}
@@ -217,7 +222,7 @@ export function NoteCard({
                     onChange={(e) => setSelectedShareRoomId(e.target.value)}
                     className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
                   >
-                    <option value="">Select group to share with</option>
+                    <option value="">Share with everyone in group</option>
                     {shareRooms.map((shareRoom) => (
                       <option key={shareRoom.id} value={shareRoom.id}>
                         {shareRoom.name}
@@ -231,21 +236,6 @@ export function NoteCard({
                     className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Add group
-                  </button>
-                </div>
-                <div className="mb-1.5 flex gap-2">
-                  <input
-                    value={shareWithInput}
-                    onChange={(e) => setShareWithInput(e.target.value)}
-                    placeholder="Or paste user ID"
-                    className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddManualUser}
-                    className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
-                  >
-                    Add
                   </button>
                 </div>
                 {shareRooms.length === 0 ? (
@@ -311,6 +301,7 @@ export function NoteCard({
             </div>
             <p className="my-2 whitespace-pre-wrap text-sm text-ui-primary">{note.content}</p>
             <p className="mb-2 text-xs text-ui-secondary">by {note.ownerUsername}</p>
+            <p className="mb-2 text-xs text-ui-secondary">Shared with: {sharedWithLabel}</p>
             {note.publishedAt && (
               <p className="mb-2 text-xs text-emerald-700">Published to chat: {publishedLabel}</p>
             )}

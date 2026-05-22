@@ -84,7 +84,7 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
               onChange={(event) => props.onSelectedShareUserIdChange(event.target.value)}
               className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
             >
-              <option value="">Select player to share with</option>
+              <option value="">Share with player</option>
               {props.shareUsers.map((shareUser) => (
                 <option key={shareUser.id} value={shareUser.id}>
                   {shareUser.username}
@@ -107,7 +107,7 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
               onChange={(event) => props.onSelectedShareRoomIdChange(event.target.value)}
               className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
             >
-              <option value="">Select group to share with</option>
+              <option value="">Share with everyone in group</option>
               {props.shareRooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name}
