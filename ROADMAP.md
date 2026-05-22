@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-21
+**Last Updated**: 2026-05-22
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -186,10 +186,10 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, JOURNAL, NOTES, HISTORY, SETTINGS (PARTY is 2nd; JOURNAL comes before NOTES)
 - [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [x] INFO is readable by all personas; DM can edit campaign name/description/poster
-- [ ] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
+- [x] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
 - [ ] PARTY row fields include: name, class, level, race, presence status (`HERE` | `AWAY` | `LOBBY` | `NOT HERE` | `OFFLINE`), last seen, stats, and active conditions (same visible fields for players and spectators)
-- [ ] PARTY/Lobby presence labels and transitions follow the shared model in `docs/ui/PRESENCE-STATUS-MODEL.md`
-- [ ] ROOMS panel is DM-only and hidden entirely for non-DM personas
+- [x] PARTY/Lobby presence labels and transitions follow the shared model in `docs/ui/PRESENCE-STATUS-MODEL.md`
+- [x] ROOMS panel is DM-only and hidden entirely for non-DM personas
 - [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
 - [ ] JOURNAL is readable by all personas; DM-only edit
 - [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
@@ -202,7 +202,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
 - [ ] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
-- [ ] Right-panel dismisses on backdrop click
+- [x] Right-panel dismisses on backdrop click
 - [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
 
 **Related Docs**:
@@ -210,6 +210,18 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [docs/ui/UI-LAYOUT.md](docs/ui/UI-LAYOUT.md)
 - [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md)
 - [docs/ui/PRESENCE-STATUS-MODEL.md](docs/ui/PRESENCE-STATUS-MODEL.md)
+
+**Evidence snapshot (2026-05-22):**
+
+- PARTY panel now backed by live `GET /api/campaigns/:campaignId/party-presence` snapshot; placeholder mock data removed from normal operation.
+- PARTY row renders name, character name, class, level, race, ability scores (STR/DEX/CON/INT/WIS/CHA), presence label, last-seen timestamp, and manual away toggle.
+- Presence labels `HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE` are derived from authoritative runtime/session state via the shared `PRESENCE-STATUS-MODEL`; manual AWAY toggle writes through `PUT /api/presence/:sessionId/state`; inactivity auto-away fires after 8-minute idle window.
+- `CAMPAIGN:PARTY_PRESENCE_UPDATED` WS signal triggers immediate PARTY panel refetch on any presence or session change.
+- Role-based tab visibility moved to a single canonical policy file (`workspacePanelPolicy.constants.ts`); `rooms` and `audio` tabs are hidden for PLAYER; `party`, `rooms`, `notes`, `audio`, `settings` are hidden for SPECTATOR — enforced at runtime, not scattered across components.
+- Right-rail overlay click-outside handler (`handleRightRailClickOutside`) closes the panel on backdrop click with animation guard.
+- Frontend workspace structure normalization: toolbar, modals, and session orchestration files moved to dedicated domain folders; `CampaignInformationPanel` and `CampaignSettingsPanel` families moved to named subfolders with stripped prefixes (`CampaignInformationPanel/index.tsx`, `Header.tsx`, etc.).
+- Screenshot diagnostics mode added (`?debugUi=1`) for layout verification and component ownership mapping.
+- Active conditions are not yet shown in PARTY rows; that field depends on W-Audio-Condition.
 
 **Evidence snapshot (2026-05-20):**
 
