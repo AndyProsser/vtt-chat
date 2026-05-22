@@ -97,6 +97,13 @@ export function EditorJournalPanel({
     Record<string, SessionJournalStatus>
   >({})
 
+  const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
+    setJournalStatusBySession((current) => ({
+      ...current,
+      [sessionId]: nextStatus,
+    }))
+  }, [])
+
   const sortedSessions = [...sessions].sort((left, right) => right.createdAt - left.createdAt)
   const fallbackSession = sortedSessions[0] ?? null
   const effectiveSessionId = selectedSessionId ?? fallbackSession?.id ?? null
@@ -233,68 +240,70 @@ export function EditorJournalPanel({
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
-              <button
-                key={session.id}
-                type="button"
-                role="listitem"
-                className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
-                onClick={() => onSessionChange(session.id)}
-                aria-pressed={isSelected}
-              >
-                <div className="knowledge-panel-card-header">
-                  <div>
-                    <h4 className="knowledge-panel-card-title">{session.name}</h4>
-                    <p className="knowledge-panel-card-subtitle">
-                      {new Date(session.createdAt).toLocaleDateString()}
-                    </p>
-                    <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
-                      {hasContent
-                        ? 'Recap ready for players.'
-                        : hasJournal
-                          ? missingCopy.cardBody
-                          : missingCopy.cardBody}
-                    </p>
+              <div key={session.id} role="listitem" className="knowledge-panel-session-item">
+                <button
+                  type="button"
+                  className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
+                  onClick={() => onSessionChange(session.id)}
+                  aria-pressed={isSelected}
+                >
+                  <div className="knowledge-panel-card-header">
+                    <div>
+                      <h4 className="knowledge-panel-card-title">{session.name}</h4>
+                      <p className="knowledge-panel-card-subtitle">
+                        {new Date(session.createdAt).toLocaleDateString()}
+                      </p>
+                      <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
+                        {hasContent ? 'Recap ready for players.' : missingCopy.cardBody}
+                      </p>
+                    </div>
+                    <div className="knowledge-panel-chip-row">
+                      {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
+                      {hasContent ? (
+                        <span className="knowledge-panel-chip muted">Has recap</span>
+                      ) : (
+                        <span className="knowledge-panel-chip knowledge-panel-chip--warn">
+                          Needs recap
+                        </span>
+                      )}
+                      {isSelected ? <span className="knowledge-panel-chip muted">Open</span> : null}
+                    </div>
                   </div>
-                  <div className="knowledge-panel-chip-row">
-                    {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
-                    {hasContent ? (
-                      <span className="knowledge-panel-chip muted">Has recap</span>
-                    ) : (
-                      <span className="knowledge-panel-chip knowledge-panel-chip--warn">
-                        Needs recap
-                      </span>
-                    )}
-                    {isSelected ? <span className="knowledge-panel-chip muted">Open</span> : null}
+                </button>
+
+                {isSelected ? (
+                  <div className="knowledge-panel-session-item__editor">
+                    {!effectiveStatus?.hasContent && effectiveMissingCopy ? (
+                      <div className="knowledge-panel-section-summary">
+                        <span className="knowledge-panel-group-title">Session Journal</span>
+                        <strong className="knowledge-panel-section-summary__title">
+                          {effectiveSession.name}
+                        </strong>
+                        <span className="knowledge-panel-section-summary__hint">
+                          {effectiveMissingCopy.sectionHint}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <JournalPanel
+                      apiUrl={apiUrl}
+                      token={token}
+                      sessionId={session.id}
+                      sessionName={session.name}
+                      role={role}
+                      autoEdit
+                      autoSave
+                      onSaved={({ hasContent, hasJournal }) => {
+                        updateJournalStatus(session.id, { hasContent, hasJournal })
+                      }}
+                    />
                   </div>
-                </div>
-              </button>
+                ) : null}
+              </div>
             )
           })}
         </div>
       </div>
-
-      <section className="knowledge-panel-group" aria-label="Selected session journal">
-        <div className="knowledge-panel-section-summary">
-          <span className="knowledge-panel-group-title">Session Journal</span>
-          <strong className="knowledge-panel-section-summary__title">
-            {effectiveSession.name}
-          </strong>
-          {!effectiveStatus?.hasContent && effectiveMissingCopy ? (
-            <span className="knowledge-panel-section-summary__hint">
-              {effectiveMissingCopy.sectionHint}
-            </span>
-          ) : null}
-        </div>
-
-        <JournalPanel
-          apiUrl={apiUrl}
-          token={token}
-          sessionId={effectiveSessionId}
-          sessionName={effectiveSession.name}
-          role={role}
-          autoEdit
-        />
-      </section>
     </section>
   )
 }

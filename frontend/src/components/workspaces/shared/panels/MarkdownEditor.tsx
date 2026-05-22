@@ -29,6 +29,7 @@ export type MarkdownEditorVariant = 'full' | 'restricted'
 export interface MarkdownEditorProps {
   value: string
   onChange?: (markdown: string) => void
+  onBlur?: (event: React.FocusEvent<HTMLDivElement>) => void
   placeholder?: string
   readOnly?: boolean
   variant?: MarkdownEditorVariant
@@ -46,6 +47,7 @@ function stripExternalLinks(md: string): string {
 export function MarkdownEditor({
   value,
   onChange,
+  onBlur,
   placeholder = 'Start writing…',
   readOnly = false,
   variant = 'full',
@@ -295,7 +297,7 @@ export function MarkdownEditor({
     .join(' ')
 
   return (
-    <div className={rootClass} data-testid="markdown-editor">
+    <div className={rootClass} data-testid="markdown-editor" onBlur={onBlur}>
       {toolbar}
 
       {mode === 'rich' ? (

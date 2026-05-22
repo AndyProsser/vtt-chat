@@ -10,13 +10,15 @@
  * See: docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
+
+const AUTO_SAVE_DEBOUNCE_MS = 900
 
 interface JournalPanelProps {
   apiUrl: string
@@ -26,6 +28,8 @@ interface JournalPanelProps {
   role: Role
   userId?: UUID
   autoEdit?: boolean
+  autoSave?: boolean
+  onSaved?: (payload: { sessionId: UUID; hasContent: boolean; hasJournal: boolean }) => void
 }
 
 interface JournalEntry {
@@ -103,6 +107,8 @@ export function JournalPanel({
   sessionName,
   role,
   autoEdit = false,
+  autoSave = false,
+  onSaved,
 }: JournalPanelProps) {
   const isDm = role === 'DM'
 
@@ -116,6 +122,14 @@ export function JournalPanel({
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const addNote = useStore((state) => state.addNote)
+  const defaultName = useMemo(
+    () => (sessionName ? `Journal — ${sessionName}` : 'Session Journal'),
+    [sessionName]
+  )
+  const defaultHashtag = useMemo(
+    () => buildDefaultJournalHashtag(sessionName, sessionId),
+    [sessionId, sessionName]
+  )
 
   // ── Load journal entry for this session ──────────────────────────
   useEffect(() => {
@@ -148,11 +162,10 @@ export function JournalPanel({
             setDraftHashtag(mapped.hashtag)
           } else {
             // No journal note yet — seed an empty draft
-            const defaultName = sessionName ? `Journal — ${sessionName}` : 'Session Journal'
             setEntry(null)
             setDraft('')
             setDraftName(defaultName)
-            setDraftHashtag(buildDefaultJournalHashtag(sessionName, sessionId))
+            setDraftHashtag(defaultHashtag)
           }
         }
       } catch {
@@ -166,21 +179,29 @@ export function JournalPanel({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, sessionName])
+  }, [apiUrl, token, sessionId, sessionName, defaultHashtag, defaultName])
 
   useEffect(() => {
     setIsEditing(isDm && autoEdit)
   }, [autoEdit, isDm, sessionId])
 
+  const normalizedDraftHashtag = useMemo(
+    () => normalizeJournalHashtag(draftHashtag, defaultHashtag.slice(1)),
+    [defaultHashtag, draftHashtag]
+  )
+  const hasDraftContent = draft.trim().length > 0
+  const hasUnsavedChanges = entry
+    ? draft !== entry.markdown ||
+      draftName !== entry.name ||
+      normalizedDraftHashtag !== entry.hashtag
+    : hasDraftContent
+
   // ── Save (create or update) ──────────────────────────────────────
   const handleSave = useCallback(async () => {
-    if (!isDm) return
+    if (!isDm || isSaving || !hasUnsavedChanges) return
     setIsSaving(true)
     setSaveError(null)
-    const normalizedHashtag = normalizeJournalHashtag(
-      draftHashtag,
-      buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
-    )
+    const normalizedHashtag = normalizedDraftHashtag
 
     try {
       let res: Response
@@ -248,15 +269,67 @@ export function JournalPanel({
           createdAt: saved.updatedAt,
           updatedAt: saved.updatedAt,
         })
+        onSaved?.({
+          sessionId,
+          hasJournal: true,
+          hasContent: saved.markdown.trim().length > 0,
+        })
       }
 
-      setIsEditing(false)
+      if (!autoEdit) {
+        setIsEditing(false)
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save journal')
     } finally {
       setIsSaving(false)
     }
-  }, [apiUrl, token, sessionId, entry, draft, draftName, draftHashtag, isDm, addNote, sessionName])
+  }, [
+    apiUrl,
+    token,
+    sessionId,
+    entry,
+    draft,
+    draftName,
+    isDm,
+    addNote,
+    sessionName,
+    normalizedDraftHashtag,
+    autoEdit,
+    onSaved,
+    isSaving,
+    hasUnsavedChanges,
+  ])
+
+  useEffect(() => {
+    if (!autoSave || !isDm || isLoading || !isEditing || isSaving || !hasUnsavedChanges) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void handleSave()
+    }, AUTO_SAVE_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [autoSave, isDm, isLoading, isEditing, isSaving, hasUnsavedChanges, handleSave])
+
+  const handleBlurSave = useCallback(
+    (event?: React.FocusEvent<HTMLElement>) => {
+      if (!autoSave || !isDm || isSaving || !hasUnsavedChanges) {
+        return
+      }
+
+      const nextTarget = event?.relatedTarget
+      if (nextTarget instanceof Node && event?.currentTarget.contains(nextTarget)) {
+        return
+      }
+
+      void handleSave()
+    },
+    [autoSave, hasUnsavedChanges, handleSave, isDm, isSaving]
+  )
 
   const handleCancel = useCallback(() => {
     if (entry) {
@@ -264,11 +337,12 @@ export function JournalPanel({
       setDraftName(entry.name)
       setDraftHashtag(entry.hashtag)
     } else {
-      setDraftHashtag(buildDefaultJournalHashtag(sessionName, sessionId))
+      setDraftName(defaultName)
+      setDraftHashtag(defaultHashtag)
     }
     setIsEditing(false)
     setSaveError(null)
-  }, [entry, sessionId, sessionName])
+  }, [defaultHashtag, defaultName, entry])
 
   // ── Render ───────────────────────────────────────────────────────
 
@@ -295,6 +369,7 @@ export function JournalPanel({
                 className="knowledge-panel__journal-title-input"
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
+                onBlur={handleBlurSave}
                 placeholder="Journal title…"
                 maxLength={120}
                 aria-label="Journal title"
@@ -303,6 +378,7 @@ export function JournalPanel({
                 className="knowledge-panel__journal-tag-input"
                 value={draftHashtag}
                 onChange={(e) => setDraftHashtag(e.target.value)}
+                onBlur={handleBlurSave}
                 placeholder="#last-session"
                 maxLength={64}
                 aria-label="Journal hashtag"
@@ -346,6 +422,7 @@ export function JournalPanel({
       <MarkdownEditor
         value={draft}
         onChange={setDraft}
+        onBlur={handleBlurSave}
         placeholder={
           isDm
             ? 'Write your session journal here — what happened, who was there, what changed…'
@@ -355,7 +432,7 @@ export function JournalPanel({
         variant="full"
       />
 
-      {isDm && isEditing && (
+      {isDm && isEditing && !autoSave && (
         <div className="knowledge-panel__journal-actions">
           <button
             type="button"

@@ -315,6 +315,17 @@
   gap: var(--space-2);
 }
 
+.knowledge-panel-session-item {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.knowledge-panel-session-item__editor {
+  margin: -0.2rem 0 0;
+  padding: 0.25rem 0 0.5rem 1rem;
+  border-left: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
+}
+
 .knowledge-panel-card-header {
   display: flex;
   align-items: flex-start;
@@ -410,6 +421,23 @@
   margin-top: 0.2rem;
   font-size: 0.76rem;
   color: var(--color-text-secondary);
+}
+
+.knowledge-panel-section-summary {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: var(--space-2);
+}
+
+.knowledge-panel-section-summary__title {
+  color: var(--color-text-primary);
+  font-size: 0.94rem;
+}
+
+.knowledge-panel-section-summary__hint {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .knowledge-panel-tabs {
