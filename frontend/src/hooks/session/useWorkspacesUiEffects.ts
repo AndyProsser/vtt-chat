@@ -4,7 +4,7 @@ import { CHAT_GROUPING_STORAGE_KEY } from '@/constants/workspaces.constants'
 type UseWorkspacesUiEffectsParams = {
   messageGroupingWindowMs: number
   activeTransitionNotice: { eventId: string } | undefined
-  hideTransitionToast: () => void
+  setDismissedTransitionEventId: Dispatch<SetStateAction<string | null>>
   error: string | null
   setError: Dispatch<SetStateAction<string | null>>
   lobbyNotice: string | null
@@ -25,7 +25,7 @@ export function useWorkspacesUiEffects(params: UseWorkspacesUiEffectsParams) {
   const {
     messageGroupingWindowMs,
     activeTransitionNotice,
-    hideTransitionToast,
+    setDismissedTransitionEventId,
     error,
     setError,
     lobbyNotice,
@@ -52,13 +52,15 @@ export function useWorkspacesUiEffects(params: UseWorkspacesUiEffectsParams) {
     }
 
     const timeoutId = setTimeout(() => {
-      hideTransitionToast()
+      setDismissedTransitionEventId((current) =>
+        current === activeTransitionNotice.eventId ? current : activeTransitionNotice.eventId
+      )
     }, 6000)
 
     return () => {
       clearTimeout(timeoutId)
     }
-  }, [activeTransitionNotice, hideTransitionToast])
+  }, [activeTransitionNotice, setDismissedTransitionEventId])
 
   useEffect(() => {
     if (!error) return

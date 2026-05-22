@@ -13,11 +13,6 @@ import { useWebSocket } from '../../hooks/useWebSocket'
 import { useCampaignSettings } from '../../hooks/useCampaignSettings'
 import { useCharacterSettings } from '../../hooks/useCharacterSettings'
 import { useSessionLifecycle } from '../../hooks/useSessionLifecycle'
-import {
-  createCampaignSettingsController,
-  createCharacterSettingsController,
-  createSessionMembershipController,
-} from '@/utils/session/sessionController'
 import { TooltipProvider } from '@/components/ui'
 import type { RightRailTab } from '@/types/ui'
 import { LobbyView } from '@/components/workspaces/lobby/LobbyView'
@@ -44,6 +39,7 @@ import { useWorkspacesTelemetry } from '@/hooks/session/useWorkspacesTelemetry'
 import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
 import { useWorkspacesActiveSessionContext } from '@/hooks/session/useWorkspacesActiveSessionContext'
 import { useWorkspacesUiEffects } from '@/hooks/session/useWorkspacesUiEffects'
+import { useWorkspacesApiBootstrap } from '@/hooks/session/useWorkspacesApiBootstrap'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -79,7 +75,6 @@ import {
   isSessionBookendMessage,
   normalizeSessionRecord,
   safeLocalStorageGetItem,
-  safeLocalStorageRemoveItem,
   SESSION_TIMER_SYNC_POLL_MS,
 } from '@/utils/session/workspaces'
 import type { EditorWorkspaceView } from '@/types/workspaces'
@@ -186,7 +181,6 @@ export function WorkspaceInitialization({
   })
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
-  const authFailureHandledRef = useRef(false)
   const hasSignaledReadyRef = useRef(false)
   const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
@@ -200,102 +194,18 @@ export function WorkspaceInitialization({
     return Boolean(sessionContext || localContext || pendingAutoEnter)
   })
 
-  const clearPersistedActiveSessionContext = useCallback(() => {
-    sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    safeLocalStorageRemoveItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-  }, [])
-
-  const forceLogoutToAuthScreen = useCallback(() => {
-    if (authFailureHandledRef.current) {
-      return
-    }
-    authFailureHandledRef.current = true
-    sessionStorage.removeItem('authToken')
-    sessionStorage.removeItem('user')
-    clearPersistedActiveSessionContext()
-    window.location.assign('/')
-  }, [clearPersistedActiveSessionContext])
-
-  const fetchWithAuthGuard = useCallback(
-    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const response = await window.fetch(input, init)
-
-      if (response.status === 401) {
-        forceLogoutToAuthScreen()
-        throw new Error('Authentication failed (401)')
-      }
-
-      if (response.status === 403) {
-        // 403 is frequently a normal authorization denial (not an auth expiry).
-        // Only force logout when backend explicitly marks it as unauthorized/authentication failure.
-        try {
-          const payload = (await response
-            .clone()
-            .json()
-            .catch(() => null)) as { code?: string; message?: string } | null
-          const code = payload?.code?.toUpperCase() || ''
-          const message = payload?.message?.toLowerCase() || ''
-          const shouldForceLogout =
-            code === 'UNAUTHORIZED' ||
-            message.includes('authentication required') ||
-            message.includes('missing authorization')
-
-          if (shouldForceLogout) {
-            forceLogoutToAuthScreen()
-            throw new Error('Authentication failed (403)')
-          }
-        } catch {
-          // If payload cannot be parsed, keep caller-level handling for 403.
-        }
-      }
-
-      return response
-    },
-    [forceLogoutToAuthScreen]
-  )
-
-  const handleWebSocketAuthFailure = useCallback(() => {
-    forceLogoutToAuthScreen()
-  }, [forceLogoutToAuthScreen])
-
-  // Controllers for API orchestration (lazy-initialized in effect to avoid ref access during render)
-  const campaignSettingsControllerRef = useRef<ReturnType<
-    typeof createCampaignSettingsController
-  > | null>(null)
-  const characterSettingsControllerRef = useRef<ReturnType<
-    typeof createCharacterSettingsController
-  > | null>(null)
-  const sessionMembershipControllerRef = useRef<ReturnType<
-    typeof createSessionMembershipController
-  > | null>(null)
-
-  useEffect(() => {
-    if (!campaignSettingsControllerRef.current) {
-      campaignSettingsControllerRef.current = createCampaignSettingsController({
-        apiUrl,
-        token,
-        fetchWithAuthGuard,
-      })
-    }
-    if (!characterSettingsControllerRef.current) {
-      characterSettingsControllerRef.current = createCharacterSettingsController({
-        apiUrl,
-        token,
-        fetchWithAuthGuard,
-      })
-    }
-    if (!sessionMembershipControllerRef.current) {
-      sessionMembershipControllerRef.current = createSessionMembershipController({
-        apiUrl,
-        token,
-        fetchWithAuthGuard,
-      })
-    }
-  }, [apiUrl, token, fetchWithAuthGuard])
-
-  const campaignSettingsController = campaignSettingsControllerRef.current!
-  const characterSettingsController = characterSettingsControllerRef.current!
-  const sessionMembershipController = sessionMembershipControllerRef.current!
+  const {
+    clearPersistedActiveSessionContext,
+    forceLogoutToAuthScreen,
+    fetchWithAuthGuard,
+    handleWebSocketAuthFailure,
+    campaignSettingsController,
+    characterSettingsController,
+    sessionMembershipController,
+  } = useWorkspacesApiBootstrap({
+    apiUrl,
+    token,
+  })
 
   // Helper to fetch campaign sessions
   const fetchCampaignSessionsData = useCallback(
@@ -814,14 +724,6 @@ export function WorkspaceInitialization({
     [activeTransitionNotice, currentSessionNoteCount]
   )
 
-  const hideTransitionToast = useCallback(() => {
-    if (!activeTransitionNotice) {
-      return
-    }
-
-    setDismissedTransitionEventId(activeTransitionNotice.eventId)
-  }, [activeTransitionNotice])
-
   useEffect(() => {
     if (!currentSession) {
       return
@@ -928,7 +830,7 @@ export function WorkspaceInitialization({
   useWorkspacesUiEffects({
     messageGroupingWindowMs,
     activeTransitionNotice,
-    hideTransitionToast,
+    setDismissedTransitionEventId,
     error,
     setError,
     lobbyNotice,
