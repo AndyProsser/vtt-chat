@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -94,6 +94,7 @@ export function EditorJournalPanel({
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
+  const sessionItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
     setJournalStatusBySession((current) => ({
@@ -134,6 +135,19 @@ export function EditorJournalPanel({
     typeof effectiveSessionIndex === 'number' && effectiveSessionIndex > 0
       ? sortedSessions[effectiveSessionIndex - 1]
       : undefined
+
+  useEffect(() => {
+    if (!effectiveSessionId) {
+      return
+    }
+
+    const selectedItem = sessionItemRefs.current[effectiveSessionId]
+    if (!selectedItem) {
+      return
+    }
+
+    selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [effectiveSessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -250,6 +264,9 @@ export function EditorJournalPanel({
                 key={session.id}
                 role="listitem"
                 className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
+                ref={(node) => {
+                  sessionItemRefs.current[session.id] = node
+                }}
               >
                 <button
                   type="button"
