@@ -1,0 +1,608 @@
+.group-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(19rem, calc(100vw - 2rem));
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: var(--radius-lg, 14px);
+  background: var(--color-surface, #0f172a);
+  color: var(--color-text-primary, #e2e8f0);
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.3);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+  z-index: 1300;
+}
+
+.group-popover::before {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  right: 1.2rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--color-surface, #0f172a);
+  border-left: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-top: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  transform: rotate(45deg);
+}
+
+.group-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-popover__header h5 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.group-popover__header h5 .ui-icon,
+.group-popover__header h5 .material-symbols-outlined {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary, #cbd5e1);
+}
+
+.group-popover__close {
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle, var(--color-surface, #0f172a)) 72%,
+    transparent
+  );
+  color: var(--color-text-secondary, #cbd5e1);
+  cursor: pointer;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+}
+
+.group-popover__form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.group-popover__field {
+  display: grid;
+  gap: 0.26rem;
+}
+
+.group-popover__field span {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary, #cbd5e1);
+}
+
+.group-popover__field input {
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: var(--radius-sm, 8px);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle, var(--color-surface, #0f172a)) 74%,
+    var(--color-surface, #0f172a)
+  );
+  color: var(--color-text-primary, #e2e8f0);
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+}
+
+.group-popover__segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+}
+
+.group-popover__segment-btn {
+  min-height: 2rem;
+  border: 0;
+  border-right: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  background: var(--color-surface, #0f172a);
+  color: var(--color-text-secondary, #cbd5e1);
+  padding: 0.45rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  appearance: none;
+}
+
+.group-popover__segment-btn:last-child {
+  border-right: 0;
+}
+
+.group-popover__segment-btn.is-active {
+  background: color-mix(in srgb, var(--color-brand, #3b82f6) 18%, var(--color-surface, #0f172a));
+  color: var(--color-text-primary, #e2e8f0);
+}
+
+.group-popover__segment-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.group-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.42rem;
+}
+
+.group-popover__actions button {
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: var(--radius-sm, 8px);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle, var(--color-surface, #0f172a)) 72%,
+    var(--color-surface, #0f172a)
+  );
+  color: var(--color-text-primary, #e2e8f0);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.76rem;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+}
+
+.group-popover__actions button[type='submit'] {
+  border-color: color-mix(
+    in srgb,
+    var(--color-brand, #3b82f6) 52%,
+    var(--color-border-soft, rgba(148, 163, 184, 0.34))
+  );
+  background: color-mix(in srgb, var(--color-brand, #3b82f6) 20%, transparent);
+}
+
+.group-popover__actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.group-popover__error {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-error, #f87171);
+}
+
+/* Create Group popover polish aligned with Audio Settings panel rhythm */
+.group-popover.audio-settings-panel {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.group-popover.audio-settings-panel::before {
+  display: none;
+}
+
+.group-popover.audio-settings-panel .audio-settings-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #cbd5e1);
+}
+
+.group-popover.audio-settings-panel .group-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  padding-top: 0.32rem;
+}
+
+.group-popover.audio-settings-panel .group-popover__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34));
+  border-radius: 0.4rem;
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle, var(--color-surface, #0f172a)) 72%,
+    var(--color-surface, #0f172a)
+  );
+  color: var(--color-text-primary, #e2e8f0);
+  line-height: 1;
+  height: 1.5rem;
+  min-height: 1.5rem;
+  min-width: 5.25rem;
+  padding: 0 0.56rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+}
+
+.group-popover.audio-settings-panel .group-popover__actions button[type='submit'] {
+  border-color: color-mix(
+    in srgb,
+    var(--color-brand, #3b82f6) 52%,
+    var(--color-border-soft, rgba(148, 163, 184, 0.34))
+  );
+  background: color-mix(in srgb, var(--color-brand, #3b82f6) 20%, transparent);
+}
+
+.group-popover.audio-settings-panel .group-popover__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.5rem 0.75rem 0.65rem;
+}
+
+.group-popover.audio-settings-panel .group-popover__input.audio-settings-panel__select {
+  min-height: 1.5rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.76rem;
+}
+
+.group-popover.audio-settings-panel .group-popover__segment.audio-settings-panel__segment {
+  display: flex;
+  border-radius: 0.4rem;
+}
+
+.group-popover.audio-settings-panel .group-popover__segment-btn.audio-settings-panel__segment-btn {
+  height: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0.28rem 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.4rem !important;
+  padding-top: 0.32rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__actions
+  button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34)) !important;
+  border-radius: 0.4rem !important;
+  background: color-mix(
+    in srgb,
+    var(--color-surface-subtle, var(--color-surface, #0f172a)) 72%,
+    var(--color-surface, #0f172a)
+  ) !important;
+  color: var(--color-text-primary, #e2e8f0) !important;
+  height: 1.5rem !important;
+  min-height: 1.5rem !important;
+  min-width: 5.25rem !important;
+  padding: 0 0.56rem !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  appearance: none !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__actions
+  button[type='submit'] {
+  border-color: color-mix(
+    in srgb,
+    var(--color-brand, #3b82f6) 52%,
+    var(--color-border-soft, rgba(148, 163, 184, 0.34))
+  ) !important;
+  background: color-mix(in srgb, var(--color-brand, #3b82f6) 20%, transparent) !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0.5rem 0.75rem 0.65rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__input.audio-settings-panel__select {
+  min-height: 1.5rem !important;
+  padding: 0.28rem 0.5rem !important;
+  border-radius: 0.4rem !important;
+  font-size: 0.76rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__segment.audio-settings-panel__segment {
+  display: flex !important;
+  border-radius: 0.4rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover.audio-settings-panel[data-popover='create-group']
+  .group-popover__segment-btn.audio-settings-panel__segment-btn {
+  height: 1.5rem !important;
+  min-height: 1.5rem !important;
+  padding: 0.28rem 0 !important;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* Hard guard against third-party/global button/form resets overriding create-group panel */
+.room-selector .room-selector-header__create-wrap > .group-popover[data-popover='create-group'] {
+  position: absolute !important;
+  top: calc(100% + 0.45rem) !important;
+  right: 0 !important;
+  z-index: 1300 !important;
+  display: grid !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  width: min(19rem, calc(100vw - 2rem)) !important;
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34)) !important;
+  border-radius: var(--radius-lg, 14px) !important;
+  background: var(--color-surface, #0f172a) !important;
+  color: var(--color-text-primary, #e2e8f0) !important;
+  overflow: hidden !important;
+}
+
+.room-selector .room-selector-header__create-wrap > [role='dialog'][aria-label='Create group'] {
+  position: absolute !important;
+  top: calc(100% + 0.45rem) !important;
+  right: 0 !important;
+  z-index: 1300 !important;
+  display: grid !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  width: min(19rem, calc(100vw - 2rem)) !important;
+  border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34)) !important;
+  border-radius: var(--radius-lg, 14px) !important;
+  background: var(--color-surface, #0f172a) !important;
+  color: var(--color-text-primary, #e2e8f0) !important;
+  overflow: hidden !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover[data-popover='create-group']
+  .group-popover__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > [role='dialog'][aria-label='Create group']
+  .group-popover__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover[data-popover='create-group']
+  .group-popover__form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0.5rem 0.75rem 0.65rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > [role='dialog'][aria-label='Create group']
+  .group-popover__form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0.5rem 0.75rem 0.65rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover[data-popover='create-group']
+  .group-popover__field {
+  display: grid !important;
+  gap: 0.26rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > [role='dialog'][aria-label='Create group']
+  .group-popover__field {
+  display: grid !important;
+  gap: 0.26rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover[data-popover='create-group']
+  .group-popover__segment {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > [role='dialog'][aria-label='Create group']
+  .group-popover__segment {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > .group-popover[data-popover='create-group']
+  .group-popover__actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.42rem !important;
+}
+
+.room-selector
+  .room-selector-header__create-wrap
+  > [role='dialog'][aria-label='Create group']
+  .group-popover__actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.42rem !important;
+}
+
+/* ── Mobile compact strip (visible at ≤767px when collapsed) ─────────────── */
+
+.room-selector-mobile-strip {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.room-selector-mobile-strip__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  padding: 0.22rem 0.6rem;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-in-out),
+    border-color var(--duration-fast) var(--ease-in-out);
+}
+
+.room-selector-mobile-strip__group--selected {
+  border-color: color-mix(in srgb, var(--color-brand) 65%, white 10%);
+  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
+  color: var(--color-text-primary);
+}
+
+.room-selector-mobile-strip__group-name {
+  font-weight: 600;
+}
+
+.room-selector-mobile-strip__group-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.room-selector-mobile-strip__group-count .material-symbols-outlined {
+  font-size: 0.85rem;
+}
+
+/* Mobile toggle button — only visible at ≤767px */
+.room-selector-header__mobile-toggle {
+  display: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.room-selector-header__mobile-toggle .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+/* ── Overlay backdrop (mobile expanded) ──────────────────────────────────── */
+
+.room-selector-mobile-overlay-backdrop {
+  display: none;
+}
+
+/* ── Mobile expanded overlay ─────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .room-selector-header__mobile-toggle {
+    display: inline-flex;
+  }
+
+  .room-selector-mobile-strip {
+    display: flex;
+  }
+
+  /* Hide the full list by default on mobile; show only when expanded */
+  .room-selector-list--mobile-hidden {
+    display: none;
+  }
+
+  /* Expanded: panel becomes a fixed full-width overlay from the top */
+  .room-selector--mobile-expanded {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    overflow-y: auto;
+    border-radius: 0;
+    background: var(--color-surface);
+    padding: 1rem;
+    /* Slide in from above */
+    animation: room-selector-slide-down 200ms var(--ease-out) both;
+  }
+
+  .room-selector--mobile-expanded .room-selector-mobile-strip {
+    display: none;
+  }
+
+  .room-selector-mobile-overlay-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1099;
+    background: rgba(2, 6, 23, 0.55);
+    animation: room-selector-fade-in 180ms var(--ease-out) both;
+  }
+
+  @keyframes room-selector-slide-down {
+    from {
+      transform: translateY(-8px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes room-selector-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

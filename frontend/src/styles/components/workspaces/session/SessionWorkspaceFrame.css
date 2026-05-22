@@ -7,7 +7,7 @@
 
 @import '../../session/theme.css';
 
-.command-center-frame {
+.session-workspace-frame {
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -23,7 +23,7 @@
   overflow: hidden;
 }
 
-.command-center-surface {
+.session-workspace-frame__surface {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-surface);
@@ -31,11 +31,11 @@
   box-shadow: var(--shadow-sm);
 }
 
-.command-center-top-toolbar {
+.session-workspace-frame__top-toolbar {
   width: 100%;
 }
 
-.command-center-top-toasts {
+.session-workspace-frame__top-toasts {
   position: absolute;
   top: 3.08rem;
   left: 50%;
@@ -45,33 +45,34 @@
   pointer-events: none;
 }
 
-.command-center-top-toasts .vtt-toast {
+.session-workspace-frame__top-toasts .vtt-toast {
   pointer-events: auto;
 }
 
-.command-center-meta-grid {
+.session-workspace-frame__meta-grid {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
 }
 
-.command-center-rails {
-  --command-center-rails-bottom-gap: 8px;
-  --command-center-rails-desktop-offset: 5.35rem;
-  --command-center-rails-height: calc(
-    100dvh - var(--command-center-rails-desktop-offset) - var(--command-center-rails-bottom-gap)
+.session-workspace-frame__rails {
+  --session-workspace-frame__rails-bottom-gap: 8px;
+  --session-workspace-frame__rails-desktop-offset: 5.35rem;
+  --session-workspace-frame__rails-height: calc(
+    100dvh - var(--session-workspace-frame__rails-desktop-offset) -
+      var(--session-workspace-frame__rails-bottom-gap)
   );
   display: grid;
   gap: 0.72rem;
   align-items: stretch;
   min-height: 0;
-  height: var(--command-center-rails-height);
-  max-height: var(--command-center-rails-height);
+  height: var(--session-workspace-frame__rails-height);
+  max-height: var(--session-workspace-frame__rails-height);
   overflow: hidden;
   grid-template-columns: minmax(264px, 296px) minmax(0, 1fr) 2.15rem;
 }
 
-.command-center-center-pane {
+.session-workspace-frame__center-pane {
   position: relative;
   display: flex;
   min-width: 0;
@@ -82,7 +83,7 @@
   overflow: visible;
 }
 
-.command-center-left-rail-shell {
+.session-workspace-frame__left-rail-shell {
   padding: 0;
   background: transparent;
   border: 0;
@@ -90,7 +91,7 @@
   min-height: 0;
 }
 
-.command-center-right-rail-dock {
+.session-workspace-frame__right-rail-dock {
   position: relative;
   display: flex;
   justify-content: center;
@@ -101,7 +102,7 @@
   z-index: 26;
 }
 
-.command-center-right-rail-overlay {
+.session-workspace-frame__right-rail-overlay {
   position: absolute;
   top: 0;
   right: -0.6rem;
@@ -122,7 +123,7 @@
   animation: slide-in-from-right 180ms var(--ease-out);
 }
 
-.command-center-right-rail-overlay::after {
+.session-workspace-frame__right-rail-overlay::after {
   content: '';
   position: absolute;
   top: var(--panel-pointer-top, 1.35rem);
@@ -134,41 +135,41 @@
   filter: drop-shadow(1px 0 0 color-mix(in srgb, var(--color-border) 80%, transparent));
 }
 
-.command-center-right-rail-overlay--tab-0 {
+.session-workspace-frame__right-rail-overlay--tab-0 {
   --panel-pointer-top: 1.35rem;
 }
 
-.command-center-right-rail-overlay--tab-1 {
+.session-workspace-frame__right-rail-overlay--tab-1 {
   --panel-pointer-top: 3.75rem;
 }
 
-.command-center-right-rail-overlay--tab-2 {
+.session-workspace-frame__right-rail-overlay--tab-2 {
   --panel-pointer-top: 6.15rem;
 }
 
-.command-center-right-rail-overlay--tab-3 {
+.session-workspace-frame__right-rail-overlay--tab-3 {
   --panel-pointer-top: 8.55rem;
 }
 
-.command-center-right-rail-overlay--tab-4 {
+.session-workspace-frame__right-rail-overlay--tab-4 {
   --panel-pointer-top: 10.95rem;
 }
 
-.command-center-right-rail-overlay--tab-5 {
+.session-workspace-frame__right-rail-overlay--tab-5 {
   --panel-pointer-top: 13.35rem;
 }
 
-.command-center-right-rail-overlay--tab-6 {
+.session-workspace-frame__right-rail-overlay--tab-6 {
   --panel-pointer-top: 15.75rem;
 }
 
-.command-center-right-rail-overlay--closing {
+.session-workspace-frame__right-rail-overlay--closing {
   opacity: 0;
   transform: translateX(18px);
   pointer-events: none;
 }
 
-.command-center-right-rail-layout {
+.session-workspace-frame__right-rail-layout {
   min-width: 0;
   height: 100%;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
@@ -178,7 +179,7 @@
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
 }
 
-.command-center-right-rail-toolbar {
+.session-workspace-frame__right-rail-toolbar {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -190,7 +191,7 @@
   padding: 2px 0 0;
 }
 
-.command-center-right-rail-trigger {
+.session-workspace-frame__right-rail-trigger {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -202,35 +203,39 @@
   color: var(--color-text-secondary);
 }
 
-.command-center-right-rail-trigger .ui-icon {
+.session-workspace-frame__right-rail-trigger .ui-icon {
   width: 1.08rem;
   height: 1.08rem;
   font-size: 1.08rem;
 }
 
-.command-center-right-rail-trigger:hover {
+.session-workspace-frame__right-rail-trigger:hover {
   color: var(--color-text-primary);
 }
 
-.command-center-right-rail-trigger[data-state='active'],
-.command-center-right-rail-trigger[aria-selected='true'],
-.command-center-rails.closed .command-center-right-rail-trigger[data-state='active'],
-.command-center-rails.closed .command-center-right-rail-trigger[aria-selected='true'] {
+.session-workspace-frame__right-rail-trigger[data-state='active'],
+.session-workspace-frame__right-rail-trigger[aria-selected='true'],
+.session-workspace-frame__rails--closed
+  .session-workspace-frame__right-rail-trigger[data-state='active'],
+.session-workspace-frame__rails--closed
+  .session-workspace-frame__right-rail-trigger[aria-selected='true'] {
   background: transparent;
   outline: none;
   box-shadow: none;
   color: var(--color-text-secondary);
 }
 
-.command-center-rails.open .command-center-right-rail-trigger[data-state='active'],
-.command-center-rails.open .command-center-right-rail-trigger[aria-selected='true'] {
+.session-workspace-frame__rails--open
+  .session-workspace-frame__right-rail-trigger[data-state='active'],
+.session-workspace-frame__rails--open
+  .session-workspace-frame__right-rail-trigger[aria-selected='true'] {
   background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
   outline: 1px solid color-mix(in srgb, var(--color-brand) 48%, var(--color-border-soft));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 24%, transparent);
   color: var(--color-text-primary);
 }
 
-.command-center-right-rail-indicator {
+.session-workspace-frame__right-rail-indicator {
   position: absolute;
   right: -0.24rem;
   bottom: -0.24rem;
@@ -251,32 +256,32 @@
   pointer-events: none;
 }
 
-.command-center-right-rail-indicator--rooms {
+.session-workspace-frame__right-rail-indicator--rooms {
   background: #10b981;
 }
 
-.command-center-right-rail-indicator--audio {
+.session-workspace-frame__right-rail-indicator--audio {
   background: #06b6d4;
 }
 
-.command-center-right-rail-indicator--notes,
-.command-center-right-rail-indicator--journal {
+.session-workspace-frame__right-rail-indicator--notes,
+.session-workspace-frame__right-rail-indicator--journal {
   background: #3b82f6;
 }
 
-.command-center-right-rail-indicator--search {
+.session-workspace-frame__right-rail-indicator--search {
   background: #8b5cf6;
 }
 
-.command-center-right-rail-indicator--history {
+.session-workspace-frame__right-rail-indicator--history {
   background: #f59e0b;
 }
 
-.command-center-right-rail-indicator--settings {
+.session-workspace-frame__right-rail-indicator--settings {
   background: #64748b;
 }
 
-.command-center-right-rail-content {
+.session-workspace-frame__right-rail-content {
   min-width: 0;
   max-height: calc(100dvh - 10.2rem);
   overflow-y: auto;
@@ -296,13 +301,13 @@
 }
 
 @media (max-width: 1100px) {
-  .command-center-rails {
+  .session-workspace-frame__rails {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     height: auto;
   }
 
-  .command-center-right-rail-overlay {
+  .session-workspace-frame__right-rail-overlay {
     position: static;
     width: 100%;
     max-height: none;
@@ -310,28 +315,30 @@
     margin-top: 0.75rem;
   }
 
-  .command-center-right-rail-overlay::after {
+  .session-workspace-frame__right-rail-overlay::after {
     display: none;
   }
 
-  .command-center-center-pane {
+  .session-workspace-frame__center-pane {
     overflow: visible;
   }
 
-  .command-center-right-rail-dock {
+  .session-workspace-frame__right-rail-dock {
     position: static;
     height: auto;
     margin-top: 0.75rem;
     padding: 0;
   }
 
-  .command-center-right-rail-toolbar {
+  .session-workspace-frame__right-rail-toolbar {
     flex-direction: row;
     flex-wrap: wrap;
   }
 
-  .command-center-rails.closed .command-center-right-rail-trigger[data-state='active'],
-  .command-center-rails.closed .command-center-right-rail-trigger[aria-selected='true'] {
+  .session-workspace-frame__rails--closed
+    .session-workspace-frame__right-rail-trigger[data-state='active'],
+  .session-workspace-frame__rails--closed
+    .session-workspace-frame__right-rail-trigger[aria-selected='true'] {
     background: transparent;
     outline: none;
     box-shadow: none;
@@ -340,18 +347,18 @@
 }
 
 @media (max-width: 760px) {
-  .command-center-top-toasts {
+  .session-workspace-frame__top-toasts {
     top: 5.5rem;
     width: min(95%, 560px);
   }
 
-  .command-center-meta-grid {
+  .session-workspace-frame__meta-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 980px) {
-  .command-center-frame {
+  .session-workspace-frame {
     padding: 0;
     border-radius: 0;
     background: transparent;

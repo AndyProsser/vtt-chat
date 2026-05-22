@@ -20,7 +20,7 @@ import type { CenterPaneView, RightRailTab } from '@/types/ui'
 import { Icon } from '@/components/ui/Icon'
 import { telemetryClient } from '@/utils/telemetry'
 import type { ToolbarActionModel, ToolbarPlaceholderAction } from '@/types/toolbar'
-import '@/styles/components/workspaces/session/WorkspaceFrame.css'
+import '@/styles/components/workspaces/session/SessionWorkspaceFrame.css'
 
 export type { CenterPaneView, RightRailTab } from '@/types/ui'
 
@@ -94,7 +94,7 @@ export function SessionWorkspaceFrame({
     centerPaneView: toolbarCenterPaneView,
     setCenterPaneView: (view) => {
       telemetryClient.track('UI_TAB_SWITCH', {
-        surface: 'command-center-center-pane',
+        surface: 'session-workspace-frame__center-pane',
         from: toolbarCenterPaneView,
         to: view,
         role,
@@ -187,13 +187,13 @@ export function SessionWorkspaceFrame({
   return (
     <section
       aria-label="Command Center"
-      className="command-center-frame"
+      className="session-workspace-frame"
       data-ui-component="SessionWorkspaceFrame"
       data-ui-state={`${role}|${toolbarCenterPaneView}|${activeRightRailTab}`}
     >
       <section
         data-testid="toolbar"
-        className="command-center-top-toolbar"
+        className="session-workspace-frame__top-toolbar"
         data-ui-component="SessionWorkspaceToolbar"
       >
         {renderToolbar(toolbarModel)}
@@ -202,7 +202,7 @@ export function SessionWorkspaceFrame({
       {systemToastsNode && (
         <section
           data-testid="system-toasts"
-          className="command-center-top-toasts"
+          className="session-workspace-frame__top-toasts"
           data-ui-component="SessionWorkspaceToasts"
         >
           {systemToastsNode}
@@ -212,13 +212,15 @@ export function SessionWorkspaceFrame({
       <div
         data-testid="rails-layout"
         data-layout={isCompactLayout ? 'compact' : 'desktop'}
-        className={`command-center-rails ${toolbarRightRailOpen ? 'open' : 'closed'} ${
-          isCompactLayout ? 'compact' : 'desktop'
+        className={`session-workspace-frame__rails ${toolbarRightRailOpen ? 'session-workspace-frame__rails--open' : 'session-workspace-frame__rails--closed'} ${
+          isCompactLayout
+            ? 'session-workspace-frame__rails--compact'
+            : 'session-workspace-frame__rails--desktop'
         }`}
       >
         <aside
           data-testid="left-rail"
-          className="command-center-surface command-center-left-rail-shell"
+          className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
           {renderLeftRail()}
@@ -226,7 +228,7 @@ export function SessionWorkspaceFrame({
 
         <div
           data-testid="center-pane"
-          className="command-center-center-pane"
+          className="session-workspace-frame__center-pane"
           data-ui-component="SessionWorkspaceCenterPane"
           data-ui-state={toolbarCenterPaneView}
         >
@@ -235,19 +237,19 @@ export function SessionWorkspaceFrame({
           {isRightRailVisible && (
             <aside
               data-testid="right-rail"
-              className={`command-center-right-rail-overlay ${
-                isRightRailClosing ? 'command-center-right-rail-overlay--closing' : ''
-              } command-center-right-rail-overlay--tab-${pointerTabIndex}`}
+              className={`session-workspace-frame__right-rail-overlay ${
+                isRightRailClosing ? 'session-workspace-frame__right-rail-overlay--closing' : ''
+              } session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}
               onClick={handleRightRailClickOutside}
               data-ui-component="SessionWorkspaceRightRail"
               data-ui-state={activeRightRailTab}
             >
-              <div className="command-center-right-rail-layout">
+              <div className="session-workspace-frame__right-rail-layout">
                 <Tabs value={activeRightRailTab}>
                   <TabsContent
                     value={activeRightRailTab}
                     data-testid="right-rail-content"
-                    className="command-center-right-rail-content"
+                    className="session-workspace-frame__right-rail-content"
                   >
                     {renderRightRailTab(activeRightRailTab)}
                   </TabsContent>
@@ -258,13 +260,16 @@ export function SessionWorkspaceFrame({
         </div>
 
         <aside
-          className="command-center-right-rail-dock"
+          className="session-workspace-frame__right-rail-dock"
           aria-label="Tools"
           data-ui-component="SessionWorkspaceDock"
         >
           <TooltipProvider delayDuration={140}>
             <Tabs value={activeRightRailTab}>
-              <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
+              <TabsList
+                className="session-workspace-frame__right-rail-toolbar"
+                aria-label="Tool panels"
+              >
                 {tabs.map((tab) => {
                   const label = getWorkspacePanelLabel(tab)
                   const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
@@ -275,7 +280,7 @@ export function SessionWorkspaceFrame({
                         <TabsTrigger
                           value={tab}
                           aria-label={`Tool ${label}`}
-                          className="command-center-right-rail-trigger"
+                          className="session-workspace-frame__right-rail-trigger"
                           onClick={(event) => {
                             handleRightRailTabClick(tab, event.timeStamp)
                           }}
@@ -283,7 +288,7 @@ export function SessionWorkspaceFrame({
                           <Icon name={getWorkspacePanelIcon(tab)} />
                           {indicatorCount > 0 ? (
                             <span
-                              className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}
+                              className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
                               aria-hidden="true"
                             >
                               {formatIndicatorCount(indicatorCount)}

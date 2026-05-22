@@ -1,0 +1,56 @@
+.room-context-menu {
+  min-width: 12rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  color: var(--color-text-primary);
+  box-shadow: 0 14px 40px rgba(3, 7, 18, 0.32);
+  padding: 0.3rem;
+  display: grid;
+  gap: 0.1rem;
+  z-index: 1400;
+}
+
+.room-context-menu--sub {
+  min-width: 10.5rem;
+}
+
+.room-context-menu__item {
+  min-height: 1.95rem;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  outline: none;
+}
+
+.room-context-menu__item[data-highlighted] {
+  background: color-mix(in srgb, var(--color-brand) 20%, var(--color-surface));
+}
+
+.room-context-menu__item[data-disabled] {
+  color: color-mix(in srgb, var(--color-text-secondary) 84%, transparent);
+  opacity: 0.6;
+}
+
+.room-context-menu__separator {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-border-soft) 68%, transparent);
+  margin: 0.18rem 0.2rem;
+}
+
+.room-selector-member--touch-feedback {
+  transform: scale(0.985);
+  border-color: color-mix(in srgb, var(--color-brand) 46%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
