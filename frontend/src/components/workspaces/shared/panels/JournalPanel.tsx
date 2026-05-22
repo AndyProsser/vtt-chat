@@ -100,6 +100,64 @@ function buildHashtagSuggestions(sessionName?: string, sessionId?: UUID): string
   )
 }
 
+function buildContentHashtagSuggestions(markdown: string): string[] {
+  const stopWords = new Set([
+    'about',
+    'after',
+    'again',
+    'along',
+    'also',
+    'been',
+    'before',
+    'being',
+    'between',
+    'campaign',
+    'could',
+    'didnt',
+    'from',
+    'have',
+    'into',
+    'journal',
+    'last',
+    'next',
+    'over',
+    'party',
+    'players',
+    'recap',
+    'session',
+    'some',
+    'that',
+    'their',
+    'them',
+    'then',
+    'there',
+    'they',
+    'this',
+    'what',
+    'when',
+    'with',
+    'were',
+    'your',
+  ])
+
+  const counts = new Map<string, number>()
+  const tokens = markdown.toLowerCase().match(/[a-z][a-z-]{2,}/g) ?? []
+
+  for (const token of tokens) {
+    const normalized = token.replace(/^-+|-+$/g, '')
+    if (normalized.length < 4 || stopWords.has(normalized)) {
+      continue
+    }
+
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1)
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 6)
+    .map(([token]) => normalizeJournalHashtag(token, token))
+}
+
 function extractJournalHashtag(
   tags: string[] | undefined,
   sessionName?: string,
@@ -154,6 +212,7 @@ export function JournalPanel({
     () => buildHashtagSuggestions(sessionName, sessionId),
     [sessionId, sessionName]
   )
+  const contentHashtagSuggestions = useMemo(() => buildContentHashtagSuggestions(draft), [draft])
   const hashtagInputId = useMemo(() => `journal-hashtags-${String(sessionId)}`, [sessionId])
 
   useEffect(() => {
@@ -381,16 +440,19 @@ export function JournalPanel({
 
   const displayHashtags = entry?.hashtags ?? normalizedDraftHashtags
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
+  const mergedHashtagSuggestions = useMemo(
+    () =>
+      [...contentHashtagSuggestions, ...hashtagSuggestions].filter(
+        (tag, index, tags) => tags.indexOf(tag) === index
+      ),
+    [contentHashtagSuggestions, hashtagSuggestions]
+  )
 
   return (
     <section className="knowledge-panel" aria-label="Journal" data-testid="journal-panel">
       <header className="knowledge-panel-header">
         <div>
-          <p className="knowledge-panel-eyebrow">Session Journal</p>
-          <h3 className="knowledge-panel-title">
-            <Icon name="journal" />
-            {sessionName || 'Session Journal'}
-          </h3>
+          <h3 className="knowledge-panel-title">{sessionName || 'Session Journal'}</h3>
           <div className="knowledge-panel-chip-row">
             {lastUpdated && !isEditing ? (
               <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
@@ -433,7 +495,6 @@ export function JournalPanel({
       />
 
       <div className="knowledge-panel__journal-meta">
-        <span className="knowledge-panel-group-title">Hashtags</span>
         {isEditing ? (
           <>
             <input
@@ -447,13 +508,33 @@ export function JournalPanel({
               list={hashtagInputId}
             />
             <datalist id={hashtagInputId}>
-              {hashtagSuggestions.map((tag) => (
+              {mergedHashtagSuggestions.map((tag) => (
                 <option key={tag} value={`${draftHashtagsInput.trim()} ${tag}`.trim()} />
               ))}
             </datalist>
-            <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
-              Separate tags with spaces, like `#recap #npc #loot`.
-            </p>
+            {contentHashtagSuggestions.length > 0 ? (
+              <div className="knowledge-panel-chip-row">
+                {contentHashtagSuggestions.slice(0, 4).map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="knowledge-panel-chip muted"
+                    onClick={() => {
+                      const existing = parseJournalHashtags(
+                        draftHashtagsInput,
+                        defaultHashtag.slice(1)
+                      )
+                      if (existing.includes(tag)) {
+                        return
+                      }
+                      setDraftHashtagsInput(serializeJournalHashtags([...existing, tag]))
+                    }}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="knowledge-panel-chip-row">

@@ -23,7 +23,6 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000
 
 interface MissingRecapCopy {
   cardBody: string
-  sectionHint: string
 }
 
 function getSessionReferenceTime(session: Session): number {
@@ -54,8 +53,6 @@ function buildMissingRecapCopy(
     return {
       cardBody:
         'Next session is live. The recap scroll is still missing and the summary hamsters are visibly overworked.',
-      sectionHint:
-        'No recap yet. The players are here now, the summary hamsters are still busy, and the bard is buying time.',
     }
   }
 
@@ -63,16 +60,12 @@ function buildMissingRecapCopy(
     return {
       cardBody:
         'No recap yet. Fair enough. The scribes or the machine spirits may still be sorting the dragonfire.',
-      sectionHint:
-        'No recap yet. Be nice to yourself: it has been less than 24 hours, so either the system is still grinding or the human is.',
     }
   }
 
   return {
     cardBody:
       'No recap yet. More than 24 hours have passed, so this now qualifies as a failed lore check.',
-    sectionHint:
-      'No recap yet. More than 24 hours have passed. The party managed a long rest; apparently the chronicler did not manage one page of notes.',
   }
 }
 
@@ -127,9 +120,6 @@ export function EditorJournalPanel({
     typeof effectiveSessionIndex === 'number' && effectiveSessionIndex > 0
       ? sortedSessions[effectiveSessionIndex - 1]
       : undefined
-  const effectiveMissingCopy = effectiveSession
-    ? buildMissingRecapCopy(effectiveSession, effectiveNextSession)
-    : null
 
   useEffect(() => {
     let cancelled = false
@@ -276,18 +266,6 @@ export function EditorJournalPanel({
 
                 {isSelected ? (
                   <div className="knowledge-panel-session-item__editor">
-                    {!effectiveStatus?.hasContent && effectiveMissingCopy ? (
-                      <div className="knowledge-panel-section-summary">
-                        <span className="knowledge-panel-group-title">Session Journal</span>
-                        <strong className="knowledge-panel-section-summary__title">
-                          {effectiveSession.name}
-                        </strong>
-                        <span className="knowledge-panel-section-summary__hint">
-                          {effectiveMissingCopy.sectionHint}
-                        </span>
-                      </div>
-                    ) : null}
-
                     <JournalPanel
                       apiUrl={apiUrl}
                       token={token}
