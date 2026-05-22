@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ComponentProps } from 'react'
 import { SessionState, Role, MessageType, isGreenroomSessionState } from '@shared'
 import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -174,7 +175,6 @@ function safeLocalStorageSetItem(key: string, value: string): void {
 
 function safeLocalStorageRemoveItem(key: string): void {
   if (typeof window === 'undefined' || typeof window.localStorage?.removeItem !== 'function') {
-    const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
     return
   }
 
@@ -443,25 +443,6 @@ function formatDurationCompact(durationMs: number): string {
   return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
 }
 
-function resolveSessionPlayedDurationMs(session: SessionRecord, nowMs: number): number {
-  if (!session.startedAt) {
-    return 0
-  }
-
-  const baselineEndMs =
-    session.endedAt ||
-    (session.state === SessionState.PAUSED && session.pausedAt ? session.pausedAt : nowMs)
-
-  let durationMs = Math.max(0, baselineEndMs - session.startedAt)
-  durationMs -= Math.max(0, session.cumulativePauseMs || 0)
-
-  if (session.state === SessionState.PAUSED && session.pauseStartedAt) {
-    durationMs -= Math.max(0, nowMs - session.pauseStartedAt)
-  }
-
-  return Math.max(0, durationMs)
-}
-
 export function SessionInit({
   apiUrl,
   wsUrl,
@@ -522,6 +503,7 @@ export function SessionInit({
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
+  const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
   const lobbyCampaignReloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Campaign settings hook
@@ -777,7 +759,9 @@ export function SessionInit({
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
   const typedSessions = sessions as Record<UUID, SessionRecord>
   const sessionList: SessionRecord[] = Object.values(typedSessions)
-  const currentSession = currentSessionId ? sessions[currentSessionId] || null : null
+  const currentSession: SessionRecord | null = currentSessionId
+    ? (typedSessions[currentSessionId] ?? null)
+    : null
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
 
   const applyLobbyStatsSnapshot = useCallback((snapshot: CampaignLobbyStatsUpdatedPayload) => {
@@ -1700,21 +1684,6 @@ export function SessionInit({
     [campaignSettingsController, campaignSettingsActions]
   )
 
-  const openCampaignSettingsModal = useCallback(
-    (campaignId: UUID) => {
-      campaignSettingsActions.setSettingsCampaignId(campaignId)
-      campaignSettingsActions.setSettingsHomeTab('home')
-      setShowCampaignSettingsModal(true)
-
-      void (async () => {
-        const settingsPayload = await loadCampaignSettings(campaignId)
-        const authoritativeLatestSessionId = (settingsPayload?.latestSessionId || '') as UUID | ''
-        await loadCampaignSettingsSessionContext(campaignId, authoritativeLatestSessionId)
-      })()
-    },
-    [loadCampaignSettings, loadCampaignSettingsSessionContext, campaignSettingsActions]
-  )
-
   const openLobbyCampaignWorkspace = useCallback(
     (campaignId: UUID) => {
       setSelectedCampaignId(campaignId)
@@ -2228,75 +2197,79 @@ export function SessionInit({
     }
   }
 
-  const handleJoinCampaign = async (e: React.FormEvent<Element>) => {
-    e.preventDefault()
+  const handleJoinCampaign: NonNullable<
+    ComponentProps<typeof SessionInitModals>['onJoinCampaignSubmit']
+  > = (event) => {
+    event.preventDefault()
     setError(null)
     setLobbyNotice(null)
     setIsJoiningCampaign(true)
 
-    try {
-      const inviteCode = parsePlayerInviteCode(joinInviteInput)
-      if (!inviteCode) {
-        throw new Error('Invite code or join link is required')
+    void (async () => {
+      try {
+        const inviteCode = parsePlayerInviteCode(joinInviteInput)
+        if (!inviteCode) {
+          throw new Error('Invite code or join link is required')
+        }
+
+        const validateResponse = await fetchWithAuthGuard(
+          `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
+        )
+
+        if (!validateResponse.ok) {
+          const validateErrorData = await validateResponse.json().catch(() => ({}))
+          throw new Error(validateErrorData.message || 'Invalid or expired invite code')
+        }
+
+        const validateData = (await validateResponse.json()) as {
+          valid?: boolean
+          campaign?: { id?: UUID }
+        }
+
+        const campaignId = validateData.campaign?.id
+        if (!validateData.valid || !campaignId) {
+          throw new Error('Invalid or expired invite code')
+        }
+
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/join`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ inviteCode }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to join campaign')
+        }
+
+        const campaignsResponse = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!campaignsResponse.ok) {
+          const errorData = await campaignsResponse.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Joined campaign but failed to reload campaigns')
+        }
+
+        const campaignsData = await campaignsResponse.json()
+        const nextCampaigns = (campaignsData.campaigns || []) as CampaignSummary[]
+        setCampaigns(nextCampaigns)
+        setSelectedCampaignId(campaignId as UUID)
+        setLobbyNotice('Campaign ready in your lobby. Continue when you are ready.')
+        setShowJoinCampaignModal(false)
+        setJoinInviteInput('')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      } finally {
+        setIsJoiningCampaign(false)
       }
-
-      const validateResponse = await fetchWithAuthGuard(
-        `${apiUrl}/api/campaigns/invite/${encodeURIComponent(inviteCode)}/validate`
-      )
-
-      if (!validateResponse.ok) {
-        const validateErrorData = await validateResponse.json().catch(() => ({}))
-        throw new Error(validateErrorData.message || 'Invalid or expired invite code')
-      }
-
-      const validateData = (await validateResponse.json()) as {
-        valid?: boolean
-        campaign?: { id?: UUID }
-      }
-
-      const campaignId = validateData.campaign?.id
-      if (!validateData.valid || !campaignId) {
-        throw new Error('Invalid or expired invite code')
-      }
-
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ inviteCode }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to join campaign')
-      }
-
-      const campaignsResponse = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!campaignsResponse.ok) {
-        const errorData = await campaignsResponse.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Joined campaign but failed to reload campaigns')
-      }
-
-      const campaignsData = await campaignsResponse.json()
-      const nextCampaigns = (campaignsData.campaigns || []) as CampaignSummary[]
-      setCampaigns(nextCampaigns)
-      setSelectedCampaignId(campaignId as UUID)
-      setLobbyNotice('Campaign ready in your lobby. Continue when you are ready.')
-      setShowJoinCampaignModal(false)
-      setJoinInviteInput('')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'An error occurred'
-      setError(message)
-    } finally {
-      setIsJoiningCampaign(false)
-    }
+    })()
   }
 
   const handleEnterCampaign = useCallback(
@@ -2622,8 +2595,10 @@ export function SessionInit({
     token,
   ])
 
-  const handleSaveCampaignSettings = (e: React.FormEvent<Element>) => {
-    e.preventDefault()
+  const handleSaveCampaignSettings: NonNullable<
+    ComponentProps<typeof SessionInitModals>['onSaveCampaignSettings']
+  > = (event) => {
+    event.preventDefault()
     void (async () => {
       await saveCampaignSettings()
       setShowCampaignSettingsModal(false)
@@ -3564,8 +3539,10 @@ export function SessionInit({
             isJoiningCampaign={isJoiningCampaign}
             apiUrl={apiUrl}
             authToken={token}
-            currentSessionId={currentSession?.id || null}
-            currentSessionState={currentSession?.state || null}
+            currentSessionId={currentSessionId || null}
+            currentSessionState={
+              currentSessionId ? (typedSessions[currentSessionId]?.state ?? null) : null
+            }
             currentUserId={user.id}
             partyPresenceRefreshVersion={partyPresenceRefreshVersion}
             fetchWithAuthGuard={fetchWithAuthGuard}
