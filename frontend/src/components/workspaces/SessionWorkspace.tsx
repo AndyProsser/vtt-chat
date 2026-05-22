@@ -1,9 +1,9 @@
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
-import { SessionWorkspaceLeftRail } from '@/components/workspaces/session/SessionWorkspace.LeftRail'
-import { SessionWorkspaceCenterPane } from '@/components/workspaces/session/SessionWorkspace.CenterPane'
-import { SessionWorkspaceRightRailTab } from '@/components/workspaces/session/SessionWorkspace.RightRailTab'
+import { SessionWorkspaceLeftRail } from '@/components/workspaces/session/LeftRail'
+import { SessionWorkspaceCenterPane } from '@/components/workspaces/session/CenterPane'
+import { SessionWorkspaceRightRailTab } from '@/components/workspaces/session/RightRailTab'
 import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 
 export function SessionWorkspace(props: SessionWorkspaceProps) {
