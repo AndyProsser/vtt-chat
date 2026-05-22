@@ -7,7 +7,7 @@ import {
   resetCharacterSettings,
   updateCharacterDraftField,
 } from '@/utils/session/sessionSettings'
-import type { CharacterSettingsDraft } from '../editor/CampaignRightbarSettings'
+import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
 import { createCharacterSettingsController } from '@/utils/session/sessionController'
 
 type UseSessionInitCharacterSettingsOrchestrationParams = {

@@ -1,5 +1,5 @@
 import type { UUID } from '@shared'
-import { CampaignSettingsPage } from '@/components/editor/CampaignSettingsPage'
+import { CampaignSettingsPage } from '@/components/app/workspaces/editor/CampaignSettingsPage'
 
 type CampaignSettingsRouteViewProps = {
   apiUrl: string

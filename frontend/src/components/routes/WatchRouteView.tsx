@@ -1,4 +1,4 @@
-import { SpectatorInvitePage } from '@/components/auth/SpectatorInvitePage'
+import { SpectatorInvitePage } from '@/components/watch/SpectatorInvitePage'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 

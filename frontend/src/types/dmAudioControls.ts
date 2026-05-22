@@ -31,7 +31,7 @@ export interface DMAudioControlsProps {
 
 export interface PendingOverride {
   userId: UUID
-  overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER'
+  overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'DISTANCE' | 'CONDITION' | 'VOICE'
   expectedAppliedAt: number
   startedAt: number
 }

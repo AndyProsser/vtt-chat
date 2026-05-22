@@ -148,9 +148,12 @@ Current shipped note:
    modules (`sessionInit.types.ts`, `sessionInit.utils.ts`, `sessionInit.settings.ts`)
    so orchestration stays in the component while pure helpers and normalization logic live
    beside it.
-   Frontend screen ownership is now normalized by UI surface:
-   `components/lobby`, `components/editor`, `components/session`,
-   and `components/shared` (cross-surface campaign panels).
+   Frontend screen ownership is now normalized by route/workspace:
+   `components/auth`, `components/guest`, `components/watch`, `components/app`.
+   Main app workspaces live under
+   `components/app/workspaces/{lobby,editor,session}`.
+   Shared rightbar panels for editor/session live under
+   `components/app/shared/rightbar`.
 
 
 ████████████████████████████████████████████████████████████████████████████████

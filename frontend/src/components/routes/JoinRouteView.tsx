@@ -1,4 +1,4 @@
-import { InviteJoinPage } from '@/components/auth/InviteJoinPage'
+import { InviteJoinPage } from '@/components/guest/InviteJoinPage'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 

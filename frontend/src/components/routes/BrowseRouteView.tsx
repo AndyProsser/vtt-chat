@@ -1,4 +1,4 @@
-import { BrowseCampaignsPage } from '@/components/auth/BrowseCampaignsPage'
+import { BrowseCampaignsPage } from '@/components/guest/BrowseCampaignsPage'
 
 type BrowseRouteViewProps = {
   apiUrl: string
