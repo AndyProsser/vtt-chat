@@ -1,6 +1,6 @@
 import { WorkspaceView } from '@/components/workspaces/editor/WorkspaceView'
-import { EditorWorkspaceSettingsPanel } from '@/components/workspaces/EditorWorkspace.SettingsPanel'
-import type { EditorWorkspaceProps } from '@/components/workspaces/EditorWorkspace.types'
+import { EditorWorkspaceSettingsPanel } from '@/components/workspaces/editor/EditorWorkspaceSettingsPanel'
+import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
   if (props.hasSessionSelected || props.editorWorkspaceView !== 'editor') {
@@ -74,7 +74,9 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           settingsSpectatorWaitlistEnabled={props.settingsSpectatorWaitlistEnabled}
           onSettingsSpectatorWaitlistEnabledChange={props.onSettingsSpectatorWaitlistEnabledChange}
           settingsSpectatorReconnectGraceSecs={props.settingsSpectatorReconnectGraceSecs}
-          onSettingsSpectatorReconnectGraceSecsChange={props.onSettingsSpectatorReconnectGraceSecsChange}
+          onSettingsSpectatorReconnectGraceSecsChange={
+            props.onSettingsSpectatorReconnectGraceSecsChange
+          }
           settingsPostSessionChatEnabled={props.settingsPostSessionChatEnabled}
           onSettingsPostSessionChatEnabledChange={props.onSettingsPostSessionChatEnabledChange}
           settingsPostSessionChatDurationMinutes={props.settingsPostSessionChatDurationMinutes}

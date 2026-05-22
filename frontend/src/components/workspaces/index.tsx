@@ -10,7 +10,6 @@ import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { useWebSocket } from '../../hooks/useWebSocket'
-import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { useCampaignSettings } from '../../hooks/useCampaignSettings'
 import { useCharacterSettings } from '../../hooks/useCharacterSettings'
 import { useSessionLifecycle } from '../../hooks/useSessionLifecycle'
@@ -29,7 +28,6 @@ import type { CharacterSettingsDraft } from '@/components/workspaces/shared/pane
 import { EditorWorkspace } from './EditorWorkspace'
 import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
 import type { ModalsProps } from '@/types/modals'
-import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { useWorkspacesCampaignEntryOrchestration } from '@/hooks/session/useWorkspacesCampaignEntryOrchestration'
 import { useWorkspacesCharacterSettingsOrchestration } from '@/hooks/session/useWorkspacesCharacterSettingsOrchestration'
 import { useWorkspacesHydrationLifecycle } from '@/hooks/session/useWorkspacesHydrationLifecycle'
@@ -37,6 +35,8 @@ import { useWorkspacesSettingsOrchestration } from '@/hooks/session/useWorkspace
 import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryToast'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
+import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
+import { useWorkspacesCampaignSettingsActions } from '@/hooks/session/useWorkspacesCampaignSettingsActions'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -46,8 +46,6 @@ import {
   DEFAULT_CHAT_GROUPING_WINDOW_MS,
   DEFAULT_PLANNED_DURATION_MINUTES,
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
-  MAX_POSTER_DATA_URL_CHARS,
-  MAX_POSTER_WIDTH_PX,
 } from '@/constants/workspaces.constants'
 import { createHttpTelemetryTransport, telemetryClient } from '@/utils/telemetry'
 import { fetchSessionNotesOnce } from '../../utils/notesFetch'
@@ -66,7 +64,7 @@ import type {
   ApiSessionStats,
   WorkspacesProps as WorkspaceInitializationProps,
 } from '@/types/session/workspaces'
-import { getCampaignEntryAction, resolveMembershipRole } from '@/types/session/campaign'
+import { getCampaignEntryAction } from '@/types/session/campaign'
 import {
   buildCharacterDraft,
   buildRoomEnvironmentPreset,
@@ -104,9 +102,6 @@ export function WorkspaceInitialization({
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false)
   const [showExitSessionModal, setShowExitSessionModal] = useState(false)
   const [showStopSessionModal, setShowStopSessionModal] = useState(false)
-  const [pendingInviteReissueType, setPendingInviteReissueType] = useState<
-    'PLAYER' | 'SPECTATOR' | null
-  >(null)
   const [exitUpgradePassword, setExitUpgradePassword] = useState('')
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
@@ -928,47 +923,6 @@ export function WorkspaceInitialization({
     [sessionMembershipController]
   )
 
-  const {
-    handleToggleBroadcastMode,
-    handleStartSession,
-    handlePauseSession,
-    handleStopSession,
-    handleCancelCooldown,
-    handleExtendCooldown,
-    handleConfirmStopSession,
-    handleLogoff,
-    handleExitToCampaignSelector,
-    handleConfirmExitAsFullAccount,
-    handleSkipGuestUpgrade,
-    handleUpgradeAndExit,
-  } = useWorkspacesSessionOrchestration({
-    apiUrl,
-    token,
-    userId: user.id,
-    currentSession,
-    selectedCampaignId,
-    sessionList,
-    fetchWithAuthGuard,
-    startCampaignSession,
-    updateSession,
-    setBroadcastState,
-    setCooldownExtensionCount,
-    setIsGreenroom,
-    resetToolbarActionsState,
-    setSelectedRoomIdOverride,
-    setCurrentSession,
-    clearPersistedActiveSessionContext,
-    forceLogoutToAuthScreen,
-    setShowStopSessionModal,
-    showStopSessionModal,
-    setShowExitSessionModal,
-    setExitUpgradeError,
-    exitUpgradePassword,
-    setExitUpgradePassword,
-    setExitUpgradeLoading,
-    setError,
-  })
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
@@ -1184,6 +1138,47 @@ export function WorkspaceInitialization({
       onSessionCreated,
     })
 
+  const {
+    handleToggleBroadcastMode,
+    handleStartSession,
+    handlePauseSession,
+    handleStopSession,
+    handleCancelCooldown,
+    handleExtendCooldown,
+    handleConfirmStopSession,
+    handleLogoff,
+    handleExitToCampaignSelector,
+    handleConfirmExitAsFullAccount,
+    handleSkipGuestUpgrade,
+    handleUpgradeAndExit,
+  } = useWorkspacesSessionOrchestration({
+    apiUrl,
+    token,
+    userId: user.id,
+    currentSession,
+    selectedCampaignId,
+    sessionList,
+    fetchWithAuthGuard,
+    startCampaignSession,
+    updateSession,
+    setBroadcastState,
+    setCooldownExtensionCount,
+    setIsGreenroom,
+    resetToolbarActionsState,
+    setSelectedRoomIdOverride,
+    setCurrentSession,
+    clearPersistedActiveSessionContext,
+    forceLogoutToAuthScreen,
+    setShowStopSessionModal,
+    showStopSessionModal,
+    setShowExitSessionModal,
+    setExitUpgradeError,
+    exitUpgradePassword,
+    setExitUpgradePassword,
+    setExitUpgradeLoading,
+    setError,
+  })
+
   useEffect(() => {
     if (isLoadingCampaigns || currentSessionId || lobbyAutoEnterTriggeredRef.current) {
       return
@@ -1266,313 +1261,75 @@ export function WorkspaceInitialization({
     safeLocalStorageSetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, serializedContext)
   }, [currentSession, selectedCampaignId])
 
-  const handleSaveCampaignSettings: NonNullable<ModalsProps['onSaveCampaignSettings']> = (
-    event
-  ) => {
-    event.preventDefault()
-    void (async () => {
-      await saveCampaignSettings()
-      setShowCampaignSettingsModal(false)
-    })()
-  }
+  const {
+    pendingInviteReissueType,
+    setPendingInviteReissueType,
+    handleSaveCampaignSettings,
+    handlePosterFileSelected,
+    copyInviteUrl,
+    requestInviteReissue,
+    handleConfirmInviteReissue,
+  } = useWorkspacesCampaignSettingsActions({
+    apiUrl,
+    token,
+    fetchWithAuthGuard,
+    settingsCampaignId,
+    settingsData,
+    loadCampaignSettings,
+    saveCampaignSettings,
+    setIsInviteReissuing: campaignSettingsActions.setIsInviteReissuing,
+    setSettingsPosterUrl: campaignSettingsActions.setSettingsPosterUrl,
+    setError,
+    setLobbyNotice,
+    setShowCampaignSettingsModal,
+  })
 
-  const handlePosterFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      return
-    }
-
-    if (!file.type.startsWith('image/')) {
-      setError('Poster must be an image file.')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(file)
-    const img = new Image()
-
-    img.onload = () => {
-      try {
-        const naturalWidth = Math.max(1, img.naturalWidth)
-        const naturalHeight = Math.max(1, img.naturalHeight)
-        const scale = naturalWidth > MAX_POSTER_WIDTH_PX ? MAX_POSTER_WIDTH_PX / naturalWidth : 1
-        const targetWidth = Math.max(1, Math.round(naturalWidth * scale))
-        const targetHeight = Math.max(1, Math.round(naturalHeight * scale))
-
-        const canvas = document.createElement('canvas')
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          setError('Unable to process poster image.')
-          return
-        }
-
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
-
-        // Store as JPEG and lower quality when needed to stay within localStorage limits.
-        let quality = 0.86
-        let dataUrl = canvas.toDataURL('image/jpeg', quality)
-        while (dataUrl.length > MAX_POSTER_DATA_URL_CHARS && quality > 0.56) {
-          quality -= 0.1
-          dataUrl = canvas.toDataURL('image/jpeg', quality)
-        }
-        campaignSettingsActions.setSettingsPosterUrl(dataUrl)
-      } finally {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      setError('Unable to read poster image.')
-    }
-
-    img.src = objectUrl
-  }
-
-  const copyInviteUrl = async (inviteType: 'PLAYER' | 'SPECTATOR') => {
-    if (!settingsData) {
-      return
-    }
-
-    const code =
-      inviteType === 'PLAYER' ? settingsData.inviteCode : settingsData.spectatorInviteCode
-    if (!code) {
-      setError('Invite code is not available yet.')
-      return
-    }
-
-    const basePath = inviteType === 'PLAYER' ? '/join/' : '/watch/'
-    const inviteUrl = `${window.location.origin}${basePath}${encodeURIComponent(code)}`
-
-    try {
-      await navigator.clipboard.writeText(inviteUrl)
-      setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite URL copied.`)
-    } catch {
-      setError('Failed to copy invite URL to clipboard.')
-    }
-  }
-
-  const reissueInvite = async (inviteType: 'PLAYER' | 'SPECTATOR') => {
-    if (!settingsCampaignId) {
-      return
-    }
-
-    setError(null)
-    campaignSettingsActions.setIsInviteReissuing(true)
-
-    try {
-      const response = await fetchWithAuthGuard(
-        `${apiUrl}/api/campaigns/${settingsCampaignId}/invites/reissue`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ type: inviteType }),
-        }
-      )
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to refresh invite')
-      }
-
-      await loadCampaignSettings(settingsCampaignId)
-      setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite refreshed.`)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh invite'
-      setError(message)
-    } finally {
-      campaignSettingsActions.setIsInviteReissuing(false)
-    }
-  }
-
-  const requestInviteReissue = (inviteType: 'PLAYER' | 'SPECTATOR') => {
-    setPendingInviteReissueType(inviteType)
-  }
-
-  const handleConfirmInviteReissue = async () => {
-    if (!pendingInviteReissueType) {
-      return
-    }
-
-    const inviteType = pendingInviteReissueType
-    setPendingInviteReissueType(null)
-    await reissueInvite(inviteType)
-
-    // After reissuing, copy the new invite link to clipboard
-    if (settingsData) {
-      const code =
-        inviteType === 'PLAYER' ? settingsData.inviteCode : settingsData.spectatorInviteCode
-      if (code) {
-        const basePath = inviteType === 'PLAYER' ? '/join/' : '/watch/'
-        const inviteUrl = `${window.location.origin}${basePath}${encodeURIComponent(code)}`
-        try {
-          await navigator.clipboard.writeText(inviteUrl)
-          setLobbyNotice(`${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite URL copied.`)
-        } catch {
-          setError('Failed to copy invite URL to clipboard.')
-        }
-      }
-    }
-  }
+  const handleSaveCampaignSettingsSubmit: NonNullable<ModalsProps['onSaveCampaignSettings']> =
+    handleSaveCampaignSettings
 
   const handleToggleTheme = toggleThemeMode
-
-  const hasSessionSelected = currentSession !== null
-
-  const connectionStatus = useConnectionStatus({
+  const {
+    hasSessionSelected,
+    connectionStatus,
+    selectedCampaign,
+    settingsReferenceSession,
+    settingsCampaignTotalDurationMs,
+    connectedSpectatorsCount,
+    connectedPlayers,
+    membershipRole,
+    effectiveSessionRole,
+    isDmDisconnected,
+    configuredCooldownDurationMs,
+    cooldownControlVisible,
+    canManageCooldown,
+    cooldownControlLockedReason,
+    canExtendCooldown,
+    extendCooldownLockedReason,
+    effectiveSessionUser,
+    canStartFromGreenroom,
+    canPauseFromActive,
+    canStopFromActive,
+    leaveSessionWarning,
+    canEditSessionSettings,
+  } = useWorkspacesDerivedState({
     wsState,
-    sessionId: currentSession?.id ?? null,
-    roomId: selectedRoomId || null,
+    currentSession,
+    selectedRoomId,
+    campaigns,
+    selectedCampaignId,
+    settingsCampaignSessions,
+    settingsReferenceSessionId,
+    currentSessionStats,
+    currentPresence,
+    isGreenroom,
+    currentRooms,
+    typedRoomMembers,
+    activeTakeoverUserId,
+    takeoverPresence,
+    user,
+    settingsPostSessionChatDurationMinutes,
+    cooldownExtensionCounts,
   })
-  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
-  const settingsReferenceSession = settingsCampaignSessions.find(
-    (session) => session.id === settingsReferenceSessionId
-  )
-  const settingsCampaignTotalDurationMs = useMemo(
-    () =>
-      settingsCampaignSessions.reduce((total, session) => {
-        if (!session.startedAt || !session.endedAt) {
-          return total
-        }
-
-        return total + Math.max(0, session.endedAt - session.startedAt)
-      }, 0),
-    [settingsCampaignSessions]
-  )
-  const connectedSpectatorsCount =
-    currentSessionStats?.connectedSpectators ?? selectedCampaign?.connectedSpectatorsRounded ?? 0
-  const greenroomRosterCount = useMemo(() => {
-    if (!currentSession || !isGreenroom) {
-      return undefined
-    }
-
-    const greenroom = currentRooms.find((room) => isGreenRoom(room))
-    if (!greenroom) {
-      return undefined
-    }
-
-    const members = typedRoomMembers[greenroom.id] || []
-    const uniqueUserIds = new Set<UUID>()
-    for (const member of members) {
-      if (member.role === Role.SYSTEM) {
-        continue
-      }
-      uniqueUserIds.add(member.userId)
-    }
-
-    return uniqueUserIds.size
-  }, [currentRooms, currentSession, isGreenroom, typedRoomMembers])
-  const liveConnectedPresenceCount = currentPresence.filter(
-    (presence) => presence.state !== PresenceState.OFFLINE
-  ).length
-  const hasLivePresence = currentSession !== null && currentPresence.length > 0
-  const connectedPlayers = isGreenroom
-    ? (greenroomRosterCount ??
-      (currentSessionStats
-        ? currentSessionStats.connectedPlayersWithDm
-        : hasLivePresence
-          ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
-          : selectedCampaign?.connectedPlayersRounded !== undefined ||
-              selectedCampaign?.connectedPlayers
-            ? Math.max(
-                0,
-                (selectedCampaign?.connectedPlayersRounded ??
-                  selectedCampaign?.connectedPlayers ??
-                  0) + (selectedCampaign?.dmOnline ? 1 : 0)
-              )
-            : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)))
-    : currentSessionStats
-      ? currentSessionStats.connectedPlayersWithDm
-      : hasLivePresence
-        ? Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
-        : selectedCampaign?.connectedPlayersRounded !== undefined ||
-            selectedCampaign?.connectedPlayers
-          ? Math.max(
-              0,
-              (selectedCampaign?.connectedPlayersRounded ??
-                selectedCampaign?.connectedPlayers ??
-                0) + (selectedCampaign?.dmOnline ? 1 : 0)
-            )
-          : Math.max(0, liveConnectedPresenceCount - connectedSpectatorsCount)
-  const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
-  const effectiveSessionRole: Role = isTakeoverActive
-    ? Role.PLAYER
-    : currentSession && currentSession.dmId === user.id
-      ? Role.DM
-      : membershipRole
-  const dmPresence = useMemo(
-    () => currentPresence.find((presence) => presence.userId === currentSession?.dmId) || null,
-    [currentPresence, currentSession?.dmId]
-  )
-  const isDmDisconnected =
-    Boolean(currentSession) &&
-    currentSession?.dmId !== user.id &&
-    dmPresence?.state === PresenceState.OFFLINE
-  const configuredCooldownDurationMs = Math.max(
-    60_000,
-    toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000
-  )
-  const cooldownControlVisible =
-    currentSession?.state === SessionState.COOLDOWN &&
-    (effectiveSessionRole === Role.DM || effectiveSessionRole === Role.PLAYER)
-  const canManageCooldown =
-    currentSession?.state === SessionState.COOLDOWN &&
-    (currentSession?.dmId === user.id || (effectiveSessionRole === Role.PLAYER && isDmDisconnected))
-  const cooldownControlLockedReason =
-    cooldownControlVisible && !canManageCooldown
-      ? effectiveSessionRole === Role.PLAYER
-        ? 'Cooldown controls unlock for players only if the DM disconnects.'
-        : 'Only the DM can control cooldown.'
-      : undefined
-  const currentCooldownExtensionCount = currentSession
-    ? (cooldownExtensionCounts[currentSession.id] ?? 0)
-    : 0
-  const canExtendCooldown = Boolean(canManageCooldown) && currentCooldownExtensionCount < 3
-  const extendCooldownLockedReason = !canManageCooldown
-    ? cooldownControlLockedReason
-    : currentCooldownExtensionCount >= 3
-      ? 'Cooldown extention limit reached'
-      : undefined
-  const takeoverDisplayName =
-    takeoverPresence?.characterName || takeoverPresence?.username || user.username
-  // Preserve the JWT `role` as-is; set `campaignMembershipRole` so components can
-  // distinguish the campaign-scoped role from the global account role.
-  const effectiveSessionUser =
-    effectiveSessionRole === user.role && !isTakeoverActive
-      ? {
-          ...user,
-          campaignMembershipRole: selectedCampaign?.memberRole as
-            | 'DM'
-            | 'PLAYER'
-            | 'SPECTATOR'
-            | undefined,
-        }
-      : {
-          ...user,
-          id: effectiveActorUserId,
-          username: takeoverDisplayName,
-          role: effectiveSessionRole,
-          campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
-        }
-  const canStartFromGreenroom = !isTakeoverActive && currentSession?.dmId === user.id && isGreenroom
-  const canPauseFromActive =
-    !isTakeoverActive &&
-    currentSession?.dmId === user.id &&
-    (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
-  const canStopFromActive =
-    !isTakeoverActive &&
-    currentSession?.dmId === user.id &&
-    (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
-  const leaveSessionWarning = useSessionLeaveWarning(effectiveSessionRole, currentSession?.state)
-  const canEditSessionSettings =
-    currentSession?.state === SessionState.IDLE ||
-    currentSession?.state === SessionState.ACTIVE ||
-    currentSession?.state === SessionState.PAUSED
 
   useEffect(() => {
     if (!error) return
@@ -1903,7 +1660,7 @@ export function WorkspaceInitialization({
             settingsData={settingsData}
             isSettingsSaving={isSettingsSaving}
             onCloseCampaignSettings={() => setShowCampaignSettingsModal(false)}
-            onSaveCampaignSettings={handleSaveCampaignSettings}
+            onSaveCampaignSettings={handleSaveCampaignSettingsSubmit}
             settingsName={settingsName}
             onSettingsNameChange={(name) => campaignSettingsActions.setSettingsName(name)}
             settingsDescription={settingsDescription}

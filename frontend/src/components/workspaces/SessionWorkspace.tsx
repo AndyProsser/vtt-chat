@@ -4,7 +4,7 @@ import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionTo
 import { SessionWorkspaceLeftRail } from '@/components/workspaces/session/SessionWorkspace.LeftRail'
 import { SessionWorkspaceCenterPane } from '@/components/workspaces/session/SessionWorkspace.CenterPane'
 import { SessionWorkspaceRightRailTab } from '@/components/workspaces/session/SessionWorkspace.RightRailTab'
-import type { SessionWorkspaceProps } from './SessionWorkspace.types'
+import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 
 export function SessionWorkspace(props: SessionWorkspaceProps) {
   if (!props.hasSessionSelected || !props.currentSession) {
