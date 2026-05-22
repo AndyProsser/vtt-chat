@@ -1,6 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
-type EditorCampaignSettingsPanelInvitesProps = {
+type CampaignSettingsPanelInvitesProps = {
   isInviteReissuing: boolean
   settingsSpectatorsEnabled: boolean
   hasSpectatorInviteCode: boolean
@@ -10,7 +10,7 @@ type EditorCampaignSettingsPanelInvitesProps = {
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
-export function EditorCampaignSettingsPanelInvites(props: EditorCampaignSettingsPanelInvitesProps) {
+export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvitesProps) {
   return (
     <section
       className="session-campaign-settings-panel session-campaign-invite-panel"

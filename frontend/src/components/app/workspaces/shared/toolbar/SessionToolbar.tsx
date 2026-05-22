@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ToolbarActionModel } from './CommandCenterFrame'
+import type { ToolbarActionModel } from './SessionWorkspaceFrame'
 import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import {

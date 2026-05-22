@@ -1,6 +1,6 @@
 import { Slider } from '@/components/ui'
 
-type EditorCampaignSettingsPanelPolicyProps = {
+type CampaignSettingsPanelPolicyProps = {
   isSaving: boolean
   settingsVisibility: 'PUBLIC' | 'PRIVATE'
   onSettingsVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
@@ -26,7 +26,7 @@ type EditorCampaignSettingsPanelPolicyProps = {
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
 }
 
-export function EditorCampaignSettingsPanelPolicy(props: EditorCampaignSettingsPanelPolicyProps) {
+export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyProps) {
   return (
     <section className="session-campaign-settings-panel" aria-label="Campaign policy settings">
       <h5 className="session-inline-form-title">Settings</h5>

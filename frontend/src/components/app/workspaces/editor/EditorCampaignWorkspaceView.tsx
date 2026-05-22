@@ -2,10 +2,10 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { Role, type SessionState, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
-import { CampaignInformationPanel } from '@/components/shared/CampaignInformationPanel'
-import { CampaignPartyPanel } from '@/components/shared/CampaignPartyPanel'
-import { CampaignScaffoldPanel } from '@/components/shared/CampaignScaffoldPanel'
-import { InvitePopoverWidget } from '@/components/shared/InvitePopoverWidget'
+import { CampaignInformationPanel } from '@/components/app/workspaces/shared/rightbar/CampaignInformationPanel'
+import { CampaignPartyPanel } from '@/components/app/workspaces/shared/rightbar/CampaignPartyPanel'
+import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/common/CampaignScaffoldPanel'
+import { InvitePopoverWidget } from '@/components/app/workspaces/shared/common/InvitePopoverWidget'
 import {
   type WorkspaceTab,
   getTabIcon,

@@ -20,12 +20,12 @@ import {
   createCharacterSettingsController,
   createSessionMembershipController,
 } from '@/utils/session/sessionController'
-import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/CommandCenterFrame'
+import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
 import { SessionLobbyView } from '@/components/app/workspaces/lobby/SessionLobbyView'
 import { AppInitModals } from './AppInitModals'
-import { AppInitCommandCenter } from './AppInitCommandCenter'
+import { AppInitSessionWorkspace } from './AppInitSessionWorkspace'
 import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { AppInitEditorWorkspaceBranch } from './AppInitEditorWorkspaceBranch'
+import { AppInitEditorWorkspace } from './AppInitEditorWorkspace'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
@@ -114,7 +114,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
   const [newCampaignName, setNewCampaignName] = useState('')
   const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
-  const [lobbyViewMode, setLobbyViewMode] = useState<'list' | 'workspace'>('list')
+  const [editorWorkspaceView, setEditorWorkspaceView] = useState<'lobby' | 'editor'>('lobby')
   const [lobbyStats, setLobbyStats] = useState<{
     activeSessions: number
     connectedPlayersAndDms: number
@@ -1083,7 +1083,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
     loadDmVoiceTargetingSetting,
     saveDmVoiceTargetingSetting,
     saveSessionSettings,
-    openLobbyCampaignWorkspace,
+    openEditorCampaignWorkspace,
     saveCampaignSettings,
     handleSaveCampaignInfoPanel,
   } = useSessionInitSettingsOrchestration({
@@ -1116,7 +1116,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
-    setLobbyViewMode,
+    setEditorWorkspaceView,
     setError,
     setLobbyNotice,
   })
@@ -1421,7 +1421,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
       setShowJoinCampaignModal,
       setNewCampaignName,
       setJoinInviteInput,
-      setLobbyViewMode,
+      setEditorWorkspaceView,
       setIsCreatingCampaign,
       setIsJoiningCampaign,
       setError,
@@ -1431,7 +1431,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
       ensureSessionMembership,
       replaceSessions,
       setCurrentSession,
-      openLobbyCampaignWorkspace,
+      openEditorCampaignWorkspace,
       onSessionCreated,
     })
 
@@ -2176,7 +2176,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
       <div
         className={`session-init-shell ${hasSessionSelected ? 'session-init-shell-session' : 'session-init-shell-home session-init-shell--lobby'}`}
       >
-        {!hasSessionSelected && lobbyViewMode === 'list' && (
+        {!hasSessionSelected && editorWorkspaceView === 'lobby' && (
           <SessionLobbyView
             campaigns={campaigns}
             discoverableCampaigns={discoverableCampaigns}
@@ -2200,7 +2200,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
             onToggleTheme={handleToggleTheme}
             onOpenUserSettings={() => setShowUserSettingsModal(true)}
             onLogoff={handleLogoff}
-            onOpenCampaignSettings={openLobbyCampaignWorkspace}
+            onOpenCampaignSettings={openEditorCampaignWorkspace}
             onEnterCampaign={(campaignId) => {
               void handleEnterCampaign(campaignId)
             }}
@@ -2214,9 +2214,9 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           />
         )}
 
-        <AppInitEditorWorkspaceBranch
+        <AppInitEditorWorkspace
           hasSessionSelected={hasSessionSelected}
-          lobbyViewMode={lobbyViewMode}
+          editorWorkspaceView={editorWorkspaceView}
           selectedCampaign={selectedCampaign || null}
           membershipRole={membershipRole}
           themeMode={themeMode}
@@ -2316,7 +2316,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
             void saveCharacterSettings()
           }}
           onBackToLobby={() => {
-            setLobbyViewMode('list')
+            setEditorWorkspaceView('lobby')
           }}
           onCreateCampaign={() => setShowCreateCampaignModal(true)}
           onJoinCampaign={() => setShowJoinCampaignModal(true)}
@@ -2324,7 +2324,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           onOpenUserSettings={() => setShowUserSettingsModal(true)}
           onLogoff={handleLogoff}
           onLaunch={(campaignId) => {
-            setLobbyViewMode('list')
+            setEditorWorkspaceView('lobby')
             void handleEnterCampaign(campaignId)
           }}
           onSaveCampaignInfo={handleSaveCampaignInfoPanel}
@@ -2338,7 +2338,7 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           }
         />
 
-        <AppInitCommandCenter
+        <AppInitSessionWorkspace
           hasSessionSelected={hasSessionSelected}
           currentSession={currentSession}
           currentPauseStats={currentPauseStats}

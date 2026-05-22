@@ -97,7 +97,7 @@ function iconForTab(
   }
 }
 
-interface CommandCenterFrameProps {
+interface SessionWorkspaceFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
   renderSystemToasts?: () => ReactNode
@@ -116,7 +116,7 @@ function formatIndicatorCount(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
 
-export function CommandCenterFrame({
+export function SessionWorkspaceFrame({
   role,
   renderToolbar,
   renderSystemToasts,
@@ -124,7 +124,7 @@ export function CommandCenterFrame({
   renderCenterPane,
   renderRightRailTab,
   rightRailIndicators = {},
-}: CommandCenterFrameProps) {
+}: SessionWorkspaceFrameProps) {
   const systemToastsNode = renderSystemToasts ? renderSystemToasts() : null
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
   const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)

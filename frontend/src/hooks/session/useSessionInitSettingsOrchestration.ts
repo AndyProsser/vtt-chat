@@ -9,10 +9,11 @@ import {
 } from '@/utils/session/sessionSettings'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
-import { getLatestSessionChronologically, normalizeSessionRecord } from '@/utils/session/sessionInit'
 import {
-  createCampaignSettingsController,
-} from '@/utils/session/sessionController'
+  getLatestSessionChronologically,
+  normalizeSessionRecord,
+} from '@/utils/session/sessionInit'
+import { createCampaignSettingsController } from '@/utils/session/sessionController'
 
 type UseSessionInitSettingsOrchestrationParams = {
   apiUrl: string
@@ -44,12 +45,14 @@ type UseSessionInitSettingsOrchestrationParams = {
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
-  setLobbyViewMode: Dispatch<SetStateAction<'list' | 'workspace'>>
+  setEditorWorkspaceView: Dispatch<SetStateAction<'lobby' | 'editor'>>
   setError: Dispatch<SetStateAction<string | null>>
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
 }
 
-export function useSessionInitSettingsOrchestration(params: UseSessionInitSettingsOrchestrationParams) {
+export function useSessionInitSettingsOrchestration(
+  params: UseSessionInitSettingsOrchestrationParams
+) {
   const {
     apiUrl,
     token,
@@ -80,7 +83,7 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
-    setLobbyViewMode,
+    setEditorWorkspaceView,
     setError,
     setLobbyNotice,
   } = params
@@ -150,21 +153,18 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
     setError(null)
 
     try {
-      const response = await fetchWithAuthGuard(
-        `${apiUrl}/api/session/${currentSession.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: sessionSettingsName,
-            description: sessionSettingsDescription,
-            plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
-          }),
-        }
-      )
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSession.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: sessionSettingsName,
+          description: sessionSettingsDescription,
+          plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
+        }),
+      })
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
@@ -222,10 +222,10 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
     [campaignSettingsActions, campaignSettingsController]
   )
 
-  const openLobbyCampaignWorkspace = useCallback(
+  const openEditorCampaignWorkspace = useCallback(
     (campaignId: UUID) => {
       setSelectedCampaignId(campaignId)
-      setLobbyViewMode('workspace')
+      setEditorWorkspaceView('editor')
 
       campaignSettingsActions.setSettingsCampaignId(campaignId)
       campaignSettingsActions.setSettingsHomeTab('home')
@@ -240,7 +240,7 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
       campaignSettingsActions,
       loadCampaignSettings,
       loadCampaignSettingsSessionContext,
-      setLobbyViewMode,
+      setEditorWorkspaceView,
       setSelectedCampaignId,
     ]
   )
@@ -336,22 +336,19 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
     ) => {
       setError(null)
 
-      const response = await fetchWithAuthGuard(
-        `${apiUrl}/api/campaigns/${campaignId}/settings`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: updates.name,
-            description: updates.description,
-            posterUrl: updates.posterUrl,
-            extensionSyncPolicy: updates.integrationSyncPolicy,
-          }),
-        }
-      )
+      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: updates.name,
+          description: updates.description,
+          posterUrl: updates.posterUrl,
+          extensionSyncPolicy: updates.integrationSyncPolicy,
+        }),
+      })
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
@@ -393,7 +390,7 @@ export function useSessionInitSettingsOrchestration(params: UseSessionInitSettin
     loadDmVoiceTargetingSetting,
     saveDmVoiceTargetingSetting,
     saveSessionSettings,
-    openLobbyCampaignWorkspace,
+    openEditorCampaignWorkspace,
     saveCampaignSettings,
     handleSaveCampaignInfoPanel,
   }

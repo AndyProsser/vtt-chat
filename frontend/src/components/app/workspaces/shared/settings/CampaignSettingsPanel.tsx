@@ -1,8 +1,8 @@
 import { TooltipProvider } from '@/components/ui'
-import { EditorCampaignSettingsPanelPolicy } from './EditorCampaignSettingsPanel.Policy'
-import type { EditorCampaignSettingsPanelProps } from './EditorCampaignSettingsPanel.types'
+import { CampaignSettingsPanelPolicy } from './CampaignSettingsPanel.Policy'
+import type { CampaignSettingsPanelProps } from './CampaignSettingsPanel.types'
 
-export function EditorCampaignSettingsPanel(props: EditorCampaignSettingsPanelProps) {
+export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
   if (props.isLoading) {
     return <div className="session-status-message">Loading campaign settings...</div>
   }
@@ -38,7 +38,7 @@ export function EditorCampaignSettingsPanel(props: EditorCampaignSettingsPanelPr
         </div>
 
         <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">
-          <EditorCampaignSettingsPanelPolicy
+          <CampaignSettingsPanelPolicy
             isSaving={props.isSaving}
             settingsVisibility={props.settingsVisibility}
             onSettingsVisibilityChange={props.onSettingsVisibilityChange}

@@ -27,7 +27,7 @@ type UseSessionInitCampaignEntryOrchestrationParams = {
   setShowJoinCampaignModal: Dispatch<SetStateAction<boolean>>
   setNewCampaignName: Dispatch<SetStateAction<string>>
   setJoinInviteInput: Dispatch<SetStateAction<string>>
-  setLobbyViewMode: Dispatch<SetStateAction<'list' | 'workspace'>>
+  setEditorWorkspaceView: Dispatch<SetStateAction<'lobby' | 'editor'>>
   setIsCreatingCampaign: Dispatch<SetStateAction<boolean>>
   setIsJoiningCampaign: Dispatch<SetStateAction<boolean>>
   setError: Dispatch<SetStateAction<string | null>>
@@ -37,7 +37,7 @@ type UseSessionInitCampaignEntryOrchestrationParams = {
   ensureSessionMembership: (sessionId: UUID) => Promise<void>
   replaceSessions: (sessions: SessionRecord[]) => void
   setCurrentSession: (sessionId: UUID | null) => void
-  openLobbyCampaignWorkspace: (campaignId: UUID) => void
+  openEditorCampaignWorkspace: (campaignId: UUID) => void
   onSessionCreated?: (sessionId: UUID) => void
 }
 
@@ -59,7 +59,7 @@ export function useSessionInitCampaignEntryOrchestration(
     setShowJoinCampaignModal,
     setNewCampaignName,
     setJoinInviteInput,
-    setLobbyViewMode,
+    setEditorWorkspaceView,
     setIsCreatingCampaign,
     setIsJoiningCampaign,
     setError,
@@ -69,7 +69,7 @@ export function useSessionInitCampaignEntryOrchestration(
     ensureSessionMembership,
     replaceSessions,
     setCurrentSession,
-    openLobbyCampaignWorkspace,
+    openEditorCampaignWorkspace,
     onSessionCreated,
   } = params
 
@@ -219,11 +219,11 @@ export function useSessionInitCampaignEntryOrchestration(
 
         if (intent === 'launch') {
           setLobbyNotice('Campaign created. Launching now.')
-          setLobbyViewMode('list')
+          setEditorWorkspaceView('lobby')
           await handleEnterCampaign(campaign.id)
         } else {
           setLobbyNotice('Campaign created. Offline edit/review mode is ready.')
-          openLobbyCampaignWorkspace(campaign.id)
+          openEditorCampaignWorkspace(campaign.id)
         }
 
         setNewCampaignName('')
@@ -239,12 +239,12 @@ export function useSessionInitCampaignEntryOrchestration(
       fetchWithAuthGuard,
       handleEnterCampaign,
       newCampaignName,
-      openLobbyCampaignWorkspace,
+      openEditorCampaignWorkspace,
       setCampaigns,
       setError,
       setIsCreatingCampaign,
       setLobbyNotice,
-      setLobbyViewMode,
+      setEditorWorkspaceView,
       setNewCampaignName,
       setSelectedCampaignId,
       setShowCreateCampaignModal,

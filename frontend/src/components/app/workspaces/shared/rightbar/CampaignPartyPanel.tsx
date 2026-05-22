@@ -11,7 +11,7 @@ import {
   formatLastSeen,
   generateMockParty,
 } from './CampaignPartyPanel.mockData'
-import '../../styles/components/shared/CampaignPartyPanel.css'
+import '@/styles/components/shared/CampaignPartyPanel.css'
 
 const IS_DEV = import.meta.env.DEV
 const AWAY_TIMEOUT_MS = 8 * 60 * 1000

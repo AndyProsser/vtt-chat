@@ -5,13 +5,13 @@ import {
   CampaignRightbarSettings,
   type CharacterSettingsDraft,
 } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { EditorCampaignSettingsPanel } from '@/components/app/workspaces/editor/EditorCampaignSettingsPanel'
+import { CampaignSettingsPanel } from '@/components/app/workspaces/shared/settings/CampaignSettingsPanel'
 import { EditorCampaignWorkspaceView } from '@/components/app/workspaces/editor/EditorCampaignWorkspaceView'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 
-type AppInitEditorWorkspaceBranchProps = {
+type AppInitEditorWorkspaceProps = {
   hasSessionSelected: boolean
-  lobbyViewMode: 'list' | 'workspace'
+  editorWorkspaceView: 'lobby' | 'editor'
   selectedCampaign: CampaignSummary | null
   membershipRole: Role
   themeMode: 'light' | 'dark'
@@ -93,8 +93,8 @@ type AppInitEditorWorkspaceBranchProps = {
   launchDisabledReason: string
 }
 
-export function AppInitEditorWorkspaceBranch(props: AppInitEditorWorkspaceBranchProps) {
-  if (props.hasSessionSelected || props.lobbyViewMode !== 'workspace') {
+export function AppInitEditorWorkspace(props: AppInitEditorWorkspaceProps) {
+  if (props.hasSessionSelected || props.editorWorkspaceView !== 'editor') {
     return null
   }
 
@@ -143,7 +143,7 @@ export function AppInitEditorWorkspaceBranch(props: AppInitEditorWorkspaceBranch
       isInviteReissuing={props.isInviteReissuing}
       settingsPanel={
         props.membershipRole === Role.DM ? (
-          <EditorCampaignSettingsPanel
+          <CampaignSettingsPanel
             campaignName={props.selectedCampaign?.name}
             isLoading={props.isSettingsLoading}
             isSaving={props.isSettingsSaving}

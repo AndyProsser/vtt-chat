@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import { useToast } from '../../hooks/useToast'
-import '../../styles/components/shared/CampaignInformationPanel.css'
+import { useToast } from '@/hooks/useToast'
+import '@/styles/components/shared/CampaignInformationPanel.css'
 
 type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
 
@@ -17,6 +17,7 @@ interface CampaignInformationPanelProps {
     dmDisplayName?: string
     dmUsername?: string
     dmAvatarUrl?: string | null
+    dmOnline?: boolean
     connectedPlayers?: number
     connectedSpectators?: number
     registeredPlayersCount?: number

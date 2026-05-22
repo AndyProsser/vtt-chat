@@ -3,14 +3,14 @@ import { MessageType, Role, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/app/workspaces/session/audio/AudioPanel'
 import { ChatWindow } from '@/components/app/workspaces/session/chat/ChatWindow'
-import { NotesPanel } from '@/components/app/workspaces/session/notes/NotesPanel'
+import { NotesPanel } from '@/components/app/workspaces/shared/notes/NotesPanel'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
-import { CampaignInformationPanel } from '@/components/shared/CampaignInformationPanel'
+import { CampaignInformationPanel } from '@/components/app/workspaces/shared/rightbar/CampaignInformationPanel'
 import { CampaignRightbarSettings } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { CampaignScaffoldPanel } from '@/components/shared/CampaignScaffoldPanel'
-import { CommandCenterFrame } from '@/components/app/workspaces/shared/toolbar/CommandCenterFrame'
+import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/common/CampaignScaffoldPanel'
+import { SessionWorkspaceFrame } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
 import { HistoryPanel } from '@/components/app/workspaces/shared/rightbar/HistoryPanel'
 import { JournalPanel } from '@/components/app/workspaces/shared/rightbar/JournalPanel'
 import { NotesRailPanel } from '@/components/app/workspaces/shared/rightbar/NotesRailPanel'
@@ -20,7 +20,7 @@ import { SessionToolbar } from '@/components/app/workspaces/shared/toolbar/Sessi
 import { SpectatorWaitScreen } from '@/components/app/workspaces/session/SpectatorWaitScreen'
 import type { CampaignSummary } from '@/types/session/campaign'
 
-type AppInitCommandCenterProps = {
+type AppInitSessionWorkspaceProps = {
   hasSessionSelected: boolean
   currentSession: SessionRecord | null
   currentPauseStats: {
@@ -75,7 +75,7 @@ type AppInitCommandCenterProps = {
     coreWsState: ComponentProps<typeof SessionToolbar>['coreWsState']
     livekitState: ComponentProps<typeof SessionToolbar>['livekitState']
   }
-  rightRailIndicators: ComponentProps<typeof CommandCenterFrame>['rightRailIndicators']
+  rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
   selectedRoom: RoomRecord | null
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
@@ -107,7 +107,7 @@ type AppInitCommandCenterProps = {
   userId: UUID
 }
 
-export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
+export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
   if (!props.hasSessionSelected || !props.currentSession) {
     return null
   }
@@ -116,7 +116,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
 
   return (
     <div className="session-command-center">
-      <CommandCenterFrame
+      <SessionWorkspaceFrame
         role={props.effectiveSessionRole}
         rightRailIndicators={props.rightRailIndicators}
         renderSystemToasts={() => (
@@ -134,9 +134,7 @@ export function AppInitCommandCenter(props: AppInitCommandCenterProps) {
             livekitState={props.connectionStatus.livekitState}
             sessionState={currentSession.state}
             sessionStartedAt={currentSession.startedAt}
-            sessionPausedAt={
-              currentSession.pausedAt ?? props.currentPauseStats.pauseStartedAt
-            }
+            sessionPausedAt={currentSession.pausedAt ?? props.currentPauseStats.pauseStartedAt}
             sessionEndedAt={currentSession.endedAt}
             cooldownEndsAt={currentSession.cooldownExpiresAt}
             cumulativePauseMs={props.currentPauseStats.cumulativePauseMs}
