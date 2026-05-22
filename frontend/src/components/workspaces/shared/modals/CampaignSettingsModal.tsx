@@ -174,9 +174,9 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
         ) : null}
 
         {props.isSettingsLoading ? (
-          <div className="session-status-message">Loading campaign settings...</div>
+          <div className="workspaces-status-message">Loading campaign settings...</div>
         ) : !props.settingsData ? (
-          <div className="session-status-message">Unable to load campaign settings.</div>
+          <div className="workspaces-status-message">Unable to load campaign settings.</div>
         ) : props.settingsHomeTab === 'notes' ? (
           <CampaignScaffoldPanel
             title="Campaign Notes"

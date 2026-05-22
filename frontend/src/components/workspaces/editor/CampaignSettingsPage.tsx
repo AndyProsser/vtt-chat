@@ -233,9 +233,9 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
         </div>
 
         {isLoading ? (
-          <div className="session-status-message">Loading campaign settings...</div>
+          <div className="workspaces-status-message">Loading campaign settings...</div>
         ) : !settings ? (
-          <div className="session-status-message">Unable to load this campaign.</div>
+          <div className="workspaces-status-message">Unable to load this campaign.</div>
         ) : (
           <div className="session-campaign-settings-grid">
             <form className="session-campaign-settings-panel" onSubmit={handleSaveMetadata}>

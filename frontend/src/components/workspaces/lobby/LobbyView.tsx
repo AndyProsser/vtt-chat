@@ -35,8 +35,8 @@ export function LobbyView(props: LobbyViewProps) {
   return (
     <TooltipProvider delayDuration={140}>
       <div
-        className="session-lobby-view"
-        data-testid="session-lobby-view"
+        className="workspaces-lobby-view"
+        data-testid="workspaces-lobby-view"
         data-ui-component="LobbyView"
         data-ui-state={props.isLoadingCampaigns ? 'loading' : 'ready'}
       >
@@ -53,13 +53,13 @@ export function LobbyView(props: LobbyViewProps) {
         />
 
         <section
-          className="session-lobby-stats"
+          className="workspaces-lobby-stats"
           aria-label="Lobby system stats"
           data-ui-component="LobbyStatsBar"
         >
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="session-lobby-stats__chip">
+              <span className="workspaces-lobby-stats__chip">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   rocket_launch
                 </span>
@@ -74,7 +74,7 @@ export function LobbyView(props: LobbyViewProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="session-lobby-stats__chip">
+              <span className="workspaces-lobby-stats__chip">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   groups
                 </span>
@@ -88,7 +88,7 @@ export function LobbyView(props: LobbyViewProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="session-lobby-stats__chip">
+              <span className="workspaces-lobby-stats__chip">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   visibility
                 </span>
@@ -102,7 +102,7 @@ export function LobbyView(props: LobbyViewProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="session-lobby-stats__chip">
+              <span className="workspaces-lobby-stats__chip">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   schedule
                 </span>
@@ -118,7 +118,7 @@ export function LobbyView(props: LobbyViewProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="session-lobby-stats__chip">
+              <span className="workspaces-lobby-stats__chip">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   speed
                 </span>
@@ -133,7 +133,7 @@ export function LobbyView(props: LobbyViewProps) {
         </section>
 
         <div
-          className="session-card session-card--lobby-list session-card--lobby-list-primary"
+          className="session-card workspaces-card--lobby-list workspaces-card--lobby-list-primary"
           data-ui-component="LobbyCampaignList"
           data-ui-state={totalVisibleCampaigns > 0 ? 'has-campaigns' : 'empty'}
         >
@@ -143,17 +143,17 @@ export function LobbyView(props: LobbyViewProps) {
             </div>
           </div>
 
-          <div className="session-lobby-campaign-sections">
+          <div className="workspaces-lobby-campaign-sections">
             <section
-              className="session-lobby-campaign-section"
+              className="workspaces-lobby-campaign-section"
               aria-label="Member or DM campaigns"
               data-ui-component="LobbyOwnedCampaignSection"
             >
-              <h4 className="session-lobby-campaign-section__title">Your Campiagns</h4>
+              <h4 className="workspaces-lobby-campaign-section__title">Your Campiagns</h4>
               {props.isLoadingCampaigns ? (
-                <div className="session-status-message">Loading campaigns...</div>
+                <div className="workspaces-status-message">Loading campaigns...</div>
               ) : props.campaigns.length === 0 ? (
-                <div className="session-status-message">No campaigns available yet.</div>
+                <div className="workspaces-status-message">No campaigns available yet.</div>
               ) : (
                 <div className="session-campaign-grid" role="list" aria-label="Campaign list">
                   {props.campaigns.map((campaign) => (
@@ -176,16 +176,16 @@ export function LobbyView(props: LobbyViewProps) {
             {discoverableCampaigns.length > 0 && (
               <>
                 <div
-                  className="session-lobby-campaign-divider"
+                  className="workspaces-lobby-campaign-divider"
                   role="separator"
                   aria-hidden="true"
                 />
                 <section
-                  className="session-lobby-campaign-section"
+                  className="workspaces-lobby-campaign-section"
                   aria-label="Discoverable campaigns"
                   data-ui-component="LobbyDiscoverableCampaignSection"
                 >
-                  <h4 className="session-lobby-campaign-section__title">Discoverable</h4>
+                  <h4 className="workspaces-lobby-campaign-section__title">Discoverable</h4>
                   <div
                     className="session-campaign-grid"
                     role="list"
@@ -210,7 +210,7 @@ export function LobbyView(props: LobbyViewProps) {
             )}
 
             {shouldShowSparseFiller && (
-              <div className="session-lobby-campaign-filler" aria-hidden="true">
+              <div className="workspaces-lobby-campaign-filler" aria-hidden="true">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   auto_awesome
                 </span>

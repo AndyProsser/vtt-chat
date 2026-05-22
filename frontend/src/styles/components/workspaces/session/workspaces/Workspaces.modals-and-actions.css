@@ -84,14 +84,14 @@
   grid-template-columns: minmax(280px, 1fr) auto;
 }
 
-.session-lobby-stats {
+.workspaces-lobby-stats {
   margin-bottom: 0.8rem;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
-.session-lobby-stats__chip {
+.workspaces-lobby-stats__chip {
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
@@ -103,11 +103,11 @@
   white-space: nowrap;
 }
 
-.session-lobby-stats__chip .material-symbols-outlined {
+.workspaces-lobby-stats__chip .material-symbols-outlined {
   font-size: 15px;
 }
 
-.session-lobby-stats__chip strong {
+.workspaces-lobby-stats__chip strong {
   font-size: 0.78rem;
 }
 
@@ -176,7 +176,7 @@
   background-color: #6b7280;
 }
 
-.session-status-message {
+.workspaces-status-message {
   padding: 1rem;
   color: var(--color-text-secondary);
   font-size: 0.875rem;

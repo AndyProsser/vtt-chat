@@ -89,19 +89,19 @@
   background-color: var(--color-surface);
 }
 
-.session-card--lobby-list {
+.workspaces-card--lobby-list {
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.session-card--lobby-list-primary {
+.workspaces-card--lobby-list-primary {
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.session-lobby-view {
+.workspaces-lobby-view {
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
@@ -109,13 +109,13 @@
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 
-.session-card--lobby-list-primary {
+.workspaces-card--lobby-list-primary {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
 }
 
-.session-lobby-campaign-sections {
+.workspaces-lobby-campaign-sections {
   height: 100%;
   min-height: 0;
   overflow-y: auto;
@@ -126,12 +126,12 @@
   gap: 0.55rem;
 }
 
-.session-lobby-campaign-section {
+.workspaces-lobby-campaign-section {
   display: grid;
   gap: 0.35rem;
 }
 
-.session-lobby-campaign-section__title {
+.workspaces-lobby-campaign-section__title {
   margin: 0;
   position: sticky;
   top: 0;
@@ -147,12 +147,12 @@
   padding: 0.24rem 0.4rem;
 }
 
-.session-lobby-campaign-divider {
+.workspaces-lobby-campaign-divider {
   height: 1px;
   background: color-mix(in srgb, var(--color-border-soft) 80%, transparent);
 }
 
-.session-lobby-campaign-filler {
+.workspaces-lobby-campaign-filler {
   margin-top: 0.1rem;
   min-height: 72px;
   flex: 1 1 auto;
@@ -169,7 +169,7 @@
   text-align: center;
 }
 
-.session-lobby-campaign-filler .material-symbols-outlined {
+.workspaces-lobby-campaign-filler .material-symbols-outlined {
   font-size: 1rem;
 }
 
@@ -248,7 +248,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.session-card--lobby-list-primary .session-campaign-card {
+.workspaces-card--lobby-list-primary .session-campaign-card {
   min-height: 164px;
   padding: 0.62rem;
 }

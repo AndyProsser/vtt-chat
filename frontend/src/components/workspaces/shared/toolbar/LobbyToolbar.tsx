@@ -35,7 +35,7 @@ export function LobbyToolbar(props: LobbyToolbarProps) {
   return (
     <WorkspaceToolbar
       className="session-toolbar--lobby"
-      dataTestId="session-lobby-toolbar"
+      dataTestId="workspaces-lobby-toolbar"
       dataUiComponent="LobbyToolbar"
       brandAriaLabel="Lobby toolbar"
       extraActions={toolbarActions}

@@ -78,12 +78,12 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           isInviteReissuing={props.isInviteReissuing}
         />
         <section
-          className="session-lobby-workspace"
+          className="workspaces-lobby-workspace"
           aria-label="Campaign review workspace"
           data-ui-component="EditorWorkspaceShell"
           data-ui-state="no-campaign"
         >
-          <div className="session-status-message">Select a campaign from the lobby to review.</div>
+          <div className="workspaces-status-message">Select a campaign from the lobby to review.</div>
         </section>
       </>
     )
@@ -223,21 +223,21 @@ export function WorkspaceView(props: WorkspaceViewProps) {
         />
 
         <section
-          className="session-lobby-workspace"
+          className="workspaces-lobby-workspace"
           aria-label="Campaign review workspace"
           data-ui-component="EditorWorkspaceShell"
           data-ui-state={resolvedActiveTab}
         >
-          <div className="session-lobby-workspace__body" data-ui-component="EditorWorkspaceBody">
+          <div className="workspaces-lobby-workspace__body" data-ui-component="EditorWorkspaceBody">
             <div
-              className="session-lobby-workspace__panel"
+              className="workspaces-lobby-workspace__panel"
               data-ui-component="EditorWorkspacePanel"
             >
               {renderPanel()}
             </div>
 
             <aside
-              className="session-lobby-workspace__dock"
+              className="workspaces-lobby-workspace__dock"
               aria-label="Campaign workspace tools"
               data-ui-component="EditorWorkspaceDock"
             >
@@ -246,7 +246,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className={`session-lobby-workspace__dock-button ${resolvedActiveTab === tab ? 'is-active' : ''}`}
+                      className={`workspaces-lobby-workspace__dock-button ${resolvedActiveTab === tab ? 'is-active' : ''}`}
                       onClick={() => setActiveTab(tab)}
                       aria-label={getTabLabel(tab)}
                     >

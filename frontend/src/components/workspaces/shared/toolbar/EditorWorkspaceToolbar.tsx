@@ -70,7 +70,7 @@ export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
   return (
     <WorkspaceToolbar
       className="session-toolbar--lobby"
-      dataTestId="session-lobby-toolbar"
+      dataTestId="workspaces-lobby-toolbar"
       dataUiComponent="EditorWorkspaceToolbar"
       dataUiState={props.dataUiState}
       brandAriaLabel="Editor toolbar"

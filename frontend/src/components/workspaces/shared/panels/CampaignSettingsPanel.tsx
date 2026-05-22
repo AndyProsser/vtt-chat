@@ -4,11 +4,11 @@ import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
 
 export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
   if (props.isLoading) {
-    return <div className="session-status-message">Loading campaign settings...</div>
+    return <div className="workspaces-status-message">Loading campaign settings...</div>
   }
 
   if (!props.settingsData) {
-    return <div className="session-status-message">Unable to load campaign settings.</div>
+    return <div className="workspaces-status-message">Unable to load campaign settings.</div>
   }
 
   return (

@@ -143,7 +143,7 @@
   margin: 0 0.12rem;
 }
 
-.session-lobby-invite {
+.workspaces-lobby-invite {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -151,11 +151,11 @@
   margin-right: 0.08rem;
 }
 
-.session-lobby-invite__trigger {
+.workspaces-lobby-invite__trigger {
   min-width: 6.2rem;
 }
 
-.session-lobby-invite__panel {
+.workspaces-lobby-invite__panel {
   position: absolute;
   top: calc(100% + 0.45rem);
   right: 0;
@@ -170,7 +170,7 @@
   padding: 0.5rem;
 }
 
-.session-lobby-invite__row {
+.workspaces-lobby-invite__row {
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface-subtle) 55%, var(--color-surface));
@@ -180,16 +180,16 @@
   gap: 0.25rem;
 }
 
-.session-lobby-invite__row + .session-lobby-invite__row {
+.workspaces-lobby-invite__row + .workspaces-lobby-invite__row {
   margin-top: 0.35rem;
 }
 
-.session-lobby-invite__row-label {
+.workspaces-lobby-invite__row-label {
   font-size: 0.76rem;
   line-height: 1.1;
 }
 
-.session-lobby-invite__row-value {
+.workspaces-lobby-invite__row-value {
   font-size: 0.74rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -198,7 +198,7 @@
   grid-column: 1 / 2;
 }
 
-.session-lobby-invite__copy {
+.workspaces-lobby-invite__copy {
   grid-column: 2 / 3;
   grid-row: 1 / span 2;
   align-self: center;
@@ -206,7 +206,7 @@
   padding: 0.3rem 0.4rem;
 }
 
-.session-lobby-invite__refresh {
+.workspaces-lobby-invite__refresh {
   grid-column: 3 / 4;
   grid-row: 1 / span 2;
   align-self: center;
@@ -569,14 +569,14 @@
     display: none;
   }
 
-  .session-lobby-invite {
+  .workspaces-lobby-invite {
     width: auto;
     justify-content: flex-start;
     min-width: 0;
     margin-right: 0;
   }
 
-  .session-lobby-invite__panel {
+  .workspaces-lobby-invite__panel {
     width: min(100%, 32rem);
     right: 0;
     left: auto;

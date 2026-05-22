@@ -28,12 +28,12 @@ type InviteLinkRowProps = {
 
 function InviteLinkRow(props: InviteLinkRowProps) {
   return (
-    <div className="session-lobby-invite__row">
-      <strong className="session-lobby-invite__row-label">{props.label}</strong>
-      <div className="session-lobby-invite__row-value">{props.url}</div>
+    <div className="workspaces-lobby-invite__row">
+      <strong className="workspaces-lobby-invite__row-label">{props.label}</strong>
+      <div className="workspaces-lobby-invite__row-value">{props.url}</div>
       <button
         type="button"
-        className="session-icon-action session-lobby-invite__copy"
+        className="session-icon-action workspaces-lobby-invite__copy"
         aria-label={props.ariaLabel}
         onClick={props.onCopy}
         disabled={props.canCopy === false}
@@ -45,7 +45,7 @@ function InviteLinkRow(props: InviteLinkRowProps) {
       {props.showRefresh ? (
         <button
           type="button"
-          className="session-icon-action session-lobby-invite__refresh"
+          className="session-icon-action workspaces-lobby-invite__refresh"
           aria-label={props.refreshAriaLabel}
           onClick={props.onRefresh}
           disabled={props.canRefresh === false}
@@ -102,10 +102,10 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
   }
 
   return (
-    <div className="session-lobby-invite" ref={panelRef}>
+    <div className="workspaces-lobby-invite" ref={panelRef}>
       <button
         type="button"
-        className="session-toolbar__icon-btn session-lobby-invite__trigger"
+        className="session-toolbar__icon-btn workspaces-lobby-invite__trigger"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         onClick={() => setIsOpen((value) => !value)}
@@ -118,7 +118,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
 
       {isOpen ? (
         <section
-          className="session-lobby-invite__panel"
+          className="workspaces-lobby-invite__panel"
           role="dialog"
           aria-label="Campaign invite links"
         >
