@@ -38,7 +38,10 @@ import { useWorkspacesCampaignEntryOrchestration } from '@/hooks/session/useWork
 import { useWorkspacesCharacterSettingsOrchestration } from '@/hooks/session/useWorkspacesCharacterSettingsOrchestration'
 import { useWorkspacesHydrationLifecycle } from '@/hooks/session/useWorkspacesHydrationLifecycle'
 import { useWorkspacesSettingsOrchestration } from '@/hooks/session/useWorkspacesSettingsOrchestration'
+import { useWorkspacesSettingsReferenceNotes } from '@/hooks/session/useWorkspacesSettingsReferenceNotes'
 import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryToast'
+import { useWorkspacesTelemetry } from '@/hooks/session/useWorkspacesTelemetry'
+import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -53,11 +56,8 @@ import {
   DEFAULT_PLANNED_DURATION_MINUTES,
   LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
 } from '@/constants/workspaces.constants'
-import { createHttpTelemetryTransport, telemetryClient } from '@/utils/telemetry'
-import { fetchSessionNotesOnce } from '../../utils/notesFetch'
 import { generateClientId } from '../../utils/uuid'
 import type { Session as SessionRecord } from '@/types/session'
-import type { Note } from '@/types/notes'
 import type { Message } from '@/types/chat'
 import type {
   Room as RoomRecord,
@@ -77,7 +77,6 @@ import {
   isGreenRoom,
   isSessionBookendMessage,
   normalizeSessionRecord,
-  resolveGreenroomCacheTtlMs,
   safeLocalStorageGetItem,
   safeLocalStorageRemoveItem,
   safeLocalStorageSetItem,
@@ -187,7 +186,6 @@ export function WorkspaceInitialization({
   })
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
-  const greenroomCleanupTimerRef = useRef<number | null>(null)
   const authFailureHandledRef = useRef(false)
   const hasSignaledReadyRef = useRef(false)
   const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(() => {
@@ -954,92 +952,23 @@ export function WorkspaceInitialization({
     }
   }, [activeTransitionNotice, hideTransitionToast])
 
-  useEffect(() => {
-    if (!showCampaignSettingsModal || !settingsReferenceSessionId) {
-      campaignSettingsActions.setIsSettingsReferenceNotesLoading(false)
-      campaignSettingsActions.setSettingsReferenceNotesError(null)
-      return
-    }
-
-    let cancelled = false
-
-    const loadSettingsReferenceNotes = async () => {
-      campaignSettingsActions.setIsSettingsReferenceNotesLoading(true)
-      campaignSettingsActions.setSettingsReferenceNotesError(null)
-
-      try {
-        const fetchedEntries: Note[] = await fetchSessionNotesOnce(
-          apiUrl,
-          settingsReferenceSessionId,
-          token
-        )
-
-        if (!cancelled) {
-          for (const entry of fetchedEntries) {
-            addNote(settingsReferenceSessionId as UUID, entry)
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          campaignSettingsActions.setSettingsReferenceNotesError(
-            err instanceof Error ? err.message : 'Failed to load session notes'
-          )
-        }
-      } finally {
-        if (!cancelled) {
-          campaignSettingsActions.setIsSettingsReferenceNotesLoading(false)
-        }
-      }
-    }
-
-    void loadSettingsReferenceNotes()
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    addNote,
-    apiUrl,
-    fetchWithAuthGuard,
-    settingsReferenceSessionId,
+  useWorkspacesSettingsReferenceNotes({
     showCampaignSettingsModal,
+    settingsReferenceSessionId,
+    apiUrl,
     token,
-    campaignSettingsActions,
-  ])
+    addNote,
+    setIsSettingsReferenceNotesLoading: campaignSettingsActions.setIsSettingsReferenceNotesLoading,
+    setSettingsReferenceNotesError: campaignSettingsActions.setSettingsReferenceNotesError,
+  })
 
-  useEffect(() => {
-    telemetryClient.setTransport(
-      createHttpTelemetryTransport({
-        apiUrl,
-        token,
-      })
-    )
-    telemetryClient.start()
-
-    return () => {
-      telemetryClient.stop()
-    }
-  }, [apiUrl, token])
-
-  useEffect(() => {
-    const previous = wsTelemetryPrevRef.current
-    if (previous && previous !== wsState) {
-      telemetryClient.track('WS_CONNECTION_STATE_CHANGED', {
-        from: previous,
-        to: wsState,
-        sessionId: currentSession?.id,
-      })
-
-      if ((previous === 'reconnecting' || previous === 'disconnected') && wsState === 'connected') {
-        telemetryClient.track('LIVEKIT_RECONNECT', {
-          reason: previous,
-          sessionId: currentSession?.id,
-        })
-      }
-    }
-
-    wsTelemetryPrevRef.current = wsState
-  }, [wsState, currentSession?.id, wsTelemetryPrevRef])
+  useWorkspacesTelemetry({
+    apiUrl,
+    token,
+    wsState,
+    currentSessionId: currentSession?.id,
+    wsTelemetryPrevRef,
+  })
 
   useWorkspacesHydrationLifecycle({
     apiUrl,
@@ -1062,55 +991,13 @@ export function WorkspaceInitialization({
     prevWsStateRef,
   })
 
-  useEffect(() => {
-    if (!selectedCampaignId || !currentSession) {
-      if (greenroomCleanupTimerRef.current !== null) {
-        window.clearTimeout(greenroomCleanupTimerRef.current)
-        greenroomCleanupTimerRef.current = null
-      }
-      return
-    }
-
-    const connectedCount =
-      currentSessionStats?.connectedTotal ??
-      currentPresence.filter((presence) => presence.state !== PresenceState.OFFLINE).length
-
-    if (!isGreenroom || connectedCount > 0) {
-      if (greenroomCleanupTimerRef.current !== null) {
-        window.clearTimeout(greenroomCleanupTimerRef.current)
-        greenroomCleanupTimerRef.current = null
-      }
-      return
-    }
-
-    const ttlMs = resolveGreenroomCacheTtlMs()
-    if (ttlMs <= 0) {
-      return
-    }
-
-    if (greenroomCleanupTimerRef.current !== null) {
-      window.clearTimeout(greenroomCleanupTimerRef.current)
-    }
-
-    // Greenroom messages are preserved in Zustand until the server emits
-    // CHAT:ROOM_CONTEXT_CLEARED (only on CLEANUP). Do not evict them locally.
-    greenroomCleanupTimerRef.current = null
-
-    return () => {
-      if (greenroomCleanupTimerRef.current !== null) {
-        window.clearTimeout(greenroomCleanupTimerRef.current)
-        greenroomCleanupTimerRef.current = null
-      }
-    }
-  }, [
-    currentPresence,
-    currentSessionStats,
-    currentSession,
-    isGreenroom,
+  useWorkspacesGreenroomCleanup({
     selectedCampaignId,
-    sessionList,
-    typedRoomsBySession,
-  ])
+    hasCurrentSession: Boolean(currentSession),
+    isGreenroom,
+    currentSessionStats,
+    currentPresence,
+  })
 
   const { handleCreateCampaign, handleJoinCampaign, handleEnterCampaign, startCampaignSession } =
     useWorkspacesCampaignEntryOrchestration({
