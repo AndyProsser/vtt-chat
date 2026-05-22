@@ -228,7 +228,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
               window.dispatchEvent(new PopStateEvent('popstate'))
             }}
           >
-            Back to Campaigns
+            Back to Lobby
           </button>
         </div>
 

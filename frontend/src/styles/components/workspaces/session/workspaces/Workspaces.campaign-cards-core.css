@@ -180,7 +180,6 @@
   color: var(--color-text-secondary);
   line-height: 1.32;
   min-height: 3.3rem;
-  max-height: 3.3rem;
   overflow: hidden;
   position: relative;
 }
@@ -196,7 +195,26 @@
 }
 
 .session-campaign-card__description--preview {
+  cursor: default;
+}
+
+.session-campaign-card__description--preview.is-expandable {
   cursor: zoom-in;
+}
+
+.session-campaign-card__description-preview-text {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.session-campaign-card__description--preview:not(.is-expandable)::after {
+  display: none;
 }
 
 .session-campaign-card__description-popover {
@@ -271,4 +289,3 @@
   pointer-events: none;
   opacity: 0.55;
 }
-

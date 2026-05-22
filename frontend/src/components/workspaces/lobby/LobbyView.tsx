@@ -139,7 +139,7 @@ export function LobbyView(props: LobbyViewProps) {
         >
           <div className="session-card-header">
             <div>
-              <h3 className="session-card-title">Campaigns</h3>
+              <h3 className="session-card-title">Adventures</h3>
             </div>
           </div>
 
@@ -150,7 +150,7 @@ export function LobbyView(props: LobbyViewProps) {
               data-ui-component="LobbyOwnedCampaignSection"
             >
               <div className="workspaces-lobby-campaign-section__frame">
-                <h4 className="workspaces-lobby-campaign-section__title">Your Campaigns</h4>
+                <h4 className="workspaces-lobby-campaign-section__title">Your Adventures</h4>
                 {props.isLoadingCampaigns ? (
                   <div className="workspaces-status-message">Loading campaigns...</div>
                 ) : props.campaigns.length === 0 ? (

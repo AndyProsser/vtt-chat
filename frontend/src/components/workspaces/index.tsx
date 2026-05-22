@@ -4,7 +4,7 @@
  * Tests the full UI → Event → Store pipeline.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { SessionState, Role, isGreenroomSessionState } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -44,6 +44,7 @@ import { useWorkspacesSessionAnchors } from '@/hooks/session/useWorkspacesSessio
 import { useWorkspacesGreenroomCarryLifecycle } from '@/hooks/session/useWorkspacesGreenroomCarryLifecycle'
 import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
 import { useWorkspacesSettingsStateBridge } from '@/hooks/session/useWorkspacesSettingsStateBridge'
+import { useWorkspacesInitializationLifecycle } from '@/hooks/session/useWorkspacesInitializationLifecycle'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -348,23 +349,6 @@ export function WorkspaceInitialization({
     setCharacterSettingsDraft: characterSettingsActions.setCharacterSettingsDraft,
   })
 
-  useEffect(() => {
-    const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
-    const hasLobbySurface = !currentSessionId
-
-    if (
-      hasSignaledReadyRef.current ||
-      isLoadingCampaigns ||
-      isCampaignRestorePending ||
-      (!hasSessionSurface && !hasLobbySurface)
-    ) {
-      return
-    }
-
-    hasSignaledReadyRef.current = true
-    onReady?.()
-  }, [currentSession, currentSessionId, isCampaignRestorePending, isLoadingCampaigns, onReady])
-
   const typedRoomsBySession = rooms as Record<UUID, Record<UUID, RoomRecord>>
   const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
   const typedSessionStatsBySession = sessionStatsBySessionId as Record<UUID, ApiSessionStats>
@@ -536,17 +520,17 @@ export function WorkspaceInitialization({
       setLobbyNotice,
     })
 
-  useEffect(() => {
-    void loadUserCharacters()
-  }, [loadUserCharacters])
-
-  useEffect(() => {
-    if (!selectedCampaignId || !currentSession?.id) {
-      return
-    }
-
-    void loadDmVoiceTargetingSetting(selectedCampaignId)
-  }, [currentSession?.id, loadDmVoiceTargetingSetting, selectedCampaignId])
+  useWorkspacesInitializationLifecycle({
+    currentSessionId,
+    currentSession,
+    isLoadingCampaigns,
+    isCampaignRestorePending,
+    hasSignaledReadyRef,
+    onReady,
+    loadUserCharacters,
+    selectedCampaignId,
+    loadDmVoiceTargetingSetting,
+  })
 
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {

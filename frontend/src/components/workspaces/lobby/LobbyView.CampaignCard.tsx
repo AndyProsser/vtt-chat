@@ -6,7 +6,7 @@
  */
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   type CampaignSummary,
   getCampaignEntryAction,
@@ -182,6 +182,21 @@ function renderCampaignDescription(markdown?: string | null): React.ReactNode {
   return nodes.length > 0 ? nodes : <p>No description provided.</p>
 }
 
+function buildCampaignDescriptionPreviewText(markdown?: string | null): string {
+  const source = (markdown || '').trim()
+  if (!source) {
+    return 'No description provided.'
+  }
+
+  return source
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\*\*|\*/g, '')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export type CampaignCardProps = {
   campaign: CampaignSummary
   isSelected: boolean
@@ -204,6 +219,8 @@ export function CampaignCard({
   onError,
 }: CampaignCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false)
+  const previewTextRef = useRef<HTMLParagraphElement | null>(null)
   const state = getCampaignVisualState(campaign)
   const entryAction = getCampaignEntryAction(campaign)
   const dmStatus = campaign.dmOnline ? 'Online' : 'Offline'
@@ -224,11 +241,56 @@ export function CampaignCard({
   const lastActiveLabel = formatLastActiveLabel(campaign)
   const isDimmed = 'dimmed' in entryAction && entryAction.dimmed === true
   const showLock = 'showLock' in entryAction && entryAction.showLock === true
+  const descriptionPreviewText = useMemo(
+    () => buildCampaignDescriptionPreviewText(campaign.description),
+    [campaign.description]
+  )
 
   const reviewLabel =
     campaign.memberRole === 'DM' ? 'Edit' : campaign.memberRole === 'PLAYER' ? 'Review' : null
 
+  useEffect(() => {
+    const previewElement = previewTextRef.current
+    if (!previewElement) {
+      setIsDescriptionTruncated(false)
+      return
+    }
+
+    const measureTruncation = () => {
+      const nextIsTruncated = previewElement.scrollHeight - previewElement.clientHeight > 1
+      setIsDescriptionTruncated((prev) => (prev === nextIsTruncated ? prev : nextIsTruncated))
+    }
+
+    measureTruncation()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measureTruncation)
+      return () => {
+        window.removeEventListener('resize', measureTruncation)
+      }
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureTruncation()
+    })
+    observer.observe(previewElement)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [descriptionPreviewText])
+
+  useEffect(() => {
+    if (!isDescriptionTruncated && isDescriptionExpanded) {
+      setIsDescriptionExpanded(false)
+    }
+  }, [isDescriptionExpanded, isDescriptionTruncated])
+
   function handleDescriptionZoneBlur(event: React.FocusEvent<HTMLDivElement>) {
+    if (!isDescriptionTruncated) {
+      return
+    }
+
     const nextTarget = event.relatedTarget as Node | null
     if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
       setIsDescriptionExpanded(false)
@@ -364,24 +426,32 @@ export function CampaignCard({
 
       <div
         className="session-campaign-card__description-zone"
-        onMouseEnter={() => setIsDescriptionExpanded(true)}
-        onMouseLeave={() => setIsDescriptionExpanded(false)}
-        onFocusCapture={() => setIsDescriptionExpanded(true)}
-        onBlurCapture={handleDescriptionZoneBlur}
+        onMouseEnter={isDescriptionTruncated ? () => setIsDescriptionExpanded(true) : undefined}
+        onMouseLeave={isDescriptionTruncated ? () => setIsDescriptionExpanded(false) : undefined}
+        onFocusCapture={isDescriptionTruncated ? () => setIsDescriptionExpanded(true) : undefined}
+        onBlurCapture={isDescriptionTruncated ? handleDescriptionZoneBlur : undefined}
       >
         <div
-          className="session-campaign-card__description session-campaign-card__description--preview"
+          className={[
+            'session-campaign-card__description',
+            'session-campaign-card__description--preview',
+            isDescriptionTruncated ? 'is-expandable' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           aria-label="Campaign description"
-          tabIndex={0}
-          aria-expanded={isDescriptionExpanded}
+          tabIndex={isDescriptionTruncated ? 0 : -1}
+          aria-expanded={isDescriptionTruncated ? isDescriptionExpanded : false}
         >
-          {renderCampaignDescription(campaign.description)}
+          <p ref={previewTextRef} className="session-campaign-card__description-preview-text">
+            {descriptionPreviewText}
+          </p>
         </div>
         <div
-          className={`session-campaign-card__description-popover ${isDescriptionExpanded ? 'is-open' : ''}`}
+          className={`session-campaign-card__description-popover ${isDescriptionTruncated && isDescriptionExpanded ? 'is-open' : ''}`}
           aria-label="Expanded campaign description"
-          aria-hidden={!isDescriptionExpanded}
-          tabIndex={isDescriptionExpanded ? 0 : -1}
+          aria-hidden={!isDescriptionTruncated || !isDescriptionExpanded}
+          tabIndex={isDescriptionTruncated && isDescriptionExpanded ? 0 : -1}
         >
           {renderCampaignDescription(campaign.description)}
         </div>
