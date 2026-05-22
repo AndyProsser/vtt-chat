@@ -11,7 +11,7 @@ import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignRightbarSettings } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
-import { SessionWorkspaceFrame } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { NotesRailPanel } from '@/components/workspaces/shared/panels/NotesRailPanel'

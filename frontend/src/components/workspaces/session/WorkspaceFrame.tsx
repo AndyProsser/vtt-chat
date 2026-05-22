@@ -19,26 +19,10 @@ import {
 import type { CenterPaneView, RightRailTab } from '@/types/ui'
 import { Icon } from '@/components/ui/Icon'
 import { telemetryClient } from '@/utils/telemetry'
+import type { ToolbarActionModel, ToolbarPlaceholderAction } from './toolbar/sessionToolbar.types'
 import '@/styles/components/session/CommandCenterFrame.css'
 
 export type { CenterPaneView, RightRailTab } from '@/types/ui'
-
-export interface ToolbarPlaceholderAction {
-  id: string
-  label: string
-  comingSoon: boolean
-}
-
-export interface ToolbarActionModel {
-  centerPaneView: CenterPaneView
-  setCenterPaneView: (view: CenterPaneView) => void
-  rightRailOpen: boolean
-  activeRightRailTab: RightRailTab
-  availableRightRailTabs: RightRailTab[]
-  toggleRightRail: () => void
-  openRightRailTab: (tab: RightRailTab) => void
-  placeholderActions: ToolbarPlaceholderAction[]
-}
 
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
   return getWorkspacePanelTabsForRole(role)

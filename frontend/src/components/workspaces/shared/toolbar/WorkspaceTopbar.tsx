@@ -14,6 +14,7 @@ export function WorkspaceTopbar({
   onToggleTheme,
   onOpenUserSettings,
   onExit,
+  exitIcon,
   exitAriaLabel,
   exitTooltipLabel,
   connectionStatusColorKey,
@@ -90,7 +91,7 @@ export function WorkspaceTopbar({
               className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
               aria-label={exitAriaLabel}
             >
-              <Icon name="logout" />
+              <Icon name={exitIcon} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" align="end">

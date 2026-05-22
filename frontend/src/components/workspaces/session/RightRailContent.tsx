@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { RightRailTab } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import type { RightRailTab } from '@/types/ui'
 
 interface RightRailContentProps {
   tab: RightRailTab

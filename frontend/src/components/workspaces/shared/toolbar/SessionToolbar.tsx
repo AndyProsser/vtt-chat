@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ToolbarActionModel } from './SessionWorkspaceFrame'
 import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import {
@@ -12,6 +11,7 @@ import {
 } from '@/constants/sessionToolbar.constants'
 import { Icon } from '@/components/ui/Icon'
 import { WorkspaceTopbar } from './WorkspaceTopbar'
+import type { ToolbarActionModel } from '@/components/workspaces/session/toolbar/sessionToolbar.types'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import '@/styles/components/session/SessionToolbar.css'
 
@@ -478,6 +478,7 @@ export function SessionToolbar({
         onToggleTheme={handleToggleTheme}
         onOpenUserSettings={onOpenUserSettings}
         onExit={onExitToSelector}
+        exitIcon="logout"
         exitAriaLabel="Exit Session"
         exitTooltipLabel="Exit Session"
         connectionStatusColorKey={statusColorKey}

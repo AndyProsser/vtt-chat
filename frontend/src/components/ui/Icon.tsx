@@ -22,6 +22,7 @@ type IconName =
   | 'sun'
   | 'signal'
   | 'logout'
+  | 'arrow_back'
   | 'status'
   | 'mic_off'
   | 'effects'
@@ -54,6 +55,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   sun: 'light_mode',
   signal: 'signal_cellular_alt',
   logout: 'logout',
+  arrow_back: 'arrow_back',
   status: 'circle',
   mic_off: 'mic_off',
   effects: 'tune',

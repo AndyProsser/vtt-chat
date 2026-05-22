@@ -20,7 +20,7 @@ import {
   createSessionMembershipController,
 } from '@/utils/session/sessionController'
 import { TooltipProvider } from '@/components/ui'
-import type { RightRailTab } from '@/components/workspaces/shared/toolbar/SessionWorkspaceFrame'
+import type { RightRailTab } from '@/types/ui'
 import { LobbyView } from '@/components/workspaces/lobby/LobbyView'
 import { LobbyModals } from '@/components/workspaces/lobby/modals/LobbyModals'
 import { SessionWorkspace } from './SessionWorkspace'
@@ -29,6 +29,8 @@ import type { CharacterSettingsDraft } from '@/components/workspaces/shared/pane
 import { EditorWorkspace } from './EditorWorkspace'
 import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
 import type { ModalsProps } from '@/types/modals'
+import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
+import type { LobbyStats } from '@/types/session/lobby'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
 import { useSessionInitHydrationLifecycle } from '@/hooks/session/useSessionInitHydrationLifecycle'
@@ -125,16 +127,7 @@ export function WorkspaceInitialization({
   const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
   const [editorWorkspaceView, setEditorWorkspaceView] = useState<'lobby' | 'editor'>('lobby')
-  const [lobbyStats, setLobbyStats] = useState<{
-    activeSessions: number
-    connectedPlayersAndDms: number
-    connectedSpectators: number
-    peakConcurrentUsers24h: number
-    totalTimePlayedLabel: string
-    activeCampaigns: number
-    pausedCampaigns: number
-    averageSessionDurationLabel: string
-  }>({
+  const [lobbyStats, setLobbyStats] = useState<LobbyStats>({
     activeSessions: 0,
     connectedPlayersAndDms: 0,
     connectedSpectators: 0,
@@ -2127,6 +2120,7 @@ export function WorkspaceInitialization({
     !isTakeoverActive &&
     currentSession?.dmId === user.id &&
     (currentSession?.state === SessionState.ACTIVE || currentSession?.state === SessionState.PAUSED)
+  const leaveSessionWarning = useSessionLeaveWarning(effectiveSessionRole, currentSession?.state)
   const canEditSessionSettings =
     currentSession?.state === SessionState.IDLE ||
     currentSession?.state === SessionState.ACTIVE ||
@@ -2541,15 +2535,7 @@ export function WorkspaceInitialization({
 
           <SessionModals
             showExitSessionModal={showExitSessionModal}
-            leaveSessionWarning={
-              effectiveSessionRole === 'DM' &&
-              (currentSession?.state === SessionState.ACTIVE ||
-                currentSession?.state === SessionState.PAUSED)
-                ? 'If you leave now, everyone gets the surprise ending. Even if they were mid-scene.'
-                : effectiveSessionRole === 'DM' && currentSession?.state === SessionState.COOLDOWN
-                  ? 'If you can, stick around until the wrap-up finishes. The curtain is already falling.'
-                  : null
-            }
+            leaveSessionWarning={leaveSessionWarning}
             user={user}
             exitUpgradePassword={exitUpgradePassword}
             onExitUpgradePasswordChange={setExitUpgradePassword}

@@ -5,11 +5,10 @@ import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
-import { InvitePopoverWidget } from '@/components/workspaces/shared/common/InvitePopoverWidget'
-import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
-import { useCampaignWorkspaceTopbarActions } from '@/components/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
+import { EditorWorkspaceToolbar } from './toolbar/EditorWorkspaceToolbar'
 import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from './WorkspaceView.tabs'
 import type { CampaignSummary } from '@/types/session/campaign'
+import type { LobbyConnectionStatus } from '@/types/session/lobby'
 
 type WorkspaceViewProps = {
   campaign: CampaignSummary | null
@@ -17,11 +16,7 @@ type WorkspaceViewProps = {
   themeMode: 'light' | 'dark'
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
-  connectionStatus: {
-    statusColorKey: string
-    label: string
-    coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
-  }
+  connectionStatus: LobbyConnectionStatus
   sessionCount: number
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
@@ -45,7 +40,6 @@ type WorkspaceViewProps = {
   onJoinCampaign: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
-  onLogoff: () => void
   onLaunch: (campaignId: UUID) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
@@ -65,39 +59,28 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
 
   const resolvedActiveTab = tabs.includes(activeTab) ? activeTab : tabs[0] || 'information'
-  const { coreStateToneClass, topbarActions } = useCampaignWorkspaceTopbarActions({
-    isCreatingCampaign: props.isCreatingCampaign,
-    isJoiningCampaign: props.isJoiningCampaign,
-    onCreateCampaign: props.onCreateCampaign,
-    onJoinCampaign: props.onJoinCampaign,
-    coreWsState: props.connectionStatus.coreWsState,
-  })
-
   if (!props.campaign) {
     return (
       <>
-        <WorkspaceTopbar
-          className="session-toolbar--lobby"
-          dataTestId="session-lobby-toolbar"
-          dataUiComponent="EditorWorkspaceToolbar"
-          dataUiState="no-campaign"
-          brandAriaLabel="Lobby toolbar"
-          extraActions={topbarActions}
+        <EditorWorkspaceToolbar
           themeMode={props.themeMode}
+          dataUiState="no-campaign"
+          isCreatingCampaign={props.isCreatingCampaign}
+          isJoiningCampaign={props.isJoiningCampaign}
+          connectionStatus={props.connectionStatus}
+          onCreateCampaign={props.onCreateCampaign}
+          onJoinCampaign={props.onJoinCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
-          onExit={props.onLogoff}
-          exitAriaLabel="Logoff"
-          exitTooltipLabel="Logoff"
-          connectionStatusColorKey={props.connectionStatus.statusColorKey}
-          connectionStatusLabel={props.connectionStatus.label}
-          connectionStatusRows={[
-            {
-              label: 'Core',
-              value: props.connectionStatus.coreWsState,
-              toneClassName: coreStateToneClass,
-            },
-          ]}
+          onReturnToLobby={props.onBackToLobby}
+          showInviteWidget={props.showInviteWidget}
+          joinUrl={props.joinUrl}
+          spectatorsEnabled={props.spectatorsEnabled}
+          watchUrl={props.watchUrl}
+          canRefreshInvites={props.role === Role.DM}
+          onCopyInviteUrl={props.onCopyInviteUrl}
+          onReissueInvite={props.onReissueInvite}
+          isInviteReissuing={props.isInviteReissuing}
         />
         <section
           className="session-lobby-workspace"
@@ -226,28 +209,25 @@ export function WorkspaceView(props: WorkspaceViewProps) {
   return (
     <TooltipProvider delayDuration={140}>
       <>
-        <WorkspaceTopbar
-          className="session-toolbar--lobby"
-          dataTestId="session-lobby-toolbar"
-          dataUiComponent="EditorWorkspaceToolbar"
-          dataUiState={resolvedActiveTab}
-          brandAriaLabel="Lobby toolbar"
-          extraActions={topbarActions}
+        <EditorWorkspaceToolbar
           themeMode={props.themeMode}
+          dataUiState={resolvedActiveTab}
+          isCreatingCampaign={props.isCreatingCampaign}
+          isJoiningCampaign={props.isJoiningCampaign}
+          connectionStatus={props.connectionStatus}
+          onCreateCampaign={props.onCreateCampaign}
+          onJoinCampaign={props.onJoinCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
-          onExit={props.onLogoff}
-          exitAriaLabel="Logoff"
-          exitTooltipLabel="Logoff"
-          connectionStatusColorKey={props.connectionStatus.statusColorKey}
-          connectionStatusLabel={props.connectionStatus.label}
-          connectionStatusRows={[
-            {
-              label: 'Core',
-              value: props.connectionStatus.coreWsState,
-              toneClassName: coreStateToneClass,
-            },
-          ]}
+          onReturnToLobby={props.onBackToLobby}
+          showInviteWidget={props.showInviteWidget}
+          joinUrl={props.joinUrl}
+          spectatorsEnabled={props.spectatorsEnabled}
+          watchUrl={props.watchUrl}
+          canRefreshInvites={props.role === Role.DM}
+          onCopyInviteUrl={props.onCopyInviteUrl}
+          onReissueInvite={props.onReissueInvite}
+          isInviteReissuing={props.isInviteReissuing}
         />
 
         <section
@@ -260,16 +240,6 @@ export function WorkspaceView(props: WorkspaceViewProps) {
             <div className="session-lobby-workspace__title-wrap">
               <h3 className="session-card-title">{props.campaign.name}</h3>
             </div>
-            <InvitePopoverWidget
-              show={props.showInviteWidget}
-              joinUrl={props.joinUrl}
-              spectatorsEnabled={props.spectatorsEnabled}
-              watchUrl={props.watchUrl}
-              canRefreshInvites={props.role === Role.DM}
-              onCopyInviteUrl={props.onCopyInviteUrl}
-              onReissueInvite={props.onReissueInvite}
-              isInviteReissuing={props.isInviteReissuing}
-            />
             <div className="session-action-row session-action-row--right session-action-row--compact">
               <button
                 type="button"

@@ -18,6 +18,7 @@ export type WorkspaceTopbarProps = {
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onExit: () => void
+  exitIcon: 'logout' | 'arrow_back'
   exitAriaLabel: string
   exitTooltipLabel: string
   connectionStatusColorKey: string

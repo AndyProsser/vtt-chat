@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
-type UseCampaignWorkspaceTopbarActionsParams = {
+type UseEditorWorkspaceToolbarActionsParams = {
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
   onCreateCampaign: () => void
@@ -9,13 +9,13 @@ type UseCampaignWorkspaceTopbarActionsParams = {
   coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
 }
 
-export function useCampaignWorkspaceTopbarActions({
+export function useEditorWorkspaceToolbarActions({
   isCreatingCampaign,
   isJoiningCampaign,
   onCreateCampaign,
   onJoinCampaign,
   coreWsState,
-}: UseCampaignWorkspaceTopbarActionsParams) {
+}: UseEditorWorkspaceToolbarActionsParams) {
   const coreStateToneClass =
     coreWsState === 'CONNECTED' ? 'is-green' : coreWsState === 'CONNECTING' ? 'is-yellow' : 'is-red'
 

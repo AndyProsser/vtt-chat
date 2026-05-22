@@ -1,32 +1,19 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { type CampaignSummary } from '@/types/session/campaign'
+import type { LobbyConnectionStatus, LobbyStats } from '@/types/session/lobby'
 import { CampaignCard } from './LobbyView.CampaignCard'
-import { WorkspaceTopbar } from '@/components/workspaces/shared/toolbar/WorkspaceTopbar'
-import { useCampaignWorkspaceTopbarActions } from '@/components/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
+import { LobbyToolbar } from './toolbar/LobbyToolbar'
 
 type LobbyViewProps = {
   campaigns: CampaignSummary[]
   discoverableCampaigns?: CampaignSummary[]
-  lobbyStats: {
-    activeSessions: number
-    connectedPlayersAndDms: number
-    connectedSpectators: number
-    peakConcurrentUsers24h: number
-    totalTimePlayedLabel: string
-    activeCampaigns: number
-    pausedCampaigns: number
-    averageSessionDurationLabel: string
-  }
+  lobbyStats: LobbyStats
   selectedCampaignId: CampaignSummary['id'] | ''
   isLoadingCampaigns: boolean
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
   themeMode: 'light' | 'dark'
-  connectionStatus: {
-    statusColorKey: string
-    label: string
-    coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
-  }
+  connectionStatus: LobbyConnectionStatus
   onSelectCampaign: (campaignId: CampaignSummary['id']) => void
   onCreateCampaign: () => void
   onJoinCampaign: () => void
@@ -44,13 +31,6 @@ export function LobbyView(props: LobbyViewProps) {
   const discoverableCampaigns = props.discoverableCampaigns ?? []
   const totalVisibleCampaigns = props.campaigns.length + discoverableCampaigns.length
   const shouldShowSparseFiller = !props.isLoadingCampaigns && totalVisibleCampaigns <= 3
-  const { coreStateToneClass, topbarActions } = useCampaignWorkspaceTopbarActions({
-    isCreatingCampaign: props.isCreatingCampaign,
-    isJoiningCampaign: props.isJoiningCampaign,
-    onCreateCampaign: props.onCreateCampaign,
-    onJoinCampaign: props.onJoinCampaign,
-    coreWsState: props.connectionStatus.coreWsState,
-  })
 
   return (
     <TooltipProvider delayDuration={140}>
@@ -60,27 +40,16 @@ export function LobbyView(props: LobbyViewProps) {
         data-ui-component="LobbyView"
         data-ui-state={props.isLoadingCampaigns ? 'loading' : 'ready'}
       >
-        <WorkspaceTopbar
-          className="session-toolbar--lobby"
-          dataTestId="session-lobby-toolbar"
-          dataUiComponent="LobbyToolbar"
-          brandAriaLabel="Lobby toolbar"
-          extraActions={topbarActions}
+        <LobbyToolbar
           themeMode={props.themeMode}
+          isCreatingCampaign={props.isCreatingCampaign}
+          isJoiningCampaign={props.isJoiningCampaign}
+          connectionStatus={props.connectionStatus}
+          onCreateCampaign={props.onCreateCampaign}
+          onJoinCampaign={props.onJoinCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
-          onExit={props.onLogoff}
-          exitAriaLabel="Logoff"
-          exitTooltipLabel="Logoff"
-          connectionStatusColorKey={props.connectionStatus.statusColorKey}
-          connectionStatusLabel={props.connectionStatus.label}
-          connectionStatusRows={[
-            {
-              label: 'Core',
-              value: props.connectionStatus.coreWsState,
-              toneClassName: coreStateToneClass,
-            },
-          ]}
+          onLogoff={props.onLogoff}
         />
 
         <section

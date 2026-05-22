@@ -78,7 +78,6 @@ type EditorWorkspaceProps = {
   onJoinCampaign: () => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
-  onLogoff: () => void
   onLaunch: (campaignId: UUID) => void
   onSaveCampaignInfo: (
     campaignId: UUID,
@@ -241,7 +240,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       onJoinCampaign={props.onJoinCampaign}
       onToggleTheme={props.onToggleTheme}
       onOpenUserSettings={props.onOpenUserSettings}
-      onLogoff={props.onLogoff}
+      onBackToLobby={props.onBackToLobby}
       onLaunch={props.onLaunch}
       onCopyInviteUrl={props.onCopyInviteUrl}
       onReissueInvite={props.onReissueInvite}
