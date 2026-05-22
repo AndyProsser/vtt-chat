@@ -158,7 +158,7 @@ export function NoteCard({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <article className="mb-3 rounded-ui-md border border-ui-border bg-ui-surface p-3">
+      <article className="notes-detail-card mb-3 rounded-ui-md border border-ui-border bg-ui-surface p-3">
         {isEditing ? (
           <>
             <input
@@ -262,18 +262,18 @@ export function NoteCard({
               </div>
             )}
             {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
-            <div className="flex gap-2">
+            <div className="notes-card-actions flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="notes-card-action notes-card-action--primary rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
               <button
                 onClick={cancelEdit}
                 disabled={isSaving}
-                className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="notes-card-action rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -310,10 +310,10 @@ export function NoteCard({
             )}
             {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
             {canEdit && (
-              <div className="flex gap-2">
+              <div className="notes-card-actions flex gap-2">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
+                  className="notes-card-action rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
                 >
                   Edit
                 </button>
@@ -321,7 +321,7 @@ export function NoteCard({
                   <button
                     onClick={handlePublish}
                     disabled={isSaving || !!note.publishedAt}
-                    className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                    className="notes-card-action notes-card-action--primary rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
                     {note.publishedAt ? 'Published' : isSaving ? 'Publishing...' : 'Publish'}
                   </button>
@@ -329,7 +329,7 @@ export function NoteCard({
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isSaving}
-                  className="rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="notes-card-action notes-card-action--danger rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                   {isSaving ? 'Deleting...' : 'Delete'}
                 </button>

@@ -5,6 +5,7 @@ import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
+import { NotesListWidget } from './NotesListWidget'
 
 interface NotesPanelProps {
   apiUrl: string
@@ -52,6 +53,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPublishedOnly, setShowPublishedOnly] = useState(false)
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
 
@@ -296,6 +298,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
         updatedAt: note.updatedAt,
       })
       setSelectedNoteId(createdNoteId)
+      setShowCreateForm(false)
 
       setTitle('')
       setContent('')
@@ -375,39 +378,21 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   }
 
   return (
-    <section className="overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface">
-      <div className="border-b border-ui-border bg-ui-surface-subtle px-4 py-3 font-semibold text-ui-primary">
-        Notes
-      </div>
-
-      <NotesCreateForm
-        title={title}
-        content={content}
-        visibility={visibility}
-        tagsText={tagsText}
-        shareUsers={shareUsers}
-        shareRooms={shareRooms}
-        selectedShareUserId={selectedShareUserId}
-        selectedShareRoomId={selectedShareRoomId}
-        allowedUsers={allowedUsers}
-        isCreating={isCreating}
-        userRole={user.role}
-        onSubmit={handleCreate}
-        onTitleChange={setTitle}
-        onContentChange={setContent}
-        onVisibilityChange={setVisibility}
-        onTagsTextChange={setTagsText}
-        onSelectedShareUserIdChange={setSelectedShareUserId}
-        onSelectedShareRoomIdChange={setSelectedShareRoomId}
-        onAddSelectedUser={handleAddSelectedUser}
-        onAddSelectedRoom={handleAddSelectedRoom}
-        onRemoveAllowedUser={removeAllowedUser}
-      />
+    <section className="notes-workspace">
+      <div className="notes-workspace-header">Notes</div>
 
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
-      <div className="flex items-center gap-2 border-b border-ui-border px-3 pb-3 text-sm text-ui-primary">
-        <label className="inline-flex items-center gap-1.5">
+      <div className="notes-workspace-toolbar">
+        <button
+          type="button"
+          className="notes-toolbar-button"
+          onClick={() => setShowCreateForm((current) => !current)}
+        >
+          {showCreateForm ? 'Hide create' : 'Create note'}
+        </button>
+
+        <label className="notes-toolbar-toggle">
           <input
             type="checkbox"
             checked={showPublishedOnly}
@@ -415,12 +400,39 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
           />
           Show published only
         </label>
-        <span className="text-ui-secondary">
+
+        <span className="notes-toolbar-count">
           {showPublishedOnly ? `${displayedNotes.length} published` : `${notes.length} total`}
         </span>
       </div>
 
-      <div className="max-h-90 overflow-y-auto p-3">
+      {showCreateForm ? (
+        <NotesCreateForm
+          title={title}
+          content={content}
+          visibility={visibility}
+          tagsText={tagsText}
+          shareUsers={shareUsers}
+          shareRooms={shareRooms}
+          selectedShareUserId={selectedShareUserId}
+          selectedShareRoomId={selectedShareRoomId}
+          allowedUsers={allowedUsers}
+          isCreating={isCreating}
+          userRole={user.role}
+          onSubmit={handleCreate}
+          onTitleChange={setTitle}
+          onContentChange={setContent}
+          onVisibilityChange={setVisibility}
+          onTagsTextChange={setTagsText}
+          onSelectedShareUserIdChange={setSelectedShareUserId}
+          onSelectedShareRoomIdChange={setSelectedShareRoomId}
+          onAddSelectedUser={handleAddSelectedUser}
+          onAddSelectedRoom={handleAddSelectedRoom}
+          onRemoveAllowedUser={removeAllowedUser}
+        />
+      ) : null}
+
+      <div className="notes-workspace-content">
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading notes...</p>
         ) : displayedNotes.length === 0 ? (
@@ -428,45 +440,31 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
             {showPublishedOnly ? 'No published notes yet.' : 'No notes yet.'}
           </p>
         ) : (
-          <>
-            <div className="mb-3 space-y-2">
-              {displayedNotes.map((note) => {
-                const isSelected = selectedNote?.id === note.id
-                return (
-                  <button
-                    key={note.id}
-                    type="button"
-                    onClick={() => setSelectedNoteId(note.id)}
-                    className={`w-full rounded-ui-sm border px-3 py-2 text-left ${
-                      isSelected
-                        ? 'border-ui-brand bg-ui-surface-subtle'
-                        : 'border-ui-border bg-ui-surface'
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-ui-primary">{note.title}</div>
-                    <div className="text-xs text-ui-secondary">
-                      Shared with: {getSharedWithLabel(note)}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+          <div className="notes-workspace-grid">
+            <NotesListWidget
+              notes={displayedNotes}
+              selectedNoteId={selectedNote?.id || null}
+              onSelectNote={setSelectedNoteId}
+              getSharedWithLabel={getSharedWithLabel}
+            />
 
-            {selectedNote ? (
-              <NoteCard
-                key={selectedNote.id}
-                note={selectedNote}
-                shareUsers={shareUsers}
-                shareRooms={shareRooms}
-                roomMemberIdsByRoomId={roomMemberIdsByRoomId}
-                canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
-                canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onPublish={handlePublish}
-              />
-            ) : null}
-          </>
+            <section className="notes-detail-widget" aria-label="Selected note">
+              {selectedNote ? (
+                <NoteCard
+                  key={selectedNote.id}
+                  note={selectedNote}
+                  shareUsers={shareUsers}
+                  shareRooms={shareRooms}
+                  roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+                  canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
+                  canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onPublish={handlePublish}
+                />
+              ) : null}
+            </section>
+          </div>
         )}
       </div>
     </section>
