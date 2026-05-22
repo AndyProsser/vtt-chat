@@ -97,7 +97,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     const loadShareContext = async () => {
       try {
         const [partyRes, roomsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/campaign/${campaignId}/party-presence`, {
+          fetch(`${apiUrl}/api/campaigns/${campaignId}/party-presence`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           sessionId
