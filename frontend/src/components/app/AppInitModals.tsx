@@ -3,8 +3,8 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import type { Role, SessionState, UUID } from '@shared'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { Session as SessionRecord } from '@/types/session'
-import { SessionUserSettingsPanel } from '@/components/app/workspaces/shared/rightbar/SessionUserSettingsPanel'
-import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/common/CampaignScaffoldPanel'
+import { SessionUserSettingsPanel } from '@/components/app/workspaces/shared/panels/SessionUserSettingsPanel'
+import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/panels/CampaignScaffoldPanel'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
 
 type AppInitModalsProps = {

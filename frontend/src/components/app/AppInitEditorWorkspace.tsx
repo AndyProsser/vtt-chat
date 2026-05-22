@@ -4,8 +4,8 @@ import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionInit'
 import {
   CampaignRightbarSettings,
   type CharacterSettingsDraft,
-} from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { CampaignSettingsPanel } from '@/components/app/workspaces/shared/settings/CampaignSettingsPanel'
+} from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
+import { CampaignSettingsPanel } from '@/components/app/workspaces/shared/panels/CampaignSettingsPanel'
 import { EditorCampaignWorkspaceView } from '@/components/app/workspaces/editor/EditorCampaignWorkspaceView'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 

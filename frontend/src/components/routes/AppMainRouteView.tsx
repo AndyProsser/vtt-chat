@@ -60,9 +60,13 @@ export function AppMainRouteView(props: AppMainRouteViewProps) {
     }
 
     return (
-      <div className="auth-landing">
-        <section className="auth-form-pane">
-          <div className="auth-form-shell">
+      <div
+        className="auth-landing"
+        data-ui-component="AuthLanding"
+        data-ui-state={authSurfaceRoute}
+      >
+        <section className="auth-form-pane" data-ui-component="AuthFormPane">
+          <div className="auth-form-shell" data-ui-component="AuthFormShell">
             <header className="auth-brand-header" aria-label="VTT Chat auth brand header">
               <img
                 src="/branding/app-logo.png"

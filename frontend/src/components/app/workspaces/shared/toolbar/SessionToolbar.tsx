@@ -11,6 +11,7 @@ import {
   toneFromCoreState,
 } from '@/constants/sessionToolbar.constants'
 import { Icon } from '@/components/ui/Icon'
+import { WorkspaceTopbar } from './WorkspaceTopbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import '@/styles/components/session/SessionToolbar.css'
 
@@ -271,300 +272,221 @@ export function SessionToolbar({
   // Timer state label text
   const timerStateLabel = sessionState
 
+  const centerContent = (
+    <div className="session-toolbar__timer-group">
+      <div
+        className="session-toolbar__timer-wrap"
+        onMouseEnter={canShowPopper ? () => setShowTimerPopper(true) : undefined}
+        onMouseLeave={canShowPopper ? () => setShowTimerPopper(false) : undefined}
+        onFocus={canShowPopper ? () => setShowTimerPopper(true) : undefined}
+        onBlur={
+          canShowPopper
+            ? (event) => {
+                const nextTarget = event.relatedTarget as Node | null
+                if (!event.currentTarget.contains(nextTarget)) {
+                  setShowTimerPopper(false)
+                }
+              }
+            : undefined
+        }
+      >
+        <button
+          type="button"
+          className={`session-toolbar__timer-pill ${canShowPopper ? 'session-toolbar__timer-pill--interactive' : ''}`}
+          aria-label={`Session timer: ${primaryLabel}. ${canShowPopper ? 'Hover for details.' : ''}`}
+          aria-expanded={canShowPopper ? showTimerPopper : undefined}
+        >
+          <span className="session-toolbar__timer-main">
+            <Icon name={sessionState === 'COOLDOWN' ? 'hourglass' : 'timer'} />
+            <strong>{primaryLabel}</strong>
+          </span>
+          <span className="session-toolbar__timer-state-wrap">
+            <span className={`session-toolbar__timer-state ${primaryStateClass}`}>
+              {timerStateLabel}
+            </span>
+          </span>
+        </button>
+
+        {canShowPopper && showTimerPopper ? (
+          <div
+            className="session-toolbar__timer-popper"
+            role="region"
+            aria-label="Session timer details"
+          >
+            <div className="session-toolbar__timer-popper-row">
+              <span>Started</span>
+              <strong>{formatTimestamp(sessionStartedAtMs)}</strong>
+            </div>
+            <div className="session-toolbar__timer-popper-row">
+              <span>Active time</span>
+              <strong>{formatDuration(activeElapsedSeconds)}</strong>
+            </div>
+            {sessionState === 'PAUSED' ? (
+              <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--highlight">
+                <span>Paused for</span>
+                <strong>{formatDuration(pausedElapsedSeconds)}</strong>
+              </div>
+            ) : null}
+            <div className="session-toolbar__timer-popper-row">
+              <span>Total pause time</span>
+              <strong>
+                {formatDuration(
+                  Math.floor(
+                    (cumulativePauseMs +
+                      (sessionState === 'PAUSED' && sessionPausedAtMs
+                        ? currentTimeMs - sessionPausedAtMs
+                        : 0)) /
+                      1000
+                  )
+                )}
+              </strong>
+            </div>
+            <div className="session-toolbar__timer-popper-row">
+              <span>Times paused</span>
+              <strong>{pauseCount}</strong>
+            </div>
+            {sessionState === 'COOLDOWN' ? (
+              <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">
+                <span>Cooldown left</span>
+                <strong>{formatDuration(cooldownRemainingSeconds)}</strong>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+
+  const sessionActionButtons = hasExtraButtons ? (
+    <>
+      {shouldShowStartAction ? (
+        <button
+          type="button"
+          onClick={onStartSession}
+          className="session-toolbar__action session-toolbar__action--start"
+        >
+          <Icon name="play" />
+          <span>Start</span>
+        </button>
+      ) : null}
+
+      {shouldRenderCooldownControls ? (
+        <span
+          className="session-toolbar__split-action session-toolbar__split-action--cooldown"
+          role="group"
+          aria-label="Cooldown controls"
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canManageCooldown) return
+                  onCancelCooldown?.()
+                }}
+                className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-cancel"
+                aria-label="Cancel cooldown"
+                disabled={!canManageCooldown}
+              >
+                <Icon name="stop" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end">
+              {canManageCooldown
+                ? 'End cooldown now'
+                : cooldownControlLockedReason || 'Cooldown controls are locked'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canExtendCooldown) return
+                  onExtendCooldown?.()
+                }}
+                className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-extend"
+                aria-label="Extend cooldown"
+                disabled={!canExtendCooldown}
+              >
+                <Icon name="timer" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end">
+              {canExtendCooldown
+                ? 'Extend cooldown'
+                : extendCooldownLockedReason || 'Cooldown extension is locked'}
+            </TooltipContent>
+          </Tooltip>
+        </span>
+      ) : null}
+
+      {canStopSession || canPauseSession ? (
+        <span className="session-toolbar__split-action" role="group" aria-label="Stop or pause">
+          {canStopSession ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onStopSession}
+                  className="session-toolbar__split-btn session-toolbar__split-btn--stop"
+                  aria-label="End session"
+                >
+                  <Icon name="stop" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                End session
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
+          )}
+
+          {canPauseSession ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onPauseSession}
+                  className="session-toolbar__split-btn session-toolbar__split-btn--pause"
+                  aria-label={pauseLabel}
+                >
+                  <Icon name={pauseIcon} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                {pauseLabel}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
+          )}
+        </span>
+      ) : null}
+    </>
+  ) : undefined
+
   return (
     <TooltipProvider delayDuration={140}>
-      <div className="session-toolbar" data-testid="session-toolbar">
-        <div className="session-toolbar__zone session-toolbar__zone--left">
-          <div className="session-toolbar__brand" aria-label="App brand">
-            <span className="session-toolbar__brand-mark" aria-hidden="true">
-              <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
-            </span>
-            <strong className="session-toolbar__brand-title">VTT Chat</strong>
-          </div>
-        </div>
-
-        <div className="session-toolbar__zone session-toolbar__zone--center">
-          <div className="session-toolbar__timer-group">
-            <div
-              className="session-toolbar__timer-wrap"
-              onMouseEnter={canShowPopper ? () => setShowTimerPopper(true) : undefined}
-              onMouseLeave={canShowPopper ? () => setShowTimerPopper(false) : undefined}
-              onFocus={canShowPopper ? () => setShowTimerPopper(true) : undefined}
-              onBlur={
-                canShowPopper
-                  ? (event) => {
-                      const nextTarget = event.relatedTarget as Node | null
-                      if (!event.currentTarget.contains(nextTarget)) {
-                        setShowTimerPopper(false)
-                      }
-                    }
-                  : undefined
-              }
-            >
-              <button
-                type="button"
-                className={`session-toolbar__timer-pill ${canShowPopper ? 'session-toolbar__timer-pill--interactive' : ''}`}
-                aria-label={`Session timer: ${primaryLabel}. ${canShowPopper ? 'Hover for details.' : ''}`}
-                aria-expanded={canShowPopper ? showTimerPopper : undefined}
-              >
-                <span className="session-toolbar__timer-main">
-                  <Icon name={sessionState === 'COOLDOWN' ? 'hourglass' : 'timer'} />
-                  <strong>{primaryLabel}</strong>
-                </span>
-                <span className="session-toolbar__timer-state-wrap">
-                  <span className={`session-toolbar__timer-state ${primaryStateClass}`}>
-                    {timerStateLabel}
-                  </span>
-                </span>
-              </button>
-
-              {canShowPopper && showTimerPopper ? (
-                <div
-                  className="session-toolbar__timer-popper"
-                  role="region"
-                  aria-label="Session timer details"
-                >
-                  <div className="session-toolbar__timer-popper-row">
-                    <span>Started</span>
-                    <strong>{formatTimestamp(sessionStartedAtMs)}</strong>
-                  </div>
-                  <div className="session-toolbar__timer-popper-row">
-                    <span>Active time</span>
-                    <strong>{formatDuration(activeElapsedSeconds)}</strong>
-                  </div>
-                  {sessionState === 'PAUSED' ? (
-                    <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--highlight">
-                      <span>Paused for</span>
-                      <strong>{formatDuration(pausedElapsedSeconds)}</strong>
-                    </div>
-                  ) : null}
-                  <div className="session-toolbar__timer-popper-row">
-                    <span>Total pause time</span>
-                    <strong>
-                      {formatDuration(
-                        Math.floor(
-                          (cumulativePauseMs +
-                            (sessionState === 'PAUSED' && sessionPausedAtMs
-                              ? currentTimeMs - sessionPausedAtMs
-                              : 0)) /
-                            1000
-                        )
-                      )}
-                    </strong>
-                  </div>
-                  <div className="session-toolbar__timer-popper-row">
-                    <span>Times paused</span>
-                    <strong>{pauseCount}</strong>
-                  </div>
-                  {sessionState === 'COOLDOWN' ? (
-                    <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">
-                      <span>Cooldown left</span>
-                      <strong>{formatDuration(cooldownRemainingSeconds)}</strong>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="session-toolbar__zone session-toolbar__zone--right">
-          {hasExtraButtons ? (
-            <>
-              <div className="session-toolbar__extra-buttons" aria-label="Session actions">
-                {shouldShowStartAction ? (
-                  <button
-                    type="button"
-                    onClick={onStartSession}
-                    className="session-toolbar__action session-toolbar__action--start"
-                  >
-                    <Icon name="play" />
-                    <span>Start</span>
-                  </button>
-                ) : null}
-
-                {shouldRenderCooldownControls ? (
-                  <span
-                    className="session-toolbar__split-action session-toolbar__split-action--cooldown"
-                    role="group"
-                    aria-label="Cooldown controls"
-                  >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!canManageCooldown) return
-                            onCancelCooldown?.()
-                          }}
-                          className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-cancel"
-                          aria-label="Cancel cooldown"
-                          disabled={!canManageCooldown}
-                        >
-                          <Icon name="stop" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end">
-                        {canManageCooldown
-                          ? 'End cooldown now'
-                          : cooldownControlLockedReason || 'Cooldown controls are locked'}
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!canExtendCooldown) return
-                            onExtendCooldown?.()
-                          }}
-                          className="session-toolbar__split-btn session-toolbar__split-btn--cooldown-extend"
-                          aria-label="Extend cooldown"
-                          disabled={!canExtendCooldown}
-                        >
-                          <Icon name="timer" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="end">
-                        {canExtendCooldown
-                          ? 'Extend cooldown'
-                          : extendCooldownLockedReason || 'Cooldown extension is locked'}
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                ) : null}
-
-                {canStopSession || canPauseSession ? (
-                  <span
-                    className="session-toolbar__split-action"
-                    role="group"
-                    aria-label="Stop or pause"
-                  >
-                    {canStopSession ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={onStopSession}
-                            className="session-toolbar__split-btn session-toolbar__split-btn--stop"
-                            aria-label="End session"
-                          >
-                            <Icon name="stop" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" align="end">
-                          End session
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
-                    )}
-
-                    {canPauseSession ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={onPauseSession}
-                            className="session-toolbar__split-btn session-toolbar__split-btn--pause"
-                            aria-label={pauseLabel}
-                          >
-                            <Icon name={pauseIcon} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" align="end">
-                          {pauseLabel}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <span className="session-toolbar__split-btn session-toolbar__split-btn--placeholder" />
-                    )}
-                  </span>
-                ) : null}
-              </div>
-
-              <span className="session-toolbar__separator" aria-hidden="true" />
-            </>
-          ) : null}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleToggleTheme}
-                className="session-toolbar__icon-btn"
-                aria-label="Theme"
-              >
-                <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">
-              Theme
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onOpenUserSettings}
-                className="session-toolbar__icon-btn"
-                aria-label="Settings"
-              >
-                <Icon name="settings" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">
-              Settings
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onExitToSelector}
-                className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                aria-label="Exit Session"
-              >
-                <Icon name="logout" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">
-              Exit Session
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="session-toolbar__connection"
-                data-status-color={statusColorKey}
-                aria-label={`Connection: ${statusLabel}`}
-                role="status"
-              >
-                <span className="session-toolbar__connection-dot" aria-hidden="true" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              align="end"
-              className="session-toolbar__tooltip-content--status"
-            >
-              <div className="session-toolbar__status-tooltip-title">Status</div>
-              <div className="session-toolbar__status-tooltip-row">
-                <span>Core</span>
-                <strong className={coreToneClass}>{coreWsState}</strong>
-              </div>
-              <div className="session-toolbar__status-tooltip-row">
-                <span>Audio</span>
-                <strong className={audioToneClass}>{livekitState}</strong>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
+      <WorkspaceTopbar
+        dataTestId="session-toolbar"
+        centerContent={centerContent}
+        extraActions={sessionActionButtons}
+        themeMode={themeMode}
+        onToggleTheme={handleToggleTheme}
+        onOpenUserSettings={onOpenUserSettings}
+        onExit={onExitToSelector}
+        exitAriaLabel="Exit Session"
+        exitTooltipLabel="Exit Session"
+        connectionStatusColorKey={statusColorKey}
+        connectionStatusLabel={statusLabel}
+        connectionStatusRows={[
+          { label: 'Core', value: coreWsState, toneClassName: coreToneClass },
+          { label: 'Audio', value: livekitState, toneClassName: audioToneClass },
+        ]}
+      />
     </TooltipProvider>
   )
 }

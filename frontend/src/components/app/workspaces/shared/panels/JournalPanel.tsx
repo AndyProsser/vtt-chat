@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import { MarkdownEditor } from '@/components/app/workspaces/shared/notes/MarkdownEditor'
+import { MarkdownEditor } from '@/components/app/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/session/KnowledgePanels.css'
 import '@/styles/components/notes/MarkdownEditor.css'
 

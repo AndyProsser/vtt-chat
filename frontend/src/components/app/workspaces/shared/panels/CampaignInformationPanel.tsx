@@ -124,7 +124,7 @@ export function CampaignInformationPanel({
   if (!campaign) {
     return (
       <section className="cip-panel" aria-label="Campaign information">
-        <h3 className="cip-heading">Campaign Info</h3>
+        <h3 className="cip-heading">Campaign Information</h3>
         <p className="cip-muted">Select a campaign to view its metadata and activity summary.</p>
       </section>
     )
@@ -234,7 +234,7 @@ export function CampaignInformationPanel({
     } catch (err) {
       showToast({
         variant: 'error',
-        message: err instanceof Error ? err.message : 'Failed to save campaign info.',
+        message: err instanceof Error ? err.message : 'Failed to save campaign information.',
       })
     } finally {
       setIsSaving(false)
@@ -353,15 +353,17 @@ export function CampaignInformationPanel({
     >
       <TooltipProvider delayDuration={140}>
         <div className="cip-header-row">
-          <h3 className="cip-heading">Campaign Info</h3>
+          <h3 className="cip-heading">Campaign Information</h3>
           {canEdit && isEditing ? (
-            <div className="cip-inline-actions" aria-label="Campaign info actions">
+            <div className="cip-inline-actions" aria-label="Campaign information actions">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     className="session-icon-action session-icon-action--icon"
-                    aria-label={isSaving ? 'Saving campaign info' : 'Save campaign info'}
+                    aria-label={
+                      isSaving ? 'Saving campaign information' : 'Save campaign information'
+                    }
                     onClick={() => void handleSave()}
                     disabled={isSaving || !isDirty || !nameDraft.trim()}
                   >
@@ -574,7 +576,7 @@ export function CampaignInformationPanel({
               className="session-button session-button-brand"
               onClick={() => setIsEditing(true)}
             >
-              Edit campaign info
+              Edit campaign information
             </button>
           ) : !canEdit ? (
             <p className="cip-muted">Campaign metadata is read-only for your role.</p>

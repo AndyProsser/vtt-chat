@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import {
+  getWorkspacePanelIcon,
+  getWorkspacePanelLabel,
+  getWorkspacePanelTabsForRole,
+} from '@/components/app/workspaces/shared/panels/workspacePanelPolicy'
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -35,66 +40,8 @@ export interface ToolbarActionModel {
   placeholderActions: ToolbarPlaceholderAction[]
 }
 
-const DM_TABS: RightRailTab[] = [
-  'information',
-  'notes',
-  'journal',
-  'history',
-  'rooms',
-  'audio',
-  'settings',
-]
-const PLAYER_TABS: RightRailTab[] = ['information', 'notes', 'journal', 'history', 'settings']
-const SPECTATOR_TABS: RightRailTab[] = ['information', 'journal', 'history']
-
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
-  if (role === 'DM') return DM_TABS
-  if (role === 'PLAYER') return PLAYER_TABS
-  return SPECTATOR_TABS
-}
-
-function formatTabLabel(tab: RightRailTab): string {
-  switch (tab) {
-    case 'information':
-      return 'Information'
-    case 'rooms':
-      return 'Groups'
-    case 'audio':
-      return 'Audio'
-    case 'notes':
-      return 'Notes'
-    case 'journal':
-      return 'Journal'
-    case 'history':
-      return 'History'
-    case 'settings':
-      return 'Settings'
-    default:
-      return tab
-  }
-}
-
-function iconForTab(
-  tab: RightRailTab
-): 'rooms' | 'voice' | 'notes' | 'journal' | 'history' | 'settings' | 'panel' {
-  switch (tab) {
-    case 'information':
-      return 'panel'
-    case 'rooms':
-      return 'rooms'
-    case 'audio':
-      return 'voice'
-    case 'notes':
-      return 'notes'
-    case 'journal':
-      return 'journal'
-    case 'history':
-      return 'history'
-    case 'settings':
-      return 'settings'
-    default:
-      return 'settings'
-  }
+  return getWorkspacePanelTabsForRole(role)
 }
 
 interface SessionWorkspaceFrameProps {
@@ -254,13 +201,26 @@ export function SessionWorkspaceFrame({
   }
 
   return (
-    <section aria-label="Command Center" className="command-center-frame">
-      <section data-testid="toolbar" className="command-center-top-toolbar">
+    <section
+      aria-label="Command Center"
+      className="command-center-frame"
+      data-ui-component="SessionWorkspaceFrame"
+      data-ui-state={`${role}|${toolbarCenterPaneView}|${activeRightRailTab}`}
+    >
+      <section
+        data-testid="toolbar"
+        className="command-center-top-toolbar"
+        data-ui-component="SessionWorkspaceToolbar"
+      >
         {renderToolbar(toolbarModel)}
       </section>
 
       {systemToastsNode && (
-        <section data-testid="system-toasts" className="command-center-top-toasts">
+        <section
+          data-testid="system-toasts"
+          className="command-center-top-toasts"
+          data-ui-component="SessionWorkspaceToasts"
+        >
           {systemToastsNode}
         </section>
       )}
@@ -275,11 +235,17 @@ export function SessionWorkspaceFrame({
         <aside
           data-testid="left-rail"
           className="command-center-surface command-center-left-rail-shell"
+          data-ui-component="SessionWorkspaceLeftRail"
         >
           {renderLeftRail()}
         </aside>
 
-        <div data-testid="center-pane" className="command-center-center-pane">
+        <div
+          data-testid="center-pane"
+          className="command-center-center-pane"
+          data-ui-component="SessionWorkspaceCenterPane"
+          data-ui-state={toolbarCenterPaneView}
+        >
           {renderCenterPane(toolbarCenterPaneView)}
 
           {isRightRailVisible && (
@@ -289,6 +255,8 @@ export function SessionWorkspaceFrame({
                 isRightRailClosing ? 'command-center-right-rail-overlay--closing' : ''
               } command-center-right-rail-overlay--tab-${pointerTabIndex}`}
               onClick={handleRightRailClickOutside}
+              data-ui-component="SessionWorkspaceRightRail"
+              data-ui-state={activeRightRailTab}
             >
               <div className="command-center-right-rail-layout">
                 <Tabs value={activeRightRailTab}>
@@ -305,12 +273,16 @@ export function SessionWorkspaceFrame({
           )}
         </div>
 
-        <aside className="command-center-right-rail-dock" aria-label="Tools">
+        <aside
+          className="command-center-right-rail-dock"
+          aria-label="Tools"
+          data-ui-component="SessionWorkspaceDock"
+        >
           <TooltipProvider delayDuration={140}>
             <Tabs value={activeRightRailTab}>
               <TabsList className="command-center-right-rail-toolbar" aria-label="Tool panels">
                 {tabs.map((tab) => {
-                  const label = formatTabLabel(tab)
+                  const label = getWorkspacePanelLabel(tab)
                   const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
 
                   return (
@@ -324,7 +296,7 @@ export function SessionWorkspaceFrame({
                             handleRightRailTabClick(tab, event.timeStamp)
                           }}
                         >
-                          <Icon name={iconForTab(tab)} />
+                          <Icon name={getWorkspacePanelIcon(tab)} />
                           {indicatorCount > 0 ? (
                             <span
                               className={`command-center-right-rail-indicator command-center-right-rail-indicator--${tab}`}

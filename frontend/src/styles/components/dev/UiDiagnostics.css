@@ -1,0 +1,54 @@
+:root.debug-ui body::before {
+  content: 'UI diagnostics ON';
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 2147483647;
+  border-radius: 999px;
+  border: 1px solid rgba(134, 39, 0, 0.55);
+  background: rgba(255, 241, 226, 0.96);
+  color: #4d1f00;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  pointer-events: none;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+}
+
+:root.debug-ui [data-ui-component] {
+  position: relative;
+  outline: 1px dashed rgba(255, 132, 0, 0.75);
+  outline-offset: -1px;
+}
+
+:root.debug-ui [data-ui-component]::after {
+  content: attr(data-ui-component);
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2147483646;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid rgba(134, 39, 0, 0.45);
+  background: rgba(255, 249, 239, 0.96);
+  color: #4d1f00;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  padding: 2px 6px;
+  pointer-events: none;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+}
+
+:root.debug-ui [data-ui-state]:not([data-ui-state=''])::after {
+  content: attr(data-ui-component) ' | ' attr(data-ui-state);
+}

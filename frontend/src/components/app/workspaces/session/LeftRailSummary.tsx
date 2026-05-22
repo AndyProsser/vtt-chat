@@ -22,11 +22,11 @@ export function LeftRailSummary({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <section className="voice-rail-summary" aria-label="Campaign info panel">
+      <section className="voice-rail-summary" aria-label="Campaign information panel">
         <header className="voice-rail-summary__header">
           <div className="voice-rail-summary__title-row">
             <Icon name="notes" className="voice-rail-summary__icon" />
-            <h4 className="voice-rail-summary__title">Info Panel</h4>
+            <h4 className="voice-rail-summary__title">Information Panel</h4>
           </div>
 
           <div className="voice-rail-summary__stats" aria-label="Campaign activity">

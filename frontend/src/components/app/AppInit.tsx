@@ -24,7 +24,7 @@ import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/Se
 import { SessionLobbyView } from '@/components/app/workspaces/lobby/SessionLobbyView'
 import { AppInitModals } from './AppInitModals'
 import { AppInitSessionWorkspace } from './AppInitSessionWorkspace'
-import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
+import type { CharacterSettingsDraft } from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
 import { AppInitEditorWorkspace } from './AppInitEditorWorkspace'
 import { useSessionInitCampaignEntryOrchestration } from '@/hooks/session/useSessionInitCampaignEntryOrchestration'
 import { useSessionInitCharacterSettingsOrchestration } from '@/hooks/session/useSessionInitCharacterSettingsOrchestration'
@@ -2382,6 +2382,8 @@ export function AppInit({ apiUrl, wsUrl, token, user, onSessionCreated, onReady 
           wsRetrySecondsRemaining={wsRetrySecondsRemaining}
           connectionStatus={connectionStatus}
           rightRailIndicators={rightRailIndicators}
+          partyPresenceRefreshVersion={partyPresenceRefreshVersion}
+          fetchWithAuthGuard={fetchWithAuthGuard}
           selectedRoom={selectedRoom ?? null}
           campaignId={selectedCampaign?.id as UUID | undefined}
           messageGroupingWindowMs={messageGroupingWindowMs}

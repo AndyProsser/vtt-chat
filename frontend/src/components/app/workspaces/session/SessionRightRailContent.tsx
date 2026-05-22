@@ -4,6 +4,7 @@ import type { RightRailTab } from '@/components/app/workspaces/shared/toolbar/Se
 interface SessionRightRailContentProps {
   tab: RightRailTab
   informationPanel: ReactNode
+  partyPanel: ReactNode
   roomsPanel: ReactNode
   audioPanel: ReactNode
   notesPanel: ReactNode
@@ -15,6 +16,7 @@ interface SessionRightRailContentProps {
 export function SessionRightRailContent({
   tab,
   informationPanel,
+  partyPanel,
   roomsPanel,
   audioPanel,
   notesPanel,
@@ -25,6 +27,8 @@ export function SessionRightRailContent({
   switch (tab) {
     case 'information':
       return <>{informationPanel}</>
+    case 'party':
+      return <>{partyPanel}</>
     case 'rooms':
       return <>{roomsPanel}</>
     case 'audio':

@@ -3,19 +3,20 @@ import { MessageType, Role, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/app/workspaces/session/audio/AudioPanel'
 import { ChatWindow } from '@/components/app/workspaces/session/chat/ChatWindow'
-import { NotesPanel } from '@/components/app/workspaces/shared/notes/NotesPanel'
+import { NotesPanel } from '@/components/app/workspaces/shared/panels/NotesPanel'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
-import { CampaignInformationPanel } from '@/components/app/workspaces/shared/rightbar/CampaignInformationPanel'
-import { CampaignRightbarSettings } from '@/components/app/workspaces/shared/rightbar/CampaignRightbarSettings'
-import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/common/CampaignScaffoldPanel'
+import { CampaignInformationPanel } from '@/components/app/workspaces/shared/panels/CampaignInformationPanel'
+import { CampaignPartyPanel } from '@/components/app/workspaces/shared/panels/CampaignPartyPanel'
+import { CampaignRightbarSettings } from '@/components/app/workspaces/shared/panels/CampaignRightbarSettings'
+import { CampaignScaffoldPanel } from '@/components/app/workspaces/shared/panels/CampaignScaffoldPanel'
 import { SessionWorkspaceFrame } from '@/components/app/workspaces/shared/toolbar/SessionWorkspaceFrame'
-import { HistoryPanel } from '@/components/app/workspaces/shared/rightbar/HistoryPanel'
-import { JournalPanel } from '@/components/app/workspaces/shared/rightbar/JournalPanel'
-import { NotesRailPanel } from '@/components/app/workspaces/shared/rightbar/NotesRailPanel'
+import { HistoryPanel } from '@/components/app/workspaces/shared/panels/HistoryPanel'
+import { JournalPanel } from '@/components/app/workspaces/shared/panels/JournalPanel'
+import { NotesRailPanel } from '@/components/app/workspaces/shared/panels/NotesRailPanel'
 import { SessionLeftRailPanel } from '@/components/app/workspaces/session/SessionLeftRailPanel'
-import { SessionRightRailContent } from '@/components/app/workspaces/shared/rightbar/SessionRightRailContent'
+import { SessionRightRailContent } from '@/components/app/workspaces/session/SessionRightRailContent'
 import { SessionToolbar } from '@/components/app/workspaces/shared/toolbar/SessionToolbar'
 import { SpectatorWaitScreen } from '@/components/app/workspaces/session/SpectatorWaitScreen'
 import type { CampaignSummary } from '@/types/session/campaign'
@@ -76,6 +77,8 @@ type AppInitSessionWorkspaceProps = {
     livekitState: ComponentProps<typeof SessionToolbar>['livekitState']
   }
   rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
+  partyPresenceRefreshVersion: number
+  fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   selectedRoom: RoomRecord | null
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
@@ -113,9 +116,14 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
   }
 
   const currentSession = props.currentSession
+  const workspaceDiagnosticState = `${props.effectiveSessionRole}|${currentSession.state}`
 
   return (
-    <div className="session-command-center">
+    <div
+      className="session-command-center"
+      data-ui-component="AppInitSessionWorkspace"
+      data-ui-state={workspaceDiagnosticState}
+    >
       <SessionWorkspaceFrame
         role={props.effectiveSessionRole}
         rightRailIndicators={props.rightRailIndicators}
@@ -160,7 +168,7 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
           />
         )}
         renderLeftRail={() => (
-          <div className="session-left-rail-stack">
+          <div className="session-left-rail-stack" data-ui-component="SessionLeftRailStack">
             <SessionLeftRailPanel
               apiUrl={props.apiUrl}
               token={props.token}
@@ -207,7 +215,11 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
           </div>
         )}
         renderCenterPane={(view) => (
-          <div className="session-command-center-pane">
+          <div
+            className="session-command-center-pane"
+            data-ui-component="SessionCenterPaneShell"
+            data-ui-state={view}
+          >
             {props.effectiveSessionRole === Role.SPECTATOR &&
             (currentSession.state === SessionState.IDLE ||
               currentSession.state === SessionState.PAUSED ||
@@ -269,6 +281,31 @@ export function AppInitSessionWorkspace(props: AppInitSessionWorkspaceProps) {
                   canEdit={props.canEditCampaignInfo}
                   onSaveCampaignInfo={props.onSaveCampaignInfo}
                 />
+              }
+              partyPanel={
+                props.campaignId ? (
+                  <CampaignPartyPanel
+                    key={`${props.campaignId}:${currentSession.id}:${props.effectiveSessionUser.id}`}
+                    campaignId={props.campaignId}
+                    campaignName={props.selectedCampaign?.name}
+                    apiUrl={props.apiUrl}
+                    authToken={props.token}
+                    currentSessionId={currentSession.id}
+                    currentSessionState={currentSession.state}
+                    currentUserId={props.effectiveSessionUser.id}
+                    partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
+                    fetchWithAuthGuard={props.fetchWithAuthGuard}
+                  />
+                ) : (
+                  <CampaignScaffoldPanel
+                    title="Party"
+                    subtitle="Party roster is unavailable until a campaign is selected."
+                    sections={[
+                      'Select or open a campaign session',
+                      'Party presence snapshots will load automatically',
+                    ]}
+                  />
+                )
               }
               roomsPanel={
                 <CampaignScaffoldPanel

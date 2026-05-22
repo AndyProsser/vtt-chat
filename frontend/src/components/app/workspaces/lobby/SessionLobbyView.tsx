@@ -1,7 +1,8 @@
-import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { type CampaignSummary } from '@/types/session/campaign'
 import { CampaignCard } from './SessionLobbyView.CampaignCard'
+import { WorkspaceTopbar } from '@/components/app/workspaces/shared/toolbar/WorkspaceTopbar'
+import { useCampaignWorkspaceTopbarActions } from '@/components/app/workspaces/shared/toolbar/useCampaignWorkspaceTopbarActions'
 
 type SessionLobbyViewProps = {
   campaigns: CampaignSummary[]
@@ -43,136 +44,50 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
   const discoverableCampaigns = props.discoverableCampaigns ?? []
   const totalVisibleCampaigns = props.campaigns.length + discoverableCampaigns.length
   const shouldShowSparseFiller = !props.isLoadingCampaigns && totalVisibleCampaigns <= 3
+  const { coreStateToneClass, topbarActions } = useCampaignWorkspaceTopbarActions({
+    isCreatingCampaign: props.isCreatingCampaign,
+    isJoiningCampaign: props.isJoiningCampaign,
+    onCreateCampaign: props.onCreateCampaign,
+    onJoinCampaign: props.onJoinCampaign,
+    coreWsState: props.connectionStatus.coreWsState,
+  })
 
   return (
     <TooltipProvider delayDuration={140}>
-      <div className="session-lobby-view" data-testid="session-lobby-view">
-        <div className="session-toolbar session-toolbar--lobby" data-testid="session-lobby-toolbar">
-          <div className="session-toolbar__zone session-toolbar__zone--left">
-            <div className="session-toolbar__brand" aria-label="Lobby toolbar">
-              <span className="session-toolbar__brand-mark" aria-hidden="true">
-                <img src="/branding/app-logo.png" alt="" className="session-toolbar__brand-logo" />
-              </span>
-              <strong className="session-toolbar__brand-title">VTT Chat</strong>
-            </div>
-          </div>
+      <div
+        className="session-lobby-view"
+        data-testid="session-lobby-view"
+        data-ui-component="SessionLobbyView"
+        data-ui-state={props.isLoadingCampaigns ? 'loading' : 'ready'}
+      >
+        <WorkspaceTopbar
+          className="session-toolbar--lobby"
+          dataTestId="session-lobby-toolbar"
+          dataUiComponent="LobbyToolbar"
+          brandAriaLabel="Lobby toolbar"
+          extraActions={topbarActions}
+          themeMode={props.themeMode}
+          onToggleTheme={props.onToggleTheme}
+          onOpenUserSettings={props.onOpenUserSettings}
+          onExit={props.onLogoff}
+          exitAriaLabel="Logoff"
+          exitTooltipLabel="Logoff"
+          connectionStatusColorKey={props.connectionStatus.statusColorKey}
+          connectionStatusLabel={props.connectionStatus.label}
+          connectionStatusRows={[
+            {
+              label: 'Core',
+              value: props.connectionStatus.coreWsState,
+              toneClassName: coreStateToneClass,
+            },
+          ]}
+        />
 
-          <div className="session-toolbar__zone session-toolbar__zone--right">
-            <div className="session-toolbar__extra-buttons" aria-label="Campaign actions">
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={props.onCreateCampaign}
-                  disabled={props.isCreatingCampaign}
-                  aria-label="Create campaign"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    add_circle
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end">
-                  Create Campaign
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={props.onJoinCampaign}
-                  disabled={props.isJoiningCampaign}
-                  aria-label="Join campaign"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    group_add
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end">
-                  Join Campaign
-                </TooltipContent>
-              </Tooltip>
-            </div>
-
-            <span className="session-toolbar__separator" aria-hidden="true" />
-
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className="session-toolbar__icon-btn"
-                onClick={props.onToggleTheme}
-                aria-label="Theme"
-              >
-                <Icon name={props.themeMode === 'dark' ? 'sun' : 'moon'} />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="end">
-                Theme
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className="session-toolbar__icon-btn"
-                onClick={props.onOpenUserSettings}
-                aria-label="Settings"
-              >
-                <Icon name="settings" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="end">
-                Settings
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
-                onClick={props.onLogoff}
-                aria-label="Logoff"
-              >
-                <Icon name="logout" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="end">
-                Logoff
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className="session-toolbar__connection"
-                data-status-color={props.connectionStatus.statusColorKey}
-                aria-label={`Connection: ${props.connectionStatus.label}`}
-              >
-                <span className="session-toolbar__connection-dot" aria-hidden="true" />
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="end"
-                className="session-toolbar__tooltip-content--status"
-              >
-                <div className="session-toolbar__status-tooltip-title">Status</div>
-                <div className="session-toolbar__status-tooltip-row">
-                  <span>Core</span>
-                  <strong
-                    className={
-                      props.connectionStatus.coreWsState === 'CONNECTED'
-                        ? 'is-green'
-                        : props.connectionStatus.coreWsState === 'CONNECTING'
-                          ? 'is-yellow'
-                          : 'is-red'
-                    }
-                  >
-                    {props.connectionStatus.coreWsState}
-                  </strong>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        <section className="session-lobby-stats" aria-label="Lobby system stats">
+        <section
+          className="session-lobby-stats"
+          aria-label="Lobby system stats"
+          data-ui-component="LobbyStatsBar"
+        >
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="session-lobby-stats__chip">
@@ -248,7 +163,11 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
           </Tooltip>
         </section>
 
-        <div className="session-card session-card--lobby-list session-card--lobby-list-primary">
+        <div
+          className="session-card session-card--lobby-list session-card--lobby-list-primary"
+          data-ui-component="LobbyCampaignList"
+          data-ui-state={totalVisibleCampaigns > 0 ? 'has-campaigns' : 'empty'}
+        >
           <div className="session-card-header">
             <div>
               <h3 className="session-card-title">Campaigns</h3>
@@ -256,7 +175,11 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
           </div>
 
           <div className="session-lobby-campaign-sections">
-            <section className="session-lobby-campaign-section" aria-label="Member or DM campaigns">
+            <section
+              className="session-lobby-campaign-section"
+              aria-label="Member or DM campaigns"
+              data-ui-component="LobbyOwnedCampaignSection"
+            >
               <h4 className="session-lobby-campaign-section__title">Your Campiagns</h4>
               {props.isLoadingCampaigns ? (
                 <div className="session-status-message">Loading campaigns...</div>
@@ -291,6 +214,7 @@ export function SessionLobbyView(props: SessionLobbyViewProps) {
                 <section
                   className="session-lobby-campaign-section"
                   aria-label="Discoverable campaigns"
+                  data-ui-component="LobbyDiscoverableCampaignSection"
                 >
                   <h4 className="session-lobby-campaign-section__title">Discoverable</h4>
                   <div

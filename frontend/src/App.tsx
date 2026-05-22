@@ -112,6 +112,7 @@ export default function App() {
     apiUrl,
     adminUrl,
   })
+  const appDiagnosticState = `${routeView.kind}|${auth.token ? 'authenticated' : 'anonymous'}`
 
   useEffect(() => {
     if (bootstrapLoggedRef.current) return
@@ -239,7 +240,11 @@ export default function App() {
 
   return (
     <TooltipProvider delayDuration={140}>
-      <div className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary">
+      <div
+        className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary"
+        data-ui-component="AppShell"
+        data-ui-state={appDiagnosticState}
+      >
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="app-shell__orb--brand absolute -left-24 top-0 h-72 w-72 rounded-full opacity-60 blur-3xl" />
           <div className="app-shell__orb--info absolute right-0 top-20 h-80 w-80 rounded-full opacity-50 blur-3xl" />
@@ -252,9 +257,16 @@ export default function App() {
             </div>
           )}
 
-          <main className="app-shell__frame font-sans mx-auto flex h-full min-h-0 flex-1 flex-col px-3 pt-0">
+          <main
+            className="app-shell__frame font-sans mx-auto flex h-full min-h-0 flex-1 flex-col px-3 pt-0"
+            data-ui-component="AppMainFrame"
+          >
             <ToastViewport />
-            <section className="flex h-full min-h-0 flex-1 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md">
+            <section
+              className="flex h-full min-h-0 flex-1 overflow-hidden rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-md"
+              data-ui-component="RouteSurface"
+              data-ui-state={routeView.kind}
+            >
               {renderRouteView()}
             </section>
           </main>
