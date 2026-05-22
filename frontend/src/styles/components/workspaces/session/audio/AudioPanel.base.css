@@ -1,0 +1,99 @@
+/* AudioPanel — audio transport status and control surface */
+
+.audio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.625rem 0.875rem;
+  overflow: visible;
+}
+
+.audio-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.audio-panel__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.audio-panel__status-dot[data-state='connected'] {
+  background-color: var(--color-success);
+}
+
+.audio-panel__status-dot[data-state='connecting'] {
+  background-color: var(--color-warn);
+}
+
+.audio-panel__status-dot[data-state='disconnected'] {
+  background-color: var(--color-text-muted);
+}
+
+.audio-panel__status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.audio-panel__error {
+  color: var(--color-error-text, #991b1b);
+  font-size: 0.8rem;
+}
+
+.audio-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audio-panel__section {
+  border-top: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  padding-top: 0.55rem;
+}
+
+.audio-panel__section-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.audio-panel__section-empty {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.audio-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audio-panel__chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.28));
+  border-radius: 999px;
+  padding: 0.14rem 0.48rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-surface-subtle);
+}
+

@@ -831,9 +831,7 @@ export function ChatWindow({
 
       {/* Message list */}
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">
-          Loading messages…
-        </div>
+        <div className="chat-window__loading-state">Loading messages…</div>
       ) : (
         <MessageList
           messages={visibleMessages}

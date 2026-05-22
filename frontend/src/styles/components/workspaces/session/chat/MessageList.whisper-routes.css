@@ -1,0 +1,113 @@
+.chat-message__whisper-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, #c084fc 46%, #415266 54%);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.chat-message__whisper-route--stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  row-gap: 0.08rem;
+}
+
+.chat-message__whisper-meta--incoming .chat-message__whisper-route--stacked {
+  align-items: flex-end;
+  align-self: flex-end;
+}
+
+.chat-message__whisper-route--incoming-list {
+  display: table;
+  margin-left: auto;
+}
+
+.chat-message__whisper-route--incoming-list .chat-message__whisper-route-line {
+  display: table-row;
+}
+
+.chat-message__whisper-route--incoming-list .chat-message__whisper-connector,
+.chat-message__whisper-route--incoming-list .chat-message__whisper-route-label {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.chat-message__whisper-route--incoming-list .chat-message__whisper-connector {
+  text-align: left;
+  padding-right: 0.22rem;
+}
+
+.chat-message__whisper-route--incoming-list .chat-message__whisper-route-label {
+  text-align: right;
+}
+
+.chat-message__whisper-route-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.22rem;
+}
+
+.chat-message__whisper-meta--incoming .chat-message__whisper-route-line {
+  justify-content: flex-end;
+}
+
+.chat-message__whisper-route-label {
+  white-space: nowrap;
+}
+
+.chat-message__whisper-connector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.chat-message__whisper-connector .material-symbols-outlined {
+  font-size: 0.84rem;
+  line-height: 1;
+  transform: translateY(-0.04em);
+}
+
+.chat-message__whisper-route--stacked .chat-message__whisper-connector .material-symbols-outlined {
+  transform: translateY(-0.02em);
+}
+
+.chat-message__whisper-route--incoming {
+  margin-left: 0;
+}
+
+.chat-message__whisper-route--outgoing {
+  margin-left: 0;
+}
+
+.chat-message__whisper-route--dm {
+  color: color-mix(in srgb, #f59e0b 50%, #415266 50%);
+}
+
+.chat-message__timestamp {
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--color-text-muted) 74%, transparent);
+}
+
+.chat-message__timestamp--whisper {
+  width: 100%;
+  text-align: right;
+  line-height: 1.2;
+  padding-top: 0.02rem;
+}
+
+.chat-message__whisper-meta--incoming .chat-message__timestamp--whisper {
+  width: auto;
+  text-align: left;
+  padding-top: 0;
+  margin-bottom: 0;
+  align-self: flex-start;
+}
+
