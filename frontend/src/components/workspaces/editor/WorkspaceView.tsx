@@ -51,22 +51,21 @@ type WorkspaceViewProps = {
 }
 
 export function WorkspaceView(props: WorkspaceViewProps) {
+  const campaign = props.campaign
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
 
   const resolvedActiveTab = tabs.includes(activeTab) ? activeTab : tabs[0] || 'information'
-  if (!props.campaign) {
+  if (!campaign) {
     return (
       <>
         <EditorWorkspaceToolbar
           themeMode={props.themeMode}
           dataUiState="no-campaign"
-          launchLabel={props.campaign ? props.campaign.name : undefined}
           connectionStatus={props.connectionStatus}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
-          onLaunch={props.campaign ? () => props.onLaunch(props.campaign.id) : undefined}
           isLaunchDisabled={props.isLaunchDisabled}
           launchDisabledReason={props.launchDisabledReason}
           showInviteWidget={props.showInviteWidget}
@@ -89,9 +88,6 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       </>
     )
   }
-
-  // Campaign is now non-null for the rest of this component
-  const campaign = props.campaign
 
   const renderPanel = () => {
     if (resolvedActiveTab === 'information') {

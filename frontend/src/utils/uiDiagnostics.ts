@@ -36,6 +36,18 @@ function readStoredFlag(): boolean | undefined {
   }
 }
 
+function clearStoredFlag(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Ignore storage write failures in private/incognito contexts.
+  }
+}
+
 function persistFlag(enabled: boolean): void {
   if (typeof window === 'undefined') {
     return
@@ -86,7 +98,7 @@ export function isUiDiagnosticsEnabled(): boolean {
     return window.__VTT_DEBUG_UI__
   }
 
-  return Boolean(readStoredFlag() ?? import.meta.env.VITE_DEBUG_UI === '1')
+  return Boolean(import.meta.env.VITE_DEBUG_UI === '1')
 }
 
 export function setUiDiagnosticsEnabled(enabled: boolean): boolean {
@@ -95,7 +107,7 @@ export function setUiDiagnosticsEnabled(enabled: boolean): boolean {
   }
 
   window.__VTT_DEBUG_UI__ = enabled
-  persistFlag(enabled)
+  clearStoredFlag()
   applyRootClass(enabled)
   return enabled
 }
@@ -106,12 +118,10 @@ export function initUiDiagnosticsFlag(): boolean {
   }
 
   const envEnabled = import.meta.env.VITE_DEBUG_UI === '1'
-  const stored = readStoredFlag()
   const runtimeOverride = window.__VTT_DEBUG_UI__
   const queryFlag = readQueryFlag()
 
-  const defaultValue =
-    typeof runtimeOverride === 'boolean' ? runtimeOverride : (stored ?? envEnabled)
+  const defaultValue = typeof runtimeOverride === 'boolean' ? runtimeOverride : envEnabled
 
   const resolvedEnabled =
     queryFlag === 'toggle'
@@ -121,7 +131,7 @@ export function initUiDiagnosticsFlag(): boolean {
         : defaultValue
 
   window.__VTT_DEBUG_UI__ = resolvedEnabled
-  persistFlag(resolvedEnabled)
+  clearStoredFlag()
   applyRootClass(resolvedEnabled)
 
   if (queryFlag === 'toggle') {

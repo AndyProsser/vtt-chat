@@ -10,6 +10,7 @@ import { useAuthSession } from './hooks/useAuthSession'
 import type { UUID } from '@shared'
 import { logger } from './utils/logger'
 import { resolveRoute, type RouteView } from './utils/route-view'
+import { initUiDiagnosticsFlag } from './utils/uiDiagnostics'
 import './styles/components/app/AppShell.css'
 
 export default function App() {
@@ -156,6 +157,7 @@ export default function App() {
 
   useEffect(() => {
     const handleRouteChange = () => {
+      initUiDiagnosticsFlag()
       setRouteView(resolveRoute(window.location.pathname))
     }
 
