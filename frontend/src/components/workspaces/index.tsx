@@ -43,6 +43,7 @@ import { useWorkspacesApiBootstrap } from '@/hooks/session/useWorkspacesApiBoots
 import { useWorkspacesSessionAnchors } from '@/hooks/session/useWorkspacesSessionAnchors'
 import { useWorkspacesGreenroomCarryLifecycle } from '@/hooks/session/useWorkspacesGreenroomCarryLifecycle'
 import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
+import { useWorkspacesSettingsStateBridge } from '@/hooks/session/useWorkspacesSettingsStateBridge'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -69,7 +70,6 @@ import type {
   WorkspacesProps as WorkspaceInitializationProps,
 } from '@/types/session/workspaces'
 import {
-  buildCharacterDraft,
   getVisibleRoomsForSessionState,
   isGreenRoom,
   safeLocalStorageGetItem,
@@ -328,19 +328,6 @@ export function WorkspaceInitialization({
     [selectedCharacterId, userCharacters]
   )
 
-  useEffect(() => {
-    setSessionSettingsName(currentSession?.name || '')
-    setSessionSettingsDescription(currentSession?.description || '')
-    setSessionSettingsPlannedDurationMinutes(
-      currentSession?.plannedDurationMinutes || DEFAULT_PLANNED_DURATION_MINUTES
-    )
-  }, [
-    currentSession?.description,
-    currentSession?.id,
-    currentSession?.name,
-    currentSession?.plannedDurationMinutes,
-  ])
-
   const handlePlannedDurationMinutesChange = useCallback((nextValue: number) => {
     if (!Number.isFinite(nextValue)) {
       return
@@ -350,29 +337,16 @@ export function WorkspaceInitialization({
     setSessionSettingsPlannedDurationMinutes(clamped)
   }, [])
 
-  useEffect(() => {
-    if (!selectedCharacter) {
-      const DEFAULT_CHAR_SETTINGS = {
-        name: '',
-        race: 'Human',
-        className: 'Fighter',
-        subclass: '',
-        avatarUrl: '',
-        level: 1,
-        strength: 8,
-        dexterity: 8,
-        constitution: 8,
-        intelligence: 8,
-        wisdom: 8,
-        charisma: 8,
-      }
-      characterSettingsActions.setCharacterSettingsDraft(DEFAULT_CHAR_SETTINGS)
-      return
-    }
-
-    characterSettingsActions.setSelectedCharacterId(selectedCharacter.id)
-    characterSettingsActions.setCharacterSettingsDraft(buildCharacterDraft(selectedCharacter))
-  }, [selectedCharacter, characterSettingsActions])
+  useWorkspacesSettingsStateBridge({
+    currentSession,
+    defaultPlannedDurationMinutes: DEFAULT_PLANNED_DURATION_MINUTES,
+    setSessionSettingsName,
+    setSessionSettingsDescription,
+    setSessionSettingsPlannedDurationMinutes,
+    selectedCharacter,
+    setSelectedCharacterId: characterSettingsActions.setSelectedCharacterId,
+    setCharacterSettingsDraft: characterSettingsActions.setCharacterSettingsDraft,
+  })
 
   useEffect(() => {
     const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
