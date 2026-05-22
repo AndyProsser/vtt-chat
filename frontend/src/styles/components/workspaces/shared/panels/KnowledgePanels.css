@@ -51,6 +51,11 @@
   color: var(--color-text-secondary);
 }
 
+.knowledge-panel-chip--warn {
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 18%, var(--color-surface));
+  color: color-mix(in srgb, var(--color-warning, #f59e0b) 82%, var(--color-text-primary));
+}
+
 .knowledge-panel-copy,
 .knowledge-panel-meta,
 .knowledge-panel-card-subtitle,
@@ -329,6 +334,12 @@
   word-break: break-word;
 }
 
+.knowledge-panel-card-body--compact {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
 .knowledge-panel-chip-row {
   display: flex;
   gap: var(--space-2);
@@ -367,6 +378,38 @@
 .knowledge-panel-action:hover {
   border-color: var(--color-border-focus);
   color: var(--color-brand-hover);
+}
+
+.knowledge-panel-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-panel-section-toggle:hover {
+  border-color: var(--color-border-focus);
+}
+
+.knowledge-panel-section-toggle__title {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+}
+
+.knowledge-panel-section-toggle__hint {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
 }
 
 .knowledge-panel-tabs {
