@@ -10,6 +10,11 @@ interface SessionJournalStatus {
   hasContent: boolean
 }
 
+interface OptimisticSessionSelection {
+  sessionId: UUID
+  baselineControlledSessionId: UUID | null
+}
+
 interface RawNote {
   id: string
   title?: string
@@ -102,15 +107,25 @@ export function EditorJournalPanel({
     [sessions]
   )
   const fallbackSession = sortedSessions[0] ?? null
-  const [localSelectedSessionId, setLocalSelectedSessionId] = useState<UUID | null>(
-    selectedSessionId ?? fallbackSession?.id ?? null
+  const controlledSessionId = selectedSessionId || fallbackSession?.id || null
+  const [optimisticSelection, setOptimisticSelection] = useState<OptimisticSessionSelection | null>(
+    controlledSessionId
+      ? {
+          sessionId: controlledSessionId,
+          baselineControlledSessionId: controlledSessionId,
+        }
+      : null
   )
-
   const effectiveSessionId =
-    localSelectedSessionId ?? selectedSessionId ?? fallbackSession?.id ?? null
+    optimisticSelection && optimisticSelection.baselineControlledSessionId === controlledSessionId
+      ? optimisticSelection.sessionId
+      : controlledSessionId
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
   const recentSessions = sortedSessions
+  const effectiveSessionStatus = effectiveSession
+    ? journalStatusBySession[effectiveSession.id]
+    : undefined
   const sessionIndexById = useMemo(
     () => new Map(sortedSessions.map((session, index) => [session.id, index])),
     [sortedSessions]
@@ -223,75 +238,86 @@ export function EditorJournalPanel({
         </div>
       </header>
 
-      <div className="knowledge-panel-group">
-        <p className="knowledge-panel-group-title">Recent Sessions</p>
-        <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
-          {recentSessions.map((session, index) => {
-            const isSelected = session.id === effectiveSessionId
-            const sessionStatus = journalStatusBySession[session.id]
-            const hasContent = Boolean(sessionStatus?.hasContent)
-            const nextSession = index > 0 ? recentSessions[index - 1] : undefined
-            const missingCopy = buildMissingRecapCopy(session, nextSession)
+      <div className="knowledge-panel-journal-layout">
+        <div className="knowledge-panel-group">
+          <p className="knowledge-panel-group-title">Recent Sessions</p>
+          <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
+            {recentSessions.map((session, index) => {
+              const isSelected = session.id === effectiveSessionId
+              const sessionStatus = journalStatusBySession[session.id]
+              const hasContent = Boolean(sessionStatus?.hasContent)
+              const nextSession = index > 0 ? recentSessions[index - 1] : undefined
+              const missingCopy = buildMissingRecapCopy(session, nextSession)
 
-            return (
-              <div
-                key={session.id}
-                role="listitem"
-                className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
-              >
-                <button
-                  type="button"
-                  className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
-                  onClick={() => {
-                    setLocalSelectedSessionId(session.id)
-                    onSessionChange(session.id)
-                  }}
-                  aria-pressed={isSelected}
+              return (
+                <div
+                  key={session.id}
+                  role="listitem"
+                  className={`knowledge-panel-session-item ${isSelected ? 'is-selected' : ''}`}
                 >
-                  <div className="knowledge-panel-card-header">
-                    <div>
-                      <h4 className="knowledge-panel-card-title">{session.name}</h4>
-                      <p className="knowledge-panel-card-subtitle">
-                        {new Date(session.createdAt).toLocaleDateString()}
-                      </p>
-                      <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
-                        {hasContent ? 'Recap ready for players.' : missingCopy.cardBody}
-                      </p>
-                    </div>
-                    <div className="knowledge-panel-chip-row">
-                      {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
-                      {!hasContent ? (
-                        <span className="knowledge-panel-chip knowledge-panel-chip--warn">
-                          Needs recap
+                  <button
+                    type="button"
+                    className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      setOptimisticSelection({
+                        sessionId: session.id,
+                        baselineControlledSessionId: controlledSessionId,
+                      })
+                      onSessionChange(session.id)
+                    }}
+                    aria-pressed={isSelected}
+                  >
+                    <div className="knowledge-panel-card-header">
+                      <div>
+                        <h4 className="knowledge-panel-card-title">{session.name}</h4>
+                        <p className="knowledge-panel-card-subtitle">
+                          {new Date(session.createdAt).toLocaleDateString()}
+                        </p>
+                        <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
+                          {hasContent ? 'Recap ready for players.' : missingCopy.cardBody}
+                        </p>
+                      </div>
+                      <div className="knowledge-panel-chip-row">
+                        {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
+                        {!hasContent ? (
+                          <span className="knowledge-panel-chip knowledge-panel-chip--warn">
+                            Needs recap
+                          </span>
+                        ) : null}
+                        <span className="knowledge-panel-chip muted">
+                          {isSelected ? 'Open' : 'Open journal'}
                         </span>
-                      ) : null}
-                      <span className="knowledge-panel-chip muted">
-                        {isSelected ? 'Open' : 'Open journal'}
-                      </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
-                {isSelected ? (
-                  <div className="knowledge-panel-session-item__editor">
-                    <JournalPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={session.id}
-                      sessionName={session.name}
-                      role={role}
-                      autoEdit
-                      autoSave
-                      hideHeader
-                      onSaved={({ hasContent, hasJournal }) => {
-                        updateJournalStatus(session.id, { hasContent, hasJournal })
-                      }}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            )
-          })}
+        <div className="knowledge-panel-journal-screen">
+          {!effectiveSessionStatus?.hasContent ? (
+            <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
+              No recap yet for this session. Open the markdown journal below and write what
+              happened.
+            </p>
+          ) : null}
+
+          <JournalPanel
+            key={effectiveSession.id}
+            apiUrl={apiUrl}
+            token={token}
+            sessionId={effectiveSession.id}
+            sessionName={effectiveSession.name}
+            role={role}
+            autoEdit
+            autoSave
+            hideHeader
+            onSaved={({ hasContent, hasJournal }) => {
+              updateJournalStatus(effectiveSession.id, { hasContent, hasJournal })
+            }}
+          />
         </div>
       </div>
     </section>

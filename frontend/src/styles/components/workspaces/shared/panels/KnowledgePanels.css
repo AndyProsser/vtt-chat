@@ -402,9 +402,28 @@
   gap: var(--space-2);
 }
 
+.knowledge-panel-journal-layout {
+  display: grid;
+  gap: var(--space-3);
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.knowledge-panel-journal-screen {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
 .knowledge-panel--compact .knowledge-panel-group {
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr);
+}
+
+.knowledge-panel-journal-layout .knowledge-panel-session-list {
+  max-height: min(28vh, 16rem);
 }
 
 .knowledge-panel-group-title {
