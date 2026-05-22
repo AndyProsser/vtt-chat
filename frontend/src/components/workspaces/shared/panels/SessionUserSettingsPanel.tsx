@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEventHandler } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type SubmitEventHandler } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Slider } from '@/components/ui'
 import '@/styles/components/session/SessionUserSettingsPanel.css'
@@ -100,7 +100,7 @@ export function SessionUserSettingsPanel({
     }
   }, [apiUrl, token, userId])
 
-  const handleProfileSave: FormEventHandler<HTMLFormElement> = async (event) => {
+  const handleProfileSave: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
     setSaveStatus('saving')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)

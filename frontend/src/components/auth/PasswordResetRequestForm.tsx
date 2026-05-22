@@ -1,6 +1,6 @@
-import { useState, type FormEventHandler } from 'react'
+import { useState, type SubmitEventHandler } from 'react'
 import * as Form from '@radix-ui/react-form'
-import { navigateAuthSurface } from '@/components/auth/auth-surface'
+import { navigateAuthSurface } from '@/utils/authSurface'
 
 type PasswordResetRequestFormProps = {
   apiUrl: string
@@ -12,7 +12,7 @@ export function PasswordResetRequestForm({ apiUrl }: PasswordResetRequestFormPro
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setError(null)
     setSuccessMessage(null)

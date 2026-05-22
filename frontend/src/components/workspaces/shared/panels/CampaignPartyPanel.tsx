@@ -10,7 +10,7 @@ import {
   type MockPlayerStatus,
   formatLastSeen,
   generateMockParty,
-} from './CampaignPartyPanel.mockData'
+} from '@/utils/campaignPartyMockData'
 import '@/styles/components/shared/CampaignPartyPanel.css'
 
 const IS_DEV = import.meta.env.DEV

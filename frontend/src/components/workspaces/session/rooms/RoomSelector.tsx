@@ -34,9 +34,9 @@ import {
   type GroupsPanelProps,
 } from '@/types/groupPanel'
 import type { SessionPresence } from '@/types/room'
+import { useRoomMoves } from '@/hooks/session/useRoomMoves'
+import { useWhisperFlow } from '@/hooks/session/useWhisperFlow'
 import { generateClientId } from '@/utils/uuid'
-import { useRoomMoves } from './useRoomMoves'
-import { useWhisperFlow } from './useWhisperFlow'
 import '@/styles/components/rooms/RoomSelector.css'
 
 export type {

@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@/components/ui'
 import { CampaignSettingsPanelPolicy } from './CampaignSettingsPanel.Policy'
-import type { CampaignSettingsPanelProps } from './CampaignSettingsPanel.types'
+import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
 
 export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
   if (props.isLoading) {

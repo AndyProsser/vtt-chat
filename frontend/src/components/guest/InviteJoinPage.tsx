@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEventHandler } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type SubmitEventHandler } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import * as Form from '@radix-ui/react-form'
@@ -407,7 +407,7 @@ export function InviteJoinPage({
     continueToCampaignSession(data.campaignId || campaign.id)
   }
 
-  const submitJoin: FormEventHandler<HTMLFormElement> = async (event) => {
+  const submitJoin: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
 
     if (!campaign) {

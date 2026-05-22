@@ -6,9 +6,9 @@ import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
-import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from './WorkspaceView.tabs'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
+import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from '@/utils/workspaceTabs'
 
 type WorkspaceViewProps = {
   campaign: CampaignSummary | null

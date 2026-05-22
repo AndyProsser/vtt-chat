@@ -1,4 +1,4 @@
-import { useState, type FormEventHandler } from 'react'
+import { useState, type SubmitEventHandler } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
@@ -7,7 +7,7 @@ import {
   navigateAuthSurface,
   normalizeUsernameFromName,
   validateComplexPassword,
-} from '@/components/auth/auth-surface'
+} from '@/utils/authSurface'
 
 type RegisterFormProps = {
   apiUrl: string
@@ -54,7 +54,7 @@ export function RegisterForm({ apiUrl, onLoginSuccess }: RegisterFormProps) {
 
   const passwordErrors = validateComplexPassword(password)
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setError(null)
 

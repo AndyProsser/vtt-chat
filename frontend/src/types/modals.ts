@@ -1,4 +1,4 @@
-import type { ChangeEvent, FormEventHandler } from 'react'
+import type { ChangeEvent, SubmitEventHandler } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
@@ -17,7 +17,7 @@ export type ModalsProps = {
   showJoinCampaignModal: boolean
   joinInviteInput: string
   isJoiningCampaign: boolean
-  onJoinCampaignSubmit: FormEventHandler<HTMLFormElement>
+  onJoinCampaignSubmit: SubmitEventHandler<HTMLFormElement>
   onJoinInviteInputChange: (value: string) => void
   onCloseJoinCampaign: () => void
   showCampaignSettingsModal: boolean
@@ -31,7 +31,7 @@ export type ModalsProps = {
   settingsData: CampaignSettingsPayload | null
   isSettingsSaving: boolean
   onCloseCampaignSettings: () => void
-  onSaveCampaignSettings: FormEventHandler<HTMLFormElement>
+  onSaveCampaignSettings: SubmitEventHandler<HTMLFormElement>
   settingsName: string
   onSettingsNameChange: (value: string) => void
   settingsDescription: string

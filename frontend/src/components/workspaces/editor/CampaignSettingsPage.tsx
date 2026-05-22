@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEventHandler } from 'react'
+import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import type { UUID } from '@shared'
 import { useToast } from '@/hooks/useToast'
 import { Slider } from '@/components/ui'
@@ -107,7 +107,7 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
     void loadSettings()
   }, [props.apiUrl, props.campaignId, props.token])
 
-  const handleSaveMetadata: FormEventHandler<HTMLFormElement> = async (e) => {
+  const handleSaveMetadata: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setError(null)
     setNotice(null)

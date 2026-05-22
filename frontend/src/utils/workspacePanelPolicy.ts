@@ -1,41 +1,9 @@
 import { Role } from '@shared'
+import {
+  WORKSPACE_PANEL_CANONICAL_ORDER,
+  WORKSPACE_PANEL_ROLE_EXCEPTIONS,
+} from '@/constants/workspacePanelPolicy.constants'
 import type { WorkspacePanelTab } from '@/types/ui'
-
-export const WORKSPACE_PANEL_CANONICAL_ORDER: WorkspacePanelTab[] = [
-  'information',
-  'party',
-  'rooms',
-  'journal',
-  'notes',
-  'history',
-  'audio',
-  'settings',
-]
-
-type WorkspacePanelRoleException = {
-  hidden: WorkspacePanelTab[]
-  rationale: string
-}
-
-// Explicitly documented exceptions keep screenshot labeling and naming deterministic.
-export const WORKSPACE_PANEL_ROLE_EXCEPTIONS: Record<Role, WorkspacePanelRoleException> = {
-  [Role.DM]: {
-    hidden: [],
-    rationale: 'DM sees the full canonical panel set.',
-  },
-  [Role.PLAYER]: {
-    hidden: ['rooms', 'audio'],
-    rationale: 'Player role cannot manage room topology or DM audio policy controls.',
-  },
-  [Role.SPECTATOR]: {
-    hidden: ['party', 'rooms', 'notes', 'audio', 'settings'],
-    rationale: 'Spectator role is observation-focused and excludes campaign mutation tools.',
-  },
-  [Role.SYSTEM]: {
-    hidden: ['party', 'rooms', 'journal', 'notes', 'history', 'audio', 'settings'],
-    rationale: 'System role only needs information panel access for diagnostics fallback.',
-  },
-}
 
 export function getWorkspacePanelTabsForRole(role: Role): WorkspacePanelTab[] {
   const exception = WORKSPACE_PANEL_ROLE_EXCEPTIONS[role]

@@ -8,7 +8,7 @@ import { useState } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { isDevPasswordlessLoginEnabled, navigateAuthSurface } from '@/components/auth/auth-surface'
+import { isDevPasswordlessLoginEnabled, navigateAuthSurface } from '@/utils/authSurface'
 
 interface LoginFormProps {
   apiUrl: string

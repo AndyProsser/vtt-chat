@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEventHandler } from 'react'
+import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
@@ -113,7 +113,7 @@ export function NotesPanel({ apiUrl, token, sessionId, user }: NotesPanelProps) 
     }
   }, [apiUrl, token, sessionId, user.id])
 
-  const handleCreate: FormEventHandler<HTMLFormElement> = async (e) => {
+  const handleCreate: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     setError(null)
     setIsCreating(true)

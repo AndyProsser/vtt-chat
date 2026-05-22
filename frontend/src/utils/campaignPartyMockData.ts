@@ -1,24 +1,4 @@
-/** DEV-only mock player generator for the Party Sheet panel.
- * Produces purely visual, ephemeral data — nothing persisted to any store or API.
- * Generated players are discarded when the component unmounts.
- */
-
-export type MockPlayerStatus = 'here' | 'away' | 'lobby' | 'not-here' | 'offline'
-
-export interface MockPartyMember {
-  id: string
-  playerName: string
-  characterName: string
-  avatarInitials: string
-  race: string
-  characterClass: string
-  level: number
-  stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
-  status: MockPlayerStatus
-  lastSeenMs: number // epoch ms
-}
-
-// ─── Data pools ────────────────────────────────────────────────────────────────
+import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
 
 const PLAYER_NAMES = [
   'Ambrose',
@@ -100,8 +80,6 @@ const CLASSES = [
 
 const STATUS_POOL: MockPlayerStatus[] = ['here', 'here', 'away', 'lobby', 'not-here', 'offline']
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
 function rnd(min: number, max: number): number {
   return min + Math.floor(Math.random() * (max - min + 1))
 }
@@ -124,37 +102,33 @@ function initials(name: string): string {
   const parts = name.trim().split(' ')
   return parts
     .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
+    .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
 }
 
 function randomStat(): number {
-  // 3d6 style distribution, clamped 6–18
   return Math.min(18, Math.max(6, rnd(3, 6) + rnd(3, 6) + rnd(0, 6)))
 }
 
 function randomLastSeen(status: MockPlayerStatus): number {
   const now = Date.now()
-  if (status === 'here') return now - rnd(0, 3 * 60 * 1000) // up to 3 min ago
-  if (status === 'away') return now - rnd(8 * 60 * 1000, 90 * 60 * 1000) // 8 min – 1.5 hr
-  if (status === 'lobby') return now - rnd(0, 10 * 60 * 1000) // up to 10 min ago
-  if (status === 'not-here') return now - rnd(2 * 60 * 1000, 24 * 60 * 60 * 1000) // 2 min – 24 hr
-  return now - rnd(60 * 60 * 1000, 14 * 24 * 60 * 60 * 1000) // 1 hr – 14 days
+  if (status === 'here') return now - rnd(0, 3 * 60 * 1000)
+  if (status === 'away') return now - rnd(8 * 60 * 1000, 90 * 60 * 1000)
+  if (status === 'lobby') return now - rnd(0, 10 * 60 * 1000)
+  if (status === 'not-here') return now - rnd(2 * 60 * 1000, 24 * 60 * 60 * 1000)
+  return now - rnd(60 * 60 * 1000, 14 * 24 * 60 * 60 * 1000)
 }
 
-// ─── Public API ────────────────────────────────────────────────────────────────
-
-/** Generate 8–16 unique mock party members for DEV visual purposes. */
 export function generateMockParty(): MockPartyMember[] {
   const count = rnd(8, 16)
   const players = pickUnique(PLAYER_NAMES, count)
   const characters = pickUnique(CHARACTER_NAMES, count)
 
-  return players.map((playerName, i) => {
-    const characterName = characters[i] ?? `Character ${i + 1}`
+  return players.map((playerName, index) => {
+    const characterName = characters[index] ?? `Character ${index + 1}`
     const status = pick(STATUS_POOL)
     return {
-      id: `mock-${i}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `mock-${index}-${Math.random().toString(36).slice(2, 7)}`,
       playerName,
       characterName,
       avatarInitials: initials(characterName),
@@ -175,7 +149,6 @@ export function generateMockParty(): MockPartyMember[] {
   })
 }
 
-/** Format a last-seen epoch ms into a human-readable relative string. */
 export function formatLastSeen(epochMs: number): string {
   const diffMs = Date.now() - epochMs
   const diffSec = Math.floor(diffMs / 1000)
