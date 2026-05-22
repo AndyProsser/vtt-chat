@@ -149,28 +149,30 @@ export function LobbyView(props: LobbyViewProps) {
               aria-label="Member or DM campaigns"
               data-ui-component="LobbyOwnedCampaignSection"
             >
-              <h4 className="workspaces-lobby-campaign-section__title">Your Campiagns</h4>
-              {props.isLoadingCampaigns ? (
-                <div className="workspaces-status-message">Loading campaigns...</div>
-              ) : props.campaigns.length === 0 ? (
-                <div className="workspaces-status-message">No campaigns available yet.</div>
-              ) : (
-                <div className="session-campaign-grid" role="list" aria-label="Campaign list">
-                  {props.campaigns.map((campaign) => (
-                    <CampaignCard
-                      key={campaign.id}
-                      campaign={campaign}
-                      isSelected={props.selectedCampaignId === campaign.id}
-                      onSelectCampaign={props.onSelectCampaign}
-                      onOpenCampaignSettings={props.onOpenCampaignSettings}
-                      onEnterCampaign={props.onEnterCampaign}
-                      onJoinRequest={props.onJoinRequest}
-                      onWatchCampaign={props.onWatchCampaign}
-                      onError={props.onError}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="workspaces-lobby-campaign-section__frame">
+                <h4 className="workspaces-lobby-campaign-section__title">Your Campaigns</h4>
+                {props.isLoadingCampaigns ? (
+                  <div className="workspaces-status-message">Loading campaigns...</div>
+                ) : props.campaigns.length === 0 ? (
+                  <div className="workspaces-status-message">No campaigns available yet.</div>
+                ) : (
+                  <div className="session-campaign-grid" role="list" aria-label="Campaign list">
+                    {props.campaigns.map((campaign) => (
+                      <CampaignCard
+                        key={campaign.id}
+                        campaign={campaign}
+                        isSelected={props.selectedCampaignId === campaign.id}
+                        onSelectCampaign={props.onSelectCampaign}
+                        onOpenCampaignSettings={props.onOpenCampaignSettings}
+                        onEnterCampaign={props.onEnterCampaign}
+                        onJoinRequest={props.onJoinRequest}
+                        onWatchCampaign={props.onWatchCampaign}
+                        onError={props.onError}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </section>
 
             {discoverableCampaigns.length > 0 && (
@@ -185,25 +187,29 @@ export function LobbyView(props: LobbyViewProps) {
                   aria-label="Discoverable campaigns"
                   data-ui-component="LobbyDiscoverableCampaignSection"
                 >
-                  <h4 className="workspaces-lobby-campaign-section__title">Discoverable</h4>
-                  <div
-                    className="session-campaign-grid"
-                    role="list"
-                    aria-label="Discoverable campaigns"
-                  >
-                    {discoverableCampaigns.map((campaign) => (
-                      <CampaignCard
-                        key={campaign.id}
-                        campaign={campaign}
-                        isSelected={props.selectedCampaignId === campaign.id}
-                        onSelectCampaign={props.onSelectCampaign}
-                        onOpenCampaignSettings={props.onOpenCampaignSettings}
-                        onEnterCampaign={props.onEnterCampaign}
-                        onJoinRequest={props.onJoinRequest}
-                        onWatchCampaign={props.onWatchCampaign}
-                        onError={props.onError}
-                      />
-                    ))}
+                  <div className="workspaces-lobby-campaign-section__frame">
+                    <h4 className="workspaces-lobby-campaign-section__title">
+                      Discover Adventures
+                    </h4>
+                    <div
+                      className="session-campaign-grid"
+                      role="list"
+                      aria-label="Discoverable campaigns"
+                    >
+                      {discoverableCampaigns.map((campaign) => (
+                        <CampaignCard
+                          key={campaign.id}
+                          campaign={campaign}
+                          isSelected={props.selectedCampaignId === campaign.id}
+                          onSelectCampaign={props.onSelectCampaign}
+                          onOpenCampaignSettings={props.onOpenCampaignSettings}
+                          onEnterCampaign={props.onEnterCampaign}
+                          onJoinRequest={props.onJoinRequest}
+                          onWatchCampaign={props.onWatchCampaign}
+                          onError={props.onError}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </section>
               </>

@@ -131,20 +131,24 @@
   gap: 0.35rem;
 }
 
+.workspaces-lobby-campaign-section__frame {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
+  border-radius: 8px;
+  padding: 0.4rem;
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
+}
+
 .workspaces-lobby-campaign-section__title {
   margin: 0;
-  position: sticky;
-  top: 0;
-  z-index: 1;
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
-  border-radius: 6px;
-  padding: 0.24rem 0.4rem;
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-surface-subtle) 12%);
+  padding: 0.24rem 0;
 }
 
 .workspaces-lobby-campaign-divider {
@@ -252,4 +256,3 @@
   min-height: 164px;
   padding: 0.62rem;
 }
-
