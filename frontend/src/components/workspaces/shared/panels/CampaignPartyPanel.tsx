@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, type UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import {
   type MockPartyMember,
@@ -470,7 +471,10 @@ export function CampaignPartyPanel({
       {/* Header */}
       <header className="party-sheet__header">
         <div className="party-sheet__header-info">
-          <h4 className="party-sheet__title">Party</h4>
+          <h4 className="party-sheet__title">
+            <Icon name="party" />
+            Party
+          </h4>
           {members.length > 0 && (
             <span className="party-sheet__count-badge">
               {connectedCount} connected / {members.length}

@@ -22,8 +22,15 @@
 
 .knowledge-panel-title {
   margin: 0.2rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--color-text-primary);
   font-size: 1.1rem;
+}
+
+.knowledge-panel-title .icon {
+  font-size: 1rem;
 }
 
 .knowledge-panel-badge,
@@ -422,8 +429,15 @@
 
 .knowledge-panel__heading {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 1rem;
   color: var(--color-text-primary);
+}
+
+.knowledge-panel__heading .icon {
+  font-size: 1rem;
 }
 
 .knowledge-panel__empty {

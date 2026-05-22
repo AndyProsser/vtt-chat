@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UUID, SessionLifecycleState } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useToast } from '@/hooks/useToast'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
@@ -124,7 +125,10 @@ export function CampaignInformationPanel({
   if (!campaign) {
     return (
       <section className="cip-panel" aria-label="Campaign information">
-        <h3 className="cip-heading">Campaign Information</h3>
+        <h3 className="cip-heading">
+          <Icon name="panel" />
+          Campaign Information
+        </h3>
         <p className="cip-muted">Select a campaign to view its metadata and activity summary.</p>
       </section>
     )
@@ -353,7 +357,10 @@ export function CampaignInformationPanel({
     >
       <TooltipProvider delayDuration={140}>
         <div className="cip-header-row">
-          <h3 className="cip-heading">Campaign Information</h3>
+          <h3 className="cip-heading">
+            <Icon name="panel" />
+            Campaign Information
+          </h3>
           {canEdit && isEditing ? (
             <div className="cip-inline-actions" aria-label="Campaign information actions">
               <Tooltip>

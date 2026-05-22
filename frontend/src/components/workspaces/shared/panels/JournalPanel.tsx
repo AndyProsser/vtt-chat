@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { Role, UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
@@ -243,7 +244,10 @@ export function JournalPanel({ apiUrl, token, sessionId, sessionName, role }: Jo
               aria-label="Journal title"
             />
           ) : (
-            <h3 className="knowledge-panel-title">{displayName || 'Session Journal'}</h3>
+            <h3 className="knowledge-panel-title">
+              <Icon name="journal" />
+              {displayName || 'Session Journal'}
+            </h3>
           )}
           {lastUpdated && !isEditing && (
             <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">

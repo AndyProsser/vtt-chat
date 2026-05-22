@@ -1,4 +1,5 @@
 import { TooltipProvider } from '@/components/ui'
+import { Icon } from '@/components/ui/Icon'
 import { CampaignSettingsPanelPolicy } from './CampaignSettingsPanel.Policy'
 import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
 
@@ -19,7 +20,10 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
       >
         <div className="session-campaign-settings-header">
           <div>
-            <h4 className="session-inline-form-title">Campaign Settings</h4>
+            <h4 className="session-inline-form-title session-inline-form-title--with-icon">
+              <Icon name="settings" />
+              <span>Campaign Settings</span>
+            </h4>
             <p className="session-card-subtitle">
               Policy controls for {props.campaignName || 'this campaign'}.
             </p>

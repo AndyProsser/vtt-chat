@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { Icon } from '@/components/ui/Icon'
 
 type CampaignScaffoldPanelProps = {
@@ -5,6 +6,7 @@ type CampaignScaffoldPanelProps = {
   subtitle: string
   sections: string[]
   campaignName?: string
+  iconName?: ComponentProps<typeof Icon>['name']
 }
 
 export function CampaignScaffoldPanel(props: CampaignScaffoldPanelProps) {
@@ -12,7 +14,7 @@ export function CampaignScaffoldPanel(props: CampaignScaffoldPanelProps) {
     <section className="session-campaign-scaffold" aria-label={props.title}>
       <header className="session-campaign-scaffold__header">
         <h4 className="session-campaign-scaffold__title">
-          <Icon name="panel" />
+          <Icon name={props.iconName ?? 'panel'} />
           {props.title}
         </h4>
         <p className="session-campaign-scaffold__subtitle">{props.subtitle}</p>

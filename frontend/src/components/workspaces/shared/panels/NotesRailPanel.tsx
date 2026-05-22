@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { NoteVisibility } from '@shared'
 import type { Role, UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchSessionNotesOnce } from '@/utils/notesFetch'
@@ -127,7 +128,10 @@ export function NotesRailPanel({
       <header className="knowledge-panel-header">
         <div>
           <p className="knowledge-panel-eyebrow">Knowledge</p>
-          <h3 className="knowledge-panel-title">Notes</h3>
+          <h3 className="knowledge-panel-title">
+            <Icon name="notes" />
+            Notes
+          </h3>
         </div>
         <span className="knowledge-panel-badge">{role === 'DM' ? 'Editable' : 'Read only'}</span>
       </header>

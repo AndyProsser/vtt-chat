@@ -127,6 +127,16 @@
   font-size: 0.875rem;
 }
 
+.session-inline-form-title--with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.session-inline-form-title--with-icon .icon {
+  font-size: 1rem;
+}
+
 .session-button {
   padding: 0.5rem 0.75rem;
   color: white;
@@ -300,4 +310,3 @@
 .session-create-campaign-note__list li + li {
   margin-top: 0.25rem;
 }
-

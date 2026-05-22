@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import type { Role, UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import type { HistoryGroupBy, HistorySortOrder, SessionLogEntry } from '@/types/history'
 import {
   DEFAULT_HISTORY_GROUP_BY,
@@ -118,7 +119,10 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   if (isLoading) {
     return (
       <section className="knowledge-panel" aria-label="History" data-testid="history-panel">
-        <h3 className="knowledge-panel__heading">History</h3>
+        <h3 className="knowledge-panel__heading">
+          <Icon name="history" />
+          History
+        </h3>
         <p className="knowledge-panel__empty">Loading history…</p>
       </section>
     )
@@ -127,7 +131,10 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   if (error) {
     return (
       <section className="knowledge-panel" aria-label="History" data-testid="history-panel">
-        <h3 className="knowledge-panel__heading">History</h3>
+        <h3 className="knowledge-panel__heading">
+          <Icon name="history" />
+          History
+        </h3>
         <p className="knowledge-panel__empty">{error}</p>
       </section>
     )
@@ -136,7 +143,10 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
   if (logs.length === 0) {
     return (
       <section className="knowledge-panel" aria-label="History" data-testid="history-panel">
-        <h3 className="knowledge-panel__heading">History</h3>
+        <h3 className="knowledge-panel__heading">
+          <Icon name="history" />
+          History
+        </h3>
         <p className="knowledge-panel__empty">No history yet.</p>
       </section>
     )
@@ -144,7 +154,10 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
 
   return (
     <section className="knowledge-panel" aria-label="History" data-testid="history-panel">
-      <h3 className="knowledge-panel__heading">History</h3>
+      <h3 className="knowledge-panel__heading">
+        <Icon name="history" />
+        History
+      </h3>
 
       <div className="knowledge-panel-toolbar" aria-label="History controls">
         <div className="knowledge-panel-filter-field">

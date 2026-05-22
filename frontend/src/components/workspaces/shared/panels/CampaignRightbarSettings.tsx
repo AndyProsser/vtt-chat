@@ -1,4 +1,5 @@
 import * as TabsPrimitive from '@radix-ui/react-tabs'
+import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/CampaignRightbarSettings.css'
 
 export interface CharacterSettingsDraft {
@@ -72,7 +73,10 @@ export function CampaignRightbarSettings({
 
   return (
     <div className="crbs-panel" aria-label="Campaign settings">
-      <h3 className="crbs-heading">Campaign Settings</h3>
+      <h3 className="crbs-heading">
+        <Icon name="settings" />
+        Campaign Settings
+      </h3>
 
       <TabsPrimitive.Root value={modeValue} className="crbs-tabs-root">
         <TabsPrimitive.List className="crbs-tabs-list" aria-label="Campaign settings mode">

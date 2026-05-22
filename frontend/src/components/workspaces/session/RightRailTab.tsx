@@ -90,6 +90,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         ) : (
           <CampaignScaffoldPanel
             title="Party"
+            iconName="party"
             subtitle="Party roster is unavailable until a campaign is selected."
             sections={[
               'Select or open a campaign session',
@@ -101,6 +102,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
       roomsPanel={
         <CampaignScaffoldPanel
           title="Groups"
+          iconName="rooms"
           subtitle="Voice group configuration is being rebuilt around campaign-level controls."
           sections={[
             'DM-only group management',
@@ -114,6 +116,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
       audioPanel={
         <CampaignScaffoldPanel
           title="Campaign Audio"
+          iconName="voice"
           subtitle="Audio policy controls are being reduced to a cleaner campaign-first surface."
           sections={[
             'Default campaign audio policy',

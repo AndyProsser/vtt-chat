@@ -43,10 +43,17 @@
 
 .party-sheet__title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
+}
+
+.party-sheet__title .icon {
+  font-size: 1rem;
 }
 
 .party-sheet__count-badge {

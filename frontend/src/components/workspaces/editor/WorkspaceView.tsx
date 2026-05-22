@@ -83,7 +83,9 @@ export function WorkspaceView(props: WorkspaceViewProps) {
           data-ui-component="EditorWorkspaceShell"
           data-ui-state="no-campaign"
         >
-          <div className="workspaces-status-message">Select a campaign from the lobby to review.</div>
+          <div className="workspaces-status-message">
+            Select a campaign from the lobby to review.
+          </div>
         </section>
       </>
     )
@@ -124,6 +126,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       return (
         <CampaignScaffoldPanel
           title="Campaign Notes"
+          iconName="notes"
           subtitle="Offline authoring space for handouts and prep notes."
           sections={[
             'Compose and organize campaign notes',
@@ -139,6 +142,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       return (
         <CampaignScaffoldPanel
           title="Campaign Journal"
+          iconName="journal"
           subtitle="Session journal timeline in pre-session review mode."
           sections={[
             'Review reverse-chronological entries',
@@ -154,6 +158,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       return (
         <CampaignScaffoldPanel
           title="Campaign History"
+          iconName="history"
           subtitle="Browse prior-session boundaries and archived chat context."
           sections={[
             'History remains read-only in offline mode',
@@ -169,6 +174,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
       return (
         <CampaignScaffoldPanel
           title="Rooms"
+          iconName="rooms"
           subtitle="Campaign room planning outside a live session."
           sections={[
             'Review persistent group structure',
@@ -187,6 +193,7 @@ export function WorkspaceView(props: WorkspaceViewProps) {
     return (
       <CampaignScaffoldPanel
         title="Audio"
+        iconName="voice"
         subtitle="Campaign-level audio policy and preset review."
         sections={[
           'Preview environment and condition policy',
