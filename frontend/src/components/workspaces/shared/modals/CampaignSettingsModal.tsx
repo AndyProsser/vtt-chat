@@ -1,4 +1,5 @@
 import type { UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import type { ModalsProps } from '@/types/modals'
@@ -64,7 +65,10 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
       >
         <div className="session-campaign-settings-header">
           <div>
-            <h4 className="session-inline-form-title">Campaign Settings</h4>
+            <h4 className="session-inline-form-title session-inline-form-title--with-icon">
+              <Icon name="settings" />
+              <span>Campaign Settings</span>
+            </h4>
             <p className="session-card-subtitle">
               Manage metadata, poster, and invite links from the lobby.
             </p>
