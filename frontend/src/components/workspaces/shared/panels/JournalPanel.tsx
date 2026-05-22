@@ -127,6 +127,17 @@ function commitJournalHashtagInput(
   return serializeJournalHashtags([...existingTags, normalizedTag])
 }
 
+function appendJournalHashtagInput(value: string, nextTag: string, fallbackSeed: string): string {
+  const normalizedTag = normalizeJournalHashtag(nextTag, fallbackSeed)
+  const existingTags = collectJournalHashtags(value, fallbackSeed)
+
+  if (existingTags.includes(normalizedTag)) {
+    return existingTags.length > 0 ? serializeJournalHashtags(existingTags) : normalizedTag
+  }
+
+  return serializeJournalHashtags([...existingTags, normalizedTag])
+}
+
 function serializeJournalHashtags(tags: string[]): string {
   return tags.join(' ')
 }
@@ -482,6 +493,8 @@ export function JournalPanel({
     setHelperMessage(JOURNAL_AI_UNAVAILABLE_COPY)
   }, [])
 
+  const hashtagFallbackSeed = defaultHashtag.slice(1)
+
   const handleApplyTagHelp = useCallback(() => {
     const nextTags = [...contentHashtagSuggestions, ...hashtagSuggestions]
       .filter((tag, index, tags) => tags.indexOf(tag) === index)
@@ -494,9 +507,14 @@ export function JournalPanel({
       return
     }
 
-    setDraftHashtagsInput(serializeJournalHashtags(nextTags))
-    setHelperMessage(`Suggested tags applied: ${nextTags.join(' ')}`)
-  }, [contentHashtagSuggestions, hashtagSuggestions])
+    const mergedTags = nextTags.reduce(
+      (currentValue, tag) => appendJournalHashtagInput(currentValue, tag, hashtagFallbackSeed),
+      draftHashtagsInput
+    )
+
+    setDraftHashtagsInput(mergedTags)
+    setHelperMessage(`Suggested tags added: ${nextTags.join(' ')}`)
+  }, [contentHashtagSuggestions, draftHashtagsInput, hashtagFallbackSeed, hashtagSuggestions])
 
   const handleRoastDm = useCallback(() => {
     setHelperMessage(getRandomJournalDmRoast())
@@ -513,7 +531,6 @@ export function JournalPanel({
       ),
     [contentHashtagSuggestions, hashtagSuggestions]
   )
-  const hashtagFallbackSeed = defaultHashtag.slice(1)
   const pendingHashtag = useMemo(
     () => getPendingJournalHashtag(draftHashtagsInput),
     [draftHashtagsInput]
@@ -544,11 +561,7 @@ export function JournalPanel({
 
   const applyJournalHashtag = useCallback(
     (rawTag: string) => {
-      const nextValue = commitJournalHashtagInput(draftHashtagsInput, rawTag, hashtagFallbackSeed)
-      if (!nextValue) {
-        return
-      }
-
+      const nextValue = appendJournalHashtagInput(draftHashtagsInput, rawTag, hashtagFallbackSeed)
       setDraftHashtagsInput(nextValue)
     },
     [draftHashtagsInput, hashtagFallbackSeed]
@@ -685,6 +698,7 @@ export function JournalPanel({
                     key={tag}
                     type="button"
                     className="knowledge-panel-chip muted"
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => applyJournalHashtag(tag)}
                   >
                     {tag}
@@ -693,17 +707,28 @@ export function JournalPanel({
               </div>
             ) : null}
             <div className="knowledge-panel__journal-helper-actions">
-              <button type="button" className="knowledge-panel-chip muted" onClick={handleAskAi}>
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={handleAskAi}
+              >
                 Ask AI
               </button>
               <button
                 type="button"
                 className="knowledge-panel-chip muted"
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={handleApplyTagHelp}
               >
                 Help with tags
               </button>
-              <button type="button" className="knowledge-panel-chip muted" onClick={handleRoastDm}>
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={handleRoastDm}
+              >
                 Roast the DM
               </button>
             </div>
