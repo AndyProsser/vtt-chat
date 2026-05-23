@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { NoteVisibility, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import type { NotesShareRoom, NotesShareUser } from './useNotesShareContext'
+import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 
 type ShareAudienceMode = 'NONE' | 'EVERYONE' | 'LIMITED'
 

@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Role, RoomType, type UUID } from '@shared'
-
-export interface NotesShareUser {
-  id: UUID
-  username: string
-  role: Role | string
-  avatarUrl?: string | null
-  characterName?: string | null
-  status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
-}
-
-export interface NotesShareRoom {
-  id: UUID
-  name: string
-  type: RoomType
-}
+import type {
+  NotesShareRoom,
+  NotesShareUser,
+  PartyPresenceMember,
+  PartyPresenceResponse,
+  RoomMembersResponse,
+  RoomsResponse,
+} from '@/types/notesShare'
 
 interface UseNotesShareContextParams {
   apiUrl: string
@@ -49,43 +42,30 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
           return
         }
 
-        const membersData = await partyRes.json()
-        const users = Array.isArray(membersData.members) ? membersData.members : []
-        const playerUsers = users
+        const membersData = (await partyRes.json()) as PartyPresenceResponse
+        const users: PartyPresenceMember[] = Array.isArray(membersData.members)
+          ? membersData.members
+          : []
+        const playerUsers: NotesShareUser[] = users
           .filter(
-            (candidate: {
-              userId: UUID
-              username: string
-              role: Role | string
-              avatarUrl?: string | null
-              characterName?: string | null
-              status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
-            }) => candidate.userId !== params.currentUserId && candidate.role === Role.PLAYER
+            (candidate) =>
+              candidate.userId !== params.currentUserId && candidate.role === Role.PLAYER
           )
-          .map(
-            (candidate: {
-              userId: UUID
-              username: string
-              role: Role | string
-              avatarUrl?: string | null
-              characterName?: string | null
-              status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
-            }) => ({
-              id: candidate.userId,
-              username: candidate.username,
-              role: candidate.role,
-              avatarUrl: candidate.avatarUrl || null,
-              characterName: candidate.characterName || null,
-              status: candidate.status,
-            })
-          )
+          .map((candidate) => ({
+            id: candidate.userId,
+            username: candidate.username,
+            role: candidate.role,
+            avatarUrl: candidate.avatarUrl || null,
+            characterName: candidate.characterName || null,
+            status: candidate.status,
+          }))
 
         let shareableRooms: NotesShareRoom[] = []
         let nextRoomMembers: Record<UUID, UUID[]> = {}
 
         if (roomsRes && roomsRes.ok) {
-          const roomsData = await roomsRes.json()
-          const rooms = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
+          const roomsData = (await roomsRes.json()) as RoomsResponse
+          const rooms: NotesShareRoom[] = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
           shareableRooms = rooms.filter(
             (room: NotesShareRoom) => room.type === RoomType.GROUP || room.type === RoomType.MAIN
           )
@@ -104,10 +84,10 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
                   return [room.id, []] as const
                 }
 
-                const roomMembersData = await roomMembersRes.json()
-                const memberIds = Array.isArray(roomMembersData.members)
-                  ? roomMembersData.members.filter((memberId): memberId is UUID =>
-                      playerUsers.some((player) => player.id === memberId)
+                const roomMembersData = (await roomMembersRes.json()) as RoomMembersResponse
+                const memberIds: UUID[] = Array.isArray(roomMembersData.members)
+                  ? roomMembersData.members.filter((memberId: UUID) =>
+                      playerUsers.some((player: NotesShareUser) => player.id === memberId)
                     )
                   : []
 

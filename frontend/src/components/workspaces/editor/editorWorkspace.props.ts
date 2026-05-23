@@ -94,7 +94,6 @@ type BuildEditorWorkspacePropsParams = {
   onBackToLobby: ComponentProps<typeof EditorWorkspace>['onBackToLobby']
   onToggleTheme: ComponentProps<typeof EditorWorkspace>['onToggleTheme']
   onOpenUserSettings: ComponentProps<typeof EditorWorkspace>['onOpenUserSettings']
-  onLogoff: ComponentProps<typeof EditorWorkspace>['onLogoff']
   onLaunch: ComponentProps<typeof EditorWorkspace>['onLaunch']
   onSaveCampaignInfo: ComponentProps<typeof EditorWorkspace>['onSaveCampaignInfo']
 }
@@ -175,7 +174,6 @@ export function buildEditorWorkspaceProps(
     onBackToLobby: params.onBackToLobby,
     onToggleTheme: params.onToggleTheme,
     onOpenUserSettings: params.onOpenUserSettings,
-    onLogoff: params.onLogoff,
     onLaunch: params.onLaunch,
     onSaveCampaignInfo: params.onSaveCampaignInfo,
     isLaunchDisabled: params.selectedCampaign

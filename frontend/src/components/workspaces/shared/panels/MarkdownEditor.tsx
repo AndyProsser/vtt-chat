@@ -19,11 +19,20 @@
 
 import { useEditor, EditorContent } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
+import type { Level } from '@tiptap/extension-heading'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import { Fragment, useEffect, useState, useCallback } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
+
+interface MarkdownStorage {
+  markdown?: {
+    getMarkdown?: () => string
+  }
+}
+
+const FULL_HEADING_LEVELS: Level[] = [2, 3, 4]
 
 export type MarkdownEditorVariant = 'full' | 'restricted'
 
@@ -54,6 +63,16 @@ function stripExternalLinks(md: string): string {
   return md.replace(/(?<!!)\[([^\]]*)\]\((https?:\/\/[^)]*)\)/g, '$1')
 }
 
+function getEditorMarkdown(editor: unknown, fallback: string): string {
+  const maybeEditor = editor as { storage?: MarkdownStorage } | null
+  const markdown = maybeEditor?.storage?.markdown?.getMarkdown
+  if (typeof markdown === 'function') {
+    return markdown()
+  }
+
+  return fallback
+}
+
 export function MarkdownEditor({
   value,
   onChange,
@@ -80,7 +99,7 @@ export function MarkdownEditor({
         }
       : {
           // Full: allow headings except h1 to discourage over-structuring
-          heading: { levels: [2, 3, 4] } as const,
+          heading: { levels: FULL_HEADING_LEVELS },
         }
 
   const editor = useEditor({
@@ -100,7 +119,7 @@ export function MarkdownEditor({
     editable: !readOnly && mode === 'rich',
     onUpdate: ({ editor: e }) => {
       if (readOnly || mode !== 'rich') return
-      const md = stripExternalLinks(e.storage.markdown.getMarkdown())
+      const md = stripExternalLinks(getEditorMarkdown(e, value))
       onChange?.(md)
     },
   })
@@ -114,16 +133,16 @@ export function MarkdownEditor({
   // Sync incoming value changes into editor when in rich mode
   useEffect(() => {
     if (!editor || mode !== 'rich') return
-    const currentMd = editor.storage.markdown.getMarkdown()
+    const currentMd = getEditorMarkdown(editor, value)
     if (currentMd !== value) {
-      editor.commands.setContent(value, false)
+      editor.commands.setContent(value, { emitUpdate: false })
     }
   }, [editor, value, mode])
 
   // When switching to raw mode, snapshot current markdown from editor
   const handleSwitchToRaw = useCallback(() => {
     if (editor) {
-      setRawValue(editor.storage.markdown.getMarkdown())
+      setRawValue(getEditorMarkdown(editor, value))
     } else {
       setRawValue(value)
     }
@@ -135,7 +154,7 @@ export function MarkdownEditor({
     const sanitized = stripExternalLinks(rawValue)
     onChange?.(sanitized)
     if (editor) {
-      editor.commands.setContent(sanitized, false)
+      editor.commands.setContent(sanitized, { emitUpdate: false })
     }
     setMode('rich')
   }, [editor, onChange, rawValue])

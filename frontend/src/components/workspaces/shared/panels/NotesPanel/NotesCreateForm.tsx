@@ -3,9 +3,9 @@ import { NoteVisibility, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import { useToast } from '@/hooks/useToast'
+import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 import { NoteSharePopover } from './NoteSharePopover'
-import type { NotesShareRoom, NotesShareUser } from './useNotesShareContext'
 
 interface NotesCreateFormProps {
   title: string

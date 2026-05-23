@@ -901,7 +901,6 @@ export function WorkspaceInitialization({
     onBackToLobby: handleBackToLobbyWorkspace,
     onToggleTheme: handleToggleTheme,
     onOpenUserSettings: handleOpenUserSettingsModal,
-    onLogoff: handleLogoff,
     onLaunch: handleLaunchFromEditor,
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
   })

@@ -4,10 +4,10 @@ import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
+import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
-import { useNotesShareContext } from './useNotesShareContext'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface NotesPanelProps {
