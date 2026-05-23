@@ -17,4 +17,5 @@ export {
   getPlayerPerspectiveJournalRoast,
   getRandomJournalDmRoast,
   getSeededJournalDmRoast,
+  getSeededJournalPlayerRoast,
 } from './journal-roasts'

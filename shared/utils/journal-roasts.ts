@@ -117,6 +117,59 @@ const JOURNAL_PLAYER_ROAST_PREFIXES = [
   'We would ask the DM what happened last session, but apparently that was a stealth mission.',
 ] as const
 
+const JOURNAL_PLAYER_ROASTS = [
+  "The recap has not yet materialised. We assume the DM is still waiting for inspiration, a full night's sleep, or both.",
+  'Last session: events occurred. At least we think they did. Official confirmation is pending.',
+  'We wrote backstories. We built relationships with NPCs. The DM wrote nothing in this box.',
+  "The campaign journal remains as blank as the rogue's alibi.",
+  'We have collectively decided last session was fine and that nothing consequential happened. This is easier than asking.',
+  'The DM remembered every monster stat but apparently not a single plot point worth recording.',
+  'We have taken to reconstructing events from dice roll descriptions and ambient vibes. It is going reasonably well.',
+  'The recap appears to be on a side quest with no return date.',
+  'As players, we would like to submit a formal request for a summary. We filed it after session two. Still awaiting a response.',
+  'The session journal confirms what we suspected: the DM has priorities, and documentation is not among them.',
+  'Last session is currently oral tradition. Ask the bard player. She has a version.',
+  'We all agreed it was a great session. We disagreed about everything that happened in it.',
+  'The journal is blank. The campaign is not. We assume these facts are related.',
+  'Somewhere between "I\'ll write it later" and now, the recap became someone else\'s problem.',
+  'We found treasure, slew monsters, and advanced the plot. None of this is written down.',
+  'The campaign notebook is doing a flawless impression of an empty tomb.',
+  'The party faces an ancient evil, dwindling supplies, and a DM who has not filed the paperwork.',
+  'We have asked about the recap. We have been told "soon." Soon is doing a lot of heavy lifting.',
+  'This is the second session without a recap. We are starting to suspect the DM is generating mystery out of administrative neglect.',
+  'The journal sits empty while the campaign presses forward on collective guesswork and accumulated trust.',
+  'We arrived prepared. We rolled well. We left wondering what was actually going on.',
+  'The campaign wiki is being updated by the players from memory. It is extremely lore-accurate, probably.',
+  'Session completed. Outcomes noted. Journal: not so much.',
+  'The DM remembers every NPC name but apparently the recap is filed under "optional".',
+  'We are one missed recap away from treating the last plot thread as retconned.',
+  'The players have been carrying this narrative. The journal would like to assist but has not shown up.',
+  'We were told there would be continuity. We were told a lot of things.',
+  'The recap is in stealth. It has been in stealth for a week. Its stealth check is impeccable.',
+  'We know what happened. We are simply not authorised to confirm it officially.',
+  'The session ended well. What session? Great question. Please consult the journal. The journal is also asking.',
+  'If the recap does not appear soon, we are promoting the dice roll log to canonical source material.',
+  'The party pressed on into the unknown. The recap pressed on into the void.',
+  'We have begun writing the recap ourselves from the initiative order. It is surprisingly accurate.',
+  'Last session: classified. This session: also classified. The campaign: apparently a spy thriller.',
+  'The DM narrated six hours of content. None of it appears to have survived to written record.',
+  'The NPCs knew more about the plot than we did. We suspect this is intentional. We hope it is not.',
+  'The journal has been blank long enough that we have begun to wonder if the campaign is real.',
+  'We brought pencils. We rolled dice. We asked for a recap. Only two of those things worked.',
+  'The session recap is currently in the same position as the missing loot from session three: officially unconfirmed.',
+  'We assumed the recap would arrive with the next session prep. We assumed wrong.',
+  'The DM built an entire dungeon and forgot to write one paragraph about the last time we were in it.',
+  'Plot threads are dangling. We are catching them by memory alone. It is fine. We are fine.',
+  'The journal stands empty as a monument to good intentions and limited follow-through.',
+  'If our characters forget the lore, they can blame amnesia. The DM has no such cover.',
+  'We have been offered mystery, adventure, and drama. The recap was apparently a limited-time offer.',
+  'A blank journal is technically also a form of dramatic tension. We have chosen to believe this.',
+  'We survived the dungeon, the dragon, and the social encounter. The documentation did not survive the week.',
+  'The session was memorable. The journal is not making that easy to prove.',
+  'Last session exists in the collective memory of six people with competing interpretations. It is functionally folklore.',
+  'The party advanced the plot. The recap did not advance. The campaign is now running on faith and group chat messages.',
+] as const
+
 function hashJournalSeed(seed: string): number {
   let hash = 0
 
@@ -148,4 +201,15 @@ export function getPlayerPerspectiveJournalRoast(seed: string, sessionName?: str
   }
 
   return `${prefix} Last session, ${sessionName} deserved better notes. ${roast}`
+}
+
+export function getSeededJournalPlayerRoast(seed: string, sessionName?: string): string {
+  const index = hashJournalSeed(`${seed}:player-roast`) % JOURNAL_PLAYER_ROASTS.length
+  const roast = JOURNAL_PLAYER_ROASTS[index] ?? JOURNAL_PLAYER_ROASTS[0]
+
+  if (!sessionName) {
+    return roast
+  }
+
+  return `${roast} (Re: ${sessionName})`
 }

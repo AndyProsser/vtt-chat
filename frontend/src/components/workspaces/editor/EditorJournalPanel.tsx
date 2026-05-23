@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -8,6 +8,7 @@ import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 interface SessionJournalStatus {
   hasJournal: boolean
   hasContent: boolean
+  hashtags: string[]
 }
 
 interface OptimisticSessionSelection {
@@ -74,6 +75,15 @@ function buildMissingRecapCopy(
   }
 }
 
+function normalizeCardHashtag(tag: string): string {
+  const trimmed = tag.trim().toLowerCase()
+  if (!trimmed) {
+    return ''
+  }
+
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+}
+
 interface EditorJournalPanelProps {
   apiUrl: string
   token: string
@@ -94,6 +104,9 @@ export function EditorJournalPanel({
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
+  const [closingSessionId, setClosingSessionId] = useState<UUID | null>(null)
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
+  const prevEffectiveSessionIdRef = useRef<UUID | null>(null)
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
     setJournalStatusBySession((current) => ({
@@ -136,6 +149,17 @@ export function EditorJournalPanel({
       : undefined
 
   useEffect(() => {
+    const prev = prevEffectiveSessionIdRef.current
+    prevEffectiveSessionIdRef.current = effectiveSessionId ?? null
+
+    if (prev && effectiveSessionId && prev !== effectiveSessionId) {
+      setClosingSessionId(prev)
+      const timer = window.setTimeout(() => setClosingSessionId(null), 300)
+      return () => window.clearTimeout(timer)
+    }
+  }, [effectiveSessionId])
+
+  useEffect(() => {
     let cancelled = false
 
     const loadStatuses = async () => {
@@ -155,16 +179,18 @@ export function EditorJournalPanel({
               (note) => note.tags?.includes(JOURNAL_TAG) || note.title === 'Session Journal'
             )
             const markdown = (journalNote?.markdown ?? journalNote?.content ?? '').trim()
+            const hashtags = (journalNote?.tags ?? []).filter((tag) => tag !== JOURNAL_TAG)
 
             return [
               session.id,
               {
                 hasJournal: Boolean(journalNote),
                 hasContent: markdown.length > 0,
+                hashtags,
               },
             ] as const
           } catch {
-            return [session.id, { hasJournal: false, hasContent: false }] as const
+            return [session.id, { hasJournal: false, hasContent: false, hashtags: [] }] as const
           }
         })
       )
@@ -190,16 +216,25 @@ export function EditorJournalPanel({
       missing: statuses.filter((status) => !status?.hasContent).length,
     }
   }, [journalStatusBySession, recentSessions])
+  const visibleSessions = useMemo(() => {
+    if (!activeTagFilter) {
+      return recentSessions
+    }
+
+    return recentSessions.filter((session) => {
+      const tags = journalStatusBySession[session.id]?.hashtags ?? []
+      return tags.some((tag) => normalizeCardHashtag(tag) === activeTagFilter)
+    })
+  }, [activeTagFilter, journalStatusBySession, recentSessions])
 
   if (!effectiveSessionId || !effectiveSession) {
     return (
       <section className="knowledge-panel knowledge-panel--compact" aria-label="Campaign journal">
         <header className="knowledge-panel-header">
           <div>
-            <p className="knowledge-panel-eyebrow">Campaign Journal</p>
             <h3 className="knowledge-panel-title">
               <Icon name="journal" />
-              Session Recaps
+              Campaign Journal
             </h3>
           </div>
         </header>
@@ -214,15 +249,10 @@ export function EditorJournalPanel({
     <section className="knowledge-panel knowledge-panel--compact" aria-label="Campaign journal">
       <header className="knowledge-panel-header">
         <div>
-          <p className="knowledge-panel-eyebrow">Campaign Journal</p>
           <h3 className="knowledge-panel-title">
             <Icon name="journal" />
-            Session Recaps
+            Campaign Journal
           </h3>
-          <p className="knowledge-panel-copy">
-            One markdown journal per session. Each recap carries the reserved journal tag and one
-            searchable hashtag.
-          </p>
           <div className="knowledge-panel-chip-row">
             <span className="knowledge-panel-chip muted">Recapping: {effectiveSession.name}</span>
             <span className="knowledge-panel-chip muted">
@@ -231,6 +261,15 @@ export function EditorJournalPanel({
             <span className="knowledge-panel-chip muted">
               {recapSummary.completed} done / {recapSummary.missing} need recap
             </span>
+            {activeTagFilter ? (
+              <button
+                type="button"
+                className="knowledge-panel-chip muted"
+                onClick={() => setActiveTagFilter(null)}
+              >
+                Filter: {activeTagFilter} x
+              </button>
+            ) : null}
           </div>
         </div>
       </header>
@@ -238,11 +277,13 @@ export function EditorJournalPanel({
       <div className="knowledge-panel-group">
         <p className="knowledge-panel-group-title">Recent Sessions</p>
         <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
-          {recentSessions.map((session, index) => {
+          {visibleSessions.map((session, index) => {
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]
             const hasContent = Boolean(sessionStatus?.hasContent)
-            const nextSession = index > 0 ? recentSessions[index - 1] : undefined
+            const isClosing = session.id === closingSessionId
+            const sessionHashtags = sessionStatus?.hashtags ?? []
+            const nextSession = index > 0 ? visibleSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
             return (
@@ -265,46 +306,93 @@ export function EditorJournalPanel({
                       <p className="knowledge-panel-card-subtitle">
                         {new Date(session.createdAt).toLocaleDateString()}
                       </p>
-                      <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
-                        {hasContent ? 'Recap ready for players.' : missingCopy.cardBody}
-                      </p>
-                    </div>
-                    <div className="knowledge-panel-chip-row">
-                      {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
                       {!hasContent ? (
-                        <span className="knowledge-panel-chip knowledge-panel-chip--warn">
-                          Needs recap
-                        </span>
+                        <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
+                          {missingCopy.cardBody}
+                        </p>
                       ) : null}
-                      <span className="knowledge-panel-chip muted">
-                        {isSelected ? 'Open' : 'Open journal'}
-                      </span>
+                    </div>
+                    <div className="knowledge-panel-card-header__right">
+                      <div className="knowledge-panel-chip-row">
+                        {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
+                        {!hasContent ? (
+                          <span className="knowledge-panel-chip knowledge-panel-chip--warn">
+                            Needs recap
+                          </span>
+                        ) : null}
+                        <span
+                          className="material-symbols-outlined knowledge-panel-card__expand-icon"
+                          aria-hidden="true"
+                        >
+                          {isSelected ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </div>
+                      {sessionHashtags.length > 0 ? (
+                        <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
+                          {sessionHashtags.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              className={`knowledge-panel-chip muted ${
+                                activeTagFilter === normalizeCardHashtag(tag)
+                                  ? 'knowledge-panel-chip--active'
+                                  : ''
+                              }`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                const normalizedTag = normalizeCardHashtag(tag)
+                                setActiveTagFilter((current) =>
+                                  current === normalizedTag ? null : normalizedTag
+                                )
+                                setOptimisticSelection({
+                                  sessionId: session.id,
+                                  baselineControlledSessionId: controlledSessionId,
+                                })
+                                onSessionChange(session.id)
+                              }}
+                              aria-label={`Filter by ${normalizeCardHashtag(tag)}`}
+                            >
+                              {normalizeCardHashtag(tag)}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </button>
 
-                {isSelected ? (
-                  <div className="knowledge-panel-session-item__editor">
-                    <JournalPanel
-                      apiUrl={apiUrl}
-                      token={token}
-                      sessionId={session.id}
-                      sessionName={session.name}
-                      role={role}
-                      autoEdit
-                      autoSave
-                      onSaved={({ hasContent: nextHasContent, hasJournal }) => {
-                        updateJournalStatus(session.id, {
-                          hasContent: nextHasContent,
-                          hasJournal,
-                        })
-                      }}
-                    />
+                {isSelected || isClosing ? (
+                  <div
+                    className={`knowledge-panel-session-item__editor${isClosing ? ' is-closing' : ''}`}
+                    aria-hidden={isClosing || undefined}
+                  >
+                    {isSelected || isClosing ? (
+                      <JournalPanel
+                        apiUrl={apiUrl}
+                        token={token}
+                        sessionId={session.id}
+                        sessionName={session.name}
+                        role={role}
+                        autoEdit
+                        autoSave
+                        hideHeader
+                        onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
+                          updateJournalStatus(session.id, {
+                            hasContent: nextHasContent,
+                            hasJournal,
+                            hashtags,
+                          })
+                        }}
+                      />
+                    ) : null}
                   </div>
                 ) : null}
               </div>
             )
           })}
+          {visibleSessions.length === 0 ? (
+            <p className="knowledge-panel-empty">No journals found for {activeTagFilter}.</p>
+          ) : null}
         </div>
       </div>
     </section>

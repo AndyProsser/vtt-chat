@@ -21,7 +21,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
-import { useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useState, useCallback } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
@@ -31,6 +31,7 @@ export interface MarkdownEditorInsertAction {
   id: string
   icon: string
   label: string
+  dividerBefore?: boolean
   onSelect: (currentMarkdown: string) => string | Promise<string>
 }
 
@@ -309,24 +310,29 @@ export function MarkdownEditor({
         <span className="md-editor__toolbar-sep" aria-hidden="true" />
 
         {insertActions.map((action) => (
-          <Tooltip key={action.id}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="md-editor__tool"
-                onClick={() => {
-                  void handleInsertAction(action)
-                }}
-                disabled={Boolean(pendingInsertActionId)}
-                aria-label={action.label}
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
-                </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">{action.label}</TooltipContent>
-          </Tooltip>
+          <Fragment key={action.id}>
+            {action.dividerBefore ? (
+              <span className="md-editor__toolbar-sep" aria-hidden="true" />
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="md-editor__tool"
+                  onClick={() => {
+                    void handleInsertAction(action)
+                  }}
+                  disabled={Boolean(pendingInsertActionId)}
+                  aria-label={action.label}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{action.label}</TooltipContent>
+            </Tooltip>
+          </Fragment>
         ))}
 
         <Tooltip>

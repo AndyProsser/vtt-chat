@@ -3,6 +3,7 @@
 .knowledge-panel {
   display: grid;
   gap: var(--space-3);
+  padding: 0.1rem 0.25rem;
 }
 
 .knowledge-panel--compact {
@@ -304,6 +305,9 @@
   border-radius: var(--radius-lg);
   background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface-subtle));
   box-shadow: var(--shadow-sm);
+  transition:
+    border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .knowledge-panel-card.timeline {
@@ -337,14 +341,70 @@
 }
 
 .knowledge-panel-session-item {
+  position: relative;
   display: grid;
   gap: var(--space-2);
 }
 
 .knowledge-panel-session-item__editor {
+  max-height: 1400px;
   margin: -0.2rem 0 0;
-  padding: 0.25rem 0 0.5rem 1rem;
+  padding: 0.25rem 0.5rem 0.5rem 0.5rem;
   border-left: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
+  border-right: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-border-focus) 55%, transparent);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow: hidden;
+  transform-origin: top;
+  animation: knowledge-panel-editor-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.knowledge-panel-session-item__editor.is-closing {
+  animation: knowledge-panel-editor-collapse 260ms cubic-bezier(0.3, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes knowledge-panel-editor-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.92) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+@keyframes knowledge-panel-editor-out {
+  from {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0.92) translateY(-6px);
+  }
+}
+
+@keyframes knowledge-panel-editor-collapse {
+  from {
+    opacity: 1;
+    max-height: 1400px;
+    margin: -0.2rem 0 0;
+    padding: 0.25rem 0.5rem 0.5rem 0.5rem;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+  }
 }
 
 .knowledge-panel-card-header {
@@ -352,6 +412,30 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+}
+
+.knowledge-panel-card-header__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1, 4px);
+  flex-shrink: 0;
+}
+
+.knowledge-panel-chip-row--right {
+  justify-content: flex-end;
+}
+
+.knowledge-panel-card__expand-icon {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  display: block;
+  transition: color 160ms ease;
+}
+
+.knowledge-panel-card--interactive:hover .knowledge-panel-card__expand-icon,
+.knowledge-panel-card--interactive.selected .knowledge-panel-card__expand-icon {
+  color: var(--color-text-primary);
 }
 
 .knowledge-panel-card-title {
@@ -376,6 +460,12 @@
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.knowledge-panel-chip--active {
+  border: 1px solid var(--color-border-focus);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-border-focus) 16%, transparent);
 }
 
 .knowledge-panel-action-row {
@@ -678,7 +768,44 @@
 }
 
 .knowledge-panel__journal-tag-input--wide {
-  width: min(100%, 28rem);
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
+.knowledge-panel__journal-tag-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+}
+
+.knowledge-panel__journal-tag-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.knowledge-panel__journal-tag-help-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-raised);
+}
+
+.knowledge-panel__journal-tag-help-btn .material-symbols-outlined {
+  font-size: 1.05rem;
 }
 
 .knowledge-panel__journal-meta {
@@ -714,6 +841,12 @@
 .knowledge-panel__journal-actions {
   display: flex;
   gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+.knowledge-panel__journal-player-actions {
+  display: flex;
+  justify-content: flex-end;
   margin-top: var(--space-2, 8px);
 }
 

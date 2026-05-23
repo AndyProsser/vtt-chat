@@ -65,9 +65,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     sessionId,
     currentUserId: user.id,
   })
-  const [selectedShareUserId, setSelectedShareUserId] = useState('')
-  const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
-  const [allowedUsers, setAllowedUsers] = useState<string[]>([])
+  const [allowedUsers, setAllowedUsers] = useState<UUID[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showPublishedOnly, setShowPublishedOnly] = useState(false)
@@ -147,31 +145,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     }
   }, [addNote, apiUrl, campaignId, clearNotes, token])
 
-  const addAllowedUsers = (candidateIds: string[]) => {
-    const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)
-    if (nextIds.length === 0) return
-
-    setAllowedUsers((current) => Array.from(new Set([...current, ...nextIds])))
-  }
-
-  const handleAddSelectedUser = () => {
-    const candidate = selectedShareUserId.trim()
-    if (!candidate) return
-    addAllowedUsers([candidate])
-    setSelectedShareUserId('')
-  }
-
-  const handleAddSelectedRoom = () => {
-    const roomId = selectedShareRoomId.trim() as UUID
-    if (!roomId) return
-    addAllowedUsers(roomMemberIdsByRoomId[roomId] || [])
-    setSelectedShareRoomId('')
-  }
-
-  const removeAllowedUser = (userId: string) => {
-    setAllowedUsers((current) => current.filter((id) => id !== userId))
-  }
-
   const handleCreate: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
     setError(null)
@@ -226,8 +199,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       setTagsText('')
       setVisibility(NoteVisibility.PLAYERS_VISIBLE)
       setAllowedUsers([])
-      setSelectedShareUserId('')
-      setSelectedShareRoomId('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
     } finally {
@@ -340,24 +311,18 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
           title={title}
           content={content}
           visibility={visibility}
+          allowedUsers={allowedUsers}
           tagsText={tagsText}
           shareUsers={shareUsers}
           shareRooms={shareRooms}
-          selectedShareUserId={selectedShareUserId}
-          selectedShareRoomId={selectedShareRoomId}
-          allowedUsers={allowedUsers}
+          roomMemberIdsByRoomId={roomMemberIdsByRoomId}
           isCreating={isCreating}
-          userRole={user.role}
           onSubmit={handleCreate}
           onTitleChange={setTitle}
           onContentChange={setContent}
           onVisibilityChange={setVisibility}
+          onAllowedUsersChange={setAllowedUsers}
           onTagsTextChange={setTagsText}
-          onSelectedShareUserIdChange={setSelectedShareUserId}
-          onSelectedShareRoomIdChange={setSelectedShareRoomId}
-          onAddSelectedUser={handleAddSelectedUser}
-          onAddSelectedRoom={handleAddSelectedRoom}
-          onRemoveAllowedUser={removeAllowedUser}
         />
       ) : null}
 

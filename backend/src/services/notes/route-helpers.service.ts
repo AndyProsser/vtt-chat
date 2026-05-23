@@ -4,7 +4,36 @@ import type { NotesCreateRequest, NotesUpdateRequest } from '@/types/notes-route
 
 export function sanitizeTags(value: unknown): string[] {
   if (!Array.isArray(value)) return []
-  return value.filter((tag): tag is string => isValidTag(tag))
+
+  const normalizedTags: string[] = []
+  const seen = new Set<string>()
+
+  for (const rawTag of value) {
+    if (typeof rawTag !== 'string') {
+      continue
+    }
+
+    const trimmedTag = rawTag.trim()
+    if (!trimmedTag) {
+      continue
+    }
+
+    const isHashtag = trimmedTag.startsWith('#')
+    const tagBody = isHashtag ? trimmedTag.replace(/^#+/, '') : trimmedTag
+    if (!tagBody || !isValidTag(tagBody)) {
+      continue
+    }
+
+    const normalized = isHashtag ? `#${tagBody}` : tagBody
+    if (seen.has(normalized)) {
+      continue
+    }
+
+    seen.add(normalized)
+    normalizedTags.push(normalized)
+  }
+
+  return normalizedTags
 }
 
 export function sanitizeAllowedUsers(value: unknown): UUID[] {
