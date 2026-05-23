@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { NoteVisibility } from '@shared'
-import type { UUID, Role, RoomType } from '@shared'
+import type { UUID } from '@shared'
 import type { Note } from '@/types/notes'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import { useToast } from '@/hooks/useToast'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
+import { NoteSharePopover } from './NoteSharePopover'
+import type { NotesShareRoom, NotesShareUser } from './useNotesShareContext'
 
 interface NoteCardProps {
   note: Note
   canEdit: boolean
   canPublish: boolean
-  shareUsers?: Array<{ id: UUID; username: string; role: Role | string }>
-  shareRooms?: Array<{ id: UUID; name: string; type: RoomType }>
+  shareUsers?: NotesShareUser[]
+  shareRooms?: NotesShareRoom[]
   roomMemberIdsByRoomId?: Record<UUID, UUID[]>
   onSave: (
     noteId: string,
@@ -45,12 +47,11 @@ export function NoteCard({
   const [content, setContent] = useState(note.content)
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
   const [tagsText, setTagsText] = useState(note.tags.join(', '))
-  const [selectedShareUserId, setSelectedShareUserId] = useState('')
-  const [selectedShareRoomId, setSelectedShareRoomId] = useState('')
-  const [allowedUsers, setAllowedUsers] = useState<string[]>(note.allowedUsers || [])
+  const [allowedUsers, setAllowedUsers] = useState<UUID[]>(note.allowedUsers || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [sharePopoverOpen, setSharePopoverOpen] = useState(false)
   const showToast = useToast()
   const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
 
@@ -60,9 +61,8 @@ export function NoteCard({
     setVisibility(note.visibility)
     setTagsText(note.tags.join(', '))
     setAllowedUsers(note.allowedUsers || [])
-    setSelectedShareUserId('')
-    setSelectedShareRoomId('')
     setError(null)
+    setSharePopoverOpen(false)
     setIsEditing(false)
   }
 
@@ -80,7 +80,7 @@ export function NoteCard({
         content,
         visibility,
         tags,
-        allowedUsers: visibility === NoteVisibility.CUSTOM ? (allowedUsers as any) : [],
+        allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
       })
       setIsEditing(false)
     } catch (err) {
@@ -115,48 +115,33 @@ export function NoteCard({
     }
   }
 
-  const addAllowedUsers = (candidateIds: string[]) => {
-    const nextIds = candidateIds.map((candidateId) => candidateId.trim()).filter(Boolean)
-    if (nextIds.length === 0) return
-
-    setAllowedUsers((current) => Array.from(new Set([...current, ...nextIds])))
+  const setAudienceVisibility = (nextVisibility: NoteVisibility) => {
+    setVisibility(nextVisibility)
+    if (nextVisibility !== NoteVisibility.CUSTOM) {
+      setAllowedUsers([])
+    }
   }
 
-  const addAllowedUser = (candidate: string) => {
-    addAllowedUsers([candidate])
+  const toSharedWithLabel = (currentVisibility: NoteVisibility, currentAllowedUsers: UUID[]) => {
+    if (currentVisibility === NoteVisibility.DM_ONLY) {
+      return 'None'
+    }
+
+    if (currentVisibility === NoteVisibility.PLAYERS_VISIBLE) {
+      return 'Everyone'
+    }
+
+    if (currentAllowedUsers.length === 0) {
+      return 'Limited (none selected)'
+    }
+
+    return currentAllowedUsers
+      .map((userId) => shareUsers.find((candidate) => candidate.id === userId)?.username || userId)
+      .join(', ')
   }
 
-  const handleAddSelectedUser = () => {
-    const candidate = selectedShareUserId.trim()
-    if (!candidate) return
-    addAllowedUser(candidate)
-    setSelectedShareUserId('')
-  }
-
-  const handleAddSelectedRoom = () => {
-    const roomId = selectedShareRoomId.trim() as UUID
-    if (!roomId) return
-    addAllowedUsers(roomMemberIdsByRoomId[roomId] || [])
-    setSelectedShareRoomId('')
-  }
-
-  const removeAllowedUser = (userId: string) => {
-    setAllowedUsers((prev) => prev.filter((id) => id !== userId))
-  }
-
-  const sharedWithLabel =
-    note.visibility === NoteVisibility.DM_ONLY
-      ? 'DM only'
-      : note.visibility === NoteVisibility.PLAYERS_VISIBLE
-        ? 'All players'
-        : note.allowedUsers && note.allowedUsers.length > 0
-          ? note.allowedUsers
-              .map(
-                (userId) =>
-                  shareUsers.find((candidate) => candidate.id === userId)?.username || userId
-              )
-              .join(', ')
-          : 'Custom list (none selected)'
+  const sharedWithLabel = toSharedWithLabel(note.visibility, note.allowedUsers || [])
+  const editingSharedWithLabel = toSharedWithLabel(visibility, allowedUsers)
 
   const publishedLabel = note.publishedAt ? new Date(note.publishedAt).toLocaleString() : null
 
@@ -165,124 +150,107 @@ export function NoteCard({
       <article className="notes-detail-card mb-3 rounded-ui-md border border-ui-border bg-ui-surface p-3">
         {isEditing ? (
           <>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Note title"
-              className="mb-2 w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-            />
+            <div className="notes-edit-header">
+              <div className="notes-edit-title-wrap">
+                <label className="notes-edit-label" htmlFor={`note-title-${note.id}`}>
+                  Note title
+                </label>
+                <input
+                  id={`note-title-${note.id}`}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Handout title"
+                  className="notes-edit-input"
+                />
+              </div>
+              <div className="notes-edit-icon-actions">
+                <NoteSharePopover
+                  open={sharePopoverOpen}
+                  onOpenChange={setSharePopoverOpen}
+                  visibility={visibility}
+                  allowedUsers={allowedUsers}
+                  shareUsers={shareUsers}
+                  shareRooms={shareRooms}
+                  roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+                  onSetVisibility={setAudienceVisibility}
+                  onSetAllowedUsers={setAllowedUsers}
+                  triggerTooltip="Share"
+                  trigger={
+                    <button
+                      type="button"
+                      className="notes-edit-icon-button"
+                      aria-label="Share handout"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        group
+                      </span>
+                    </button>
+                  }
+                />
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="notes-edit-icon-button"
+                      aria-label="Save handout"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        save
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Save</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={isSaving}
+                      className="notes-edit-icon-button"
+                      aria-label="Cancel editing"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        close
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Cancel</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
             <div className="mb-2">
               <MarkdownEditor
                 value={content}
                 onChange={setContent}
-                placeholder="Write your note"
+                placeholder="Write your handout"
                 variant="full"
                 insertActions={imageInsertActions}
               />
             </div>
-            <div className="mb-2 flex gap-2">
-              <select
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value as NoteVisibility)}
-                className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-              >
-                <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
-                <option value={NoteVisibility.CUSTOM}>Custom</option>
-                <option value={NoteVisibility.DM_ONLY}>DM Only</option>
-              </select>
-              <input
-                value={tagsText}
-                onChange={(e) => setTagsText(e.target.value)}
-                placeholder="tag1, tag2"
-                className="flex-2 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-              />
-            </div>
-            {visibility === NoteVisibility.CUSTOM && (
-              <div className="mb-2">
-                <div className="mb-1.5 flex gap-2">
-                  <select
-                    value={selectedShareUserId}
-                    onChange={(e) => setSelectedShareUserId(e.target.value)}
-                    className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-                  >
-                    <option value="">Share with player</option>
-                    {shareUsers.map((shareUser) => (
-                      <option key={shareUser.id} value={shareUser.id}>
-                        {shareUser.username}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAddSelectedUser}
-                    disabled={!selectedShareUserId}
-                    className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="mb-1.5 flex gap-2">
-                  <select
-                    value={selectedShareRoomId}
-                    onChange={(e) => setSelectedShareRoomId(e.target.value)}
-                    className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-                  >
-                    <option value="">Share with everyone in group</option>
-                    {shareRooms.map((shareRoom) => (
-                      <option key={shareRoom.id} value={shareRoom.id}>
-                        {shareRoom.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAddSelectedRoom}
-                    disabled={!selectedShareRoomId}
-                    className="rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Add group
-                  </button>
-                </div>
-                {shareRooms.length === 0 ? (
-                  <p className="mb-1.5 text-xs text-ui-secondary">
-                    No shareable groups are available in the current campaign context yet.
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap gap-1.5">
-                  {allowedUsers.map((userId) => (
-                    <Tooltip key={userId}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => removeAllowedUser(userId)}
-                          className="rounded-full border border-ui-border-soft bg-ui-surface-subtle px-2 py-1 text-xs text-ui-secondary"
-                        >
-                          {shareUsers.find((u) => u.id === userId)?.username || userId} x
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Click to remove</TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
+
+            <div className="notes-edit-meta-row">
+              <div className="notes-edit-meta-col">
+                <label className="notes-edit-label" htmlFor={`note-hashtags-${note.id}`}>
+                  Hashtags
+                </label>
+                <input
+                  id={`note-hashtags-${note.id}`}
+                  value={tagsText}
+                  onChange={(e) => setTagsText(e.target.value)}
+                  placeholder="npc, city, quest"
+                  className="notes-edit-input"
+                />
               </div>
-            )}
-            {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
-            <div className="notes-card-actions flex gap-2">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="notes-card-action notes-card-action--primary rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                onClick={cancelEdit}
-                disabled={isSaving}
-                className="notes-card-action rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
+              <div className="notes-edit-meta-summary">Shared with: {editingSharedWithLabel}</div>
             </div>
+
+            {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
           </>
         ) : (
           <>

@@ -47,12 +47,16 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
 
   return (
     <form onSubmit={props.onSubmit} className="space-y-2 border-b border-ui-border p-3">
+      <label className="notes-edit-label" htmlFor="notes-create-title">
+        Note title
+      </label>
       <input
+        id="notes-create-title"
         value={props.title}
         onChange={(event) => props.onTitleChange(event.target.value)}
-        placeholder="Note title"
+        placeholder="Handout title"
         required
-        className="w-full rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
+        className="notes-edit-input"
       />
 
       <MarkdownEditor
@@ -63,24 +67,36 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
         insertActions={imageInsertActions}
       />
 
-      <div className="flex gap-2">
-        <select
-          value={props.visibility}
-          onChange={(event) => props.onVisibilityChange(event.target.value as NoteVisibility)}
-          className="flex-1 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-        >
-          <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
-          <option value={NoteVisibility.CUSTOM}>Custom</option>
-          {props.userRole === Role.DM ? (
-            <option value={NoteVisibility.DM_ONLY}>DM Only</option>
-          ) : null}
-        </select>
-        <input
-          value={props.tagsText}
-          onChange={(event) => props.onTagsTextChange(event.target.value)}
-          placeholder="tag1, tag2"
-          className="flex-2 rounded-ui-sm border border-ui-border-soft bg-ui-surface px-3 py-2 text-sm text-ui-primary"
-        />
+      <div className="notes-edit-meta-row">
+        <div className="notes-edit-meta-col">
+          <label className="notes-edit-label" htmlFor="notes-create-visibility">
+            Visibility
+          </label>
+          <select
+            id="notes-create-visibility"
+            value={props.visibility}
+            onChange={(event) => props.onVisibilityChange(event.target.value as NoteVisibility)}
+            className="notes-edit-input"
+          >
+            <option value={NoteVisibility.PLAYERS_VISIBLE}>Shared</option>
+            <option value={NoteVisibility.CUSTOM}>Limited</option>
+            {props.userRole === Role.DM ? (
+              <option value={NoteVisibility.DM_ONLY}>None</option>
+            ) : null}
+          </select>
+        </div>
+        <div className="notes-edit-meta-col">
+          <label className="notes-edit-label" htmlFor="notes-create-tags">
+            Hashtags
+          </label>
+          <input
+            id="notes-create-tags"
+            value={props.tagsText}
+            onChange={(event) => props.onTagsTextChange(event.target.value)}
+            placeholder="npc, city, clue"
+            className="notes-edit-input"
+          />
+        </div>
       </div>
 
       {props.visibility === NoteVisibility.CUSTOM ? (
@@ -165,12 +181,8 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={props.isCreating}
-        className="rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-      >
-        {props.isCreating ? 'Creating...' : 'Create Note'}
+      <button type="submit" disabled={props.isCreating} className="notes-toolbar-button">
+        {props.isCreating ? 'Creating...' : 'Create handout'}
       </button>
     </form>
   )

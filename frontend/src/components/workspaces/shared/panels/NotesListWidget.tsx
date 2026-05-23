@@ -18,9 +18,9 @@ function formatTags(note: Note): string {
 
 export function NotesListWidget(props: NotesListWidgetProps) {
   return (
-    <section className="notes-list-widget" aria-label="Notes list">
+    <section className="notes-list-widget" aria-label="Handouts list">
       <header className="notes-list-widget-header">
-        <span>Notes</span>
+        <span>Handouts</span>
         <span>{props.notes.length}</span>
       </header>
 

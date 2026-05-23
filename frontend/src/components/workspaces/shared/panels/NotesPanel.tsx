@@ -17,6 +17,25 @@ interface NotesPanelProps {
   user: { id: UUID; role: Role | string }
 }
 
+const JOURNAL_TAG = '_journal'
+
+function isJournalNote(note: Note): boolean {
+  const normalizedTitle = note.title.trim().toLowerCase()
+  return (
+    (note.tags || []).includes(JOURNAL_TAG) ||
+    normalizedTitle === 'session journal' ||
+    normalizedTitle.startsWith('journal - ')
+  )
+}
+
+function toHandoutTags(tagsText: string): string[] {
+  return tagsText
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .filter((tag) => tag.toLowerCase() !== JOURNAL_TAG)
+}
+
 export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: NotesPanelProps) {
   const notesByCampaign = useStore((state) => (state.notes as any)[campaignId]) as
     | Record<UUID, Note>
@@ -26,7 +45,10 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const updateNote = useStore((state) => state.updateNote)
   const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
-    () => Object.values(notesByCampaign || {}).sort((a, b) => b.updatedAt - a.updatedAt),
+    () =>
+      Object.values(notesByCampaign || {})
+        .filter((note) => !isJournalNote(note))
+        .sort((a, b) => b.updatedAt - a.updatedAt),
     [notesByCampaign]
   )
 
@@ -156,10 +178,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     setIsCreating(true)
 
     try {
-      const tags = tagsText
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean)
+      const tags = toHandoutTags(tagsText)
 
       const res = await fetch(`${apiUrl}/api/notes`, {
         method: 'POST',
@@ -220,13 +239,21 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     noteId: string,
     updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
   ) => {
+    const requestUpdates = {
+      ...updates,
+      tags:
+        updates.tags !== undefined
+          ? updates.tags.filter((tag) => tag.toLowerCase() !== JOURNAL_TAG)
+          : undefined,
+    }
+
     const res = await fetch(`${apiUrl}/api/notes/${noteId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(updates),
+      body: JSON.stringify(requestUpdates),
     })
 
     if (!res.ok) {
@@ -281,7 +308,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
 
   return (
     <section className="notes-workspace">
-      <div className="notes-workspace-header">Notes</div>
+      <div className="notes-workspace-header">Handouts</div>
 
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
@@ -291,7 +318,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
           className="notes-toolbar-button"
           onClick={() => setShowCreateForm((current) => !current)}
         >
-          {showCreateForm ? 'Hide create' : 'Create note'}
+          {showCreateForm ? 'Hide create' : 'Create handout'}
         </button>
 
         <label className="notes-toolbar-toggle">
@@ -336,10 +363,12 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
 
       <div className="notes-workspace-content">
         {isLoading ? (
-          <p className="text-sm text-ui-secondary">Loading notes...</p>
+          <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (
           <p className="text-sm text-ui-secondary">
-            {showPublishedOnly ? 'No published notes yet.' : 'No notes yet.'}
+            {showPublishedOnly
+              ? 'No published handouts yet.'
+              : 'No handouts yet. Session journals are shown in the Journal tab.'}
           </p>
         ) : (
           <div className="notes-workspace-grid">

@@ -5,6 +5,9 @@ export interface NotesShareUser {
   id: UUID
   username: string
   role: Role | string
+  avatarUrl?: string | null
+  characterName?: string | null
+  status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
 }
 
 export interface NotesShareRoom {
@@ -50,14 +53,32 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
         const users = Array.isArray(membersData.members) ? membersData.members : []
         const playerUsers = users
           .filter(
-            (candidate: { userId: UUID; username: string; role: Role | string }) =>
-              candidate.userId !== params.currentUserId && candidate.role === Role.PLAYER
+            (candidate: {
+              userId: UUID
+              username: string
+              role: Role | string
+              avatarUrl?: string | null
+              characterName?: string | null
+              status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
+            }) => candidate.userId !== params.currentUserId && candidate.role === Role.PLAYER
           )
-          .map((candidate: { userId: UUID; username: string; role: Role | string }) => ({
-            id: candidate.userId,
-            username: candidate.username,
-            role: candidate.role,
-          }))
+          .map(
+            (candidate: {
+              userId: UUID
+              username: string
+              role: Role | string
+              avatarUrl?: string | null
+              characterName?: string | null
+              status?: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
+            }) => ({
+              id: candidate.userId,
+              username: candidate.username,
+              role: candidate.role,
+              avatarUrl: candidate.avatarUrl || null,
+              characterName: candidate.characterName || null,
+              status: candidate.status,
+            })
+          )
 
         let shareableRooms: NotesShareRoom[] = []
         let nextRoomMembers: Record<UUID, UUID[]> = {}
