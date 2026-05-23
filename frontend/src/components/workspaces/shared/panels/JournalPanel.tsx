@@ -84,9 +84,8 @@ function normalizeJournalHashtag(value: string, fallbackSeed = 'session-journal'
   return `#${normalized || fallbackSeed}`
 }
 
-function buildDefaultJournalHashtag(sessionName?: string, sessionId?: UUID): string {
-  const fallbackSeed = sessionId ? `session-${String(sessionId).slice(0, 8)}` : 'session-journal'
-  return normalizeJournalHashtag(sessionName || fallbackSeed, fallbackSeed)
+function buildHashtagFallbackSeed(sessionId?: UUID): string {
+  return sessionId ? `session-${String(sessionId).slice(0, 8)}` : 'session-journal'
 }
 
 function parseJournalHashtags(value: string, fallbackSeed: string): string[] {
@@ -95,7 +94,7 @@ function parseJournalHashtags(value: string, fallbackSeed: string): string[] {
     .map((match) => normalizeJournalHashtag(match, fallbackSeed))
     .filter((tag, index, tags) => tags.indexOf(tag) === index)
 
-  return normalized.length > 0 ? normalized : [normalizeJournalHashtag('', fallbackSeed)]
+  return normalized
 }
 
 function collectJournalHashtags(value: string, fallbackSeed: string): string[] {
@@ -151,7 +150,6 @@ function serializeJournalHashtags(tags: string[]): string {
 }
 
 function buildHashtagSuggestions(sessionName?: string, sessionId?: UUID): string[] {
-  const base = buildDefaultJournalHashtag(sessionName, sessionId)
   const sessionWords = (sessionName ?? '')
     .split(/[^a-z0-9]+/i)
     .map((token) => token.trim())
@@ -159,7 +157,7 @@ function buildHashtagSuggestions(sessionName?: string, sessionId?: UUID): string
     .slice(0, 4)
     .map((token) => normalizeJournalHashtag(token, token))
 
-  return [base, '#recap', '#cliffhanger', '#loot', '#npc', ...sessionWords].filter(
+  return ['#recap', '#cliffhanger', '#loot', '#npc', ...sessionWords].filter(
     (tag, index, tags) => tags.indexOf(tag) === index
   )
 }
@@ -227,13 +225,13 @@ function extractJournalHashtag(
   sessionName?: string,
   sessionId?: UUID
 ): string[] {
-  const fallbackSeed = buildDefaultJournalHashtag(sessionName, sessionId).slice(1)
+  const fallbackSeed = buildHashtagFallbackSeed(sessionId)
   const journalTags = (tags ?? [])
     .filter((tag) => tag !== JOURNAL_TAG)
     .map((tag) => normalizeJournalHashtag(tag, fallbackSeed))
     .filter((tag, index, allTags) => allTags.indexOf(tag) === index)
 
-  return journalTags.length > 0 ? journalTags : [normalizeJournalHashtag('', fallbackSeed)]
+  return journalTags
 }
 
 function noteToEntry(note: RawNote, sessionName?: string, sessionId?: UUID): JournalEntry {
@@ -269,10 +267,7 @@ export function JournalPanel({
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const addNote = useStore((state) => state.addNote)
-  const defaultHashtag = useMemo(
-    () => buildDefaultJournalHashtag(sessionName, sessionId),
-    [sessionId, sessionName]
-  )
+  const hashtagFallbackSeed = useMemo(() => buildHashtagFallbackSeed(sessionId), [sessionId])
   const hashtagSuggestions = useMemo(
     () => buildHashtagSuggestions(sessionName, sessionId),
     [sessionId, sessionName]
@@ -316,7 +311,7 @@ export function JournalPanel({
         } else {
           setEntry(null)
           setDraft('')
-          setDraftHashtagsInput(defaultHashtag)
+          setDraftHashtagsInput('')
         }
       } catch {
         // Non-critical: editor still usable
@@ -332,26 +327,22 @@ export function JournalPanel({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, sessionName, defaultHashtag, resolvedJournalTitle])
+  }, [apiUrl, token, sessionId, sessionName, resolvedJournalTitle])
 
   useEffect(() => {
     setIsEditing(isDm && autoEdit)
   }, [autoEdit, isDm, sessionId])
 
   const normalizedDraftHashtags = useMemo(
-    () => parseJournalHashtags(draftHashtagsInput, defaultHashtag.slice(1)),
-    [defaultHashtag, draftHashtagsInput]
+    () => parseJournalHashtags(draftHashtagsInput, hashtagFallbackSeed),
+    [draftHashtagsInput, hashtagFallbackSeed]
   )
   const hasDraftContent = draft.trim().length > 0
   const normalizedDraftHashtagsValue = serializeJournalHashtags(normalizedDraftHashtags)
-  const normalizedDefaultHashtagsValue = useMemo(
-    () => serializeJournalHashtags(parseJournalHashtags(defaultHashtag, defaultHashtag.slice(1))),
-    [defaultHashtag]
-  )
   const hasUnsavedChanges = entry
     ? draft !== entry.markdown ||
       normalizedDraftHashtagsValue !== serializeJournalHashtags(entry.hashtags)
-    : hasDraftContent || normalizedDraftHashtagsValue !== normalizedDefaultHashtagsValue
+    : hasDraftContent || normalizedDraftHashtags.length > 0
 
   const handleSave = useCallback(async () => {
     if (!isDm || isSaving || !hasUnsavedChanges) {
@@ -492,12 +483,12 @@ export function JournalPanel({
       setDraftHashtagsInput(serializeJournalHashtags(entry.hashtags))
     } else {
       setDraft('')
-      setDraftHashtagsInput(defaultHashtag)
+      setDraftHashtagsInput('')
     }
 
     setIsEditing(false)
     setSaveError(null)
-  }, [defaultHashtag, entry])
+  }, [entry])
 
   const showToast = useToast()
 
@@ -512,8 +503,6 @@ export function JournalPanel({
   const handleInsertPlayerRoast = useCallback(async () => {
     return `> ${getSeededJournalPlayerRoast(`${sessionId}:${draft}`, sessionName)}`
   }, [draft, sessionId, sessionName])
-
-  const hashtagFallbackSeed = defaultHashtag.slice(1)
 
   const handleApplyTagHelp = useCallback(() => {
     const existingTags = collectJournalHashtags(draftHashtagsInput, hashtagFallbackSeed)

@@ -424,6 +424,18 @@
 
 .knowledge-panel-chip-row--right {
   justify-content: flex-end;
+  gap: 2px;
+}
+.knowledge-panel-chip-row--right .knowledge-panel-chip {
+  padding: 0.12rem 0.125rem;
+  font-size: 0.7rem;
+}
+
+.knowledge-panel-card-tags-more {
+  align-self: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
 }
 
 .knowledge-panel-card__expand-icon {

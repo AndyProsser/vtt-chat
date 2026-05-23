@@ -283,6 +283,11 @@ export function EditorJournalPanel({
             const hasContent = Boolean(sessionStatus?.hasContent)
             const isClosing = session.id === closingSessionId
             const sessionHashtags = sessionStatus?.hashtags ?? []
+            const visibleSessionHashtags = sessionHashtags.slice(0, 5)
+            const hiddenTagCount = Math.max(
+              0,
+              sessionHashtags.length - visibleSessionHashtags.length
+            )
             const nextSession = index > 0 ? visibleSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
 
@@ -329,7 +334,7 @@ export function EditorJournalPanel({
                       </div>
                       {sessionHashtags.length > 0 ? (
                         <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
-                          {sessionHashtags.map((tag) => (
+                          {visibleSessionHashtags.map((tag) => (
                             <button
                               key={tag}
                               type="button"
@@ -355,6 +360,11 @@ export function EditorJournalPanel({
                               {normalizeCardHashtag(tag)}
                             </button>
                           ))}
+                          {hiddenTagCount > 0 ? (
+                            <span className="knowledge-panel-card-tags-more muted">
+                              {hiddenTagCount} more...
+                            </span>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
