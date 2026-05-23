@@ -7,6 +7,7 @@
 import { useEffect, useCallback } from 'react'
 import { useStore } from '@/state/store'
 import { logger } from '@/utils/logger'
+import { toGreenroomStoreMessage, type GreenroomApiMessage } from '@/utils/greenroomChat'
 import type { UUID } from '@shared'
 
 interface GreenroomChatOptions {
@@ -39,7 +40,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
       })
 
       if (!response.ok) {
-        logger.error('Failed to fetch greenroom messages', {
+        logger.error('useGreenroomChat', 'Failed to fetch greenroom messages', {
           status: response.status,
           campaignId: activeCampaignId,
         })
@@ -49,28 +50,19 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
       const { messages } = await response.json()
 
       // Populate greenroom messages in store
-      messages.forEach((msg: any) => {
-        addGreenroomMessage({
-          id: msg.id,
-          roomId: msg.roomId,
-          authorId: msg.authorId,
-          authorUsername: msg.authorUsername,
-          content: msg.content,
-          type: msg.type,
-          isDmOnly: msg.isDmOnly,
-          isOffTheRecord: msg.isOffTheRecord,
-          visibleTo: msg.visibleTo,
-          targetIds: msg.targetIds,
-          createdAt: msg.createdAt,
-        })
+      messages.forEach((msg: GreenroomApiMessage) => {
+        addGreenroomMessage(toGreenroomStoreMessage(msg))
       })
 
-      logger.debug('Loaded greenroom messages', {
+      logger.debug('useGreenroomChat', 'Loaded greenroom messages', {
         count: messages.length,
         campaignId: activeCampaignId,
       })
     } catch (error) {
-      logger.error('Error fetching greenroom messages', { error, campaignId: activeCampaignId })
+      logger.error('useGreenroomChat', 'Error fetching greenroom messages', {
+        error,
+        campaignId: activeCampaignId,
+      })
     }
   }, [activeCampaignId, enabled, addGreenroomMessage])
 
@@ -92,7 +84,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         })
 
         if (!response.ok) {
-          logger.error('Failed to fetch greenroom messages page', {
+          logger.error('useGreenroomChat', 'Failed to fetch greenroom messages page', {
             status: response.status,
             campaignId: activeCampaignId,
           })
@@ -102,20 +94,8 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         const result = await response.json()
 
         // Populate messages in store
-        result.messages.forEach((msg: any) => {
-          addGreenroomMessage({
-            id: msg.id,
-            roomId: msg.roomId,
-            authorId: msg.authorId,
-            authorUsername: msg.authorUsername,
-            content: msg.content,
-            type: msg.type,
-            isDmOnly: msg.isDmOnly,
-            isOffTheRecord: msg.isOffTheRecord,
-            visibleTo: msg.visibleTo,
-            targetIds: msg.targetIds,
-            createdAt: msg.createdAt,
-          })
+        result.messages.forEach((msg: GreenroomApiMessage) => {
+          addGreenroomMessage(toGreenroomStoreMessage(msg))
         })
 
         return {
@@ -124,7 +104,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
           nextBefore: result.nextBefore,
         }
       } catch (error) {
-        logger.error('Error fetching greenroom messages page', {
+        logger.error('useGreenroomChat', 'Error fetching greenroom messages page', {
           error,
           campaignId: activeCampaignId,
         })
@@ -137,7 +117,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
   const sendGreenroomMessage = useCallback(
     async (content: string) => {
       if (!activeCampaignId) {
-        logger.error('Cannot send greenroom message: no active campaign')
+        logger.error('useGreenroomChat', 'Cannot send greenroom message: no active campaign')
         return null
       }
 
@@ -152,7 +132,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         })
 
         if (!response.ok) {
-          logger.error('Failed to send greenroom message', {
+          logger.error('useGreenroomChat', 'Failed to send greenroom message', {
             status: response.status,
             campaignId: activeCampaignId,
           })
@@ -160,23 +140,14 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         }
 
         const message = await response.json()
-        addGreenroomMessage({
-          id: message.id,
-          roomId: message.roomId,
-          authorId: message.authorId,
-          authorUsername: message.authorUsername,
-          content: message.content,
-          type: message.type,
-          isDmOnly: message.isDmOnly,
-          isOffTheRecord: message.isOffTheRecord,
-          visibleTo: message.visibleTo,
-          targetIds: message.targetIds,
-          createdAt: message.createdAt,
-        })
+        addGreenroomMessage(toGreenroomStoreMessage(message as GreenroomApiMessage))
 
         return message
       } catch (error) {
-        logger.error('Error sending greenroom message', { error, campaignId: activeCampaignId })
+        logger.error('useGreenroomChat', 'Error sending greenroom message', {
+          error,
+          campaignId: activeCampaignId,
+        })
         return null
       }
     },

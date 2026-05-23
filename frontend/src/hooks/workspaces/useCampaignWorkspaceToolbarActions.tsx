@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { type CoreWsState } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 type UseCampaignWorkspaceToolbarActionsParams = {
@@ -6,7 +7,7 @@ type UseCampaignWorkspaceToolbarActionsParams = {
   isJoiningCampaign: boolean
   onCreateCampaign: () => void
   onJoinCampaign: () => void
-  coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
+  coreWsState: CoreWsState
 }
 
 export function useCampaignWorkspaceToolbarActions({

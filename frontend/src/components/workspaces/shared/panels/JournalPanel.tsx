@@ -273,9 +273,6 @@ function JournalEditor({
     let cancelled = false
 
     const load = async () => {
-      setIsLoading(true)
-      setSaveError(null)
-
       try {
         const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -324,10 +321,7 @@ function JournalEditor({
     }
   }, [apiUrl, token, sessionId, sessionName, resolvedJournalTitle])
 
-  const normalizedDraftHashtags = useMemo(
-    () => parseJournalHashtags(draftHashtagsInput, hashtagFallbackSeed),
-    [draftHashtagsInput, hashtagFallbackSeed]
-  )
+  const normalizedDraftHashtags = parseJournalHashtags(draftHashtagsInput, hashtagFallbackSeed)
   const hasDraftContent = draft.trim().length > 0
   const normalizedDraftHashtagsValue = serializeJournalHashtags(normalizedDraftHashtags)
   const hasUnsavedChanges = entry

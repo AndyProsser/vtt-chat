@@ -11,8 +11,8 @@ type UseWorkspacesInitializationLifecycleParams = {
   hasSignaledReadyRef: MutableRefObject<boolean>
   onReady?: () => void
   loadUserCharacters: () => Promise<void>
-  selectedCampaignId: UUID | null
-  loadDmVoiceTargetingSetting: (campaignId: UUID) => Promise<void>
+  selectedCampaignId: UUID | '' | null
+  loadDmVoiceTargetingSetting: (campaignId: UUID) => Promise<boolean | null | void>
 }
 
 /**

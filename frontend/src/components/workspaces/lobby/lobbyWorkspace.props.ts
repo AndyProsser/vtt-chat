@@ -13,11 +13,7 @@ type BuildLobbyWorkspacePropsParams = {
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
   themeMode: 'light' | 'dark'
-  connectionStatus: {
-    statusColorKey: string
-    label: string
-    coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING'
-  }
+  connectionStatus: ComponentProps<typeof LobbyView>['connectionStatus']
   onSelectCampaign: ComponentProps<typeof LobbyView>['onSelectCampaign']
   onCreateCampaign: ComponentProps<typeof LobbyView>['onCreateCampaign']
   onJoinCampaign: ComponentProps<typeof LobbyView>['onJoinCampaign']
@@ -47,14 +43,7 @@ export function buildLobbyWorkspaceProps(
     isCreatingCampaign: params.isCreatingCampaign,
     isJoiningCampaign: params.isJoiningCampaign,
     themeMode: params.themeMode,
-    connectionStatus: {
-      statusColorKey: params.connectionStatus.statusColorKey,
-      label: params.connectionStatus.label,
-      coreWsState: params.connectionStatus.coreWsState as
-        | 'CONNECTED'
-        | 'CONNECTING'
-        | 'DISCONNECTED',
-    },
+    connectionStatus: params.connectionStatus,
     onSelectCampaign: params.onSelectCampaign,
     onCreateCampaign: params.onCreateCampaign,
     onJoinCampaign: params.onJoinCampaign,

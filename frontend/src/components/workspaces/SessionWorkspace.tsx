@@ -69,7 +69,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             token={props.token}
             sessionId={currentSession.id}
             selectedCampaignName={props.selectedCampaign?.name}
-            selectedCampaignDescription={props.selectedCampaign?.description}
+            selectedCampaignDescription={props.selectedCampaign?.description ?? undefined}
             effectiveSessionRole={props.effectiveSessionRole}
             sessionState={currentSession.state}
             sessionName={currentSession.name}
@@ -87,7 +87,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             dmAutoTargetOnFirstPlayerJoin={props.dmAutoTargetOnFirstPlayerJoin}
             dmOverrides={props.dmOverrides}
             currentConditionName={props.currentConditionName}
-            roomEnvironmentNames={props.roomEnvironmentNames}
+            roomEnvironmentNames={props.roomEnvironmentNames ?? {}}
             sessionEndedAt={currentSession.endedAt}
             configuredCooldownDurationMs={props.configuredCooldownDurationMs}
           />

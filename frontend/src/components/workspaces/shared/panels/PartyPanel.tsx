@@ -6,12 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SessionState, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-import {
-  type MockPartyMember,
-  type MockPlayerStatus,
-  formatLastSeen,
-  generateMockParty,
-} from '@/utils/campaignPartyMockData'
+import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
+import { formatLastSeen, generateMockParty } from '@/utils/campaignPartyMockData'
 import '@/styles/components/workspaces/shared/panels/PartyPanel.css'
 
 const IS_DEV = import.meta.env.DEV

@@ -1,4 +1,4 @@
-import { type Role, type SessionState, type UUID } from '@shared'
+import { type CoreWsState, type Role, type SessionState, type UUID } from '@shared'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
@@ -20,7 +20,7 @@ export type EditorWorkspaceProps = {
   connectionStatus: {
     statusColorKey: string
     label: string
-    coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
+    coreWsState: CoreWsState
   }
   settingsCampaignSessionsCount: number
   settingsCampaignTotalDurationMs: number

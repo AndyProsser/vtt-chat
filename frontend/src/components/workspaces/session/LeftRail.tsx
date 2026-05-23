@@ -10,9 +10,9 @@ type SessionWorkspaceLeftRailProps = {
   token: string
   sessionId: UUID
   selectedCampaignName?: string
-  selectedCampaignDescription?: string
+  selectedCampaignDescription?: string | null
   effectiveSessionRole: Role
-  sessionState: string
+  sessionState: ComponentProps<typeof LeftRailPanel>['sessionState']
   sessionName: string
   sessionCount: number
   connectedPlayers: number
@@ -26,14 +26,9 @@ type SessionWorkspaceLeftRailProps = {
   broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: {
-    userId: UUID
-    overrideType: 'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'CONDITION' | 'VOICE_OF_GOD'
-    parameters?: Record<string, unknown>
-    appliedAt: number
-  }[]
+  dmOverrides: ComponentProps<typeof LeftRailPanel>['dmOverrides']
   currentConditionName?: string
-  roomEnvironmentNames: Record<UUID, string>
+  roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   sessionEndedAt?: number
   configuredCooldownDurationMs: number
 }

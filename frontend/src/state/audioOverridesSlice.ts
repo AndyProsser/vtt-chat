@@ -96,12 +96,23 @@ export const createAudioOverridesSlice: StateCreator<
 
   replaceDMOverrides: (overrides) =>
     set(() => {
-      const normalizedOverrides: AudioDMOverride[] = overrides.map((override) => ({
-        userId: override.userId || override.targetUserId,
-        overrideType: override.overrideType,
-        parameters: override.parameters,
-        appliedAt: override.appliedAt,
-      }))
+      const normalizedOverrides = overrides.reduce<AudioDMOverride[]>((acc, override) => {
+        const targetUserId = 'targetUserId' in override ? override.targetUserId : undefined
+        const userId = override.userId || targetUserId
+
+        if (!userId) {
+          return acc
+        }
+
+        acc.push({
+          userId,
+          overrideType: override.overrideType,
+          parameters: override.parameters,
+          appliedAt: override.appliedAt,
+        })
+
+        return acc
+      }, [])
 
       return { dmOverrides: replaceAudioDMOverrides(normalizedOverrides) }
     }),

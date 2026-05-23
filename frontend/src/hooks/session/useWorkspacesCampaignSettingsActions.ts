@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
+import type { UUID } from '@shared'
 import { MAX_POSTER_DATA_URL_CHARS, MAX_POSTER_WIDTH_PX } from '@/constants/workspaces.constants'
+import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
 type InviteType = 'PLAYER' | 'SPECTATOR'
 
@@ -7,12 +9,9 @@ type UseWorkspacesCampaignSettingsActionsParams = {
   apiUrl: string
   token: string
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  settingsCampaignId: string | ''
-  settingsData: {
-    inviteCode: string
-    spectatorInviteCode: string | null
-  } | null
-  loadCampaignSettings: (campaignId: string) => Promise<void>
+  settingsCampaignId: UUID | ''
+  settingsData: CampaignSettingsPayload | null
+  loadCampaignSettings: (campaignId: UUID) => Promise<CampaignSettingsPayload | null | void>
   saveCampaignSettings: () => Promise<void>
   setIsInviteReissuing: (value: boolean) => void
   setSettingsPosterUrl: (value: string) => void

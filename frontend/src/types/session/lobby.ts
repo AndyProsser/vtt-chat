@@ -1,3 +1,5 @@
+import type { CoreWsState } from '@shared'
+
 export type LobbyStats = {
   activeSessions: number
   connectedPlayersAndDms: number
@@ -12,5 +14,5 @@ export type LobbyStats = {
 export type LobbyConnectionStatus = {
   statusColorKey: string
   label: string
-  coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'
+  coreWsState: CoreWsState
 }

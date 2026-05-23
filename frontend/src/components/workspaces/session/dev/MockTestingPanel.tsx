@@ -356,8 +356,8 @@ export function MockTestingPanel({
           <label className="mock-testing-panel__label">Mock Players</label>
           <div className="mock-testing-panel__slider-row">
             <Slider
-              min={String(playerBounds.min)}
-              max={String(playerBounds.max)}
+              min={playerBounds.min}
+              max={playerBounds.max}
               value={playerCount}
               onValueChange={(nextValue) =>
                 handlePlayerCountChange({

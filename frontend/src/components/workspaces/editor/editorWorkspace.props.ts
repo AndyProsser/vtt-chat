@@ -17,15 +17,11 @@ type BuildEditorWorkspacePropsParams = {
   userId: UUID
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: ComponentProps<typeof EditorWorkspace>['fetchWithAuthGuard']
-  connectionStatus: {
-    statusColorKey: string
-    label: string
-    coreWsState: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING'
-  }
+  connectionStatus: ComponentProps<typeof EditorWorkspace>['connectionStatus']
   settingsCampaignSessionsCount: number
   settingsCampaignTotalDurationMs: number
   settingsCampaignSessions: Session[]
-  settingsReferenceSessionId: UUID | null
+  settingsReferenceSessionId: UUID | ''
   settingsData: ComponentProps<typeof EditorWorkspace>['settingsData']
   isInviteReissuing: boolean
   isSettingsLoading: boolean
@@ -114,18 +110,11 @@ export function buildEditorWorkspaceProps(
     userId: params.userId,
     partyPresenceRefreshVersion: params.partyPresenceRefreshVersion,
     fetchWithAuthGuard: params.fetchWithAuthGuard,
-    connectionStatus: {
-      statusColorKey: params.connectionStatus.statusColorKey,
-      label: params.connectionStatus.label,
-      coreWsState: params.connectionStatus.coreWsState as
-        | 'CONNECTED'
-        | 'CONNECTING'
-        | 'DISCONNECTED',
-    },
+    connectionStatus: params.connectionStatus,
     settingsCampaignSessionsCount: params.settingsCampaignSessionsCount,
     settingsCampaignTotalDurationMs: params.settingsCampaignTotalDurationMs,
     settingsCampaignSessions: params.settingsCampaignSessions,
-    settingsReferenceSessionId: params.settingsReferenceSessionId,
+    settingsReferenceSessionId: params.settingsReferenceSessionId || null,
     settingsData: params.settingsData,
     isInviteReissuing: params.isInviteReissuing,
     isSettingsLoading: params.isSettingsLoading,
