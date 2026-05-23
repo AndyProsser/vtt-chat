@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { NoteVisibility } from '@shared'
 import type { UUID, Role, RoomType } from '@shared'
 import type { Note } from '@/types/notes'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import { useToast } from '@/hooks/useToast'
+import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 
 interface NoteCardProps {
   note: Note
@@ -49,6 +51,8 @@ export function NoteCard({
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const showToast = useToast()
+  const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
 
   const cancelEdit = () => {
     setTitle(note.title)
@@ -173,6 +177,7 @@ export function NoteCard({
                 onChange={setContent}
                 placeholder="Write your note"
                 variant="full"
+                insertActions={imageInsertActions}
               />
             </div>
             <div className="mb-2 flex gap-2">

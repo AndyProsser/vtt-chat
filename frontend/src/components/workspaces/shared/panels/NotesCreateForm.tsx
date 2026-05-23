@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { NoteVisibility, Role, RoomType, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import { useToast } from '@/hooks/useToast'
+import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 
 interface ShareUserOption {
   id: UUID
@@ -39,6 +42,9 @@ interface NotesCreateFormProps {
 }
 
 export function NotesCreateForm(props: NotesCreateFormProps) {
+  const showToast = useToast()
+  const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
+
   return (
     <form onSubmit={props.onSubmit} className="space-y-2 border-b border-ui-border p-3">
       <input
@@ -54,6 +60,7 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
         onChange={props.onContentChange}
         placeholder="Write note content"
         variant="full"
+        insertActions={imageInsertActions}
       />
 
       <div className="flex gap-2">

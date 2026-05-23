@@ -18,6 +18,7 @@
  */
 
 import { useEditor, EditorContent } from '@tiptap/react'
+import Image from '@tiptap/extension-image'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useState, useCallback } from 'react'
@@ -45,11 +46,11 @@ export interface MarkdownEditorProps {
   className?: string
 }
 
-// Strips external http/https links from markdown while preserving display text.
-// Internal links (note:// etc.) and plain content are untouched.
+// Strips external http/https links from standard markdown links while preserving display text.
+// Image markdown links are intentionally preserved so handouts can embed images.
 function stripExternalLinks(md: string): string {
   // Markdown link syntax: [text](url) → keep text, remove external url
-  return md.replace(/\[([^\]]*)\]\((https?:\/\/[^)]*)\)/g, '$1')
+  return md.replace(/(?<!!)\[([^\]]*)\]\((https?:\/\/[^)]*)\)/g, '$1')
 }
 
 export function MarkdownEditor({
@@ -84,6 +85,9 @@ export function MarkdownEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure(starterKitConfig),
+      Image.configure({
+        allowBase64: true,
+      }),
       Markdown.configure({
         html: false,
         linkify: false, // do not auto-convert URLs to links
