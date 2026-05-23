@@ -6,23 +6,27 @@
  * Also shows players in each group (unlike editor mode).
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { UUID, SessionState } from '@shared'
+import { Role, RoomType, isGreenroomSessionState, type UUID, type SessionState } from '@shared'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
 import {
+  createSessionGroup,
   fetchSessionGroups,
   closeGroup,
   deleteGroup,
   applyGroupEnvironment,
 } from '@/services/groupsPanel.service'
+import { isGreenRoomName } from '@/constants/roomPresence.constants'
+import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
 
 interface GroupsPanelSessionProps {
   sessionId: UUID
   sessionState: SessionState
+  effectiveSessionRole: Role
   campaignId: UUID
   apiUrl: string
   token: string
@@ -36,25 +40,85 @@ interface GroupsPanelSessionProps {
 export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   sessionId,
   sessionState,
+  effectiveSessionRole,
   campaignId,
   apiUrl,
   token,
   isLoading = false,
 }) => {
   const showToast = useToast()
+  const [isCreating, setIsCreating] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
   const [isClosing, setIsClosing] = useState<UUID | null>(null)
   const [isDeleting, setIsDeleting] = useState<UUID | null>(null)
 
-  // Zustand selectors
-  const sessionRooms = useStore(
+  const liveSessionRooms = useStore(
+    useShallow((state) => Object.values(state.rooms[sessionId] || {}))
+  )
+  const fallbackSessionRooms = useStore(
     useShallow((state) => Object.values(state.sessionRoomsById[sessionId] || {}))
   )
   const roomMembers = useStore((state) => state.roomMembers)
-  const roomEnvironments = useStore(
+  const roomEnvironmentNames = useStore(useShallow((state) => state.roomEnvironmentNames))
+  const fallbackRoomEnvironments = useStore(
     useShallow((state) => state.sessionGroupEnvironments[sessionId] || {})
   )
+  const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
   const setSessionGroups = useStore((state) => state.setSessionGroups)
   const setSessionGroupEnvironment = useStore((state) => state.setSessionGroupEnvironment)
+
+  const sessionRooms = liveSessionRooms.length > 0 ? liveSessionRooms : fallbackSessionRooms
+  const isGreenroom = isGreenroomSessionState(sessionState)
+  const canManageGroups = effectiveSessionRole === Role.DM
+  const canCreateGroups = canManageGroups && isGreenroom
+
+  const dmMember = useMemo(
+    () =>
+      Object.values(roomMembers)
+        .flat()
+        .find((member) => member.role === Role.DM) || null,
+    [roomMembers]
+  )
+
+  const membersByRoomId = useMemo(() => {
+    const next: Record<UUID, (typeof roomMembers)[UUID]> = {}
+
+    for (const room of sessionRooms) {
+      next[room.id] = [...(roomMembers[room.id] || [])]
+    }
+
+    if (canManageGroups && dmMember && dmVoiceTargetGroupId && next[dmVoiceTargetGroupId]) {
+      for (const roomId of Object.keys(next) as UUID[]) {
+        next[roomId] = next[roomId].filter((member) => member.userId !== dmMember.userId)
+      }
+
+      next[dmVoiceTargetGroupId] = [dmMember, ...(next[dmVoiceTargetGroupId] || [])]
+    }
+
+    return next
+  }, [canManageGroups, dmMember, dmVoiceTargetGroupId, roomMembers, sessionRooms])
+
+  const visibleRooms = useMemo(() => {
+    return sessionRooms
+      .filter((room) => (isGreenroom ? true : !isGreenRoomName(room.name)))
+      .filter((room) => {
+        if (canManageGroups) {
+          return true
+        }
+
+        const visiblePlayers = (membersByRoomId[room.id] || []).filter(
+          (member) => member.role !== Role.DM && member.role !== Role.SPECTATOR
+        )
+        return visiblePlayers.length > 0
+      })
+      .sort((left, right) => {
+        if (left.type === RoomType.MAIN && right.type !== RoomType.MAIN) return -1
+        if (right.type === RoomType.MAIN && left.type !== RoomType.MAIN) return 1
+        if (left.type === RoomType.PRIVATE && right.type !== RoomType.PRIVATE) return 1
+        if (right.type === RoomType.PRIVATE && left.type !== RoomType.PRIVATE) return -1
+        return left.name.localeCompare(right.name)
+      })
+  }, [canManageGroups, isGreenroom, membersByRoomId, sessionRooms])
 
   // Load session groups on mount
   useEffect(() => {
@@ -68,8 +132,30 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       }
     }
 
-    loadGroups()
+    void loadGroups()
   }, [sessionId, token, apiUrl, setSessionGroups, showToast])
+
+  const handleCreateGroup = async () => {
+    const trimmedName = newGroupName.trim()
+    if (!trimmedName) {
+      showToast({ message: 'Enter a group name', variant: 'error' })
+      return
+    }
+
+    try {
+      setIsCreating(true)
+      const room = await createSessionGroup(sessionId, trimmedName, token, apiUrl)
+      setSessionGroups(sessionId, [...sessionRooms, room])
+      setNewGroupName('')
+      showToast({ message: `Group "${trimmedName}" created`, variant: 'success' })
+    } catch (err) {
+      logger.error('GroupsPanelSession', 'Failed to create group', err)
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create group'
+      showToast({ message: errorMsg, variant: 'error' })
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   const handleCloseGroup = async (groupId: UUID) => {
     try {
@@ -96,6 +182,11 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     try {
       setIsDeleting(groupId)
       await deleteGroup(sessionId, groupId, false, token, apiUrl)
+
+      setSessionGroups(
+        sessionId,
+        sessionRooms.filter((room) => room.id !== groupId)
+      )
 
       // WS event ROOM:DELETED will handle state update
       showToast({ message: 'Group deleted', variant: 'success' })
@@ -124,36 +215,52 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
   }
 
-  const isSessionActive = sessionState === 'ACTIVE' || sessionState === 'PAUSED'
-  const canManageGroups = isSessionActive && sessionState !== 'PAUSED'
-
-  // Check if group is empty
   const isGroupEmpty = (groupId: UUID): boolean => {
-    const members = roomMembers[groupId] || []
-    return members.length === 0
+    const members = membersByRoomId[groupId] || []
+    return members.filter((member) => member.role !== Role.DM).length === 0
   }
 
   return (
-    <div className="flex flex-col gap-3 h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-4 pt-3 pb-2">
-        <h3 className="font-semibold text-sm text-gray-200">
-          Voice Groups ({sessionRooms.length})
-        </h3>
-        {sessionState === 'PAUSED' && (
-          <p className="text-xs text-gray-500 mt-1">(Paused - groups locked during intermission)</p>
-        )}
-      </div>
+    <section className="session-groups-panel" aria-label="Groups panel">
+      <header className="session-groups-panel__header">
+        <div className="session-groups-panel__header-info">
+          <h3 className="session-groups-panel__title">Groups</h3>
+          <span className="session-groups-panel__count">{visibleRooms.length}</span>
+        </div>
+        {canCreateGroups ? (
+          <div className="session-groups-panel__create-row">
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={(event) => setNewGroupName(event.target.value)}
+              placeholder="New group name"
+              className="session-groups-panel__create-input"
+              disabled={isCreating}
+            />
+            <button
+              type="button"
+              className="session-groups-panel__create-button"
+              onClick={() => {
+                void handleCreateGroup()
+              }}
+              disabled={isCreating}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                group_add
+              </span>
+            </button>
+          </div>
+        ) : null}
+      </header>
 
-      {/* Groups List */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {sessionRooms.length === 0 ? (
-          <div className="text-center py-6 text-gray-500 text-xs">No groups in this session.</div>
+      <div className="session-groups-panel__body">
+        {visibleRooms.length === 0 ? (
+          <div className="session-groups-panel__empty">No groups available.</div>
         ) : (
-          <div className="space-y-2">
-            {sessionRooms.map((room) => {
-              const members = roomMembers[room.id] || []
-              const environment = roomEnvironments[room.id]
+          <div className="session-groups-panel__list">
+            {visibleRooms.map((room) => {
+              const members = membersByRoomId[room.id] || []
+              const environment = roomEnvironmentNames[room.id] || fallbackRoomEnvironments[room.id]
               const empty = isGroupEmpty(room.id)
 
               return (
@@ -164,6 +271,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                   environment={environment}
                   isEmpty={empty}
                   canManage={canManageGroups}
+                  isGreenroom={isGreenroom}
                   isClosing={isClosing === room.id}
                   isDeleting={isDeleting === room.id}
                   onClose={() => handleCloseGroup(room.id)}
@@ -175,14 +283,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
           </div>
         )}
       </div>
-
-      {/* Session State Hint */}
-      {!isSessionActive && (
-        <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-700">
-          Start a session to manage groups.
-        </div>
-      )}
-    </div>
+    </section>
   )
 }
 

@@ -158,6 +158,39 @@ export async function fetchSessionGroups(
   }
 }
 
+export async function createSessionGroup(
+  sessionId: UUID,
+  name: string,
+  token: string,
+  apiUrl: string
+): Promise<Room> {
+  try {
+    const res = await fetch(`${apiUrl}/api/rooms`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        name,
+        type: 'GROUP',
+      }),
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.message || `Failed to create group: ${res.status}`)
+    }
+
+    const data = await res.json()
+    return data.room as Room
+  } catch (err) {
+    logger.error('groupsPanel.service', 'Failed to create session group', err)
+    throw err
+  }
+}
+
 export interface CloseGroupResponse {
   ok: boolean
   closedGroupId: UUID

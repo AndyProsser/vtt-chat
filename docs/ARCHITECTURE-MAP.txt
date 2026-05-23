@@ -163,6 +163,10 @@ Current shipped note:
    `frontend/src/utils` instead of component folders.
    `components/workspaces/editor` is edit-flow owned.
    `components/workspaces/session` is launch/runtime owned.
+   Within session workspace, the right-rail groups overview is isolated from the left
+   voice-groups surface: `GroupsPanel.session.tsx` + `GroupCard.session.tsx` own the
+   right-side room overview and its dedicated CSS lives in
+   `frontend/src/styles/components/workspaces/session/GroupsPanel.session.css`.
 
 
 ████████████████████████████████████████████████████████████████████████████████

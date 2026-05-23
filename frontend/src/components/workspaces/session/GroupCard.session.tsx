@@ -4,11 +4,12 @@
  * Shows the same core identity/status details surfaced by the legacy player card popper.
  */
 
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import { PresenceState, RoomType } from '@shared'
 import type { Room, RoomUser } from '@/types/room'
 import { ENVIRONMENT_OPTIONS } from '@/types/groupPanel'
-import { GroupMemberProfileCard } from './rooms/GroupMemberProfileCard'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 
 function getDisplayName(member: RoomUser): string {
   return member.characterName || member.username || member.playerName || 'Player'
@@ -49,26 +50,19 @@ function getStatEntries(member: RoomUser): Array<[string, string]> {
     return []
   }
 
-  return Object.entries(member.characterStats)
-    .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
-    .slice(0, 4)
-    .map(([key, value]) => [key.toUpperCase(), String(value)])
-}
+  const typedStats = member.characterStats as Record<string, unknown>
+  const ordered: Array<[string, unknown]> = [
+    ['STR', typedStats.str],
+    ['DEX', typedStats.dex],
+    ['CON', typedStats.con],
+    ['INT', typedStats.int],
+    ['WIS', typedStats.wis],
+    ['CHA', typedStats.cha],
+  ]
 
-function getPresenceIcon(presenceState: RoomUser['presenceState']): string {
-  if (presenceState === PresenceState.SPEAKING) {
-    return 'graphic_eq'
-  }
-
-  if (presenceState === PresenceState.OFFLINE || presenceState === PresenceState.IDLE) {
-    return 'radio_button_unchecked'
-  }
-
-  return 'circle'
-}
-
-function getPresenceLabel(presenceState: RoomUser['presenceState']): string {
-  return String(presenceState)
+  return ordered
+    .filter(([, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => [key, String(value)])
 }
 
 interface SessionGroupCardProps {
@@ -77,6 +71,7 @@ interface SessionGroupCardProps {
   environment?: string
   isEmpty: boolean
   canManage: boolean
+  isGreenroom: boolean
   isClosing?: boolean
   isDeleting?: boolean
   onClose: () => void
@@ -94,6 +89,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
   environment,
   isEmpty,
   canManage,
+  isGreenroom,
   isClosing = false,
   isDeleting = false,
   onClose,
@@ -102,119 +98,158 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
 }) => {
   const isWhisper = room.type === RoomType.PRIVATE
   const isMain = room.type === RoomType.MAIN
+  const [showEnvironmentPicker, setShowEnvironmentPicker] = useState(false)
+  const memberCount = members.filter((member) => member.role !== 'SPECTATOR').length
+  const memberCards = useMemo(
+    () =>
+      members.map((member) => ({
+        member,
+        roleLabel: getRoleLabel(member),
+        metaLine: getMetaLine(member),
+        statEntries: getStatEntries(member),
+        presenceDotState: getPresenceDotState(member.presenceState),
+      })),
+    [members]
+  )
 
   return (
-    <div
-      className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow"
-      data-ui-component="SessionGroupCard"
-    >
-      {/* Header: Group Name & Actions */}
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <h4 className="font-semibold text-sm text-gray-100">{room.name}</h4>
-          <p className="text-xs text-gray-500">
-            {members.length} {members.length === 1 ? 'player' : 'players'}
+    <article className="session-groups-room-card" data-ui-component="SessionGroupCard">
+      <header className="session-groups-room-card__header">
+        <div className="session-groups-room-card__header-copy">
+          <h4 className="session-groups-room-card__title">{room.name}</h4>
+          <p className="session-groups-room-card__subtitle">
+            {memberCount} {memberCount === 1 ? 'player' : 'players'}
           </p>
+          {!isWhisper ? (
+            <p className="session-groups-room-card__environment">
+              Environment: {environment || 'Default'}
+            </p>
+          ) : null}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-1">
-          {canManage && !isMain && !isEmpty && (
-            <button
-              onClick={onClose}
-              disabled={isClosing || isDeleting}
-              title="Close group and move all members to MAIN"
-              className="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded hover:bg-amber-600/30 disabled:opacity-50"
-            >
-              Close
-            </button>
-          )}
-
-          {canManage && !isMain && isEmpty && (
-            <button
-              onClick={onDelete}
-              disabled={isDeleting}
-              title="Permanently delete this group"
-              className="px-2 py-1 text-xs bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 disabled:opacity-50"
-            >
-              Delete
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Environment Display */}
-      {!isWhisper && (
-        <div className="mb-3 rounded bg-gray-700/50 p-2 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-gray-400">Environment</p>
-              <p className="font-medium text-gray-200">{environment || 'Default'}</p>
-            </div>
-            {canManage ? (
-              <select
-                aria-label={`Set environment for ${room.name}`}
-                className="rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-gray-200"
-                value={environment || 'Default'}
-                onChange={(event) => onSetEnvironment(event.target.value)}
-              >
-                {ENVIRONMENT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      {/* Members List */}
-      {members.length > 0 && (
-        <div className="mb-2">
-          <p className="text-xs text-gray-400 mb-1">Players:</p>
-          <div className="space-y-2">
-            {members.map((member) => {
-              const roleLabel = getRoleLabel(member)
-              const presenceDotState = getPresenceDotState(member.presenceState)
-              const metaLine = getMetaLine(member)
-              const statEntries = getStatEntries(member)
-
-              return (
-                <div
-                  key={member.userId}
-                  className="rounded border border-gray-600 bg-gray-700/60 px-3 py-2"
-                  data-ui-component="SessionGroupMemberCard"
+        <div className="session-groups-room-card__actions">
+          {canManage && !isWhisper ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="session-groups-room-card__icon-button"
+                  aria-label="Change environment"
+                  onClick={() => setShowEnvironmentPicker((current) => !current)}
                 >
-                  <GroupMemberProfileCard
-                    member={{
-                      ...member,
-                      roleLabel,
-                    }}
-                    metaLine={metaLine}
-                    statEntries={statEntries}
-                    environmentName={environment || 'Default'}
-                    presenceLabel={getPresenceLabel(member.presenceState)}
-                    presenceDotState={presenceDotState}
-                    presenceIconName={getPresenceIcon(member.presenceState)}
-                  />
-                </div>
-              )
-            })}
-          </div>
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    forest
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Set environment</TooltipContent>
+            </Tooltip>
+          ) : null}
+          {canManage && !isMain ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={`session-groups-room-card__icon-button ${isEmpty ? 'session-groups-room-card__icon-button--danger' : ''}`}
+                  aria-label={isEmpty ? 'Delete group' : 'Drain group to Main'}
+                  disabled={isClosing || isDeleting}
+                  onClick={() => {
+                    if (isEmpty) {
+                      onDelete()
+                      return
+                    }
+                    onClose()
+                  }}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {isEmpty ? 'delete' : 'reply'}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {isEmpty ? 'Delete group' : 'Drain to Main'}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
         </div>
-      )}
+      </header>
 
-      {/* Empty State Message */}
-      {isEmpty && !isMain && (
-        <div className="ui-empty-panel ui-empty-panel--compact" role="status">
-          <span className="material-symbols-outlined" aria-hidden="true">
-            group_remove
-          </span>
-          <span>Group is empty. Delete to remove permanently.</span>
+      {showEnvironmentPicker && canManage && !isWhisper ? (
+        <div className="session-groups-room-card__environment-picker">
+          {ENVIRONMENT_OPTIONS.map((option) => {
+            const isSelected = (environment || 'Default').toLowerCase() === option.toLowerCase()
+            return (
+              <button
+                key={option}
+                type="button"
+                className={isSelected ? 'is-active' : ''}
+                onClick={() => {
+                  onSetEnvironment(option)
+                  setShowEnvironmentPicker(false)
+                }}
+              >
+                {option}
+              </button>
+            )
+          })}
         </div>
-      )}
-    </div>
+      ) : null}
+
+      {memberCards.length > 0 ? (
+        <div className="session-groups-room-card__members">
+          {memberCards.map(({ member, roleLabel, metaLine, statEntries, presenceDotState }) => (
+            <div
+              key={member.userId}
+              className={`session-groups-member-card session-groups-member-card--${presenceDotState}`}
+              data-ui-component="SessionGroupMemberCard"
+            >
+              <span
+                className={`session-groups-member-card__avatar session-groups-member-card__avatar--${presenceDotState}`}
+                aria-hidden="true"
+              >
+                {member.avatarUrl ? (
+                  <img src={member.avatarUrl} alt="" />
+                ) : (
+                  getDisplayName(member).charAt(0).toUpperCase()
+                )}
+              </span>
+              <div className="session-groups-member-card__body">
+                <div className="session-groups-member-card__info">
+                  <div className="session-groups-member-card__name-row">
+                    <span className="session-groups-member-card__char-name">
+                      {getDisplayName(member)}
+                    </span>
+                    <span
+                      className={`session-groups-member-card__role-pill session-groups-member-card__role-pill--${roleLabel.toLowerCase()}`}
+                    >
+                      {roleLabel}
+                    </span>
+                  </div>
+                  {member.playerName && member.playerName !== getDisplayName(member) ? (
+                    <span className="session-groups-member-card__player-name">
+                      {member.playerName}
+                    </span>
+                  ) : null}
+                  <span className="session-groups-member-card__meta">{metaLine}</span>
+                </div>
+                {statEntries.length > 0 ? (
+                  <div className="session-groups-member-card__stats" aria-label="Ability scores">
+                    {statEntries.map(([key, value]) => (
+                      <span key={key} className="session-groups-member-card__stat">
+                        <strong>{value}</strong>
+                        <span>{key}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !isMain ? (
+        <div className="session-groups-room-card__empty">Empty group</div>
+      ) : null}
+    </article>
   )
 }
 

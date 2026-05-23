@@ -104,6 +104,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           <GroupsPanelSession
             sessionId={props.currentSessionId}
             sessionState={props.currentSessionState}
+            effectiveSessionRole={props.effectiveSessionRole}
             campaignId={props.campaignId}
             apiUrl={props.apiUrl}
             token={props.token}
