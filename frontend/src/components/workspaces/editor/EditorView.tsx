@@ -5,16 +5,16 @@ import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { GroupsPanelEditor } from '@/components/workspaces/shared/panels/GroupsPanelEditor'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
-import { EditorJournalPanel } from '@/components/workspaces/editor/EditorJournalPanel'
-import { GroupsPanelEditor } from '@/components/workspaces/editor/GroupsPanel.editor'
+import { EditorJournalPanel } from '@/components/workspaces/shared/panels/EditorJournalPanel'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
 import type { Session } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
 import { type WorkspaceTab, getTabIcon, getTabLabel, getTabsForRole } from '@/utils/workspaceTabs'
 
-type WorkspaceViewProps = {
+type EditorViewProps = {
   campaign: CampaignSummary | null
   role: Role
   themeMode: 'light' | 'dark'
@@ -57,7 +57,7 @@ type WorkspaceViewProps = {
   ) => Promise<void>
 }
 
-export function WorkspaceView(props: WorkspaceViewProps) {
+export function EditorView(props: EditorViewProps) {
   const campaign = props.campaign
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')

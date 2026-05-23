@@ -957,7 +957,6 @@ export function WorkspaceInitialization({
     messageGroupingWindowMs,
     sendWsEvent: send,
     isGreenroomChatMode,
-    onOpenNotesWorkspace: () => setToolbarCenterPaneView('notes'),
     totalSessionDurationMs: settingsCampaignTotalDurationMs,
     canEditCampaignInfo: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,

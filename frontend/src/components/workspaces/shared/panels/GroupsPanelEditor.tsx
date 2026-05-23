@@ -18,9 +18,8 @@ import {
   deleteCampaignGroup,
   updateCampaignGroupEnvironment,
 } from '@/services/groupsPanel.service'
-import type { CampaignGroup } from '@/state/campaignGroupsSlice'
 import '@/styles/components/workspaces/session/workspaces/EditorGroupsPanel.css'
-import GroupCard from './GroupCard.editor'
+import GroupCard from './GroupCardEditor'
 import CreateGroupModal from './CreateGroupModal'
 import GroupEnvironmentPicker from './GroupEnvironmentPicker'
 
@@ -66,7 +65,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       }
     }
 
-    loadGroups()
+    void loadGroups()
   }, [campaignId, token, apiUrl, setCampaignGroups, showToast])
 
   const handleCreateGroup = async (name: string) => {

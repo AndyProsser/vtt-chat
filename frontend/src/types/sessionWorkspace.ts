@@ -76,7 +76,6 @@ export type SessionWorkspaceProps = {
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
   isGreenroomChatMode: boolean
-  onOpenNotesWorkspace: () => void
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof CampaignInformationPanel>['onSaveCampaignInfo']

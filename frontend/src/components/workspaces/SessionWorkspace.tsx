@@ -128,7 +128,6 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             effectiveSessionUserId={props.effectiveSessionUser.id}
             partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
             fetchWithAuthGuard={props.fetchWithAuthGuard}
-            onOpenNotesWorkspace={props.onOpenNotesWorkspace}
             effectiveSessionRole={props.effectiveSessionRole}
             userId={props.userId}
             sessionSettingsName={props.sessionSettingsName}

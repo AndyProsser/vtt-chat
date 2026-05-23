@@ -25,7 +25,6 @@ interface RawNote {
 }
 
 const JOURNAL_TAG = '_journal'
-const DAY_IN_MS = 24 * 60 * 60 * 1000
 
 interface MissingRecapCopy {
   cardBody: string
@@ -136,17 +135,6 @@ export function EditorJournalPanel({
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
   const recentSessions = sortedSessions
-  const sessionIndexById = useMemo(
-    () => new Map(sortedSessions.map((session, index) => [session.id, index])),
-    [sortedSessions]
-  )
-  const effectiveSessionIndex = effectiveSessionId
-    ? sessionIndexById.get(effectiveSessionId)
-    : undefined
-  const effectiveNextSession =
-    typeof effectiveSessionIndex === 'number' && effectiveSessionIndex > 0
-      ? sortedSessions[effectiveSessionIndex - 1]
-      : undefined
 
   useEffect(() => {
     const prev = prevEffectiveSessionIdRef.current
@@ -216,6 +204,7 @@ export function EditorJournalPanel({
       missing: statuses.filter((status) => !status?.hasContent).length,
     }
   }, [journalStatusBySession, recentSessions])
+
   const visibleSessions = useMemo(() => {
     if (!activeTagFilter) {
       return recentSessions

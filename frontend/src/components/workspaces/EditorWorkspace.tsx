@@ -1,5 +1,5 @@
-import { WorkspaceView } from '@/components/workspaces/editor/WorkspaceView'
-import { EditorWorkspaceSettingsPanel } from '@/components/workspaces/editor/EditorWorkspaceSettingsPanel'
+import { EditorView } from '@/components/workspaces/editor/EditorView'
+import { EditorWorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/EditorWorkspaceSettingsPanel'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
@@ -8,7 +8,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   }
 
   return (
-    <WorkspaceView
+    <EditorView
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}

@@ -51,7 +51,6 @@ type BuildSessionWorkspacePropsParams = {
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof SessionWorkspace>['sendWsEvent']
   isGreenroomChatMode: boolean
-  onOpenNotesWorkspace: ComponentProps<typeof SessionWorkspace>['onOpenNotesWorkspace']
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof SessionWorkspace>['onSaveCampaignInfo']
@@ -131,7 +130,6 @@ export function buildSessionWorkspaceProps(
     messageGroupingWindowMs: params.messageGroupingWindowMs,
     sendWsEvent: params.sendWsEvent,
     isGreenroomChatMode: params.isGreenroomChatMode,
-    onOpenNotesWorkspace: params.onOpenNotesWorkspace,
     totalSessionDurationMs: params.totalSessionDurationMs,
     canEditCampaignInfo: params.canEditCampaignInfo,
     onSaveCampaignInfo: params.onSaveCampaignInfo,

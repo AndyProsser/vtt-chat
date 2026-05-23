@@ -210,6 +210,29 @@ export function CampaignSettingsPage(props: CampaignSettingsPageProps) {
     }
   }
 
+  const _hasChanges = useMemo(() => {
+    if (!settings) {
+      return false
+    }
+
+    return (
+      name !== settings.name ||
+      description !== (settings.description || '') ||
+      postSessionChatEnabled !== settings.postSessionChatEnabled ||
+      postSessionChatDurationMinutes !==
+        Math.max(1, Math.min(15, Math.round(settings.postSessionChatDurationMs / 60000))) ||
+      extensionSyncPolicy !==
+        (settings.extensionSyncPolicy === 'DM_AND_PLAYERS' ? 'ALLOW' : settings.extensionSyncPolicy)
+    )
+  }, [
+    settings,
+    name,
+    description,
+    postSessionChatEnabled,
+    postSessionChatDurationMinutes,
+    extensionSyncPolicy,
+  ])
+
   return (
     <div className="workspaces-shell">
       <div className="session-card">

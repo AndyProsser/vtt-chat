@@ -7,7 +7,7 @@ import type { CharacterSettingsDraft } from '@/components/workspaces/shared/pane
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
-import { NotesRailPanel } from '@/components/workspaces/shared/panels/NotesRailPanel'
+import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
 import type { CampaignSummary } from '@/types/session/campaign'
@@ -36,7 +36,6 @@ type SessionWorkspaceRightRailTabProps = {
   effectiveSessionUserId: UUID
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  onOpenNotesWorkspace: () => void
   effectiveSessionRole: Role
   userId: UUID
   sessionSettingsName: string
@@ -133,13 +132,26 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         />
       }
       notesPanel={
-        <NotesRailPanel
-          apiUrl={props.apiUrl}
-          token={props.token}
-          sessionId={props.currentSessionId}
-          role={props.effectiveSessionRole}
-          onOpenNotesWorkspace={props.onOpenNotesWorkspace}
-        />
+        props.campaignId ? (
+          <NotesPanel
+            key={`${props.campaignId}:${props.currentSessionId}`}
+            apiUrl={props.apiUrl}
+            token={props.token}
+            campaignId={props.campaignId}
+            sessionId={props.currentSessionId}
+            user={{ id: props.effectiveSessionUserId, role: props.effectiveSessionRole }}
+          />
+        ) : (
+          <CampaignScaffoldPanel
+            title="Notes"
+            iconName="notes"
+            subtitle="Notes are unavailable until a campaign is selected."
+            sections={[
+              'Select or open a campaign session',
+              'Handouts and private notes will load automatically',
+            ]}
+          />
+        )
       }
       journalPanel={
         <JournalPanel
