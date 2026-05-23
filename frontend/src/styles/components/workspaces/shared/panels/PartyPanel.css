@@ -61,7 +61,7 @@
 }
 
 .party-sheet__subtitle {
-  margin: 0.22rem 0 0;
+  margin: 0;
   font-size: 0.76rem;
   line-height: 1.4;
   color: var(--color-text-secondary);

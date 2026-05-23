@@ -59,6 +59,8 @@ export type CampaignSettingsPayload = {
   postSessionChatEnabled: boolean
   postSessionChatDurationMs: number
   dmAutoTargetOnFirstPlayerJoin: boolean
+  defaultSessionDurationMins: number
+  supportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
 }
 
 export type CampaignEntryAction =

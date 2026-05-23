@@ -40,6 +40,8 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsPostSessionChatDurationMinutes: number
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
+  settingsDefaultSessionDurationMins: number
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
@@ -78,6 +80,8 @@ export function useWorkspacesSettingsOrchestration(
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
+    settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -266,6 +270,8 @@ export function useWorkspacesSettingsOrchestration(
       settingsDmAutoTargetOnFirstPlayerJoin,
       settingsLateJoinPolicy,
       settingsLateJoinGraceMinutes,
+      settingsDefaultSessionDurationMins,
+      settingsSupportedPlatforms,
     })
 
     try {
@@ -310,6 +316,8 @@ export function useWorkspacesSettingsOrchestration(
     settingsExtensionSyncPolicy,
     settingsLateJoinGraceMinutes,
     settingsLateJoinPolicy,
+    settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms,
     settingsName,
     settingsPostSessionChatDurationMinutes,
     settingsPostSessionChatEnabled,

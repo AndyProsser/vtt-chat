@@ -1,20 +1,96 @@
 import { Slider } from '@/components/ui'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
 
+/** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
+function formatSessionDuration(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+/** Toggle button pair helper for ON/OFF fields. */
+function TogglePair({
+  id,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string
+  value: boolean
+  onChange: (v: boolean) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="session-toggle-group" role="group" aria-labelledby={`${id}-label`}>
+      <button
+        type="button"
+        className={`session-toggle-button ${value ? 'is-active' : ''}`}
+        aria-pressed={value}
+        onClick={() => onChange(true)}
+        disabled={disabled}
+      >
+        ON
+      </button>
+      <button
+        type="button"
+        className={`session-toggle-button ${!value ? 'is-active' : ''}`}
+        aria-pressed={!value}
+        onClick={() => onChange(false)}
+        disabled={disabled}
+      >
+        OFF
+      </button>
+    </div>
+  )
+}
+
+const SUPPORTED_PLATFORM_LABELS: Record<string, string> = {
+  ANY: 'Any',
+  DDB: 'D&D Beyond',
+  ROLL20: 'Roll20',
+  FOUNDRY: 'Foundry VTT',
+}
+
 export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyProps) {
+  const sessionLocked = props.isSessionActive || props.isSaving
+  const cooldownMins = props.settingsPostSessionChatDurationMinutes
+
+  function handlePlatformToggle(platform: 'ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY') {
+    const current = props.settingsSupportedPlatforms
+    if (platform === 'ANY') {
+      props.onSettingsSupportedPlatformsChange(['ANY'])
+    } else {
+      const withoutAny = current.filter((p) => p !== 'ANY')
+      const alreadySelected = withoutAny.includes(platform)
+      const next = alreadySelected
+        ? withoutAny.filter((p) => p !== platform)
+        : [...withoutAny, platform]
+      props.onSettingsSupportedPlatformsChange(next.length === 0 ? ['ANY'] : next)
+    }
+  }
+
   return (
     <section className="session-campaign-settings-panel" aria-label="Campaign policy settings">
-      <h5 className="session-inline-form-title">Settings</h5>
-      <label className="session-label" htmlFor="workspace-campaign-settings-visibility">
+      {/* ── General ─────────────────────────────────────────────────────── */}
+      <h5 className="crbs-heading">
+        General
+        {props.isSessionActive && (
+          <span className="crbs-lock-badge" title="Locked during active session">
+            <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+          </span>
+        )}
+      </h5>
+
+      <label className="session-label" id="label-visibility">
         Visibility
       </label>
-      <div className="session-toggle-group" role="group" aria-label="Visibility">
+      <div className="session-toggle-group" role="group" aria-labelledby="label-visibility">
         <button
           type="button"
           className={`session-toggle-button ${props.settingsVisibility === 'PUBLIC' ? 'is-active' : ''}`}
           aria-pressed={props.settingsVisibility === 'PUBLIC'}
           onClick={() => props.onSettingsVisibilityChange('PUBLIC')}
-          disabled={props.isSaving}
+          disabled={sessionLocked}
         >
           Public
         </button>
@@ -23,229 +99,239 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
           className={`session-toggle-button ${props.settingsVisibility === 'PRIVATE' ? 'is-active' : ''}`}
           aria-pressed={props.settingsVisibility === 'PRIVATE'}
           onClick={() => props.onSettingsVisibilityChange('PRIVATE')}
-          disabled={props.isSaving}
+          disabled={sessionLocked}
         >
           Private
         </button>
       </div>
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-spectators">
+      <label className="session-label" id="label-cooldown">
+        Cooldown after session: {cooldownMins} min
+      </label>
+      <Slider
+        id="workspace-campaign-settings-post-session-duration"
+        className="session-slider"
+        aria-labelledby="label-cooldown"
+        min={1}
+        max={15}
+        step={1}
+        value={cooldownMins}
+        onValueChange={(nextValue) =>
+          props.onSettingsPostSessionChatDurationMinutesChange(nextValue)
+        }
+        disabled={sessionLocked}
+      />
+
+      {/* ── Spectators ──────────────────────────────────────────────────── */}
+      <h5 className="crbs-heading crbs-heading--section-gap">
+        Spectators
+        {props.isSessionActive && (
+          <span className="crbs-lock-badge" title="Locked during active session">
+            <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+          </span>
+        )}
+      </h5>
+
+      <label className="session-label" id="label-spectators">
         Spectators
       </label>
-      <div className="session-toggle-group" role="group" aria-label="Spectators">
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsSpectatorsEnabled ? 'is-active' : ''}`}
-          aria-pressed={props.settingsSpectatorsEnabled}
-          onClick={() => props.onSettingsSpectatorsEnabledChange(true)}
-          disabled={props.isSaving}
-        >
-          ON
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${!props.settingsSpectatorsEnabled ? 'is-active' : ''}`}
-          aria-pressed={!props.settingsSpectatorsEnabled}
-          onClick={() => props.onSettingsSpectatorsEnabledChange(false)}
-          disabled={props.isSaving}
-        >
-          OFF
-        </button>
-      </div>
+      <TogglePair
+        id="spectators"
+        value={props.settingsSpectatorsEnabled}
+        onChange={props.onSettingsSpectatorsEnabledChange}
+        disabled={sessionLocked}
+      />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-spectator-max">
+      <label className="session-label" id="label-spectator-max">
         Max spectators: {props.settingsSpectatorMax}
       </label>
       <Slider
         id="workspace-campaign-settings-spectator-max"
         className="session-slider"
+        aria-labelledby="label-spectator-max"
         min={5}
         max={50}
         step={5}
         value={props.settingsSpectatorMax}
         onValueChange={(nextValue) => props.onSettingsSpectatorMaxChange(nextValue)}
-        disabled={props.isSaving || !props.settingsSpectatorsEnabled}
+        disabled={sessionLocked || !props.settingsSpectatorsEnabled}
       />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-waitlist">
+      <label className="session-label" id="label-waitlist">
         Spectator waitlist
       </label>
-      <div className="session-toggle-group" role="group" aria-label="Spectator waitlist">
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
-          aria-pressed={props.settingsSpectatorWaitlistEnabled}
-          onClick={() => props.onSettingsSpectatorWaitlistEnabledChange(true)}
-          disabled={props.isSaving || !props.settingsSpectatorsEnabled}
-        >
-          ON
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${!props.settingsSpectatorWaitlistEnabled ? 'is-active' : ''}`}
-          aria-pressed={!props.settingsSpectatorWaitlistEnabled}
-          onClick={() => props.onSettingsSpectatorWaitlistEnabledChange(false)}
-          disabled={props.isSaving || !props.settingsSpectatorsEnabled}
-        >
-          OFF
-        </button>
-      </div>
+      <TogglePair
+        id="waitlist"
+        value={props.settingsSpectatorWaitlistEnabled}
+        onChange={props.onSettingsSpectatorWaitlistEnabledChange}
+        disabled={sessionLocked || !props.settingsSpectatorsEnabled}
+      />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-reconnect-grace">
-        Spectator reconnect grace (seconds): {props.settingsSpectatorReconnectGraceSecs}
+      <label className="session-label" id="label-reconnect-grace">
+        Reconnect grace: {props.settingsSpectatorReconnectGraceSecs}s
       </label>
       <Slider
         id="workspace-campaign-settings-reconnect-grace"
         className="session-slider"
+        aria-labelledby="label-reconnect-grace"
         min={30}
         max={90}
         step={5}
         value={props.settingsSpectatorReconnectGraceSecs}
         onValueChange={(nextValue) => props.onSettingsSpectatorReconnectGraceSecsChange(nextValue)}
-        disabled={props.isSaving || !props.settingsSpectatorsEnabled}
+        disabled={sessionLocked || !props.settingsSpectatorsEnabled}
       />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-post-session-chat">
-        Post-session spectator chat
+      <label className="session-label" id="label-post-session-chat">
+        Can spectators chat during cooldown?
       </label>
-      <div className="session-toggle-group" role="group" aria-label="Post-session spectator chat">
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsPostSessionChatEnabled ? 'is-active' : ''}`}
-          aria-pressed={props.settingsPostSessionChatEnabled}
-          onClick={() => props.onSettingsPostSessionChatEnabledChange(true)}
-          disabled={props.isSaving}
-        >
-          ON
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${!props.settingsPostSessionChatEnabled ? 'is-active' : ''}`}
-          aria-pressed={!props.settingsPostSessionChatEnabled}
-          onClick={() => props.onSettingsPostSessionChatEnabledChange(false)}
-          disabled={props.isSaving}
-        >
-          OFF
-        </button>
-      </div>
+      <TogglePair
+        id="post-session-chat"
+        value={props.settingsPostSessionChatEnabled}
+        onChange={props.onSettingsPostSessionChatEnabledChange}
+        disabled={sessionLocked || !props.settingsSpectatorsEnabled}
+      />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-post-session-duration">
-        Post-session duration: {props.settingsPostSessionChatDurationMinutes} min
+      {/* ── Session ─────────────────────────────────────────────────────── */}
+      <h5 className="crbs-heading crbs-heading--section-gap">Session</h5>
+
+      <label className="session-label" id="label-session-duration">
+        Default session duration: {formatSessionDuration(props.settingsDefaultSessionDurationMins)}
       </label>
       <Slider
-        id="workspace-campaign-settings-post-session-duration"
+        id="workspace-campaign-settings-session-duration"
         className="session-slider"
-        min={1}
-        max={15}
-        step={1}
-        value={props.settingsPostSessionChatDurationMinutes}
-        onValueChange={(nextValue) =>
-          props.onSettingsPostSessionChatDurationMinutesChange(nextValue)
-        }
-        disabled={props.isSaving || !props.settingsPostSessionChatEnabled}
+        aria-labelledby="label-session-duration"
+        min={60}
+        max={720}
+        step={15}
+        value={props.settingsDefaultSessionDurationMins}
+        onValueChange={(nextValue) => props.onSettingsDefaultSessionDurationMinsChange(nextValue)}
+        disabled={props.isSaving || !props.isEditorContext}
       />
 
-      <label className="session-label" htmlFor="workspace-campaign-settings-extension-sync-policy">
-        Extension sync policy
+      <label className="session-label" id="label-dm-auto-target">
+        Auto-target voice when first player joins
       </label>
-      <div className="session-toggle-group" role="group" aria-label="Extension sync policy">
+      <TogglePair
+        id="dm-auto-target"
+        value={props.settingsDmAutoTargetOnFirstPlayerJoin}
+        onChange={props.onSettingsDmAutoTargetOnFirstPlayerJoinChange}
+        disabled={props.isSaving}
+      />
+
+      <label className="session-label" id="label-late-join-policy">
+        Late join policy
+        {props.isSessionActive && (
+          <span className="crbs-lock-badge" title="Locked during active session">
+            <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+          </span>
+        )}
+      </label>
+      <div className="session-toggle-group" role="group" aria-labelledby="label-late-join-policy">
+        {(['OPEN', 'SCREENED', 'BLOCKED'] as const).map((policy) => (
+          <button
+            key={policy}
+            type="button"
+            className={`session-toggle-button ${props.settingsLateJoinPolicy === policy ? 'is-active' : ''}`}
+            aria-pressed={props.settingsLateJoinPolicy === policy}
+            onClick={() => props.onSettingsLateJoinPolicyChange(policy)}
+            disabled={sessionLocked}
+          >
+            {policy === 'OPEN' ? 'Open' : policy === 'SCREENED' ? 'Screened' : 'Blocked'}
+          </button>
+        ))}
+      </div>
+
+      <label className="session-label" id="label-late-join-grace">
+        Late join grace: {props.settingsLateJoinGraceMinutes} min
+        {props.isSessionActive && (
+          <span className="crbs-lock-badge" title="Locked during active session">
+            <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+          </span>
+        )}
+      </label>
+      <Slider
+        id="workspace-campaign-settings-late-join-grace"
+        className="session-slider"
+        aria-labelledby="label-late-join-grace"
+        min={30}
+        max={90}
+        step={10}
+        value={props.settingsLateJoinGraceMinutes}
+        onValueChange={(nextValue) => props.onSettingsLateJoinGraceMinutesChange(nextValue)}
+        disabled={sessionLocked || props.settingsLateJoinPolicy === 'OPEN'}
+      />
+
+      {/* ── Extension ───────────────────────────────────────────────────── */}
+      <h5 className="crbs-heading crbs-heading--section-gap">
+        Extension
+        {props.isSessionActive && (
+          <span className="crbs-lock-badge" title="Locked during active session">
+            <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+          </span>
+        )}
+      </h5>
+
+      <label className="session-label" id="label-supported-platforms">
+        Supported platforms
+      </label>
+      <div
+        className="session-toggle-group session-toggle-group--wrap"
+        role="group"
+        aria-labelledby="label-supported-platforms"
+      >
+        {(['ANY', 'DDB', 'ROLL20', 'FOUNDRY'] as const).map((platform) => {
+          const isSelected = props.settingsSupportedPlatforms.includes(platform)
+          return (
+            <button
+              key={platform}
+              type="button"
+              className={`session-toggle-button ${isSelected ? 'is-active' : ''}`}
+              aria-pressed={isSelected}
+              onClick={() => handlePlatformToggle(platform)}
+              disabled={sessionLocked}
+            >
+              {SUPPORTED_PLATFORM_LABELS[platform]}
+            </button>
+          )
+        })}
+      </div>
+
+      <label className="session-label" id="label-extension-sync-policy">
+        Extension sync
+      </label>
+      <div
+        className="session-toggle-group"
+        role="group"
+        aria-labelledby="label-extension-sync-policy"
+      >
         <button
           type="button"
           className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
           aria-pressed={props.settingsExtensionSyncPolicy === 'ALLOW'}
           onClick={() => props.onSettingsExtensionSyncPolicyChange('ALLOW')}
-          disabled={props.isSaving}
+          disabled={sessionLocked}
         >
-          ALLOW
+          All players
         </button>
         <button
           type="button"
           className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
           aria-pressed={props.settingsExtensionSyncPolicy === 'DM_ONLY'}
           onClick={() => props.onSettingsExtensionSyncPolicyChange('DM_ONLY')}
-          disabled={props.isSaving}
+          disabled={sessionLocked}
         >
-          DM_ONLY
+          DM only
         </button>
         <button
           type="button"
           className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
           aria-pressed={props.settingsExtensionSyncPolicy === 'NONE'}
           onClick={() => props.onSettingsExtensionSyncPolicyChange('NONE')}
-          disabled={props.isSaving}
+          disabled={sessionLocked}
         >
-          NONE
-        </button>
-      </div>
-
-      <label className="session-label" htmlFor="workspace-campaign-settings-late-join-policy">
-        Late join policy
-      </label>
-      <div className="session-toggle-group" role="group" aria-label="Late join policy">
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsLateJoinPolicy === 'OPEN' ? 'is-active' : ''}`}
-          aria-pressed={props.settingsLateJoinPolicy === 'OPEN'}
-          onClick={() => props.onSettingsLateJoinPolicyChange('OPEN')}
-          disabled={props.isSaving}
-        >
-          OPEN
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsLateJoinPolicy === 'SCREENED' ? 'is-active' : ''}`}
-          aria-pressed={props.settingsLateJoinPolicy === 'SCREENED'}
-          onClick={() => props.onSettingsLateJoinPolicyChange('SCREENED')}
-          disabled={props.isSaving}
-        >
-          SCREENED
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsLateJoinPolicy === 'BLOCKED' ? 'is-active' : ''}`}
-          aria-pressed={props.settingsLateJoinPolicy === 'BLOCKED'}
-          onClick={() => props.onSettingsLateJoinPolicyChange('BLOCKED')}
-          disabled={props.isSaving}
-        >
-          BLOCKED
-        </button>
-      </div>
-
-      <label className="session-label" htmlFor="workspace-campaign-settings-late-join-grace">
-        Late join grace (minutes): {props.settingsLateJoinGraceMinutes}
-      </label>
-      <Slider
-        id="workspace-campaign-settings-late-join-grace"
-        className="session-slider"
-        min={30}
-        max={90}
-        step={10}
-        value={props.settingsLateJoinGraceMinutes}
-        onValueChange={(nextValue) => props.onSettingsLateJoinGraceMinutesChange(nextValue)}
-        disabled={props.isSaving || props.settingsLateJoinPolicy === 'OPEN'}
-      />
-
-      <label className="session-label" htmlFor="workspace-campaign-settings-dm-auto-target">
-        DM auto-target on first player join
-      </label>
-      <div className="session-toggle-group" role="group" aria-label="DM auto-target">
-        <button
-          type="button"
-          className={`session-toggle-button ${props.settingsDmAutoTargetOnFirstPlayerJoin ? 'is-active' : ''}`}
-          aria-pressed={props.settingsDmAutoTargetOnFirstPlayerJoin}
-          onClick={() => props.onSettingsDmAutoTargetOnFirstPlayerJoinChange(true)}
-          disabled={props.isSaving}
-        >
-          ON
-        </button>
-        <button
-          type="button"
-          className={`session-toggle-button ${!props.settingsDmAutoTargetOnFirstPlayerJoin ? 'is-active' : ''}`}
-          aria-pressed={!props.settingsDmAutoTargetOnFirstPlayerJoin}
-          onClick={() => props.onSettingsDmAutoTargetOnFirstPlayerJoinChange(false)}
-          disabled={props.isSaving}
-        >
-          OFF
+          Disabled
         </button>
       </div>
     </section>

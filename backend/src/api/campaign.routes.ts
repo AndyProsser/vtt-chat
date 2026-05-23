@@ -997,6 +997,8 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
       lateJoinPolicy: membership.campaign.lateJoinPolicy,
       lateJoinGraceMinutes: membership.campaign.lateJoinGraceMinutes,
+      defaultSessionDurationMins: (membership.campaign as any).defaultSessionDurationMins ?? 240,
+      supportedPlatforms: (membership.campaign as any).supportedPlatforms ?? ['ANY'],
       inviteCode: membership.campaign.inviteCode,
       inviteActive: membership.campaign.inviteActive,
       spectatorInviteCode: membership.campaign.spectatorInviteCode,
@@ -1023,6 +1025,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     extensionSyncPolicy,
     lateJoinPolicy,
     lateJoinGraceMinutes,
+    defaultSessionDurationMins,
+    supportedPlatforms,
   } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
@@ -1134,6 +1138,44 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
+  // Validate defaultSessionDurationMins (60-720, step 15)
+  const parsedDefaultSessionDurationMins = Number(
+    defaultSessionDurationMins ?? (campaign as any).defaultSessionDurationMins ?? 240
+  )
+  if (
+    !Number.isFinite(parsedDefaultSessionDurationMins) ||
+    parsedDefaultSessionDurationMins < 60 ||
+    parsedDefaultSessionDurationMins > 720 ||
+    parsedDefaultSessionDurationMins % 15 !== 0
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'defaultSessionDurationMins must be a number between 60 and 720 in increments of 15',
+      field: 'defaultSessionDurationMins',
+    })
+  }
+
+  // Validate supportedPlatforms
+  const VALID_PLATFORMS = ['ANY', 'DDB', 'ROLL20', 'FOUNDRY'] as const
+  const rawSupportedPlatforms: string[] | undefined = Array.isArray(supportedPlatforms)
+    ? supportedPlatforms
+    : supportedPlatforms == null
+      ? undefined
+      : (null as never)
+  const effectiveSupportedPlatforms: string[] = rawSupportedPlatforms ??
+    (campaign as any).supportedPlatforms ?? ['ANY']
+  if (
+    !Array.isArray(effectiveSupportedPlatforms) ||
+    effectiveSupportedPlatforms.length === 0 ||
+    !effectiveSupportedPlatforms.every((p) => VALID_PLATFORMS.includes(p as any))
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `supportedPlatforms must be a non-empty array of: ${VALID_PLATFORMS.join(', ')}`,
+      field: 'supportedPlatforms',
+    })
+  }
+
   const normalizedPosterUrl =
     typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
 
@@ -1192,6 +1234,52 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     })
   }
 
+  // If a session is currently ACTIVE or PAUSED, reject changes to locked settings groups.
+  // This check runs after all values are normalised so we can compare current vs incoming.
+  const activeSession = await prisma.session.findFirst({
+    where: { campaignId: campaignId as UUID, state: { in: ['ACTIVE', 'PAUSED'] } },
+    select: { id: true, state: true },
+  })
+  if (activeSession) {
+    const changedLockedFields: string[] = []
+    if (effectiveSpectatorsEnabled !== (campaign.spectatorPolicy !== 'NONE'))
+      changedLockedFields.push('spectatorsEnabled')
+    if (parsedSpectatorMax !== (campaign.spectatorMax ?? 10))
+      changedLockedFields.push('spectatorMax')
+    if (
+      typeof spectatorWaitlistEnabled === 'boolean' &&
+      spectatorWaitlistEnabled !== campaign.spectatorWaitlistEnabled
+    )
+      changedLockedFields.push('spectatorWaitlistEnabled')
+    if (parsedReconnectGraceSecs !== campaign.spectatorReconnectGraceSecs)
+      changedLockedFields.push('spectatorReconnectGraceSecs')
+    if (normalizedPostSessionChatEnabled !== campaign.postSessionChatEnabled)
+      changedLockedFields.push('postSessionChatEnabled')
+    if (parsedPostSessionChatDurationMs !== campaign.postSessionChatDurationMs)
+      changedLockedFields.push('postSessionChatDurationMs')
+    if (normalizedExtensionSyncPolicy !== campaign.extensionSyncPolicy)
+      changedLockedFields.push('extensionSyncPolicy')
+    if (
+      JSON.stringify(effectiveSupportedPlatforms.slice().sort()) !==
+      JSON.stringify(((campaign as any).supportedPlatforms ?? ['ANY']).slice().sort())
+    )
+      changedLockedFields.push('supportedPlatforms')
+    if (effectiveLateJoinPolicy !== campaign.lateJoinPolicy)
+      changedLockedFields.push('lateJoinPolicy')
+    if (parsedGraceMinutes !== campaign.lateJoinGraceMinutes)
+      changedLockedFields.push('lateJoinGraceMinutes')
+    if (parsedDefaultSessionDurationMins !== ((campaign as any).defaultSessionDurationMins ?? 240))
+      changedLockedFields.push('defaultSessionDurationMins')
+
+    if (changedLockedFields.length > 0) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: `These settings cannot be changed while a session is ${activeSession.state}: ${changedLockedFields.join(', ')}`,
+        fields: changedLockedFields,
+      })
+    }
+  }
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
@@ -1213,6 +1301,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
       lateJoinPolicy: effectiveLateJoinPolicy,
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
+      defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
+      supportedPlatforms: effectiveSupportedPlatforms,
     },
     select: {
       id: true,
@@ -1230,6 +1320,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       extensionSyncPolicy: true,
       lateJoinPolicy: true,
       lateJoinGraceMinutes: true,
+      defaultSessionDurationMins: true,
+      supportedPlatforms: true,
       inviteCode: true,
       inviteActive: true,
       spectatorInviteCode: true,

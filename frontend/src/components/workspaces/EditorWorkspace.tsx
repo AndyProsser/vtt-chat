@@ -99,6 +99,14 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             settingsDmAutoTargetOnFirstPlayerJoin: props.settingsDmAutoTargetOnFirstPlayerJoin,
             onSettingsDmAutoTargetOnFirstPlayerJoinChange:
               props.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
+            settingsDefaultSessionDurationMins: props.settingsDefaultSessionDurationMins,
+            onSettingsDefaultSessionDurationMinsChange:
+              props.onSettingsDefaultSessionDurationMinsChange,
+            settingsSupportedPlatforms: props.settingsSupportedPlatforms,
+            onSettingsSupportedPlatformsChange: props.onSettingsSupportedPlatformsChange,
+            isSessionActive:
+              props.currentSessionState === 'ACTIVE' || props.currentSessionState === 'PAUSED',
+            isEditorContext: true,
             onCopyInviteUrl: props.onCopyInviteUrl,
             onReissueInvite: props.onReissueInvite,
             onSave: props.onSaveCampaignSettings,

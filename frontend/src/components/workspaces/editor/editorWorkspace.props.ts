@@ -40,6 +40,8 @@ type BuildEditorWorkspacePropsParams = {
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
+  settingsDefaultSessionDurationMins: number
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
   isCharacterSettingsLoading: boolean
@@ -79,6 +81,12 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsDmAutoTargetOnFirstPlayerJoinChange']
+  onSettingsDefaultSessionDurationMinsChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsDefaultSessionDurationMinsChange']
+  onSettingsSupportedPlatformsChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsSupportedPlatformsChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
   onSaveCampaignSettings: ComponentProps<typeof EditorWorkspace>['onSaveCampaignSettings']
@@ -133,6 +141,8 @@ export function buildEditorWorkspaceProps(
     settingsLateJoinPolicy: params.settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes: params.settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
+    settingsDefaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms: params.settingsSupportedPlatforms,
     selectedCampaignId: params.selectedCampaignId,
     characterSettingsPanel: params.characterSettingsPanel,
     isCharacterSettingsLoading: params.isCharacterSettingsLoading,
@@ -154,6 +164,8 @@ export function buildEditorWorkspaceProps(
     onSettingsLateJoinGraceMinutesChange: params.onSettingsLateJoinGraceMinutesChange,
     onSettingsDmAutoTargetOnFirstPlayerJoinChange:
       params.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
+    onSettingsDefaultSessionDurationMinsChange: params.onSettingsDefaultSessionDurationMinsChange,
+    onSettingsSupportedPlatformsChange: params.onSettingsSupportedPlatformsChange,
     onCopyInviteUrl: params.onCopyInviteUrl,
     onReissueInvite: params.onReissueInvite,
     onSaveCampaignSettings: params.onSaveCampaignSettings,

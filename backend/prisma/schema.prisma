@@ -126,6 +126,8 @@ model Campaign {
   postSessionChatDurationMs     Int                    @default(300000)
   discoverable                  Boolean                @default(false)
   extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
+  defaultSessionDurationMins    Int                    @default(240)
+  supportedPlatforms            SupportedPlatform[]    @default([ANY])
   currentDmId                   String                 @db.Uuid
   retiredAt                     DateTime?
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
@@ -486,6 +488,13 @@ enum ExtensionSyncPolicy {
   NONE
   DM_ONLY
   DM_AND_PLAYERS
+}
+
+enum SupportedPlatform {
+  ANY
+  DDB
+  ROLL20
+  FOUNDRY
 }
 
 enum Role {

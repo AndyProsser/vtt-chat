@@ -74,6 +74,14 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
             onSettingsDmAutoTargetOnFirstPlayerJoinChange={
               props.onSettingsDmAutoTargetOnFirstPlayerJoinChange
             }
+            settingsDefaultSessionDurationMins={props.settingsDefaultSessionDurationMins}
+            onSettingsDefaultSessionDurationMinsChange={
+              props.onSettingsDefaultSessionDurationMinsChange
+            }
+            settingsSupportedPlatforms={props.settingsSupportedPlatforms}
+            onSettingsSupportedPlatformsChange={props.onSettingsSupportedPlatformsChange}
+            isSessionActive={props.isSessionActive}
+            isEditorContext={props.isEditorContext}
           />
           {props.sessionSettingsPanel}
         </div>

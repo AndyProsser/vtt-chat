@@ -37,6 +37,12 @@ export function applyCampaignSettingsPayload(
   campaignSettingsActions.setSettingsLateJoinPolicy(settings.lateJoinPolicy)
   campaignSettingsActions.setSettingsLateJoinGraceMinutes(settings.lateJoinGraceMinutes)
   campaignSettingsActions.setSettingsPosterUrl(settings.posterUrl || '')
+  campaignSettingsActions.setSettingsDefaultSessionDurationMins(
+    settings.defaultSessionDurationMins ?? 240
+  )
+  campaignSettingsActions.setSettingsSupportedPlatforms(
+    (settings.supportedPlatforms ?? ['ANY']) as ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  )
 }
 
 export function buildCampaignSettingsSavePayload(params: {
@@ -54,6 +60,8 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
+  settingsDefaultSessionDurationMins: number
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
 }) {
   return {
     name: params.settingsName,
@@ -76,6 +84,8 @@ export function buildCampaignSettingsSavePayload(params: {
     lateJoinPolicy: params.settingsLateJoinPolicy,
     lateJoinGraceMinutes:
       params.settingsLateJoinPolicy === 'OPEN' ? 30 : params.settingsLateJoinGraceMinutes,
+    defaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
+    supportedPlatforms: params.settingsSupportedPlatforms,
   }
 }
 

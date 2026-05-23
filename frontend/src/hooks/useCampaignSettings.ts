@@ -37,6 +37,8 @@ interface UseCampaignSettingsState {
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
   settingsPosterUrl: string
+  settingsDefaultSessionDurationMins: number
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
 }
 
 interface UseCampaignSettingsActions {
@@ -66,6 +68,8 @@ interface UseCampaignSettingsActions {
   setSettingsLateJoinPolicy: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
   setSettingsLateJoinGraceMinutes: (value: number) => void
   setSettingsPosterUrl: (value: string) => void
+  setSettingsDefaultSessionDurationMins: (value: number) => void
+  setSettingsSupportedPlatforms: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
 }
 
 export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSettingsActions] {
@@ -103,6 +107,10 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
   >('OPEN')
   const [settingsLateJoinGraceMinutes, setSettingsLateJoinGraceMinutes] = useState(30)
   const [settingsPosterUrl, setSettingsPosterUrl] = useState('')
+  const [settingsDefaultSessionDurationMins, setSettingsDefaultSessionDurationMins] = useState(240)
+  const [settingsSupportedPlatforms, setSettingsSupportedPlatforms] = useState<
+    ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  >(['ANY'])
 
   const state: UseCampaignSettingsState = useMemo(
     () => ({
@@ -132,6 +140,8 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsLateJoinPolicy,
       settingsLateJoinGraceMinutes,
       settingsPosterUrl,
+      settingsDefaultSessionDurationMins,
+      settingsSupportedPlatforms,
     }),
     [
       isSettingsLoading,
@@ -160,6 +170,8 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsLateJoinPolicy,
       settingsLateJoinGraceMinutes,
       settingsPosterUrl,
+      settingsDefaultSessionDurationMins,
+      settingsSupportedPlatforms,
     ]
   )
 
@@ -191,6 +203,8 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       setSettingsLateJoinPolicy,
       setSettingsLateJoinGraceMinutes,
       setSettingsPosterUrl,
+      setSettingsDefaultSessionDurationMins,
+      setSettingsSupportedPlatforms,
     }),
     []
   )

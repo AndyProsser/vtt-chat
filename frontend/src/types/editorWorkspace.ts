@@ -44,6 +44,8 @@ export type EditorWorkspaceProps = {
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
+  settingsDefaultSessionDurationMins: number
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
   isCharacterSettingsLoading: boolean
@@ -63,6 +65,8 @@ export type EditorWorkspaceProps = {
   onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
+  onSettingsDefaultSessionDurationMinsChange: (value: number) => void
+  onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignSettings: () => void

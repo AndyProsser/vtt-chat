@@ -126,6 +126,8 @@ export function WorkspaceInitialization({
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsPosterUrl,
+    settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms,
   } = campaignSettings
 
   // Character settings hook
@@ -464,6 +466,8 @@ export function WorkspaceInitialization({
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
+    settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -817,6 +821,8 @@ export function WorkspaceInitialization({
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
+    settingsDefaultSessionDurationMins,
+    settingsSupportedPlatforms,
     selectedCampaignId,
     characterSettingsPanel,
     isCharacterSettingsLoading,
@@ -845,6 +851,10 @@ export function WorkspaceInitialization({
       campaignSettingsActions.setSettingsLateJoinGraceMinutes(value),
     onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value) =>
       campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
+    onSettingsDefaultSessionDurationMinsChange: (value) =>
+      campaignSettingsActions.setSettingsDefaultSessionDurationMins(value),
+    onSettingsSupportedPlatformsChange: (value) =>
+      campaignSettingsActions.setSettingsSupportedPlatforms(value),
     onCopyInviteUrl: (inviteType) => {
       void copyInviteUrl(inviteType)
     },

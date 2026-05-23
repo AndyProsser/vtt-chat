@@ -200,7 +200,7 @@
 }
 
 .session-card-subtitle {
-  margin-top: 0.25rem;
+  margin-top: 0;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
 }

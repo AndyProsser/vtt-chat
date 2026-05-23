@@ -37,6 +37,12 @@ export type CampaignSettingsPanelProps = {
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
+  settingsDefaultSessionDurationMins: number
+  onSettingsDefaultSessionDurationMinsChange: (value: number) => void
+  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  isSessionActive: boolean
+  isEditorContext: boolean
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSave: () => void
@@ -68,6 +74,12 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsLateJoinGraceMinutesChange'
   | 'settingsDmAutoTargetOnFirstPlayerJoin'
   | 'onSettingsDmAutoTargetOnFirstPlayerJoinChange'
+  | 'settingsDefaultSessionDurationMins'
+  | 'onSettingsDefaultSessionDurationMinsChange'
+  | 'settingsSupportedPlatforms'
+  | 'onSettingsSupportedPlatformsChange'
+  | 'isSessionActive'
+  | 'isEditorContext'
 >
 
 export type CampaignSettingsPanelInvitesProps = Pick<
