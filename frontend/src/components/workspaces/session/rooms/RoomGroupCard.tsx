@@ -213,6 +213,7 @@ export function RoomGroupCard({
                       className="room-selector-item__env-icon"
                       aria-label="Change group environment"
                       data-room-env-trigger={room.id}
+                      disabled={isGreenroom}
                       onClick={() => onToggleEnvironmentPicker(room.id)}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">

@@ -184,8 +184,8 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms
-  const showCreateGroupControl = canManageRooms
+  const canCreateGroups = canManageRooms && !isGreenroom
+  const showCreateGroupControl = canManageRooms && !isGreenroom
   const isDenseRoomLayout =
     canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
   const activeEnvironmentPickerRoomId = isGreenroom ? null : environmentPickerRoomId
