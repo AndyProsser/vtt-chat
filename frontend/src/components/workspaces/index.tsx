@@ -72,7 +72,7 @@ import {
   toNullableUuid,
 } from '@/utils/session/workspaceInitialization'
 import type { EditorWorkspaceView } from '@/types/workspaces'
-import '@/styles/components/workspaces/session/workspaces/Workspaces.css'
+import '@/styles/components/workspaces/Workspaces.css'
 
 export function WorkspaceInitialization({
   apiUrl,

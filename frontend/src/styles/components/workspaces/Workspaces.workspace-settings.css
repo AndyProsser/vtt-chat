@@ -143,7 +143,7 @@
 }
 
 .session-campaign-settings-workspace-root .session-slider {
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.6rem;
 }
 
 .session-campaign-settings-workspace-root .session-inline-form-title {
@@ -235,4 +235,111 @@
 .session-invite-link-row__actions {
   display: inline-flex;
   gap: 0.45rem;
+}
+
+/* ── Policy panel: 2-column card grid ─────────────────────────────── */
+
+.csp-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.csp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.csp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-raised) 55%, var(--color-surface));
+}
+
+.csp-card--general,
+.csp-card--extension {
+  min-height: 11.75rem;
+}
+
+.csp-card--general {
+  padding-bottom: 0.95rem;
+}
+
+.csp-card-heading {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  margin-bottom: 0.15rem;
+  width: 100%;
+}
+
+.csp-platform-label {
+  display: inline-block;
+  max-width: 6.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* ── DEV role switcher banner ──────────────────────────────────────── */
+
+.csp-dev-role-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.6rem;
+  margin-bottom: 0.4rem;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-warn) 10%, var(--color-surface));
+  border: 1px dashed color-mix(in srgb, var(--color-warn) 45%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.csp-dev-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-warn-text);
+  background: color-mix(in srgb, var(--color-warn) 22%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-warn) 38%, transparent);
+  border-radius: 4px;
+  padding: 0.1rem 0.38rem;
+}
+
+.csp-dev-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.csp-dev-role-pill {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.14rem 0.52rem;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.csp-dev-role-pill:hover {
+  border-color: color-mix(in srgb, var(--color-warn) 35%, var(--color-border-soft));
+  color: var(--color-text-secondary);
+}
+
+.csp-dev-role-pill.is-active {
+  background: color-mix(in srgb, var(--color-warn) 18%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-warn) 48%, transparent);
+  color: var(--color-warn-text);
 }

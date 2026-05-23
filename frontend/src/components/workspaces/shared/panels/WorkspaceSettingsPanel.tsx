@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CampaignSettingsPanel } from '@/components/workspaces/shared/panels/CampaignSettingsPanel'
 import {
   CampaignSessionSettingsPanel,
@@ -19,35 +20,82 @@ export interface WorkspaceSettingsPanelProps {
 }
 
 export function WorkspaceSettingsPanel(props: WorkspaceSettingsPanelProps) {
-  if (props.role === 'PLAYER') {
+  const [devShowAsPlayer, setDevShowAsPlayer] = useState(false)
+  const effectiveRole = import.meta.env.DEV && devShowAsPlayer ? 'PLAYER' : props.role
+
+  const devBanner = import.meta.env.DEV ? (
+    <div className="csp-dev-role-banner" role="status" aria-label="Dev role switcher">
+      <span className="csp-dev-badge">DEV</span>
+      <span className="csp-dev-label">View as:</span>
+      <button
+        type="button"
+        className={`csp-dev-role-pill ${!devShowAsPlayer ? 'is-active' : ''}`}
+        onClick={() => setDevShowAsPlayer(false)}
+      >
+        DM
+      </button>
+      <button
+        type="button"
+        className={`csp-dev-role-pill ${devShowAsPlayer ? 'is-active' : ''}`}
+        onClick={() => setDevShowAsPlayer(true)}
+      >
+        Player
+      </button>
+    </div>
+  ) : null
+
+  if (effectiveRole === 'PLAYER') {
     if (!props.playerSettings) {
       return (
-        <div className="workspaces-status-message">Player settings are unavailable right now.</div>
+        <>
+          {devBanner}
+          <div className="workspaces-status-message">
+            Player settings are unavailable right now.
+          </div>
+        </>
       )
     }
 
-    return <PlayerSettingsPanel {...props.playerSettings} />
+    return (
+      <>
+        {devBanner}
+        <PlayerSettingsPanel {...props.playerSettings} />
+      </>
+    )
   }
 
-  if (props.role === 'DM') {
+  if (effectiveRole === 'DM') {
     if (props.campaignSettings) {
       return (
-        <CampaignSettingsPanel
-          {...props.campaignSettings}
-          sessionSettingsPanel={
-            props.sessionSettings ? (
-              <CampaignSessionSettingsPanel {...props.sessionSettings} />
-            ) : null
-          }
-        />
+        <>
+          {devBanner}
+          <CampaignSettingsPanel
+            {...props.campaignSettings}
+            sessionSettingsPanel={
+              props.sessionSettings ? (
+                <CampaignSessionSettingsPanel {...props.sessionSettings} />
+              ) : null
+            }
+          />
+        </>
       )
     }
 
     if (props.sessionSettings) {
-      return <CampaignSessionSettingsPanel {...props.sessionSettings} standalone />
+      return (
+        <>
+          {devBanner}
+          <CampaignSessionSettingsPanel {...props.sessionSettings} standalone />
+        </>
+      )
     }
 
-    return <div className="workspaces-status-message">Campaign settings are unavailable.</div>
+    return (
+      <>
+        {devBanner}
+        <div className="workspaces-status-message">Campaign settings are unavailable.</div>
+      </>
+    )
   }
 
   return (

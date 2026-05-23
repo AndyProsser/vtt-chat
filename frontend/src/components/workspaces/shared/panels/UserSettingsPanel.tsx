@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEventHandler } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Slider } from '@/components/ui'
-import '@/styles/components/workspaces/shared/panels/SessionUserSettingsPanel.css'
+import '@/styles/components/workspaces/shared/panels/UserSettingsPanel.css'
 
 export interface UserSettingsPanelProps {
   messageGroupingWindowMs: number

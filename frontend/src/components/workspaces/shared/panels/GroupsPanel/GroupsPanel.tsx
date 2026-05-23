@@ -18,7 +18,7 @@ import {
   deleteCampaignGroup,
   updateCampaignGroupEnvironment,
 } from '@/services/groupsPanel.service'
-import '@/styles/components/workspaces/session/workspaces/EditorGroupsPanel.css'
+import '@/styles/components/workspaces/shared/panels/EditorGroupsPanel.css'
 import GroupCard from './GroupCard'
 import CreateGroupModal from './CreateGroupModal'
 import GroupEnvironmentPicker from './GroupEnvironmentPicker'
