@@ -23,7 +23,7 @@ import { SessionWorkspace } from './SessionWorkspace'
 import { buildSessionWorkspaceProps } from '@/components/workspaces/session/sessionWorkspace.props'
 import { SessionModals } from '@/components/workspaces/session/modals/SessionModals'
 import { buildSessionModalsProps } from '@/components/workspaces/session/modals/sessionModals.props'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { EditorWorkspace } from './EditorWorkspace'
 import { buildEditorWorkspaceProps } from '@/components/workspaces/editor/editorWorkspace.props'
 import { SharedModals } from '@/components/workspaces/shared/modals/SharedModals'
@@ -140,7 +140,7 @@ export function WorkspaceInitialization({
     isCharacterSettingsSaving,
     userCharacters,
     selectedCharacterId,
-    characterSettingsDraft,
+    characterSettingsPanel,
   } = characterSettings
 
   // Session lifecycle hook
@@ -516,7 +516,7 @@ export function WorkspaceInitialization({
       characterSettingsActions,
       selectedCampaignId,
       selectedCharacterId,
-      characterSettingsDraft,
+      characterSettingsPanel,
       setError,
       setLobbyNotice,
     })
@@ -856,7 +856,7 @@ export function WorkspaceInitialization({
     settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
     selectedCampaignId,
-    characterSettingsDraft,
+    characterSettingsPanel,
     isCharacterSettingsLoading,
     isCharacterSettingsSaving,
     onSettingsNameChange: (value) => campaignSettingsActions.setSettingsName(value),
@@ -979,7 +979,7 @@ export function WorkspaceInitialization({
     },
     isDmVoiceTargetingSettingSaving,
     isDmVoiceTargetingSettingLoading,
-    characterDraft: characterSettingsDraft,
+    characterDraft: characterSettingsPanel,
     onCharacterFieldChange: handleCharacterFieldChange,
     onSaveCharacterSettings: () => {
       void saveCharacterSettings()

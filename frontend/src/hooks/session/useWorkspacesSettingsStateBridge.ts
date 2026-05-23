@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import { buildCharacterDraft, DEFAULT_CHARACTER_SETTINGS } from '@/utils/session/workspaces'
 
@@ -13,7 +13,7 @@ type UseWorkspacesSettingsStateBridgeParams = {
   setSessionSettingsPlannedDurationMinutes: Dispatch<SetStateAction<number>>
   selectedCharacter: UserCharacterRecord | null
   setSelectedCharacterId: (characterId: UserCharacterRecord['id']) => void
-  setCharacterSettingsDraft: (draft: CharacterSettingsDraft) => void
+  setCharacterSettingsDraft: (draft: PlayerSettingsPanel) => void
 }
 
 /**

@@ -6,9 +6,9 @@
 
 import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 
-export const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
+export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   name: '',
   race: 'Human',
   className: 'Fighter',
@@ -41,7 +41,7 @@ interface UseCharacterSettingsState {
   isCharacterSettingsSaving: boolean
   userCharacters: UserCharacterRecord[]
   selectedCharacterId: UUID | ''
-  characterSettingsDraft: CharacterSettingsDraft
+  characterSettingsPanel: PlayerSettingsPanel
 }
 
 interface UseCharacterSettingsActions {
@@ -49,7 +49,7 @@ interface UseCharacterSettingsActions {
   setIsCharacterSettingsSaving: (value: boolean) => void
   setUserCharacters: (value: UserCharacterRecord[]) => void
   setSelectedCharacterId: (value: UUID | '') => void
-  setCharacterSettingsDraft: (value: CharacterSettingsDraft) => void
+  setCharacterSettingsDraft: (value: PlayerSettingsPanel) => void
 }
 
 export function useCharacterSettings(): [UseCharacterSettingsState, UseCharacterSettingsActions] {
@@ -57,7 +57,7 @@ export function useCharacterSettings(): [UseCharacterSettingsState, UseCharacter
   const [isCharacterSettingsSaving, setIsCharacterSettingsSaving] = useState(false)
   const [userCharacters, setUserCharacters] = useState<UserCharacterRecord[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState<UUID | ''>('')
-  const [characterSettingsDraft, setCharacterSettingsDraft] = useState<CharacterSettingsDraft>(
+  const [characterSettingsPanel, setCharacterSettingsDraft] = useState<PlayerSettingsPanel>(
     DEFAULT_CHARACTER_SETTINGS
   )
 
@@ -67,14 +67,14 @@ export function useCharacterSettings(): [UseCharacterSettingsState, UseCharacter
       isCharacterSettingsSaving,
       userCharacters,
       selectedCharacterId,
-      characterSettingsDraft,
+      characterSettingsPanel,
     }),
     [
       isCharacterSettingsLoading,
       isCharacterSettingsSaving,
       userCharacters,
       selectedCharacterId,
-      characterSettingsDraft,
+      characterSettingsPanel,
     ]
   )
 

@@ -45,7 +45,7 @@ type BuildEditorWorkspacePropsParams = {
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   selectedCampaignId: UUID | ''
-  characterSettingsDraft: ComponentProps<typeof EditorWorkspace>['characterSettingsDraft']
+  characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
   onSettingsNameChange: ComponentProps<typeof EditorWorkspace>['onSettingsNameChange']
@@ -146,7 +146,7 @@ export function buildEditorWorkspaceProps(
     settingsLateJoinGraceMinutes: params.settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
     selectedCampaignId: params.selectedCampaignId,
-    characterSettingsDraft: params.characterSettingsDraft,
+    characterSettingsPanel: params.characterSettingsPanel,
     isCharacterSettingsLoading: params.isCharacterSettingsLoading,
     isCharacterSettingsSaving: params.isCharacterSettingsSaving,
     onSettingsNameChange: params.onSettingsNameChange,

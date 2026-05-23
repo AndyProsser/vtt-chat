@@ -1,7 +1,7 @@
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
-export interface CharacterSettingsDraft {
+export interface PlayerSettingsPanel {
   name: string
   race: string
   className: string
@@ -18,8 +18,8 @@ export interface CharacterSettingsDraft {
 
 export interface PlayerSettingsPanelProps {
   campaignId: string | null
-  characterDraft: CharacterSettingsDraft
-  onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
+  characterDraft: PlayerSettingsPanel
+  onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void
   isCharacterLoading: boolean
   isCharacterSaving: boolean
@@ -126,10 +126,10 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 min={1}
                 max={30}
                 className="crbs-input"
-                value={props.characterDraft[field as keyof CharacterSettingsDraft] as number}
+                value={props.characterDraft[field as keyof PlayerSettingsPanel] as number}
                 onChange={(event) =>
                   props.onCharacterFieldChange(
-                    field as keyof CharacterSettingsDraft,
+                    field as keyof PlayerSettingsPanel,
                     Number(event.target.value)
                   )
                 }

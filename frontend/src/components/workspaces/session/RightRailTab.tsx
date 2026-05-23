@@ -3,7 +3,7 @@ import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -53,8 +53,8 @@ type SessionWorkspaceRightRailTabProps = {
   isDmVoiceTargetingSettingSaving: boolean
   isDmVoiceTargetingSettingLoading: boolean
   campaignIdForSettings: UUID | ''
-  characterDraft: CharacterSettingsDraft
-  onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
+  characterDraft: PlayerSettingsPanel
+  onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean

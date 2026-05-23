@@ -1,5 +1,5 @@
 import { type Role, type SessionState, type UUID } from '@shared'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'
@@ -45,7 +45,7 @@ export type EditorWorkspaceProps = {
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   selectedCampaignId: UUID | ''
-  characterSettingsDraft: CharacterSettingsDraft
+  characterSettingsPanel: PlayerSettingsPanel
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
   onSettingsNameChange: (value: string) => void
@@ -66,7 +66,7 @@ export type EditorWorkspaceProps = {
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignSettings: () => void
-  onCharacterFieldChange: (field: keyof CharacterSettingsDraft, value: string | number) => void
+  onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void
   onSettingsReferenceSessionChange: (sessionId: UUID) => void
   onBackToLobby: () => void

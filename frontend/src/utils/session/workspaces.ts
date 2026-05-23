@@ -8,7 +8,7 @@ import {
 } from '../../constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord } from '@/types/room'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 
 export function safeLocalStorageGetItem(key: string): string | null {
@@ -63,7 +63,7 @@ export function resolveGreenroomCacheTtlMs(): number {
   return raw
 }
 
-export const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
+export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   name: '',
   race: 'Human',
   className: 'Fighter',
@@ -89,7 +89,7 @@ export function toValidStat(value: unknown, fallback = 8): number {
   return Math.max(1, Math.min(30, Math.round(parsed)))
 }
 
-export function buildCharacterDraft(character: UserCharacterRecord | null): CharacterSettingsDraft {
+export function buildCharacterDraft(character: UserCharacterRecord | null): PlayerSettingsPanel {
   if (!character) {
     return { ...DEFAULT_CHARACTER_SETTINGS }
   }

@@ -105,7 +105,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           }}
           playerSettings={{
             campaignId: props.selectedCampaignId || null,
-            characterDraft: props.characterSettingsDraft,
+            characterDraft: props.characterSettingsPanel,
             onCharacterFieldChange: props.onCharacterFieldChange,
             onSaveCharacterSettings: props.onSaveCharacterSettings,
             isCharacterLoading: props.isCharacterSettingsLoading,

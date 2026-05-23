@@ -1,6 +1,6 @@
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import {
@@ -114,18 +114,18 @@ export function applyLoadedCharacters(
   characterSettingsActions.setCharacterSettingsDraft(buildCharacterDraft(preferred || null))
 }
 
-export function updateCharacterDraftField(
-  characterSettingsDraft: CharacterSettingsDraft,
-  field: keyof CharacterSettingsDraft,
+export function updateCharacterField(
+  characterSettingsPanel: PlayerSettingsPanel,
+  field: keyof PlayerSettingsPanel,
   value: string | number
-): CharacterSettingsDraft {
+): PlayerSettingsPanel {
   return {
-    ...characterSettingsDraft,
+    ...characterSettingsPanel,
     [field]:
       typeof value === 'number'
         ? Number.isFinite(value)
           ? value
-          : characterSettingsDraft[field]
+          : characterSettingsPanel[field]
         : value,
   }
 }

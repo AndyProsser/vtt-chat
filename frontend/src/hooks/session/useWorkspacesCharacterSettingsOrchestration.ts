@@ -5,9 +5,9 @@ import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettin
 import {
   applyLoadedCharacters,
   resetCharacterSettings,
-  updateCharacterDraftField,
+  updateCharacterField,
 } from '@/utils/session/sessionSettings'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { createCharacterSettingsController } from '@/utils/session/sessionController'
 
 type UseWorkspacesCharacterSettingsOrchestrationParams = {
@@ -15,7 +15,7 @@ type UseWorkspacesCharacterSettingsOrchestrationParams = {
   characterSettingsActions: UseCharacterSettingsActions
   selectedCampaignId: UUID | ''
   selectedCharacterId: UUID | ''
-  characterSettingsDraft: CharacterSettingsDraft
+  characterSettingsPanel: PlayerSettingsPanel
   setError: Dispatch<SetStateAction<string | null>>
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
 }
@@ -28,7 +28,7 @@ export function useWorkspacesCharacterSettingsOrchestration(
     characterSettingsActions,
     selectedCampaignId,
     selectedCharacterId,
-    characterSettingsDraft,
+    characterSettingsPanel,
     setError,
     setLobbyNotice,
   } = params
@@ -68,7 +68,7 @@ export function useWorkspacesCharacterSettingsOrchestration(
     await characterSettingsController.saveCharacterSettings(
       selectedCampaignId,
       selectedCharacterId,
-      characterSettingsDraft,
+      characterSettingsPanel,
       {
         onNotice: (message) => setLobbyNotice(message),
         onError: (message) => setError(message),
@@ -82,7 +82,7 @@ export function useWorkspacesCharacterSettingsOrchestration(
   }, [
     characterSettingsActions,
     characterSettingsController,
-    characterSettingsDraft,
+    characterSettingsPanel,
     loadUserCharacters,
     selectedCampaignId,
     selectedCharacterId,
@@ -91,12 +91,12 @@ export function useWorkspacesCharacterSettingsOrchestration(
   ])
 
   const handleCharacterFieldChange = useCallback(
-    (field: keyof CharacterSettingsDraft, value: string | number) => {
+    (field: keyof PlayerSettingsPanel, value: string | number) => {
       characterSettingsActions.setCharacterSettingsDraft(
-        updateCharacterDraftField(characterSettingsDraft, field, value)
+        updateCharacterField(characterSettingsPanel, field, value)
       )
     },
-    [characterSettingsActions, characterSettingsDraft]
+    [characterSettingsActions, characterSettingsPanel]
   )
 
   return {
