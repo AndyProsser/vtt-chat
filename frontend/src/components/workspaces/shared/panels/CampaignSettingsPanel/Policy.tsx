@@ -141,6 +141,9 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
             <h5 className="crbs-heading csp-card-heading">Session</h5>
             <label className="session-label" id="label-session-name-base">
               Session Name
+              <span className="csp-session-name-badge">
+                {props.sessionNameContext === 'CURRENT' ? 'Current session' : 'Next session'}
+              </span>
             </label>
             <input
               id="workspace-campaign-settings-session-name-base"
@@ -153,11 +156,6 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               disabled={props.isSaving}
               maxLength={255}
             />
-            <p className="csp-session-name-hint">
-              {props.sessionNameContext === 'CURRENT'
-                ? 'Applies to the current connected session until it is ended.'
-                : 'Used as the base name for the next session.'}
-            </p>
 
             <label className="session-label" id="label-session-duration">
               Default session duration:{' '}

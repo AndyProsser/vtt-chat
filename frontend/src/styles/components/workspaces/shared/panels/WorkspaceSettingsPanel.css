@@ -187,3 +187,121 @@
 .crbs-field--stat .crbs-input {
   text-align: center;
 }
+
+/* Hide native number-input spinners for stat / level fields inside VSI */
+.vsi-wrapper input[type='number']::-webkit-inner-spin-button,
+.vsi-wrapper input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.vsi-wrapper input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* ── Panel header row (title + save icon action) ─────────────────── */
+
+.crbs-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* ── Vertical slider input ───────────────────────────────────────── */
+
+.vsi-wrapper {
+  position: relative;
+  display: block;
+}
+
+.vsi-slider-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.4rem 0.45rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.vsi-max-label,
+.vsi-min-label {
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.vsi-slider-root {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 6rem;
+  touch-action: none;
+  user-select: none;
+}
+
+.vsi-track {
+  position: relative;
+  flex-grow: 1;
+  border-radius: 9999px;
+  background: var(--color-border-soft);
+  width: 3px;
+  height: 100%;
+}
+
+.vsi-range {
+  position: absolute;
+  /* Square top edge, rounded bottom to match track cap */
+  border-radius: 0 0 9999px 9999px;
+  background: var(--color-brand);
+  width: 100%;
+  bottom: 0;
+}
+
+.vsi-thumb {
+  display: block;
+  /* Wide horizontal bar — "|--|"-style handle */
+  width: 1.5rem;
+  height: 0.28rem;
+  border-radius: 2px;
+  background: var(--color-brand);
+  border: none;
+  box-shadow:
+    1px 0 0 0 var(--color-surface-raised),
+    -1px 0 0 0 var(--color-surface-raised);
+  cursor: grab;
+  transition: box-shadow 80ms;
+}
+
+.vsi-thumb:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.vsi-thumb:active {
+  cursor: grabbing;
+}
+
+.vsi-value-bubble {
+  position: absolute;
+  left: calc(100% + 6px);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.3rem;
+  white-space: nowrap;
+  pointer-events: none;
+}

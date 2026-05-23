@@ -276,10 +276,20 @@
   width: 100%;
 }
 
-.csp-session-name-hint {
-  margin: -0.05rem 0 0.25rem;
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+.csp-session-name-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.38rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-brand);
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-brand) 30%, transparent);
+  border-radius: 99px;
+  vertical-align: middle;
+  text-transform: none;
 }
 
 .csp-platform-label {

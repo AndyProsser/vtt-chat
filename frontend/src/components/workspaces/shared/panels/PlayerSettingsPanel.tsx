@@ -1,4 +1,5 @@
 import { Icon } from '@/components/ui/Icon'
+import { VerticalSliderInput } from './VerticalSliderInput'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 export interface PlayerSettingsPanel {
@@ -28,10 +29,23 @@ export interface PlayerSettingsPanelProps {
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
   return (
     <div className="crbs-panel" aria-label="Player settings">
-      <h3 className="crbs-heading">
-        <Icon name="settings" />
-        Player Settings
-      </h3>
+      <div className="crbs-panel-header">
+        <h3 className="crbs-heading">
+          <Icon name="settings" />
+          Player Settings
+        </h3>
+        <button
+          type="button"
+          className="session-icon-action"
+          aria-label={props.isCharacterSaving ? 'Saving character' : 'Save character'}
+          disabled={!props.campaignId || props.isCharacterLoading || props.isCharacterSaving}
+          onClick={props.onSaveCharacterSettings}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {props.isCharacterSaving ? 'hourglass_top' : 'save'}
+          </span>
+        </button>
+      </div>
 
       <section className="crbs-section">
         <h4 className="crbs-section-heading">Character Profile</h4>
@@ -95,16 +109,13 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           </label>
           <label className="crbs-field" htmlFor="crbs-character-level">
             <span className="crbs-field-label">Level</span>
-            <input
+            <VerticalSliderInput
               id="crbs-character-level"
-              type="number"
+              label="Level (1–20)"
               min={1}
               max={20}
-              className="crbs-input"
               value={props.characterDraft.level}
-              onChange={(event) =>
-                props.onCharacterFieldChange('level', Number(event.target.value))
-              }
+              onChange={(v) => props.onCharacterFieldChange('level', v)}
               disabled={props.isCharacterLoading || props.isCharacterSaving}
             />
           </label>
@@ -121,33 +132,18 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           ].map(([field, label]) => (
             <label key={field} className="crbs-field crbs-field--stat">
               <span className="crbs-field-label">{label}</span>
-              <input
-                type="number"
+              <VerticalSliderInput
+                label={`${label} (1–30)`}
                 min={1}
                 max={30}
-                className="crbs-input"
                 value={props.characterDraft[field as keyof PlayerSettingsPanel] as number}
-                onChange={(event) =>
-                  props.onCharacterFieldChange(
-                    field as keyof PlayerSettingsPanel,
-                    Number(event.target.value)
-                  )
+                onChange={(v) =>
+                  props.onCharacterFieldChange(field as keyof PlayerSettingsPanel, v)
                 }
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
             </label>
           ))}
-        </div>
-
-        <div className="crbs-actions">
-          <button
-            type="button"
-            className="session-button"
-            disabled={!props.campaignId || props.isCharacterLoading || props.isCharacterSaving}
-            onClick={props.onSaveCharacterSettings}
-          >
-            {props.isCharacterSaving ? 'Saving...' : 'Save character'}
-          </button>
         </div>
       </section>
     </div>
