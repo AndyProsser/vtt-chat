@@ -50,16 +50,10 @@ import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspaces
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
 import { useWorkspacesCampaignSettingsActions } from '@/hooks/session/useWorkspacesCampaignSettingsActions'
 import { useWorkspacesUiCallbacks } from '@/hooks/session/useWorkspacesUiCallbacks'
+import { useCampaignSessionsDataFetcher } from '@/hooks/session/useCampaignSessionsDataFetcher'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
-import {
-  ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
-  ALLOWED_CHAT_GROUPING_WINDOWS,
-  CHAT_GROUPING_STORAGE_KEY,
-  DEFAULT_CHAT_GROUPING_WINDOW_MS,
-  DEFAULT_PLANNED_DURATION_MINUTES,
-  LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
-} from '@/constants/workspaces.constants'
+import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import type {
   Room as RoomRecord,
@@ -71,11 +65,12 @@ import type {
   ApiSessionStats,
   WorkspacesProps as WorkspaceInitializationProps,
 } from '@/types/session/workspaces'
+import { getVisibleRoomsForSessionState, isGreenRoom } from '@/utils/session/workspaces'
 import {
-  getVisibleRoomsForSessionState,
-  isGreenRoom,
-  safeLocalStorageGetItem,
-} from '@/utils/session/workspaces'
+  getInitialCampaignRestorePending,
+  getInitialMessageGroupingWindowMs,
+  toNullableUuid,
+} from '@/utils/session/workspaceInitialization'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 import '@/styles/components/workspaces/session/workspaces/Workspaces.css'
 
@@ -164,34 +159,15 @@ export function WorkspaceInitialization({
   const [error, setError] = useState<string | null>(null)
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
-  const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(() => {
-    if (typeof window === 'undefined') {
-      return DEFAULT_CHAT_GROUPING_WINDOW_MS
-    }
-
-    const localStorageApi = window.localStorage as Partial<Storage> | undefined
-    if (!localStorageApi || typeof localStorageApi.getItem !== 'function') {
-      return DEFAULT_CHAT_GROUPING_WINDOW_MS
-    }
-
-    const raw = localStorageApi.getItem(CHAT_GROUPING_STORAGE_KEY)
-    const parsed = Number(raw)
-    return ALLOWED_CHAT_GROUPING_WINDOWS.has(parsed) ? parsed : DEFAULT_CHAT_GROUPING_WINDOW_MS
-  })
+  const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(
+    getInitialMessageGroupingWindowMs
+  )
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
   const hasSignaledReadyRef = useRef(false)
-  const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    const sessionContext = window.sessionStorage.getItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    const localContext = safeLocalStorageGetItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
-    const pendingAutoEnter = window.sessionStorage.getItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY)
-
-    return Boolean(sessionContext || localContext || pendingAutoEnter)
-  })
+  const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(
+    getInitialCampaignRestorePending
+  )
 
   const {
     clearPersistedActiveSessionContext,
@@ -206,25 +182,11 @@ export function WorkspaceInitialization({
     token,
   })
 
-  // Helper to fetch campaign sessions
-  const fetchCampaignSessionsData = useCallback(
-    async (campaignId: UUID): Promise<SessionRecord[]> => {
-      const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}/sessions`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to fetch campaign sessions')
-      }
-
-      const data = await response.json()
-      return (data.sessions || []) as SessionRecord[]
-    },
-    [apiUrl, token, fetchWithAuthGuard]
-  )
+  const fetchCampaignSessionsData = useCampaignSessionsDataFetcher({
+    apiUrl,
+    token,
+    fetchWithAuthGuard,
+  })
 
   // Store
   const sessions = useStore((state) => state.sessions)
@@ -836,7 +798,7 @@ export function WorkspaceInitialization({
     settingsCampaignSessionsCount: settingsCampaignSessions.length,
     settingsCampaignTotalDurationMs,
     settingsCampaignSessions,
-    settingsReferenceSessionId,
+    settingsReferenceSessionId: toNullableUuid(settingsReferenceSessionId),
     settingsData,
     isInviteReissuing,
     isSettingsLoading,

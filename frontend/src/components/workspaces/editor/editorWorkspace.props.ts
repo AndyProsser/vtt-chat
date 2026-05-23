@@ -21,7 +21,7 @@ type BuildEditorWorkspacePropsParams = {
   settingsCampaignSessionsCount: number
   settingsCampaignTotalDurationMs: number
   settingsCampaignSessions: Session[]
-  settingsReferenceSessionId: UUID | ''
+  settingsReferenceSessionId: UUID | null
   settingsData: ComponentProps<typeof EditorWorkspace>['settingsData']
   isInviteReissuing: boolean
   isSettingsLoading: boolean
@@ -114,7 +114,7 @@ export function buildEditorWorkspaceProps(
     settingsCampaignSessionsCount: params.settingsCampaignSessionsCount,
     settingsCampaignTotalDurationMs: params.settingsCampaignTotalDurationMs,
     settingsCampaignSessions: params.settingsCampaignSessions,
-    settingsReferenceSessionId: params.settingsReferenceSessionId || null,
+    settingsReferenceSessionId: params.settingsReferenceSessionId,
     settingsData: params.settingsData,
     isInviteReissuing: params.isInviteReissuing,
     isSettingsLoading: params.isSettingsLoading,
