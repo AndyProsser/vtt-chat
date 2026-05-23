@@ -146,26 +146,12 @@ export function GroupMemberProfileCard({
               Condition: {member.condition || STATUS_PILL_LABELS.conditionNone}
             </span>
           ) : null}
-          <span className={`room-selector-status-pill presence ${presenceLabel.toLowerCase()}`}>
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {presenceIconName || 'circle'}
-            </span>
-            {presenceLabel}
-          </span>
           {isMuted ? (
             <span className="room-selector-status-pill muted">
               <span className="material-symbols-outlined" aria-hidden="true">
                 {STATUS_PILL_ICONS.muted}
               </span>
               {STATUS_PILL_LABELS.muted}
-            </span>
-          ) : null}
-          {member.isSpeaking ? (
-            <span className="room-selector-status-pill speaking">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {STATUS_PILL_ICONS.speaking}
-              </span>
-              {STATUS_PILL_LABELS.speaking}
             </span>
           ) : null}
           {member.ghost ? (

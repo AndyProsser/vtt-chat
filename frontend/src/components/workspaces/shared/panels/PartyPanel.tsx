@@ -25,6 +25,7 @@ interface PartyPresenceMemberSnapshot {
   avatarUrl?: string | null
   characterName?: string | null
   characterClass?: string | null
+  characterSubclass?: string | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
@@ -96,6 +97,7 @@ function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMember {
     avatarInitials: initialsFromName(characterName || playerName),
     race: member.characterRace || 'Unknown',
     characterClass: member.characterClass || 'Unknown',
+    subClass: member.characterSubclass || undefined,
     level: Math.max(1, Math.min(20, Math.round(member.level || 1))),
     stats: {
       str: toStatValue(stats.str, 10),
@@ -123,7 +125,8 @@ function PartyStatusBadge({ status }: { status: MockPlayerStatus }) {
   )
 }
 
-function StatPopper({ member }: { member: MockPartyMember }) {
+function PartyMemberCard({ member }: { member: MockPartyMember }) {
+  const isDM = member.role === 'DM'
   const stats: Array<[string, number]> = [
     ['STR', member.stats.str],
     ['DEX', member.stats.dex],
@@ -132,86 +135,50 @@ function StatPopper({ member }: { member: MockPartyMember }) {
     ['WIS', member.stats.wis],
     ['CHA', member.stats.cha],
   ]
-  const seenFull = new Date(member.lastSeenMs).toLocaleString()
-  const seenRel = formatLastSeen(member.lastSeenMs)
+  const metaParts = [
+    member.characterClass,
+    member.subClass,
+    member.race,
+    `Lv ${member.level}`,
+  ].filter(Boolean) as string[]
 
   return (
-    <div className="party-stat-popper">
-      <div className="party-stat-popper__top">
-        <strong className="party-stat-popper__char">{member.characterName}</strong>
-        {member.playerName !== member.characterName && (
-          <span className="party-stat-popper__player">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              person
-            </span>
-            {member.playerName}
-          </span>
-        )}
-        <p className="party-stat-popper__desc">
-          {member.characterClass} · {member.race} · Lv {member.level}
-        </p>
-      </div>
-      <div className="party-stat-popper__grid" aria-label="Ability scores">
-        {stats.map(([k, v]) => (
-          <span key={k} className="party-stat-popper__stat">
-            <strong>{v}</strong>
-            <span>{k}</span>
-          </span>
-        ))}
-      </div>
-      <span className="party-stat-popper__seen" title={seenFull}>
-        Last seen: {seenRel}
-      </span>
-    </div>
-  )
-}
-
-function PartyMemberCard({ member }: { member: MockPartyMember }) {
-  const isDM = member.role === 'DM'
-
-  const card = (
-    <div className={`party-card party-card--${member.status}${isDM ? ' party-card--dm' : ''}`}>
-      <span
-        className={`party-card__avatar party-card__avatar--${member.status}`}
-        aria-hidden="true"
-      >
-        {member.avatarInitials}
-      </span>
-      <div className="party-card__body">
-        <div className="party-card__name-row">
-          <span className="party-card__char-name">{member.characterName}</span>
-          {isDM && <span className="party-card__dm-chip">DM</span>}
-        </div>
-        {!isDM && member.playerName !== member.characterName && (
-          <span className="party-card__player-name">{member.playerName}</span>
-        )}
-        <div className="party-card__footer">
-          <PartyStatusBadge status={member.status} />
-          <span className="party-card__seen">{formatLastSeen(member.lastSeenMs)}</span>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (isDM) {
-    return <div className="party-card-wrap">{card}</div>
-  }
-
-  return (
-    <Tooltip delayDuration={280}>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="party-card-trigger"
-          aria-label={`${member.characterName} – view stats`}
+    <div className="party-card-wrap">
+      <div className={`party-card party-card--${member.status}${isDM ? ' party-card--dm' : ''}`}>
+        <span
+          className={`party-card__avatar party-card__avatar--${member.status}`}
+          aria-hidden="true"
         >
-          {card}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="left" className="party-stat-tooltip">
-        <StatPopper member={member} />
-      </TooltipContent>
-    </Tooltip>
+          {member.avatarInitials}
+        </span>
+        <div className="party-card__body">
+          <div className="party-card__name-row">
+            <span className="party-card__char-name">{member.characterName}</span>
+            {isDM && <span className="party-card__dm-chip">DM</span>}
+          </div>
+          {!isDM && member.playerName !== member.characterName && (
+            <span className="party-card__player-name">{member.playerName}</span>
+          )}
+          {!isDM && (
+            <>
+              <span className="party-card__meta">{metaParts.join(' · ')}</span>
+              <div className="party-card__stats" aria-label="Ability scores">
+                {stats.map(([k, v]) => (
+                  <span key={k} className="party-card__stat">
+                    <strong>{v}</strong>
+                    <span>{k}</span>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="party-card__footer">
+            <PartyStatusBadge status={member.status} />
+            <span className="party-card__seen">{formatLastSeen(member.lastSeenMs)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

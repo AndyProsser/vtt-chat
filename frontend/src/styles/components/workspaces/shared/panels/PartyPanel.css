@@ -173,18 +173,7 @@
   padding-bottom: 0.5rem;
 }
 
-/* ─── Card trigger (player — interactive) ─────────────────────────────────────── */
-
-.party-card-trigger {
-  display: block;
-  width: 100%;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-/* ─── Card wrap (DM — non-interactive) ────────────────────────────────────────── */
+/* ─── Card wrap (covers both DM and players) ──────────────────────────────────── */
 
 .party-card-wrap {
   display: block;
@@ -197,10 +186,10 @@
   display: grid;
   grid-template-columns: 32px 1fr;
   gap: 0.4rem;
-  align-items: center;
+  align-items: start;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 75%, transparent);
   border-radius: 10px;
-  padding: 0.28rem 0.44rem;
+  padding: 0.3rem 0.44rem;
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   transition:
     border-color 120ms,
@@ -210,11 +199,7 @@
   box-sizing: border-box;
 }
 
-.party-card-trigger:hover .party-card,
-.party-card-trigger:focus-visible .party-card {
-  border-color: color-mix(in srgb, var(--color-border-soft) 60%, var(--color-brand) 40%);
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-brand) 5%);
-}
+/* remove hover — cards are no longer interactive triggers */
 
 .party-card--dm {
   border-color: color-mix(in srgb, var(--color-border-soft) 60%, var(--color-brand) 40%);
@@ -246,6 +231,7 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   flex-shrink: 0;
+  margin-top: 0.15rem;
   background: linear-gradient(
     140deg,
     color-mix(in srgb, var(--color-brand) 24%, var(--color-surface) 76%),
@@ -307,6 +293,54 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ─── Inline class / race / level line ───────────────────────────────────────── */
+
+.party-card__meta {
+  font-size: 0.64rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* ─── Inline stats grid ──────────────────────────────────────────────────────── */
+
+.party-card__stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.18rem;
+  margin-top: 0.2rem;
+}
+
+.party-card__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
+  border-radius: 4px;
+  padding: 0.18rem 0.05rem;
+}
+
+.party-card__stat strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.party-card__stat span {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .party-card__footer {
@@ -372,105 +406,4 @@
   background: transparent;
 }
 
-/* ─── Stat tooltip container override ────────────────────────────────────────── */
-
-.party-stat-tooltip {
-  max-width: min(17rem, calc(100vw - 2rem));
-  min-width: 14.5rem;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.party-stat-tooltip .app-tooltip-arrow {
-  display: none;
-}
-
-/* ─── Stat popper card ────────────────────────────────────────────────────────── */
-
-.party-stat-popper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  backdrop-filter: blur(4px);
-  padding: 0.55rem;
-}
-
-.party-stat-popper__top {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.party-stat-popper__char {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.2;
-}
-
-.party-stat-popper__player {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-}
-
-.party-stat-popper__player .material-symbols-outlined {
-  font-size: 0.8rem;
-  line-height: 1;
-}
-
-.party-stat-popper__desc {
-  margin: 0;
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-}
-
-.party-stat-popper__grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.14rem;
-}
-
-.party-stat-popper__stat {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 0.02rem;
-  color: var(--color-text-secondary);
-  border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
-  border-radius: 0.42rem;
-  padding: 0.14rem 0.1rem;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-}
-
-.party-stat-popper__stat strong {
-  font-size: 0.78rem;
-  line-height: 1;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.party-stat-popper__stat span {
-  font-size: 0.48rem;
-  line-height: 1;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-.party-stat-popper__seen {
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
-  padding-top: 0.35rem;
-  cursor: default;
-}
+/* ─── Popper styles removed — stats are now inline on the card ───────────────── */

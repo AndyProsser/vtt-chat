@@ -44,8 +44,8 @@ export function getGroupParticipantMetaLine(
 
   const parts = [
     member.characterClass?.trim(),
-    typeof member.level === 'number' ? `Level ${member.level}` : undefined,
     member.characterRace?.trim(),
+    typeof member.level === 'number' ? `Level ${member.level}` : undefined,
   ].filter((value): value is string => Boolean(value))
 
   return parts.length > 0 ? parts.join(' | ') : DEFAULT_PLAYER_META_LINE

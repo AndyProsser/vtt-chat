@@ -8,6 +8,7 @@ export interface MockPartyMember {
   avatarInitials: string
   race: string
   characterClass: string
+  subClass?: string
   level: number
   stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
   status: MockPlayerStatus

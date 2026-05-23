@@ -78,6 +78,33 @@ const CLASSES = [
   'Barbarian',
 ]
 
+const SUBCLASSES = [
+  'Battle Master',
+  'Champion',
+  'Abjurer',
+  'Diviner',
+  'Thief',
+  'Assassin',
+  'Life',
+  'Light',
+  'Hunter',
+  'Beast Master',
+  'Lore',
+  'Valor',
+  'Devotion',
+  'Vengeance',
+  'Land',
+  'Moon',
+  'Fiend',
+  'Great Old One',
+  'Wild Magic',
+  'Storm Sorcery',
+  'Open Hand',
+  'Shadow',
+  'Berserker',
+  'Totem Warrior',
+]
+
 const STATUS_POOL: MockPlayerStatus[] = ['here', 'here', 'away', 'lobby', 'not-here', 'offline']
 
 function rnd(min: number, max: number): number {
@@ -135,6 +162,7 @@ export function generateMockParty(): MockPartyMember[] {
       avatarInitials: initials(characterName),
       race: pick(RACES),
       characterClass: pick(CLASSES),
+      subClass: pick(SUBCLASSES),
       level: rnd(1, 20),
       stats: {
         str: randomStat(),
