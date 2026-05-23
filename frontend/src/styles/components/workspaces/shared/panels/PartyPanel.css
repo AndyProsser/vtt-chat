@@ -142,6 +142,7 @@
 
 /* ─── Empty state ─────────────────────────────────────────────────────────────── */
 
+/* Loading/inline status text — non-dashed variant kept for small inline contexts */
 .party-sheet__empty {
   margin: 0;
   padding: var(--space-4) 0;

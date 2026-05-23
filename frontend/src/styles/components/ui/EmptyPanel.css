@@ -1,0 +1,47 @@
+/**
+ * .ui-empty-panel — canonical empty-state container for panels and lists.
+ *
+ * Usage: wrap a Material Symbols icon (optional) + a short descriptive text.
+ *
+ * <div class="ui-empty-panel" role="status">
+ *   <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+ *   <span>Nothing here yet.</span>
+ * </div>
+ *
+ * Modifier:
+ *   .ui-empty-panel--fill  — flex: 1, grows to fill available height (panel context)
+ *   .ui-empty-panel--compact — tighter padding / smaller min-height (inline context)
+ */
+
+.ui-empty-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 120px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.1rem;
+  border: 1px dashed color-mix(in srgb, var(--color-border-soft) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface-subtle) 45%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.ui-empty-panel .material-symbols-outlined {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Grows to fill remaining height — use inside flex/grid column containers */
+.ui-empty-panel--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Tighter version for inline contexts (inside a widget cell, list body, etc.) */
+.ui-empty-panel--compact {
+  min-height: 72px;
+  font-size: 0.76rem;
+}

@@ -147,7 +147,12 @@ export function HistoryPanel({ apiUrl, token, sessionId, role, userId }: History
           <Icon name="history" />
           History
         </h3>
-        <p className="knowledge-panel__empty">No history yet.</p>
+        <div className="ui-empty-panel" role="status">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            history
+          </span>
+          <span>No history yet.</span>
+        </div>
       </section>
     )
   }

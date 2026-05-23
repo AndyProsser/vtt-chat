@@ -207,8 +207,11 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
 
       {/* Empty State Message */}
       {isEmpty && !isMain && (
-        <div className="mb-2 p-2 bg-gray-700/30 rounded border border-gray-600 text-xs text-gray-400">
-          Group is empty. Delete to remove permanently.
+        <div className="ui-empty-panel ui-empty-panel--compact" role="status">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            group_remove
+          </span>
+          <span>Group is empty. Delete to remove permanently.</span>
         </div>
       )}
     </div>

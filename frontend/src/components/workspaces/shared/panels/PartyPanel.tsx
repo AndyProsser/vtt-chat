@@ -521,7 +521,12 @@ export function PartyPanel({
       {isLoading ? (
         <p className="party-sheet__empty">Loading party status...</p>
       ) : members.length === 0 ? (
-        <p className="party-sheet__empty">No party members yet.</p>
+        <div className="ui-empty-panel" role="status">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            group
+          </span>
+          <span>No party members yet.</span>
+        </div>
       ) : (
         <div className="party-sheet__table-wrap">
           <table className="party-sheet__table" aria-label="Party members">

@@ -327,7 +327,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (
-          <div className="workspaces-lobby-campaign-filler notes-workspace-empty" role="status">
+          <div className="ui-empty-panel ui-empty-panel--fill" role="status">
             <span className="material-symbols-outlined" aria-hidden="true">
               auto_awesome
             </span>
