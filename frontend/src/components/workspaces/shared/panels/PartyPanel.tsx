@@ -1,4 +1,4 @@
-/** CampaignPartyPanel — party sheet for the offline lobby workspace.
+/** PartyPanel — party sheet for the offline lobby workspace.
  * Renders campaign members with real, campaign-scoped presence labels.
  * Presence is fetched from backend snapshot API and refreshed periodically.
  */
@@ -12,7 +12,7 @@ import {
   formatLastSeen,
   generateMockParty,
 } from '@/utils/campaignPartyMockData'
-import '@/styles/components/workspaces/shared/panels/CampaignPartyPanel.css'
+import '@/styles/components/workspaces/shared/panels/PartyPanel.css'
 
 const IS_DEV = import.meta.env.DEV
 const AWAY_TIMEOUT_MS = 8 * 60 * 1000
@@ -226,7 +226,7 @@ function MemberRow({ member }: { member: MockPartyMember }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-interface CampaignPartyPanelProps {
+interface PartyPanelProps {
   campaignId: UUID
   campaignName?: string
   apiUrl: string
@@ -238,7 +238,7 @@ interface CampaignPartyPanelProps {
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 }
 
-export function CampaignPartyPanel({
+export function PartyPanel({
   campaignId,
   campaignName,
   apiUrl,
@@ -248,7 +248,7 @@ export function CampaignPartyPanel({
   currentUserId,
   partyPresenceRefreshVersion,
   fetchWithAuthGuard,
-}: CampaignPartyPanelProps) {
+}: PartyPanelProps) {
   const awayStorageKey = `vtt:presence:manual-away:${campaignId}:${currentUserId}:${currentSessionId || 'none'}`
 
   const [members, setMembers] = useState<MockPartyMember[]>([])

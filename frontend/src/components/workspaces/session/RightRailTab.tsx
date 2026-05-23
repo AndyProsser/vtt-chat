@@ -1,7 +1,7 @@
 import type { Role, SessionState, UUID } from '@shared'
 import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
-import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
+import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
 import { CampaignRightbarSettings } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
@@ -75,7 +75,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
       }
       partyPanel={
         props.campaignId ? (
-          <CampaignPartyPanel
+          <PartyPanel
             key={`${props.campaignId}:${props.currentSessionId}:${props.effectiveSessionUserId}`}
             campaignId={props.campaignId}
             campaignName={props.selectedCampaign?.name}

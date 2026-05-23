@@ -8,7 +8,7 @@ import {
 import { CampaignSettingsPanel } from '@/components/workspaces/shared/panels/CampaignSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 
-type EditorWorkspaceSettingsPanelProps = {
+type WorkspaceSettingsPanelProps = {
   membershipRole: Role
   selectedCampaign: CampaignSummary | null
   selectedCampaignId: string | ''
@@ -56,7 +56,7 @@ type EditorWorkspaceSettingsPanelProps = {
   isCharacterSettingsSaving: boolean
 }
 
-export function EditorWorkspaceSettingsPanel(props: EditorWorkspaceSettingsPanelProps) {
+export function WorkspaceSettingsPanel(props: WorkspaceSettingsPanelProps) {
   if (props.membershipRole === Role.DM) {
     return (
       <CampaignSettingsPanel

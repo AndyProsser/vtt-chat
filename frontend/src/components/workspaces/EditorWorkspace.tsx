@@ -1,5 +1,5 @@
 import { EditorView } from '@/components/workspaces/editor/EditorView'
-import { EditorWorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/EditorWorkspaceSettingsPanel'
+import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
@@ -51,7 +51,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       }
       isInviteReissuing={props.isInviteReissuing}
       settingsPanel={
-        <EditorWorkspaceSettingsPanel
+        <WorkspaceSettingsPanel
           membershipRole={props.membershipRole}
           selectedCampaign={props.selectedCampaign}
           selectedCampaignId={props.selectedCampaignId}

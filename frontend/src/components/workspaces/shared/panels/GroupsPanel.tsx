@@ -19,11 +19,11 @@ import {
   updateCampaignGroupEnvironment,
 } from '@/services/groupsPanel.service'
 import '@/styles/components/workspaces/session/workspaces/EditorGroupsPanel.css'
-import GroupCard from './GroupCardEditor'
+import GroupCard from './GroupCard'
 import CreateGroupModal from './CreateGroupModal'
 import GroupEnvironmentPicker from './GroupEnvironmentPicker'
 
-interface GroupsPanelEditorProps {
+interface GroupsPanelProps {
   campaignId: UUID
   apiUrl: string
   token: string
@@ -35,7 +35,7 @@ interface GroupsPanelEditorProps {
  * Shows campaign groups in a simple list (no drag/drop).
  * DM can create, rename, delete groups, and set default environments.
  */
-export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
+export const GroupsPanel: React.FC<GroupsPanelProps> = ({
   campaignId,
   apiUrl,
   token,
@@ -60,7 +60,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
         const groups = await fetchCampaignGroups(campaignId, token, apiUrl)
         setCampaignGroups(campaignId, groups)
       } catch (err) {
-        logger.error('GroupsPanelEditor', 'Failed to load campaign groups', err)
+        logger.error('GroupsPanel', 'Failed to load campaign groups', err)
         showToast({ message: 'Failed to load groups. Please try again.', variant: 'error' })
       }
     }
@@ -79,7 +79,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
 
       showToast({ message: `Group "${name}" created`, variant: 'success' })
     } catch (err) {
-      logger.error('GroupsPanelEditor', 'Failed to create group', err)
+      logger.error('GroupsPanel', 'Failed to create group', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to create group'
       showToast({ message: errorMsg, variant: 'error' })
     } finally {
@@ -98,7 +98,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
 
       showToast({ message: 'Group deleted', variant: 'success' })
     } catch (err) {
-      logger.error('GroupsPanelEditor', 'Failed to delete group', err)
+      logger.error('GroupsPanel', 'Failed to delete group', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete group'
       showToast({ message: errorMsg, variant: 'error' })
     }
@@ -117,7 +117,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
 
       showToast({ message: `Environment set to "${environmentName}"`, variant: 'success' })
     } catch (err) {
-      logger.error('GroupsPanelEditor', 'Failed to set environment', err)
+      logger.error('GroupsPanel', 'Failed to set environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
       showToast({ message: errorMsg, variant: 'error' })
     }
@@ -135,7 +135,7 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
 
       showToast({ message: 'Environment cleared', variant: 'success' })
     } catch (err) {
-      logger.error('GroupsPanelEditor', 'Failed to clear environment', err)
+      logger.error('GroupsPanel', 'Failed to clear environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to clear environment'
       showToast({ message: errorMsg, variant: 'error' })
     }
@@ -271,4 +271,4 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
   )
 }
 
-export default GroupsPanelEditor
+export default GroupsPanel

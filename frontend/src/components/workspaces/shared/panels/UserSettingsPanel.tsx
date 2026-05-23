@@ -3,7 +3,7 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Slider } from '@/components/ui'
 import '@/styles/components/workspaces/shared/panels/SessionUserSettingsPanel.css'
 
-export interface SessionUserSettingsPanelProps {
+export interface UserSettingsPanelProps {
   messageGroupingWindowMs: number
   onMessageGroupingWindowChange: (value: number) => void
   apiUrl: string
@@ -63,14 +63,14 @@ function readStoredBoolean(key: string, fallback: boolean): boolean {
   return rawValue === 'true'
 }
 
-export function SessionUserSettingsPanel({
+export function UserSettingsPanel({
   messageGroupingWindowMs,
   onMessageGroupingWindowChange,
   apiUrl,
   token,
   userId,
   username,
-}: SessionUserSettingsPanelProps) {
+}: UserSettingsPanelProps) {
   const [profile, setProfile] = useState<ProfileState>({ displayName: '', avatarUrl: '' })
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')

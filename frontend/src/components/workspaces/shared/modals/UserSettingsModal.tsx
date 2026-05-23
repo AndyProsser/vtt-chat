@@ -1,5 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { SessionUserSettingsPanel } from '@/components/workspaces/shared/panels/SessionUserSettingsPanel'
+import { UserSettingsPanel } from '@/components/workspaces/shared/panels/UserSettingsPanel'
 import type { ModalsProps } from '@/types/modals'
 
 type UserSettingsModalProps = Pick<
@@ -28,7 +28,7 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
           <DialogPrimitive.Description className="sr-only">
             Configure your user preferences.
           </DialogPrimitive.Description>
-          <SessionUserSettingsPanel
+          <UserSettingsPanel
             messageGroupingWindowMs={props.messageGroupingWindowMs}
             onMessageGroupingWindowChange={props.onMessageGroupingWindowChange}
             apiUrl={props.apiUrl}

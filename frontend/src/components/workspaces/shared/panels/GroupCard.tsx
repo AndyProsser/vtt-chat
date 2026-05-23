@@ -7,7 +7,7 @@
 import React from 'react'
 import type { CampaignGroup } from '@/state/campaignGroupsSlice'
 
-interface GroupCardEditorProps {
+interface GroupCardProps {
   group: CampaignGroup
   onDelete: () => void
   onSetEnvironment: () => void
@@ -19,7 +19,7 @@ interface GroupCardEditorProps {
  * Editor-mode group card.
  * Shows group name, default environment, and action buttons.
  */
-const GroupCardEditor: React.FC<GroupCardEditorProps> = ({
+const GroupCard: React.FC<GroupCardProps> = ({
   group,
   onDelete,
   onSetEnvironment,
@@ -92,4 +92,4 @@ const GroupCardEditor: React.FC<GroupCardEditorProps> = ({
   )
 }
 
-export default GroupCardEditor
+export default GroupCard

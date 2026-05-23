@@ -3,11 +3,11 @@ import { Role, type SessionState, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
-import { CampaignPartyPanel } from '@/components/workspaces/shared/panels/CampaignPartyPanel'
+import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
-import { GroupsPanelEditor } from '@/components/workspaces/shared/panels/GroupsPanelEditor'
+import { GroupsPanel } from '@/components/workspaces/shared/panels/GroupsPanel'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
-import { EditorJournalPanel } from '@/components/workspaces/shared/panels/EditorJournalPanel'
+import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
 import type { Session } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
@@ -116,7 +116,7 @@ export function EditorView(props: EditorViewProps) {
 
     if (resolvedActiveTab === 'party') {
       return (
-        <CampaignPartyPanel
+        <PartyPanel
           key={`${campaign.id}:${props.currentSessionId || 'none'}:${props.currentUserId}`}
           campaignId={campaign.id}
           campaignName={campaign.name}
@@ -146,7 +146,7 @@ export function EditorView(props: EditorViewProps) {
 
     if (resolvedActiveTab === 'journal') {
       return (
-        <EditorJournalPanel
+        <JournalPanel
           apiUrl={props.apiUrl}
           token={props.authToken}
           role={props.role}
@@ -174,9 +174,7 @@ export function EditorView(props: EditorViewProps) {
     }
 
     if (resolvedActiveTab === 'rooms') {
-      return (
-        <GroupsPanelEditor campaignId={campaign.id} apiUrl={props.apiUrl} token={props.authToken} />
-      )
+      return <GroupsPanel campaignId={campaign.id} apiUrl={props.apiUrl} token={props.authToken} />
     }
 
     if (resolvedActiveTab === 'settings') {
