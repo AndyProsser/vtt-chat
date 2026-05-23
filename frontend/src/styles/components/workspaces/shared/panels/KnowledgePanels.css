@@ -43,7 +43,8 @@
   align-items: center;
   gap: 0.4rem;
   color: var(--color-text-primary);
-  font-size: 1.1rem;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .knowledge-panel-title .icon {
@@ -657,6 +658,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 1rem;
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
