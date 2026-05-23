@@ -9,8 +9,9 @@ import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.cons
 import { LeftRailSummary } from './LeftRailSummary'
 import { GroupsPanel } from '@/components/workspaces/session/rooms/GroupsPanel'
 
-// Stable empty object to avoid creating new references on every render
+// Stable empty objects to avoid creating new references on every render
 const EMPTY_USER_MUTE_MAP: Record<UUID, boolean> = {}
+const EMPTY_SPEAKING_MAP: Record<UUID, true> = {}
 interface LeftRailPanelProps {
   apiUrl: string
   token: string
@@ -68,7 +69,9 @@ export function LeftRailPanel({
 }: LeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  const liveKitSpeakingUsers = useStore((state) => state.livekitSpeakingBySession[sessionId])
+  const liveKitSpeakingUsers = useStore(
+    (state) => state.livekitSpeakingBySession[sessionId] ?? EMPTY_SPEAKING_MAP
+  )
   const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
 
   const isGreenroom = isGreenroomSessionState(sessionState)
@@ -113,15 +116,15 @@ export function LeftRailPanel({
   const isCurrentUserSpeaking = !localUserMuted && device.isSpeaking
 
   const liveKitSpeakingUsersWithLocal = useMemo(() => {
-    if (!liveKitSpeakingUsers) return {}
+    const speaking: Record<UUID, true> = {
+      ...(liveKitSpeakingUsers as Record<UUID, true>),
+    }
 
-    const speaking = { ...liveKitSpeakingUsers }
-
-    // Add current user if they're transmitting
+    // Add current user if they're transmitting.
+    // Keep this independent from remote active-speaker payload availability.
     if (isCurrentUserSpeaking) {
       speaking[currentUserId] = true
     } else {
-      // Remove current user if they're not transmitting
       delete speaking[currentUserId]
     }
 

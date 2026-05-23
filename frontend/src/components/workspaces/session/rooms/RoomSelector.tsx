@@ -184,8 +184,8 @@ export function RoomSelector({
     [baseParticipants, dmUserId, isGreenroom]
   )
 
-  const canCreateGroups = canManageRooms && !isGreenroom
-  const showCreateGroupControl = canManageRooms && !isGreenroom
+  const canCreateGroups = canManageRooms
+  const showCreateGroupControl = canManageRooms
   const isDenseRoomLayout =
     canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
   const activeEnvironmentPickerRoomId = isGreenroom ? null : environmentPickerRoomId
@@ -649,6 +649,62 @@ export function RoomSelector({
     [allRooms]
   )
 
+  const displayedParticipantsByRoom = useMemo(() => {
+    const next: Record<UUID, GroupParticipantWithGroupId[]> = {
+      ...roomMoves.displayedParticipantsByRoom,
+    }
+
+    if (!canManageRooms || isGreenroom || !dmParticipant || !selectedRoomId) {
+      return next
+    }
+
+    Object.keys(next).forEach((roomId) => {
+      next[roomId as UUID] = (next[roomId as UUID] || []).filter(
+        (participant) => participant.userId !== dmUserId
+      )
+    })
+
+    const selectedParticipants = next[selectedRoomId] || []
+    const dmInSelectedRoom: GroupParticipantWithGroupId = {
+      ...dmParticipant,
+      roomId: selectedRoomId,
+    }
+    next[selectedRoomId] = [dmInSelectedRoom, ...selectedParticipants]
+
+    return next
+  }, [
+    canManageRooms,
+    dmParticipant,
+    dmUserId,
+    isGreenroom,
+    roomMoves.displayedParticipantsByRoom,
+    selectedRoomId,
+  ])
+
+  const visibleMainRooms = useMemo(() => {
+    if (canManageRooms) {
+      return mainRooms
+    }
+
+    return mainRooms.filter((room) =>
+      (displayedParticipantsByRoom[room.id] || []).some(
+        (participant) => participant.userId !== dmUserId
+      )
+    )
+  }, [canManageRooms, displayedParticipantsByRoom, dmUserId, mainRooms])
+
+  const visibleOtherRooms = useMemo(() => {
+    if (canManageRooms) {
+      return otherRooms
+    }
+
+    return otherRooms.filter((room) =>
+      (displayedParticipantsByRoom[room.id] || []).some(
+        (participant) => participant.userId !== dmUserId
+      )
+    )
+  }, [canManageRooms, displayedParticipantsByRoom, dmUserId, otherRooms])
+
   const handleApplyEnvironment = useCallback(
     async (roomId: UUID, environmentName: string) => {
       setMoveError(null)
@@ -952,11 +1008,6 @@ export function RoomSelector({
 
   const handleCreateGroup = useCallback(
     async (name: string, type: RoomType) => {
-      if (isGreenroom) {
-        setMoveError('Groups can only be created during an active or paused session')
-        return
-      }
-
       setMoveError(null)
 
       const tempId = generateClientId('room') as UUID
@@ -1005,7 +1056,7 @@ export function RoomSelector({
         setOptimisticRooms((state) => state.filter((entry) => entry.room.id !== tempId))
       }
     },
-    [apiUrl, createRoom, dmUserId, isGreenroom, onSelectRoom, sessionId, token]
+    [apiUrl, createRoom, dmUserId, onSelectRoom, sessionId, token]
   )
 
   const clearPendingRoomDelete = useCallback(
@@ -1166,7 +1217,7 @@ export function RoomSelector({
       key={room.id}
       room={room}
       selected={room.id === selectedRoomId}
-      participants={roomMoves.displayedParticipantsByRoom[room.id] || []}
+      participants={displayedParticipantsByRoom[room.id] || []}
       canManageRooms={canManageRooms}
       isGreenroom={isGreenroom}
       isDenseRoomLayout={isDenseRoomLayout}
@@ -1186,9 +1237,6 @@ export function RoomSelector({
         void handleApplyEnvironment(roomId, environmentName)
       }}
       onToggleEnvironmentPicker={(roomId) => {
-        if (isGreenroom) {
-          return
-        }
         setShowCreateGroupModal(false)
         setEnvironmentPickerRoomId((current) => (current === roomId ? null : roomId))
       }}
@@ -1283,96 +1331,6 @@ export function RoomSelector({
         </header>
 
         <div className="room-selector-body">
-          {dmParticipant && !isGreenroom ? (
-            <section className="room-selector-dm" aria-label="Dungeon Master voice controls">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="room-selector-dm__profile"
-                    aria-label={dmParticipant.characterName || dmParticipant.username}
-                  >
-                    <AvatarOverlay
-                      username={dmParticipant.characterName || dmParticipant.username}
-                      avatarUrl={dmParticipant.avatarUrl}
-                      roleLabel={ROOM_ROLE_LABELS.dm}
-                      metaLine={getParticipantMetaLineForRoom(dmParticipant)}
-                      presenceState={getResolvedPresenceState(dmParticipant.presenceState)}
-                      isMuted={dmParticipant.isMuted}
-                      isSpeaking={dmParticipant.isSpeaking}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="room-selector-profile-tooltip">
-                  <div className="room-selector-profile">
-                    <div className="room-selector-profile__avatar-col">
-                      <div className="room-selector-profile__avatar" aria-hidden="true">
-                        {dmParticipant.avatarUrl ? (
-                          <img src={dmParticipant.avatarUrl} alt="" />
-                        ) : (
-                          (dmParticipant.characterName || dmParticipant.username)
-                            .charAt(0)
-                            .toUpperCase()
-                        )}
-                        {dmParticipant.isMuted ? (
-                          <span className="room-selector-profile__avatar-muted-badge">
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              mic_off
-                            </span>
-                          </span>
-                        ) : null}
-                      </div>
-                      <ParticipantDeviceList
-                        deviceSessions={getDeviceSessions(dmParticipant.userId)}
-                      />
-                    </div>
-                    <div className="room-selector-profile__meta">
-                      <div className="room-selector-profile__title-row">
-                        <span className="room-selector-profile__name-wrap">
-                          <strong>{dmParticipant.characterName || dmParticipant.username}</strong>
-                          <span
-                            className={`room-selector-status-pill role compact ${activeTakeoverUserId === dmParticipant.userId ? 'takeover-active' : ''}`}
-                          >
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              {STATUS_PILL_ICONS.role}
-                            </span>
-                            {ROOM_ROLE_LABELS.dm}
-                          </span>
-                        </span>
-                        <span
-                          className="room-selector-presence-dot"
-                          data-state={getPresenceDotState(dmParticipant.presenceState)}
-                          role="status"
-                          aria-label={getResolvedPresenceState(dmParticipant.presenceState)}
-                        >
-                          <span className="room-selector-presence-dot__inner" aria-hidden="true" />
-                        </span>
-                      </div>
-                      {dmParticipant.playerName &&
-                      dmParticipant.playerName !==
-                        (dmParticipant.characterName || dmParticipant.username) ? (
-                        <span className="room-selector-profile__player-name">
-                          {dmParticipant.playerName}
-                        </span>
-                      ) : null}
-                      <p>{getParticipantMetaLineForRoom(dmParticipant)}</p>
-                      <div className="room-selector-profile__status-pills">
-                        {dmParticipant.isSpeaking ? (
-                          <span className="room-selector-status-pill speaking">
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              {STATUS_PILL_ICONS.speaking}
-                            </span>
-                            {STATUS_PILL_LABELS.speaking}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </section>
-          ) : null}
-
           <div className="room-selector-stack">
             <div
               className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
@@ -1380,7 +1338,7 @@ export function RoomSelector({
               aria-label="Session groups"
               ref={roomListRef}
             >
-              {allRooms.length === 0 ? (
+              {visibleMainRooms.length === 0 && visibleOtherRooms.length === 0 ? (
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
               ) : (
                 <>
@@ -1388,14 +1346,14 @@ export function RoomSelector({
                     className="room-selector-group-section"
                     aria-label={ROOM_PRESENCE_COPY.mainGroup}
                   >
-                    {mainRooms.map(renderRoomCard)}
+                    {visibleMainRooms.map(renderRoomCard)}
                   </section>
-                  {otherRooms.length > 0 ? (
+                  {visibleOtherRooms.length > 0 ? (
                     <section
                       className="room-selector-group-section room-selector-group-section--after-main"
                       aria-label={ROOM_PRESENCE_COPY.otherGroups}
                     >
-                      {otherRooms.map(renderRoomCard)}
+                      {visibleOtherRooms.map(renderRoomCard)}
                     </section>
                   ) : null}
                 </>
