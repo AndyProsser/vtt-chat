@@ -2,8 +2,8 @@ import type { Role, SessionState, UUID } from '@shared'
 import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
-import { CampaignRightbarSettings } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import { SessionSettingsPanel } from '@/components/workspaces/session/SessionSettingsPanel'
+import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -173,7 +173,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         />
       }
       settingsPanel={
-        <CampaignRightbarSettings
+        <SessionSettingsPanel
           role={
             props.effectiveSessionRole === 'DM'
               ? 'DM'

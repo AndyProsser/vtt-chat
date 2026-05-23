@@ -23,7 +23,6 @@ export default defineConfig({
         'src/components/chat/ChatWindow.tsx',
         'src/components/chat/MessageList.tsx',
         'src/components/notes/NoteCard.tsx',
-        'src/components/session/CampaignSettingsPage.tsx',
         'src/components/chat/MessageInput.tsx',
         'src/utils/fetchDebug.ts',
         'src/components/session/SessionRoomsStatusPanel.tsx',

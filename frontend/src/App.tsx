@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
-import { CampaignSettingsRouteView } from './components/routes/CampaignSettingsRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
 import { ToastViewport } from './components/ui/ToastViewport'
 import { TooltipProvider } from '@/components/ui'
 import { useAuthSession } from './hooks/useAuthSession'
-import type { UUID } from '@shared'
 import { logger } from './utils/logger'
 import { resolveRoute, type RouteView } from './utils/route-view'
 import { initUiDiagnosticsFlag } from './utils/uiDiagnostics'
@@ -208,25 +206,6 @@ export default function App() {
         )
       case 'browse':
         return <BrowseRouteView apiUrl={apiUrl} authToken={auth.token} />
-      case 'campaign-settings':
-        if (!auth.token || !auth.user) {
-          return (
-            <AppMainRouteView
-              apiUrl={apiUrl}
-              wsUrl={wsUrl}
-              auth={auth}
-              onLoginSuccess={handleLoginSuccess}
-            />
-          )
-        }
-
-        return (
-          <CampaignSettingsRouteView
-            apiUrl={apiUrl}
-            token={auth.token}
-            campaignId={routeView.campaignId as UUID}
-          />
-        )
       case 'app':
       default:
         return (

@@ -3,7 +3,6 @@ export type RouteView =
   | { kind: 'join'; inviteCode: string }
   | { kind: 'watch'; inviteCode: string }
   | { kind: 'browse' }
-  | { kind: 'campaign-settings'; campaignId: string }
 
 export function resolveRoute(pathname: string): RouteView {
   const joinMatch = pathname.match(/^\/join\/([^/]+)$/)
@@ -24,14 +23,6 @@ export function resolveRoute(pathname: string): RouteView {
 
   if (pathname === '/browse') {
     return { kind: 'browse' }
-  }
-
-  const campaignSettingsMatch = pathname.match(/^\/campaigns\/([^/]+)\/settings$/)
-  if (campaignSettingsMatch) {
-    return {
-      kind: 'campaign-settings',
-      campaignId: decodeURIComponent(campaignSettingsMatch[1] || '').trim(),
-    }
   }
 
   return { kind: 'app' }

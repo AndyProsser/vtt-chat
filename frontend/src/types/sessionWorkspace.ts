@@ -7,7 +7,7 @@ import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
-import { CampaignRightbarSettings } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import { SessionSettingsPanel } from '@/components/workspaces/session/SessionSettingsPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
@@ -93,8 +93,8 @@ export type SessionWorkspaceProps = {
   onSaveDmAutoTarget: () => void
   isDmVoiceTargetingSettingSaving: boolean
   isDmVoiceTargetingSettingLoading: boolean
-  characterDraft: ComponentProps<typeof CampaignRightbarSettings>['characterDraft']
-  onCharacterFieldChange: ComponentProps<typeof CampaignRightbarSettings>['onCharacterFieldChange']
+  characterDraft: ComponentProps<typeof SessionSettingsPanel>['characterDraft']
+  onCharacterFieldChange: ComponentProps<typeof SessionSettingsPanel>['onCharacterFieldChange']
   onSaveCharacterSettings: () => void
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean

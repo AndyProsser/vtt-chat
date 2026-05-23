@@ -1,6 +1,6 @@
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Icon } from '@/components/ui/Icon'
-import '@/styles/components/workspaces/shared/panels/CampaignRightbarSettings.css'
+import '@/styles/components/workspaces/session/SessionSettingsPanel.css'
 
 export interface CharacterSettingsDraft {
   name: string
@@ -17,7 +17,7 @@ export interface CharacterSettingsDraft {
   charisma: number
 }
 
-export interface CampaignRightbarSettingsProps {
+export interface SessionSettingsPanelProps {
   role: 'DM' | 'PLAYER' | 'SPECTATOR'
   campaignId: string | null
   sessionName: string
@@ -43,7 +43,7 @@ export interface CampaignRightbarSettingsProps {
   isCharacterSaving: boolean
 }
 
-export function CampaignRightbarSettings({
+export function SessionSettingsPanel({
   role,
   campaignId,
   sessionName,
@@ -66,7 +66,7 @@ export function CampaignRightbarSettings({
   onSaveCharacterSettings,
   isCharacterLoading,
   isCharacterSaving,
-}: CampaignRightbarSettingsProps) {
+}: SessionSettingsPanelProps) {
   const isDm = role === 'DM'
   const canEditCharacter = role === 'DM' || role === 'PLAYER'
   const modeValue = isDm ? 'dm' : 'player'

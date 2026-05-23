@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
-import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
 
 export const DEFAULT_CHARACTER_SETTINGS: CharacterSettingsDraft = {
   name: '',

@@ -2,13 +2,13 @@ import { Role } from '@shared'
 import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import { toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
 import {
-  CampaignRightbarSettings,
+  SessionSettingsPanel,
   type CharacterSettingsDraft,
-} from '@/components/workspaces/shared/panels/CampaignRightbarSettings'
+} from '@/components/workspaces/session/SessionSettingsPanel'
 import { CampaignSettingsPanel } from '@/components/workspaces/shared/panels/CampaignSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 
-type WorkspaceSettingsPanelProps = {
+type EditorSettingsPanelProps = {
   membershipRole: Role
   selectedCampaign: CampaignSummary | null
   selectedCampaignId: string | ''
@@ -56,7 +56,7 @@ type WorkspaceSettingsPanelProps = {
   isCharacterSettingsSaving: boolean
 }
 
-export function WorkspaceSettingsPanel(props: WorkspaceSettingsPanelProps) {
+export function EditorSettingsPanel(props: EditorSettingsPanelProps) {
   if (props.membershipRole === Role.DM) {
     return (
       <CampaignSettingsPanel
@@ -112,7 +112,7 @@ export function WorkspaceSettingsPanel(props: WorkspaceSettingsPanelProps) {
 
   if (props.membershipRole === Role.PLAYER) {
     return (
-      <CampaignRightbarSettings
+      <SessionSettingsPanel
         role="PLAYER"
         campaignId={props.selectedCampaignId || null}
         sessionName=""

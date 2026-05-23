@@ -1,6 +1,6 @@
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
-import type { CharacterSettingsDraft } from '../editor/CampaignRightbarSettings'
+import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import {

@@ -8,7 +8,7 @@ import {
 } from '../../constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord } from '@/types/room'
-import { type CharacterSettingsDraft } from '../editor/CampaignRightbarSettings'
+import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 
 export function safeLocalStorageGetItem(key: string): string | null {
