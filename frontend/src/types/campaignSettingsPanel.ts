@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
 export type CampaignSettingsPanelProps = {
@@ -40,4 +40,5 @@ export type CampaignSettingsPanelProps = {
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSave: () => void
+  sessionSettingsPanel?: ReactNode
 }

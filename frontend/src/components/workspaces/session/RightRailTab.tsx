@@ -2,8 +2,8 @@ import type { Role, SessionState, UUID } from '@shared'
 import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
-import { SessionSettingsPanel } from '@/components/workspaces/session/SessionSettingsPanel'
-import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
+import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
+import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -173,7 +173,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         />
       }
       settingsPanel={
-        <SessionSettingsPanel
+        <WorkspaceSettingsPanel
           role={
             props.effectiveSessionRole === 'DM'
               ? 'DM'
@@ -181,27 +181,32 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
                 ? 'PLAYER'
                 : 'SPECTATOR'
           }
-          campaignId={props.campaignIdForSettings || null}
-          sessionName={props.sessionSettingsName}
-          sessionDescription={props.sessionSettingsDescription}
-          plannedDurationMinutes={props.sessionSettingsPlannedDurationMinutes}
-          sessionStateLabel={props.currentSessionState}
-          canEditSessionSettings={props.canEditSessionSettings}
-          onSessionNameChange={props.onSessionNameChange}
-          onSessionDescriptionChange={props.onSessionDescriptionChange}
-          onPlannedDurationMinutesChange={props.onPlannedDurationMinutesChange}
-          onSaveSessionSettings={props.onSaveSessionSettings}
-          isSessionSaving={props.isSessionSettingsSaving}
-          dmAutoTarget={props.dmAutoTargetOnFirstPlayerJoin}
-          onDmAutoTargetChange={props.onDmAutoTargetChange}
-          onSaveDmAutoTarget={props.onSaveDmAutoTarget}
-          isSaving={props.isDmVoiceTargetingSettingSaving}
-          isLoading={props.isDmVoiceTargetingSettingLoading}
-          characterDraft={props.characterDraft}
-          onCharacterFieldChange={props.onCharacterFieldChange}
-          onSaveCharacterSettings={props.onSaveCharacterSettings}
-          isCharacterLoading={props.isCharacterSettingsLoading}
-          isCharacterSaving={props.isCharacterSettingsSaving}
+          sessionSettings={{
+            campaignId: props.campaignIdForSettings || null,
+            sessionName: props.sessionSettingsName,
+            sessionDescription: props.sessionSettingsDescription,
+            plannedDurationMinutes: props.sessionSettingsPlannedDurationMinutes,
+            sessionStateLabel: props.currentSessionState,
+            canEditSessionSettings: props.canEditSessionSettings,
+            onSessionNameChange: props.onSessionNameChange,
+            onSessionDescriptionChange: props.onSessionDescriptionChange,
+            onPlannedDurationMinutesChange: props.onPlannedDurationMinutesChange,
+            onSaveSessionSettings: props.onSaveSessionSettings,
+            isSessionSaving: props.isSessionSettingsSaving,
+            dmAutoTarget: props.dmAutoTargetOnFirstPlayerJoin,
+            onDmAutoTargetChange: props.onDmAutoTargetChange,
+            onSaveDmAutoTarget: props.onSaveDmAutoTarget,
+            isSaving: props.isDmVoiceTargetingSettingSaving,
+            isLoading: props.isDmVoiceTargetingSettingLoading,
+          }}
+          playerSettings={{
+            campaignId: props.campaignIdForSettings || null,
+            characterDraft: props.characterDraft,
+            onCharacterFieldChange: props.onCharacterFieldChange,
+            onSaveCharacterSettings: props.onSaveCharacterSettings,
+            isCharacterLoading: props.isCharacterSettingsLoading,
+            isCharacterSaving: props.isCharacterSettingsSaving,
+          }}
         />
       }
     />

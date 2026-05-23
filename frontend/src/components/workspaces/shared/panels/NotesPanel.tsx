@@ -82,18 +82,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     [displayedNotes, selectedNoteId]
   )
 
-  useEffect(() => {
-    if (displayedNotes.length === 0) {
-      setSelectedNoteId(null)
-      return
-    }
-
-    const stillVisible = displayedNotes.some((note) => note.id === selectedNoteId)
-    if (!stillVisible) {
-      setSelectedNoteId(displayedNotes[0].id)
-    }
-  }, [displayedNotes, selectedNoteId])
-
   const getSharedWithLabel = (note: Note): string => {
     if (note.visibility === NoteVisibility.DM_ONLY) {
       return 'DM only'

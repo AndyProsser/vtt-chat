@@ -77,10 +77,16 @@ export function CampaignInformationPanel({
       return
     }
 
-    setNameDraft(campaign.name)
-    setDescriptionDraft(campaign.description || '')
-    setPosterUrlDraft(campaign.posterUrl || null)
-    setIsEditing(Boolean(workspaceMode && canEdit))
+    const timeoutId = window.setTimeout(() => {
+      setNameDraft(campaign.name)
+      setDescriptionDraft(campaign.description || '')
+      setPosterUrlDraft(campaign.posterUrl || null)
+      setIsEditing(Boolean(workspaceMode && canEdit))
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [campaign, workspaceMode, canEdit])
 
   if (!campaign) {

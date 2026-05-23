@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
+import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import { buildCharacterDraft, DEFAULT_CHARACTER_SETTINGS } from '@/utils/session/workspaces'
 

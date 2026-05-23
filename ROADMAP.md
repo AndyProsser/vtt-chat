@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-22
+**Last Updated**: 2026-05-23
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -222,6 +222,16 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - Frontend workspace structure normalization: toolbar, modals, and session orchestration files moved to dedicated domain folders; `CampaignInformationPanel` and `CampaignSettingsPanel` families moved to named subfolders with stripped prefixes (`CampaignInformationPanel/index.tsx`, `Header.tsx`, etc.).
 - Screenshot diagnostics mode added (`?debugUi=1`) for layout verification and component ownership mapping.
 - Active conditions are not yet shown in PARTY rows; that field depends on W-Audio-Condition.
+
+Evidence snapshot (2026-05-23):
+
+- Settings surface is now unified through a shared role-aware panel entrypoint in `frontend/src/components/workspaces/shared/panels/WorkspaceSettingsPanel.tsx`.
+- Editor and session now open the same settings system from the rightbar settings icon:
+  - DM sees Campaign settings with session-specific controls available as contextual extras.
+  - Player sees Character/Player settings only.
+  - Spectator remains excluded from editable rightbar settings.
+- Player/character settings were extracted into `frontend/src/components/workspaces/shared/panels/PlayerSettingsPanel.tsx`.
+- Legacy workspace-specific settings panel wrappers and the standalone route-level campaign settings flow (`/campaigns/:id/settings`) were removed to prevent parallel settings implementations.
 
 **Evidence snapshot (2026-05-20):**
 

@@ -256,7 +256,7 @@ function JournalEditor({
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [draft, setDraft] = useState('')
   const [draftHashtagsInput, setDraftHashtagsInput] = useState('')
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(() => isDm && autoEdit)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -323,10 +323,6 @@ function JournalEditor({
       cancelled = true
     }
   }, [apiUrl, token, sessionId, sessionName, resolvedJournalTitle])
-
-  useEffect(() => {
-    setIsEditing(isDm && autoEdit)
-  }, [autoEdit, isDm, sessionId])
 
   const normalizedDraftHashtags = useMemo(
     () => parseJournalHashtags(draftHashtagsInput, hashtagFallbackSeed),
@@ -1131,6 +1127,7 @@ function JournalBrowser({
                   >
                     {isSelected || isClosing ? (
                       <JournalEditor
+                        key={`journal-editor:${session.id}`}
                         apiUrl={apiUrl}
                         token={token}
                         sessionId={session.id}
@@ -1218,6 +1215,7 @@ export function JournalPanel(props: JournalPanelProps) {
 
   return (
     <JournalEditor
+      key={`journal-editor:${props.sessionId}`}
       apiUrl={props.apiUrl}
       token={props.token}
       role={props.role}

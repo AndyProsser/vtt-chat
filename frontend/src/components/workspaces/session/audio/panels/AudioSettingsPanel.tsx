@@ -170,7 +170,9 @@ export function AudioSettingsPanel({
         {/* Gain / Sensitivity */}
         <section className="session-audio-settings-panel__section">
           <div className="session-audio-settings-panel__row">
-            <span className="session-audio-settings-panel__label-text">{AUDIO_SETTINGS_COPY.autoGain}</span>
+            <span className="session-audio-settings-panel__label-text">
+              {AUDIO_SETTINGS_COPY.autoGain}
+            </span>
             <button
               type="button"
               role="switch"
@@ -290,7 +292,9 @@ export function AudioSettingsPanel({
                 className="session-audio-settings-panel__slider"
                 aria-label={AUDIO_SETTINGS_COPY.masterVolumeAria}
               />
-              <span className="session-audio-settings-panel__slider-value">{device.volumeLevel}</span>
+              <span className="session-audio-settings-panel__slider-value">
+                {device.volumeLevel}
+              </span>
             </div>
           </label>
         </section>

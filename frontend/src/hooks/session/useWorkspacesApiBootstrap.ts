@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   createCampaignSettingsController,
   createCharacterSettingsController,
@@ -19,18 +19,12 @@ type UseWorkspacesApiBootstrapParams = {
 export function useWorkspacesApiBootstrap(params: UseWorkspacesApiBootstrapParams) {
   const { apiUrl, token } = params
 
-  const authFailureHandledRef = useRef(false)
-
   const clearPersistedActiveSessionContext = useCallback(() => {
     sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
     safeLocalStorageRemoveItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
   }, [])
 
   const forceLogoutToAuthScreen = useCallback(() => {
-    if (authFailureHandledRef.current) {
-      return
-    }
-    authFailureHandledRef.current = true
     sessionStorage.removeItem('authToken')
     sessionStorage.removeItem('user')
     clearPersistedActiveSessionContext()
@@ -79,48 +73,43 @@ export function useWorkspacesApiBootstrap(params: UseWorkspacesApiBootstrapParam
     forceLogoutToAuthScreen()
   }, [forceLogoutToAuthScreen])
 
-  // Lazy-initialize controllers to avoid ref access during render construction.
-  const campaignSettingsControllerRef = useRef<ReturnType<
-    typeof createCampaignSettingsController
-  > | null>(null)
-  const characterSettingsControllerRef = useRef<ReturnType<
-    typeof createCharacterSettingsController
-  > | null>(null)
-  const sessionMembershipControllerRef = useRef<ReturnType<
-    typeof createSessionMembershipController
-  > | null>(null)
+  const campaignSettingsController = useMemo(
+    () =>
+      createCampaignSettingsController({
+        apiUrl,
+        token,
+        fetchWithAuthGuard,
+      }),
+    [apiUrl, token, fetchWithAuthGuard]
+  )
 
-  useEffect(() => {
-    if (!campaignSettingsControllerRef.current) {
-      campaignSettingsControllerRef.current = createCampaignSettingsController({
+  const characterSettingsController = useMemo(
+    () =>
+      createCharacterSettingsController({
         apiUrl,
         token,
         fetchWithAuthGuard,
-      })
-    }
-    if (!characterSettingsControllerRef.current) {
-      characterSettingsControllerRef.current = createCharacterSettingsController({
+      }),
+    [apiUrl, token, fetchWithAuthGuard]
+  )
+
+  const sessionMembershipController = useMemo(
+    () =>
+      createSessionMembershipController({
         apiUrl,
         token,
         fetchWithAuthGuard,
-      })
-    }
-    if (!sessionMembershipControllerRef.current) {
-      sessionMembershipControllerRef.current = createSessionMembershipController({
-        apiUrl,
-        token,
-        fetchWithAuthGuard,
-      })
-    }
-  }, [apiUrl, token, fetchWithAuthGuard])
+      }),
+    [apiUrl, token, fetchWithAuthGuard]
+  )
 
   return {
     clearPersistedActiveSessionContext,
     forceLogoutToAuthScreen,
     fetchWithAuthGuard,
     handleWebSocketAuthFailure,
-    campaignSettingsController: campaignSettingsControllerRef.current!,
-    characterSettingsController: characterSettingsControllerRef.current!,
-    sessionMembershipController: sessionMembershipControllerRef.current!,
+    campaignSettingsController,
+    characterSettingsController,
+    sessionMembershipController,
   }
 }

@@ -1,5 +1,5 @@
 import { EditorView } from '@/components/workspaces/editor/EditorView'
-import { EditorSettingsPanel } from '@/components/workspaces/editor/EditorSettingsPanel'
+import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
@@ -51,58 +51,66 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       }
       isInviteReissuing={props.isInviteReissuing}
       settingsPanel={
-        <EditorSettingsPanel
-          membershipRole={props.membershipRole}
-          selectedCampaign={props.selectedCampaign}
-          selectedCampaignId={props.selectedCampaignId}
-          userId={props.userId}
-          settingsData={props.settingsData}
-          isInviteReissuing={props.isInviteReissuing}
-          isSettingsLoading={props.isSettingsLoading}
-          isSettingsSaving={props.isSettingsSaving}
-          settingsName={props.settingsName}
-          onSettingsNameChange={props.onSettingsNameChange}
-          settingsDescription={props.settingsDescription}
-          onSettingsDescriptionChange={props.onSettingsDescriptionChange}
-          onPosterFileSelected={props.onPosterFileSelected}
-          settingsPosterUrl={props.settingsPosterUrl}
-          onSettingsPosterUrlChange={props.onSettingsPosterUrlChange}
-          settingsVisibility={props.settingsVisibility}
-          onSettingsVisibilityChange={props.onSettingsVisibilityChange}
-          settingsSpectatorsEnabled={props.settingsSpectatorsEnabled}
-          onSettingsSpectatorsEnabledChange={props.onSettingsSpectatorsEnabledChange}
-          settingsSpectatorMax={props.settingsSpectatorMax}
-          onSettingsSpectatorMaxChange={props.onSettingsSpectatorMaxChange}
-          settingsSpectatorWaitlistEnabled={props.settingsSpectatorWaitlistEnabled}
-          onSettingsSpectatorWaitlistEnabledChange={props.onSettingsSpectatorWaitlistEnabledChange}
-          settingsSpectatorReconnectGraceSecs={props.settingsSpectatorReconnectGraceSecs}
-          onSettingsSpectatorReconnectGraceSecsChange={
-            props.onSettingsSpectatorReconnectGraceSecsChange
+        <WorkspaceSettingsPanel
+          role={
+            props.membershipRole === 'DM'
+              ? 'DM'
+              : props.membershipRole === 'PLAYER'
+                ? 'PLAYER'
+                : 'SPECTATOR'
           }
-          settingsPostSessionChatEnabled={props.settingsPostSessionChatEnabled}
-          onSettingsPostSessionChatEnabledChange={props.onSettingsPostSessionChatEnabledChange}
-          settingsPostSessionChatDurationMinutes={props.settingsPostSessionChatDurationMinutes}
-          onSettingsPostSessionChatDurationMinutesChange={
-            props.onSettingsPostSessionChatDurationMinutesChange
-          }
-          settingsExtensionSyncPolicy={props.settingsExtensionSyncPolicy}
-          onSettingsExtensionSyncPolicyChange={props.onSettingsExtensionSyncPolicyChange}
-          settingsLateJoinPolicy={props.settingsLateJoinPolicy}
-          onSettingsLateJoinPolicyChange={props.onSettingsLateJoinPolicyChange}
-          settingsLateJoinGraceMinutes={props.settingsLateJoinGraceMinutes}
-          onSettingsLateJoinGraceMinutesChange={props.onSettingsLateJoinGraceMinutesChange}
-          settingsDmAutoTargetOnFirstPlayerJoin={props.settingsDmAutoTargetOnFirstPlayerJoin}
-          onSettingsDmAutoTargetOnFirstPlayerJoinChange={
-            props.onSettingsDmAutoTargetOnFirstPlayerJoinChange
-          }
-          onCopyInviteUrl={props.onCopyInviteUrl}
-          onReissueInvite={props.onReissueInvite}
-          onSaveCampaignSettings={props.onSaveCampaignSettings}
-          characterSettingsDraft={props.characterSettingsDraft}
-          onCharacterFieldChange={props.onCharacterFieldChange}
-          onSaveCharacterSettings={props.onSaveCharacterSettings}
-          isCharacterSettingsLoading={props.isCharacterSettingsLoading}
-          isCharacterSettingsSaving={props.isCharacterSettingsSaving}
+          campaignSettings={{
+            campaignName: props.selectedCampaign?.name,
+            isLoading: props.isSettingsLoading,
+            isSaving: props.isSettingsSaving,
+            isInviteReissuing: props.isInviteReissuing,
+            settingsData: props.settingsData,
+            settingsName: props.settingsName,
+            onSettingsNameChange: props.onSettingsNameChange,
+            settingsDescription: props.settingsDescription,
+            onSettingsDescriptionChange: props.onSettingsDescriptionChange,
+            onPosterFileSelected: props.onPosterFileSelected,
+            settingsPosterUrl: props.settingsPosterUrl,
+            onSettingsPosterUrlChange: props.onSettingsPosterUrlChange,
+            onRemovePoster: () => props.onSettingsPosterUrlChange(''),
+            settingsVisibility: props.settingsVisibility,
+            onSettingsVisibilityChange: props.onSettingsVisibilityChange,
+            settingsSpectatorsEnabled: props.settingsSpectatorsEnabled,
+            onSettingsSpectatorsEnabledChange: props.onSettingsSpectatorsEnabledChange,
+            settingsSpectatorMax: props.settingsSpectatorMax,
+            onSettingsSpectatorMaxChange: props.onSettingsSpectatorMaxChange,
+            settingsSpectatorWaitlistEnabled: props.settingsSpectatorWaitlistEnabled,
+            onSettingsSpectatorWaitlistEnabledChange:
+              props.onSettingsSpectatorWaitlistEnabledChange,
+            settingsSpectatorReconnectGraceSecs: props.settingsSpectatorReconnectGraceSecs,
+            onSettingsSpectatorReconnectGraceSecsChange:
+              props.onSettingsSpectatorReconnectGraceSecsChange,
+            settingsPostSessionChatEnabled: props.settingsPostSessionChatEnabled,
+            onSettingsPostSessionChatEnabledChange: props.onSettingsPostSessionChatEnabledChange,
+            settingsPostSessionChatDurationMinutes: props.settingsPostSessionChatDurationMinutes,
+            onSettingsPostSessionChatDurationMinutesChange:
+              props.onSettingsPostSessionChatDurationMinutesChange,
+            settingsExtensionSyncPolicy: props.settingsExtensionSyncPolicy,
+            onSettingsExtensionSyncPolicyChange: props.onSettingsExtensionSyncPolicyChange,
+            settingsLateJoinPolicy: props.settingsLateJoinPolicy,
+            onSettingsLateJoinPolicyChange: props.onSettingsLateJoinPolicyChange,
+            settingsLateJoinGraceMinutes: props.settingsLateJoinGraceMinutes,
+            onSettingsLateJoinGraceMinutesChange: props.onSettingsLateJoinGraceMinutesChange,
+            settingsDmAutoTargetOnFirstPlayerJoin: props.settingsDmAutoTargetOnFirstPlayerJoin,
+            onSettingsDmAutoTargetOnFirstPlayerJoinChange:
+              props.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
+            onCopyInviteUrl: props.onCopyInviteUrl,
+            onReissueInvite: props.onReissueInvite,
+            onSave: props.onSaveCampaignSettings,
+          }}
+          playerSettings={{
+            campaignId: props.selectedCampaignId || null,
+            characterDraft: props.characterSettingsDraft,
+            onCharacterFieldChange: props.onCharacterFieldChange,
+            onSaveCharacterSettings: props.onSaveCharacterSettings,
+            isCharacterLoading: props.isCharacterSettingsLoading,
+            isCharacterSaving: props.isCharacterSettingsSaving,
+          }}
         />
       }
       onBackToLobby={props.onBackToLobby}

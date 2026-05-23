@@ -1,5 +1,5 @@
 import { type Role, type SessionState, type UUID } from '@shared'
-import type { CharacterSettingsDraft } from '@/components/workspaces/session/SessionSettingsPanel'
+import type { CharacterSettingsDraft } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'

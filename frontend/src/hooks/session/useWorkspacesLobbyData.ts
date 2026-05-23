@@ -3,10 +3,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
-import type {
-  ApiDiscoverableCampaign,
-  ApiPlatformStatusResponse,
-} from '@/types/session/workspaces'
+import type { ApiDiscoverableCampaign, ApiPlatformStatusResponse } from '@/types/session/workspaces'
 import { formatDurationCompact } from '@/utils/session/workspaces'
 import {
   LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
@@ -264,7 +261,13 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   }, [])
 
   useEffect(() => {
-    void Promise.all([loadLobbyCampaignData(), loadLobbyStats()])
+    const timeoutId = window.setTimeout(() => {
+      void Promise.all([loadLobbyCampaignData(), loadLobbyStats()])
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [loadLobbyCampaignData, loadLobbyStats])
 
   useEffect(() => {

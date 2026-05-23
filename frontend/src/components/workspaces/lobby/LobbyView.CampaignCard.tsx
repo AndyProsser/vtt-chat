@@ -280,11 +280,7 @@ export function CampaignCard({
     }
   }, [descriptionPreviewText])
 
-  useEffect(() => {
-    if (!isDescriptionTruncated && isDescriptionExpanded) {
-      setIsDescriptionExpanded(false)
-    }
-  }, [isDescriptionExpanded, isDescriptionTruncated])
+  const isDescriptionPopoverOpen = isDescriptionTruncated && isDescriptionExpanded
 
   function handleDescriptionZoneBlur(event: React.FocusEvent<HTMLDivElement>) {
     if (!isDescriptionTruncated) {
@@ -332,7 +328,7 @@ export function CampaignCard({
         'session-campaign-card',
         isSelected ? 'is-selected' : '',
         cardPosterUrl ? 'has-poster' : '',
-        isDescriptionExpanded ? 'is-description-expanded' : '',
+        isDescriptionPopoverOpen ? 'is-description-expanded' : '',
         isDimmed ? 'is-dimmed' : '',
       ]
         .filter(Boolean)
@@ -441,17 +437,17 @@ export function CampaignCard({
             .join(' ')}
           aria-label="Campaign description"
           tabIndex={isDescriptionTruncated ? 0 : -1}
-          aria-expanded={isDescriptionTruncated ? isDescriptionExpanded : false}
+          aria-expanded={isDescriptionPopoverOpen}
         >
           <p ref={previewTextRef} className="session-campaign-card__description-preview-text">
             {descriptionPreviewText}
           </p>
         </div>
         <div
-          className={`session-campaign-card__description-popover ${isDescriptionTruncated && isDescriptionExpanded ? 'is-open' : ''}`}
+          className={`session-campaign-card__description-popover ${isDescriptionPopoverOpen ? 'is-open' : ''}`}
           aria-label="Expanded campaign description"
-          aria-hidden={!isDescriptionTruncated || !isDescriptionExpanded}
-          tabIndex={isDescriptionTruncated && isDescriptionExpanded ? 0 : -1}
+          aria-hidden={!isDescriptionPopoverOpen}
+          tabIndex={isDescriptionPopoverOpen ? 0 : -1}
         >
           {renderCampaignDescription(campaign.description)}
         </div>

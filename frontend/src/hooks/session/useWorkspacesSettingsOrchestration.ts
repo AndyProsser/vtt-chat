@@ -9,10 +9,7 @@ import {
 } from '@/utils/session/sessionSettings'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
-import {
-  getLatestSessionChronologically,
-  normalizeSessionRecord,
-} from '@/utils/session/workspaces'
+import { getLatestSessionChronologically, normalizeSessionRecord } from '@/utils/session/workspaces'
 import { createCampaignSettingsController } from '@/utils/session/sessionController'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 

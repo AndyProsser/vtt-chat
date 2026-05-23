@@ -210,7 +210,9 @@ export function AudioDevicePanel({
           <span ref={txMeterFillRef} className="session-audio-device-panel__tx-meter-fill" />
         </span>
 
-        <span className={`session-audio-device-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}>
+        <span
+          className={`session-audio-device-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}
+        >
           {mutedLabel}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -259,17 +261,26 @@ export function AudioDevicePanel({
               role="dialog"
               aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
             >
-              <p className="session-audio-device-panel__quick-title">{AUDIO_CONTROL_COPY.audioEffects}</p>
+              <p className="session-audio-device-panel__quick-title">
+                {AUDIO_CONTROL_COPY.audioEffects}
+              </p>
               {effectItems.length === 0 ? (
-                <p className="session-audio-device-panel__quick-empty">{AUDIO_CONTROL_COPY.noActiveProcessing}</p>
+                <p className="session-audio-device-panel__quick-empty">
+                  {AUDIO_CONTROL_COPY.noActiveProcessing}
+                </p>
               ) : (
                 <ul className="session-audio-device-panel__quick-list">
                   {effectItems.map((item) => (
-                    <li key={`${item.kind}-${item.name}`} className="session-audio-device-panel__quick-item">
+                    <li
+                      key={`${item.kind}-${item.name}`}
+                      className="session-audio-device-panel__quick-item"
+                    >
                       {renderItemIcon(item.kind)}
                       <span className="session-audio-device-panel__quick-main">
                         <span className="session-audio-device-panel__quick-name">{item.name}</span>
-                        <span className="session-audio-device-panel__quick-desc">{item.description}</span>
+                        <span className="session-audio-device-panel__quick-desc">
+                          {item.description}
+                        </span>
                       </span>
                     </li>
                   ))}

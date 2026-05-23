@@ -75,6 +75,7 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
               props.onSettingsDmAutoTargetOnFirstPlayerJoinChange
             }
           />
+          {props.sessionSettingsPanel}
         </div>
       </section>
     </TooltipProvider>
