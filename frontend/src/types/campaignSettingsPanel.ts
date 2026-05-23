@@ -42,3 +42,39 @@ export type CampaignSettingsPanelProps = {
   onSave: () => void
   sessionSettingsPanel?: ReactNode
 }
+
+export type CampaignSettingsPanelPolicyProps = Pick<
+  CampaignSettingsPanelProps,
+  | 'isSaving'
+  | 'settingsVisibility'
+  | 'onSettingsVisibilityChange'
+  | 'settingsSpectatorsEnabled'
+  | 'onSettingsSpectatorsEnabledChange'
+  | 'settingsSpectatorMax'
+  | 'onSettingsSpectatorMaxChange'
+  | 'settingsSpectatorWaitlistEnabled'
+  | 'onSettingsSpectatorWaitlistEnabledChange'
+  | 'settingsSpectatorReconnectGraceSecs'
+  | 'onSettingsSpectatorReconnectGraceSecsChange'
+  | 'settingsPostSessionChatEnabled'
+  | 'onSettingsPostSessionChatEnabledChange'
+  | 'settingsPostSessionChatDurationMinutes'
+  | 'onSettingsPostSessionChatDurationMinutesChange'
+  | 'settingsExtensionSyncPolicy'
+  | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsLateJoinPolicy'
+  | 'onSettingsLateJoinPolicyChange'
+  | 'settingsLateJoinGraceMinutes'
+  | 'onSettingsLateJoinGraceMinutesChange'
+  | 'settingsDmAutoTargetOnFirstPlayerJoin'
+  | 'onSettingsDmAutoTargetOnFirstPlayerJoinChange'
+>
+
+export type CampaignSettingsPanelInvitesProps = Pick<
+  CampaignSettingsPanelProps,
+  'isInviteReissuing' | 'settingsSpectatorsEnabled' | 'onCopyInviteUrl' | 'onReissueInvite'
+> & {
+  hasSpectatorInviteCode: boolean
+  playerInviteUrl: string
+  spectatorInviteUrl: string
+}

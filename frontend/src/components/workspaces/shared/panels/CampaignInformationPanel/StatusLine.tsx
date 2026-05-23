@@ -1,23 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-
-type CampaignInformationStatusLineProps = {
-  campaign: {
-    name: string
-    dmDisplayName?: string
-    dmUsername?: string
-    dmAvatarUrl?: string | null
-    dmOnline?: boolean
-    connectedPlayers?: number
-    connectedSpectators?: number
-    registeredPlayersCount?: number
-    connectedPlayersRounded?: number
-    connectedSpectatorsRounded?: number
-    updatedAt?: number | string
-    createdAt?: number | string
-  }
-  sessionCount: number
-  totalSessionDurationMs: number
-}
+import type { CampaignInformationStatusLineProps } from '@/types/campaignInformationPanel'
 
 function formatDuration(totalMs: number): string {
   if (!Number.isFinite(totalMs) || totalMs <= 0) {

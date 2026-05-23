@@ -1,14 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-
-type CampaignSettingsPanelInvitesProps = {
-  isInviteReissuing: boolean
-  settingsSpectatorsEnabled: boolean
-  hasSpectatorInviteCode: boolean
-  playerInviteUrl: string
-  spectatorInviteUrl: string
-  onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
-  onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
-}
+import type { CampaignSettingsPanelInvitesProps } from '@/types/campaignSettingsPanel'
 
 export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvitesProps) {
   return (

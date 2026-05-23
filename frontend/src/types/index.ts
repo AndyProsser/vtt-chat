@@ -53,4 +53,8 @@ export type { ToolbarActionModel, ToolbarPlaceholderAction } from './toolbar'
 export type { WorkspaceToolbarProps, WorkspaceToolbarStatusRow } from './workspaceToolbar'
 export type { LobbyStats, LobbyConnectionStatus } from './session/lobby'
 export type { CampaignSettingsPanelProps } from './campaignSettingsPanel'
+export type {
+  CampaignInformationPanelProps,
+  IntegrationSyncPolicy,
+} from './campaignInformationPanel'
 export type { MockPartyMember, MockPlayerStatus } from './campaignParty'

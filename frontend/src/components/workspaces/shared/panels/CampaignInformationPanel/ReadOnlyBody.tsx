@@ -1,11 +1,4 @@
-import type { ReactNode } from 'react'
-
-type CampaignInformationReadOnlyBodyProps = {
-  campaignName: string
-  campaignDescription?: string | null
-  currentPoster: string | null | undefined
-  statusLine: ReactNode
-}
+import type { CampaignInformationReadOnlyBodyProps } from '@/types/campaignInformationPanel'
 
 /**
  * Read-only campaign metadata body shown when editing is not active.

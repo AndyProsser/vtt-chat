@@ -1,15 +1,6 @@
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-
-type CampaignInformationHeaderProps = {
-  canEdit: boolean
-  isEditing: boolean
-  isSaving: boolean
-  isDirty: boolean
-  nameDraft: string
-  onSave: () => void
-  onCancel: () => void
-}
+import type { CampaignInformationHeaderProps } from '@/types/campaignInformationPanel'
 
 /**
  * Header row for campaign information with title and edit action controls.

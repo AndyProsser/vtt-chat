@@ -1,9 +1,4 @@
-type CampaignInformationFooterActionsProps = {
-  workspaceMode: boolean
-  canEdit: boolean
-  isEditing: boolean
-  onStartEditing: () => void
-}
+import type { CampaignInformationFooterActionsProps } from '@/types/campaignInformationPanel'
 
 /**
  * Footer actions for entering edit mode or showing role-based read-only notice.

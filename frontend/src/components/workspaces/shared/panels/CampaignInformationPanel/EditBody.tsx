@@ -1,20 +1,6 @@
-import type { ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
-
-type CampaignInformationEditBodyProps = {
-  nameDraft: string
-  descriptionDraft: string
-  isSaving: boolean
-  onNameChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  currentPoster: string | null | undefined
-  campaignName: string
-  posterUrlDraft: string | null
-  onClearPoster: () => void
-  onPosterUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
-  statusLine: ReactNode
-}
+import type { CampaignInformationEditBodyProps } from '@/types/campaignInformationPanel'
 
 /**
  * Editable campaign metadata body (name/description/poster) with status summary.
