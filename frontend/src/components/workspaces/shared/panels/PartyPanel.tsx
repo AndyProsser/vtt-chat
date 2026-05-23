@@ -90,6 +90,7 @@ function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMember {
 
   return {
     id: member.userId,
+    role: member.role === 'DM' ? 'DM' : member.role === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER',
     playerName,
     characterName,
     avatarInitials: initialsFromName(characterName || playerName),
@@ -111,112 +112,106 @@ function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMember {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function StatusIcon({ status }: { status: MockPlayerStatus }) {
+function PartyStatusBadge({ status }: { status: MockPlayerStatus }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className={`party-sheet__status-icon party-sheet__status-icon--${status}`}
-          aria-label={STATUS_LABELS[status]}
-        >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            {STATUS_SYMBOL[status]}
-          </span>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="right">{STATUS_LABELS[status]}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-function MemberAvatar({ initials, status }: { initials: string; status: MockPlayerStatus }) {
-  return (
-    <span className={`party-sheet__avatar party-sheet__avatar--${status}`} aria-hidden="true">
-      {initials}
+    <span className={`party-status-badge party-status-badge--${status}`}>
+      <span className="material-symbols-outlined party-status-badge__icon" aria-hidden="true">
+        {STATUS_SYMBOL[status]}
+      </span>
+      {STATUS_LABELS[status]}
     </span>
   )
 }
 
-function StatGrid({ stats }: { stats: MockPartyMember['stats'] }) {
-  const entries: Array<[string, number]> = [
-    ['STR', stats.str],
-    ['DEX', stats.dex],
-    ['CON', stats.con],
-    ['INT', stats.int],
-    ['WIS', stats.wis],
-    ['CHA', stats.cha],
+function StatPopper({ member }: { member: MockPartyMember }) {
+  const stats: Array<[string, number]> = [
+    ['STR', member.stats.str],
+    ['DEX', member.stats.dex],
+    ['CON', member.stats.con],
+    ['INT', member.stats.int],
+    ['WIS', member.stats.wis],
+    ['CHA', member.stats.cha],
   ]
+  const seenFull = new Date(member.lastSeenMs).toLocaleString()
+  const seenRel = formatLastSeen(member.lastSeenMs)
 
   return (
-    <div className="party-sheet__stat-grid" aria-label="Ability scores">
-      {entries.map(([key, value]) => (
-        <span key={key} className="party-sheet__stat" aria-label={`${key} ${value}`}>
-          <strong className="party-sheet__stat-value">{value}</strong>
-          <span className="party-sheet__stat-label">{key}</span>
-        </span>
-      ))}
+    <div className="party-stat-popper">
+      <div className="party-stat-popper__top">
+        <strong className="party-stat-popper__char">{member.characterName}</strong>
+        {member.playerName !== member.characterName && (
+          <span className="party-stat-popper__player">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              person
+            </span>
+            {member.playerName}
+          </span>
+        )}
+        <p className="party-stat-popper__desc">
+          {member.characterClass} · {member.race} · Lv {member.level}
+        </p>
+      </div>
+      <div className="party-stat-popper__grid" aria-label="Ability scores">
+        {stats.map(([k, v]) => (
+          <span key={k} className="party-stat-popper__stat">
+            <strong>{v}</strong>
+            <span>{k}</span>
+          </span>
+        ))}
+      </div>
+      <span className="party-stat-popper__seen" title={seenFull}>
+        Last seen: {seenRel}
+      </span>
     </div>
   )
 }
 
-function MemberRow({ member }: { member: MockPartyMember }) {
-  return (
-    <tr className="party-sheet__row">
-      {/* Status */}
-      <td className="party-sheet__cell party-sheet__cell--status">
-        <StatusIcon status={member.status} />
-      </td>
+function PartyMemberCard({ member }: { member: MockPartyMember }) {
+  const isDM = member.role === 'DM'
 
-      {/* Avatar */}
-      <td className="party-sheet__cell party-sheet__cell--avatar">
-        <MemberAvatar initials={member.avatarInitials} status={member.status} />
-      </td>
-
-      {/* Character name + player name tooltip */}
-      <td className="party-sheet__cell party-sheet__cell--name">
-        <div className="party-sheet__name-stack">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="party-sheet__char-name">{member.characterName}</span>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <span className="party-sheet__player-tooltip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  person
-                </span>
-                {member.playerName}
-              </span>
-            </TooltipContent>
-          </Tooltip>
+  const card = (
+    <div className={`party-card party-card--${member.status}${isDM ? ' party-card--dm' : ''}`}>
+      <span
+        className={`party-card__avatar party-card__avatar--${member.status}`}
+        aria-hidden="true"
+      >
+        {member.avatarInitials}
+      </span>
+      <div className="party-card__body">
+        <div className="party-card__name-row">
+          <span className="party-card__char-name">{member.characterName}</span>
+          {isDM && <span className="party-card__dm-chip">DM</span>}
         </div>
-      </td>
+        {!isDM && member.playerName !== member.characterName && (
+          <span className="party-card__player-name">{member.playerName}</span>
+        )}
+        <div className="party-card__footer">
+          <PartyStatusBadge status={member.status} />
+          <span className="party-card__seen">{formatLastSeen(member.lastSeenMs)}</span>
+        </div>
+      </div>
+    </div>
+  )
 
-      {/* Race */}
-      <td className="party-sheet__cell party-sheet__cell--race">{member.race}</td>
+  if (isDM) {
+    return <div className="party-card-wrap">{card}</div>
+  }
 
-      {/* Class */}
-      <td className="party-sheet__cell party-sheet__cell--class">{member.characterClass}</td>
-
-      {/* Level */}
-      <td className="party-sheet__cell party-sheet__cell--level">{member.level}</td>
-
-      {/* Stat block */}
-      <td className="party-sheet__cell party-sheet__cell--stats">
-        <StatGrid stats={member.stats} />
-      </td>
-
-      {/* Last seen */}
-      <td className="party-sheet__cell party-sheet__cell--last-seen">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="party-sheet__last-seen">{formatLastSeen(member.lastSeenMs)}</span>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            {new Date(member.lastSeenMs).toLocaleString()}
-          </TooltipContent>
-        </Tooltip>
-      </td>
-    </tr>
+  return (
+    <Tooltip delayDuration={280}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="party-card-trigger"
+          aria-label={`${member.characterName} – view stats`}
+        >
+          {card}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="party-stat-tooltip">
+        <StatPopper member={member} />
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -467,20 +462,15 @@ export function PartyPanel({
       {/* Header */}
       <header className="party-sheet__header">
         <div className="party-sheet__header-info">
-          <div>
-            <h4 className="party-sheet__title">
-              <Icon name="party" />
-              Party
-            </h4>
-            <p className="party-sheet__subtitle">
-              Track player presence, monitor away state, and keep party readiness visible.
-            </p>
-          </div>
-          {members.length > 0 && (
-            <span className="party-sheet__count-badge">
-              {connectedCount} connected / {members.length}
-            </span>
-          )}
+          <h4 className="party-sheet__title">
+            <Icon name="party" />
+            Party
+            {members.length > 0 && (
+              <span className="party-sheet__count-badge">
+                {connectedCount} connected / {members.length}
+              </span>
+            )}
+          </h4>
         </div>
 
         <div className="party-sheet__header-actions">
@@ -515,41 +505,26 @@ export function PartyPanel({
         </div>
       </header>
 
-      {refreshError && <p className="party-sheet__error">{refreshError}</p>}
+      <div className="party-sheet__body">
+        {refreshError && <p className="party-sheet__error">{refreshError}</p>}
 
-      {/* Table */}
-      {isLoading ? (
-        <p className="party-sheet__empty">Loading party status...</p>
-      ) : members.length === 0 ? (
-        <div className="ui-empty-panel" role="status">
-          <span className="material-symbols-outlined" aria-hidden="true">
-            group
-          </span>
-          <span>No party members yet.</span>
-        </div>
-      ) : (
-        <div className="party-sheet__table-wrap">
-          <table className="party-sheet__table" aria-label="Party members">
-            <thead>
-              <tr className="party-sheet__head-row">
-                <th className="party-sheet__th party-sheet__th--status" aria-label="Status" />
-                <th className="party-sheet__th party-sheet__th--avatar" aria-label="Avatar" />
-                <th className="party-sheet__th">Character</th>
-                <th className="party-sheet__th">Race</th>
-                <th className="party-sheet__th">Class</th>
-                <th className="party-sheet__th party-sheet__th--level">Lvl</th>
-                <th className="party-sheet__th party-sheet__th--stats">Stats</th>
-                <th className="party-sheet__th party-sheet__th--last-seen">Last Seen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <MemberRow key={member.id} member={member} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {isLoading ? (
+          <p className="party-sheet__empty">Loading party status...</p>
+        ) : members.length === 0 ? (
+          <div className="ui-empty-panel" role="status">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              group
+            </span>
+            <span>No party members yet.</span>
+          </div>
+        ) : (
+          <div className="party-sheet__cards">
+            {members.map((member) => (
+              <PartyMemberCard key={member.id} member={member} />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

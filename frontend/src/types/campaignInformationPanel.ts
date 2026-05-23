@@ -48,6 +48,7 @@ export type CampaignInformationHeaderProps = {
   nameDraft: string
   onSave: () => void
   onCancel: () => void
+  onStartEditing: () => void
 }
 
 export type CampaignInformationEditBodyProps = {
@@ -72,10 +73,8 @@ export type CampaignInformationReadOnlyBodyProps = {
 }
 
 export type CampaignInformationFooterActionsProps = {
-  workspaceMode: boolean
   canEdit: boolean
   isEditing: boolean
-  onStartEditing: () => void
 }
 
 export type CampaignInformationStatusLineProps = {

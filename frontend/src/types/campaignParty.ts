@@ -2,6 +2,7 @@ export type MockPlayerStatus = 'here' | 'away' | 'lobby' | 'not-here' | 'offline
 
 export interface MockPartyMember {
   id: string
+  role: 'DM' | 'PLAYER' | 'SPECTATOR'
   playerName: string
   characterName: string
   avatarInitials: string

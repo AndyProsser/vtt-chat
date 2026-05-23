@@ -129,6 +129,7 @@ export function generateMockParty(): MockPartyMember[] {
     const status = pick(STATUS_POOL)
     return {
       id: `mock-${index}-${Math.random().toString(36).slice(2, 7)}`,
+      role: 'PLAYER' as const,
       playerName,
       characterName,
       avatarInitials: initials(characterName),

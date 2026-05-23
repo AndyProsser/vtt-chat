@@ -13,6 +13,7 @@ export function CampaignInformationHeader({
   nameDraft,
   onSave,
   onCancel,
+  onStartEditing,
 }: CampaignInformationHeaderProps) {
   return (
     <div className="cip-header-row">
@@ -53,6 +54,24 @@ export function CampaignInformationHeader({
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Undo unsaved edits</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : canEdit && !isEditing ? (
+        <div className="cip-inline-actions" aria-label="Campaign information actions">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="session-icon-action session-icon-action--icon"
+                aria-label="Edit campaign information"
+                onClick={onStartEditing}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  edit
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Edit</TooltipContent>
           </Tooltip>
         </div>
       ) : null}

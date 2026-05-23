@@ -165,6 +165,7 @@ export function CampaignInformationPanel({
             void handleSave()
           }}
           onCancel={handleCancel}
+          onStartEditing={() => setIsEditing(true)}
         />
         <p className="cip-header-subtitle">
           Shape campaign identity, frame narrative intent, and present the campaign clearly.
@@ -196,12 +197,7 @@ export function CampaignInformationPanel({
         </div>
 
         <div className="cip-actions">
-          <CampaignInformationFooterActions
-            workspaceMode={workspaceMode}
-            canEdit={canEdit}
-            isEditing={isEditing}
-            onStartEditing={() => setIsEditing(true)}
-          />
+          <CampaignInformationFooterActions canEdit={canEdit} isEditing={isEditing} />
         </div>
       </TooltipProvider>
     </section>

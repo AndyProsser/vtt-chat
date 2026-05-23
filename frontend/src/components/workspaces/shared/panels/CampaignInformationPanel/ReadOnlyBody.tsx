@@ -11,7 +11,6 @@ export function CampaignInformationReadOnlyBody({
 }: CampaignInformationReadOnlyBodyProps) {
   return (
     <>
-      <p className="cip-kicker">Campaign</p>
       <p className="cip-name-value">{campaignName}</p>
       <p className="cip-description">{campaignDescription || 'No description provided.'}</p>
 

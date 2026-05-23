@@ -10,9 +10,7 @@
   height: 100%;
   background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
   padding: 0.1rem 0.25rem;
-}
-
-/* ─── Header ─────────────────────────────────────────────────────────────────── */
+} /* ─── Header ─────────────────────────────────────────────────────────────────── */
 
 .party-sheet__header {
   display: flex;
@@ -54,18 +52,14 @@
   font-weight: 700;
   color: var(--color-text-primary);
   white-space: nowrap;
+  flex-wrap: wrap;
 }
 
 .party-sheet__title .icon {
   font-size: 1rem;
 }
 
-.party-sheet__subtitle {
-  margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.4;
-  color: var(--color-text-secondary);
-}
+/* remove standalone subtitle — pill is now inline */
 
 .party-sheet__count-badge {
   display: inline-flex;
@@ -157,240 +151,298 @@
   font-size: 0.8rem;
 }
 
-/* ─── Table wrapper — scrollable ─────────────────────────────────────────────── */
+/* ─── Body container (holds error + loading + cards) ─────────────────────────── */
 
-.party-sheet__table-wrap {
-  overflow-x: auto;
+.party-sheet__body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* ─── Card list ───────────────────────────────────────────────────────────────── */
+
+.party-sheet__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   overflow-y: auto;
   min-height: 0;
-  /* subtle inset to distinguish from panel bg */
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-subtle) 4%);
+  padding-right: 0.1rem;
+  padding-bottom: 0.5rem;
 }
 
-/* ─── Table ───────────────────────────────────────────────────────────────────── */
+/* ─── Card trigger (player — interactive) ─────────────────────────────────────── */
 
-.party-sheet__table {
+.party-card-trigger {
+  display: block;
   width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 0.82rem;
-  color: var(--color-text-secondary);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
-/* Column widths */
-.party-sheet__th--status,
-.party-sheet__cell--status {
-  width: 2rem;
+/* ─── Card wrap (DM — non-interactive) ────────────────────────────────────────── */
+
+.party-card-wrap {
+  display: block;
+  width: 100%;
 }
 
-.party-sheet__th--avatar,
-.party-sheet__cell--avatar {
-  width: 2.4rem;
-}
+/* ─── Base card ───────────────────────────────────────────────────────────────── */
 
-/* character name — flexible */
-.party-sheet__cell--name {
-  min-width: 9rem;
-}
-
-.party-sheet__cell--race {
-  min-width: 6rem;
-}
-.party-sheet__cell--class {
-  min-width: 6.5rem;
-}
-
-.party-sheet__th--level,
-.party-sheet__cell--level {
-  width: 2.8rem;
-  text-align: center;
-}
-
-.party-sheet__th--stats,
-.party-sheet__cell--stats {
-  width: 10rem;
-}
-
-.party-sheet__th--last-seen,
-.party-sheet__cell--last-seen {
-  width: 6rem;
-  text-align: right;
-}
-
-/* ─── Head ────────────────────────────────────────────────────────────────────── */
-
-.party-sheet__head-row {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--color-surface-subtle);
-}
-
-.party-sheet__th {
-  padding: 0.45rem 0.6rem;
-  font-size: 0.62rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-secondary);
+.party-card {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 0.4rem;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 75%, transparent);
+  border-radius: 10px;
+  padding: 0.28rem 0.44rem;
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  transition:
+    border-color 120ms,
+    background 120ms;
   text-align: left;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--color-border-soft);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ─── Body rows ───────────────────────────────────────────────────────────────── */
-
-.party-sheet__row {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 50%, transparent);
-  transition: background 100ms;
+.party-card-trigger:hover .party-card,
+.party-card-trigger:focus-visible .party-card {
+  border-color: color-mix(in srgb, var(--color-border-soft) 60%, var(--color-brand) 40%);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-brand) 5%);
 }
 
-.party-sheet__row:hover {
-  background: color-mix(in srgb, var(--color-accent-primary, #6366f1) 5%, transparent);
+.party-card--dm {
+  border-color: color-mix(in srgb, var(--color-border-soft) 60%, var(--color-brand) 40%);
+  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-brand) 8%);
 }
 
-.party-sheet__row:last-child {
-  border-bottom: none;
+/* Status-tinted border accents */
+.party-card--here {
+  border-color: color-mix(in srgb, var(--color-border-soft) 55%, #22c55e 45%);
+}
+.party-card--away {
+  border-color: color-mix(in srgb, var(--color-border-soft) 65%, #f59e0b 35%);
+}
+.party-card--lobby {
+  border-color: color-mix(in srgb, var(--color-border-soft) 65%, var(--color-brand) 35%);
 }
 
-.party-sheet__cell {
-  padding: 0.5rem 0.6rem;
-  vertical-align: middle;
-  white-space: nowrap;
-  overflow: hidden;
-}
+/* ─── Avatar circle ───────────────────────────────────────────────────────────── */
 
-/* ─── Status icon ─────────────────────────────────────────────────────────────── */
-
-.party-sheet__status-icon {
+.party-card__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: default;
-}
-
-.party-sheet__status-icon .material-symbols-outlined {
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.party-sheet__status-icon--here .material-symbols-outlined {
-  color: var(--color-success, #22c55e);
-}
-
-.party-sheet__status-icon--away .material-symbols-outlined {
-  color: var(--color-warning, #f59e0b);
-}
-
-.party-sheet__status-icon--lobby .material-symbols-outlined {
-  color: color-mix(in srgb, var(--color-accent-primary, #6366f1) 72%, #fff 28%);
-}
-
-.party-sheet__status-icon--not-here .material-symbols-outlined {
-  color: color-mix(in srgb, var(--color-text-secondary) 85%, #fff 15%);
-}
-
-.party-sheet__status-icon--offline .material-symbols-outlined {
-  color: var(--color-text-muted, var(--color-text-secondary));
-  opacity: 0.5;
-}
-
-/* ─── Avatar ──────────────────────────────────────────────────────────────────── */
-
-.party-sheet__avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  font-size: 0.6rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  background: color-mix(in srgb, var(--color-accent-primary, #6366f1) 22%, var(--color-surface));
-  color: color-mix(in srgb, var(--color-accent-primary, #6366f1) 85%, #fff 15%);
-  border: 1.5px solid color-mix(in srgb, var(--color-accent-primary, #6366f1) 30%, transparent);
   flex-shrink: 0;
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--color-brand) 24%, var(--color-surface) 76%),
+    color-mix(in srgb, var(--color-surface-subtle) 82%, var(--color-surface) 18%)
+  );
+  color: var(--color-text-primary);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, var(--color-brand));
 }
 
-.party-sheet__avatar--offline {
-  background: var(--color-surface-subtle);
-  color: var(--color-text-secondary);
-  border-color: var(--color-border-soft);
+.party-card__avatar--offline,
+.party-card__avatar--not-here {
+  filter: saturate(0.2);
   opacity: 0.6;
 }
 
-.party-sheet__avatar--not-here,
-.party-sheet__avatar--lobby {
-  background: color-mix(in srgb, var(--color-surface-subtle) 70%, var(--color-surface) 30%);
-  color: var(--color-text-secondary);
-  border-color: var(--color-border-soft);
+/* ─── Card body ───────────────────────────────────────────────────────────────── */
+
+.party-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
 }
 
-/* ─── Character name ──────────────────────────────────────────────────────────── */
+.party-card__name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
 
-.party-sheet__char-name {
-  cursor: default;
-  font-weight: 500;
+.party-card__char-name {
+  font-size: 0.76rem;
+  font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: block;
-  max-width: 14rem;
-}
-
-.party-sheet__name-stack {
-  display: flex;
-  align-items: center;
-  gap: 0.42rem;
+  flex: 1;
   min-width: 0;
 }
 
-.party-sheet__char-name:hover {
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-decoration-color: var(--color-text-secondary);
+.party-card__dm-chip {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 45%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  padding: 1px 6px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-brand) 85%, var(--color-text-primary));
+  flex-shrink: 0;
 }
 
-.party-sheet__player-tooltip {
+.party-card__player-name {
+  font-size: 0.67rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-top: 1px;
+}
+
+.party-card__seen {
+  font-size: 0.64rem;
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ─── Status badge ────────────────────────────────────────────────────────────── */
+
+.party-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.78rem;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px 1px 3px;
+  border-radius: 999px;
 }
 
-.party-sheet__player-tooltip .material-symbols-outlined {
-  font-size: 0.85rem;
+.party-status-badge__icon {
+  font-size: 0.72rem;
+  line-height: 1;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 600,
+    'GRAD' 0,
+    'opsz' 20;
+}
+
+.party-status-badge--here {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+}
+.party-status-badge--away {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+.party-status-badge--lobby {
+  color: color-mix(in srgb, var(--color-brand) 80%, #60a5fa 20%);
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+}
+.party-status-badge--not-here {
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+.party-status-badge--offline {
+  color: var(--color-text-secondary);
+  opacity: 0.55;
+  background: transparent;
+}
+
+/* ─── Stat tooltip container override ────────────────────────────────────────── */
+
+.party-stat-tooltip {
+  max-width: min(17rem, calc(100vw - 2rem));
+  min-width: 14.5rem;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.party-stat-tooltip .app-tooltip-arrow {
+  display: none;
+}
+
+/* ─── Stat popper card ────────────────────────────────────────────────────────── */
+
+.party-stat-popper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 70%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  backdrop-filter: blur(4px);
+  padding: 0.55rem;
+}
+
+.party-stat-popper__top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.party-stat-popper__char {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.party-stat-popper__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.party-stat-popper__player .material-symbols-outlined {
+  font-size: 0.8rem;
   line-height: 1;
 }
 
-/* ─── Last seen ───────────────────────────────────────────────────────────────── */
-
-.party-sheet__last-seen {
-  font-size: 0.75rem;
+.party-stat-popper__desc {
+  margin: 0;
+  font-size: 0.7rem;
   color: var(--color-text-secondary);
-  cursor: default;
-  font-variant-numeric: tabular-nums;
 }
 
-/* ─── Stat grid — mirrors .room-selector-profile__stats pattern ───────────────── */
-
-.party-sheet__stat-grid {
+.party-stat-popper__grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.14rem;
 }
 
-.party-sheet__stat {
+.party-stat-popper__stat {
   display: grid;
   justify-items: center;
   align-content: center;
   gap: 0.02rem;
-  min-inline-size: 0;
   color: var(--color-text-secondary);
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 74%, transparent);
   border-radius: 0.42rem;
@@ -398,7 +450,7 @@
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 
-.party-sheet__stat-value {
+.party-stat-popper__stat strong {
   font-size: 0.78rem;
   line-height: 1;
   font-weight: 700;
@@ -406,11 +458,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-.party-sheet__stat-label {
+.party-stat-popper__stat span {
   font-size: 0.48rem;
   line-height: 1;
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
+}
+
+.party-stat-popper__seen {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
+  padding-top: 0.35rem;
+  cursor: default;
 }
