@@ -8,7 +8,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Role, RoomType, isGreenroomSessionState, type UUID, type SessionState } from '@shared'
+import { Role, RoomType, SessionState, isGreenroomSessionState, type UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
@@ -35,7 +36,7 @@ interface GroupsPanelSessionProps {
 
 /**
  * Session-mode Groups Panel.
- * Shows runtime groups with players, environments, drag/drop, close/delete.
+ * Shows runtime groups with players, environments, and DM room management.
  */
 export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   sessionId,
@@ -70,7 +71,11 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const sessionRooms = liveSessionRooms.length > 0 ? liveSessionRooms : fallbackSessionRooms
   const isGreenroom = isGreenroomSessionState(sessionState)
   const canManageGroups = effectiveSessionRole === Role.DM
-  const canCreateGroups = canManageGroups && isGreenroom
+  const canCreateGroups = canManageGroups
+  const shouldHideGreenRoom =
+    sessionState === SessionState.ACTIVE ||
+    sessionState === SessionState.PAUSED ||
+    sessionState === SessionState.COOLDOWN
 
   const dmMember = useMemo(
     () =>
@@ -95,12 +100,22 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       next[dmVoiceTargetGroupId] = [dmMember, ...(next[dmVoiceTargetGroupId] || [])]
     }
 
+    for (const roomId of Object.keys(next) as UUID[]) {
+      next[roomId] = [...next[roomId]].sort((left, right) => {
+        if (left.role === Role.DM && right.role !== Role.DM) return -1
+        if (right.role === Role.DM && left.role !== Role.DM) return 1
+        return (left.characterName || left.playerName || left.username).localeCompare(
+          right.characterName || right.playerName || right.username
+        )
+      })
+    }
+
     return next
   }, [canManageGroups, dmMember, dmVoiceTargetGroupId, roomMembers, sessionRooms])
 
   const visibleRooms = useMemo(() => {
     return sessionRooms
-      .filter((room) => (isGreenroom ? true : !isGreenRoomName(room.name)))
+      .filter((room) => (shouldHideGreenRoom ? !isGreenRoomName(room.name) : true))
       .filter((room) => {
         if (canManageGroups) {
           return true
@@ -112,13 +127,18 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         return visiblePlayers.length > 0
       })
       .sort((left, right) => {
+        const leftIsGreenRoom = isGreenRoomName(left.name)
+        const rightIsGreenRoom = isGreenRoomName(right.name)
+
+        if (leftIsGreenRoom && !rightIsGreenRoom) return -1
+        if (rightIsGreenRoom && !leftIsGreenRoom) return 1
         if (left.type === RoomType.MAIN && right.type !== RoomType.MAIN) return -1
         if (right.type === RoomType.MAIN && left.type !== RoomType.MAIN) return 1
         if (left.type === RoomType.PRIVATE && right.type !== RoomType.PRIVATE) return 1
         if (right.type === RoomType.PRIVATE && left.type !== RoomType.PRIVATE) return -1
         return left.name.localeCompare(right.name)
       })
-  }, [canManageGroups, isGreenroom, membersByRoomId, sessionRooms])
+  }, [canManageGroups, membersByRoomId, sessionRooms, shouldHideGreenRoom])
 
   // Load session groups on mount
   useEffect(() => {
@@ -147,7 +167,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       const room = await createSessionGroup(sessionId, trimmedName, token, apiUrl)
       setSessionGroups(sessionId, [...sessionRooms, room])
       setNewGroupName('')
-      showToast({ message: `Group "${trimmedName}" created`, variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelSession', 'Failed to create group', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to create group'
@@ -160,14 +179,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const handleCloseGroup = async (groupId: UUID) => {
     try {
       setIsClosing(groupId)
-      const response = await closeGroup(sessionId, groupId, token, apiUrl)
-
-      // WS event ROOM:CLOSED will handle state update
-      // For now, just show confirmation
-      showToast({
-        message: `Group closed. ${response.movedUsers.length} player(s) moved to MAIN`,
-        variant: 'success',
-      })
+      await closeGroup(sessionId, groupId, token, apiUrl)
 
       setIsClosing(null)
     } catch (err) {
@@ -188,9 +200,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         sessionRooms.filter((room) => room.id !== groupId)
       )
 
-      // WS event ROOM:DELETED will handle state update
-      showToast({ message: 'Group deleted', variant: 'success' })
-
       setIsDeleting(null)
     } catch (err) {
       logger.error('GroupsPanelSession', 'Failed to delete group', err)
@@ -204,10 +213,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     try {
       await applyGroupEnvironment(sessionId, groupId, environmentName, token, apiUrl)
 
-      // Update local state; WS event AUDIO:ENVIRONMENT_SET will sync to other clients
       setSessionGroupEnvironment(sessionId, groupId, environmentName)
-
-      showToast({ message: `Environment set to "${environmentName}"`, variant: 'success' })
     } catch (err) {
       logger.error('GroupsPanelSession', 'Failed to set environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
@@ -224,8 +230,10 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     <section className="session-groups-panel" aria-label="Groups panel">
       <header className="session-groups-panel__header">
         <div className="session-groups-panel__header-info">
-          <h3 className="session-groups-panel__title">Groups</h3>
-          <span className="session-groups-panel__count">{visibleRooms.length}</span>
+          <h3 className="session-groups-panel__title">
+            <Icon name="rooms" />
+            Groups
+          </h3>
         </div>
         {canCreateGroups ? (
           <div className="session-groups-panel__create-row">
@@ -272,6 +280,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                   isEmpty={empty}
                   canManage={canManageGroups}
                   isGreenroom={isGreenroom}
+                  isGreenRoomCard={isGreenRoomName(room.name)}
                   isClosing={isClosing === room.id}
                   isDeleting={isDeleting === room.id}
                   onClose={() => handleCloseGroup(room.id)}

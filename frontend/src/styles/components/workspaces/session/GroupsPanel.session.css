@@ -9,23 +9,44 @@
 }
 
 .session-groups-panel__header {
-  display: grid;
-  gap: 0.45rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding-bottom: 0.45rem;
   border-bottom: 1px solid var(--color-border-soft);
 }
 
 .session-groups-panel__header-info {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: baseline;
   gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.session-groups-panel__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
 .session-groups-panel__title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 1rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  flex-wrap: wrap;
+}
+
+.session-groups-panel__title .icon {
+  font-size: 1rem;
 }
 
 .session-groups-panel__count {
@@ -43,6 +64,7 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.35rem;
+  min-width: min(16rem, 100%);
 }
 
 .session-groups-panel__create-input {
@@ -120,6 +142,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .session-groups-room-card__icon-button {
@@ -148,6 +171,10 @@
 }
 
 .session-groups-room-card__environment-picker button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 84%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
@@ -155,6 +182,11 @@
   font-size: 0.67rem;
   padding: 0.28rem 0.35rem;
   cursor: pointer;
+}
+
+.session-groups-room-card__environment-picker button .material-symbols-outlined {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .session-groups-room-card__environment-picker button.is-active {
@@ -212,7 +244,7 @@
   display: grid;
   grid-template-columns: 1fr min(52%, 7.5rem);
   column-gap: 0.4rem;
-  align-items: center;
+  align-items: start;
   min-width: 0;
 }
 
@@ -220,13 +252,6 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-width: 0;
-}
-
-.session-groups-member-card__name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
   min-width: 0;
 }
 
@@ -250,6 +275,13 @@
   text-overflow: ellipsis;
 }
 
+.session-groups-member-card__aside {
+  display: grid;
+  justify-items: end;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
 .session-groups-member-card__role-pill {
   border-radius: 999px;
   padding: 1px 6px;
@@ -258,6 +290,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   flex-shrink: 0;
+  justify-self: end;
 }
 
 .session-groups-member-card__role-pill--dm {
@@ -283,6 +316,10 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.08rem;
   width: 100%;
+}
+
+.session-groups-member-card__stats--empty {
+  min-height: 1.55rem;
 }
 
 .session-groups-member-card__stat {
