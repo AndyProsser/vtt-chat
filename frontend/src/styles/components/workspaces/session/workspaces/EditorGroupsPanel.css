@@ -8,9 +8,7 @@
 }
 
 .editor-groups-panel__hero {
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  padding: 0.7rem 0.75rem;
+  padding: 0.1rem 0.25rem;
   background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
 }
 
@@ -112,9 +110,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  padding: 0.5rem;
+  padding: 0.1rem 0.25rem;
   background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
 }
 

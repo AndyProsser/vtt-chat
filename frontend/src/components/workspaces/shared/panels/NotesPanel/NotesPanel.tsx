@@ -327,11 +327,12 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (
-          <p className="text-sm text-ui-secondary">
-            {showPublishedOnly
-              ? 'No published handouts yet.'
-              : 'No handouts yet. Session journals are shown in the Journal tab.'}
-          </p>
+          <div className="workspaces-lobby-campaign-filler notes-workspace-empty" role="status">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              auto_awesome
+            </span>
+            <span>{showPublishedOnly ? 'No published handouts yet.' : 'No handouts yet.'}</span>
+          </div>
         ) : (
           <div className="notes-workspace-grid">
             <NotesListWidget

@@ -891,6 +891,7 @@
   border-radius: 0;
   background: transparent;
   overflow: hidden;
+  padding: 0.1rem 0.25rem;
 }
 
 .notes-workspace-header {
@@ -958,6 +959,12 @@
   min-height: 0;
   overflow: auto;
   padding: 0.7rem 0.2rem;
+}
+
+.notes-workspace-empty {
+  min-height: 220px;
+  flex: 1 1 auto;
+  margin-top: 0.1rem;
 }
 
 .notes-workspace-grid {

@@ -770,7 +770,7 @@ function JournalBrowser({
       </header>
 
       <div className="knowledge-panel-group">
-        <p className="knowledge-panel-group-title">
+        <div className="knowledge-panel-group-title">
           <div className="knowledge-panel-chip-row">
             <span className="knowledge-panel-chip muted">
               {recapSummary.completed} done / {recapSummary.missing} need recap
@@ -785,7 +785,7 @@ function JournalBrowser({
               </button>
             ) : null}
           </div>
-        </p>
+        </div>
         <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
           {visibleSessions.map((session, index) => {
             const isSelected = session.id === effectiveSessionId
@@ -803,10 +803,23 @@ function JournalBrowser({
 
             return (
               <div key={session.id} role="listitem" className="knowledge-panel-session-item">
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   className={`knowledge-panel-card knowledge-panel-card--interactive ${isSelected ? 'selected' : ''}`}
                   onClick={() => {
+                    setOptimisticSelection({
+                      sessionId: session.id,
+                      baselineControlledSessionId: controlledSessionId,
+                    })
+                    onSessionChange(session.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                      return
+                    }
+
+                    event.preventDefault()
                     setOptimisticSelection({
                       sessionId: session.id,
                       baselineControlledSessionId: controlledSessionId,
@@ -879,7 +892,7 @@ function JournalBrowser({
                       ) : null}
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {isSelected || isClosing ? (
                   <div
