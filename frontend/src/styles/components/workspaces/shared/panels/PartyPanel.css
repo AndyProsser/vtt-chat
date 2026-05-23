@@ -247,13 +247,42 @@
   opacity: 0.6;
 }
 
+.party-card__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
 /* ─── Card body ───────────────────────────────────────────────────────────────── */
 
 .party-card__body {
+  display: grid;
+  grid-template-columns: 1fr min(50%, 7.5rem);
+  grid-template-areas:
+    'info stats'
+    'footer footer';
+  column-gap: 0.4rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  min-width: 0;
+}
+
+/* DM card has no stats column */
+.party-card--dm .party-card__body {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'info'
+    'footer';
+}
+
+.party-card__info {
+  grid-area: info;
   display: flex;
   flex-direction: column;
-  min-width: 0;
   gap: 1px;
+  min-width: 0;
 }
 
 .party-card__name-row {
@@ -274,17 +303,32 @@
   min-width: 0;
 }
 
-.party-card__dm-chip {
+.party-card__role-chip {
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-brand) 45%, var(--color-border-soft));
-  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
   padding: 1px 6px;
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-brand) 85%, var(--color-text-primary));
   flex-shrink: 0;
+}
+
+.party-card__role-chip--dm {
+  border: 1px solid color-mix(in srgb, var(--color-brand) 45%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  color: color-mix(in srgb, var(--color-brand) 85%, var(--color-text-primary));
+}
+
+.party-card__role-chip--player {
+  border: 1px solid color-mix(in srgb, #22c55e 45%, var(--color-border-soft));
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  color: color-mix(in srgb, #22c55e 85%, var(--color-text-primary));
+}
+
+.party-card__role-chip--spectator {
+  border: 1px solid color-mix(in srgb, #60a5fa 45%, var(--color-border-soft));
+  background: color-mix(in srgb, #60a5fa 12%, transparent);
+  color: color-mix(in srgb, #60a5fa 85%, var(--color-text-primary));
 }
 
 .party-card__player-name {
@@ -308,11 +352,26 @@
 
 /* ─── Inline stats grid ──────────────────────────────────────────────────────── */
 
+.party-card__stats-column {
+  grid-area: stats;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-self: end;
+  width: 100%;
+}
+
+.party-card__stats-role {
+  align-self: flex-end;
+  margin-bottom: 0.3rem;
+}
+
 .party-card__stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.18rem;
-  margin-top: 0.2rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: 1fr;
+  gap: 0.08rem;
+  width: 100%;
 }
 
 .party-card__stat {
@@ -323,11 +382,11 @@
   background: color-mix(in srgb, var(--color-surface-subtle) 55%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
   border-radius: 4px;
-  padding: 0.18rem 0.05rem;
+  padding: 0.14rem 0.04rem;
 }
 
 .party-card__stat strong {
-  font-size: 0.72rem;
+  font-size: 0.67rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1;
@@ -335,7 +394,7 @@
 }
 
 .party-card__stat span {
-  font-size: 0.5rem;
+  font-size: 0.46rem;
   font-weight: 600;
   color: var(--color-text-secondary);
   letter-spacing: 0.04em;
@@ -344,11 +403,33 @@
 }
 
 .party-card__footer {
+  grid-area: footer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   justify-content: space-between;
   margin-top: 1px;
+}
+
+.party-card__footer-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  min-width: 0;
+}
+
+.party-card__source-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 55%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .party-card__seen {

@@ -133,6 +133,15 @@ function initials(name: string): string {
     .join('')
 }
 
+function mockAvatarDataUrl(name: string): string {
+  const label = encodeURIComponent(initials(name) || '?')
+  const hash = Array.from(name).reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  const hueA = hash % 360
+  const hueB = (hash + 64) % 360
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='hsl(${hueA} 62% 42%)'/><stop offset='1' stop-color='hsl(${hueB} 55% 34%)'/></linearGradient></defs><rect width='96' height='96' rx='48' fill='url(#g)'/><text x='50%' y='53%' text-anchor='middle' dominant-baseline='middle' font-family='Inter, sans-serif' font-size='34' font-weight='700' fill='white'>${label}</text></svg>`
+  return `data:image/svg+xml;utf8,${svg}`
+}
+
 function randomStat(): number {
   return Math.min(18, Math.max(6, rnd(3, 6) + rnd(3, 6) + rnd(0, 6)))
 }
@@ -159,6 +168,7 @@ export function generateMockParty(): MockPartyMember[] {
       role: 'PLAYER' as const,
       playerName,
       characterName,
+      avatarUrl: mockAvatarDataUrl(characterName),
       avatarInitials: initials(characterName),
       race: pick(RACES),
       characterClass: pick(CLASSES),

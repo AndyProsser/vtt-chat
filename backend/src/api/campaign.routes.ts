@@ -513,11 +513,22 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { campaignId } = req.params
+  const requestedSessionIdRaw = req.query.sessionId
+  const requestedSessionId =
+    typeof requestedSessionIdRaw === 'string' && requestedSessionIdRaw.trim().length > 0
+      ? requestedSessionIdRaw.trim()
+      : null
 
   if (!isValidUUID(campaignId)) {
     return res
       .status(400)
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (requestedSessionId && !isValidUUID(requestedSessionId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId', field: 'sessionId' })
   }
 
   try {
@@ -532,19 +543,43 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
 
     const campaignMembers = await listCampaignMembersForPresence(campaignId as UUID)
 
-    const latestRuntimeSession = await prisma.session.findFirst({
-      where: {
-        campaignId: campaignId as UUID,
-        state: {
-          in: [SessionState.IDLE, SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        state: true,
-      },
-    })
+    const latestRuntimeSession = requestedSessionId
+      ? await prisma.session.findFirst({
+          where: {
+            id: requestedSessionId as UUID,
+            campaignId: campaignId as UUID,
+            state: {
+              in: [
+                SessionState.IDLE,
+                SessionState.ACTIVE,
+                SessionState.PAUSED,
+                SessionState.COOLDOWN,
+              ],
+            },
+          },
+          select: {
+            id: true,
+            state: true,
+          },
+        })
+      : await prisma.session.findFirst({
+          where: {
+            campaignId: campaignId as UUID,
+            state: {
+              in: [
+                SessionState.IDLE,
+                SessionState.ACTIVE,
+                SessionState.PAUSED,
+                SessionState.COOLDOWN,
+              ],
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            state: true,
+          },
+        })
 
     let runtimePresence: Awaited<ReturnType<typeof getSessionPresence>> = []
     if (latestRuntimeSession) {
@@ -594,9 +629,11 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
 
     const members = campaignMembers.map((member) => {
       const userRuntimeSessionIds = activeRuntimeByUser[member.userId as UUID] || []
-      const hasRuntimeHere = userRuntimeSessionIds.some(
-        (sessionId: UUID) => runtimeSessionCampaignById.get(sessionId) === (campaignId as UUID)
-      )
+      const hasRuntimeHere = latestRuntimeSession
+        ? userRuntimeSessionIds.includes(latestRuntimeSession.id as UUID)
+        : userRuntimeSessionIds.some(
+            (sessionId: UUID) => runtimeSessionCampaignById.get(sessionId) === (campaignId as UUID)
+          )
       const hasRuntimeElsewhere = userRuntimeSessionIds.some(
         (sessionId: UUID) => runtimeSessionCampaignById.get(sessionId) !== (campaignId as UUID)
       )

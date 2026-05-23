@@ -5,7 +5,9 @@ export interface MockPartyMember {
   role: 'DM' | 'PLAYER' | 'SPECTATOR'
   playerName: string
   characterName: string
+  avatarUrl?: string | null
   avatarInitials: string
+  dataSource?: 'snapshot' | 'live-merged'
   race: string
   characterClass: string
   subClass?: string
