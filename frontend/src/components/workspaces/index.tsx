@@ -572,6 +572,7 @@ export function WorkspaceInitialization({
       userAuthType: user.authType,
       campaigns,
       selectedCampaignId,
+      sessionNameBase: sessionSettingsName,
       newCampaignName,
       joinInviteInput,
       setCampaigns,
@@ -823,6 +824,7 @@ export function WorkspaceInitialization({
     settingsDmAutoTargetOnFirstPlayerJoin,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    sessionSettingsName,
     selectedCampaignId,
     characterSettingsPanel,
     isCharacterSettingsLoading,
@@ -855,6 +857,7 @@ export function WorkspaceInitialization({
       campaignSettingsActions.setSettingsDefaultSessionDurationMins(value),
     onSettingsSupportedPlatformsChange: (value) =>
       campaignSettingsActions.setSettingsSupportedPlatforms(value),
+    onSessionNameChange: setSessionSettingsName,
     onCopyInviteUrl: (inviteType) => {
       void copyInviteUrl(inviteType)
     },

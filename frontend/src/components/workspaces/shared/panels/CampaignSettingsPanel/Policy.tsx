@@ -137,8 +137,27 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
           </div>
 
           {/* Session card */}
-          <div className="csp-card csp-card--extension">
+          <div className="csp-card">
             <h5 className="crbs-heading csp-card-heading">Session</h5>
+            <label className="session-label" id="label-session-name-base">
+              Session Name
+            </label>
+            <input
+              id="workspace-campaign-settings-session-name-base"
+              type="text"
+              className="session-input"
+              aria-labelledby="label-session-name-base"
+              value={props.sessionNameBase}
+              onChange={(event) => props.onSessionNameBaseChange(event.target.value)}
+              placeholder="Session name"
+              disabled={props.isSaving}
+              maxLength={255}
+            />
+            <p className="csp-session-name-hint">
+              {props.sessionNameContext === 'CURRENT'
+                ? 'Applies to the current connected session until it is ended.'
+                : 'Used as the base name for the next session.'}
+            </p>
 
             <label className="session-label" id="label-session-duration">
               Default session duration:{' '}
@@ -212,7 +231,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
         {/* ── Right column: Extension + Spectators ─────────────────────── */}
         <div className="csp-col">
           {/* Extension card */}
-          <div className="csp-card">
+          <div className="csp-card csp-card--extension">
             <h5 className="crbs-heading csp-card-heading">
               Extension
               {props.isSessionActive && lockBadge}

@@ -20,6 +20,7 @@ type UseWorkspacesCampaignEntryOrchestrationParams = {
   userAuthType?: 'FULL' | 'GUEST'
   campaigns: CampaignSummary[]
   selectedCampaignId: UUID | ''
+  sessionNameBase: string
   newCampaignName: string
   joinInviteInput: string
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
@@ -52,6 +53,7 @@ export function useWorkspacesCampaignEntryOrchestration(
     userAuthType,
     campaigns,
     selectedCampaignId,
+    sessionNameBase,
     newCampaignName,
     joinInviteInput,
     setCampaigns,
@@ -73,6 +75,14 @@ export function useWorkspacesCampaignEntryOrchestration(
     openEditorCampaignWorkspace,
     onSessionCreated,
   } = params
+
+  const getSessionStartName = useCallback(
+    (existingSessions: SessionRecord[]): string => {
+      const trimmed = sessionNameBase.trim()
+      return trimmed.length > 0 ? trimmed : buildDefaultChapterName(existingSessions)
+    },
+    [sessionNameBase]
+  )
 
   const handleEnterCampaign = useCallback(
     async (campaignId?: UUID, preferredSessionId?: UUID) => {
@@ -149,7 +159,7 @@ export function useWorkspacesCampaignEntryOrchestration(
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ name: buildDefaultChapterName(targetSessions) }),
+            body: JSON.stringify({ name: getSessionStartName(targetSessions) }),
           }
         )
 
@@ -174,6 +184,7 @@ export function useWorkspacesCampaignEntryOrchestration(
       ensureSessionMembership,
       fetchCampaignSessionsData,
       fetchWithAuthGuard,
+      getSessionStartName,
       onSessionCreated,
       replaceSessions,
       selectedCampaignId,
@@ -352,7 +363,7 @@ export function useWorkspacesCampaignEntryOrchestration(
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ name: buildDefaultChapterName(existingSessions) }),
+            body: JSON.stringify({ name: getSessionStartName(existingSessions) }),
           }
         )
 
@@ -377,6 +388,7 @@ export function useWorkspacesCampaignEntryOrchestration(
       apiUrl,
       ensureSessionMembership,
       fetchWithAuthGuard,
+      getSessionStartName,
       onSessionCreated,
       replaceSessions,
       setCurrentSession,

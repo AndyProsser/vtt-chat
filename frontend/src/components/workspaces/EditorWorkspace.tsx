@@ -104,6 +104,9 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               props.onSettingsDefaultSessionDurationMinsChange,
             settingsSupportedPlatforms: props.settingsSupportedPlatforms,
             onSettingsSupportedPlatformsChange: props.onSettingsSupportedPlatformsChange,
+            sessionNameBase: props.sessionSettingsName,
+            onSessionNameBaseChange: props.onSessionNameChange,
+            sessionNameContext: 'NEXT',
             isSessionActive:
               props.currentSessionState === 'ACTIVE' || props.currentSessionState === 'PAUSED',
             isEditorContext: true,

@@ -41,6 +41,9 @@ export type CampaignSettingsPanelProps = {
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
   onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  sessionNameBase: string
+  onSessionNameBaseChange: (value: string) => void
+  sessionNameContext: 'CURRENT' | 'NEXT'
   isSessionActive: boolean
   isEditorContext: boolean
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
@@ -78,6 +81,9 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsDefaultSessionDurationMinsChange'
   | 'settingsSupportedPlatforms'
   | 'onSettingsSupportedPlatformsChange'
+  | 'sessionNameBase'
+  | 'onSessionNameBaseChange'
+  | 'sessionNameContext'
   | 'isSessionActive'
   | 'isEditorContext'
 >

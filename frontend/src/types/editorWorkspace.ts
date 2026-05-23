@@ -46,6 +46,7 @@ export type EditorWorkspaceProps = {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
   isCharacterSettingsLoading: boolean
@@ -67,6 +68,7 @@ export type EditorWorkspaceProps = {
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  onSessionNameChange: (value: string) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignSettings: () => void

@@ -105,10 +105,8 @@
 
 /* Tighten interior density inside the workspace settings grid */
 .session-campaign-settings-workspace-root .session-campaign-settings-panel {
-  padding: 0.62rem;
+  padding: 0;
   gap: 0.3rem;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-subtle) 4%);
 }
 
@@ -276,6 +274,12 @@
   border-bottom: 1px solid var(--color-border-soft);
   margin-bottom: 0.15rem;
   width: 100%;
+}
+
+.csp-session-name-hint {
+  margin: -0.05rem 0 0.25rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
 }
 
 .csp-platform-label {

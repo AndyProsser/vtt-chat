@@ -80,6 +80,9 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
             }
             settingsSupportedPlatforms={props.settingsSupportedPlatforms}
             onSettingsSupportedPlatformsChange={props.onSettingsSupportedPlatformsChange}
+            sessionNameBase={props.sessionNameBase}
+            onSessionNameBaseChange={props.onSessionNameBaseChange}
+            sessionNameContext={props.sessionNameContext}
             isSessionActive={props.isSessionActive}
             isEditorContext={props.isEditorContext}
           />

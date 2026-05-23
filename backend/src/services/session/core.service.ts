@@ -24,6 +24,7 @@ import { promoteNextWaitlistedSpectatorForSession } from '@/services/guest-auth'
 import type { RemoveUserFromSessionResult } from '@/types/session.types'
 import { getSessionEventHistory } from '@/services/session/logs.service'
 import { SESSION_STATE_TRANSITIONS } from '@/constants/session.constants'
+import { ensureUniqueCampaignSessionName } from '@/utils/campaign-session-name'
 
 /**
  * Generate a UUID for session creation.
@@ -91,9 +92,18 @@ export function updateSessionMetadata(
       })
     }
 
+    const resolvedName =
+      params.name !== undefined && session.campaignId
+        ? await ensureUniqueCampaignSessionName({
+            campaignId: session.campaignId as UUID,
+            desiredName: params.name,
+            excludeSessionId: sessionId,
+          })
+        : params.name
+
     await updateSessionMetadataRecord({
       sessionId,
-      name: params.name,
+      name: resolvedName,
       description: params.description,
       plannedDurationMinutes: params.plannedDurationMinutes,
     })
@@ -110,7 +120,7 @@ export function updateSessionMetadata(
 /**
  * Create a new session
  */
-export function createSession(
+export async function createSession(
   name: string,
   dmId: UUID,
   description?: string,
@@ -119,21 +129,31 @@ export function createSession(
   const sessionId = generateUUID()
   const now = Date.now()
 
-  return createSessionRecord({
+  const resolvedName =
+    campaignId != null
+      ? await ensureUniqueCampaignSessionName({
+          campaignId,
+          desiredName: name,
+        })
+      : name.trim()
+
+  await createSessionRecord({
     id: sessionId,
     campaignId,
-    name,
+    name: resolvedName,
     description,
     dmId,
     state: SessionStateEnum.IDLE,
     createdAt: new Date(now),
-  }).then(() => ({
+  })
+
+  return {
     id: sessionId,
-    name,
+    name: resolvedName,
     dmId,
     state: SessionStateEnum.IDLE,
     createdAt: now,
-  }))
+  }
 }
 
 /**

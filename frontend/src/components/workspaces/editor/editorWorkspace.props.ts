@@ -42,6 +42,7 @@ type BuildEditorWorkspacePropsParams = {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
   isCharacterSettingsLoading: boolean
@@ -87,6 +88,7 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsSupportedPlatformsChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsSupportedPlatformsChange']
+  onSessionNameChange: ComponentProps<typeof EditorWorkspace>['onSessionNameChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
   onSaveCampaignSettings: ComponentProps<typeof EditorWorkspace>['onSaveCampaignSettings']
@@ -143,6 +145,7 @@ export function buildEditorWorkspaceProps(
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
     settingsDefaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms: params.settingsSupportedPlatforms,
+    sessionSettingsName: params.sessionSettingsName,
     selectedCampaignId: params.selectedCampaignId,
     characterSettingsPanel: params.characterSettingsPanel,
     isCharacterSettingsLoading: params.isCharacterSettingsLoading,
@@ -166,6 +169,7 @@ export function buildEditorWorkspaceProps(
       params.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
     onSettingsDefaultSessionDurationMinsChange: params.onSettingsDefaultSessionDurationMinsChange,
     onSettingsSupportedPlatformsChange: params.onSettingsSupportedPlatformsChange,
+    onSessionNameChange: params.onSessionNameChange,
     onCopyInviteUrl: params.onCopyInviteUrl,
     onReissueInvite: params.onReissueInvite,
     onSaveCampaignSettings: params.onSaveCampaignSettings,
