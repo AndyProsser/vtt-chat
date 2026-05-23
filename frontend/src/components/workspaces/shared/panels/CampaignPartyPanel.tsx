@@ -471,10 +471,15 @@ export function CampaignPartyPanel({
       {/* Header */}
       <header className="party-sheet__header">
         <div className="party-sheet__header-info">
-          <h4 className="party-sheet__title">
-            <Icon name="party" />
-            Party
-          </h4>
+          <div>
+            <h4 className="party-sheet__title">
+              <Icon name="party" />
+              Party
+            </h4>
+            <p className="party-sheet__subtitle">
+              Track player presence, monitor away state, and keep party readiness visible.
+            </p>
+          </div>
           {members.length > 0 && (
             <span className="party-sheet__count-badge">
               {connectedCount} connected / {members.length}

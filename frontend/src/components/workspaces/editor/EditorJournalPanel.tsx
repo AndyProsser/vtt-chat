@@ -236,6 +236,9 @@ export function EditorJournalPanel({
               <Icon name="journal" />
               Campaign Journal
             </h3>
+            <p className="knowledge-panel-subtitle">
+              Capture recaps, tag key moments, and keep session lore searchable.
+            </p>
           </div>
         </header>
         <p className="knowledge-panel-empty">
@@ -253,11 +256,15 @@ export function EditorJournalPanel({
             <Icon name="journal" />
             Campaign Journal
           </h3>
+          <p className="knowledge-panel-subtitle">
+            Capture recaps, tag key moments, and keep session lore searchable.
+          </p>
+        </div>
+      </header>
+
+      <div className="knowledge-panel-group">
+        <p className="knowledge-panel-group-title">
           <div className="knowledge-panel-chip-row">
-            <span className="knowledge-panel-chip muted">Recapping: {effectiveSession.name}</span>
-            <span className="knowledge-panel-chip muted">
-              {new Date(effectiveSession.createdAt).toLocaleDateString()}
-            </span>
             <span className="knowledge-panel-chip muted">
               {recapSummary.completed} done / {recapSummary.missing} need recap
             </span>
@@ -271,11 +278,7 @@ export function EditorJournalPanel({
               </button>
             ) : null}
           </div>
-        </div>
-      </header>
-
-      <div className="knowledge-panel-group">
-        <p className="knowledge-panel-group-title">Recent Sessions</p>
+        </p>
         <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
           {visibleSessions.map((session, index) => {
             const isSelected = session.id === effectiveSessionId
@@ -322,7 +325,7 @@ export function EditorJournalPanel({
                         {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
                         {!hasContent ? (
                           <span className="knowledge-panel-chip knowledge-panel-chip--warn">
-                            Needs recap
+                            Needs Recap
                           </span>
                         ) : null}
                         <span

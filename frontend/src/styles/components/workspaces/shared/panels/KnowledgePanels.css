@@ -18,6 +18,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.knowledge-panel-subtitle {
+  margin: 0.22rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 .knowledge-panel-eyebrow {
@@ -878,25 +887,42 @@
   grid-template-rows: auto auto auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   overflow: hidden;
 }
 
 .notes-workspace-header {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-subtle);
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.15rem 0.2rem 0.55rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: transparent;
+}
+
+.notes-workspace-header__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--color-text-primary);
+  font-size: 1rem;
   font-weight: 700;
+}
+
+.notes-workspace-header__subtitle {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 .notes-workspace-toolbar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.58rem 0.2rem;
   border-bottom: 1px solid var(--color-border-soft);
 }
 
@@ -931,7 +957,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 0.85rem;
+  padding: 0.7rem 0.2rem;
 }
 
 .notes-workspace-grid {

@@ -5,9 +5,13 @@
 .party-sheet {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: var(--space-3);
+  gap: 0.5rem;
   min-height: 0;
   height: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
+  padding: 0.55rem;
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────────── */
@@ -17,6 +21,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .party-sheet__header-actions {
@@ -46,8 +52,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--color-text-primary);
   white-space: nowrap;
 }
@@ -56,14 +62,21 @@
   font-size: 1rem;
 }
 
+.party-sheet__subtitle {
+  margin: 0.22rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
 .party-sheet__count-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.55rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  background: var(--color-surface-subtle);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
   border: 1px solid var(--color-border-soft);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -78,8 +91,8 @@
   height: 2rem;
   padding: 0;
   border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
   color: var(--color-text-secondary);
   cursor: pointer;
   transition:
@@ -105,11 +118,11 @@
   justify-content: center;
   height: 2rem;
   border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
   color: var(--color-text-primary);
   padding: 0 0.55rem;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
@@ -153,7 +166,8 @@
   min-height: 0;
   /* subtle inset to distinguish from panel bg */
   border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-subtle) 4%);
 }
 
 /* ─── Table ───────────────────────────────────────────────────────────────────── */

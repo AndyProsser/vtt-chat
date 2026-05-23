@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
@@ -146,16 +147,12 @@ export const GroupsPanelEditor: React.FC<GroupsPanelEditorProps> = ({
       <header className="editor-groups-panel__hero">
         <div className="editor-groups-panel__hero-header">
           <div>
-            <div className="editor-groups-panel__eyebrow">
-              <span className="material-symbols-outlined text-sm" aria-hidden="true">
-                widgets
-              </span>
-              Campaign Group Planner
-            </div>
-            <h2 className="editor-groups-panel__title">Groups Outside Session</h2>
+            <h3 className="knowledge-panel-title">
+              <Icon name="rooms" />
+              Groups
+            </h3>
             <p className="editor-groups-panel__subtitle">
-              Define persistent groups, validate naming, and set default environments before the
-              table goes live. Player assignment only appears inside an active session.
+              Plan group layouts, assign default environments, and prep scene flow.
             </p>
           </div>
           <button

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import { NoteVisibility, Role, type UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
@@ -279,7 +280,15 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
 
   return (
     <section className="notes-workspace">
-      <div className="notes-workspace-header">Handouts</div>
+      <header className="notes-workspace-header">
+        <h3 className="notes-workspace-header__title">
+          <Icon name="notes" />
+          Handouts
+        </h3>
+        <p className="notes-workspace-header__subtitle">
+          Draft handouts, organize references, and share player-ready notes.
+        </p>
+      </header>
 
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 

@@ -79,16 +79,17 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  border: none;
-  background: transparent;
-  padding: 0;
-  gap: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
+  padding: 0.55rem;
+  gap: 0.45rem;
 }
 
 .session-campaign-settings-workspace-root > .session-campaign-settings-header {
-  padding: 0 0 0.6rem;
+  padding: 0 0 0.5rem;
   border-bottom: 1px solid var(--color-border-soft);
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.2rem;
   flex-shrink: 0;
 }
 
@@ -96,7 +97,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 0.15rem; /* thin scroll gutter */
+  padding: 0.15rem;
 }
 
 .session-campaign-settings-workspace-root
@@ -106,8 +107,11 @@
 
 /* Tighten interior density inside the workspace settings grid */
 .session-campaign-settings-workspace-root .session-campaign-settings-panel {
-  padding: 0.6rem;
+  padding: 0.62rem;
   gap: 0.3rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-subtle) 4%);
 }
 
 .session-campaign-settings-workspace-root .session-label {
@@ -235,4 +239,3 @@
   display: inline-flex;
   gap: 0.45rem;
 }
-

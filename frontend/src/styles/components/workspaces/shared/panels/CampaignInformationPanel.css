@@ -29,7 +29,8 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.35rem;
   width: 100%;
-  margin: 0.35rem 0 0.5rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .cip-panel--workspace .cip-status-line {
@@ -38,6 +39,12 @@
 
 .cip-status-line .cip-status-item {
   min-width: 0;
+}
+.cip-header-subtitle {
+  margin: 0.5rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 .cip-status-chip {
