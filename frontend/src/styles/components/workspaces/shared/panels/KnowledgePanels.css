@@ -538,6 +538,20 @@
   cursor: pointer;
 }
 
+.knowledge-panel-action--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+}
+
+.knowledge-panel-action--icon .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .knowledge-panel-action:hover {
   border-color: var(--color-border-focus);
   color: var(--color-brand-hover);
@@ -967,6 +981,17 @@
   padding: 0.28rem 0.55rem;
   border-radius: calc(var(--radius-sm) - 2px);
   cursor: pointer;
+}
+
+.notes-toolbar-segment--icon {
+  min-width: 2.5rem;
+  justify-content: center;
+  padding-inline: 0.45rem;
+}
+
+.notes-toolbar-segment--icon .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .notes-toolbar-segment.is-selected {

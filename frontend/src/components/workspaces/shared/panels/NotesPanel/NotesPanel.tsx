@@ -315,7 +315,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="knowledge-panel-action"
+                className="notes-toolbar-segment notes-toolbar-segment--icon"
                 onClick={handleToggleCreateForm}
                 aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
               >

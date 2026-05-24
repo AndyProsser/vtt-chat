@@ -106,6 +106,8 @@ function JournalEditor({
   const [isLoading, setIsLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
   const lastSaveRequestVersionRef = useRef(0)
+  const resolvedIsEditing =
+    isDm && (typeof isEditingOverride === 'boolean' ? isEditingOverride : isEditing)
 
   const addNote = useStore((state) => state.addNote)
   const hashtagFallbackSeed = useMemo(() => buildHashtagFallbackSeed(sessionId), [sessionId])
@@ -114,7 +116,6 @@ function JournalEditor({
     [sessionId, sessionName]
   )
   const contentHashtagSuggestions = useMemo(() => buildContentHashtagSuggestions(draft), [draft])
-
   useEffect(() => {
     let cancelled = false
 
@@ -285,7 +286,7 @@ function JournalEditor({
   ])
 
   useEffect(() => {
-    if (!autoSave || !isDm || isLoading || !isEditing || isSaving || !hasUnsavedChanges) {
+    if (!autoSave || !isDm || isLoading || !resolvedIsEditing || isSaving || !hasUnsavedChanges) {
       return
     }
 
@@ -296,15 +297,7 @@ function JournalEditor({
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [autoSave, handleSave, hasUnsavedChanges, isDm, isEditing, isLoading, isSaving])
-
-  useEffect(() => {
-    if (typeof isEditingOverride !== 'boolean') {
-      return
-    }
-
-    setIsEditing(isDm && isEditingOverride)
-  }, [isDm, isEditingOverride])
+  }, [autoSave, handleSave, hasUnsavedChanges, isDm, isLoading, isSaving, resolvedIsEditing])
 
   useEffect(() => {
     if (!isDm || saveRequestVersion <= lastSaveRequestVersionRef.current) {
@@ -466,7 +459,7 @@ function JournalEditor({
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
   const hasDraftMarkdown = draft.trim().length > 0
   const resolvedMarkdown =
-    hasDraftMarkdown || isEditing
+    hasDraftMarkdown || resolvedIsEditing
       ? draft
       : entry?.markdown?.trim().length
         ? entry.markdown
@@ -483,27 +476,13 @@ function JournalEditor({
           <div>
             <h3 className="knowledge-panel-title">{sessionName || 'Session Journal'}</h3>
             <div className="knowledge-panel-chip-row">
-              {lastUpdated && !isEditing ? (
+              {lastUpdated && !resolvedIsEditing ? (
                 <p className="knowledge-panel-copy knowledge-panel-copy--meta-inline">
                   Last updated {lastUpdated}
                 </p>
               ) : null}
             </div>
           </div>
-
-          {isDm && !isEditing ? (
-            <button
-              type="button"
-              className="knowledge-panel-action"
-              onClick={() => setIsEditing(true)}
-              aria-label="Edit journal"
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                edit
-              </span>
-              Edit
-            </button>
-          ) : null}
         </header>
       ) : null}
 
@@ -519,13 +498,13 @@ function JournalEditor({
             ? 'Write your session journal here — what happened, who was there, what changed…'
             : playerFacingRoast
         }
-        readOnly={!isDm || !isEditing}
+        readOnly={!isDm || !resolvedIsEditing}
         variant="full"
-        insertActions={isDm && isEditing ? insertActions : []}
+        insertActions={isDm && resolvedIsEditing ? insertActions : []}
       />
 
       <div className="knowledge-panel__journal-meta">
-        {isEditing ? (
+        {resolvedIsEditing ? (
           <>
             <div className="knowledge-panel__journal-tag-row-wrap">
               <input
@@ -592,7 +571,7 @@ function JournalEditor({
         )}
       </div>
 
-      {isDm && isEditing ? (
+      {isDm && resolvedIsEditing ? (
         <div className="knowledge-panel__journal-actions">
           <button
             type="button"
@@ -705,14 +684,6 @@ function JournalBrowser({
     }
   }, [effectiveSessionId])
 
-  useEffect(() => {
-    if (!effectiveSessionId) {
-      return
-    }
-
-    setEditingSessionId((current) => (current === effectiveSessionId ? current : null))
-  }, [effectiveSessionId])
-
   const getSessionRunDateLabel = useCallback((session: Session): string => {
     const sessionRunTimestamp = session.endedAt ?? session.startedAt ?? session.createdAt
     return new Date(sessionRunTimestamp).toLocaleDateString()
@@ -793,7 +764,7 @@ function JournalBrowser({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, recentSessionsStatusKey, token])
+  }, [apiUrl, recentSessions, recentSessionsStatusKey, token])
 
   const recapSummary = useMemo(() => {
     const statuses = recentSessions.map((session) => journalStatusBySession[session.id])
@@ -814,14 +785,16 @@ function JournalBrowser({
     })
   }, [activeTagFilter, journalStatusBySession, recentSessions])
 
+  const isSelectedSessionEditing = editingSessionId === effectiveSessionId
+
   if (!effectiveSessionId || !effectiveSession) {
     return (
-      <section className="knowledge-panel knowledge-panel--compact" aria-label="Campaign journal">
+      <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
         <header className="knowledge-panel-header">
           <div>
             <h3 className="knowledge-panel-title">
               <Icon name="journal" />
-              Campaign Journal
+              Session Journal
             </h3>
             <p className="knowledge-panel-subtitle">
               Capture recaps, tag key moments, and keep session lore searchable.
@@ -829,35 +802,44 @@ function JournalBrowser({
           </div>
         </header>
         <p className="knowledge-panel-empty">
-          No sessions exist yet. Start and complete a session before writing the campaign journal.
+          No sessions exist yet. Start and complete a session before writing the session journal.
         </p>
       </section>
     )
   }
 
   return (
-    <section className="knowledge-panel knowledge-panel--compact" aria-label="Campaign journal">
+    <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
       <header className="knowledge-panel-header">
         <div>
           <h3 className="knowledge-panel-title">
             <Icon name="journal" />
-            Campaign Journal
+            Session Journal
           </h3>
           <p className="knowledge-panel-subtitle">
             Capture recaps, tag key moments, and keep session lore searchable.
           </p>
         </div>
         {isDm ? (
-          <button
-            type="button"
-            className="knowledge-panel-action"
-            onClick={handleToggleEditSelected}
-            aria-label={editingSessionId === effectiveSessionId ? 'Save journal' : 'Edit journal'}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {editingSessionId === effectiveSessionId ? 'save' : 'edit'}
-            </span>
-          </button>
+          <TooltipProvider delayDuration={140}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="session-toolbar__icon-btn"
+                  onClick={handleToggleEditSelected}
+                  aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {isSelectedSessionEditing ? 'save' : 'edit'}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         ) : null}
       </header>
 
