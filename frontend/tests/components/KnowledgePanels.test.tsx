@@ -2,11 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MessageType, NoteVisibility, PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { HistoryPanel } from '../../src/components/session/HistoryPanel'
-import { JournalPanel } from '../../src/components/session/JournalPanel'
-import { NotesRailPanel } from '../../src/components/session/NotesRailPanel'
-
-import { useStore } from '../../src/state/store'
+import { HistoryPanel } from '../../src/components/workspaces/shared/panels/HistoryPanel'
+import { JournalPanel } from '../../src/components/workspaces/shared/panels/JournalPanel'
+import { NotesPanel } from '../../src/components/workspaces/shared/panels/NotesPanel'
+import { useStore } from '../../src/hooks/useStore'
 
 const asUuid = (value: string) => value as UUID
 
@@ -64,6 +63,7 @@ describe('knowledge panels', () => {
 
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
     expect(await screen.findByLabelText('Edit journal')).toBeTruthy()
+    expect(screen.getByLabelText('Edit journal').className).toContain('knowledge-panel-action')
     // Editor is read-only until Edit is clicked
     expect(screen.getByTestId('markdown-editor')).toBeTruthy()
 
@@ -88,6 +88,94 @@ describe('knowledge panels', () => {
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
     expect(screen.getByTestId('markdown-editor')).toBeTruthy()
     expect(screen.queryByLabelText('Edit journal')).toBeNull()
+  })
+
+  it('lets players open older session journals from the compact browser', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (!url.includes('/api/notes/')) {
+        throw new Error(`Unexpected fetch call: ${url}`)
+      }
+
+      if (url.includes(SESSION_TWO_ID)) {
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                id: asUuid('abababab-abab-4bab-8bab-abababababab'),
+                authorId: PLAYER_ID,
+                authorUsername: 'Tara',
+                title: 'Session Journal',
+                content: 'The crew recovered the moon key.',
+                visibility: NoteVisibility.PLAYERS_VISIBLE,
+                tags: ['_journal', '#loot'],
+                allowedUsers: [],
+                publishedAt: null,
+                createdAt: 30,
+                updatedAt: 40,
+              },
+            ],
+          }),
+        }
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          notes: [
+            {
+              id: asUuid('cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd'),
+              authorId: PLAYER_ID,
+              authorUsername: 'Tara',
+              title: 'Session Journal',
+              content: 'The party descended into the vault.',
+              visibility: NoteVisibility.PLAYERS_VISIBLE,
+              tags: ['_journal', '#recap'],
+              allowedUsers: [],
+              publishedAt: null,
+              createdAt: 10,
+              updatedAt: 20,
+            },
+          ],
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <JournalPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        role={Role.PLAYER}
+        sessions={[
+          {
+            id: SESSION_ID,
+            name: 'The Emerald Crown #29 - 24 May 2026',
+            dmId: PLAYER_ID,
+            state: 'ACTIVE',
+            createdAt: 200,
+          },
+          {
+            id: SESSION_TWO_ID,
+            name: 'The Emerald Crown #28 - 17 May 2026',
+            dmId: PLAYER_ID,
+            state: 'ENDED',
+            createdAt: 100,
+          },
+        ]}
+        selectedSessionId={SESSION_ID}
+        onSessionChange={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('The party descended into the vault.')).toBeTruthy()
+    expect(screen.getByText('The Emerald Crown #28 - 17 May 2026')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('The Emerald Crown #28 - 17 May 2026'))
+
+    expect(await screen.findByText('The crew recovered the moon key.')).toBeTruthy()
   })
 
   it('renders history entries and supports grouping and sort controls', async () => {
@@ -195,7 +283,7 @@ describe('knowledge panels', () => {
     expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
   })
 
-  it('renders notes rail data and supports quick filtering', async () => {
+  it('renders notes rail data for the current handout selection', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -219,27 +307,19 @@ describe('knowledge panels', () => {
       }))
     )
 
-    const onOpenNotesWorkspace = vi.fn()
-
     render(
-      <NotesRailPanel
+      <NotesPanel
         apiUrl="http://localhost:3000"
         token="token"
+        campaignId={SESSION_ID}
         sessionId={SESSION_ID}
         role={Role.PLAYER}
-        onOpenNotesWorkspace={onOpenNotesWorkspace}
+        user={{ id: PLAYER_ID, role: Role.PLAYER }}
       />
     )
 
-    expect(await screen.findByText('Quiet ingress route')).toBeTruthy()
-    expect(screen.getByText('Read only')).toBeTruthy()
+    expect(await screen.findAllByText('Quiet ingress route')).toHaveLength(2)
 
-    fireEvent.change(screen.getByPlaceholderText('Search titles, content, authors, or tags'), {
-      target: { value: 'stealth' },
-    })
-    expect(screen.getByText('Quiet ingress route')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open full notes workspace' }))
-    expect(onOpenNotesWorkspace).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Use the eastern tunnel and avoid lanterns.')).toBeTruthy()
   })
 })

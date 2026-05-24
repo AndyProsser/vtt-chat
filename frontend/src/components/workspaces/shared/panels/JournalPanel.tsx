@@ -469,7 +469,7 @@ function JournalEditor({
           {isDm && !isEditing ? (
             <button
               type="button"
-              className="knowledge-panel-chip"
+              className="knowledge-panel-action"
               onClick={() => setIsEditing(true)}
               aria-label="Edit journal"
             >
@@ -573,7 +573,7 @@ function JournalEditor({
         <div className="knowledge-panel__journal-actions">
           <button
             type="button"
-            className="knowledge-panel-chip"
+            className="knowledge-panel-action"
             onClick={() => void handleSave()}
             disabled={isSaving}
             aria-label="Save journal"
@@ -582,7 +582,7 @@ function JournalEditor({
           </button>
           <button
             type="button"
-            className="knowledge-panel-chip muted"
+            className="knowledge-panel-action"
             onClick={handleCancel}
             disabled={isSaving}
             aria-label="Cancel editing"

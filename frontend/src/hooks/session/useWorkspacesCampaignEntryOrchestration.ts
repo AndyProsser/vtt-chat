@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction, SubmitEventHandler } from 'react'
-import type { UUID } from '@shared'
+import { normalizeCampaignSessionBaseName, type UUID } from '@shared'
 import { SessionState } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
@@ -77,9 +77,13 @@ export function useWorkspacesCampaignEntryOrchestration(
   } = params
 
   const getSessionStartName = useCallback(
-    (existingSessions: SessionRecord[]): string => {
+    (existingSessions: SessionRecord[], campaignName?: string): string => {
       const trimmed = sessionNameBase.trim()
-      return trimmed.length > 0 ? trimmed : buildDefaultChapterName(existingSessions)
+      const normalizedBase = normalizeCampaignSessionBaseName(trimmed || campaignName || 'Session')
+      const resolvedBaseName =
+        trimmed && normalizedBase === 'Session' && campaignName ? campaignName : normalizedBase
+
+      return buildDefaultChapterName(existingSessions, resolvedBaseName)
     },
     [sessionNameBase]
   )
@@ -159,7 +163,9 @@ export function useWorkspacesCampaignEntryOrchestration(
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ name: getSessionStartName(targetSessions) }),
+            body: JSON.stringify({
+              name: getSessionStartName(targetSessions, targetCampaign?.name),
+            }),
           }
         )
 

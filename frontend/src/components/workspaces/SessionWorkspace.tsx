@@ -115,6 +115,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
           <SessionWorkspaceRightRailTab
             tab={tab}
             selectedCampaign={props.selectedCampaign}
+            sessions={props.sessions}
             sessionCount={props.sessionCount}
             totalSessionDurationMs={props.totalSessionDurationMs}
             canEditCampaignInfo={props.canEditCampaignInfo}

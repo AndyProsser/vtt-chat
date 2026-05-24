@@ -40,6 +40,7 @@ export type SessionWorkspaceProps = {
   apiUrl: string
   token: string
   selectedCampaign: CampaignSummary | null
+  sessions: SessionRecord[]
   sessionCount: number
   connectedPlayers: number
   connectedSpectatorsCount: number

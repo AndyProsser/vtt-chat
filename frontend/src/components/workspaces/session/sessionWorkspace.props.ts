@@ -25,6 +25,7 @@ type BuildSessionWorkspacePropsParams = {
   apiUrl: string
   token: string
   selectedCampaign: ComponentProps<typeof SessionWorkspace>['selectedCampaign']
+  sessions: ComponentProps<typeof SessionWorkspace>['sessions']
   sessionCount: number
   connectedPlayers: number
   connectedSpectatorsCount: number
@@ -104,6 +105,7 @@ export function buildSessionWorkspaceProps(
     apiUrl: params.apiUrl,
     token: params.token,
     selectedCampaign: params.selectedCampaign,
+    sessions: params.sessions,
     sessionCount: params.sessionCount,
     connectedPlayers: params.connectedPlayers,
     connectedSpectatorsCount: params.connectedSpectatorsCount,

@@ -1,4 +1,4 @@
-import { RoomType, SessionState, isGreenroomSessionState } from '@shared'
+import { RoomType, SessionState, buildCampaignSessionName, isGreenroomSessionState } from '@shared'
 import type { UUID } from '@shared'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import {
@@ -153,10 +153,14 @@ export function getLatestSessionChronologically(sessions: SessionRecord[]): Sess
   return sorted.length ? sorted[sorted.length - 1] : null
 }
 
-export function buildDefaultChapterName(existingSessions: SessionRecord[]): string {
-  const nextSessionNumber = existingSessions.length + 1
-  const dateLabel = new Date().toLocaleDateString('en-CA')
-  return `Session ${nextSessionNumber} - ${dateLabel}`
+export function buildDefaultChapterName(
+  existingSessions: SessionRecord[],
+  baseName = 'Session'
+): string {
+  return buildCampaignSessionName({
+    baseName,
+    sessionNumber: existingSessions.length + 1,
+  })
 }
 
 function normalizeTimestamp(value: unknown): number | undefined {

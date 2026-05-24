@@ -11,10 +11,12 @@ import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
 import type { CampaignSummary } from '@/types/session/campaign'
+import type { Session as SessionRecord } from '@/types/session'
 
 type SessionWorkspaceRightRailTabProps = {
   tab: RightRailTab
   selectedCampaign: CampaignSummary | null
+  sessions: SessionRecord[]
   sessionCount: number
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
@@ -158,10 +160,10 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         <JournalPanel
           apiUrl={props.apiUrl}
           token={props.token}
-          sessionId={props.currentSessionId}
-          sessionName={props.currentSessionName}
           role={props.effectiveSessionRole}
-          userId={props.userId}
+          sessions={props.sessions}
+          selectedSessionId={props.currentSessionId}
+          onSessionChange={() => {}}
         />
       }
       historyPanel={

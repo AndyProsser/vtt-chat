@@ -1,4 +1,4 @@
-import type { UUID } from '@shared'
+import { formatCampaignSessionDate, normalizeCampaignSessionBaseName, type UUID } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
@@ -44,6 +44,24 @@ async function campaignSessionNameExists(params: {
   return Boolean(existing)
 }
 
+async function countCampaignSessions(params: {
+  campaignId: UUID
+  excludeSessionId?: UUID
+}): Promise<number> {
+  return prisma.session.count({
+    where: {
+      campaignId: params.campaignId,
+      ...(params.excludeSessionId
+        ? {
+            id: {
+              not: params.excludeSessionId,
+            },
+          }
+        : {}),
+    },
+  })
+}
+
 /**
  * Returns a unique session name within a campaign.
  * If a conflict exists, appends an ISO date suffix and numeric counter when needed.
@@ -65,21 +83,19 @@ export async function ensureUniqueCampaignSessionName(params: {
     return baseName
   }
 
-  const dateToken = new Date().toISOString().slice(0, 10)
-  const datedName = withSuffix(baseName, ` (${dateToken})`)
+  const normalizedBaseName = normalizeCampaignSessionBaseName(baseName)
+  const sessionDateSuffix = ` - ${formatCampaignSessionDate()}`
+  const existingSessionCount = await countCampaignSessions({
+    campaignId: params.campaignId,
+    excludeSessionId: params.excludeSessionId,
+  })
 
-  if (
-    !(await campaignSessionNameExists({
-      campaignId: params.campaignId,
-      name: datedName,
-      excludeSessionId: params.excludeSessionId,
-    }))
+  for (
+    let sessionNumber = Math.max(2, existingSessionCount + 1);
+    sessionNumber <= 999;
+    sessionNumber += 1
   ) {
-    return datedName
-  }
-
-  for (let counter = 2; counter <= 99; counter += 1) {
-    const candidate = withSuffix(baseName, ` (${dateToken} ${counter})`)
+    const candidate = withSuffix(normalizedBaseName, ` #${sessionNumber}${sessionDateSuffix}`)
     if (
       !(await campaignSessionNameExists({
         campaignId: params.campaignId,

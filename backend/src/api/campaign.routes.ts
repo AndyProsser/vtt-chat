@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { randomUUID } from 'crypto'
 import { getPrismaClient } from '@/infra/db'
 import {
+  buildCampaignSessionName,
   ErrorCode,
   PresenceState,
   RoomType,
@@ -2001,8 +2002,10 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
     effectiveSessions.every((session) => session.state === 'CLEANUP') &&
     (campaign.memberRole === 'DM' || campaign.memberRole === 'PLAYER')
   ) {
-    const dateLabel = new Date().toLocaleDateString('en-CA')
-    const sessionName = `Session ${effectiveSessions.length + 1} - ${dateLabel}`
+    const sessionName = buildCampaignSessionName({
+      baseName: campaign.name,
+      sessionNumber: effectiveSessions.length + 1,
+    })
     const newSession = await createSession(
       sessionName,
       campaign.currentDmId as UUID,

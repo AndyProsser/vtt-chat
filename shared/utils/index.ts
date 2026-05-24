@@ -1,4 +1,12 @@
-export { formatTimestamp, formatDuration, truncateText, pluralize } from './format'
+export {
+  formatTimestamp,
+  formatDuration,
+  truncateText,
+  pluralize,
+  formatCampaignSessionDate,
+  normalizeCampaignSessionBaseName,
+  buildCampaignSessionName,
+} from './format'
 export { isEventForSession, getEventType, sortEventsByTimestamp, isEventType } from './ws-events'
 export {
   deriveCampaignDisplayState,

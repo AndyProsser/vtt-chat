@@ -905,6 +905,7 @@ export function WorkspaceInitialization({
     apiUrl,
     token,
     selectedCampaign: selectedCampaign ?? null,
+    sessions: sessionList,
     sessionCount: sessionList.length,
     connectedPlayers,
     connectedSpectatorsCount,
