@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionState } from '@shared'
-import type { ToolbarActionModel } from '@/components/session/CommandCenterFrame'
-import { SessionToolbar } from '@/components/session/SessionToolbar'
+import type { ToolbarActionModel } from '@/types/toolbar'
+import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
 
 function buildActions(): ToolbarActionModel {
   return {
