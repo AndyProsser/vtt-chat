@@ -190,6 +190,25 @@ export function getSeededJournalDmRoast(seed: string): string {
   return JOURNAL_DM_ROASTS[index] ?? JOURNAL_DM_ROASTS[0]
 }
 
+export function getSeededJournalDmRoastOptions(seed: string, limit = 50): string[] {
+  if (limit <= 0 || JOURNAL_DM_ROASTS.length === 0) {
+    return []
+  }
+
+  const options = [...JOURNAL_DM_ROASTS]
+  let state = hashJournalSeed(`${seed}:dm-roast-options`) || 1
+
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    state = (state * 1664525 + 1013904223) >>> 0
+    const swapIndex = state % (index + 1)
+    const nextValue = options[index]
+    options[index] = options[swapIndex] ?? options[index]
+    options[swapIndex] = nextValue ?? options[swapIndex]
+  }
+
+  return options.slice(0, Math.min(limit, options.length))
+}
+
 export function getPlayerPerspectiveJournalRoast(seed: string, sessionName?: string): string {
   const roastIndex = hashJournalSeed(`${seed}:roast`) % JOURNAL_DM_ROASTS.length
   const prefixIndex = hashJournalSeed(`${seed}:prefix`) % JOURNAL_PLAYER_ROAST_PREFIXES.length

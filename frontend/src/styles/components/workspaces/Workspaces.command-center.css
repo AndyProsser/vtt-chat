@@ -136,9 +136,15 @@
 
 .voice-rail-summary__session {
   margin: 0;
+  min-width: 0;
 }
 
 .voice-rail-summary__session-value {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.79rem;
   color: var(--color-text-primary);
   font-weight: 500;
@@ -327,4 +333,3 @@
 .session-presence-dot-idle {
   background: #94a3b8;
 }
-

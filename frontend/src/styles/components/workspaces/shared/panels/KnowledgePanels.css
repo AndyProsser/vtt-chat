@@ -310,11 +310,13 @@
 .knowledge-panel-card {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface-subtle));
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
   transition:
     border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -422,6 +424,11 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+.knowledge-panel-card-header__left {
+  min-width: 0;
 }
 
 .knowledge-panel-card-header__right {
@@ -462,8 +469,15 @@
 
 .knowledge-panel-card-title {
   margin: 0;
+  min-width: 0;
   color: var(--color-text-primary);
   font-weight: 600;
+}
+
+.knowledge-panel-card-title--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .knowledge-panel-card-body {

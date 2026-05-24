@@ -5,5 +5,6 @@ export * from './Panel'
 export * from './ReconnectBanner'
 export * from './Toast'
 export * from './ToastViewport'
+export * from './TruncatedTextWithTooltip'
 
 export * from './primitives'

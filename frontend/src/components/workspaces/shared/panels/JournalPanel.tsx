@@ -23,10 +23,12 @@ import {
   JOURNAL_TAG,
   getPlayerPerspectiveJournalRoast,
   getRandomJournalDmRoast,
+  getSeededJournalDmRoast,
   getSeededJournalPlayerRoast,
 } from '@/constants/journal.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
+import { TruncatedTextWithTooltip } from '@/components/ui/TruncatedTextWithTooltip'
 import { useStore } from '@/hooks/useStore'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -71,6 +73,9 @@ interface JournalEditorProps {
   autoEdit?: boolean
   autoSave?: boolean
   hideHeader?: boolean
+  isEditingOverride?: boolean
+  saveRequestVersion?: number
+  emptyStateContent?: string
   onSaved?: (payload: JournalSavedPayload) => void
 }
 
@@ -83,6 +88,9 @@ function JournalEditor({
   autoEdit = false,
   autoSave = false,
   hideHeader = false,
+  isEditingOverride,
+  saveRequestVersion = 0,
+  emptyStateContent,
   onSaved,
 }: JournalEditorProps) {
   const isDm = role === 'DM'
@@ -95,6 +103,7 @@ function JournalEditor({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const lastSaveRequestVersionRef = useRef(0)
 
   const addNote = useStore((state) => state.addNote)
   const hashtagFallbackSeed = useMemo(() => buildHashtagFallbackSeed(sessionId), [sessionId])
@@ -281,6 +290,23 @@ function JournalEditor({
     }
   }, [autoSave, handleSave, hasUnsavedChanges, isDm, isEditing, isLoading, isSaving])
 
+  useEffect(() => {
+    if (typeof isEditingOverride !== 'boolean') {
+      return
+    }
+
+    setIsEditing(isDm && isEditingOverride)
+  }, [isDm, isEditingOverride])
+
+  useEffect(() => {
+    if (!isDm || saveRequestVersion <= lastSaveRequestVersionRef.current) {
+      return
+    }
+
+    lastSaveRequestVersionRef.current = saveRequestVersion
+    void handleSave()
+  }, [handleSave, isDm, saveRequestVersion])
+
   const handleBlurSave = useCallback(
     (event?: React.FocusEvent<HTMLElement>) => {
       if (!autoSave || !isDm || isSaving || !hasUnsavedChanges) {
@@ -446,6 +472,13 @@ function JournalEditor({
 
   const displayHashtags = entry?.hashtags ?? normalizedDraftHashtags
   const lastUpdated = entry?.updatedAt ? new Date(entry.updatedAt).toLocaleDateString() : null
+  const hasDraftMarkdown = draft.trim().length > 0
+  const resolvedMarkdown =
+    hasDraftMarkdown || isEditing
+      ? draft
+      : entry?.markdown?.trim().length
+        ? entry.markdown
+        : (emptyStateContent ?? '')
 
   return (
     <section
@@ -487,7 +520,7 @@ function JournalEditor({
       ) : null}
 
       <MarkdownEditor
-        value={draft}
+        value={resolvedMarkdown}
         onChange={setDraft}
         onBlur={handleBlurSave}
         placeholder={
@@ -618,11 +651,16 @@ function JournalBrowser({
   selectedSessionId,
   onSessionChange,
 }: JournalBrowserProps) {
+  const isDm = role === 'DM'
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
   const [closingSessionId, setClosingSessionId] = useState<UUID | null>(null)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
+  const [editingSessionId, setEditingSessionId] = useState<UUID | null>(null)
+  const [saveRequestVersionBySession, setSaveRequestVersionBySession] = useState<
+    Record<string, number>
+  >({})
   const prevEffectiveSessionIdRef = useRef<UUID | null>(null)
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
@@ -664,6 +702,46 @@ function JournalBrowser({
       return () => window.clearTimeout(timer)
     }
   }, [effectiveSessionId])
+
+  useEffect(() => {
+    if (!effectiveSessionId) {
+      return
+    }
+
+    setEditingSessionId((current) => (current === effectiveSessionId ? current : null))
+  }, [effectiveSessionId])
+
+  const getSessionRunDateLabel = useCallback((session: Session): string => {
+    const sessionRunTimestamp = session.endedAt ?? session.startedAt ?? session.createdAt
+    return new Date(sessionRunTimestamp).toLocaleDateString()
+  }, [])
+
+  const getDmRoastOptions = useCallback((seed: string): string[] => {
+    const options = new Set<string>()
+
+    for (let index = 0; index < 200 && options.size < 50; index += 1) {
+      options.add(getSeededJournalDmRoast(`${seed}:${index}`))
+    }
+
+    return [...options]
+  }, [])
+
+  const handleToggleEditSelected = useCallback(() => {
+    if (!isDm || !effectiveSessionId) {
+      return
+    }
+
+    if (editingSessionId === effectiveSessionId) {
+      setSaveRequestVersionBySession((current) => ({
+        ...current,
+        [effectiveSessionId]: (current[effectiveSessionId] ?? 0) + 1,
+      }))
+      setEditingSessionId(null)
+      return
+    }
+
+    setEditingSessionId(effectiveSessionId)
+  }, [editingSessionId, effectiveSessionId, isDm])
 
   useEffect(() => {
     let cancelled = false
@@ -767,6 +845,18 @@ function JournalBrowser({
             Capture recaps, tag key moments, and keep session lore searchable.
           </p>
         </div>
+        {isDm ? (
+          <button
+            type="button"
+            className="knowledge-panel-action"
+            onClick={handleToggleEditSelected}
+            aria-label={editingSessionId === effectiveSessionId ? 'Save journal' : 'Edit journal'}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {editingSessionId === effectiveSessionId ? 'save' : 'edit'}
+            </span>
+          </button>
+        ) : null}
       </header>
 
       <div className="knowledge-panel-group">
@@ -793,13 +883,16 @@ function JournalBrowser({
             const hasContent = Boolean(sessionStatus?.hasContent)
             const isClosing = session.id === closingSessionId
             const sessionHashtags = sessionStatus?.hashtags ?? []
-            const visibleSessionHashtags = sessionHashtags.slice(0, 5)
+            const visibleSessionHashtags = sessionHashtags.slice(0, 3)
             const hiddenTagCount = Math.max(
               0,
               sessionHashtags.length - visibleSessionHashtags.length
             )
             const nextSession = index > 0 ? visibleSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
+            const selectedRoastOptions = getDmRoastOptions(`${session.id}:${session.name}`)
+            const fallbackRoast = selectedRoastOptions[0] ?? getRandomJournalDmRoast()
+            const emptyRecapContent = `${missingCopy.cardBody}\n\n> ${fallbackRoast}`
 
             return (
               <div key={session.id} role="listitem" className="knowledge-panel-session-item">
@@ -829,16 +922,15 @@ function JournalBrowser({
                   aria-pressed={isSelected}
                 >
                   <div className="knowledge-panel-card-header">
-                    <div>
-                      <h4 className="knowledge-panel-card-title">{session.name}</h4>
+                    <div className="knowledge-panel-card-header__left">
+                      <TruncatedTextWithTooltip
+                        as="h4"
+                        className="knowledge-panel-card-title knowledge-panel-card-title--truncate"
+                        text={session.name}
+                      />
                       <p className="knowledge-panel-card-subtitle">
-                        {new Date(session.createdAt).toLocaleDateString()}
+                        {getSessionRunDateLabel(session)}
                       </p>
-                      {!hasContent ? (
-                        <p className="knowledge-panel-card-body knowledge-panel-card-body--compact">
-                          {missingCopy.cardBody}
-                        </p>
-                      ) : null}
                     </div>
                     <div className="knowledge-panel-card-header__right">
                       <div className="knowledge-panel-chip-row">
@@ -907,8 +999,10 @@ function JournalBrowser({
                         sessionId={session.id}
                         sessionName={session.name}
                         role={role}
-                        autoEdit
-                        autoSave
+                        autoSave={false}
+                        isEditingOverride={editingSessionId === session.id}
+                        saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
+                        emptyStateContent={!hasContent ? emptyRecapContent : undefined}
                         hideHeader
                         onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
                           updateJournalStatus(session.id, {

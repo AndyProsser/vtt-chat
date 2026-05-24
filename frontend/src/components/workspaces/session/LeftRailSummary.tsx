@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
+import { TruncatedTextWithTooltip } from '@/components/ui/TruncatedTextWithTooltip'
 
 interface LeftRailSummaryProps {
   campaignName: string
@@ -83,7 +84,11 @@ export function LeftRailSummary({
         <hr className="voice-rail-summary__divider" aria-hidden="true" />
 
         <p className="voice-rail-summary__session">
-          <span className="voice-rail-summary__session-value">{sessionName}</span>
+          <TruncatedTextWithTooltip
+            as="span"
+            className="voice-rail-summary__session-value"
+            text={sessionName}
+          />
         </p>
       </section>
     </TooltipProvider>
