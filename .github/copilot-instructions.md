@@ -562,6 +562,14 @@ The `shared/` package is the canonical source for anything used by two or more o
 - Loading, error, and empty states must follow a single pattern across both apps.
 - Confirmation dialogs and destructive-action warnings must use consistent copy and visual treatment everywhere in the product.
 
+### UI Controls Contract (Radix + Button Visuals)
+
+- Use Radix UI primitives for interactive controls and overlays (Tooltip, Popover, Dialog, Tabs, Dropdown, etc.) instead of bespoke interaction wrappers.
+- New panel/tool controls must reuse existing shared visual patterns before introducing a new button style.
+- Button baseline is mandatory: visible border, `cursor: pointer`, and consistent hover feedback.
+- Icon-bearing buttons must include a subtle icon glow on hover (via shared CSS), not a one-off per-component effect.
+- Do not mix unrelated button visual languages inside the same workspace panel; if a panel needs a variant, define and reuse a named shared variant.
+
 ### Code Comments and Maintainability
 
 - Every non-trivial function, hook, and WS handler must have a brief JSDoc comment explaining **what it does, when it runs, and why** — not a restatement of what the code already says.
