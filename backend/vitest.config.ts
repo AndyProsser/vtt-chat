@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    execArgv: [],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],

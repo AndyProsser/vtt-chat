@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     maxWorkers: 1,
+    execArgv: [],
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',

@@ -19,6 +19,7 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    execArgv: [],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
