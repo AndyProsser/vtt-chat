@@ -26,7 +26,7 @@ export function getWorkspacePanelLabel(tab: WorkspacePanelTab): string {
     case 'journal':
       return 'Journal'
     case 'notes':
-      return 'Notes'
+      return 'Handouts'
     case 'history':
       return 'History'
     case 'audio':

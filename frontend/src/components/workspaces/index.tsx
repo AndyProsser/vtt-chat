@@ -53,6 +53,7 @@ import { useWorkspacesUiCallbacks } from '@/hooks/session/useWorkspacesUiCallbac
 import { useCampaignSessionsDataFetcher } from '@/hooks/session/useCampaignSessionsDataFetcher'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
+import { isJournalNote } from '@/utils/notesPanel'
 import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import type {
@@ -340,8 +341,8 @@ export function WorkspaceInitialization({
   const currentTransitionNotice = currentSession
     ? sessionTransitionNotice[currentSession.id]
     : undefined
-  const currentSessionNoteCount = currentSession
-    ? Object.keys(notes[currentSession.id] ?? {}).length
+  const currentSessionHandoutCount = currentSession
+    ? Object.values(notes[currentSession.id] ?? {}).filter((note) => !isJournalNote(note)).length
     : 0
   const takeoverPresence = useMemo(
     () =>
@@ -418,11 +419,11 @@ export function WorkspaceInitialization({
       : undefined
   const rightRailIndicators = useMemo<Partial<Record<RightRailTab, number>>>(
     () => ({
-      notes: currentSessionNoteCount,
-      journal: currentSessionNoteCount,
+      notes: currentSessionHandoutCount,
+      journal: 0,
       history: activeTransitionNotice ? 1 : 0,
     }),
-    [activeTransitionNotice, currentSessionNoteCount]
+    [activeTransitionNotice, currentSessionHandoutCount]
   )
 
   useWorkspacesGreenroomCarryLifecycle({

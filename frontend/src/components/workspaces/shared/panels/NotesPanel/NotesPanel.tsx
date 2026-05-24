@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import { NoteVisibility, Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
@@ -56,7 +57,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.PLAYERS_VISIBLE)
+  const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.DM_ONLY)
   const [tagsText, setTagsText] = useState('')
   const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
     apiUrl,
@@ -96,6 +97,15 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       : publishFilter === 'UNSHARED'
         ? `${displayedNotes.length} unshared`
         : `${notes.length} total`
+
+  const handleToggleCreateForm = () => {
+    if (!showCreateForm) {
+      setVisibility(NoteVisibility.DM_ONLY)
+      setAllowedUsers([])
+    }
+
+    setShowCreateForm((current) => !current)
+  }
 
   const selectedNote = useMemo(
     () => displayedNotes.find((note) => note.id === selectedNoteId) ?? displayedNotes[0] ?? null,
@@ -205,7 +215,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       setTitle('')
       setContent('')
       setTagsText('')
-      setVisibility(NoteVisibility.PLAYERS_VISIBLE)
+      setVisibility(NoteVisibility.DM_ONLY)
       setAllowedUsers([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
@@ -286,8 +296,8 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   }
 
   return (
-    <section className="notes-workspace">
-      <header className="notes-workspace-header">
+    <section className="knowledge-panel knowledge-panel--compact notes-workspace">
+      <header className="knowledge-panel-header notes-workspace-header">
         <h3 className="notes-workspace-header__title">
           <Icon name="notes" />
           Handouts
@@ -300,13 +310,25 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
       <div className="notes-workspace-toolbar">
-        <button
-          type="button"
-          className="notes-toolbar-button"
-          onClick={() => setShowCreateForm((current) => !current)}
-        >
-          {showCreateForm ? 'Hide create' : 'Create handout'}
-        </button>
+        <TooltipProvider delayDuration={140}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="knowledge-panel-action"
+                onClick={handleToggleCreateForm}
+                aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {showCreateForm ? 'visibility_off' : 'note_add'}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {showCreateForm ? 'Hide handout creator' : 'Create handout'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <div className="notes-toolbar-segmented" role="tablist" aria-label="Handout publish filter">
           {(['ALL', 'SHARED', 'UNSHARED'] as NotesPublishFilter[]).map((filter) => (

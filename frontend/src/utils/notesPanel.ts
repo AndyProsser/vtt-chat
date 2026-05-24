@@ -20,6 +20,17 @@ export interface NoteShareStatus {
   tooltip: string
 }
 
+const JOURNAL_TAG = '_journal'
+
+export function isJournalNote(note: { title: string; tags?: string[] | null }): boolean {
+  const normalizedTitle = note.title.trim().toLowerCase()
+  return (
+    (note.tags || []).includes(JOURNAL_TAG) ||
+    normalizedTitle === 'session journal' ||
+    normalizedTitle.startsWith('journal - ')
+  )
+}
+
 export function normalizeNoteHashtag(value: string): string {
   const normalized = value
     .trim()

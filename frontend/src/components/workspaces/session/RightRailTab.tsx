@@ -146,9 +146,9 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           />
         ) : (
           <CampaignScaffoldPanel
-            title="Notes"
+            title="Handouts"
             iconName="notes"
-            subtitle="Notes are unavailable until a campaign is selected."
+            subtitle="Handouts are unavailable until a campaign is selected."
             sections={[
               'Select or open a campaign session',
               'Handouts and private notes will load automatically',
