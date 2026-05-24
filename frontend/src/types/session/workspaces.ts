@@ -77,6 +77,8 @@ export interface ApiPlatformStatusResponse {
 
 export interface ApiDiscoverableCampaign extends Omit<CampaignSummary, 'latestSessionState'> {
   activeSessionState?: SessionState | null
+  spectatorInviteCode?: string | null
+  spectatorInviteActive?: boolean
 }
 
 export type ActiveSessionContext = {

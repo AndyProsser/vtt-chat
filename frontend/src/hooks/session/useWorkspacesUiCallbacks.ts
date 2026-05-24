@@ -9,7 +9,6 @@ type UseWorkspacesUiCallbacksParams = {
   setShowJoinCampaignModal: Dispatch<SetStateAction<boolean>>
   setShowUserSettingsModal: Dispatch<SetStateAction<boolean>>
   setEditorWorkspaceView: Dispatch<SetStateAction<EditorWorkspaceView>>
-  setError: Dispatch<SetStateAction<string | null>>
   handleEnterCampaign: (campaignId: UUID) => Promise<void>
 }
 
@@ -22,7 +21,6 @@ export function useWorkspacesUiCallbacks({
   setShowJoinCampaignModal,
   setShowUserSettingsModal,
   setEditorWorkspaceView,
-  setError,
   handleEnterCampaign,
 }: UseWorkspacesUiCallbacksParams) {
   const handleToggleTheme = toggleThemeMode
@@ -51,14 +49,6 @@ export function useWorkspacesUiCallbacks({
     [handleEnterCampaign, setEditorWorkspaceView]
   )
 
-  const handleJoinRequestUnavailable = useCallback(() => {
-    setError('Join request flow is not wired into Workspaces yet.')
-  }, [setError])
-
-  const handleWatchUnavailable = useCallback(() => {
-    setError('Watch flow is not wired into Workspaces yet.')
-  }, [setError])
-
   return {
     handleToggleTheme,
     handleOpenCreateCampaignModal,
@@ -66,7 +56,5 @@ export function useWorkspacesUiCallbacks({
     handleOpenUserSettingsModal,
     handleBackToLobbyWorkspace,
     handleLaunchFromEditor,
-    handleJoinRequestUnavailable,
-    handleWatchUnavailable,
   }
 }

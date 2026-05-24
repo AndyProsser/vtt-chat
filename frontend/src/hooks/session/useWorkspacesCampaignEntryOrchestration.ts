@@ -32,6 +32,10 @@ type UseWorkspacesCampaignEntryOrchestrationParams = {
   setEditorWorkspaceView: Dispatch<SetStateAction<EditorWorkspaceView>>
   setIsCreatingCampaign: Dispatch<SetStateAction<boolean>>
   setIsJoiningCampaign: Dispatch<SetStateAction<boolean>>
+  refreshLobbyCampaignData: (options?: {
+    showLoading?: boolean
+    surfaceError?: boolean
+  }) => Promise<CampaignSummary[] | null>
   setError: Dispatch<SetStateAction<string | null>>
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -65,6 +69,7 @@ export function useWorkspacesCampaignEntryOrchestration(
     setEditorWorkspaceView,
     setIsCreatingCampaign,
     setIsJoiningCampaign,
+    refreshLobbyCampaignData,
     setError,
     setLobbyNotice,
     fetchWithAuthGuard,
@@ -403,10 +408,79 @@ export function useWorkspacesCampaignEntryOrchestration(
     ]
   )
 
+  const handleJoinRequest = useCallback(
+    async (campaign: CampaignSummary) => {
+      setError(null)
+      setLobbyNotice(null)
+
+      if (!campaign.discoverable) {
+        setError('Join requests are only available for public campaigns.')
+        return
+      }
+
+      const optionalMessage = window.prompt(`Optional message for the DM of ${campaign.name}:`, '')
+        ?.trim()
+
+      try {
+        const response = await fetchWithAuthGuard(
+          `${apiUrl}/api/campaigns/${campaign.id}/join-request`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              message: optionalMessage || undefined,
+            }),
+          }
+        )
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to submit join request')
+        }
+
+        await refreshLobbyCampaignData({ showLoading: false, surfaceError: false })
+        setLobbyNotice('Join request sent. The DM can review it from their campaign card.')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
+      [apiUrl, fetchWithAuthGuard, refreshLobbyCampaignData, setError, setLobbyNotice, token]
+    [
+      apiUrl,
+      campaigns,
+      fetchWithAuthGuard,
+      refreshLobbyCampaignData,
+      setError,
+      setLobbyNotice,
+      token,
+    ]
+  )
+
+  const handleWatchCampaign = useCallback(
+    (campaign: CampaignSummary) => {
+      setError(null)
+      setLobbyNotice(null)
+
+      const inviteCode = campaign.spectatorInviteCode?.trim()
+      if (!inviteCode || campaign.spectatorInviteActive === false) {
+        setError('Watch is unavailable for this campaign right now.')
+        return
+      }
+
+      window.location.assign(`/watch/${encodeURIComponent(inviteCode)}`)
+    },
+    [setError, setLobbyNotice]
+  )
+
   return {
     handleCreateCampaign,
     handleJoinCampaign,
     handleEnterCampaign,
     startCampaignSession,
+    handleJoinRequest,
+    handleWatchCampaign,
   }
 }

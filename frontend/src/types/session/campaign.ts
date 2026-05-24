@@ -11,6 +11,7 @@ export interface CampaignSummary {
   extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
   inviteCode?: string
   spectatorInviteCode?: string | null
+  spectatorInviteActive?: boolean
   currentDmId?: UUID
   memberRole?: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
   dmUsername?: string
@@ -126,21 +127,13 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
 
   // Non-member paths
   if (campaign.isMember === false || campaign.memberRole === undefined) {
-    // PUBLIC campaign: offer "Request to Join"
-    if (campaign.discoverable) {
-      return {
-        label: 'Request to Join',
-        icon: 'person_add',
-        disabled: false,
-        action: 'joinRequest',
-      }
-    }
-
     // PRIVATE campaign with spectators enabled + active session + people online
     const isWatchable =
       campaign.spectatorsEnabled &&
       campaign.latestSessionState === 'ACTIVE' &&
-      (campaign.activeConnectedCount ?? 0) > 0
+      (campaign.activeConnectedCount ?? 0) > 0 &&
+      Boolean(campaign.spectatorInviteCode?.trim()) &&
+      campaign.spectatorInviteActive !== false
 
     if (isWatchable) {
       return {
@@ -149,6 +142,16 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
         disabled: false,
         action: 'watch',
         showLock: true,
+      }
+    }
+
+    // PUBLIC campaign: offer "Request to Join"
+    if (campaign.discoverable) {
+      return {
+        label: 'Request to Join',
+        icon: 'person_add',
+        disabled: false,
+        action: 'joinRequest',
       }
     }
 

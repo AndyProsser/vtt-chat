@@ -823,6 +823,8 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
     posterUrl: string | null
     discoverable: boolean
     spectatorPolicy: 'NONE' | 'GUESTS' | 'USERS'
+    spectatorInviteCode: string | null
+    spectatorInviteActive: boolean
     activeSessionState: SessionState | null
     spectatorsEnabled: boolean
     activeConnectedCount: number
@@ -921,6 +923,8 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
         posterUrl: c.posterUrl,
         discoverable: c.discoverable,
         spectatorPolicy: c.spectatorPolicy as 'NONE' | 'GUESTS' | 'USERS',
+        spectatorInviteCode: c.spectatorInviteCode ?? null,
+        spectatorInviteActive: Boolean(c.spectatorInviteActive),
         activeSessionState,
         spectatorsEnabled,
         activeConnectedCount,

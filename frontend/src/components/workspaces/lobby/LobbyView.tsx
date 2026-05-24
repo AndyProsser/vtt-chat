@@ -23,8 +23,8 @@ type LobbyViewProps = {
   onOpenCampaignSettings: (campaignId: CampaignSummary['id']) => void
   onEnterCampaign: (campaignId: CampaignSummary['id']) => void
   onError: (message: string) => void
-  onJoinRequest: (campaignId: CampaignSummary['id']) => void
-  onWatchCampaign: (campaignId: CampaignSummary['id']) => void
+  onJoinRequest: (campaign: CampaignSummary) => void
+  onWatchCampaign: (campaign: CampaignSummary) => void
 }
 
 export function LobbyView(props: LobbyViewProps) {

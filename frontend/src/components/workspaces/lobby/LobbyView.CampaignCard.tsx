@@ -203,8 +203,8 @@ export type CampaignCardProps = {
   onSelectCampaign: (id: CampaignSummary['id']) => void
   onOpenCampaignSettings: (id: CampaignSummary['id']) => void
   onEnterCampaign: (id: CampaignSummary['id']) => void
-  onJoinRequest: (id: CampaignSummary['id']) => void
-  onWatchCampaign: (id: CampaignSummary['id']) => void
+  onJoinRequest: (campaign: CampaignSummary) => void
+  onWatchCampaign: (campaign: CampaignSummary) => void
   onError: (message: string) => void
 }
 
@@ -302,11 +302,11 @@ export function CampaignCard({
     }
     if ('action' in entryAction) {
       if (entryAction.action === 'joinRequest') {
-        onJoinRequest(campaign.id)
+        onJoinRequest(campaign)
         return
       }
       if (entryAction.action === 'watch') {
-        onWatchCampaign(campaign.id)
+        onWatchCampaign(campaign)
         return
       }
     }

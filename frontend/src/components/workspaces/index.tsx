@@ -246,6 +246,7 @@ export function WorkspaceInitialization({
     isLoadingCampaigns,
     lobbyStats,
     partyPresenceRefreshVersion,
+    loadLobbyCampaignData,
     handleCampaignListInvalidated,
     handleLobbyStatsUpdated,
     handlePartyPresenceUpdated,
@@ -564,36 +565,43 @@ export function WorkspaceInitialization({
     currentPresence,
   })
 
-  const { handleCreateCampaign, handleJoinCampaign, handleEnterCampaign, startCampaignSession } =
-    useWorkspacesCampaignEntryOrchestration({
-      apiUrl,
-      token,
-      userId: user.id,
-      userAuthType: user.authType,
-      campaigns,
-      selectedCampaignId,
-      sessionNameBase: sessionSettingsName,
-      newCampaignName,
-      joinInviteInput,
-      setCampaigns,
-      setSelectedCampaignId,
-      setShowCreateCampaignModal,
-      setShowJoinCampaignModal,
-      setNewCampaignName,
-      setJoinInviteInput,
-      setEditorWorkspaceView,
-      setIsCreatingCampaign,
-      setIsJoiningCampaign,
-      setError,
-      setLobbyNotice,
-      fetchWithAuthGuard,
-      fetchCampaignSessionsData,
-      ensureSessionMembership,
-      replaceSessions,
-      setCurrentSession,
-      openEditorCampaignWorkspace,
-      onSessionCreated,
-    })
+  const {
+    handleCreateCampaign,
+    handleJoinCampaign,
+    handleEnterCampaign,
+    startCampaignSession,
+    handleJoinRequest,
+    handleWatchCampaign,
+  } = useWorkspacesCampaignEntryOrchestration({
+    apiUrl,
+    token,
+    userId: user.id,
+    userAuthType: user.authType,
+    campaigns,
+    selectedCampaignId,
+    sessionNameBase: sessionSettingsName,
+    newCampaignName,
+    joinInviteInput,
+    setCampaigns,
+    setSelectedCampaignId,
+    setShowCreateCampaignModal,
+    setShowJoinCampaignModal,
+    setNewCampaignName,
+    setJoinInviteInput,
+    setEditorWorkspaceView,
+    setIsCreatingCampaign,
+    setIsJoiningCampaign,
+    refreshLobbyCampaignData: loadLobbyCampaignData,
+    setError,
+    setLobbyNotice,
+    fetchWithAuthGuard,
+    fetchCampaignSessionsData,
+    ensureSessionMembership,
+    replaceSessions,
+    setCurrentSession,
+    openEditorCampaignWorkspace,
+    onSessionCreated,
+  })
 
   const {
     handleToggleBroadcastMode,
@@ -681,15 +689,12 @@ export function WorkspaceInitialization({
     handleOpenUserSettingsModal,
     handleBackToLobbyWorkspace,
     handleLaunchFromEditor,
-    handleJoinRequestUnavailable,
-    handleWatchUnavailable,
   } = useWorkspacesUiCallbacks({
     toggleThemeMode,
     setShowCreateCampaignModal,
     setShowJoinCampaignModal,
     setShowUserSettingsModal,
     setEditorWorkspaceView,
-    setError,
     handleEnterCampaign,
   })
 
@@ -781,8 +786,8 @@ export function WorkspaceInitialization({
     onEnterCampaign: (campaignId) => {
       void handleEnterCampaign(campaignId)
     },
-    onJoinRequest: handleJoinRequestUnavailable,
-    onWatchCampaign: handleWatchUnavailable,
+    onJoinRequest: handleJoinRequest,
+    onWatchCampaign: handleWatchCampaign,
     onError: setError,
   })
 
