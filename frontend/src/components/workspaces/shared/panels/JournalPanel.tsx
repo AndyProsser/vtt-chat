@@ -66,6 +66,7 @@ import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 interface JournalEditorProps {
   apiUrl: string
   token: string
+  campaignId?: UUID
   sessionId: UUID
   sessionName?: string
   role: Role
@@ -82,6 +83,7 @@ interface JournalEditorProps {
 function JournalEditor({
   apiUrl,
   token,
+  campaignId,
   sessionId,
   sessionName,
   role,
@@ -200,6 +202,10 @@ function JournalEditor({
           }),
         })
       } else {
+        if (!campaignId) {
+          throw new Error('Campaign context is missing for journal creation')
+        }
+
         res = await fetch(`${apiUrl}/api/notes`, {
           method: 'POST',
           headers: {
@@ -207,6 +213,7 @@ function JournalEditor({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            campaignId,
             sessionId,
             title: resolvedJournalTitle,
             name: resolvedJournalTitle,
@@ -271,6 +278,7 @@ function JournalEditor({
     normalizedDraftHashtags,
     onSaved,
     resolvedJournalTitle,
+    campaignId,
     sessionId,
     sessionName,
     token,
@@ -619,6 +627,7 @@ function JournalEditor({
 interface JournalBrowserProps {
   apiUrl: string
   token: string
+  campaignId?: UUID
   role: Role
   sessions: Session[]
   selectedSessionId: UUID | null
@@ -628,6 +637,7 @@ interface JournalBrowserProps {
 function JournalBrowser({
   apiUrl,
   token,
+  campaignId,
   role,
   sessions,
   selectedSessionId,
@@ -988,6 +998,7 @@ function JournalBrowser({
                         key={`journal-editor:${session.id}`}
                         apiUrl={apiUrl}
                         token={token}
+                        campaignId={campaignId}
                         sessionId={session.id}
                         sessionName={session.name}
                         role={role}
@@ -1032,6 +1043,7 @@ function JournalBrowser({
 type JournalPanelFocusedProps = {
   apiUrl: string
   token: string
+  campaignId?: UUID
   role: Role
   sessions?: undefined
   sessionId: UUID
@@ -1046,6 +1058,7 @@ type JournalPanelFocusedProps = {
 type JournalPanelBrowserProps = {
   apiUrl: string
   token: string
+  campaignId?: UUID
   role: Role
   sessions: Session[]
   selectedSessionId: UUID | null
@@ -1060,6 +1073,7 @@ export function JournalPanel(props: JournalPanelProps) {
       <JournalBrowser
         apiUrl={props.apiUrl}
         token={props.token}
+        campaignId={props.campaignId}
         role={props.role}
         sessions={props.sessions}
         selectedSessionId={props.selectedSessionId}
@@ -1073,6 +1087,7 @@ export function JournalPanel(props: JournalPanelProps) {
       key={`journal-editor:${props.sessionId}`}
       apiUrl={props.apiUrl}
       token={props.token}
+      campaignId={props.campaignId}
       role={props.role}
       sessionId={props.sessionId}
       sessionName={props.sessionName}

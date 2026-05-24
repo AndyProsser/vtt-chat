@@ -149,6 +149,7 @@ export function EditorView(props: EditorViewProps) {
         <JournalPanel
           apiUrl={props.apiUrl}
           token={props.authToken}
+          campaignId={campaign.id}
           role={props.role}
           sessions={props.settingsCampaignSessions}
           selectedSessionId={props.settingsReferenceSessionId}

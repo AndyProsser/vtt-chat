@@ -170,7 +170,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
         },
         body: JSON.stringify({
           campaignId,
-          sessionId,
           title,
           content,
           visibility,

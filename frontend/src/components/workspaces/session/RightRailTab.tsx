@@ -160,6 +160,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         <JournalPanel
           apiUrl={props.apiUrl}
           token={props.token}
+          campaignId={props.campaignId}
           role={props.effectiveSessionRole}
           sessions={props.sessions}
           selectedSessionId={props.currentSessionId}

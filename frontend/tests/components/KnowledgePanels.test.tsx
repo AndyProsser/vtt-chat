@@ -283,6 +283,94 @@ describe('knowledge panels', () => {
     expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
   })
 
+  it('does not refetch journal status on browser rerender when sessions are unchanged', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (!url.includes('/api/notes/')) {
+        throw new Error(`Unexpected fetch call: ${url}`)
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          notes: [
+            {
+              id: asUuid('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
+              authorId: PLAYER_ID,
+              authorUsername: 'Tara',
+              title: 'Session Journal',
+              content: 'The wards held through dawn.',
+              visibility: NoteVisibility.PLAYERS_VISIBLE,
+              tags: ['_journal', '#recap'],
+              allowedUsers: [],
+              publishedAt: null,
+              createdAt: 10,
+              updatedAt: 20,
+            },
+          ],
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const sessions = [
+      {
+        id: SESSION_ID,
+        name: 'The Emerald Crown #29 - 24 May 2026',
+        dmId: PLAYER_ID,
+        state: 'ACTIVE',
+        createdAt: 200,
+      },
+      {
+        id: SESSION_TWO_ID,
+        name: 'The Emerald Crown #28 - 17 May 2026',
+        dmId: PLAYER_ID,
+        state: 'ENDED',
+        createdAt: 100,
+      },
+    ]
+
+    const { rerender } = render(
+      <JournalPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        role={Role.DM}
+        sessions={sessions}
+        selectedSessionId={SESSION_ID}
+        onSessionChange={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('The wards held through dawn.')).toBeTruthy()
+
+    await waitFor(() => {
+      const noteCalls = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes('/api/notes/')
+      )
+
+      // 2 browser status fetches (one per session) + 1 selected session editor fetch
+      expect(noteCalls.length).toBe(3)
+    })
+
+    const stableInitialCallCount = fetchMock.mock.calls.length
+
+    rerender(
+      <JournalPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        role={Role.DM}
+        sessions={sessions.map((session) => ({ ...session }))}
+        selectedSessionId={SESSION_ID}
+        onSessionChange={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.length).toBe(stableInitialCallCount)
+    })
+  })
+
   it('renders notes rail data for the current handout selection', async () => {
     vi.stubGlobal(
       'fetch',
