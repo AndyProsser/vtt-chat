@@ -82,15 +82,16 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
                 <button
                   type="submit"
                   disabled={props.isCreating}
-                  className="notes-edit-icon-button"
-                  aria-label="Create handout"
+                  className="notes-edit-primary-button"
+                  aria-label="Save note"
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
-                    {props.isCreating ? 'hourglass_top' : 'add'}
+                    save
                   </span>
+                  <span>{props.isCreating ? 'Saving...' : 'Save Note'}</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top">Create handout</TooltipContent>
+              <TooltipContent side="top">Save Note</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -113,7 +114,7 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
             id="notes-create-tags"
             value={props.tagsText}
             onChange={(event) => props.onTagsTextChange(event.target.value)}
-            placeholder="npc, city, clue"
+            placeholder="#npc, #city, #clue"
             className="notes-edit-input"
           />
         </div>

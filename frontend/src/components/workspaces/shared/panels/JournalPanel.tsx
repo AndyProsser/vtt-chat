@@ -307,22 +307,6 @@ function JournalEditor({
     void handleSave()
   }, [handleSave, isDm, saveRequestVersion])
 
-  const handleBlurSave = useCallback(
-    (event?: React.FocusEvent<HTMLElement>) => {
-      if (!autoSave || !isDm || isSaving || !hasUnsavedChanges) {
-        return
-      }
-
-      const nextTarget = event?.relatedTarget
-      if (nextTarget instanceof Node && event?.currentTarget.contains(nextTarget)) {
-        return
-      }
-
-      void handleSave()
-    },
-    [autoSave, handleSave, hasUnsavedChanges, isDm, isSaving]
-  )
-
   const handleCancel = useCallback(() => {
     if (entry) {
       setDraft(entry.markdown)
@@ -522,7 +506,6 @@ function JournalEditor({
       <MarkdownEditor
         value={resolvedMarkdown}
         onChange={setDraft}
-        onBlur={handleBlurSave}
         placeholder={
           isDm
             ? 'Write your session journal here — what happened, who was there, what changed…'
@@ -542,7 +525,6 @@ function JournalEditor({
                 value={draftHashtagsInput}
                 onChange={(event) => setDraftHashtagsInput(event.target.value)}
                 onKeyDown={handleHashtagInputKeyDown}
-                onBlur={handleBlurSave}
                 placeholder="#recap #loot #npc"
                 maxLength={160}
                 aria-label="Journal hashtags"
@@ -602,7 +584,7 @@ function JournalEditor({
         )}
       </div>
 
-      {isDm && isEditing && !autoSave ? (
+      {isDm && isEditing ? (
         <div className="knowledge-panel__journal-actions">
           <button
             type="button"

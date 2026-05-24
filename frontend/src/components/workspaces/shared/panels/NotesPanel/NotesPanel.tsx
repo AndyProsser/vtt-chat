@@ -5,6 +5,7 @@ import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
+import { formatNotesShareUserLabel, parseNoteHashtags } from '../../../../../utils/notesPanel'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
@@ -30,11 +31,7 @@ function isJournalNote(note: Note): boolean {
 }
 
 function toHandoutTags(tagsText: string): string[] {
-  return tagsText
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .filter((tag) => tag.toLowerCase() !== JOURNAL_TAG)
+  return parseNoteHashtags(tagsText).filter((tag) => tag.toLowerCase() !== JOURNAL_TAG)
 }
 
 export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: NotesPanelProps) {
@@ -91,8 +88,8 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       return 'All players'
     }
 
-    const names = (note.allowedUsers || []).map(
-      (userId) => shareUsers.find((candidate) => candidate.id === userId)?.username || userId
+    const names = (note.allowedUsers || []).map((userId) =>
+      formatNotesShareUserLabel(userId, shareUsers)
     )
 
     if (names.length === 0) {
@@ -351,6 +348,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
                   shareRooms={shareRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
+                  canManageShare={user.role === Role.DM}
                   canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
                   onSave={handleSave}
                   onDelete={handleDelete}

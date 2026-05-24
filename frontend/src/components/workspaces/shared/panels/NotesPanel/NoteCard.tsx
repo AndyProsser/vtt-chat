@@ -8,11 +8,17 @@ import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEd
 import { useToast } from '@/hooks/useToast'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
+import {
+  formatNotesShareUserLabel,
+  parseNoteHashtags,
+  serializeNoteHashtags,
+} from '../../../../../utils/notesPanel'
 import { NoteSharePopover } from './NoteSharePopover'
 
 interface NoteCardProps {
   note: Note
   canEdit: boolean
+  canManageShare: boolean
   canPublish: boolean
   shareUsers?: NotesShareUser[]
   shareRooms?: NotesShareRoom[]
@@ -34,6 +40,7 @@ const visibilityLabel: Record<NoteVisibility, string> = {
 export function NoteCard({
   note,
   canEdit,
+  canManageShare,
   canPublish,
   shareUsers = [],
   shareRooms = [],
@@ -46,7 +53,7 @@ export function NoteCard({
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
-  const [tagsText, setTagsText] = useState(note.tags.join(', '))
+  const [tagsText, setTagsText] = useState(serializeNoteHashtags(note.tags))
   const [allowedUsers, setAllowedUsers] = useState<UUID[]>(note.allowedUsers || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +66,7 @@ export function NoteCard({
     setTitle(note.title)
     setContent(note.content)
     setVisibility(note.visibility)
-    setTagsText(note.tags.join(', '))
+    setTagsText(serializeNoteHashtags(note.tags))
     setAllowedUsers(note.allowedUsers || [])
     setError(null)
     setSharePopoverOpen(false)
@@ -70,10 +77,7 @@ export function NoteCard({
     setIsSaving(true)
     setError(null)
     try {
-      const tags = tagsText
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean)
+      const tags = parseNoteHashtags(tagsText)
 
       await onSave(note.id, {
         title,
@@ -88,6 +92,17 @@ export function NoteCard({
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleStartShareEdit = () => {
+    setTitle(note.title)
+    setContent(note.content)
+    setVisibility(note.visibility)
+    setTagsText(serializeNoteHashtags(note.tags))
+    setAllowedUsers(note.allowedUsers || [])
+    setError(null)
+    setIsEditing(true)
+    setSharePopoverOpen(true)
   }
 
   const handleDelete = async () => {
@@ -136,7 +151,7 @@ export function NoteCard({
     }
 
     return currentAllowedUsers
-      .map((userId) => shareUsers.find((candidate) => candidate.id === userId)?.username || userId)
+      .map((userId) => formatNotesShareUserLabel(userId, shareUsers))
       .join(', ')
   }
 
@@ -194,15 +209,16 @@ export function NoteCard({
                       type="button"
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="notes-edit-icon-button"
+                      className="notes-edit-primary-button"
                       aria-label="Save handout"
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
                         save
                       </span>
+                      <span>{isSaving ? 'Saving...' : 'Save Note'}</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Save</TooltipContent>
+                  <TooltipContent side="top">Save Note</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -211,12 +227,13 @@ export function NoteCard({
                       type="button"
                       onClick={cancelEdit}
                       disabled={isSaving}
-                      className="notes-edit-icon-button"
+                      className="notes-edit-secondary-button"
                       aria-label="Cancel editing"
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
                         close
                       </span>
+                      <span>Cancel</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top">Cancel</TooltipContent>
@@ -243,7 +260,7 @@ export function NoteCard({
                   id={`note-hashtags-${note.id}`}
                   value={tagsText}
                   onChange={(e) => setTagsText(e.target.value)}
-                  placeholder="npc, city, quest"
+                  placeholder="#npc, #city, #quest"
                   className="notes-edit-input"
                 />
               </div>
@@ -286,26 +303,50 @@ export function NoteCard({
             {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
             {canEdit && (
               <div className="notes-card-actions flex gap-2">
+                {canManageShare && (
+                  <button
+                    type="button"
+                    onClick={handleStartShareEdit}
+                    className="notes-card-action rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      group
+                    </span>
+                    Share
+                  </button>
+                )}
                 <button
+                  type="button"
                   onClick={() => setIsEditing(true)}
                   className="notes-card-action rounded-ui-sm border border-ui-border px-3 py-2 text-sm text-ui-primary"
                 >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    edit
+                  </span>
                   Edit
                 </button>
                 {canPublish && (
                   <button
+                    type="button"
                     onClick={handlePublish}
                     disabled={isSaving || !!note.publishedAt}
                     className="notes-card-action notes-card-action--primary rounded-ui-sm bg-ui-brand px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      publish
+                    </span>
                     {note.publishedAt ? 'Published' : isSaving ? 'Publishing...' : 'Publish'}
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isSaving}
                   className="notes-card-action notes-card-action--danger rounded-ui-sm bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    delete
+                  </span>
                   {isSaving ? 'Deleting...' : 'Delete'}
                 </button>
               </div>

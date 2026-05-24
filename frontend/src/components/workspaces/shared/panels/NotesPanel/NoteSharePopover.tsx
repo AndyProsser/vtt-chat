@@ -6,6 +6,12 @@ import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 
 type ShareAudienceMode = 'NONE' | 'EVERYONE' | 'LIMITED'
 
+const AUDIENCE_MODE_META: Record<ShareAudienceMode, { icon: string; label: string }> = {
+  NONE: { icon: 'visibility_off', label: 'None' },
+  EVERYONE: { icon: 'groups', label: 'Everyone' },
+  LIMITED: { icon: 'group', label: 'Limited' },
+}
+
 interface NoteSharePopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -178,7 +184,13 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
               onClick={() => setAudienceMode('NONE')}
               className={`notes-share-popover__mode ${audienceMode === 'NONE' ? 'is-selected' : ''}`}
             >
-              None
+              <span
+                className="material-symbols-outlined notes-share-popover__mode-icon"
+                aria-hidden="true"
+              >
+                {AUDIENCE_MODE_META.NONE.icon}
+              </span>
+              <span>{AUDIENCE_MODE_META.NONE.label}</span>
             </button>
             <button
               type="button"
@@ -187,7 +199,13 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
               onClick={() => setAudienceMode('EVERYONE')}
               className={`notes-share-popover__mode ${audienceMode === 'EVERYONE' ? 'is-selected' : ''}`}
             >
-              Everyone
+              <span
+                className="material-symbols-outlined notes-share-popover__mode-icon"
+                aria-hidden="true"
+              >
+                {AUDIENCE_MODE_META.EVERYONE.icon}
+              </span>
+              <span>{AUDIENCE_MODE_META.EVERYONE.label}</span>
             </button>
             <button
               type="button"
@@ -196,7 +214,13 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
               onClick={() => setAudienceMode('LIMITED')}
               className={`notes-share-popover__mode ${audienceMode === 'LIMITED' ? 'is-selected' : ''}`}
             >
-              Limited
+              <span
+                className="material-symbols-outlined notes-share-popover__mode-icon"
+                aria-hidden="true"
+              >
+                {AUDIENCE_MODE_META.LIMITED.icon}
+              </span>
+              <span>{AUDIENCE_MODE_META.LIMITED.label}</span>
             </button>
           </div>
 
