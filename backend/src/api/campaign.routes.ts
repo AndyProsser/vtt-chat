@@ -61,6 +61,7 @@ import {
 import { logger } from '@/utils/logger'
 import type { WebSocketManager } from '@/ws'
 import eventBroadcaster from '@/ws/event-broadcaster'
+import type { SupportedPlatform } from '@prisma/client'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1194,18 +1195,20 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   }
 
   // Validate supportedPlatforms
-  const VALID_PLATFORMS = ['ANY', 'DDB', 'ROLL20', 'FOUNDRY'] as const
-  const rawSupportedPlatforms: string[] | undefined = Array.isArray(supportedPlatforms)
+  const VALID_PLATFORMS: readonly SupportedPlatform[] = ['ANY', 'DDB', 'ROLL20', 'FOUNDRY']
+  const isSupportedPlatform = (value: unknown): value is SupportedPlatform =>
+    VALID_PLATFORMS.includes(value as SupportedPlatform)
+  const rawSupportedPlatforms: unknown[] | undefined = Array.isArray(supportedPlatforms)
     ? supportedPlatforms
     : supportedPlatforms == null
       ? undefined
       : (null as never)
-  const effectiveSupportedPlatforms: string[] = rawSupportedPlatforms ??
-    (campaign as any).supportedPlatforms ?? ['ANY']
+  const effectiveSupportedPlatformsRaw: unknown[] = rawSupportedPlatforms ??
+    ((campaign as any).supportedPlatforms as unknown[] | undefined) ?? ['ANY']
   if (
-    !Array.isArray(effectiveSupportedPlatforms) ||
-    effectiveSupportedPlatforms.length === 0 ||
-    !effectiveSupportedPlatforms.every((p) => VALID_PLATFORMS.includes(p as any))
+    !Array.isArray(effectiveSupportedPlatformsRaw) ||
+    effectiveSupportedPlatformsRaw.length === 0 ||
+    !effectiveSupportedPlatformsRaw.every((platform) => isSupportedPlatform(platform))
   ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
@@ -1213,6 +1216,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       field: 'supportedPlatforms',
     })
   }
+  const effectiveSupportedPlatforms = effectiveSupportedPlatformsRaw as SupportedPlatform[]
 
   const normalizedPosterUrl =
     typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null

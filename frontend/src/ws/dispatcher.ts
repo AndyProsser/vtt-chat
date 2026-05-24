@@ -25,7 +25,8 @@ export class EventDispatcher {
     return (
       event.type === 'CHAT:MESSAGE_SENT' ||
       event.type === 'CAMPAIGN:LIST_INVALIDATED' ||
-      event.type === 'CAMPAIGN:LOBBY_STATS_UPDATED'
+      event.type === 'CAMPAIGN:LOBBY_STATS_UPDATED' ||
+      event.type === 'CAMPAIGN:PARTY_PRESENCE_UPDATED'
     )
   }
 

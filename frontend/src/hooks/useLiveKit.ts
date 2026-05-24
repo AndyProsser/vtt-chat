@@ -84,6 +84,10 @@ function isLoopbackLiveKitUrl(url: string): boolean {
   }
 }
 
+function isLoopbackHost(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
 export function buildLiveKitConnectionKey(
   sessionId: string,
   roomId: string,
@@ -323,7 +327,14 @@ export function useLiveKit(
         tokenUrl: data.url,
       })
 
-      if (typeof data.url === 'string' && isLoopbackLiveKitUrl(data.url)) {
+      const browserHost =
+        typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : 'localhost'
+      const shouldWarnLoopbackTarget =
+        typeof data.url === 'string' &&
+        isLoopbackLiveKitUrl(data.url) &&
+        !isLoopbackHost(browserHost)
+
+      if (shouldWarnLoopbackTarget) {
         logger.warn('useLiveKit', 'LiveKit token URL points to loopback; remote clients may fail', {
           sessionId,
           roomId,

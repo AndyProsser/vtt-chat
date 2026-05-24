@@ -191,7 +191,7 @@ export function getSeededJournalDmRoast(seed: string): string {
 }
 
 export function getSeededJournalDmRoastOptions(seed: string, limit = 50): string[] {
-  if (limit <= 0 || JOURNAL_DM_ROASTS.length === 0) {
+  if (limit <= 0) {
     return []
   }
 
