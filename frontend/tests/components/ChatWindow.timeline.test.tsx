@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageType, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
+import { TooltipProvider } from '../../src/components/ui'
 import { ChatWindow } from '../../src/components/workspaces/session/chat/ChatWindow'
 import { MessageInput } from '../../src/components/workspaces/session/chat/MessageInput'
 import { MessageList } from '../../src/components/workspaces/session/chat/MessageList'
@@ -15,6 +16,10 @@ const GREEN_ROOM_ID = '44444444-4444-4444-8444-444444444444' as UUID
 function getStartOfTodayTimestamp(): number {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+}
+
+function renderWithTooltip(ui: React.ReactNode) {
+  return render(<TooltipProvider delayDuration={140}>{ui}</TooltipProvider>)
 }
 
 describe('ChatWindow timeline behavior', () => {
@@ -106,7 +111,7 @@ describe('ChatWindow timeline behavior', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    render(
+    renderWithTooltip(
       <ChatWindow
         apiUrl="http://localhost:3000"
         token="token"
@@ -165,7 +170,7 @@ describe('ChatWindow timeline behavior', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    const { container } = render(
+    const { container } = renderWithTooltip(
       <ChatWindow
         apiUrl="http://localhost:3000"
         token="token"
@@ -274,7 +279,7 @@ describe('ChatWindow timeline behavior', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    render(
+    renderWithTooltip(
       <ChatWindow
         apiUrl="http://localhost:3000"
         token="token"
@@ -301,7 +306,7 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('renders campaign brief recap with explicit first-session label', () => {
-    render(
+    renderWithTooltip(
       <MessageList
         currentUserId={String(USER_ID)}
         activeRoomId={MAIN_ROOM_ID}
@@ -329,7 +334,7 @@ describe('ChatWindow timeline behavior', () => {
   it('renders day separators for editorial timeline grouping', () => {
     const yesterday = Date.now() - 24 * 60 * 60 * 1000
 
-    render(
+    renderWithTooltip(
       <MessageList
         currentUserId={String(USER_ID)}
         activeRoomId={MAIN_ROOM_ID}
@@ -360,13 +365,13 @@ describe('ChatWindow timeline behavior', () => {
       />
     )
 
-    const separators = document.querySelectorAll('.chat-day-separator')
+    const separators = document.querySelectorAll('.session-message-list__day-separator')
     expect(separators.length).toBe(2)
     expect(screen.getByText('Today action')).toBeTruthy()
   })
 
   it('renders the connected message-type bar and whisper picker for players', async () => {
-    render(
+    renderWithTooltip(
       <MessageInput
         onSend={vi.fn().mockResolvedValue(undefined)}
         role={Role.PLAYER}
@@ -392,7 +397,7 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('hides the DM type button for the DM', () => {
-    render(<MessageInput onSend={vi.fn().mockResolvedValue(undefined)} role={Role.DM} />)
+    renderWithTooltip(<MessageInput onSend={vi.fn().mockResolvedValue(undefined)} role={Role.DM} />)
 
     expect(screen.getByRole('radio', { name: 'IC' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'OOC' })).toBeTruthy()

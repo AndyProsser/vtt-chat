@@ -3,7 +3,7 @@ import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { ConnectionState } from 'livekit-client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Workspaces } from '../../src/components/session/Workspaces'
+import { WorkspaceInitialization as Workspaces } from '../../src/components/workspaces'
 import { buildLiveKitConnectionKey } from '../../src/hooks/useLiveKit'
 import { useStore } from '../../src/state/store'
 import { getUserDMOverride } from '@/utils/audioOverrides'
@@ -43,19 +43,19 @@ vi.mock('../../src/utils/telemetry', () => ({
   },
 }))
 
-vi.mock('../../src/components/chat/ChatWindow', () => ({
+vi.mock('@/components/workspaces/session/chat/ChatWindow', () => ({
   ChatWindow: () => <div>Mock Chat Window</div>,
 }))
 
-vi.mock('../../src/components/notes/NotesPanel', () => ({
+vi.mock('@/components/workspaces/shared/panels/NotesPanel', () => ({
   NotesPanel: () => <div>Mock Notes Panel</div>,
 }))
 
-vi.mock('../../src/components/session/DMAudioControls', () => ({
+vi.mock('@/components/workspaces/session/DMAudioControls', () => ({
   DMAudioControls: () => <div>Mock DM Audio Controls</div>,
 }))
 
-vi.mock('../../src/components/ui/ReconnectBanner', () => ({
+vi.mock('@/components/ui/ReconnectBanner', () => ({
   ReconnectBanner: () => null,
 }))
 
@@ -658,7 +658,7 @@ describe('Workspaces integration', () => {
             />
           )
 
-          await screen.findByText('Campaigns')
+          await screen.findByText('Adventures')
           fireEvent.click(screen.getByRole('button', { name: 'Campaign settings' }))
 
           const dialog = await screen.findByRole('dialog', { name: 'Campaign settings' })
@@ -671,7 +671,7 @@ describe('Workspaces integration', () => {
           })
 
           fireEvent.click(within(dialog).getByRole('tab', { name: 'Notes' }))
-          expect(await within(dialog).findByTestId('notes-rail-panel')).toBeTruthy()
+          expect(await within(dialog).findByText('Handouts')).toBeTruthy()
           expect(within(dialog).getByText('Latest chapter note')).toBeTruthy()
 
           fireEvent.change(within(dialog).getByLabelText('Session context'), {
@@ -734,7 +734,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
@@ -935,8 +935,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
     await screen.findByTestId('session-toolbar')
 
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
@@ -1015,8 +1014,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select group Strategy Room/i })).toBeTruthy()
@@ -1167,8 +1165,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Select group Main Room/i })).toBeTruthy()
@@ -1287,8 +1284,7 @@ describe('Workspaces integration', () => {
         />
       )
 
-      await screen.findByText('Campaigns')
-      fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
       await screen.findByTestId('session-toolbar')
       const toolbar = screen.getByTestId('session-toolbar')
       const notesToolbarBtn = Array.from(toolbar.querySelectorAll('button')).find((btn) =>
@@ -1307,7 +1303,7 @@ describe('Workspaces integration', () => {
         fireEvent.click(screen.getByRole('tab', { name: /History/i }))
         expect(await screen.findByTestId('history-panel')).toBeTruthy()
         fireEvent.click(screen.getByRole('tab', { name: /Notes/i }))
-        expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
+        expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
       } else if (role === Role.DM) {
         expect(screen.getByRole('tab', { name: /Groups/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Audio/i })).toBeTruthy()
@@ -1404,8 +1400,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
     await screen.findByTestId('session-toolbar')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
@@ -1559,8 +1554,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
     await screen.findByTestId('session-toolbar')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
@@ -1749,7 +1743,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions`,
@@ -1775,7 +1769,7 @@ describe('Workspaces integration', () => {
 
     const notesTabForSwitch = screen.getByRole('tab', { name: /Notes/i })
     fireEvent.click(notesTabForSwitch)
-    expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
+    expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
 
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
@@ -1791,7 +1785,7 @@ describe('Workspaces integration', () => {
 
     const notesTab = screen.getByRole('tab', { name: /Notes/i })
     fireEvent.click(notesTab)
-    expect(await screen.findByTestId('notes-rail-panel')).toBeTruthy()
+    expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
 
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
@@ -1876,7 +1870,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
 
     fireEvent.click(screen.getByRole('button', { name: 'Join campaign' }))
 
@@ -1977,8 +1971,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await screen.findByTestId('session-toolbar')
     expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
@@ -2046,8 +2039,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     const toolbar = await screen.findByTestId('session-toolbar')
     expect(toolbar).toBeTruthy()
@@ -2124,8 +2116,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await screen.findByTestId('session-toolbar')
     fireEvent.click(screen.getByRole('button', { name: 'Pause for break' }))
@@ -2210,8 +2201,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await screen.findByTestId('session-toolbar')
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
@@ -2324,8 +2314,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await screen.findByRole('button', { name: 'Start' })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
@@ -2494,8 +2483,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2727,8 +2715,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     // Initial session-enter hydration: no connected room is present,
     // so effective environment remains neutral even if a server environment exists.
@@ -2946,8 +2933,7 @@ describe('Workspaces integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
-    fireEvent.click(screen.getByRole('button', { name: 'Launch campaign' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
       expect(useStore.getState().mockTakeoverUserIdBySession[SESSION_ID]).toBe(PLAYER_ID)

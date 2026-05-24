@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Workspaces } from '../../src/components/session/Workspaces'
-import { MessageList } from '../../src/components/chat/MessageList'
+import { WorkspaceInitialization as Workspaces } from '../../src/components/workspaces'
+import { MessageList } from '../../src/components/workspaces/session/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
 const asUuid = (value: string) => value as UUID
@@ -43,7 +43,7 @@ vi.mock('../../src/utils/telemetry', () => ({
   },
 }))
 
-vi.mock('../../src/components/chat/ChatWindow', () => ({
+vi.mock('@/components/workspaces/session/chat/ChatWindow', () => ({
   ChatWindow: ({ sessionId, roomId, user }: any) => {
     const sessionMessages = useStore(
       (state) => (state.messages as any)[sessionId] ?? EMPTY_SESSION_MESSAGES
@@ -60,15 +60,15 @@ vi.mock('../../src/components/chat/ChatWindow', () => ({
   },
 }))
 
-vi.mock('../../src/components/notes/NotesPanel', () => ({
+vi.mock('@/components/workspaces/shared/panels/NotesPanel', () => ({
   NotesPanel: () => <div>Mock Notes Panel</div>,
 }))
 
-vi.mock('../../src/components/session/DMAudioControls', () => ({
+vi.mock('@/components/workspaces/session/DMAudioControls', () => ({
   DMAudioControls: () => <div>Mock DM Audio Controls</div>,
 }))
 
-vi.mock('../../src/components/ui/ReconnectBanner', () => ({
+vi.mock('@/components/ui/ReconnectBanner', () => ({
   ReconnectBanner: () => null,
 }))
 
@@ -458,7 +458,7 @@ describe('Session bookend integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
     if (launchButton) {
       fireEvent.click(launchButton)
@@ -519,8 +519,10 @@ describe('Session bookend integration', () => {
       />
     )
 
-    const pausedMarkers = document.querySelectorAll('.chat-session-marker--paused')
-    const resumedMarkers = document.querySelectorAll('.chat-session-marker--resumed')
+    const pausedMarkers = document.querySelectorAll('.session-message-list__session-marker--paused')
+    const resumedMarkers = document.querySelectorAll(
+      '.session-message-list__session-marker--resumed'
+    )
     expect(pausedMarkers.length).toBe(1)
     expect(resumedMarkers.length).toBe(1)
     expect(screen.getByText('PAUSED')).toBeTruthy()
@@ -558,7 +560,7 @@ describe('Session bookend integration', () => {
       />
     )
 
-    const markers = document.querySelectorAll('.chat-session-marker--bookend')
+    const markers = document.querySelectorAll('.session-message-list__session-marker--bookend')
     expect(markers.length).toBe(2)
     expect(screen.getByText('STARTED')).toBeTruthy()
     expect(screen.getByText('ENDED')).toBeTruthy()
@@ -714,7 +716,7 @@ describe('Session bookend integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
     if (launchButton) {
       fireEvent.click(launchButton)
@@ -723,7 +725,9 @@ describe('Session bookend integration', () => {
 
     await waitFor(() => {
       expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.PAUSED)
-      expect(document.querySelectorAll('.chat-session-marker--paused').length).toBeGreaterThan(0)
+      expect(
+        document.querySelectorAll('.session-message-list__session-marker--paused').length
+      ).toBeGreaterThan(0)
     })
   })
 
@@ -769,7 +773,7 @@ describe('Session bookend integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
     if (launchButton) {
       fireEvent.click(launchButton)
@@ -872,7 +876,7 @@ describe('Session bookend integration', () => {
       />
     )
 
-    await screen.findByText('Campaigns')
+    await screen.findByText('Adventures')
     const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
     if (launchButton) {
       fireEvent.click(launchButton)
