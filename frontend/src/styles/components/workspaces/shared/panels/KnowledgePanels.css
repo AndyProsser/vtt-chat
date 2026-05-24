@@ -949,12 +949,29 @@
   cursor: pointer;
 }
 
-.notes-toolbar-toggle {
+.notes-toolbar-segmented {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.notes-toolbar-segment {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.28rem 0.55rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+}
+
+.notes-toolbar-segment.is-selected {
+  background: color-mix(in srgb, var(--color-brand) 16%, var(--color-surface));
   color: var(--color-text-primary);
-  font-size: 0.84rem;
 }
 
 .notes-toolbar-count {
@@ -1121,7 +1138,6 @@
   cursor: not-allowed;
 }
 
-.notes-edit-primary-button,
 .notes-edit-secondary-button {
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-soft);
@@ -1135,23 +1151,15 @@
   font-size: 0.78rem;
 }
 
-.notes-edit-primary-button {
-  background: var(--color-brand);
-  border-color: color-mix(in srgb, var(--color-brand) 72%, black);
-  color: white;
-}
-
 .notes-edit-secondary-button {
   background: var(--color-surface-subtle);
   color: var(--color-text-primary);
 }
 
-.notes-edit-primary-button .material-symbols-outlined,
 .notes-edit-secondary-button .material-symbols-outlined {
   font-size: 1rem;
 }
 
-.notes-edit-primary-button:disabled,
 .notes-edit-secondary-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -1172,6 +1180,57 @@
   font-size: 0.76rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
+}
+
+.notes-edit-meta-summary--status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.notes-share-status {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+}
+
+.notes-share-status .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.notes-share-status--private {
+  background: color-mix(in srgb, #64748b 18%, var(--color-surface));
+  color: #cbd5e1;
+}
+
+.notes-share-status--shared {
+  background: color-mix(in srgb, #10b981 18%, var(--color-surface));
+  color: #6ee7b7;
+}
+
+.notes-share-status--limited {
+  background: color-mix(in srgb, #38bdf8 18%, var(--color-surface));
+  color: #7dd3fc;
+}
+
+.notes-share-status--warning {
+  background: color-mix(in srgb, #f59e0b 18%, var(--color-surface));
+  color: #fbbf24;
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--color-border-soft));
+}
+
+.notes-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .notes-share-popover {

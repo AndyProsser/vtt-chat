@@ -5,6 +5,7 @@ import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEd
 import { useToast } from '@/hooks/useToast'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
+import { NoteShareStatusIcon } from './NoteShareStatusIcon'
 import { NoteSharePopover } from './NoteSharePopover'
 
 interface NotesCreateFormProps {
@@ -25,19 +26,10 @@ interface NotesCreateFormProps {
   onTagsTextChange: (value: string) => void
 }
 
-function deriveVisibilityLabel(visibility: NoteVisibility, allowedUsers: UUID[]): string {
-  if (visibility === NoteVisibility.DM_ONLY) return 'None'
-  if (visibility === NoteVisibility.PLAYERS_VISIBLE) return 'Everyone'
-  if (allowedUsers.length === 0) return 'Limited (none selected)'
-  return `Limited · ${allowedUsers.length} selected`
-}
-
 export function NotesCreateForm(props: NotesCreateFormProps) {
   const showToast = useToast()
   const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
   const [sharePopoverOpen, setSharePopoverOpen] = useState(false)
-
-  const visibilityLabel = deriveVisibilityLabel(props.visibility, props.allowedUsers)
 
   return (
     <form onSubmit={props.onSubmit} className="notes-create-form">
@@ -82,13 +74,12 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
                 <button
                   type="submit"
                   disabled={props.isCreating}
-                  className="notes-edit-primary-button"
+                  className="notes-edit-icon-button"
                   aria-label="Save note"
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
-                    save
+                    {props.isCreating ? 'hourglass_top' : 'save'}
                   </span>
-                  <span>{props.isCreating ? 'Saving...' : 'Save Note'}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">Save Note</TooltipContent>
@@ -118,7 +109,9 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
             className="notes-edit-input"
           />
         </div>
-        <div className="notes-edit-meta-summary">{visibilityLabel}</div>
+        <div className="notes-edit-meta-summary notes-edit-meta-summary--status">
+          <NoteShareStatusIcon visibility={props.visibility} allowedUsers={props.allowedUsers} />
+        </div>
       </div>
     </form>
   )

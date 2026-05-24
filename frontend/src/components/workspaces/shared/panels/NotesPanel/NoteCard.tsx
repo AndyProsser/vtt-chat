@@ -13,6 +13,7 @@ import {
   parseNoteHashtags,
   serializeNoteHashtags,
 } from '../../../../../utils/notesPanel'
+import { NoteShareStatusIcon } from './NoteShareStatusIcon'
 import { NoteSharePopover } from './NoteSharePopover'
 
 interface NoteCardProps {
@@ -209,13 +210,12 @@ export function NoteCard({
                       type="button"
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="notes-edit-primary-button"
+                      className="notes-edit-icon-button"
                       aria-label="Save handout"
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
-                        save
+                        {isSaving ? 'hourglass_top' : 'save'}
                       </span>
-                      <span>{isSaving ? 'Saving...' : 'Save Note'}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top">Save Note</TooltipContent>
@@ -264,8 +264,12 @@ export function NoteCard({
                   className="notes-edit-input"
                 />
               </div>
-              <div className="notes-edit-meta-summary">Shared with: {editingSharedWithLabel}</div>
+              <div className="notes-edit-meta-summary notes-edit-meta-summary--status">
+                <NoteShareStatusIcon visibility={visibility} allowedUsers={allowedUsers} />
+              </div>
             </div>
+
+            <p className="mb-2 text-xs text-ui-secondary">Shared with: {editingSharedWithLabel}</p>
 
             {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
           </>
@@ -297,9 +301,17 @@ export function NoteCard({
             {note.publishedAt && (
               <p className="mb-2 text-xs text-emerald-700">Published to chat: {publishedLabel}</p>
             )}
-            {note.tags.length > 0 && (
-              <p className="mb-2 text-xs text-slate-600">Tags: {note.tags.join(', ')}</p>
-            )}
+            <div className="notes-card-meta-row">
+              {note.tags.length > 0 ? (
+                <p className="mb-0 text-xs text-slate-600">Tags: {note.tags.join(', ')}</p>
+              ) : (
+                <p className="mb-0 text-xs text-slate-600">Tags: No hashtags</p>
+              )}
+              <NoteShareStatusIcon
+                visibility={note.visibility}
+                allowedUsers={note.allowedUsers || []}
+              />
+            </div>
             {error && <p className="mb-2 text-sm text-ui-error-text">{error}</p>}
             {canEdit && (
               <div className="notes-card-actions flex gap-2">

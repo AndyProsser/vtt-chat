@@ -673,6 +673,16 @@ function JournalBrowser({
   const effectiveSession =
     sortedSessions.find((session) => session.id === effectiveSessionId) ?? fallbackSession
   const recentSessions = sortedSessions
+  const recentSessionsStatusKey = useMemo(
+    () =>
+      recentSessions
+        .map(
+          (session) =>
+            `${session.id}:${session.createdAt}:${session.startedAt ?? ''}:${session.endedAt ?? ''}`
+        )
+        .join('|'),
+    [recentSessions]
+  )
 
   useEffect(() => {
     const prev = prevEffectiveSessionIdRef.current
@@ -773,7 +783,7 @@ function JournalBrowser({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, recentSessions])
+  }, [apiUrl, recentSessionsStatusKey, token])
 
   const recapSummary = useMemo(() => {
     const statuses = recentSessions.map((session) => journalStatusBySession[session.id])

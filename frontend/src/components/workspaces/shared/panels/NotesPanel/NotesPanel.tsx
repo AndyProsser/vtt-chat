@@ -19,6 +19,8 @@ interface NotesPanelProps {
   user: { id: UUID; role: Role | string }
 }
 
+type NotesPublishFilter = 'ALL' | 'SHARED' | 'UNSHARED'
+
 const JOURNAL_TAG = '_journal'
 
 function isJournalNote(note: Note): boolean {
@@ -66,13 +68,34 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [allowedUsers, setAllowedUsers] = useState<UUID[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showPublishedOnly, setShowPublishedOnly] = useState(false)
+  const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
 
-  const displayedNotes = useMemo(
-    () => (showPublishedOnly ? notes.filter((note) => Boolean(note.publishedAt)) : notes),
-    [notes, showPublishedOnly]
-  )
+  const displayedNotes = useMemo(() => {
+    if (publishFilter === 'SHARED') {
+      return notes.filter((note) => Boolean(note.publishedAt))
+    }
+
+    if (publishFilter === 'UNSHARED') {
+      return notes.filter((note) => !note.publishedAt)
+    }
+
+    return notes
+  }, [notes, publishFilter])
+
+  const emptyStateMessage =
+    publishFilter === 'SHARED'
+      ? 'No shared handouts yet.'
+      : publishFilter === 'UNSHARED'
+        ? 'No unshared handouts yet.'
+        : 'No handouts yet.'
+
+  const toolbarCountLabel =
+    publishFilter === 'SHARED'
+      ? `${displayedNotes.length} shared`
+      : publishFilter === 'UNSHARED'
+        ? `${displayedNotes.length} unshared`
+        : `${notes.length} total`
 
   const selectedNote = useMemo(
     () => displayedNotes.find((note) => note.id === selectedNoteId) ?? displayedNotes[0] ?? null,
@@ -286,18 +309,22 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
           {showCreateForm ? 'Hide create' : 'Create handout'}
         </button>
 
-        <label className="notes-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={showPublishedOnly}
-            onChange={(event) => setShowPublishedOnly(event.target.checked)}
-          />
-          Show published only
-        </label>
+        <div className="notes-toolbar-segmented" role="tablist" aria-label="Handout publish filter">
+          {(['ALL', 'SHARED', 'UNSHARED'] as NotesPublishFilter[]).map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              role="tab"
+              aria-selected={publishFilter === filter}
+              className={`notes-toolbar-segment ${publishFilter === filter ? 'is-selected' : ''}`}
+              onClick={() => setPublishFilter(filter)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
 
-        <span className="notes-toolbar-count">
-          {showPublishedOnly ? `${displayedNotes.length} published` : `${notes.length} total`}
-        </span>
+        <span className="notes-toolbar-count">{toolbarCountLabel}</span>
       </div>
 
       {showCreateForm ? (
@@ -328,7 +355,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
             <span className="material-symbols-outlined" aria-hidden="true">
               auto_awesome
             </span>
-            <span>{showPublishedOnly ? 'No published handouts yet.' : 'No handouts yet.'}</span>
+            <span>{emptyStateMessage}</span>
           </div>
         ) : (
           <div className="notes-workspace-grid">

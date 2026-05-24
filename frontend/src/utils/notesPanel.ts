@@ -1,5 +1,24 @@
-import type { UUID } from '@shared'
+import { NoteVisibility, type UUID } from '@shared'
 import type { NotesShareUser } from '@/types/notesShare'
+
+export type NoteShareAudienceMode = 'NONE' | 'EVERYONE' | 'LIMITED'
+
+export const NOTE_SHARE_AUDIENCE_META: Record<
+  NoteShareAudienceMode,
+  { icon: string; label: string }
+> = {
+  NONE: { icon: 'visibility_off', label: 'None' },
+  EVERYONE: { icon: 'groups', label: 'Everyone' },
+  LIMITED: { icon: 'group', label: 'Limited' },
+}
+
+export interface NoteShareStatus {
+  mode: NoteShareAudienceMode
+  icon: string
+  label: string
+  tone: 'private' | 'shared' | 'limited' | 'warning'
+  tooltip: string
+}
 
 export function normalizeNoteHashtag(value: string): string {
   const normalized = value
@@ -36,4 +55,47 @@ export function formatNotesShareUserLabel(userId: UUID, shareUsers: NotesShareUs
   return matchedUser.characterName
     ? `${matchedUser.username} (${matchedUser.characterName})`
     : matchedUser.username
+}
+
+export function getNoteShareStatus(
+  visibility: NoteVisibility,
+  allowedUsers: UUID[] = []
+): NoteShareStatus {
+  if (visibility === NoteVisibility.DM_ONLY) {
+    return {
+      mode: 'NONE',
+      icon: NOTE_SHARE_AUDIENCE_META.NONE.icon,
+      label: NOTE_SHARE_AUDIENCE_META.NONE.label,
+      tone: 'private',
+      tooltip: 'Not shared with players',
+    }
+  }
+
+  if (visibility === NoteVisibility.PLAYERS_VISIBLE) {
+    return {
+      mode: 'EVERYONE',
+      icon: NOTE_SHARE_AUDIENCE_META.EVERYONE.icon,
+      label: NOTE_SHARE_AUDIENCE_META.EVERYONE.label,
+      tone: 'shared',
+      tooltip: 'Shared with everyone',
+    }
+  }
+
+  if (allowedUsers.length === 0) {
+    return {
+      mode: 'LIMITED',
+      icon: NOTE_SHARE_AUDIENCE_META.LIMITED.icon,
+      label: NOTE_SHARE_AUDIENCE_META.LIMITED.label,
+      tone: 'warning',
+      tooltip: 'Limited sharing selected, but no players were chosen',
+    }
+  }
+
+  return {
+    mode: 'LIMITED',
+    icon: NOTE_SHARE_AUDIENCE_META.LIMITED.icon,
+    label: NOTE_SHARE_AUDIENCE_META.LIMITED.label,
+    tone: 'limited',
+    tooltip: `Shared with ${allowedUsers.length} selected player${allowedUsers.length === 1 ? '' : 's'}`,
+  }
 }

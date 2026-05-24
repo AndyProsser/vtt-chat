@@ -3,14 +3,10 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { NoteVisibility, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
-
-type ShareAudienceMode = 'NONE' | 'EVERYONE' | 'LIMITED'
-
-const AUDIENCE_MODE_META: Record<ShareAudienceMode, { icon: string; label: string }> = {
-  NONE: { icon: 'visibility_off', label: 'None' },
-  EVERYONE: { icon: 'groups', label: 'Everyone' },
-  LIMITED: { icon: 'group', label: 'Limited' },
-}
+import {
+  NOTE_SHARE_AUDIENCE_META,
+  type NoteShareAudienceMode,
+} from '../../../../../utils/notesPanel'
 
 interface NoteSharePopoverProps {
   open: boolean
@@ -26,7 +22,7 @@ interface NoteSharePopoverProps {
   triggerTooltip: string
 }
 
-function toAudienceMode(visibility: NoteVisibility): ShareAudienceMode {
+function toAudienceMode(visibility: NoteVisibility): NoteShareAudienceMode {
   if (visibility === NoteVisibility.DM_ONLY) {
     return 'NONE'
   }
@@ -91,7 +87,7 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
 
   const audienceMode = toAudienceMode(props.visibility)
 
-  const setAudienceMode = (mode: ShareAudienceMode) => {
+  const setAudienceMode = (mode: NoteShareAudienceMode) => {
     if (mode === 'NONE') {
       props.onSetVisibility(NoteVisibility.DM_ONLY)
       props.onSetAllowedUsers([])
@@ -188,9 +184,9 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
                 className="material-symbols-outlined notes-share-popover__mode-icon"
                 aria-hidden="true"
               >
-                {AUDIENCE_MODE_META.NONE.icon}
+                {NOTE_SHARE_AUDIENCE_META.NONE.icon}
               </span>
-              <span>{AUDIENCE_MODE_META.NONE.label}</span>
+              <span>{NOTE_SHARE_AUDIENCE_META.NONE.label}</span>
             </button>
             <button
               type="button"
@@ -203,9 +199,9 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
                 className="material-symbols-outlined notes-share-popover__mode-icon"
                 aria-hidden="true"
               >
-                {AUDIENCE_MODE_META.EVERYONE.icon}
+                {NOTE_SHARE_AUDIENCE_META.EVERYONE.icon}
               </span>
-              <span>{AUDIENCE_MODE_META.EVERYONE.label}</span>
+              <span>{NOTE_SHARE_AUDIENCE_META.EVERYONE.label}</span>
             </button>
             <button
               type="button"
@@ -218,9 +214,9 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
                 className="material-symbols-outlined notes-share-popover__mode-icon"
                 aria-hidden="true"
               >
-                {AUDIENCE_MODE_META.LIMITED.icon}
+                {NOTE_SHARE_AUDIENCE_META.LIMITED.icon}
               </span>
-              <span>{AUDIENCE_MODE_META.LIMITED.label}</span>
+              <span>{NOTE_SHARE_AUDIENCE_META.LIMITED.label}</span>
             </button>
           </div>
 
