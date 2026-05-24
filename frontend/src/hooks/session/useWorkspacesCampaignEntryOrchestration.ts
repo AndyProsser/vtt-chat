@@ -418,7 +418,8 @@ export function useWorkspacesCampaignEntryOrchestration(
         return
       }
 
-      const optionalMessage = window.prompt(`Optional message for the DM of ${campaign.name}:`, '')
+      const optionalMessage = window
+        .prompt(`Optional message for the DM of ${campaign.name}:`, '')
         ?.trim()
 
       try {
@@ -447,16 +448,8 @@ export function useWorkspacesCampaignEntryOrchestration(
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
       }
-      [apiUrl, fetchWithAuthGuard, refreshLobbyCampaignData, setError, setLobbyNotice, token]
-    [
-      apiUrl,
-      campaigns,
-      fetchWithAuthGuard,
-      refreshLobbyCampaignData,
-      setError,
-      setLobbyNotice,
-      token,
-    ]
+    },
+    [apiUrl, fetchWithAuthGuard, refreshLobbyCampaignData, setError, setLobbyNotice, token]
   )
 
   const handleWatchCampaign = useCallback(
