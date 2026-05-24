@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
 import { MessageType, Role, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
@@ -79,6 +80,11 @@ function getBookendState(content: string, type: MessageType): BookendState {
   return null
 }
 
+function getStartOfTodayTimestamp(): number {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+}
+
 export function ChatWindow({
   apiUrl,
   token,
@@ -98,12 +104,14 @@ export function ChatWindow({
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
   const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
+  const [hasHiddenOlderGreenroomHistory, setHasHiddenOlderGreenroomHistory] = useState(false)
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
   const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
   const lastSeenLatestMessageAtRef = useRef<number | undefined>(undefined)
   const initialScrollContextRef = useRef<string | null>(null)
+  const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
@@ -230,6 +238,9 @@ export function ChatWindow({
         if (!isGreenroomMode) {
           params.set('sinceLatestStart', '1')
         }
+        if (isGreenroomMode && !older && before === undefined) {
+          params.set('todayOnly', '1')
+        }
         if (before && Number.isFinite(before)) {
           params.set('before', String(before))
         }
@@ -271,6 +282,10 @@ export function ChatWindow({
         }
 
         const hasMore = Boolean(data.pagination?.hasMore ?? data.hasMore)
+        const hasEarlier = Boolean(data.pagination?.hasEarlier ?? data.hasEarlier)
+        setHasHiddenOlderGreenroomHistory(
+          isGreenroomMode && !older && before === undefined ? hasEarlier : false
+        )
         setHasMoreHistory(hasMore)
 
         if (older && pendingScrollRestoreRef.current && messageListRef.current) {
@@ -328,6 +343,20 @@ export function ChatWindow({
     })
   }, [])
 
+  const scrollToPosition = useCallback((top: number, behavior: ScrollBehavior = 'auto') => {
+    const scrollContainer = messageListRef.current
+    if (!scrollContainer) {
+      return
+    }
+
+    if (typeof scrollContainer.scrollTo !== 'function') {
+      scrollContainer.scrollTop = top
+      return
+    }
+
+    scrollContainer.scrollTo({ top, behavior })
+  }, [])
+
   const handleListScroll = useCallback(() => {
     const scrollContainer = messageListRef.current
     if (!scrollContainer) {
@@ -343,6 +372,42 @@ export function ChatWindow({
       clearPendingNewMessageCount()
     }
   }, [clearPendingNewMessageCount])
+
+  const revealOlderGreenroomHistory = useCallback(() => {
+    if (
+      !isGreenroomMode ||
+      !hasHiddenOlderGreenroomHistory ||
+      isLoadingOlderRef.current ||
+      !messageListRef.current
+    ) {
+      return
+    }
+
+    const scrollContainer = messageListRef.current
+    isLoadingOlderRef.current = true
+    pendingScrollRestoreRef.current = {
+      previousTop: scrollContainer.scrollTop,
+      previousHeight: scrollContainer.scrollHeight,
+    }
+    setHasHiddenOlderGreenroomHistory(false)
+    void loadHistoryPage({ before: greenroomTodayStartRef.current, older: true })
+  }, [hasHiddenOlderGreenroomHistory, isGreenroomMode, loadHistoryPage])
+
+  const handleListWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!isGreenroomMode || !hasHiddenOlderGreenroomHistory) {
+        return
+      }
+
+      const scrollContainer = messageListRef.current
+      if (!scrollContainer || event.deltaY >= 0 || scrollContainer.scrollTop > 8) {
+        return
+      }
+
+      revealOlderGreenroomHistory()
+    },
+    [hasHiddenOlderGreenroomHistory, isGreenroomMode, revealOlderGreenroomHistory]
+  )
 
   useEffect(() => {
     if (isLoading || !hasMoreHistory) {
@@ -579,6 +644,7 @@ export function ChatWindow({
       : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
 
   const latestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
+  const earliestVisibleMessageCreatedAt = visibleMessages[0]?.createdAt
 
   useEffect(() => {
     if (isUserPinnedToBottom && latestVisibleMessageCreatedAt) {
@@ -601,6 +667,18 @@ export function ChatWindow({
     }
 
     requestAnimationFrame(() => {
+      if (isGreenroomMode && earliestVisibleMessageCreatedAt) {
+        const todayStart = greenroomTodayStartRef.current
+        const newestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
+
+        if (newestVisibleMessageCreatedAt && newestVisibleMessageCreatedAt < todayStart) {
+          scrollToPosition(0, 'auto')
+        } else {
+          scrollToPosition(0, 'auto')
+        }
+        return
+      }
+
       scrollToLatest('auto')
     })
     initialScrollContextRef.current = contextKey
@@ -608,9 +686,12 @@ export function ChatWindow({
     lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
   }, [
     clearPendingNewMessageCount,
+    earliestVisibleMessageCreatedAt,
     isLoading,
+    isGreenroomMode,
     latestVisibleMessageCreatedAt,
     roomId,
+    scrollToPosition,
     scrollToLatest,
     sessionId,
     visibleMessages.length,
@@ -842,10 +923,12 @@ export function ChatWindow({
           listRef={messageListRef}
           topSentinelRef={topSentinelRef}
           onListScroll={handleListScroll}
+          onListWheel={handleListWheel}
           participantDirectory={participantDirectory}
           roomDirectory={roomDirectory}
           activeRoomId={roomId}
           hideIntermissionMarkers={isGreenroomMode}
+          emptyDayLabel={isGreenroomMode ? 'Today' : undefined}
         />
       )}
 

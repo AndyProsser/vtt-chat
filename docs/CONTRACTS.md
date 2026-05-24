@@ -28,6 +28,12 @@ Runtime persistence and audit addendum:
 - Redis-first runtime state and session audit requirements are defined in [architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md).
 - Use this addendum when designing websocket-visible mutation flows that need explicit Redis + Postgres + audit responsibilities.
 
+### Greenroom Chat Paging Contract
+
+- `GET /api/chat/campaign/:campaignId/chat/page` accepts `todayOnly=1` to bound the initial greenroom timeline to messages created on the current local day.
+- When `todayOnly=1` is used on the first page, the response may include `hasEarlier: boolean` to indicate that older pre-today campaign chat exists and should remain available for intentional upward history reveal.
+- Frontend greenroom bootstraps must treat `todayOnly=1` + `hasEarlier` as a viewport contract only: older messages stay fetchable via subsequent `before=<timestamp>` paging and are not deleted or reclassified.
+
 ### Room Presence Safety Contract
 
 Players must never be left without a valid room assignment.

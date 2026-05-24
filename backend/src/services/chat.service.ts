@@ -171,6 +171,7 @@ export interface ChatHistoryPageResult {
   messages: StoredMessage[]
   hasMore: boolean
   nextBefore?: number
+  hasEarlier?: boolean
 }
 
 function normalizeHistoryLimit(limit?: number): number {
@@ -499,16 +500,32 @@ export async function getCampaignGreenroomMessagesPage(
   requesterRole: string,
   options?: ChatHistoryPageOptions & { since?: number }
 ): Promise<ChatHistoryPageResult> {
+  const isTodayBoundedFirstPage = options?.since !== undefined && options?.before === undefined
+
   if (options?.limit === undefined) {
     const allMessages = await getCampaignGreenroomMessages(campaignId, requesterId, requesterRole, {
       since: options?.since,
     })
+
+    const { hasCampaignMessagesBefore } = await import('@/repositories/chat.repository')
+    const hasEarlier =
+      isTodayBoundedFirstPage && options?.since !== undefined
+        ? await hasCampaignMessagesBefore({
+            campaignId,
+            before: new Date(options.since),
+          })
+        : undefined
+
     return {
       messages: allMessages,
       hasMore: false,
       nextBefore: allMessages.length > 0 ? allMessages[0]?.createdAt : undefined,
+      hasEarlier,
     }
   }
+
+  const { hasCampaignMessagesBefore, listCampaignMessagesPage } =
+    await import('@/repositories/chat.repository')
 
   const page = await listCampaignMessagesPage({
     campaignId,
@@ -528,10 +545,19 @@ export async function getCampaignGreenroomMessagesPage(
   })
 
   const nextBefore = messages.length > 0 ? messages[0]?.createdAt : options?.before
+  const hasEarlier =
+    isTodayBoundedFirstPage && options?.since !== undefined
+      ? await hasCampaignMessagesBefore({
+          campaignId,
+          before: new Date(options.since),
+        })
+      : undefined
+
   return {
     messages,
     hasMore: page.hasMore,
     nextBefore,
+    hasEarlier,
   }
 }
 

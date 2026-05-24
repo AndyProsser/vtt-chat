@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-05-24
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -360,7 +360,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 ### W-Groups-Panel: Editor Mode + Session Mode Groups Management
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High (blocking all audio work)
 **Depends on**: W0-Rightbar
 
@@ -368,24 +368,24 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 **Acceptance Criteria**:
 
-- [ ] Editor mode: DM can view, create, delete campaign-level groups before session starts
-- [ ] Editor mode: DM can set default environment per group (persistent, survives session boundaries)
-- [ ] Editor mode: Player list is not visible (players only joinable in-session)
-- [ ] Session mode: Group cards show member count, environment icon, and player list (collapsible)
+- [x] Editor mode: DM can view, create, delete campaign-level groups before session starts
+- [x] Editor mode: DM can set default environment per group (persistent, survives session boundaries)
+- [x] Editor mode: Player list is not visible (players only joinable in-session)
+- [x] Session mode: Group cards show member count, environment icon, and player list (collapsible)
 - [ ] Session mode: DM drag player from one group card to another (one player at a time)
 - [ ] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
-- [ ] Session mode: Environment icon in group header; click to open environment picker modal
+- [x] Session mode: Environment icon in group header; click to open environment picker control
 - [ ] Session mode: Environment selection applies to all players in group within 200ms
-- [ ] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
-- [ ] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
+- [x] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
+- [x] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
 - [ ] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
 - [ ] Session pause: all players move to MAIN, all group environments clear, pre-pause membership is snapshotted
 - [ ] Session resume: players return to pre-pause groups, pre-pause environments reapply
 - [ ] Session end: all groups except MAIN deleted, all members moved to greenroom
 - [ ] Spectators: can see groups (read-only), cannot drag or interact
-- [ ] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
-- [ ] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
-- [ ] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
+- [x] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
+- [x] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
+- [x] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
 - [ ] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` (detailed spec)
 - [ ] Documentation: `docs/CONTRACTS.md` updated with group close, environment contracts
 
@@ -394,6 +394,22 @@ _DM superpowers: move players between groups, apply conditions, set environments
 - [docs/architecture/GROUPS-PANEL-ARCHITECTURE.md](docs/architecture/GROUPS-PANEL-ARCHITECTURE.md)
 - [docs/CONTRACTS.md](docs/CONTRACTS.md)
 - [.github/copilot-instructions.md](.github/copilot-instructions.md) (Whisper Bubble, Group Visibility Rules sections)
+
+Evidence snapshot (2026-05-24):
+
+- Editor-mode groups planner is already live under `frontend/src/components/workspaces/shared/panels/GroupsPanel/GroupsPanel.tsx`:
+  - DM can load, create, delete, and configure campaign-level groups before session start.
+  - Default environments are editable through the shared environment picker modal.
+  - Player lists are intentionally absent in editor mode.
+- Session-mode right-rail groups overview is now live as a separate component path from the left voice-groups panel:
+  - `frontend/src/components/workspaces/session/GroupsPanel.session.tsx` owns the right-side runtime list.
+  - `frontend/src/components/workspaces/session/GroupCard.session.tsx` renders compact member cards with DM-first ordering, environment glyphs, and collapsible room member lists.
+  - Green Room is hidden during `ACTIVE` / `PAUSED` / `COOLDOWN`, and when shown in greenroom state it is listed first and starts collapsed.
+  - Green Room cannot be drained, deleted, or assigned an environment from the right panel.
+  - Whisper uses the end-to-main flow from this panel and the action is hidden when Whisper is empty.
+- Runtime room-management service surface exists in `frontend/src/services/groupsPanel.service.ts` for create, close, delete, and environment apply flows.
+- Runtime + editor state scaffolding exists in Zustand via `campaignGroupsSlice`, `sessionGroupsSlice`, and `groupPanelUISlice`.
+- Backend/WS contract surface exists for `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, and `AUDIO:ENVIRONMENT_SET`; remaining gaps are primarily drag/drop behavior, lifecycle cleanup/restore guarantees, spectator exposure policy, and docs completion.
 
 ---
 

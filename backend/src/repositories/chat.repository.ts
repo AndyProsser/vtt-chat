@@ -530,6 +530,28 @@ export async function listCampaignMessagesPage(params: {
   }
 }
 
+export async function hasCampaignMessagesBefore(params: {
+  campaignId: string
+  before: Date
+}): Promise<boolean> {
+  const row = await prisma.chatMessage.findFirst({
+    where: {
+      campaignId: params.campaignId,
+      createdAt: {
+        lt: params.before,
+      },
+    },
+    select: {
+      id: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+
+  return row !== null
+}
+
 /**
  * Delete all greenroom messages for a campaign
  * Typically called during campaign deletion

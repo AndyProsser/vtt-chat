@@ -2,15 +2,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageType, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
-import { ChatWindow } from '../../src/components/chat/ChatWindow'
-import { MessageInput } from '../../src/components/chat/MessageInput'
-import { MessageList } from '../../src/components/chat/MessageList'
+import { ChatWindow } from '../../src/components/workspaces/session/chat/ChatWindow'
+import { MessageInput } from '../../src/components/workspaces/session/chat/MessageInput'
+import { MessageList } from '../../src/components/workspaces/session/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
 const USER_ID = '22222222-2222-4222-8222-222222222222' as UUID
 const MAIN_ROOM_ID = '33333333-3333-4333-8333-333333333333' as UUID
 const GREEN_ROOM_ID = '44444444-4444-4444-8444-444444444444' as UUID
+
+function getStartOfTodayTimestamp(): number {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+}
 
 describe('ChatWindow timeline behavior', () => {
   beforeEach(() => {
@@ -116,7 +121,7 @@ describe('ChatWindow timeline behavior', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20',
+        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&todayOnly=1',
         expect.anything()
       )
     })
@@ -125,6 +130,77 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
+  })
+
+  it('keeps older greenroom backlog hidden until the user scrolls upward', async () => {
+    const todayStart = getStartOfTodayTimestamp()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [],
+          hasMore: false,
+          hasEarlier: true,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'eeeeeeee-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              roomId: GREEN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Earlier greenroom planning',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: todayStart - 60_000,
+            },
+          ],
+          hasMore: false,
+        }),
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { container } = render(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&todayOnly=1',
+        expect.anything()
+      )
+    })
+
+    expect(screen.getByLabelText('Messages from Today')).toBeTruthy()
+    expect(screen.queryByText('Earlier greenroom planning')).toBeNull()
+
+    const list = container.querySelector('.session-message-list') as HTMLDivElement | null
+    expect(list).toBeTruthy()
+
+    fireEvent.wheel(list as HTMLDivElement, { deltaY: -120 })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:3000/api/chat/campaign/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/chat/page?limit=20&before=${todayStart}`,
+        expect.anything()
+      )
+    })
+
+    expect(screen.getByText('Earlier greenroom planning')).toBeTruthy()
   })
 
   it('shows session-start marker but hides ended/intermission markers and greenroom messages in active main-room mode', async () => {

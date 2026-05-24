@@ -5,7 +5,7 @@
  */
 
 import { Fragment } from 'react'
-import type { RefObject, UIEventHandler } from 'react'
+import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { Message } from '@/types/chat'
 import { MessageType } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
@@ -18,10 +18,12 @@ interface MessageListProps {
   listRef?: RefObject<HTMLDivElement | null>
   topSentinelRef?: RefObject<HTMLDivElement | null>
   onListScroll?: UIEventHandler<HTMLDivElement>
+  onListWheel?: WheelEventHandler<HTMLDivElement>
   participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
   roomDirectory?: Record<string, { name: string }>
   activeRoomId?: string
   hideIntermissionMarkers?: boolean
+  emptyDayLabel?: string
 }
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -223,20 +225,49 @@ export function MessageList({
   listRef,
   topSentinelRef,
   onListScroll,
+  onListWheel,
   participantDirectory,
   roomDirectory,
   activeRoomId,
   hideIntermissionMarkers = false,
+  emptyDayLabel,
 }: MessageListProps) {
   const isDmViewer = currentUserRole === 'DM'
 
   if (messages.length === 0) {
-    return <div className="session-message-list__empty">No messages yet. Say something!</div>
+    return (
+      <TooltipProvider delayDuration={120}>
+        <div
+          ref={listRef}
+          onScroll={onListScroll}
+          onWheel={onListWheel}
+          className="session-message-list"
+        >
+          <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
+          {emptyDayLabel ? (
+            <div
+              className="session-message-list__day-separator"
+              aria-label={`Messages from ${emptyDayLabel}`}
+            >
+              <span className="session-message-list__day-separator-line" aria-hidden="true" />
+              <span className="session-message-list__day-separator-pill">{emptyDayLabel}</span>
+              <span className="session-message-list__day-separator-line" aria-hidden="true" />
+            </div>
+          ) : null}
+          <div className="session-message-list__empty">No messages yet. Say something!</div>
+        </div>
+      </TooltipProvider>
+    )
   }
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div ref={listRef} onScroll={onListScroll} className="session-message-list">
+      <div
+        ref={listRef}
+        onScroll={onListScroll}
+        onWheel={onListWheel}
+        className="session-message-list"
+      >
         {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
         <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
         {messages.map((msg, index) => {
