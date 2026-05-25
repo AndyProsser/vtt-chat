@@ -14,6 +14,20 @@ function toDisplayTags(note: Note): string[] {
   return note.tags.map((tag) => (tag.startsWith('#') ? tag : `#${tag}`))
 }
 
+function toCompactNoteMark(title: string): string {
+  const cleaned = title.trim().replace(/\s+/g, ' ')
+  if (!cleaned) {
+    return '??'
+  }
+
+  const parts = cleaned.split(' ')
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
+  }
+
+  return cleaned.slice(0, 2).toUpperCase()
+}
+
 export function NotesListWidget(props: NotesListWidgetProps) {
   return (
     <section className="notes-list-widget" aria-label="Handouts list">
@@ -36,6 +50,9 @@ export function NotesListWidget(props: NotesListWidgetProps) {
               onClick={() => props.onSelectNote(note.id)}
               className={`notes-list-item${isSelected ? ' is-selected' : ''}`}
             >
+              <span className="notes-list-item-collapsed-mark" aria-hidden="true">
+                {toCompactNoteMark(note.title)}
+              </span>
               <TooltipProvider delayDuration={140}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -74,9 +91,7 @@ export function NotesListWidget(props: NotesListWidgetProps) {
                     )
                   })
                 ) : (
-                  <span className="knowledge-panel-card-tags-more muted">
-                    No hashtags
-                  </span>
+                  <span className="knowledge-panel-card-tags-more muted">No hashtags</span>
                 )}
                 {hiddenTagCount > 0 ? (
                   <span className="knowledge-panel-card-tags-more muted">
