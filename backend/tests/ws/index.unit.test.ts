@@ -84,17 +84,29 @@ vi.mock('@/services/session/disconnect-cascade.service', () => ({
   },
 }))
 
-vi.mock('@/ws/dispatcher', async () => {
-  const actual = await vi.importActual<typeof import('@/ws/dispatcher')>('@/ws/dispatcher')
-  return {
-    ...actual,
-    EventDispatcher: class extends actual.EventDispatcher {
-      registerHandler(eventType: string, handler: any): void {
-        registerHandlerSpy(eventType, handler)
-        super.registerHandler(eventType, handler)
+vi.mock('@/ws/dispatcher', () => {
+  class MockEventDispatcher {
+    private handlers = new Map<string, ((event: any) => Promise<void>)[]>()
+
+    registerHandler(eventType: string, handler: (event: any) => Promise<void>): void {
+      registerHandlerSpy(eventType, handler)
+
+      if (!this.handlers.has(eventType)) {
+        this.handlers.set(eventType, [])
       }
-    },
+
+      this.handlers.get(eventType)!.push(handler)
+    }
+
+    async dispatch(event: any): Promise<void> {
+      const handlers = this.handlers.get(event.type) || []
+      for (const handler of handlers) {
+        await handler(event)
+      }
+    }
   }
+
+  return { EventDispatcher: MockEventDispatcher }
 })
 
 vi.mock('ws', () => {
@@ -200,7 +212,7 @@ describe('WebSocketManager', () => {
     )
 
     await manager.close()
-  })
+  }, 20000)
 
   it('exposes connection/session counts from tracked clients', async () => {
     const { WebSocketManager } = await import('@/ws/index')

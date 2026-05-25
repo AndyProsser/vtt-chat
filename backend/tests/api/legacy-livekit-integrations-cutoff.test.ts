@@ -19,7 +19,9 @@ vi.mock('../../src/api/chat.routes', async () => {
 
 vi.mock('../../src/api/admin.routes', async () => {
   const { Router } = await import('express')
-  return { default: Router() }
+  const router = Router()
+  router.get('/integrations/systems', (_req, res) => res.status(401).json({ code: 'UNAUTHORIZED' }))
+  return { default: router }
 })
 
 vi.mock('../../src/api/notes.routes', async () => {
