@@ -367,6 +367,7 @@ export function MessageList({
           const {
             msg,
             variant,
+            isSystem,
             isSessionBookend,
             sessionBookendState,
             isSessionNote,
