@@ -260,14 +260,14 @@ export function ChatWindow({
   // the user is auto-scrolling and new messages arrive past the MAX threshold — the
   // slice trims the oldest messages. Re-enable "load older" so the user can scroll
   // back up and rehydrate the pruned history from the server.
+  const messageCount = messageList.length
   useEffect(() => {
-    const currentCount = messageList.length
     const prevCount = prevMessageCountRef.current
-    if (currentCount < prevCount && prevCount > 0 && !isLoadingOlderRef.current) {
+    if (messageCount < prevCount && prevCount > 0 && !isLoadingOlderRef.current) {
       setHasMoreHistory(true)
     }
-    prevMessageCountRef.current = currentCount
-  }, [messageList.length])
+    prevMessageCountRef.current = messageCount
+  }, [messageCount])
 
   useEffect(
     () => () => {
@@ -517,7 +517,7 @@ export function ChatWindow({
     return () => {
       observer.disconnect()
     }
-  }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
+  }, [hasMoreHistory, isLoading, loadHistoryPage, messageList, messageList.length])
 
   const messageView = useMemo(() => {
     const roomScopedMessages: Message[] = []

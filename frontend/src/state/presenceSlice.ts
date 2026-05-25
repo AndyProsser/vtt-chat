@@ -15,23 +15,6 @@ function pruneTypingIndicators(indicators: TypingIndicator[], now: number): Typi
   return indicators.filter((indicator) => indicator.until > now)
 }
 
-function areTypingIndicatorsEqual(a: TypingIndicator[], b: TypingIndicator[]): boolean {
-  if (a.length !== b.length) return false
-  for (let index = 0; index < a.length; index += 1) {
-    const left = a[index]!
-    const right = b[index]!
-    if (
-      left.userId !== right.userId ||
-      left.username !== right.username ||
-      left.roomId !== right.roomId ||
-      left.until !== right.until
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
 export interface SessionStatsSnapshot {
   connectedPlayersWithDm: number
   connectedPlayers: number
@@ -496,7 +479,10 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       if (currentSet) {
         const curKeys = Object.keys(currentSet)
         const nxtKeys = Object.keys(nextSet)
-        if (curKeys.length === nxtKeys.length && nxtKeys.every((k) => currentSet[k])) {
+        if (
+          curKeys.length === nxtKeys.length &&
+          nxtKeys.every((k) => (currentSet as Record<string, true>)[k])
+        ) {
           return state
         }
       }

@@ -1,4 +1,5 @@
-import { createElement, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './primitives'
 
 type TruncatedTextWithTooltipProps = {
@@ -41,14 +42,17 @@ export function TruncatedTextWithTooltip({
     }
   }, [text])
 
-  const textElement = createElement(
-    as,
-    {
-      ref: textRef,
-      className,
-      title: isTruncated ? text : undefined,
-    },
-    text
+  // Dynamic tag rendered via JSX (not createElement) to avoid the react-hooks/refs
+  // lint rule flagging ref assignment inside a createElement() call.
+  const Tag = as as React.ElementType
+  const textElement = (
+    <Tag
+      ref={textRef as React.Ref<HTMLElement>}
+      className={className}
+      title={isTruncated ? text : undefined}
+    >
+      {text}
+    </Tag>
   )
 
   if (!isTruncated) {
