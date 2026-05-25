@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType } from '@shared'
 import type { Role } from '@shared'
+import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 interface WhisperRecipientOption {
@@ -25,8 +26,6 @@ interface MessageInputProps {
   whisperRecipients?: WhisperRecipientOption[]
   roomType?: RoomType
 }
-
-const TYPING_IDLE_TIMEOUT_MS = 2600
 
 const MESSAGE_TYPE_ORDER: MessageType[] = [
   MessageType.IC,

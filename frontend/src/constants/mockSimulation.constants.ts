@@ -1,0 +1,2 @@
+export const MOCK_STATUS_POLL_ACTIVE_MS = 2500
+export const MOCK_STATUS_POLL_IDLE_MS = 8000

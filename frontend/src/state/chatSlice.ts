@@ -7,6 +7,10 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, MessageType } from '@shared'
 import type { EventEnvelope } from '@shared'
+import {
+  TYPING_INDICATOR_TTL_MS,
+  TYPING_RENEW_MIN_EXTENSION_MS,
+} from '@/constants/chatPresence.constants'
 import type { Message, TypingIndicator } from '@/types/chat'
 
 export type { Message, TypingIndicator } from '@/types/chat'
@@ -33,7 +37,6 @@ const SESSION_BOOKEND_PREFIXES = [
 ] as const
 
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
-const TYPING_INDICATOR_TTL_MS = 5_000
 
 function pruneTypingIndicators(indicators: TypingIndicator[], now: number): TypingIndicator[] {
   if (indicators.length === 0) {
@@ -405,7 +408,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
         existing &&
         existing.username === payload.username &&
         existing.roomId === payload.roomId &&
-        existing.until >= nextUntil
+        (existing.until >= nextUntil || nextUntil - existing.until < TYPING_RENEW_MIN_EXTENSION_MS)
       ) {
         return state
       }

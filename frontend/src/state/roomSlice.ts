@@ -8,6 +8,7 @@ import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { SessionState } from '@shared'
+import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
 
@@ -472,7 +473,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         existingMember.presenceState === nextPresence &&
         existingMember.username === resolvedUsername &&
         existingMember.previousGroupId === resolvedPreviousGroupId &&
-        changedAt <= (existingPresence?.lastSeenAt || 0)
+        (changedAt <= (existingPresence?.lastSeenAt || 0) ||
+          ((nextPresence === PresenceState.SPEAKING || nextPresence === PresenceState.IDLE) &&
+            changedAt - (existingPresence?.lastSeenAt || 0) <
+              PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS))
       ) {
         return state
       }

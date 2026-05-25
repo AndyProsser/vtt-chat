@@ -10,11 +10,15 @@ import type { EventEnvelope, UUID } from '@shared'
 import { MessageType, Role, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
+import {
+  CHAT_HISTORY_PAGE_SIZE,
+  TYPING_INDICATOR_REFRESH_INTERVAL_MS,
+} from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
-import type { Message } from '@/types/chat'
+import type { BookendState, Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
 import '@/styles/components/workspaces/session/chat/ChatWindow.css'
 
@@ -33,9 +37,6 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
-const CHAT_HISTORY_PAGE_SIZE = 20
-const TYPING_INDICATOR_REFRESH_INTERVAL_MS = 1000
-type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {

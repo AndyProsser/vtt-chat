@@ -14,3 +14,5 @@ export interface ChatDraft {
   content: string
   isDmOnly: boolean
 }
+
+export type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null

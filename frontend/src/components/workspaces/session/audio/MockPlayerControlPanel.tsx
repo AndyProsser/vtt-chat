@@ -1,23 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
+import {
+  MOCK_STATUS_POLL_ACTIVE_MS,
+  MOCK_STATUS_POLL_IDLE_MS,
+} from '@/constants/mockSimulation.constants'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import type { MockSimulationConfig, MockSimulationStatusResponse } from '@/types/mockSimulation'
 import '@/styles/components/workspaces/session/audio/MockPlayerControlPanel.css'
-
-interface MockSimulationConfig {
-  speakingSimulatorEnabled: boolean
-  chatSimulatorEnabled: boolean
-  disconnectSimulatorEnabled: boolean
-  playerCount: number
-}
-
-interface MockSimulationStatusResponse {
-  sessionId: UUID
-  config: MockSimulationConfig
-  isRunning: boolean
-  activeMockCount: number
-  speakingNow: UUID[]
-  uptime: number
-}
 
 interface MockPlayerControlPanelProps {
   apiUrl: string
@@ -32,8 +21,6 @@ export function MockPlayerControlPanel({
   sessionId,
   onClose,
 }: MockPlayerControlPanelProps) {
-  const STATUS_POLL_ACTIVE_MS = 2500
-  const STATUS_POLL_IDLE_MS = 8000
   const [playerCount, setPlayerCount] = useState(8)
   const [config, setConfig] = useState<MockSimulationConfig>({
     speakingSimulatorEnabled: true,
