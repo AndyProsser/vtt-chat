@@ -6,7 +6,7 @@
 
 import { Fragment } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
-import type { Message } from '@/types/chat'
+import type { Message, SessionBookendState } from '@/types/chat'
 import { MessageType } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 interface MessageListProps {
@@ -95,8 +95,6 @@ function formatDuration(ms: number): string {
   }
   return `${minutes}m`
 }
-type SessionBookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown'
-
 const BOOKEND_META: Record<
   SessionBookendState,
   { label: string; icon: string; className: string }

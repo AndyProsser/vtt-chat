@@ -16,3 +16,10 @@ export interface ChatDraft {
 }
 
 export type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null
+export type SessionBookendState = Exclude<BookendState, null>
+
+export interface WhisperRecipientOption {
+  id: string
+  label: string
+  avatarUrl?: string | null
+}

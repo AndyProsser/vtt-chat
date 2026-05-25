@@ -9,12 +9,7 @@ import { MessageType, RoomType } from '@shared'
 import type { Role } from '@shared'
 import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
-
-interface WhisperRecipientOption {
-  id: string
-  label: string
-  avatarUrl?: string | null
-}
+import type { WhisperRecipientOption } from '@/types/chat'
 
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
