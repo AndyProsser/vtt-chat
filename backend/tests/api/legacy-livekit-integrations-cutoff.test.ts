@@ -2,6 +2,95 @@ import express from 'express'
 import request from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 
+vi.mock('../../src/api/auth-join.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/session.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/chat.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/admin.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/notes.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/campaign.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/campaign-discovery.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/users.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/rooms.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/presence.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/livekit.routes', async () => {
+  const { Router } = await import('express')
+  const router = Router()
+  router.get('/health', (_req, res) => res.status(200).json({ ok: true }))
+  return { default: router }
+})
+
+vi.mock('../../src/api/audio.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/telemetry.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/platform.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/integrations.routes', async () => {
+  const { Router } = await import('express')
+  const router = Router()
+  router.post('/external/sync', (_req, res) => res.status(401).json({ code: 'UNAUTHORIZED' }))
+  return { default: router }
+})
+
+vi.mock('../../src/api/metadata.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
+vi.mock('../../src/api/dev.routes', async () => {
+  const { Router } = await import('express')
+  return { default: Router() }
+})
+
 async function buildApiApp() {
   vi.resetModules()
 

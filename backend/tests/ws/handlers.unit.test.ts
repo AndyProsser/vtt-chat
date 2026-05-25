@@ -39,6 +39,22 @@ vi.mock('@/services/audio/audio-state', () => ({
   setRoomEnvironmentState: setRoomEnvironmentStateMock,
 }))
 
+vi.mock('@/services/notes.service', () => ({
+  createNote: vi.fn(),
+  deleteNote: vi.fn(),
+  updateNote: vi.fn(),
+}))
+
+vi.mock('@/services/chat.service', () => ({
+  deleteMessage: vi.fn(),
+  editMessage: vi.fn(),
+  sendMessage: vi.fn(),
+}))
+
+vi.mock('@/services/session/core.service', () => ({
+  getSession: vi.fn(),
+}))
+
 vi.mock('@/services/dev-mock/takeover.service', () => ({
   resolveEffectiveActor: vi.fn(async () => ({ userId: 'resolved', username: 'resolved' })),
 }))

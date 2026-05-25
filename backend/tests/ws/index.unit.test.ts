@@ -62,7 +62,7 @@ vi.mock('@/services/dev-mock/takeover.service', () => ({
 }))
 
 vi.mock('@/services/chat-visibility.service', () => ({
-  resolveTypingAudience: vi.fn(async () => undefined),
+  resolveTypingAudience: vi.fn(async () => ['player-1', 'dm-1', 'player-2']),
 }))
 
 vi.mock('@/repositories/campaign.repository', () => ({
