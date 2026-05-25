@@ -13,9 +13,7 @@
   letter-spacing: 0.02em;
   padding: 5px 10px;
   pointer-events: none;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  font-family: var(--font-mono, monospace);
 }
 
 :root.debug-ui [data-ui-component] {
@@ -44,9 +42,7 @@
   line-height: 1.2;
   padding: 2px 6px;
   pointer-events: none;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  font-family: var(--font-mono, monospace);
 }
 
 :root.debug-ui [data-ui-state]:not([data-ui-state=''])::after {

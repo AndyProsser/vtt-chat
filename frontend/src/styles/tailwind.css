@@ -4,9 +4,7 @@
 @theme {
   --font-sans: 'Inter Variable', Inter, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  --font-mono: 'Roboto Mono Variable', monospace;
 
   /* Color mappings for Tailwind utilities (e.g. bg-ui-surface, text-ui-primary). */
   --color-ui-surface: var(--color-surface);

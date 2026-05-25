@@ -217,9 +217,7 @@
 .knowledge-panel-presets-json {
   min-height: 6.5rem;
   resize: vertical;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
 }
 

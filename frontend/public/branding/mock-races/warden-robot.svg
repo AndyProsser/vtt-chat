@@ -5,5 +5,5 @@
   <circle cx="128" cy="96" r="48" fill="#a7f3d0" />
   <path d="M48 218c12-44 44-70 80-70s68 26 80 70" fill="#34d399" />
   <rect x="16" y="16" width="84" height="36" rx="10" fill="#ef4444" />
-  <text x="28" y="40" fill="#ffffff" font-size="18" font-weight="700" font-family="Verdana, sans-serif">BOT</text>
+  <text x="28" y="40" fill="#ffffff" font-size="18" font-weight="700" font-family="Inter, sans-serif">BOT</text>
 </svg>

@@ -11,5 +11,5 @@
   <circle cx="128" cy="98" r="46" fill="#93c5fd" />
   <path d="M52 216c10-40 38-66 76-66s66 26 76 66" fill="#60a5fa" />
   <rect x="162" y="16" width="78" height="34" rx="10" fill="#ef4444" />
-  <text x="172" y="39" fill="#ffffff" font-size="18" font-weight="700" font-family="Verdana, sans-serif">BOT</text>
+  <text x="172" y="39" fill="#ffffff" font-size="18" font-weight="700" font-family="Inter, sans-serif">BOT</text>
 </svg>

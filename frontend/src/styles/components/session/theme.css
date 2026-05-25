@@ -95,6 +95,10 @@
   --duration-slow: 350ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Typography */
+  --font-sans: 'Inter Variable', Inter, sans-serif;
+  --font-mono: 'Roboto Mono Variable', monospace;
 }
 
 /* ─── Dark mode tokens ───────────────────────────────────────────────────── */
@@ -167,6 +171,7 @@ body,
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   color: var(--color-text-primary);
   background:
     radial-gradient(

@@ -11,5 +11,5 @@
   <circle cx="128" cy="96" r="44" fill="#94a3b8" />
   <path d="M48 216c8-44 40-68 80-68s72 24 80 68" fill="#64748b" />
   <rect x="18" y="18" width="124" height="40" rx="10" fill="#ef4444" />
-  <text x="30" y="45" fill="#ffffff" font-size="24" font-weight="700" font-family="Verdana, sans-serif">MOCK</text>
+  <text x="30" y="45" fill="#ffffff" font-size="24" font-weight="700" font-family="Inter, sans-serif">MOCK</text>
 </svg>
