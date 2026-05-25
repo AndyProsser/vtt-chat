@@ -235,26 +235,19 @@ export function AudioDevicePanel({
           onMouseEnter={() => setEffectsHovered(true)}
           onMouseLeave={() => setEffectsHovered(false)}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
-                aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
-                aria-expanded={effectsOpen}
-                type="button"
-              >
-                <Icon name="effects" />
-                {activeEffectsCount > 0 ? (
-                  <span className="session-audio-device-panel__pip" aria-hidden="true">
-                    {activeEffectsCount}
-                  </span>
-                ) : null}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {getAudioQuickPanelCountLabel(activeEffectsCount)}
-            </TooltipContent>
-          </Tooltip>
+          <button
+            className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
+            aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
+            aria-expanded={effectsOpen}
+            type="button"
+          >
+            <Icon name="effects" />
+            {activeEffectsCount > 0 ? (
+              <span className="session-audio-device-panel__pip" aria-hidden="true">
+                {activeEffectsCount}
+              </span>
+            ) : null}
+          </button>
           {effectsOpen && (
             <div
               className="session-audio-device-panel__quick-panel"

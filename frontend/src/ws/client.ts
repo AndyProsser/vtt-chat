@@ -12,6 +12,12 @@ import { bumpLoopCounter } from '../utils/loopDiagnostics'
 import type { ConnectionState, ConnectionOptions } from '@/types/ws'
 
 const WS_CLIENT_LOGS_ENABLED = false
+const MAX_QUEUED_OUTBOUND_EVENTS = 400
+const DROPPABLE_QUEUED_EVENT_TYPES = new Set([
+  'CHAT:TYPING_STARTED',
+  'CHAT:TYPING_STOPPED',
+  'PRESENCE:STATE_CHANGED',
+])
 
 function wsClientLogDebug(message: string, meta?: unknown): void {
   if (!WS_CLIENT_LOGS_ENABLED) {
@@ -233,7 +239,6 @@ export class WebSocketClient {
             code: closeCode,
             reason: closeReason,
           })
-
           this.scheduleReconnect()
 
           if (!settled) {
@@ -293,12 +298,12 @@ export class WebSocketClient {
         wsClientLogError('Failed to send event', err)
         this.callbacks.onError?.(err)
         // Queue for retry
-        this.eventQueue.push(event)
+        this.enqueueEvent(event)
       }
     } else {
       // Queue if not connected
       bumpLoopCounter(`ws.outgoing.queued.${event.type}`)
-      this.eventQueue.push(event)
+      this.enqueueEvent(event)
       wsClientLogDebug(`Queued event ${event.type}`, {
         eventId: event.id,
         queuedCount: this.eventQueue.length,
@@ -328,6 +333,34 @@ export class WebSocketClient {
   }
 
   // Private methods
+
+  private enqueueEvent(event: EventEnvelope): void {
+    if (this.eventQueue.length >= MAX_QUEUED_OUTBOUND_EVENTS) {
+      if (DROPPABLE_QUEUED_EVENT_TYPES.has(event.type)) {
+        wsClientLogWarn('Dropping transient outbound event at queue capacity', {
+          type: event.type,
+          queuedCount: this.eventQueue.length,
+        })
+        return
+      }
+
+      const droppableIndex = this.eventQueue.findIndex((queuedEvent) =>
+        DROPPABLE_QUEUED_EVENT_TYPES.has(queuedEvent.type)
+      )
+
+      if (droppableIndex >= 0) {
+        this.eventQueue.splice(droppableIndex, 1)
+      } else {
+        this.eventQueue.shift()
+      }
+
+      wsClientLogWarn('Outbound queue at capacity; dropped oldest queued event', {
+        queuedCount: this.eventQueue.length,
+      })
+    }
+
+    this.eventQueue.push(event)
+  }
 
   private setState(newState: ConnectionState): void {
     if (this.state !== newState) {

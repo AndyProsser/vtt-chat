@@ -32,7 +32,7 @@ interface SessionWorkspaceFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
   renderSystemToasts?: () => ReactNode
-  renderLeftRail: () => ReactNode
+  renderLeftRail: (actions: { openRightRailTab: (tab: RightRailTab) => void }) => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
   rightRailIndicators?: Partial<Record<RightRailTab, number>>
@@ -223,7 +223,7 @@ export function SessionWorkspaceFrame({
           className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
-          {renderLeftRail()}
+          {renderLeftRail({ openRightRailTab: toolbarModel.openRightRailTab })}
         </aside>
 
         <div

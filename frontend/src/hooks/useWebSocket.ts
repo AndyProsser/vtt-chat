@@ -113,6 +113,39 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     const dispatcher = new EventDispatcher()
 
+    const buildBridgedGreenroomEvent = (event: EventEnvelope): EventEnvelope | null => {
+      if (!sessionId) {
+        return null
+      }
+
+      const store = useStore.getState()
+      const sessionRooms = (store.rooms as Record<UUID, Record<UUID, { id: UUID; name: string }>>)[
+        sessionId
+      ]
+
+      if (!sessionRooms) {
+        return null
+      }
+
+      const greenroom = Object.values(sessionRooms).find((room) => isGreenRoomName(room.name))
+      if (!greenroom) {
+        return null
+      }
+
+      const payload = (event.payload || {}) as Record<string, unknown>
+      const bridgedRoomId = (payload.roomId as UUID | undefined) || greenroom.id
+
+      return {
+        ...event,
+        sessionId,
+        roomId: bridgedRoomId,
+        payload: {
+          ...payload,
+          roomId: bridgedRoomId,
+        },
+      }
+    }
+
     // Register handlers for each event type
     // Session events
     dispatcher.register('SESSION:CREATED', (event) => {
@@ -179,45 +212,27 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         return
       }
 
-      store.handleGreenroomMessageSent(event)
-
       // Campaign-scoped greenroom messages arrive without sessionId/roomId.
-      // Bind them to the active session's greenroom room so live chat renders immediately.
-      if (!sessionId) {
+      // Prefer bridging into the active session chat cache so we avoid storing
+      // a duplicate message copy in both chat and greenroom slices.
+      const bridgedEvent = buildBridgedGreenroomEvent(event)
+      if (bridgedEvent) {
+        store.handleMessageSent(bridgedEvent)
         return
       }
 
-      const sessionRooms = (store.rooms as Record<UUID, Record<UUID, { id: UUID; name: string }>>)[
-        sessionId
-      ]
-
-      if (!sessionRooms) {
-        return
-      }
-
-      const greenroom = Object.values(sessionRooms).find((room) => isGreenRoomName(room.name))
-      if (!greenroom) {
-        return
-      }
-
-      const payload = (event.payload || {}) as Record<string, unknown>
-      const bridgedRoomId = (payload.roomId as UUID | undefined) || greenroom.id
-      const bridgedEvent: EventEnvelope = {
-        ...event,
-        sessionId,
-        roomId: bridgedRoomId,
-        payload: {
-          ...payload,
-          roomId: bridgedRoomId,
-        },
-      }
-
-      store.handleMessageSent(bridgedEvent)
+      store.handleGreenroomMessageSent(event)
     })
     dispatcher.register('CHAT:MESSAGE_EDITED', (event) => {
       const store = useStore.getState()
       if (event.sessionId) {
         store.handleMessageEdited(event)
+        return
+      }
+
+      const bridgedEvent = buildBridgedGreenroomEvent(event)
+      if (bridgedEvent) {
+        store.handleMessageEdited(bridgedEvent)
         return
       }
 
@@ -227,6 +242,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       const store = useStore.getState()
       if (event.sessionId) {
         store.handleMessageDeleted(event)
+        return
+      }
+
+      const bridgedEvent = buildBridgedGreenroomEvent(event)
+      if (bridgedEvent) {
+        store.handleMessageDeleted(bridgedEvent)
         return
       }
 

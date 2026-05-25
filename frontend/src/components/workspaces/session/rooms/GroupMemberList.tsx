@@ -155,7 +155,7 @@ export function GroupMemberList({
             className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''} ${isTakeoverActive ? 'room-selector-member--takeover-active' : ''}`}
             draggable={canDrag}
             aria-label={canDrag ? `Drag ${member.username}` : member.username}
-            title={isGreenroom ? getParticipantMetaLine(member) : undefined}
+            title={undefined}
             onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}
             onTouchStart={(event) => handleTouchStart(event, member.userId)}
             onTouchMove={(event) => handleTouchMove(event, member.userId)}
@@ -180,9 +180,7 @@ export function GroupMemberList({
           </button>
         )
 
-        const memberTooltip = isGreenroom ? (
-          memberButton
-        ) : (
+        const memberTooltip = (
           <Tooltip>
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
             <TooltipContent side="right" className="room-selector-profile-tooltip">

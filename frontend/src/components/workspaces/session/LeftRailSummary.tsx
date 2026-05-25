@@ -1,6 +1,5 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
-import { TruncatedTextWithTooltip } from '@/components/ui/TruncatedTextWithTooltip'
 
 interface LeftRailSummaryProps {
   campaignName: string
@@ -9,6 +8,7 @@ interface LeftRailSummaryProps {
   sessionCount: number
   connectedPlayersCount: number
   connectedSpectatorsCount?: number
+  onOpenInfoPanel?: () => void
 }
 
 export function LeftRailSummary({
@@ -18,6 +18,7 @@ export function LeftRailSummary({
   sessionCount,
   connectedPlayersCount,
   connectedSpectatorsCount = 0,
+  onOpenInfoPanel,
 }: LeftRailSummaryProps) {
   const hasSpectators = connectedSpectatorsCount > 0
 
@@ -27,7 +28,7 @@ export function LeftRailSummary({
         <header className="voice-rail-summary__header">
           <div className="voice-rail-summary__title-row">
             <Icon name="notes" className="voice-rail-summary__icon" />
-            <h4 className="voice-rail-summary__title">Information Panel</h4>
+            <h4 className="voice-rail-summary__title">Info Panel</h4>
           </div>
 
           <div className="voice-rail-summary__stats" aria-label="Campaign activity">
@@ -76,19 +77,32 @@ export function LeftRailSummary({
           </div>
         </header>
 
-        <p className="voice-rail-summary__campaign-name">{campaignName}</p>
-        <p className="voice-rail-summary__campaign-description">
+        <button
+          type="button"
+          className="voice-rail-summary__campaign-name"
+          onClick={onOpenInfoPanel}
+          disabled={!onOpenInfoPanel}
+        >
+          {campaignName}
+        </button>
+        <button
+          type="button"
+          className="voice-rail-summary__campaign-description"
+          onClick={onOpenInfoPanel}
+          disabled={!onOpenInfoPanel}
+        >
           {campaignDescription?.trim() || 'No description provided.'}
-        </p>
+        </button>
 
         <hr className="voice-rail-summary__divider" aria-hidden="true" />
 
         <p className="voice-rail-summary__session">
-          <TruncatedTextWithTooltip
-            as="span"
-            className="voice-rail-summary__session-value"
-            text={sessionName}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="voice-rail-summary__session-value">{sessionName}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top">{sessionName}</TooltipContent>
+          </Tooltip>
         </p>
       </section>
     </TooltipProvider>

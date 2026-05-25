@@ -87,13 +87,34 @@
 
 .voice-rail-summary__campaign-name {
   margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  transition: color 0.12s;
+}
+
+.voice-rail-summary__campaign-name:hover:not(:disabled) {
+  color: var(--color-accent, var(--color-text-primary));
+}
+
+.voice-rail-summary__campaign-name:disabled {
+  cursor: default;
 }
 
 .voice-rail-summary__campaign-description {
   margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
   font-size: 0.74rem;
   line-height: 1.35;
   color: var(--color-text-secondary);
@@ -102,6 +123,15 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color 0.12s;
+}
+
+.voice-rail-summary__campaign-description:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.voice-rail-summary__campaign-description:disabled {
+  cursor: default;
 }
 
 .voice-rail-summary__stats {

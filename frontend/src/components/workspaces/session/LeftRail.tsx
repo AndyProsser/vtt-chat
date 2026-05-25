@@ -31,12 +31,14 @@ type SessionWorkspaceLeftRailProps = {
   roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   sessionEndedAt?: number
   configuredCooldownDurationMs: number
+  onOpenInfoPanel?: () => void
 }
 
 export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
   return (
     <div className="session-left-rail-stack" data-ui-component="SessionLeftRailStack">
       <LeftRailPanel
+        onOpenInfoPanel={props.onOpenInfoPanel}
         apiUrl={props.apiUrl}
         token={props.token}
         sessionId={props.sessionId}

@@ -38,6 +38,7 @@ interface LeftRailPanelProps {
   dmOverrides: AudioDMOverridesByUser
   currentConditionName?: string
   roomEnvironmentNames?: Record<UUID, string>
+  onOpenInfoPanel?: () => void
 }
 
 export function LeftRailPanel({
@@ -66,6 +67,7 @@ export function LeftRailPanel({
   dmOverrides,
   currentConditionName,
   roomEnvironmentNames,
+  onOpenInfoPanel,
 }: LeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
@@ -171,6 +173,7 @@ export function LeftRailPanel({
           sessionCount={sessionCount}
           connectedPlayersCount={connectedPlayersCount}
           connectedSpectatorsCount={connectedSpectatorsCount}
+          onOpenInfoPanel={onOpenInfoPanel}
         />
       </section>
 

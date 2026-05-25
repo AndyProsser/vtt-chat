@@ -63,8 +63,9 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             onExitToSelector={props.onExitToSelector}
           />
         )}
-        renderLeftRail={() => (
+        renderLeftRail={({ openRightRailTab }) => (
           <SessionWorkspaceLeftRail
+            onOpenInfoPanel={() => openRightRailTab('information')}
             apiUrl={props.apiUrl}
             token={props.token}
             sessionId={currentSession.id}
