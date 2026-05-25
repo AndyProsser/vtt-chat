@@ -119,7 +119,7 @@ export function ChatWindow({
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
-  const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
+  const prevMessageCountRef = useRef(0)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
@@ -256,6 +256,19 @@ export function ChatWindow({
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
 
+  // Detect when the in-memory cache was pruned (count went down). This happens when
+  // the user is auto-scrolling and new messages arrive past the MAX threshold — the
+  // slice trims the oldest messages. Re-enable "load older" so the user can scroll
+  // back up and rehydrate the pruned history from the server.
+  useEffect(() => {
+    const currentCount = messageList.length
+    const prevCount = prevMessageCountRef.current
+    if (currentCount < prevCount && prevCount > 0 && !isLoadingOlderRef.current) {
+      setHasMoreHistory(true)
+    }
+    prevMessageCountRef.current = currentCount
+  }, [messageList.length])
+
   useEffect(
     () => () => {
       if (autoFollowResetTimeoutRef.current) {
@@ -278,7 +291,6 @@ export function ChatWindow({
         setIsLoadingOlder(true)
       } else {
         setIsLoading(true)
-        oldestLoadedTimestampRef.current = undefined
       }
 
       setError(null)
@@ -324,11 +336,6 @@ export function ChatWindow({
         }))
 
         addMessages(sessionId, msgs)
-
-        const oldestInPage = msgs.length > 0 ? msgs[0]?.createdAt : undefined
-        if (oldestInPage && Number.isFinite(oldestInPage)) {
-          oldestLoadedTimestampRef.current = oldestInPage
-        }
 
         const hasMore = Boolean(data.pagination?.hasMore ?? data.hasMore)
         const hasEarlier = Boolean(data.pagination?.hasEarlier ?? data.hasEarlier)
@@ -482,7 +489,11 @@ export function ChatWindow({
           return
         }
 
-        const before = oldestLoadedTimestampRef.current
+        // Use the oldest currently-in-memory message as the cursor.
+        // This is always correct after pruning — oldestLoadedTimestampRef would
+        // point to the old absolute-oldest (before the pruned gap), not the
+        // oldest message we still have in memory.
+        const before = messageList[0]?.createdAt
         if (!before) {
           return
         }

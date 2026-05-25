@@ -12,7 +12,9 @@ export const PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS = 1200
 
 // Bound in-memory chat cache for long-running sessions. Keep recent messages in
 // memory while older history remains available through paged history endpoints.
-export const CHAT_SESSION_CACHE_MAX_MESSAGES = 2200
-export const CHAT_SESSION_CACHE_RETAIN_MESSAGES = 1800
-export const GREENROOM_CACHE_MAX_MESSAGES = 2200
-export const GREENROOM_CACHE_RETAIN_MESSAGES = 1800
+// 10-20 messages are visible at once; 300 is a generous but bounded window.
+// Pruning triggers at MAX and retains the most recent RETAIN messages.
+export const CHAT_SESSION_CACHE_MAX_MESSAGES = 300
+export const CHAT_SESSION_CACHE_RETAIN_MESSAGES = 250
+export const GREENROOM_CACHE_MAX_MESSAGES = 300
+export const GREENROOM_CACHE_RETAIN_MESSAGES = 250
