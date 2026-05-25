@@ -96,6 +96,7 @@ describe('mock simulation service greenroom gating', () => {
         multiDeviceByUserId: new Map(),
         transferByUserId: new Map(),
         multiDeviceSetupAt: 0,
+        speakingStabilityTicksLeft: 0,
       },
       author: {
         userId: AUTHOR_ID as any,
@@ -149,6 +150,7 @@ describe('mock simulation service greenroom gating', () => {
         multiDeviceByUserId: new Map(),
         transferByUserId: new Map(),
         multiDeviceSetupAt: 0,
+        speakingStabilityTicksLeft: 0,
       },
       author: {
         userId: AUTHOR_ID as any,
@@ -209,6 +211,7 @@ describe('mock simulation service greenroom gating', () => {
         multiDeviceByUserId: new Map(),
         transferByUserId: new Map(),
         multiDeviceSetupAt: 0,
+        speakingStabilityTicksLeft: 0,
       },
       author: {
         userId: AUTHOR_ID as any,
@@ -279,6 +282,7 @@ describe('mock simulation service greenroom gating', () => {
         multiDeviceByUserId: new Map(),
         transferByUserId: new Map(),
         multiDeviceSetupAt: 0,
+        speakingStabilityTicksLeft: 0,
       },
       author: {
         userId: AUTHOR_ID as any,

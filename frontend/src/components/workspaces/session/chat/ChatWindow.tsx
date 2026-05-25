@@ -256,6 +256,27 @@ export function ChatWindow({
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
 
+  // Restore scroll position after prepended history messages are committed to the DOM.
+  // Using useLayoutEffect (not RAF) guarantees we read scrollHeight AFTER React has
+  // painted the new messages, so nextHeight - previousHeight reflects the real delta.
+  // Fired when isLoadingOlder transitions to false — by that point addMessages has run
+  // and the component has re-rendered with the prepended messages.
+  useLayoutEffect(() => {
+    if (isLoadingOlder || !pendingScrollRestoreRef.current || !messageListRef.current) {
+      return
+    }
+
+    const { previousTop, previousHeight } = pendingScrollRestoreRef.current
+    pendingScrollRestoreRef.current = null
+
+    const nextHeight = messageListRef.current.scrollHeight
+    // When the user was already at the very top (scrollTop === 0), the newly
+    // loaded messages are already visible there — no position adjustment needed.
+    if (previousTop > 0 && nextHeight > previousHeight) {
+      messageListRef.current.scrollTop = previousTop + (nextHeight - previousHeight)
+    }
+  }, [isLoadingOlder])
+
   // Detect when the in-memory cache was pruned (count went down). This happens when
   // the user is auto-scrolling and new messages arrive past the MAX threshold — the
   // slice trims the oldest messages. Re-enable "load older" so the user can scroll
@@ -343,21 +364,6 @@ export function ChatWindow({
           isGreenroomMode && !older && before === undefined ? hasEarlier : false
         )
         setHasMoreHistory(hasMore)
-
-        if (older && pendingScrollRestoreRef.current && messageListRef.current) {
-          const { previousTop, previousHeight } = pendingScrollRestoreRef.current
-          pendingScrollRestoreRef.current = null
-
-          requestAnimationFrame(() => {
-            const container = messageListRef.current
-            if (!container) {
-              return
-            }
-
-            const nextHeight = container.scrollHeight
-            container.scrollTop = previousTop + (nextHeight - previousHeight)
-          })
-        }
       } catch (err: any) {
         setError(err.message ?? 'Failed to load messages')
       } finally {
@@ -431,6 +437,15 @@ export function ChatWindow({
         }
       }
       clearPendingNewMessageCount()
+    } else if (isAutoFollowInProgress) {
+      // User scrolled away from bottom — cancel the auto-follow settle timeout so
+      // the jump-to-latest button appears immediately rather than staying hidden
+      // for up to AUTO_FOLLOW_SMOOTH_SETTLE_MS.
+      setIsAutoFollowInProgress(false)
+      if (autoFollowResetTimeoutRef.current) {
+        window.clearTimeout(autoFollowResetTimeoutRef.current)
+        autoFollowResetTimeoutRef.current = null
+      }
     }
   }, [clearPendingNewMessageCount, isAutoFollowInProgress])
 
@@ -1033,7 +1048,7 @@ export function ChatWindow({
                 type="button"
                 className={`session-chat-window__jump-to-latest ${pendingNewMessageCount > 0 ? 'session-chat-window__jump-to-latest--new' : ''}`}
                 onClick={() => {
-                  scrollToLatest('smooth')
+                  scrollToLatest('auto')
                   setIsUserPinnedToBottom(true)
                   setPendingNewMessageCount(0)
                   lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey

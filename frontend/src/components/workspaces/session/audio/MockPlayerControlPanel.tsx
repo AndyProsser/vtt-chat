@@ -264,6 +264,13 @@ export function MockPlayerControlPanel({
     return `${status.activeMockCount} active mocks, ${speakingCount} speaking`
   }, [status])
 
+  const uptimeMinutes = useMemo(() => {
+    if (!status?.isRunning || !status.uptime) return 0
+    return Math.floor(status.uptime / 60000)
+  }, [status])
+
+  const uptimeWarning = uptimeMinutes >= 10
+
   return (
     <div className="mock-player-control-panel" data-mock-control-panel>
       <div className="mock-player-control-panel__content">
@@ -394,6 +401,14 @@ export function MockPlayerControlPanel({
 
         {/* Status Display */}
         <div className="mock-player-control-panel__status">Status: {statusText}</div>
+        {status?.isRunning && uptimeMinutes > 0 && (
+          <div
+            className={`mock-player-control-panel__uptime${uptimeWarning ? ' mock-player-control-panel__uptime--warning' : ''}`}
+          >
+            {uptimeWarning ? '⚠ ' : ''}Running for {uptimeMinutes} min
+            {uptimeWarning ? ' — long sessions increase memory use; consider stopping' : ''}
+          </div>
+        )}
       </div>
     </div>
   )

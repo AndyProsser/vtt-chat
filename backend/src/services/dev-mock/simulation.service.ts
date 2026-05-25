@@ -10,7 +10,10 @@ import {
   MAX_DEV_MOCK_SIMULATOR_COUNT,
   MIN_DEV_MOCK_SIMULATOR_COUNT,
 } from '@/constants/dev-mock.constants'
-import { DEV_MOCK_RUNTIME_INACTIVE_TTL_MS } from '@/constants/dev-mock-simulation.constants'
+import {
+  DEV_MOCK_RUNTIME_INACTIVE_TTL_MS,
+  DEV_MOCK_SPEAKING_STABILITY_TICKS,
+} from '@/constants/dev-mock-simulation.constants'
 import { getRedisClient } from '@/infra/redis'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
@@ -97,6 +100,12 @@ interface MockSimulationRuntime {
   transferByUserId: Map<UUID, TransferMockState>
   /** Ticks since multi-device setup last ran (used to avoid immediate re-setup). */
   multiDeviceSetupAt: number
+  /**
+   * Countdown until the current speaker set is cycled to new speakers.
+   * Counts down from DEV_MOCK_SPEAKING_STABILITY_TICKS each tick; when it
+   * reaches 0 a new set is chosen and only the diff is broadcast.
+   */
+  speakingStabilityTicksLeft: number
 }
 
 interface MockPresenceUser {
@@ -407,6 +416,7 @@ function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
     multiDeviceByUserId: new Map<UUID, MultiDeviceMockState>(),
     transferByUserId: new Map<UUID, TransferMockState>(),
     multiDeviceSetupAt: 0,
+    speakingStabilityTicksLeft: 0,
   }
 
   runtimeBySession.set(sessionId, runtime)
@@ -1468,22 +1478,43 @@ async function runTick(sessionId: UUID): Promise<void> {
     if (!runtime.config.speakingSimulatorEnabled) {
       await clearSpeaking(sessionId, runtime, users)
     } else {
-      await clearSpeaking(sessionId, runtime, users)
+      // Stability: hold the current speaker set for DEV_MOCK_SPEAKING_STABILITY_TICKS ticks
+      // before cycling. Only broadcast the diff (stopped + started speakers), not the full
+      // clear-then-set churn, to reduce PRESENCE:STATE_CHANGED event frequency.
+      runtime.speakingStabilityTicksLeft -= 1
 
-      const shouldSpeakThisTick = Math.random() > 0.35
-      const desiredCount = shouldSpeakThisTick ? Math.floor(Math.random() * 3) + 1 : 0
-      const nextSpeakingIds = pickRandomUsers(
-        speakingEligibleUsers.map((user) => user.userId),
-        desiredCount
-      )
+      if (runtime.speakingStabilityTicksLeft <= 0) {
+        const shouldSpeakThisTick = Math.random() > 0.35
+        const desiredCount = shouldSpeakThisTick ? Math.floor(Math.random() * 3) + 1 : 0
+        const nextSpeakingIds = new Set(
+          pickRandomUsers(
+            speakingEligibleUsers.map((user) => user.userId),
+            desiredCount
+          )
+        )
 
-      for (const userId of nextSpeakingIds) {
-        const user = usersById.get(userId)
-        if (!user) {
-          continue
+        // Broadcast ONLINE only for users who stopped speaking
+        for (const userId of runtime.speakingNow) {
+          if (!nextSpeakingIds.has(userId)) {
+            const user = usersById.get(userId)
+            if (user) {
+              await broadcastPresenceState(sessionId, user, PresenceState.ONLINE)
+            }
+          }
         }
-        runtime.speakingNow.add(userId)
-        await broadcastPresenceState(sessionId, user, PresenceState.SPEAKING)
+        runtime.speakingNow.clear()
+
+        // Broadcast SPEAKING only for users who started speaking
+        for (const userId of nextSpeakingIds) {
+          const user = usersById.get(userId)
+          if (!user) {
+            continue
+          }
+          runtime.speakingNow.add(userId)
+          await broadcastPresenceState(sessionId, user, PresenceState.SPEAKING)
+        }
+
+        runtime.speakingStabilityTicksLeft = DEV_MOCK_SPEAKING_STABILITY_TICKS
       }
     }
 
