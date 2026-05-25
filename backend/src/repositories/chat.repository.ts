@@ -109,6 +109,7 @@ export async function listSessionMessagesPage(params: {
   since?: Date
   before?: Date
   limit: number
+  types?: Array<'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'>
 }): Promise<{
   rows: Array<{
     id: string
@@ -144,6 +145,13 @@ export async function listSessionMessagesPage(params: {
   const rows = await prisma.chatMessage.findMany({
     where: {
       sessionId: params.sessionId,
+      ...(params.types && params.types.length > 0
+        ? {
+            type: {
+              in: params.types,
+            },
+          }
+        : {}),
       ...(Object.keys(createdAtFilter).length > 0
         ? {
             createdAt: createdAtFilter,

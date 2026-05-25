@@ -9,7 +9,23 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, MessageType } from '@shared'
 import type { EventEnvelope } from '@shared'
+import {
+  GREENROOM_CACHE_MAX_MESSAGES,
+  GREENROOM_CACHE_RETAIN_MESSAGES,
+} from '@/constants/chatPresence.constants'
 import type { Message } from '@/types/chat'
+
+function pruneGreenroomMessageCache(messages: Record<UUID, Message>): Record<UUID, Message> {
+  const entries = Object.entries(messages) as Array<[UUID, Message]>
+  if (entries.length <= GREENROOM_CACHE_MAX_MESSAGES) {
+    return messages
+  }
+
+  entries.sort((left, right) => left[1].createdAt - right[1].createdAt)
+  return Object.fromEntries(
+    entries.slice(Math.max(0, entries.length - GREENROOM_CACHE_RETAIN_MESSAGES))
+  ) as Record<UUID, Message>
+}
 
 export interface GreenroomSlice {
   // State
@@ -39,10 +55,10 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
   // Actions
   addGreenroomMessage: (message) =>
     set((state) => ({
-      greenroomMessages: {
+      greenroomMessages: pruneGreenroomMessageCache({
         ...state.greenroomMessages,
         [message.id]: message,
-      },
+      }),
     })),
 
   updateGreenroomMessage: (messageId, updates) =>
@@ -107,10 +123,10 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
     }
 
     set((state) => ({
-      greenroomMessages: {
+      greenroomMessages: pruneGreenroomMessageCache({
         ...state.greenroomMessages,
         [message.id]: message,
-      },
+      }),
     }))
   },
 

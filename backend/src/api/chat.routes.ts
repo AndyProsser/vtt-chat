@@ -398,6 +398,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const limitRaw = req.query.limit
     const beforeRaw = req.query.before
     const sinceLatestStartRaw = req.query.sinceLatestStart
+    const systemOnlyRaw = req.query.systemOnly
 
     if (!isValidUUID(sessionId)) {
       return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid sessionId' })
@@ -464,6 +465,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
     const parsedBefore = beforeRaw !== undefined ? Number(beforeRaw) : undefined
     const sinceLatestStart =
       sinceLatestStartRaw === '1' || sinceLatestStartRaw === 'true' || sinceLatestStartRaw === 'yes'
+    const systemOnly = systemOnlyRaw === '1' || systemOnlyRaw === 'true' || systemOnlyRaw === 'yes'
 
     // Session-scoped chat only (greenroom now uses separate campaign endpoints)
     const page = await getMessagesPage(
@@ -475,6 +477,7 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
         limit: parsedLimit,
         before: parsedBefore,
         sinceLatestStart,
+        systemOnly,
       }
     )
     return res.status(200).json({

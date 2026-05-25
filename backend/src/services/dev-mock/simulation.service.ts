@@ -323,6 +323,18 @@ async function persistMockSimulationConfig(
   }
 }
 
+async function deletePersistedMockSimulationConfig(sessionId: UUID): Promise<void> {
+  try {
+    const redis = await getRedisClient()
+    await redis.del(mockSimulationConfigKey(sessionId))
+  } catch (error) {
+    logger.warn('dev-mock-simulation', 'Failed to delete persisted mock simulation config', {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
 function clampPlayerCount(value: number): number {
   if (!Number.isFinite(value)) {
     return defaultConfig().playerCount
@@ -1734,6 +1746,19 @@ export async function stopMockSimulation(sessionId: UUID): Promise<void> {
   const runtime = getOrCreateRuntime(sessionId)
   await ensureRuntimeConfigHydrated(sessionId, runtime)
   await stopRunner(sessionId)
+}
+
+export async function purgeMockSimulationSessionState(sessionId: UUID): Promise<void> {
+  const runtime = runtimeBySession.get(sessionId)
+  if (runtime) {
+    if (!runtime.configHydrated) {
+      await ensureRuntimeConfigHydrated(sessionId, runtime)
+    }
+    await stopRunner(sessionId)
+  }
+
+  runtimeBySession.delete(sessionId)
+  await deletePersistedMockSimulationConfig(sessionId)
 }
 
 export async function getMockSimulationPlayerCount(sessionId: UUID): Promise<number> {

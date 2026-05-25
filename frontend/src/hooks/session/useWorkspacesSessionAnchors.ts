@@ -81,8 +81,14 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
       const historyByRoom = await Promise.all(
         targetRoomIds.map(async (roomId) => {
           try {
+            const params = new URLSearchParams({
+              roomId,
+              sinceLatestStart: '1',
+              systemOnly: '1',
+              limit: '24',
+            })
             const response = await fetchWithAuthGuard(
-              `${apiUrl}/api/chat/messages/${sessionId}?roomId=${roomId}`,
+              `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,

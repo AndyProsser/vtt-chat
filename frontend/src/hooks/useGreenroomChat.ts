@@ -33,7 +33,11 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
     }
 
     try {
-      const response = await fetch(`/api/chat/campaign/${activeCampaignId}/chat`, {
+      const params = new URLSearchParams({
+        limit: String(limit),
+      })
+
+      const response = await fetch(`/api/chat/campaign/${activeCampaignId}/chat/page?${params}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
@@ -64,7 +68,7 @@ export function useGreenroomChat(options: GreenroomChatOptions = {}) {
         campaignId: activeCampaignId,
       })
     }
-  }, [activeCampaignId, enabled, addGreenroomMessage])
+  }, [activeCampaignId, enabled, addGreenroomMessage, limit])
 
   const fetchGreenroomMessagesPage = useCallback(
     async (before?: number) => {

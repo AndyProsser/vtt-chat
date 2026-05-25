@@ -429,7 +429,7 @@ export async function getMessagesPage(
   requesterId: UUID,
   requesterRole: string,
   roomId?: UUID,
-  options?: ChatHistoryPageOptions
+  options?: ChatHistoryPageOptions & { systemOnly?: boolean }
 ): Promise<ChatHistoryPageResult> {
   const sinceLatestStart = options?.sinceLatestStart === true
   const latestStartBoundary = sinceLatestStart
@@ -452,6 +452,7 @@ export async function getMessagesPage(
     since: latestStartBoundary ?? undefined,
     before: options?.before ? new Date(options.before) : undefined,
     limit: normalizeHistoryLimit(options?.limit),
+    types: options?.systemOnly ? [MessageType.SYSTEM] : undefined,
   })
 
   const messages = page.rows.map(mapStoredMessage).filter((m) => {

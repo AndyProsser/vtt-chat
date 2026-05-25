@@ -14,3 +14,5 @@ export const PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS = 1200
 // memory while older history remains available through paged history endpoints.
 export const CHAT_SESSION_CACHE_MAX_MESSAGES = 2200
 export const CHAT_SESSION_CACHE_RETAIN_MESSAGES = 1800
+export const GREENROOM_CACHE_MAX_MESSAGES = 2200
+export const GREENROOM_CACHE_RETAIN_MESSAGES = 1800
