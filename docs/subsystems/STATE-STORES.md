@@ -24,6 +24,17 @@ Stores do **not** directly manipulate:
 
 Instead, they expose **actions** that integration layers call.
 
+### Runtime Churn Diagnostics (Dev)
+
+To debug freeze/GC churn in development, the root store supports opt-in churn snapshots.
+
+- Env toggle: `VITE_DEBUG_CHURN_METRICS=1`
+- Runtime toggle: `window.__VTT_DEBUG_CHURN__ = true`
+
+When enabled, logger domain `store.churn` emits totals/deltas for high-churn store collections
+(messages, outgoing queue, typing/speaking sets, room members, LiveKit connections).
+Use this with browser profiler captures to correlate reducer churn with UI stalls.
+
 ---
 
 ## Store Overview

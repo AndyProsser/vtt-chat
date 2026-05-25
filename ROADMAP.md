@@ -167,6 +167,12 @@ Evidence snapshot (2026-05-19):
   - `docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md`
   - `docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md`
 
+Evidence snapshot (2026-05-25):
+
+- Frontend runtime freeze triage guidance was added to developer docs with an explicit churn-debug flow (`docs/DEV-QUICK-REFERENCE.md`, `docs/subsystems/STATE-STORES.md`).
+- Opt-in store churn diagnostics now emit `store.churn` totals/deltas for high-churn collections (`VITE_DEBUG_CHURN_METRICS=1` or `window.__VTT_DEBUG_CHURN__ = true`).
+- High-frequency frontend reducers in chat/presence/greenroom/room/livekit were hardened with additional no-op guards and lower-allocation update paths to reduce GC pressure during WS-heavy sessions.
+
 ---
 
 ## Phase 1: UI/UX Foundation 🟡

@@ -37,6 +37,27 @@ Comprehensive admin guide for configuring audio, managing mute states, and troub
 
 ## For Developers & Testers
 
+### [Developer Quick Reference](DEV-QUICK-REFERENCE.md)
+
+Fast operational checklist for architecture rules, test flow, and runtime freeze/churn triage.
+
+**Topics:**
+
+- Event/reducer/store rules at a glance
+- Runtime freeze/churn triage flow
+- Opt-in store churn diagnostics toggles
+- Fast recovery and troubleshooting checklists
+
+### [State Stores Architecture](subsystems/STATE-STORES.md)
+
+State-store boundaries, responsibilities, and runtime diagnostics for Zustand slices.
+
+**Topics:**
+
+- Store ownership boundaries
+- Action-driven integration model
+- Runtime churn diagnostics (`store.churn`) for freeze triage
+
 ### [Mock Players Guide](guides/dev/mock-players.md)
 
 Complete guide to using mock players for testing multi-player scenarios without multiple browser instances.

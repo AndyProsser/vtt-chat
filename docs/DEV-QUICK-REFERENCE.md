@@ -204,6 +204,73 @@ Before submitting a PR:
 
 ---
 
+## Runtime Freeze / Churn Triage (Frontend)
+
+Use this flow when the app appears frozen or GC/CC pressure spikes during active sessions.
+
+### 1) Enable Opt-In Churn Diagnostics
+
+Two toggles are supported (both are off by default):
+
+- Env toggle:
+
+```bash
+VITE_DEBUG_CHURN_METRICS=1
+```
+
+- Runtime toggle (browser console):
+
+```js
+window.__VTT_DEBUG_CHURN__ = true
+```
+
+Related legacy store update debug toggle (still supported):
+
+```bash
+VITE_DEBUG_STORE_UPDATES=1
+```
+
+### 2) Capture Signal
+
+- Reproduce the freeze path (usually ACTIVE session with heavy WS churn).
+- Collect Firefox Performance profile (or equivalent).
+- Correlate with `store.churn` logs from frontend logger output.
+
+`store.churn` snapshots report totals + deltas for:
+
+- session messages
+- outgoing queue size
+- typing indicators
+- WS speaking set size
+- LiveKit speaking set size
+- room member totals
+- LiveKit connection totals
+
+### 3) Prioritize Likely Hot Paths
+
+These reducers were hardened to reduce no-op writes and transient allocations:
+
+- `frontend/src/state/chatSlice.ts`
+- `frontend/src/state/presenceSlice.ts`
+- `frontend/src/state/greenroomSlice.ts`
+- `frontend/src/state/livekitSlice.ts`
+- `frontend/src/state/roomSlice.ts`
+
+If regressions reappear, inspect those files first for:
+
+- unnecessary object/array reconstruction on no-op events
+- duplicate event paths that still write state
+- per-event `Object.entries/Object.values/filter/map` pipelines in hot loops
+
+### 4) Success Criteria
+
+- Lower frequency/duration of `GCMinor` pauses in profiler captures
+- Lower `eventDelay` peak during stress windows
+- Stable or slower-growing `store.churn` deltas for typing/speaking/message totals
+- No functional regressions in session lifecycle, chat, or room transitions
+
+---
+
 ## Prisma Local Recovery (Copy-Paste)
 
 Use this when local Prisma migrations fail with `P1010` (access denied) or `P3018` (failed migration / drift).

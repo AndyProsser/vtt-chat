@@ -93,6 +93,11 @@ export function useWorkspacesCampaignEntryOrchestration(
     [sessionNameBase]
   )
 
+  const shouldEnsureMembership = useCallback(
+    (session: SessionRecord) => session.state !== SessionState.CLEANUP,
+    []
+  )
+
   const handleEnterCampaign = useCallback(
     async (campaignId?: UUID, preferredSessionId?: UUID) => {
       setError(null)
@@ -148,7 +153,9 @@ export function useWorkspacesCampaignEntryOrchestration(
           : null) || getPreferredSession(targetSessions)
 
       if (preferredSession) {
-        await ensureSessionMembership(preferredSession.id)
+        if (shouldEnsureMembership(preferredSession)) {
+          await ensureSessionMembership(preferredSession.id)
+        }
         setCurrentSession(preferredSession.id)
         return
       }
@@ -180,7 +187,9 @@ export function useWorkspacesCampaignEntryOrchestration(
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
-        await ensureSessionMembership(payload.session.id)
+        if (shouldEnsureMembership(payload.session)) {
+          await ensureSessionMembership(payload.session.id)
+        }
         replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
@@ -203,6 +212,7 @@ export function useWorkspacesCampaignEntryOrchestration(
       setError,
       setLobbyNotice,
       setSelectedCampaignId,
+      shouldEnsureMembership,
       token,
       userId,
     ]
@@ -384,7 +394,9 @@ export function useWorkspacesCampaignEntryOrchestration(
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
-        await ensureSessionMembership(payload.session.id)
+        if (shouldEnsureMembership(payload.session)) {
+          await ensureSessionMembership(payload.session.id)
+        }
         replaceSessions([normalizeSessionRecord(payload.session), ...existingSessions])
         setCurrentSession(payload.session.id)
         onSessionCreated?.(payload.session.id)
@@ -404,6 +416,7 @@ export function useWorkspacesCampaignEntryOrchestration(
       replaceSessions,
       setCurrentSession,
       setError,
+      shouldEnsureMembership,
       token,
     ]
   )
