@@ -4,7 +4,7 @@
  * New messages arrive via WS events (CHAT:MESSAGE_SENT) dispatched to chatSlice.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
 import { MessageType, Role, RoomType } from '@shared'
@@ -35,6 +35,7 @@ interface ChatWindowProps {
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
+const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -112,6 +113,7 @@ export function ChatWindow({
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUserPinnedToBottom, setIsUserPinnedToBottom] = useState(true)
+  const [isAutoFollowInProgress, setIsAutoFollowInProgress] = useState(false)
   const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
   const [hasHiddenOlderGreenroomHistory, setHasHiddenOlderGreenroomHistory] = useState(false)
   const messageListRef = useRef<HTMLDivElement>(null)
@@ -119,6 +121,7 @@ export function ChatWindow({
   const isLoadingOlderRef = useRef(false)
   const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
+  const autoFollowResetTimeoutRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
@@ -254,6 +257,16 @@ export function ChatWindow({
   useEffect(() => {
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
+
+  useEffect(
+    () => () => {
+      if (autoFollowResetTimeoutRef.current) {
+        window.clearTimeout(autoFollowResetTimeoutRef.current)
+        autoFollowResetTimeoutRef.current = null
+      }
+    },
+    []
+  )
 
   const loadHistoryPage = useCallback(
     async ({ before, older }: { before?: number; older: boolean }) => {
@@ -405,9 +418,16 @@ export function ChatWindow({
     setIsUserPinnedToBottom(nearBottom)
 
     if (nearBottom) {
+      if (isAutoFollowInProgress) {
+        setIsAutoFollowInProgress(false)
+        if (autoFollowResetTimeoutRef.current) {
+          window.clearTimeout(autoFollowResetTimeoutRef.current)
+          autoFollowResetTimeoutRef.current = null
+        }
+      }
       clearPendingNewMessageCount()
     }
-  }, [clearPendingNewMessageCount])
+  }, [clearPendingNewMessageCount, isAutoFollowInProgress])
 
   const revealOlderGreenroomHistory = useCallback(() => {
     if (
@@ -745,7 +765,7 @@ export function ChatWindow({
 
   // Follow new messages only when user is already pinned to bottom.
   // If user is reading history, keep their position and surface a subtle jump cue.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!latestVisibleMessageKey) {
       return
     }
@@ -759,14 +779,23 @@ export function ChatWindow({
 
     const scrollContainer = messageListRef.current
     const shouldAutoFollow =
-      isUserPinnedToBottom || (scrollContainer ? isNearBottom(scrollContainer) : false)
+      isAutoFollowInProgress ||
+      isUserPinnedToBottom ||
+      (scrollContainer ? isNearBottom(scrollContainer) : false)
 
     if (shouldAutoFollow) {
+      setIsAutoFollowInProgress(true)
+      if (autoFollowResetTimeoutRef.current) {
+        window.clearTimeout(autoFollowResetTimeoutRef.current)
+      }
+      autoFollowResetTimeoutRef.current = window.setTimeout(() => {
+        setIsAutoFollowInProgress(false)
+        autoFollowResetTimeoutRef.current = null
+      }, AUTO_FOLLOW_SMOOTH_SETTLE_MS)
+
       scrollToLatest('smooth')
       setIsUserPinnedToBottom(true)
-      window.requestAnimationFrame(() => {
-        clearPendingNewMessageCount()
-      })
+      clearPendingNewMessageCount()
       lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
       return
     }
@@ -774,7 +803,13 @@ export function ChatWindow({
     window.requestAnimationFrame(() => {
       setPendingNewMessageCount((count) => count + 1)
     })
-  }, [clearPendingNewMessageCount, isUserPinnedToBottom, latestVisibleMessageKey, scrollToLatest])
+  }, [
+    clearPendingNewMessageCount,
+    isAutoFollowInProgress,
+    isUserPinnedToBottom,
+    latestVisibleMessageKey,
+    scrollToLatest,
+  ])
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {
@@ -978,7 +1013,10 @@ export function ChatWindow({
         />
       )}
 
-      {!isLoading && visibleMessages.length > 0 && !isUserPinnedToBottom ? (
+      {!isLoading &&
+      visibleMessages.length > 0 &&
+      !isUserPinnedToBottom &&
+      !isAutoFollowInProgress ? (
         <TooltipProvider delayDuration={140}>
           <Tooltip>
             <TooltipTrigger asChild>
