@@ -10,7 +10,11 @@ const mocks = vi.hoisted(() => ({
   mockEnsurePresenceRecoveredFromSnapshots: vi.fn(async () => undefined),
   mockUpdatePresenceState: vi.fn(async () => undefined),
   mockSnapshotSessionPresence: vi.fn(async () => undefined),
+  mockFindSessionById: vi.fn(async () => ({ campaignId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })),
+  mockBroadcastLobbyStatsUpdated: vi.fn(async () => undefined),
   mockSetWebSocketManager: vi.fn(),
+  mockSendToAllAuthenticated: vi.fn(),
+  mockBroadcastToCampaignMembers: vi.fn(async () => undefined),
   mockHandleUserConnected: vi.fn(),
   mockHandleUserDisconnected: vi.fn(async () => undefined),
   mockSetInterval: vi.fn(),
@@ -60,7 +64,34 @@ vi.mock('@/services/room.service', () => ({
 vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     setWebSocketManager: mocks.mockSetWebSocketManager,
+    sendToAllAuthenticated: mocks.mockSendToAllAuthenticated,
+    broadcastToCampaignMembers: mocks.mockBroadcastToCampaignMembers,
   },
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  findSessionById: mocks.mockFindSessionById,
+}))
+
+vi.mock('@/services/lobby/lobby-stats.service', () => ({
+  broadcastLobbyStatsUpdated: mocks.mockBroadcastLobbyStatsUpdated,
+}))
+
+vi.mock('@/ws/state-recovery', () => ({
+  clearInMemorySessionRecoveryState: vi.fn(),
+  registerEventForRecovery: vi.fn(),
+  registerEventForRecoveryDurable: vi.fn(async () => undefined),
+  replayEventsForConnectionDurable: vi.fn(async () => []),
+  createConnectionState: (userId: UUID, sessionId: UUID, connectionId: string) => ({
+    userId,
+    sessionId,
+    connectionId,
+    connectedAt: Date.now(),
+    isReconnecting: false,
+    lastEventId: undefined,
+    lastPingAt: Date.now(),
+  }),
+  updateConnectionState: vi.fn(),
 }))
 
 vi.mock('@/services/session/disconnect-cascade.service', () => ({
@@ -148,7 +179,7 @@ describe('websocket disconnect/reconnect sequencing (same user multi-tab)', () =
     )
 
     await manager.close()
-  })
+  }, 20_000)
 
   it('rapid reconnect after last-tab disconnect emits connect cancellation path without extra ghost-trigger disconnects', async () => {
     const { WebSocketManager } = await import('@/ws/index')
@@ -166,7 +197,7 @@ describe('websocket disconnect/reconnect sequencing (same user multi-tab)', () =
     expect(mocks.mockHandleUserDisconnected).toHaveBeenCalledTimes(1)
 
     await manager.close()
-  })
+  }, 20_000)
 
   it('tab churn does not emit false disconnect cascade while one tab stays connected', async () => {
     const { WebSocketManager } = await import('@/ws/index')

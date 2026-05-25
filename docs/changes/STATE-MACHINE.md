@@ -178,21 +178,22 @@ This document defines **where state lives**, **who is authoritative**, and **whi
 
 ### 3.1 Presence model
 
-Per user (PLAYER/DM/SPECTATOR):
+Per user (PLAYER/DM/SPECTATOR), backend uses activity-state presence plus ghost projection:
 
-- `presence ∈ { CONNECTED, DISCONNECTED }`
-- `ghost: boolean` (derived ghost-mode flag)
+- `presence ∈ { ONLINE, TYPING, SPEAKING, IDLE, OFFLINE }`
+- `ghost: boolean` (projection for disconnected-but-retain-card window)
 
-**Ghost-mode definition:**
+**Ghost-mode definition (implemented):**
 
-- Ghost-mode is **visual**: `presence === CONNECTED && ghost === true`.
-- **Storage:** `ghost` flag is authoritative in Redis presence hash; frontend Zustand caches it via WS event `PRESENCE:USER_GHOST_MODE_CHANGED`.
-- **Frontend local behavior:** When frontend detects own connection loss, optimistically set local ghost-mode; on reconnect, accept backend's ghost-mode truth.
-- **Backend enforcement:** Ghost-mode entry and exit are managed by backend timers (5s entry, 60s TTL, etc.). Timers are not frontend-observable; frontend reacts to state changes via WS events only.
+- Immediate disconnect update sets `presence=OFFLINE` and `ghost=false`, then emits `PRESENCE:STATE_CHANGED`.
+- After `5s` with no reconnect, backend flips `ghost=true` and emits `PRESENCE:USER_GHOST_MODE_CHANGED`.
+- After `60s` without reconnect, backend removes presence projection and emits `ROOM:USER_LEFT` with `reason=DISCONNECT`.
+- Reconnect clears pending timers via `handleUserConnected(sessionId, userId)` and converges back to `presence=ONLINE`.
+- Frontend must treat backend WS/API values as authoritative on reconnect (no local ghost truth override).
 
 ### 3.2 Spectator rules
 
-- `presence: CONNECTED | DISCONNECTED` only.
+- Presence states follow the same canonical enum (`ONLINE | TYPING | SPEAKING | IDLE | OFFLINE`).
 - Intentional or network disconnect:
   - Session membership dropped.
   - They can rejoin (spectator limits apply).
@@ -210,76 +211,35 @@ Per user (PLAYER/DM/SPECTATOR):
 
 **Intentional disconnect:**
 
-- Immediately mark `presence = DISCONNECTED`.
-- Player card:
-  - Enter ghost-mode for **5 seconds** (backend timer).
-  - After 5s, remove player from session.
-- If their group closes during 5s or session ends:
-  - Apply normal group rules (move to `MAIN` or `GREEN_ROOM` as appropriate).
+- Immediately mark `presence = OFFLINE`, `ghost = false`, and broadcast `PRESENCE:STATE_CHANGED`.
+- If still disconnected after `5s`, broadcast ghost-mode change (`ghost = true`).
+- If still disconnected after `60s` TTL, remove presence projection and broadcast `ROOM:USER_LEFT` (`reason=DISCONNECT`).
 
 **Network disconnect:**
 
-- On WS health failure:
-  - Start 5s timer:
-    - After 5s, set `ghost = true` (ghost-mode).
-  - Start 60s TTL timer:
-    - If player does **not** reconnect within 60s:
-      - Remove player from session.
-- Rejoin behavior:
-  - If reconnect **before 60s**:
-    - Restore previous session state (group, conditions, distance profile, etc.).
-  - If reconnect **after 60s**:
-    - Treat as late join; normal join flow.
-- Group movement rules remain the same.
+- Same timer path as intentional disconnect in current backend implementation.
+- Reconnect before TTL expiry preserves runtime projection continuity; reconnect after projection expiry re-enters via normal runtime hydration/join flows.
 
 ### 3.4 DM rules
 
 **Intentional disconnect:**
 
-- Immediately:
-  - `presence = DISCONNECTED`
-  - `session.state = PAUSED`
-- Grant all connected players the ability to **STOP** session.
-  - Players **cannot UNPAUSE**.
+- Immediate disconnect follows standard presence cascade (`OFFLINE`, ghost timer, TTL removal) with DM role context.
+- Session-state pause/stop policy is governed by session lifecycle routes, not by presence route mutation alone.
 
 **Network disconnect:**
 
-- On WS health failure:
-  - After 5s:
-    - `ghost = true`
-    - `session.state = PAUSED`
-  - After 60s:
-    - If DM not reconnected:
-      - Grant players ability to **STOP** session.
-- Rejoin:
-  - If DM rejoins before players stop session:
-    - DM can **RESUME** session (even after 60s).
+- Same ghost/timer behavior as other roles.
+- Session transition side effects are applied by session orchestration endpoints/services, not by WS disconnect handler directly.
 
 ### 3.5 Everyone leaves
 
 **All players & DM leave by intent, session not stopped:**
 
-- Start 60s timer:
-  - During 60s:
-    - Everyone is effectively in ghost-mode (for quick reconnect).
-    - `session.state = ACTIVE` (or `PAUSED`) — unchanged.
-  - After 60s:
-    - If **still no one connected**:
-      - `session.state = ENDED` (session auto-stopped and close-out triggered).
-      - Initiate session end-of-session processes (recording finalization, etc.).
-    - If **anyone reconnected during 60s**:
-      - Resume normal session behavior (no state change).
-- From green room-calculated states (`IDLE`, `ENDED`, `CLEANUP`):
-  - If everyone disconnected:
-    - Start 20min timer.
-    - During 20min:
-      - Transition to `CLEANUP` state.
-      - Green room chat and ephemeral state queued for purge.
-    - If anyone reconnects before 20min:
-      - Cancel `CLEANUP` timer; revert to `IDLE`.
-      - DM can now start a new session or resume.
-    - After 20min:
-      - Terminal cleanup: green room chat purged, session state reset (client sees join as new session).
+- When no active connections remain in a session that is currently `ACTIVE` or `PAUSED`, backend starts a `60s` everyone-leaves timer.
+- If still empty at expiry, backend auto-transitions session to `COOLDOWN` and applies room-transition orchestration.
+- If any participant reconnects before expiry, timer is canceled via `handleUserConnected`.
+- For non-runtime states (`IDLE`, `COOLDOWN`, `ENDED`, `CLEANUP`), disconnect cascade does not force immediate cleanup transition.
 
 **Network / browser-close for everyone:**
 

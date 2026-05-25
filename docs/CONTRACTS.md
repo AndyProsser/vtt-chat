@@ -179,6 +179,86 @@ Presence hydration addendum:
 - `deviceSessions` is derived from active authenticated WS connections and carries `deviceSessionId`, `deviceClass`, inferred label, connected time, and active/muted flags.
 - Player/DM avatar poppers render device rows only when more than one device is currently connected for that user.
 
+### Presence API Runtime Contract (Backend Source-Of-Truth)
+
+Implemented in `backend/src/api/presence.routes.ts`.
+
+- `GET /api/presence/:sessionId`
+  - Auth: bearer token required.
+  - Validation: invalid `sessionId` returns `400 INVALID_INPUT`.
+  - Access: allowed for session DM or current session members.
+  - Forbidden: non-members return `403 FORBIDDEN`.
+  - Not found: missing session returns `404 NOT_FOUND`.
+  - Side effects:
+    - Triggers mock-simulation bootstrap (`ensureMockSimulationRunning`).
+    - Reads session stats snapshot (`getSessionStatsSnapshot`).
+    - Reads active takeover identity snapshot (`getMockTakeoverSnapshot`).
+  - Response shape:
+    - `presence`: filtered to users currently in session membership.
+    - Per entry includes role projection, optional profile fields, and `deviceSessions` when WS manager snapshot is available.
+    - `stats`: session connected counters.
+    - `identity`: takeover projection for the requesting user.
+
+- `PUT /api/presence/:sessionId/state`
+  - Auth: bearer token required.
+  - Validation:
+    - Invalid `sessionId`, `state`, `roomId`, `privateRoomId`, `previousGroupId`, or non-boolean `ghostMode` returns `400 INVALID_INPUT`.
+    - `roomId` and `privateRoomId` may be `null`.
+  - Access: allowed for session DM or current session members.
+  - Not found:
+    - Missing session returns `404 NOT_FOUND`.
+    - Non-existent `roomId` returns `404 NOT_FOUND`.
+  - Behavior:
+    - If `roomId` is provided, joins that room first.
+    - Updates presence with state + ghost/group/private-room projection fields.
+    - Appends `PRESENCE.STATE_CHANGED` audit event with previous/new state metadata.
+    - If WS manager exists: broadcasts `PRESENCE:STATE_CHANGED` and conditionally `PRESENCE:USER_GHOST_MODE_CHANGED` when ghost flag flips.
+    - If campaign broadcaster is ready: emits `CAMPAIGN:PARTY_PRESENCE_UPDATED` with reason `PRESENCE_STATE_CHANGED`.
+  - Response shape: `{ presence: <updatedPresenceEntity> }`.
+
+- `POST /api/presence/:sessionId/recover`
+  - Auth: bearer token required.
+  - Validation: invalid `sessionId` returns `400 INVALID_INPUT`.
+  - Access: allowed for session DM or current session members.
+  - Behavior:
+    - Executes `ensurePresenceRecoveredFromSnapshots`.
+    - Persists snapshot count via `snapshotSessionPresence`.
+    - Appends `PRESENCE.RECOVERY_TRIGGERED` audit event.
+  - Response shape:
+    - `recoveredFromSnapshots: boolean`
+    - `snapshotCount: number`
+    - `presence: PresenceEntity[]`
+
+### WS Disconnect/Reconnect Sequencing Contract (Backend Source-Of-Truth)
+
+Implemented in `backend/src/ws/index.ts` and `backend/src/services/session/disconnect-cascade.service.ts`.
+
+- Multi-tab gating:
+  - Disconnect cascade starts only when the user has no remaining active socket in that session.
+  - If another tab/device remains active for the same user+session, disconnect cascade is skipped.
+
+- On WS authenticate (session-bound):
+  - Connection registers in-memory with `sessionId` binding.
+  - `handleUserConnected(sessionId, userId)` cancels pending ghost/ttl/everyone-leaves timers.
+  - Presence recovery path marks user `ONLINE` and may emit campaign presence invalidation when transitioning from non-online.
+  - Device snapshot event `SESSION:DEVICE_SESSION_CONNECTED` is broadcast with full `deviceSessions` payload for reconciliation.
+
+- On WS disconnection:
+  - Socket connection is removed from active map.
+  - Device snapshot event `SESSION:DEVICE_SESSION_DISCONNECTED` is broadcast with full `deviceSessions` payload.
+  - If no remaining active user connection exists in-session, backend triggers disconnect cascade:
+    - Immediate presence update to `OFFLINE` with `ghost=false` + `PRESENCE:STATE_CHANGED` broadcast.
+    - If previously ghosted, emits `PRESENCE:USER_GHOST_MODE_CHANGED` with `ghostMode=false`.
+    - Starts ghost-entry timer (`5s`).
+    - If still disconnected at 5s, sets `ghost=true` and emits `PRESENCE:USER_GHOST_MODE_CHANGED`.
+    - Starts presence TTL timer (`60s`).
+    - If still disconnected at TTL expiry, removes presence projection and emits `ROOM:USER_LEFT` with `reason: DISCONNECT`.
+
+- Everyone-leaves session behavior:
+  - When no active connections remain in a session in `ACTIVE` or `PAUSED`, backend starts `everyoneLeavesAutoStop` timer (`60s`).
+  - If still empty at expiry, backend transitions session to `COOLDOWN` and applies transition orchestration.
+  - For non-`ACTIVE`/`PAUSED` states (for example `IDLE`/`ENDED`), immediate cleanup transition is not forced by disconnect cascade.
+
 ---
 
 ## Location
@@ -232,6 +312,7 @@ Until a contract re-lock, runtime authorization still resolves to the locked rol
 SessionState.IDLE // Not yet started; greenroom mode
 SessionState.ACTIVE // Players can join and act; session running
 SessionState.PAUSED // DM control; state frozen, off-the-record runtime
+SessionState.COOLDOWN // Post-session cooldown window before final end
 SessionState.ENDED // Session stopped; cooldown/archive lock active; this session can never be restarted
 SessionState.CLEANUP // Post-session terminal archive state; no users connected; background cleanup job purges greenroom chat
 ```
@@ -396,6 +477,8 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 - `ROOM:CLOSED` — DM closes room (moves all members to MAIN, group remains but empty) _New event_
 - `ROOM:DELETED` — DM cleanup (must occur only after Close → Delete flow)
 - `PRESENCE:STATE_CHANGED` — User state transition (ONLINE→TYPING→SPEAKING, etc.)
+- `PRESENCE:USER_GHOST_MODE_CHANGED` — Ghost projection toggle for disconnected/reconnected presence lifecycle
+- `PRESENCE:PROFILE_UPDATED` — Live profile metadata update while user remains in-session
 - `PRESENCE:HEARTBEAT` — Internal keepalive
 - `PRESENCE:RECONNECTED` — Restore state after disconnect
 

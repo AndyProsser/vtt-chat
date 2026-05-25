@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
+  mockPrismaSessionFindUnique: vi.fn(),
   mockGetSession: vi.fn(),
   mockGetSessionUsers: vi.fn(),
   mockGetSessionPresence: vi.fn(),
@@ -27,8 +28,18 @@ const mocks = vi.hoisted(() => ({
   mockSnapshotSessionPresence: vi.fn(),
   mockEnsureMockSimulationRunning: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
+  mockGetSessionStatsSnapshot: vi.fn(),
+  mockBroadcastSessionStatsSnapshot: vi.fn(),
   mockEventBroadcasterIsReady: vi.fn(),
   mockBroadcastToCampaignMembers: vi.fn(),
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    session: {
+      findUnique: mocks.mockPrismaSessionFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -64,6 +75,11 @@ vi.mock('@/services/dev-mock/simulation.service', () => ({
 
 vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
+}))
+
+vi.mock('@/services/session/stats.service', () => ({
+  getSessionStatsSnapshot: mocks.mockGetSessionStatsSnapshot,
+  broadcastSessionStatsSnapshot: mocks.mockBroadcastSessionStatsSnapshot,
 }))
 
 vi.mock('@/ws/event-broadcaster', () => ({
@@ -115,8 +131,19 @@ describe('presence routes', () => {
     mocks.mockGetSessionUsers.mockResolvedValue([
       { id: USER_ID, username: 'alice', role: 'PLAYER' },
     ])
+    mocks.mockPrismaSessionFindUnique.mockResolvedValue({
+      campaignId: '66666666-6666-4666-8666-666666666666',
+    })
     mocks.mockGetSessionPresence.mockResolvedValue([])
     mocks.mockGetSessionParticipantProfiles.mockResolvedValue({})
+    mocks.mockGetSessionStatsSnapshot.mockResolvedValue({
+      connectedPlayersWithDm: 1,
+      connectedPlayers: 1,
+      connectedSpectators: 0,
+      connectedTotal: 1,
+      updatedAt: 1700000000000,
+    })
+    mocks.mockBroadcastSessionStatsSnapshot.mockResolvedValue(undefined)
     mocks.mockGetMockTakeoverSnapshot.mockResolvedValue({
       active: false,
       actorUserId: USER_ID,
