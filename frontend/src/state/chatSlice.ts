@@ -85,7 +85,7 @@ export interface ChatSlice {
 
   // Actions
   addMessage: (sessionId: UUID, message: Message) => void
-  addMessages: (sessionId: UUID, messages: Message[]) => void
+  addMessages: (sessionId: UUID, messages: Message[], options?: { skipPrune?: boolean }) => void
   updateMessage: (sessionId: UUID, messageId: UUID, updates: Partial<Message>) => void
   deleteMessage: (sessionId: UUID, messageId: UUID) => void
   enqueueOutgoingMessage: (sessionId: UUID, message: OutgoingChatMessage) => void
@@ -137,7 +137,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       }
     }),
 
-  addMessages: (sessionId, messages) =>
+  addMessages: (sessionId, messages, options) =>
     set((state) => {
       if (messages.length === 0) {
         return state
@@ -163,7 +163,9 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       return {
         messages: {
           ...state.messages,
-          [sessionId]: pruneSessionMessageCache(nextSessionMessages),
+          [sessionId]: options?.skipPrune
+            ? nextSessionMessages
+            : pruneSessionMessageCache(nextSessionMessages),
         },
       }
     }),

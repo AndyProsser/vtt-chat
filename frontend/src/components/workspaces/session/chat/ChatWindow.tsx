@@ -116,9 +116,21 @@ export function ChatWindow({
   const [isAutoFollowInProgress, setIsAutoFollowInProgress] = useState(false)
   const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
   const [hasHiddenOlderGreenroomHistory, setHasHiddenOlderGreenroomHistory] = useState(false)
+  // Total session message count shown in header. Queried once on hydration, then incremented.
+  const [totalMessageCount, setTotalMessageCount] = useState<number | null>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
+  // Tracks the createdAt timestamp of the oldest in-memory message; used as the
+  // history cursor in the IntersectionObserver without re-creating the observer.
+  const oldestMessageTimestampRef = useRef<number | undefined>(undefined)
+  // Timestamp of the last completed older-page load. Used to gate the
+  // IntersectionObserver so it can't re-fire within OBSERVER_LOAD_COOLDOWN_MS.
+  const lastLoadCompletedAtRef = useRef(0)
+  const OBSERVER_LOAD_COOLDOWN_MS = 600
+  // Tracks whether the initial message count has been fetched from the server.
+  const messageCountFetchedRef = useRef(false)
+  const prevVisibleCountRef = useRef(0)
   const prevMessageCountRef = useRef(0)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
@@ -256,6 +268,12 @@ export function ChatWindow({
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
 
+  // Keep the oldest-message timestamp ref in sync so the IntersectionObserver
+  // always uses the correct cursor without needing messageList in its own deps.
+  useEffect(() => {
+    oldestMessageTimestampRef.current = messageList[0]?.createdAt
+  }, [messageList])
+
   // Restore scroll position after prepended history messages are committed to the DOM.
   // Using useLayoutEffect (not RAF) guarantees we read scrollHeight AFTER React has
   // painted the new messages, so nextHeight - previousHeight reflects the real delta.
@@ -356,7 +374,7 @@ export function ChatWindow({
           editedAt: m.editedAt !== undefined ? toTimestamp(m.editedAt) : undefined,
         }))
 
-        addMessages(sessionId, msgs)
+        addMessages(sessionId, msgs, { skipPrune: older })
 
         const hasMore = Boolean(data.pagination?.hasMore ?? data.hasMore)
         const hasEarlier = Boolean(data.pagination?.hasEarlier ?? data.hasEarlier)
@@ -368,6 +386,7 @@ export function ChatWindow({
         setError(err.message ?? 'Failed to load messages')
       } finally {
         if (older) {
+          lastLoadCompletedAtRef.current = Date.now()
           setIsLoadingOlder(false)
         } else {
           setIsLoading(false)
@@ -387,6 +406,29 @@ export function ChatWindow({
       window.clearTimeout(bootstrapTimer)
     }
   }, [loadHistoryPage])
+
+  // Fetch approximate total message count once after initial hydration.
+  // Greenroom uses visible message count directly — no separate query needed.
+  useEffect(() => {
+    if (isLoading || isGreenroomMode || messageCountFetchedRef.current) {
+      return
+    }
+    messageCountFetchedRef.current = true
+    prevVisibleCountRef.current = 0 // will be set on first increment effect run
+
+    fetch(`${apiUrl}/api/chat/messages/${sessionId}/count`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { count?: number } | null) => {
+        if (typeof data?.count === 'number') {
+          setTotalMessageCount(data.count)
+        }
+      })
+      .catch(() => {
+        // Silently ignore — count is display-only
+      })
+  }, [apiUrl, isGreenroomMode, isLoading, sessionId, token])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -504,11 +546,17 @@ export function ChatWindow({
           return
         }
 
-        // Use the oldest currently-in-memory message as the cursor.
-        // This is always correct after pruning — oldestLoadedTimestampRef would
-        // point to the old absolute-oldest (before the pruned gap), not the
-        // oldest message we still have in memory.
-        const before = messageList[0]?.createdAt
+        // Cooldown: prevent rapid re-firing after a page load completes.
+        // Without this guard the observer immediately re-triggers because the
+        // sentinel stays at scrollTop=0 after loading older content.
+        if (Date.now() - lastLoadCompletedAtRef.current < OBSERVER_LOAD_COOLDOWN_MS) {
+          return
+        }
+
+        // Use the live ref rather than messageList from closure — allows us to
+        // remove messageList from deps and avoid recreating the observer on every
+        // new message.
+        const before = oldestMessageTimestampRef.current
         if (!before) {
           return
         }
@@ -532,7 +580,7 @@ export function ChatWindow({
     return () => {
       observer.disconnect()
     }
-  }, [hasMoreHistory, isLoading, loadHistoryPage, messageList, messageList.length])
+  }, [hasMoreHistory, isLoading, loadHistoryPage])
 
   const messageView = useMemo(() => {
     const roomScopedMessages: Message[] = []
@@ -587,16 +635,8 @@ export function ChatWindow({
         ? roomScopedMessages
         : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
 
-    const visibleRoomIds = new Set<UUID>()
-    for (const message of visibleMessages) {
-      if (message.roomId) {
-        visibleRoomIds.add(message.roomId)
-      }
-    }
-
     return {
       visibleMessages,
-      visibleRoomCount: visibleRoomIds.size,
     }
   }, [
     greenroomRoomId,
@@ -608,7 +648,18 @@ export function ChatWindow({
     user.id,
   ])
 
-  const { visibleMessages, visibleRoomCount } = messageView
+  const { visibleMessages } = messageView
+
+  // Track visible message count changes to increment the header counter.
+  // This keeps the count live after hydration without re-querying the backend.
+  const currentVisibleCount = visibleMessages.length
+  useEffect(() => {
+    const prev = prevVisibleCountRef.current
+    if (totalMessageCount !== null && currentVisibleCount > prev && prev > 0) {
+      setTotalMessageCount((c) => (c !== null ? c + (currentVisibleCount - prev) : c))
+    }
+    prevVisibleCountRef.current = currentVisibleCount
+  }, [currentVisibleCount, totalMessageCount])
 
   const whisperRecipients = useMemo(() => {
     const participants = Object.entries(sessionPresence ?? {}) as Array<
@@ -967,9 +1018,12 @@ export function ChatWindow({
           <p className="session-chat-window__subtitle">{headerSubtitle}</p>
         </div>
         <div className="session-chat-window__header-pills" aria-label="Timeline context">
-          <span className="session-chat-window__pill">{visibleRoomCount || 1} room focus</span>
           <span className="session-chat-window__pill">
-            {visibleMessages.length} {visibleMessages.length === 1 ? 'entry' : 'entries'}
+            {isGreenroomMode
+              ? `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`
+              : totalMessageCount !== null
+                ? `${totalMessageCount} messages`
+                : `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`}
           </span>
         </div>
       </header>

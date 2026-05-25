@@ -53,6 +53,7 @@ import { useWorkspacesUiCallbacks } from '@/hooks/session/useWorkspacesUiCallbac
 import { useCampaignSessionsDataFetcher } from '@/hooks/session/useCampaignSessionsDataFetcher'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
+import { useDevToolsWarning } from '@/hooks/useDevToolsWarning'
 import { isJournalNote } from '@/utils/notesPanel'
 import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
@@ -85,6 +86,8 @@ export function WorkspaceInitialization({
 }: WorkspaceInitializationProps) {
   const showToast = useToast()
   const { themeMode, toggleThemeMode } = useFrontendThemeMode()
+  // Warn if DevTools are open — elevated memory usage with mock simulation running.
+  useDevToolsWarning()
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
   const [newCampaignName, setNewCampaignName] = useState('')
   const [joinInviteInput, setJoinInviteInput] = useState('')

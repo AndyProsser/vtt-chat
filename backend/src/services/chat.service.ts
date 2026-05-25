@@ -9,6 +9,7 @@ import type { UUID } from '@shared'
 import type { StoredMessage } from '@/types/chat.types'
 import {
   createChatMessageRecord,
+  countSessionMessages as countSessionMessagesInDb,
   deleteMessageRecord,
   deleteSessionMessages,
   findLatestSessionStartBoundaryTimestamp,
@@ -712,6 +713,20 @@ export async function clearRoomMessages(sessionId: UUID, roomId: UUID): Promise<
   }
 
   return targetMessageIds.length
+}
+
+/**
+ * Returns an approximate total message count for a session since its latest start boundary.
+ * Counts all non-deleted messages without per-user visibility filtering — display purposes only.
+ */
+export async function countSessionMessages(
+  sessionId: UUID,
+  options?: { sinceLatestStart?: boolean }
+): Promise<number> {
+  const since = options?.sinceLatestStart
+    ? await findLatestSessionStartBoundaryTimestamp(sessionId)
+    : null
+  return countSessionMessagesInDb(sessionId, since ?? undefined)
 }
 
 export async function getChatTelemetrySnapshot(): Promise<{

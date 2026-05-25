@@ -9,7 +9,13 @@ import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { findSessionById } from '@/repositories/session.repository'
-import { sendMessage, editMessage, deleteMessage, getMessagesPage } from '@/services/chat.service'
+import {
+  sendMessage,
+  editMessage,
+  deleteMessage,
+  getMessagesPage,
+  countSessionMessages,
+} from '@/services/chat.service'
 import { getRoom, getSessionPresence } from '@/services/room.service'
 import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
 import type { StoredMessage } from '@/types/chat.types'
@@ -493,8 +499,24 @@ router.get('/messages/:sessionId', requireAuth, async (req: Request, res: Respon
 })
 
 /**
- * PUT /api/chat/message/:id
- * Edit a message (author or DM only).
+ * GET /api/chat/messages/:sessionId/count
+ * Approximate total message count for a session since its latest start boundary.
+ * No per-user visibility filtering applied — treat as a display-only indicator.
+ */
+router.get('/messages/:sessionId/count', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params
+    if (!isValidUUID(sessionId)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid session id' })
+    }
+    const count = await countSessionMessages(sessionId as UUID, { sinceLatestStart: true })
+    return res.status(200).json({ count })
+  } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+/**
  */
 router.put('/message/:id', requireAuth, async (req: Request, res: Response) => {
   try {

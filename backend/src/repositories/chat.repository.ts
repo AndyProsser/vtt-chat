@@ -571,6 +571,20 @@ export async function deleteCampaignMessages(campaignId: string): Promise<void> 
   })
 }
 
+/**
+ * Counts non-deleted messages for a session, optionally filtering by a since timestamp.
+ * Used to provide an approximate total for the chat header indicator.
+ */
+export async function countSessionMessages(sessionId: string, since?: Date): Promise<number> {
+  return prisma.chatMessage.count({
+    where: {
+      sessionId,
+      deletedAt: null,
+      ...(since ? { createdAt: { gte: since } } : {}),
+    },
+  })
+}
+
 export async function findLatestSessionStartBoundaryTimestamp(
   sessionId: string
 ): Promise<Date | null> {
