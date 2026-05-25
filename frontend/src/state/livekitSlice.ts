@@ -55,19 +55,51 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
     })),
 
   setLiveKitSpeakingUsers: (sessionId, userIds) =>
-    set((state) => ({
-      livekitSpeakingBySession: {
-        ...state.livekitSpeakingBySession,
-        [sessionId]: userIds.reduce<Record<string, true>>((accumulator, userId) => {
-          accumulator[userId] = true
-          return accumulator
-        }, {}),
-      },
-    })),
+    set((state) => {
+      const currentSessionSpeaking = state.livekitSpeakingBySession[sessionId]
+
+      if (userIds.length === 0) {
+        if (!currentSessionSpeaking) {
+          return state
+        }
+
+        const nextSpeakingBySession = { ...state.livekitSpeakingBySession }
+        delete nextSpeakingBySession[sessionId]
+
+        return {
+          livekitSpeakingBySession: nextSpeakingBySession,
+        }
+      }
+
+      const nextSessionSpeaking = userIds.reduce<Record<string, true>>((accumulator, userId) => {
+        accumulator[userId] = true
+        return accumulator
+      }, {})
+
+      if (currentSessionSpeaking) {
+        const currentKeys = Object.keys(currentSessionSpeaking)
+        const nextKeys = Object.keys(nextSessionSpeaking)
+
+        if (
+          currentKeys.length === nextKeys.length &&
+          nextKeys.every((userId) => currentSessionSpeaking[userId])
+        ) {
+          return state
+        }
+      }
+
+      return {
+        livekitSpeakingBySession: {
+          ...state.livekitSpeakingBySession,
+          [sessionId]: nextSessionSpeaking,
+        },
+      }
+    }),
 
   clearLiveKitConnection: (key) =>
     set((state) => {
-      if (!state.livekitConnections[key]) {
+      const removedConnection = state.livekitConnections[key]
+      if (!removedConnection) {
         return state
       }
 
@@ -77,9 +109,19 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
       const nextInputTracks = { ...state.livekitLocalInputTracks }
       delete nextInputTracks[key]
 
+      const hasRemainingConnectionsForSession = Object.values(nextConnections).some(
+        (entry) => entry.sessionId === removedConnection.sessionId
+      )
+
+      const nextSpeakingBySession = { ...state.livekitSpeakingBySession }
+      if (!hasRemainingConnectionsForSession) {
+        delete nextSpeakingBySession[removedConnection.sessionId]
+      }
+
       return {
         livekitConnections: nextConnections,
         livekitLocalInputTracks: nextInputTracks,
+        livekitSpeakingBySession: nextSpeakingBySession,
       }
     }),
 

@@ -257,6 +257,33 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       const bySession = currentState.sessionPresence[sessionId] || {}
       const existing = bySession[userId]
       const resolvedRoomId = roomId || existing?.primaryRoomId
+      const nextGhost = ghost !== undefined ? ghost : existing?.ghost || false
+      const nextPreviousGroupId =
+        previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId
+      const nextUsername = username || existing?.username || ''
+
+      const hasProfilePatch =
+        playerName !== undefined ||
+        avatarUrl !== undefined ||
+        characterName !== undefined ||
+        characterClass !== undefined ||
+        characterSubclass !== undefined ||
+        characterRace !== undefined ||
+        level !== undefined ||
+        characterStats !== undefined
+
+      if (
+        existing &&
+        !hasProfilePatch &&
+        existing.state === state &&
+        existing.primaryRoomId === resolvedRoomId &&
+        existing.ghost === nextGhost &&
+        existing.previousGroupId === nextPreviousGroupId &&
+        existing.username === nextUsername &&
+        changedAt <= (existing.lastSeenAt || 0)
+      ) {
+        return currentState
+      }
 
       return {
         sessionPresence: {
@@ -266,7 +293,7 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
             [userId]: {
               ...existing,
               userId,
-              username: username || existing?.username || '',
+              username: nextUsername,
               playerName:
                 playerName !== undefined ? (playerName ?? undefined) : existing?.playerName,
               avatarUrl: avatarUrl !== undefined ? (avatarUrl ?? undefined) : existing?.avatarUrl,
@@ -292,10 +319,9 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
                   ? (characterStats ?? undefined)
                   : existing?.characterStats,
               state,
-              ghost: ghost !== undefined ? ghost : existing?.ghost || false,
+              ghost: nextGhost,
               primaryRoomId: resolvedRoomId,
-              previousGroupId:
-                previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId,
+              previousGroupId: nextPreviousGroupId,
               privateRoomId: existing?.privateRoomId,
               lastSeenAt: changedAt,
             },
