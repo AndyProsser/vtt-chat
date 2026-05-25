@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   mockLogSessionStateChange: vi.fn(),
   mockLogSessionLeave: vi.fn(),
   mockBroadcastSessionStatsSnapshot: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -74,11 +75,42 @@ vi.mock('@/services/session/stats.service', () => ({
   broadcastSessionStatsSnapshot: mocks.mockBroadcastSessionStatsSnapshot,
 }))
 
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(async () => undefined),
+}))
+
 vi.mock('@/services/session/logs.service', () => ({
   logSessionStateChange: mocks.mockLogSessionStateChange,
   logSessionJoin: vi.fn(),
   logSessionLeave: mocks.mockLogSessionLeave,
   getSessionEventHistory: vi.fn(),
+}))
+
+vi.mock('@/services/session/cleanup-job.service', () => ({
+  sessionCleanupJobService: {
+    queueCleanup: vi.fn(async () => undefined),
+    notifyLifecycleTrigger: vi.fn(async () => undefined),
+  },
+}))
+
+vi.mock('@/ws/state-recovery', () => ({
+  clearSessionRecoveryState: vi.fn(),
+}))
+
+vi.mock('@/ws/event-broadcaster', () => ({
+  default: {
+    isReady: vi.fn(() => false),
+    sendToAllAuthenticated: vi.fn(),
+    broadcastToCampaignMembers: vi.fn(async () => undefined),
+  },
+}))
+
+vi.mock('@/services/lobby/lobby-stats.service', () => ({
+  broadcastLobbyStatsUpdated: vi.fn(async () => undefined),
 }))
 
 import sessionRoutes from '@/api/session.routes'
@@ -157,6 +189,7 @@ describe('session state room orchestration', () => {
     })
     mocks.mockClearSessionDMOverrideState.mockResolvedValue(undefined)
     mocks.mockClearRoomEnvironmentState.mockResolvedValue(undefined)
+    mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
 
     mocks.mockClearRoomMessages.mockResolvedValue(0)
     mocks.mockDeletePrivateRoomsForEndedSession.mockResolvedValue([])

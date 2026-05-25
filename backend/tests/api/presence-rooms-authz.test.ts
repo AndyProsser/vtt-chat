@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
+  mockPrismaSessionFindUnique: vi.fn(),
   mockGetSession: vi.fn(),
   mockGetSessionUsers: vi.fn(),
   mockGetSessionPresence: vi.fn(),
@@ -12,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   mockGetRoom: vi.fn(),
   mockJoinRoom: vi.fn(),
   mockGetSessionParticipantProfiles: vi.fn(),
+  mockGetMockTakeoverSnapshot: vi.fn(),
+  mockGetSessionStatsSnapshot: vi.fn(),
+  mockBroadcastSessionStatsSnapshot: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
 }))
 const mockBroadcastEventToSession = vi.fn()
 const mockWSManager = { broadcastEventToSession: mockBroadcastEventToSession }
@@ -19,6 +24,14 @@ const mockWSManager = { broadcastEventToSession: mockBroadcastEventToSession }
 vi.mock('@/services/auth.service', () => ({
   extractTokenFromHeader: mocks.mockExtractTokenFromHeader,
   verifyToken: mocks.mockVerifyToken,
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    session: {
+      findUnique: mocks.mockPrismaSessionFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/services/session/core.service', () => ({
@@ -42,6 +55,19 @@ vi.mock('@/services/room.service', () => ({
 
 vi.mock('@/repositories/session.repository', () => ({
   getSessionParticipantProfiles: mocks.mockGetSessionParticipantProfiles,
+}))
+
+vi.mock('@/services/dev-mock/takeover.service', () => ({
+  getMockTakeoverSnapshot: mocks.mockGetMockTakeoverSnapshot,
+}))
+
+vi.mock('@/services/session/stats.service', () => ({
+  getSessionStatsSnapshot: mocks.mockGetSessionStatsSnapshot,
+  broadcastSessionStatsSnapshot: mocks.mockBroadcastSessionStatsSnapshot,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
 }))
 
 import presenceRoutes from '@/api/presence.routes'
@@ -81,6 +107,10 @@ describe('presence/rooms authz', () => {
       createdAt: Date.now(),
     })
 
+    mocks.mockPrismaSessionFindUnique.mockResolvedValue({
+      campaignId: '77777777-7777-4777-8777-777777777777',
+    })
+
     mocks.mockGetSessionPresence.mockResolvedValue([])
     mocks.mockGetRooms.mockResolvedValue([])
     mocks.mockGetRoom.mockResolvedValue({
@@ -100,6 +130,24 @@ describe('presence/rooms authz', () => {
       state: 'ONLINE',
       lastSeenAt: Date.now(),
     })
+    mocks.mockGetMockTakeoverSnapshot.mockResolvedValue({
+      active: false,
+      actorUserId: OTHER_ID,
+      effectiveUserId: OTHER_ID,
+      assumedUserId: null,
+      assumedDisplayName: null,
+      startedAt: null,
+      staleRecovered: false,
+    })
+    mocks.mockGetSessionStatsSnapshot.mockResolvedValue({
+      connectedPlayersWithDm: 2,
+      connectedPlayers: 1,
+      connectedSpectators: 0,
+      connectedTotal: 2,
+      updatedAt: Date.now(),
+    })
+    mocks.mockBroadcastSessionStatsSnapshot.mockResolvedValue(undefined)
+    mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
     mocks.mockGetSessionParticipantProfiles.mockResolvedValue({})
     mockBroadcastEventToSession.mockClear()
   })
