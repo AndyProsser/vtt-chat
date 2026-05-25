@@ -135,6 +135,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       store.handleSessionEnded(event)
       store.resetSessionAudioState()
       store.clearActiveEffects()
+      store.markMockSimulationExited(event.sessionId)
       store.clearMessages(event.sessionId)
     })
     dispatcher.register('SESSION:STATS_UPDATED', (event) => {
@@ -288,6 +289,14 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       if (isGreenroomSessionState(payload.nextState)) {
         store.resetSessionAudioState()
         store.clearActiveEffects()
+      }
+
+      if (
+        payload.nextState === SessionState.IDLE ||
+        payload.nextState === SessionState.ENDED ||
+        payload.nextState === SessionState.CLEANUP
+      ) {
+        store.markMockSimulationExited(event.sessionId)
       }
 
       if (payload.nextState === SessionState.ENDED) {

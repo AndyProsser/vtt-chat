@@ -85,7 +85,7 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
       select: { campaignId: true },
     })
 
-    ensureMockSimulationRunning(sessionId as UUID)
+    await ensureMockSimulationRunning(sessionId as UUID)
 
     const presence = await getSessionPresence(sessionId as UUID)
     const sessionUsers = await getSessionUsers(sessionId as UUID)

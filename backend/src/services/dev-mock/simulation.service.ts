@@ -4,12 +4,14 @@ import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visi
 import { isGreenRoomName } from '@/utils'
 import { DEV_MOCK_CHAT_MESSAGES } from '@/constants/dev-mock-chat-messages.constants'
 import {
+  DEV_MOCK_MAX_MESSAGES_PER_MINUTE,
   DEV_MOCK_MESSAGE_WINDOW_MS,
   DEV_MOCK_PREFIX,
   MAX_DEV_MOCK_SIMULATOR_COUNT,
   MIN_DEV_MOCK_SIMULATOR_COUNT,
 } from '@/constants/dev-mock.constants'
 import { DEV_MOCK_RUNTIME_INACTIVE_TTL_MS } from '@/constants/dev-mock-simulation.constants'
+import { getRedisClient } from '@/infra/redis'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
 import { DeviceClass, MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
@@ -75,6 +77,7 @@ interface TransferMockState {
 
 interface MockSimulationRuntime {
   config: MockSimulationConfig
+  configHydrated: boolean
   isRunning: boolean
   startedAt: number
   lastTouchedAt: number
@@ -134,6 +137,10 @@ const MAX_GHOST_DURATION_MS = 60000
 const DEFAULT_DISCONNECT_PROFILE: DisconnectRealismProfile = 'BALANCED'
 
 const runtimeBySession = new Map<UUID, MockSimulationRuntime>()
+
+function mockSimulationConfigKey(sessionId: UUID): string {
+  return `dev-mock:session:${sessionId}:simulation-config`
+}
 
 function isMockUsername(username: string): boolean {
   return username.startsWith(DEV_MOCK_PREFIX)
@@ -249,6 +256,73 @@ function defaultConfig(): MockSimulationConfig {
   }
 }
 
+function mergeMockSimulationConfig(
+  previous: MockSimulationConfig,
+  requested: Partial<MockSimulationConfig>
+): MockSimulationConfig {
+  const disconnectConfig = normalizeDisconnectConfig(previous, requested)
+
+  return {
+    speakingSimulatorEnabled:
+      requested.speakingSimulatorEnabled ?? previous.speakingSimulatorEnabled,
+    chatSimulatorEnabled: requested.chatSimulatorEnabled ?? previous.chatSimulatorEnabled,
+    disconnectSimulatorEnabled:
+      requested.disconnectSimulatorEnabled ?? previous.disconnectSimulatorEnabled,
+    multiDeviceSimulatorEnabled:
+      requested.multiDeviceSimulatorEnabled ?? previous.multiDeviceSimulatorEnabled,
+    playerCount: clampPlayerCount(requested.playerCount ?? previous.playerCount),
+    ...disconnectConfig,
+  }
+}
+
+function parsePersistedMockSimulationConfig(
+  raw: string | null
+): Partial<MockSimulationConfig> | null {
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<MockSimulationConfig> | null
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch (error) {
+    logger.warn('dev-mock-simulation', 'Failed to parse persisted mock simulation config', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
+
+async function loadPersistedMockSimulationConfig(
+  sessionId: UUID
+): Promise<Partial<MockSimulationConfig> | null> {
+  try {
+    const redis = await getRedisClient()
+    return parsePersistedMockSimulationConfig(await redis.get(mockSimulationConfigKey(sessionId)))
+  } catch (error) {
+    logger.warn('dev-mock-simulation', 'Failed to load persisted mock simulation config', {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
+
+async function persistMockSimulationConfig(
+  sessionId: UUID,
+  config: MockSimulationConfig
+): Promise<void> {
+  try {
+    const redis = await getRedisClient()
+    await redis.set(mockSimulationConfigKey(sessionId), JSON.stringify(config))
+  } catch (error) {
+    logger.warn('dev-mock-simulation', 'Failed to persist mock simulation config', {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
 function clampPlayerCount(value: number): number {
   if (!Number.isFinite(value)) {
     return defaultConfig().playerCount
@@ -304,6 +378,7 @@ function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
 
   const runtime: MockSimulationRuntime = {
     config: defaultConfig(),
+    configHydrated: false,
     isRunning: false,
     startedAt: now,
     lastTouchedAt: now,
@@ -324,6 +399,28 @@ function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
 
   runtimeBySession.set(sessionId, runtime)
   return runtime
+}
+
+/**
+ * Hydrates per-session mock simulator config from Redis so refreshes and
+ * reconnects recover the last backend-authoritative settings.
+ */
+async function ensureRuntimeConfigHydrated(
+  sessionId: UUID,
+  runtime: MockSimulationRuntime
+): Promise<void> {
+  if (runtime.configHydrated) {
+    return
+  }
+
+  runtime.configHydrated = true
+  const persistedConfig = await loadPersistedMockSimulationConfig(sessionId)
+  if (!persistedConfig) {
+    await persistMockSimulationConfig(sessionId, runtime.config)
+    return
+  }
+
+  runtime.config = mergeMockSimulationConfig(defaultConfig(), persistedConfig)
 }
 
 function shouldRun(config: MockSimulationConfig): boolean {
@@ -670,6 +767,17 @@ function recordMessageSent(runtime: MockSimulationRuntime, type: MessageType, at
   pruneMessageWindow(runtime, at)
 }
 
+function getRecentMockMessageCount(runtime: MockSimulationRuntime, now: number): number {
+  pruneMessageWindow(runtime, now)
+
+  return (
+    runtime.messageSentAtByType.IC.length +
+    runtime.messageSentAtByType.OOC.length +
+    runtime.messageSentAtByType.WHISPER.length +
+    runtime.messageSentAtByType.DM.length
+  )
+}
+
 function pickChatType(room: { type: RoomType; name: string } | undefined): MessageType {
   if (room?.type === RoomType.GROUP && isGreenRoomName(room.name)) {
     return MessageType.OOC
@@ -719,6 +827,10 @@ async function emitPersistedChatMessage(params: {
   users: MockPresenceUser[]
   roomsById: Map<UUID, { id: UUID; type: RoomType; name: string }>
 }) {
+  if (getRecentMockMessageCount(params.runtime, Date.now()) >= DEV_MOCK_MAX_MESSAGES_PER_MINUTE) {
+    return
+  }
+
   const session = await getSession(params.sessionId)
   if (!session || !params.author.primaryRoomId) {
     return
@@ -1483,7 +1595,7 @@ function startRunner(sessionId: UUID): void {
   void runTick(sessionId)
 }
 
-export function ensureMockSimulationRunning(sessionId: UUID): boolean {
+export async function ensureMockSimulationRunning(sessionId: UUID): Promise<boolean> {
   // Test runs should not spin background intervals that can outlive individual
   // suites and trigger noisy DB-bound tick failures.
   if ((process.env.NODE_ENV || '').toLowerCase() === 'test') {
@@ -1491,6 +1603,7 @@ export function ensureMockSimulationRunning(sessionId: UUID): boolean {
   }
 
   const runtime = getOrCreateRuntime(sessionId)
+  await ensureRuntimeConfigHydrated(sessionId, runtime)
 
   if (!runtime.isRunning && shouldRun(runtime.config)) {
     startRunner(sessionId)
@@ -1529,8 +1642,9 @@ export async function getMockSimulationStatus(sessionId: UUID): Promise<{
     DM: number
   }
 }> {
-  ensureMockSimulationRunning(sessionId)
   const runtime = getOrCreateRuntime(sessionId)
+  await ensureRuntimeConfigHydrated(sessionId, runtime)
+  await ensureMockSimulationRunning(sessionId)
 
   const users = await listSessionMockUsers(sessionId)
   pruneMessageWindow(runtime, Date.now())
@@ -1561,21 +1675,10 @@ export async function updateMockSimulationConfig(params: {
   config: Partial<MockSimulationConfig>
 }): Promise<MockSimulationConfig> {
   const runtime = getOrCreateRuntime(params.sessionId)
+  await ensureRuntimeConfigHydrated(params.sessionId, runtime)
   const previousSpeakingSimulatorEnabled = runtime.config.speakingSimulatorEnabled
   const previousMultiDeviceEnabled = runtime.config.multiDeviceSimulatorEnabled
-  const disconnectConfig = normalizeDisconnectConfig(runtime.config, params.config)
-
-  runtime.config = {
-    speakingSimulatorEnabled:
-      params.config.speakingSimulatorEnabled ?? runtime.config.speakingSimulatorEnabled,
-    chatSimulatorEnabled: params.config.chatSimulatorEnabled ?? runtime.config.chatSimulatorEnabled,
-    disconnectSimulatorEnabled:
-      params.config.disconnectSimulatorEnabled ?? runtime.config.disconnectSimulatorEnabled,
-    multiDeviceSimulatorEnabled:
-      params.config.multiDeviceSimulatorEnabled ?? runtime.config.multiDeviceSimulatorEnabled,
-    playerCount: clampPlayerCount(params.config.playerCount ?? runtime.config.playerCount),
-    ...disconnectConfig,
-  }
+  runtime.config = mergeMockSimulationConfig(runtime.config, params.config)
 
   if (previousSpeakingSimulatorEnabled && !runtime.config.speakingSimulatorEnabled) {
     const users = await listSessionMockUsers(params.sessionId)
@@ -1593,15 +1696,49 @@ export async function updateMockSimulationConfig(params: {
     await stopRunner(params.sessionId)
   }
 
+  await persistMockSimulationConfig(params.sessionId, runtime.config)
+
+  return runtime.config
+}
+
+export async function disableMockSimulationForSessionExit(
+  sessionId: UUID
+): Promise<MockSimulationConfig> {
+  const runtime = getOrCreateRuntime(sessionId)
+  await ensureRuntimeConfigHydrated(sessionId, runtime)
+
+  const nextConfig = mergeMockSimulationConfig(runtime.config, {
+    speakingSimulatorEnabled: false,
+    chatSimulatorEnabled: false,
+    disconnectSimulatorEnabled: false,
+    multiDeviceSimulatorEnabled: false,
+  })
+
+  if (runtime.config.speakingSimulatorEnabled) {
+    const users = await listSessionMockUsers(sessionId)
+    await clearSpeaking(sessionId, runtime, users)
+  }
+
+  if (runtime.config.multiDeviceSimulatorEnabled) {
+    clearMultiDeviceState(sessionId, runtime)
+  }
+
+  runtime.config = nextConfig
+  await persistMockSimulationConfig(sessionId, runtime.config)
+  await stopRunner(sessionId)
+
   return runtime.config
 }
 
 export async function stopMockSimulation(sessionId: UUID): Promise<void> {
+  const runtime = getOrCreateRuntime(sessionId)
+  await ensureRuntimeConfigHydrated(sessionId, runtime)
   await stopRunner(sessionId)
 }
 
-export function getMockSimulationPlayerCount(sessionId: UUID): number {
+export async function getMockSimulationPlayerCount(sessionId: UUID): Promise<number> {
   const runtime = getOrCreateRuntime(sessionId)
+  await ensureRuntimeConfigHydrated(sessionId, runtime)
   return clampPlayerCount(runtime.config.playerCount)
 }
 

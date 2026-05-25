@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
-import {
-  MOCK_STATUS_POLL_ACTIVE_MS,
-  MOCK_STATUS_POLL_IDLE_MS,
-} from '@/constants/mockSimulation.constants'
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import type { MockSimulationConfig, MockSimulationStatusResponse } from '@/types/mockSimulation'
+import { useStore } from '@/state/store'
+import type { MockSimulationConfig } from '@/types/mockSimulation'
 import '@/styles/components/workspaces/session/dev/MockTestingPanel.css'
+
+const DEFAULT_MOCK_CONFIG: MockSimulationConfig = {
+  speakingSimulatorEnabled: true,
+  chatSimulatorEnabled: false,
+  disconnectSimulatorEnabled: false,
+  multiDeviceSimulatorEnabled: false,
+  playerCount: 8,
+}
+
+const DEFAULT_PLAYER_BOUNDS = { min: 1, max: 9 }
 
 interface MockTestingPanelProps {
   apiUrl: string
@@ -25,147 +32,70 @@ export function MockTestingPanel({
   onReturnToUser,
   onClose,
 }: MockTestingPanelProps) {
-  const [playerCount, setPlayerCount] = useState(8)
-  const [config, setConfig] = useState<MockSimulationConfig>({
-    speakingSimulatorEnabled: true,
-    chatSimulatorEnabled: false,
-    disconnectSimulatorEnabled: false,
-    multiDeviceSimulatorEnabled: false,
-    playerCount: 8,
-  })
-  const [status, setStatus] = useState<MockSimulationStatusResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [playerBounds, setPlayerBounds] = useState<{ min: number; max: number }>({
-    min: 1,
-    max: 9,
-  })
+  const status = useStore((state) => state.mockSimulationStatusBySession[sessionId] || null)
+  const isLoading = useStore((state) => state.mockSimulationLoadingBySession[sessionId] || false)
+  const fetchMockSimulationStatus = useStore((state) => state.fetchMockSimulationStatus)
+  const updateMockSimulationConfig = useStore((state) => state.updateMockSimulationConfig)
+  const rerollMockSimulationPlayers = useStore((state) => state.rerollMockSimulationPlayers)
+  const removeMockPlayers = useStore((state) => state.removeMockPlayers)
+  const [playerCount, setPlayerCount] = useState(DEFAULT_MOCK_CONFIG.playerCount)
   const [messageRateHistory, setMessageRateHistory] = useState<number[]>([])
   const isPlayerCountDirtyRef = useRef(false)
+  const lastTrendKeyRef = useRef<string | null>(null)
+  const config = status?.config || DEFAULT_MOCK_CONFIG
+  const playerBounds = status?.bounds || DEFAULT_PLAYER_BOUNDS
 
-  const applyStatusSnapshot = useCallback(
-    (data: MockSimulationStatusResponse, options?: { forcePlayerCountSync?: boolean }) => {
-      const forcePlayerCountSync = options?.forcePlayerCountSync || false
-
-      setStatus(data)
-      setConfig(data.config)
-      if (forcePlayerCountSync || !isPlayerCountDirtyRef.current) {
-        setPlayerCount(data.config.playerCount)
-      }
-
-      const byType = data.messagesSentLastMinuteByType
-      const totalPerMinute = byType
-        ? Number(byType.IC || 0) +
-          Number(byType.OOC || 0) +
-          Number(byType.WHISPER || 0) +
-          Number(byType.DM || 0)
-        : 0
-      setMessageRateHistory((prev) => [...prev.slice(-9), totalPerMinute])
-
-      if (data.bounds && Number.isFinite(data.bounds.min) && Number.isFinite(data.bounds.max)) {
-        setPlayerBounds({
-          min: Number(data.bounds.min),
-          max: Number(data.bounds.max),
-        })
-      }
-    },
-    []
-  )
-
-  const fetchStatus = useCallback(async () => {
-    const response = await fetch(`${apiUrl}/api/dev/mock-players/simulation/status/${sessionId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
-      },
-      cache: 'no-store',
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-
-    return (await response.json()) as MockSimulationStatusResponse
-  }, [apiUrl, sessionId, token])
-
-  // Poll status while the panel is open, avoiding overlapping requests.
   useEffect(() => {
-    let cancelled = false
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    void fetchMockSimulationStatus({ apiUrl, token, sessionId })
+  }, [apiUrl, token, sessionId, fetchMockSimulationStatus])
 
-    const pollStatus = async () => {
-      if (cancelled) {
-        return
-      }
-
-      try {
-        const data = await fetchStatus()
-        if (cancelled) {
-          return
-        }
-        applyStatusSnapshot(data)
-      } catch (error) {
-        console.error('Failed to poll mock player status:', error)
-      } finally {
-        if (cancelled) {
-          return
-        }
-
-        const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible'
-        const nextDelay =
-          hidden || !status?.isRunning ? MOCK_STATUS_POLL_IDLE_MS : MOCK_STATUS_POLL_ACTIVE_MS
-        timeoutId = setTimeout(pollStatus, nextDelay)
-      }
+  useEffect(() => {
+    if (!status || isPlayerCountDirtyRef.current) {
+      return
     }
 
-    pollStatus() // Initial fetch
+    setPlayerCount(status.config.playerCount)
+  }, [status])
 
-    return () => {
-      cancelled = true
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+  useEffect(() => {
+    if (!status) {
+      return
     }
-  }, [applyStatusSnapshot, fetchStatus, status?.isRunning])
+
+    const byType = status.messagesSentLastMinuteByType
+    const totalPerMinute = byType
+      ? Number(byType.IC || 0) +
+        Number(byType.OOC || 0) +
+        Number(byType.WHISPER || 0) +
+        Number(byType.DM || 0)
+      : 0
+    const trendKey = [
+      status.uptime,
+      totalPerMinute,
+      byType?.IC || 0,
+      byType?.OOC || 0,
+      byType?.WHISPER || 0,
+      byType?.DM || 0,
+    ].join(':')
+
+    if (lastTrendKeyRef.current === trendKey) {
+      return
+    }
+
+    lastTrendKeyRef.current = trendKey
+    setMessageRateHistory((prev) => [...prev.slice(-9), totalPerMinute])
+  }, [status])
 
   const updateConfig = useCallback(
     async (newConfig: Partial<MockSimulationConfig>) => {
-      const updatedConfig = { ...config, ...newConfig }
-      setConfig(updatedConfig)
-      setIsLoading(true)
-
-      try {
-        const response = await fetch(`${apiUrl}/api/dev/mock-players/simulation/settings`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            sessionId,
-            config: updatedConfig,
-          }),
-        })
-
-        if (!response.ok) {
-          console.error('Failed to update mock player config')
-          setConfig(config) // Revert on error
-          return
-        }
-
-        try {
-          const latest = await fetchStatus()
-          applyStatusSnapshot(latest)
-        } catch (refreshError) {
-          console.error('Failed to refresh mock player status after config update:', refreshError)
-        }
-      } catch (error) {
-        console.error('Failed to update mock player config:', error)
-        setConfig(config) // Revert on error
-      } finally {
-        setIsLoading(false)
-      }
+      await updateMockSimulationConfig({
+        apiUrl,
+        token,
+        sessionId,
+        config: newConfig,
+      })
     },
-    [apiUrl, token, sessionId, config, fetchStatus, applyStatusSnapshot]
+    [apiUrl, token, sessionId, updateMockSimulationConfig]
   )
 
   const handlePlayerCountChange = useCallback(
@@ -184,110 +114,38 @@ export function MockTestingPanel({
       return
     }
 
-    setIsLoading(true)
-    try {
-      const response = await fetch(`${apiUrl}/api/dev/mock-players/reroll`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          sessionId,
-          newPlayerCount: playerCount,
-        }),
-      })
+    const updated = await rerollMockSimulationPlayers({
+      apiUrl,
+      token,
+      sessionId,
+      newPlayerCount: playerCount,
+    })
 
-      if (response.ok) {
-        isPlayerCountDirtyRef.current = false
-        setConfig((prev) => ({ ...prev, playerCount }))
-        try {
-          const latest = await fetchStatus()
-          applyStatusSnapshot(latest, { forcePlayerCountSync: true })
-        } catch (refreshError) {
-          console.error('Failed to refresh mock player status after reroll:', refreshError)
-        }
-      } else {
-        console.error('Failed to reroll mock players')
-        isPlayerCountDirtyRef.current = false
-        setPlayerCount(config.playerCount) // Revert on error
-      }
-    } catch (error) {
-      console.error('Failed to reroll mock players:', error)
+    if (!updated) {
       isPlayerCountDirtyRef.current = false
-      setPlayerCount(config.playerCount) // Revert on error
-    } finally {
-      setIsLoading(false)
+      setPlayerCount(config.playerCount)
+      return
     }
-  }, [apiUrl, token, sessionId, playerCount, config.playerCount, fetchStatus, applyStatusSnapshot])
+
+    isPlayerCountDirtyRef.current = false
+    setPlayerCount(updated.config.playerCount)
+  }, [apiUrl, token, sessionId, playerCount, config.playerCount, rerollMockSimulationPlayers])
 
   const handleReroll = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`${apiUrl}/api/dev/mock-players/reroll`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          sessionId,
-          newPlayerCount: config.playerCount,
-        }),
-      })
-
-      if (!response.ok) {
-        console.error('Failed to reroll mock players')
-        return
-      }
-
-      try {
-        const latest = await fetchStatus()
-        applyStatusSnapshot(latest, { forcePlayerCountSync: true })
-      } catch (refreshError) {
-        console.error('Failed to refresh mock player status after reroll:', refreshError)
-      }
-    } catch (error) {
-      console.error('Failed to reroll mock players:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [apiUrl, token, sessionId, config.playerCount, fetchStatus, applyStatusSnapshot])
+    await rerollMockSimulationPlayers({
+      apiUrl,
+      token,
+      sessionId,
+      newPlayerCount: config.playerCount,
+    })
+  }, [apiUrl, token, sessionId, config.playerCount, rerollMockSimulationPlayers])
 
   const handleRemoveAll = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`${apiUrl}/api/dev/mock-players/disconnect-all`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          sessionId,
-          gracefulShutdown: true,
-        }),
-      })
-
-      if (!response.ok) {
-        console.error('Failed to remove mock players')
-        return
-      }
-
+    const removed = await removeMockPlayers({ apiUrl, token, sessionId })
+    if (removed) {
       onClose?.()
-
-      try {
-        const latest = await fetchStatus()
-        applyStatusSnapshot(latest, { forcePlayerCountSync: true })
-      } catch (refreshError) {
-        console.error('Failed to refresh mock player status after removal:', refreshError)
-      }
-    } catch (error) {
-      console.error('Failed to remove mock players:', error)
-    } finally {
-      setIsLoading(false)
     }
-  }, [apiUrl, token, sessionId, fetchStatus, applyStatusSnapshot, onClose])
+  }, [apiUrl, token, sessionId, removeMockPlayers, onClose])
 
   const statusText = useMemo(() => {
     if (!status) return 'Loading...'

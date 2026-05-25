@@ -34,6 +34,7 @@ import {
   emitSessionRecapMessage,
   emitSessionSummaryMessage,
 } from '@/services/system-messages.service'
+import { disableMockSimulationForSessionExit } from '@/services/dev-mock/simulation.service'
 import {
   applySessionStateRoomTransition,
   deletePrivateRoomsForEndedSession,
@@ -1088,6 +1089,10 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    if (requestedState === SessionStateEnum.IDLE || requestedState === SessionStateEnum.ENDED) {
+      await disableMockSimulationForSessionExit(session.id)
+    }
+
     const users = await getSessionUsers(id as UUID)
     const transition = await applySessionStateRoomTransition({
       sessionId: session.id,
@@ -1538,6 +1543,10 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
         code: ErrorCode.SESSION_NOT_FOUND,
         message: 'Session not found',
       })
+    }
+
+    if (session.state === SessionStateEnum.ENDED) {
+      await disableMockSimulationForSessionExit(session.id)
     }
 
     const users = await getSessionUsers(id as UUID)

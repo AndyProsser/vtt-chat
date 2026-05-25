@@ -11,6 +11,7 @@ import {
 import { getRooms, getSessionPresence } from '@/services/room.service'
 import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
+import { disableMockSimulationForSessionExit } from '@/services/dev-mock/simulation.service'
 import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
   SESSION_COOLDOWN_EXTENSION_MIN_MS,
@@ -128,6 +129,7 @@ async function transitionCooldownToEnded(session: {
   name: string
 }): Promise<void> {
   await updateSessionState(session.id as UUID, SessionState.ENDED, session.dmId as UUID)
+  await disableMockSimulationForSessionExit(session.id as UUID)
 
   logger.info('session-cleanup-job', 'Transitioned session COOLDOWN → ENDED (cooldown expired)', {
     sessionId: session.id,
@@ -145,6 +147,7 @@ async function transitionToCleanup(session: {
   name: string
 }): Promise<void> {
   await updateSessionState(session.id as UUID, SessionState.CLEANUP, session.dmId as UUID)
+  await disableMockSimulationForSessionExit(session.id as UUID)
   await purgeGreenroomChat(session.id as UUID)
 
   logger.info('session-cleanup-job', 'Transitioned session ENDED → CLEANUP', {

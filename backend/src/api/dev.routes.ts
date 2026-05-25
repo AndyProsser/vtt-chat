@@ -24,6 +24,7 @@ import {
   getSessionMockPlayerById,
 } from '@/services/dev-mock/players.service'
 import {
+  disableMockSimulationForSessionExit,
   getMockDisconnectRealismProfiles,
   getMockSimulationBounds,
   getMockSimulationPlayerCount,
@@ -423,7 +424,7 @@ router.post('/reroll', requireAuth, async (req: Request, res: Response) => {
     ok: true,
     sessionId,
     rerolledCount: result.count,
-    playerCount: getMockSimulationPlayerCount(sessionId as UUID),
+    playerCount: await getMockSimulationPlayerCount(sessionId as UUID),
   })
 })
 
@@ -444,6 +445,7 @@ router.post('/disconnect-all', requireAuth, async (req: Request, res: Response) 
       primaryRoomId: entry.primaryRoomId,
     }))
 
+  await disableMockSimulationForSessionExit(resolvedSessionId)
   await stopMockSimulation(resolvedSessionId)
   await removeMockPlayersFromSession(resolvedSessionId)
 
