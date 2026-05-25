@@ -465,9 +465,13 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     // change. Route to the lightweight presenceSpeakingBySession slice instead of doing
     // expensive roomMembers + sessionPresence spreads that cascade re-renders across the
     // entire workspace. This is the primary cause of speaking-indicator memory pressure.
+    //
+    // Note: we do NOT require !payload.username here — the mock simulator always includes
+    // username in every event. The "no structural change" guard is roomId === previousRoomId
+    // (a new user has no previousRoomId, so that branch is never falsely taken).
     const isVoiceActivityTransition =
       roomId === previousRoomId &&
-      !payload.username &&
+      Boolean(existingPresence) &&
       (nextPresence === PresenceState.SPEAKING ||
         ((nextPresence === PresenceState.ONLINE || nextPresence === PresenceState.IDLE) &&
           (existingPresence?.state === PresenceState.SPEAKING ||
