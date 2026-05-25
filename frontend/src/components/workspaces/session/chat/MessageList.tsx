@@ -6,7 +6,7 @@
 
 import { Fragment } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
-import type { Message, SessionBookendState } from '@/types/chat'
+import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { MessageType } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 interface MessageListProps {
@@ -66,16 +66,6 @@ const SESSION_NOTE_PREFIX = 'Session Note:'
 const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 const SESSION_SUMMARY_PREFIX = '[Session Summary]'
-
-interface SessionSummaryStats {
-  sessionName: string
-  startedAt: number | null
-  endedAt: number | null
-  cumulativePauseMs: number
-  pauseCount: number
-  playerCount: number
-  quip?: string
-}
 
 function parseSessionSummary(content: string): SessionSummaryStats | null {
   try {

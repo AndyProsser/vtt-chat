@@ -23,3 +23,13 @@ export interface WhisperRecipientOption {
   label: string
   avatarUrl?: string | null
 }
+
+export interface SessionSummaryStats {
+  sessionName: string
+  startedAt: number | null
+  endedAt: number | null
+  cumulativePauseMs: number
+  pauseCount: number
+  playerCount: number
+  quip?: string
+}
