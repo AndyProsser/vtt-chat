@@ -201,7 +201,7 @@ export function NoteCard({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <article className="notes-detail-card rounded-ui-md border border-ui-border bg-ui-surface p-3">
+      <article className="notes-detail-card rounded-ui-md border border-ui-border bg-ui-surface p-2">
         <div className="notes-note-header">
           <div className="notes-note-header__title-wrap">
             {isEditing ? (
@@ -346,14 +346,6 @@ export function NoteCard({
             <MarkdownEditor value={note.content} readOnly variant="full" />
           </div>
         )}
-
-        <div className="notes-card-meta-row">
-          {saveDraftTags.length > 0 ? (
-            <p className="mb-0 text-xs text-slate-600">Tags: {saveDraftTags.join(', ')}</p>
-          ) : (
-            <p className="mb-0 text-xs text-slate-600">Tags: No hashtags</p>
-          )}
-        </div>
 
         {error && <p className="mb-1 mt-2 text-sm text-ui-error-text">{error}</p>}
       </article>

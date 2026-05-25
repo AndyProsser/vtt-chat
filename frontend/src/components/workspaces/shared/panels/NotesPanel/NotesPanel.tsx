@@ -7,6 +7,7 @@ import {
   type UUID,
 } from '@shared'
 import { Icon } from '@/components/ui/Icon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
@@ -105,13 +106,6 @@ export function NotesPanel({
       : publishFilter === 'UNSHARED'
         ? 'No unshared handouts yet.'
         : 'No handouts yet.'
-
-  const toolbarCountLabel =
-    publishFilter === 'SHARED'
-      ? `${displayedNotes.length} shared`
-      : publishFilter === 'UNSHARED'
-        ? `${displayedNotes.length} unshared`
-        : `${displayedNotes.length} total`
 
   const isPublishDisabledInCurrentState =
     !currentSessionState || isGreenroomSessionState(currentSessionState)
@@ -298,10 +292,31 @@ export function NotesPanel({
       className={`knowledge-panel knowledge-panel--compact notes-workspace${compactPicker ? ' notes-workspace--compact-picker' : ''}`}
     >
       <header className="knowledge-panel-header notes-workspace-header">
-        <h3 className="notes-workspace-header__title">
-          <Icon name="notes" />
-          Handouts
-        </h3>
+        <div className="notes-workspace-header__title-row">
+          <h3 className="notes-workspace-header__title">
+            <Icon name="notes" />
+            Handouts
+          </h3>
+          <TooltipProvider delayDuration={140}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="notes-toolbar-segment notes-toolbar-segment--icon"
+                  onClick={handleToggleCreateForm}
+                  aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {showCreateForm ? 'visibility_off' : 'note_add'}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {showCreateForm ? 'Hide handout creator' : 'Create handout'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <p className="notes-workspace-header__subtitle">
           Draft handouts, organize references, and share player-ready notes.
         </p>
@@ -310,11 +325,8 @@ export function NotesPanel({
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
       <NotesPanelToolbar
-        showCreateForm={showCreateForm}
         publishFilter={publishFilter}
-        toolbarCountLabel={toolbarCountLabel}
         activeHashtagFilter={activeHashtagFilter}
-        onToggleCreateForm={handleToggleCreateForm}
         onSetPublishFilter={setPublishFilter}
         onClearHashtagFilter={() => setActiveHashtagFilter(null)}
       />
