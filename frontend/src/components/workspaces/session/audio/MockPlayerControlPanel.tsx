@@ -84,7 +84,8 @@ export function MockPlayerControlPanel({
         }
 
         const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible'
-        const nextDelay = hidden || !status?.isRunning ? STATUS_POLL_IDLE_MS : STATUS_POLL_ACTIVE_MS
+        const nextDelay =
+          hidden || !status?.isRunning ? MOCK_STATUS_POLL_IDLE_MS : MOCK_STATUS_POLL_ACTIVE_MS
         timeoutId = setTimeout(pollStatus, nextDelay)
       }
     }
