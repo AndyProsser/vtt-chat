@@ -271,6 +271,25 @@ export function NoteCard({
               />
             ) : null}
 
+            {canEdit && isEditing ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isSaving}
+                    className="notes-note-header-action notes-note-header-action--delete"
+                    aria-label="Delete handout"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      delete
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Delete handout</TooltipContent>
+              </Tooltip>
+            ) : null}
+
             {canEdit ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -293,25 +312,6 @@ export function NoteCard({
                       : 'Finish editing'
                     : 'Edit handout'}
                 </TooltipContent>
-              </Tooltip>
-            ) : null}
-
-            {canEdit && isEditing ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isSaving}
-                    className="notes-note-header-action notes-note-header-action--delete"
-                    aria-label="Delete handout"
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      delete
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Delete handout</TooltipContent>
               </Tooltip>
             ) : null}
           </div>

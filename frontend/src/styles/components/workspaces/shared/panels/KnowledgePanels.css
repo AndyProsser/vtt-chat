@@ -1483,16 +1483,15 @@
 }
 
 .notes-workspace--compact-picker .notes-list-widget-body {
-  padding: 0.4rem 0.3rem;
+  padding: 0.28rem 0.28rem;
 }
 
 .notes-workspace--compact-picker .notes-list-item {
   grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto;
   justify-items: center;
-  min-height: 68px;
-  max-height: 68px;
-  padding: 0.35rem 0.2rem;
+  min-height: 52px;
+  padding: 0.2rem;
 }
 
 .notes-workspace--compact-picker .notes-list-item-title,
@@ -1517,7 +1516,7 @@
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.03em;
-  margin-top: 0.3rem;
+  margin-top: 0;
 }
 
 .notes-workspace--compact-picker .notes-list-widget:hover,
@@ -1550,9 +1549,8 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   justify-items: stretch;
-  min-height: 68px;
-  max-height: 68px;
-  padding: 0.4rem 0.48rem;
+  min-height: 0;
+  padding: 0.3rem 0.4rem;
 }
 
 .notes-workspace--compact-picker .notes-list-widget:hover .notes-list-item-title,
@@ -1747,9 +1745,8 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
     justify-items: stretch;
-    min-height: 80px;
-    max-height: 80px;
-    padding: 0.55rem 0.6rem;
+    min-height: 0;
+    padding: 0.3rem 0.45rem;
   }
 
   .notes-workspace--compact-picker .notes-list-item-title,
