@@ -34,6 +34,7 @@ interface ChatWindowProps {
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const CHAT_HISTORY_PAGE_SIZE = 20
+const TYPING_INDICATOR_REFRESH_INTERVAL_MS = 1000
 type BookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown' | null
 
 function toTimestamp(value: unknown): number {
@@ -204,7 +205,7 @@ export function ChatWindow({
 
     const intervalId = window.setInterval(() => {
       setTypingClock(Date.now())
-    }, 500)
+    }, TYPING_INDICATOR_REFRESH_INTERVAL_MS)
 
     return () => {
       window.clearInterval(intervalId)
@@ -669,7 +670,7 @@ export function ChatWindow({
     requestAnimationFrame(() => {
       if (isGreenroomMode && earliestVisibleMessageCreatedAt) {
         const todayStart = greenroomTodayStartRef.current
-        const newestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
+        const newestVisibleMessageCreatedAt = latestVisibleMessageCreatedAt
 
         if (newestVisibleMessageCreatedAt && newestVisibleMessageCreatedAt < todayStart) {
           scrollToPosition(0, 'auto')

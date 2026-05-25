@@ -26,7 +26,7 @@ interface MessageInputProps {
   roomType?: RoomType
 }
 
-const TYPING_IDLE_TIMEOUT_MS = 1800
+const TYPING_IDLE_TIMEOUT_MS = 2600
 
 const MESSAGE_TYPE_ORDER: MessageType[] = [
   MessageType.IC,

@@ -25,18 +25,33 @@ export const createAudioDeviceSlice: StateCreator<AudioDeviceSlice, [], [], Audi
   device: initialAudioDeviceState,
 
   initializeAudio: (enabled) =>
-    set((state) => ({
-      device: {
-        ...state.device,
-        enabled,
-      },
-    })),
+    set((state) => {
+      if (state.device.enabled === enabled) {
+        return state
+      }
+
+      return {
+        device: {
+          ...state.device,
+          enabled,
+        },
+      }
+    }),
 
   setDevice: (updates) =>
-    set((state) => ({
-      device: {
-        ...state.device,
-        ...updates,
-      },
-    })),
+    set((state) => {
+      const updateEntries = Object.entries(updates) as Array<[keyof AudioDeviceState, unknown]>
+      const hasChange = updateEntries.some(([key, value]) => state.device[key] !== value)
+
+      if (!hasChange) {
+        return state
+      }
+
+      return {
+        device: {
+          ...state.device,
+          ...updates,
+        },
+      }
+    }),
 })

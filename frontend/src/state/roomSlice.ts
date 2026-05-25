@@ -459,6 +459,24 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const roomId = payload.roomId || previousRoomId
 
     set((state) => {
+      const existingMember = roomId
+        ? (state.roomMembers[roomId] || []).find((member) => member.userId === payload.userId)
+        : undefined
+      const resolvedUsername =
+        payload.username || existingMember?.username || existingPresence?.username || ''
+      const resolvedPreviousGroupId = payload.previousGroupId || existingPresence?.previousGroupId
+
+      if (
+        existingMember &&
+        previousRoomId === roomId &&
+        existingMember.presenceState === nextPresence &&
+        existingMember.username === resolvedUsername &&
+        existingMember.previousGroupId === resolvedPreviousGroupId &&
+        changedAt <= (existingPresence?.lastSeenAt || 0)
+      ) {
+        return state
+      }
+
       const nextRoomMembers = { ...state.roomMembers }
       if (previousRoomId && previousRoomId !== roomId) {
         nextRoomMembers[previousRoomId] = (state.roomMembers[previousRoomId] || []).filter(
@@ -467,13 +485,9 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }
 
       if (roomId) {
-        const existingMember = (state.roomMembers[roomId] || []).find(
-          (member) => member.userId === payload.userId
-        )
         const nextMember: RoomUser = {
           userId: payload.userId,
-          username:
-            payload.username || existingMember?.username || existingPresence?.username || '',
+          username: resolvedUsername,
           role: existingMember?.role ?? existingPresence?.role,
           playerName: existingMember?.playerName ?? existingPresence?.playerName,
           avatarUrl: existingMember?.avatarUrl ?? existingPresence?.avatarUrl,
@@ -487,7 +501,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           presenceState: nextPresence,
           // Presence slice is authoritative for ghost mode; prefer it over stale room-member cache.
           ghost: existingPresence?.ghost ?? existingMember?.ghost,
-          previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
+          previousGroupId: resolvedPreviousGroupId,
           joinedAt: existingMember?.joinedAt || changedAt,
         }
         nextRoomMembers[roomId] = upsertMember(nextRoomMembers[roomId] || [], nextMember)

@@ -22,6 +22,7 @@ import { AUDIO_EFFECT_COPY, getPushToTalkEffectDescription } from '@/constants/a
 import {
   AUDIO_BROADCAST_TRACK_PREFIX,
   AUDIO_ROOM_TRACK_PREFIX,
+  LOCAL_SPEAKING_EVALUATION_INTERVAL_MS,
   LOCAL_SPEAKING_HOLD_MS,
   LOCAL_SPEAKING_RELEASE_LEVEL,
   LOCAL_SPEAKING_TRIGGER_LEVEL,
@@ -43,6 +44,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
+  const localSpeakingLastEvaluationAtRef = useRef(0)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -568,11 +570,19 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
     if (!isTransmittingNow) {
       localSpeakingHoldUntilRef.current = 0
+      localSpeakingLastEvaluationAtRef.current = 0
       setSpeakingIfChanged(false)
       return
     }
 
     const now = performance.now()
+
+    // Cap speaking evaluation cadence to avoid re-running threshold logic at
+    // mic frame rate; speaking UX tolerates slight transition latency.
+    if (now - localSpeakingLastEvaluationAtRef.current < LOCAL_SPEAKING_EVALUATION_INTERVAL_MS) {
+      return
+    }
+    localSpeakingLastEvaluationAtRef.current = now
 
     // Use transmitted level with a start threshold + release hold window to avoid
     // false positives from clicks/typing and preserve natural speech gaps.
@@ -600,6 +610,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     () => () => {
       localSpeakingRef.current = false
       localSpeakingHoldUntilRef.current = 0
+      localSpeakingLastEvaluationAtRef.current = 0
       setDevice({ isSpeaking: false })
     },
     [setDevice]
