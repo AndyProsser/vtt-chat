@@ -217,9 +217,11 @@ export function ChatWindow({
   useEffect(() => {
     const nextTypingExpiryAt = (sessionTypingIndicators ?? [])
       .filter((indicator) => indicator.until > typingClock)
-      .reduce<
-        number | null
-      >((earliest, indicator) => (earliest === null || indicator.until < earliest ? indicator.until : earliest), null)
+      .reduce(
+        (earliest, indicator) =>
+          earliest === null || indicator.until < earliest ? indicator.until : earliest,
+        null as number | null
+      )
 
     if (!nextTypingExpiryAt) {
       return
