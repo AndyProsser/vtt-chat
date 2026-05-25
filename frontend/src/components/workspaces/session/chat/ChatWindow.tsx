@@ -215,13 +215,17 @@ export function ChatWindow({
   const [typingClock, setTypingClock] = useState(() => Date.now())
 
   useEffect(() => {
-    const nextTypingExpiryAt = (sessionTypingIndicators ?? [])
-      .filter((indicator) => indicator.until > typingClock)
-      .reduce(
-        (earliest, indicator) =>
-          earliest === null || indicator.until < earliest ? indicator.until : earliest,
-        null as number | null
-      )
+    const indicators = sessionTypingIndicators ?? []
+    let nextTypingExpiryAt: number | null = null
+    for (const indicator of indicators) {
+      if (indicator.until <= typingClock) {
+        continue
+      }
+
+      if (nextTypingExpiryAt === null || indicator.until < nextTypingExpiryAt) {
+        nextTypingExpiryAt = indicator.until
+      }
+    }
 
     if (!nextTypingExpiryAt) {
       return
@@ -599,14 +603,32 @@ export function ChatWindow({
   }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
 
   const typingProjection = useMemo(() => {
-    const activeTypingUsers = (sessionTypingIndicators ?? [])
-      .filter((indicator) => indicator.until > typingClock)
-      .filter((indicator) => indicator.userId !== user.id)
-      .filter((indicator) => !indicator.roomId || indicator.roomId === roomId)
+    const activeTypingUsers: Array<{
+      userId: UUID
+      username: string
+      roomId?: UUID
+      until: number
+    }> = []
+    const typingDisplayNames: string[] = []
 
-    const typingDisplayNames = activeTypingUsers.map(
-      (indicator) => participantDirectory[indicator.userId]?.displayName || indicator.username
-    )
+    for (const indicator of sessionTypingIndicators ?? []) {
+      if (indicator.until <= typingClock) {
+        continue
+      }
+
+      if (indicator.userId === user.id) {
+        continue
+      }
+
+      if (indicator.roomId && indicator.roomId !== roomId) {
+        continue
+      }
+
+      activeTypingUsers.push(indicator)
+      typingDisplayNames.push(
+        participantDirectory[indicator.userId]?.displayName || indicator.username
+      )
+    }
 
     const typingSummary =
       typingDisplayNames.length === 1
