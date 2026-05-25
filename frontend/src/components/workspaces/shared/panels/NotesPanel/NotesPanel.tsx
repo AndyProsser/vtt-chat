@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
-import { NoteVisibility, Role, type UUID } from '@shared'
+import {
+  NoteVisibility,
+  Role,
+  isGreenroomSessionState,
+  type SessionState,
+  type UUID,
+} from '@shared'
 import { Icon } from '@/components/ui/Icon'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
-import { formatNotesShareUserLabel, parseNoteHashtags } from '../../../../../utils/notesPanel'
+import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
+import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface NotesPanelProps {
@@ -17,27 +23,26 @@ interface NotesPanelProps {
   token: string
   campaignId: UUID
   sessionId?: UUID | null
+  currentSessionState?: SessionState | null
+  compactPicker?: boolean
   user: { id: UUID; role: Role | string }
 }
 
-type NotesPublishFilter = 'ALL' | 'SHARED' | 'UNSHARED'
-
 const JOURNAL_TAG = '_journal'
-
-function isJournalNote(note: Note): boolean {
-  const normalizedTitle = note.title.trim().toLowerCase()
-  return (
-    (note.tags || []).includes(JOURNAL_TAG) ||
-    normalizedTitle === 'session journal' ||
-    normalizedTitle.startsWith('journal - ')
-  )
-}
 
 function toHandoutTags(tagsText: string): string[] {
   return parseNoteHashtags(tagsText).filter((tag) => tag.toLowerCase() !== JOURNAL_TAG)
 }
 
-export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: NotesPanelProps) {
+export function NotesPanel({
+  apiUrl,
+  token,
+  campaignId,
+  sessionId,
+  currentSessionState,
+  compactPicker = false,
+  user,
+}: NotesPanelProps) {
   const notesByCampaign = useStore((state) => (state.notes as any)[campaignId]) as
     | Record<UUID, Note>
     | undefined
@@ -71,21 +76,31 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
+  const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
 
   const displayedNotes = useMemo(() => {
-    if (publishFilter === 'SHARED') {
-      return notes.filter((note) => Boolean(note.publishedAt))
+    const byPublishFilter =
+      publishFilter === 'SHARED'
+        ? notes.filter((note) => Boolean(note.publishedAt))
+        : publishFilter === 'UNSHARED'
+          ? notes.filter((note) => !note.publishedAt)
+          : notes
+
+    if (!activeHashtagFilter) {
+      return byPublishFilter
     }
 
-    if (publishFilter === 'UNSHARED') {
-      return notes.filter((note) => !note.publishedAt)
-    }
+    return byPublishFilter.filter((note) =>
+      note.tags.some((tag) => {
+        const normalized = tag.startsWith('#') ? tag : `#${tag}`
+        return normalized.toLowerCase() === activeHashtagFilter.toLowerCase()
+      })
+    )
+  }, [activeHashtagFilter, notes, publishFilter])
 
-    return notes
-  }, [notes, publishFilter])
-
-  const emptyStateMessage =
-    publishFilter === 'SHARED'
+  const emptyStateMessage = activeHashtagFilter
+    ? `No handouts tagged ${activeHashtagFilter}.`
+    : publishFilter === 'SHARED'
       ? 'No shared handouts yet.'
       : publishFilter === 'UNSHARED'
         ? 'No unshared handouts yet.'
@@ -96,7 +111,10 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
       ? `${displayedNotes.length} shared`
       : publishFilter === 'UNSHARED'
         ? `${displayedNotes.length} unshared`
-        : `${notes.length} total`
+        : `${displayedNotes.length} total`
+
+  const isPublishDisabledInCurrentState =
+    !currentSessionState || isGreenroomSessionState(currentSessionState)
 
   const handleToggleCreateForm = () => {
     if (!showCreateForm) {
@@ -111,26 +129,6 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
     () => displayedNotes.find((note) => note.id === selectedNoteId) ?? displayedNotes[0] ?? null,
     [displayedNotes, selectedNoteId]
   )
-
-  const getSharedWithLabel = (note: Note): string => {
-    if (note.visibility === NoteVisibility.DM_ONLY) {
-      return 'DM only'
-    }
-
-    if (note.visibility === NoteVisibility.PLAYERS_VISIBLE) {
-      return 'All players'
-    }
-
-    const names = (note.allowedUsers || []).map((userId) =>
-      formatNotesShareUserLabel(userId, shareUsers)
-    )
-
-    if (names.length === 0) {
-      return 'Custom list'
-    }
-
-    return names.join(', ')
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -296,7 +294,9 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
   }
 
   return (
-    <section className="knowledge-panel knowledge-panel--compact notes-workspace">
+    <section
+      className={`knowledge-panel knowledge-panel--compact notes-workspace${compactPicker ? ' notes-workspace--compact-picker' : ''}`}
+    >
       <header className="knowledge-panel-header notes-workspace-header">
         <h3 className="notes-workspace-header__title">
           <Icon name="notes" />
@@ -309,44 +309,15 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
 
       {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
-      <div className="notes-workspace-toolbar">
-        <TooltipProvider delayDuration={140}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="notes-toolbar-segment notes-toolbar-segment--icon"
-                onClick={handleToggleCreateForm}
-                aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  {showCreateForm ? 'visibility_off' : 'note_add'}
-                </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {showCreateForm ? 'Hide handout creator' : 'Create handout'}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <div className="notes-toolbar-segmented" role="tablist" aria-label="Handout publish filter">
-          {(['ALL', 'SHARED', 'UNSHARED'] as NotesPublishFilter[]).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              role="tab"
-              aria-selected={publishFilter === filter}
-              className={`notes-toolbar-segment ${publishFilter === filter ? 'is-selected' : ''}`}
-              onClick={() => setPublishFilter(filter)}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <span className="notes-toolbar-count">{toolbarCountLabel}</span>
-      </div>
+      <NotesPanelToolbar
+        showCreateForm={showCreateForm}
+        publishFilter={publishFilter}
+        toolbarCountLabel={toolbarCountLabel}
+        activeHashtagFilter={activeHashtagFilter}
+        onToggleCreateForm={handleToggleCreateForm}
+        onSetPublishFilter={setPublishFilter}
+        onClearHashtagFilter={() => setActiveHashtagFilter(null)}
+      />
 
       {showCreateForm ? (
         <NotesCreateForm
@@ -384,7 +355,8 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
               notes={displayedNotes}
               selectedNoteId={selectedNote?.id || null}
               onSelectNote={setSelectedNoteId}
-              getSharedWithLabel={getSharedWithLabel}
+              activeHashtagFilter={activeHashtagFilter}
+              onTagSelect={setActiveHashtagFilter}
             />
 
             <section className="notes-detail-widget" aria-label="Selected note">
@@ -398,6 +370,7 @@ export function NotesPanel({ apiUrl, token, campaignId, sessionId, user }: Notes
                   canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
                   canManageShare={user.role === Role.DM}
                   canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
+                  isPublishDisabled={isPublishDisabledInCurrentState}
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onPublish={handlePublish}

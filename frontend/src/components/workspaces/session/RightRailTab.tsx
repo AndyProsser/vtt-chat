@@ -142,6 +142,8 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
             token={props.token}
             campaignId={props.campaignId}
             sessionId={props.currentSessionId}
+            currentSessionState={props.currentSessionState}
+            compactPicker
             user={{ id: props.effectiveSessionUserId, role: props.effectiveSessionRole }}
           />
         ) : (

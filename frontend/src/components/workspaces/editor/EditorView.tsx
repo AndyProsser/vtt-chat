@@ -139,6 +139,8 @@ export function EditorView(props: EditorViewProps) {
           token={props.authToken}
           campaignId={campaign.id}
           sessionId={notesSessionId}
+          currentSessionState={props.currentSessionState}
+          compactPicker={false}
           user={{ id: props.currentUserId, role: props.role }}
         />
       )
