@@ -12,7 +12,27 @@ import type { StateCreator } from 'zustand'
 
 function pruneTypingIndicators(indicators: TypingIndicator[], now: number): TypingIndicator[] {
   if (indicators.length === 0) return indicators
-  return indicators.filter((indicator) => indicator.until > now)
+
+  let hasExpired = false
+  for (let i = 0; i < indicators.length; i += 1) {
+    if (indicators[i].until <= now) {
+      hasExpired = true
+      break
+    }
+  }
+
+  if (!hasExpired) {
+    return indicators
+  }
+
+  const next: TypingIndicator[] = []
+  for (let i = 0; i < indicators.length; i += 1) {
+    if (indicators[i].until > now) {
+      next.push(indicators[i])
+    }
+  }
+
+  return next
 }
 
 export interface SessionStatsSnapshot {
@@ -447,7 +467,15 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         const next = { ...current }
         delete next[userId]
         const nextBySession = { ...state.presenceSpeakingBySession }
-        if (Object.keys(next).length === 0) {
+        let hasRemainingSpeakers = false
+        for (const nextUserId in next) {
+          if (next[nextUserId as UUID]) {
+            hasRemainingSpeakers = true
+            break
+          }
+        }
+
+        if (!hasRemainingSpeakers) {
           delete nextBySession[sessionId]
         } else {
           nextBySession[sessionId] = next
@@ -473,18 +501,26 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         return { presenceLkSpeakingBySession: next }
       }
 
-      const nextSet: Record<UUID, true> = {}
-      for (const userId of userIds) nextSet[userId] = true
-
       if (currentSet) {
-        const curKeys = Object.keys(currentSet)
-        const nxtKeys = Object.keys(nextSet)
-        if (
-          curKeys.length === nxtKeys.length &&
-          nxtKeys.every((k) => (currentSet as Record<string, true>)[k])
-        ) {
-          return state
+        const currentCount = Object.keys(currentSet).length
+        if (currentCount === userIds.length) {
+          let unchanged = true
+          for (const userId of userIds) {
+            if (!currentSet[userId]) {
+              unchanged = false
+              break
+            }
+          }
+
+          if (unchanged) {
+            return state
+          }
         }
+      }
+
+      const nextSet: Record<UUID, true> = {}
+      for (const userId of userIds) {
+        nextSet[userId] = true
       }
 
       return {
@@ -499,11 +535,13 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     const payload = event.payload as { userId: UUID; username: string; roomId?: UUID }
 
     set((state) => {
-      const currentIndicators = pruneTypingIndicators(
-        state.presenceTypingBySession[event.sessionId] || [],
-        event.timestamp
+      const existingIndicators = state.presenceTypingBySession[event.sessionId] || []
+      const currentIndicators = pruneTypingIndicators(existingIndicators, event.timestamp)
+      const didPruneExpired = currentIndicators.length !== existingIndicators.length
+      const existingIndex = currentIndicators.findIndex(
+        (indicator) => indicator.userId === payload.userId
       )
-      const existing = currentIndicators.find((indicator) => indicator.userId === payload.userId)
+      const existing = existingIndex >= 0 ? currentIndicators[existingIndex] : null
       const nextUntil = event.timestamp + TYPING_INDICATOR_TTL_MS
 
       if (
@@ -512,18 +550,41 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         existing.roomId === payload.roomId &&
         (existing.until >= nextUntil || nextUntil - existing.until < TYPING_RENEW_MIN_EXTENSION_MS)
       ) {
-        return state
+        if (!didPruneExpired) {
+          return state
+        }
+
+        if (currentIndicators.length === 0) {
+          if (!state.presenceTypingBySession[event.sessionId]) {
+            return state
+          }
+
+          const next = { ...state.presenceTypingBySession }
+          delete next[event.sessionId]
+          return { presenceTypingBySession: next }
+        }
+
+        return {
+          presenceTypingBySession: {
+            ...state.presenceTypingBySession,
+            [event.sessionId]: currentIndicators,
+          },
+        }
       }
 
-      const nextIndicators = currentIndicators.filter(
-        (indicator) => indicator.userId !== payload.userId
-      )
-      nextIndicators.push({
+      const nextIndicators = currentIndicators.slice()
+      const nextIndicator: TypingIndicator = {
         userId: payload.userId,
         username: payload.username,
         roomId: payload.roomId,
         until: nextUntil,
-      })
+      }
+
+      if (existingIndex >= 0) {
+        nextIndicators[existingIndex] = nextIndicator
+      } else {
+        nextIndicators.push(nextIndicator)
+      }
 
       return {
         presenceTypingBySession: {
@@ -538,15 +599,35 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     const payload = event.payload as { userId: UUID }
 
     set((state) => {
-      const indicators = pruneTypingIndicators(
-        state.presenceTypingBySession[event.sessionId] || [],
-        event.timestamp
-      )
-      const nextIndicators = indicators.filter((indicator) => indicator.userId !== payload.userId)
+      const existingIndicators = state.presenceTypingBySession[event.sessionId] || []
+      const indicators = pruneTypingIndicators(existingIndicators, event.timestamp)
+      const didPruneExpired = indicators.length !== existingIndicators.length
+      const removedIndex = indicators.findIndex((indicator) => indicator.userId === payload.userId)
 
-      if (nextIndicators.length === indicators.length) {
-        return state
+      if (removedIndex === -1) {
+        if (!didPruneExpired) {
+          return state
+        }
+
+        if (indicators.length === 0) {
+          if (!state.presenceTypingBySession[event.sessionId]) {
+            return state
+          }
+
+          const next = { ...state.presenceTypingBySession }
+          delete next[event.sessionId]
+          return { presenceTypingBySession: next }
+        }
+
+        return {
+          presenceTypingBySession: {
+            ...state.presenceTypingBySession,
+            [event.sessionId]: indicators,
+          },
+        }
       }
+
+      const nextIndicators = indicators.filter((_, index) => index !== removedIndex)
 
       if (nextIndicators.length === 0) {
         if (!state.presenceTypingBySession[event.sessionId]) {

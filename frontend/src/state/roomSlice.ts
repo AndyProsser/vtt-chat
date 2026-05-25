@@ -78,6 +78,37 @@ function pruneRoomMembers(state: RoomSlice, roomIdsToRemove: UUID[]): Record<UUI
   return nextMembers
 }
 
+function replaceMemberInRoom(
+  roomMembers: Record<UUID, RoomUser[]>,
+  roomId: UUID,
+  userId: UUID,
+  buildNext: (member: RoomUser) => RoomUser
+): Record<UUID, RoomUser[]> | null {
+  const members = roomMembers[roomId]
+  if (!members || members.length === 0) {
+    return null
+  }
+
+  const memberIndex = members.findIndex((member) => member.userId === userId)
+  if (memberIndex === -1) {
+    return null
+  }
+
+  const currentMember = members[memberIndex]
+  const nextMember = buildNext(currentMember)
+  if (nextMember === currentMember) {
+    return null
+  }
+
+  const nextMembersForRoom = members.slice()
+  nextMembersForRoom[memberIndex] = nextMember
+
+  return {
+    ...roomMembers,
+    [roomId]: nextMembersForRoom,
+  }
+}
+
 export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
   set,
   get
@@ -428,14 +459,24 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
     const leftAt = payload.leftAt || event.timestamp
 
-    set((state) => ({
-      roomMembers: {
-        ...state.roomMembers,
-        [payload.roomId]: (state.roomMembers[payload.roomId] || []).filter(
-          (m) => m.userId !== payload.userId
-        ),
-      },
-    }))
+    set((state) => {
+      const members = state.roomMembers[payload.roomId] || []
+      if (members.length === 0) {
+        return state
+      }
+
+      const nextMembersForRoom = members.filter((m) => m.userId !== payload.userId)
+      if (nextMembersForRoom.length === members.length) {
+        return state
+      }
+
+      return {
+        roomMembers: {
+          ...state.roomMembers,
+          [payload.roomId]: nextMembersForRoom,
+        },
+      }
+    })
 
     get().markSessionPresenceOnLeft({
       sessionId: event.sessionId,
@@ -573,18 +614,55 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const changedAt = payload.changedAt || event.timestamp
     const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
     const roomId = payload.roomId || existingPresence?.primaryRoomId
+    const nextGhostMode = payload.ghostMode || false
 
     set((state) => {
-      const nextRoomMembers: Record<UUID, RoomUser[]> = {}
+      if (roomId) {
+        const updated = replaceMemberInRoom(state.roomMembers, roomId, payload.userId, (member) => {
+          if (member.ghost === nextGhostMode) {
+            return member
+          }
+
+          return {
+            ...member,
+            ghost: nextGhostMode,
+          }
+        })
+
+        if (updated) {
+          return {
+            roomMembers: updated,
+          }
+        }
+      }
+
+      let nextRoomMembers: Record<UUID, RoomUser[]> | null = null
       for (const [memberRoomId, members] of Object.entries(state.roomMembers)) {
-        nextRoomMembers[memberRoomId as UUID] = members.map((member) =>
-          member.userId === payload.userId
-            ? {
-                ...member,
-                ghost: payload.ghostMode || false,
-              }
-            : member
-        )
+        const memberIndex = members.findIndex((member) => member.userId === payload.userId)
+        if (memberIndex === -1) {
+          continue
+        }
+
+        const currentMember = members[memberIndex]
+        if (currentMember.ghost === nextGhostMode) {
+          return state
+        }
+
+        const nextMembersForRoom = members.slice()
+        nextMembersForRoom[memberIndex] = {
+          ...currentMember,
+          ghost: nextGhostMode,
+        }
+
+        nextRoomMembers = {
+          ...state.roomMembers,
+          [memberRoomId as UUID]: nextMembersForRoom,
+        }
+        break
+      }
+
+      if (!nextRoomMembers) {
+        return state
       }
 
       return {
@@ -623,45 +701,75 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
     const updatedAt = payload.updatedAt || event.timestamp
     const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
+    const resolvedRoomId = payload.roomId || existingPresence?.primaryRoomId
 
     set((state) => {
-      const nextRoomMembers: Record<UUID, RoomUser[]> = {}
-      for (const [roomId, members] of Object.entries(state.roomMembers)) {
-        nextRoomMembers[roomId as UUID] = members.map((member) =>
-          member.userId === payload.userId
-            ? {
-                ...member,
-                username: payload.username || member.username,
-                playerName:
-                  payload.playerName !== undefined
-                    ? (payload.playerName ?? undefined)
-                    : member.playerName,
-                avatarUrl:
-                  payload.avatarUrl !== undefined ? (payload.avatarUrl ?? null) : member.avatarUrl,
-                characterName:
-                  payload.characterName !== undefined
-                    ? (payload.characterName ?? null)
-                    : member.characterName,
-                characterClass:
-                  payload.characterClass !== undefined
-                    ? (payload.characterClass ?? null)
-                    : member.characterClass,
-                characterSubclass:
-                  payload.characterSubclass !== undefined
-                    ? (payload.characterSubclass ?? null)
-                    : member.characterSubclass,
-                characterRace:
-                  payload.characterRace !== undefined
-                    ? (payload.characterRace ?? null)
-                    : member.characterRace,
-                level: payload.level !== undefined ? (payload.level ?? null) : member.level,
-                characterStats:
-                  payload.characterStats !== undefined
-                    ? (payload.characterStats ?? null)
-                    : member.characterStats,
-              }
-            : member
+      const applyProfilePatch = (member: RoomUser): RoomUser => {
+        const nextMember: RoomUser = {
+          ...member,
+          username: payload.username || member.username,
+          playerName:
+            payload.playerName !== undefined
+              ? (payload.playerName ?? undefined)
+              : member.playerName,
+          avatarUrl:
+            payload.avatarUrl !== undefined ? (payload.avatarUrl ?? null) : member.avatarUrl,
+          characterName:
+            payload.characterName !== undefined
+              ? (payload.characterName ?? null)
+              : member.characterName,
+          characterClass:
+            payload.characterClass !== undefined
+              ? (payload.characterClass ?? null)
+              : member.characterClass,
+          characterSubclass:
+            payload.characterSubclass !== undefined
+              ? (payload.characterSubclass ?? null)
+              : member.characterSubclass,
+          characterRace:
+            payload.characterRace !== undefined
+              ? (payload.characterRace ?? null)
+              : member.characterRace,
+          level: payload.level !== undefined ? (payload.level ?? null) : member.level,
+          characterStats:
+            payload.characterStats !== undefined
+              ? (payload.characterStats ?? null)
+              : member.characterStats,
+        }
+
+        return nextMember
+      }
+
+      if (resolvedRoomId) {
+        const updated = replaceMemberInRoom(
+          state.roomMembers,
+          resolvedRoomId,
+          payload.userId,
+          applyProfilePatch
         )
+        if (updated) {
+          return { roomMembers: updated }
+        }
+      }
+
+      let nextRoomMembers: Record<UUID, RoomUser[]> | null = null
+      for (const [roomId, members] of Object.entries(state.roomMembers)) {
+        const memberIndex = members.findIndex((member) => member.userId === payload.userId)
+        if (memberIndex === -1) {
+          continue
+        }
+
+        const nextMembersForRoom = members.slice()
+        nextMembersForRoom[memberIndex] = applyProfilePatch(members[memberIndex])
+        nextRoomMembers = {
+          ...state.roomMembers,
+          [roomId as UUID]: nextMembersForRoom,
+        }
+        break
+      }
+
+      if (!nextRoomMembers) {
+        return state
       }
 
       return { roomMembers: nextRoomMembers }
@@ -723,17 +831,26 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }
 
       const sessionRoomIds = Object.keys(upsertedRooms) as UUID[]
+      const movedUserIds = new Set(payload.users.map((user) => user.userId))
       const nextMembers = { ...state.roomMembers }
 
       for (const roomId of sessionRoomIds) {
-        nextMembers[roomId] = (nextMembers[roomId] || []).filter(
-          (member) => !payload.users.some((user) => user.userId === member.userId)
-        )
+        const members = nextMembers[roomId] || []
+        if (members.length === 0) {
+          continue
+        }
+
+        const filteredMembers = members.filter((member) => !movedUserIds.has(member.userId))
+        if (filteredMembers.length !== members.length) {
+          nextMembers[roomId] = filteredMembers
+        }
       }
 
-      nextMembers[payload.targetRoomId] = [
-        ...(nextMembers[payload.targetRoomId] || []),
-        ...payload.users.map((user) => {
+      const existingTargetMembers = nextMembers[payload.targetRoomId] || []
+      const targetMemberIds = new Set(existingTargetMembers.map((member) => member.userId))
+      const appendedMembers = payload.users
+        .filter((user) => !targetMemberIds.has(user.userId))
+        .map((user) => {
           const existingPresence = presenceBySession[user.userId]
 
           return {
@@ -753,8 +870,9 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             previousGroupId: existingPresence?.previousGroupId,
             joinedAt: event.timestamp,
           }
-        }),
-      ]
+        })
+
+      nextMembers[payload.targetRoomId] = [...existingTargetMembers, ...appendedMembers]
 
       return {
         rooms: {

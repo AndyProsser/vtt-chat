@@ -16,15 +16,42 @@ import {
 import type { Message } from '@/types/chat'
 
 function pruneGreenroomMessageCache(messages: Record<UUID, Message>): Record<UUID, Message> {
-  const entries = Object.entries(messages) as Array<[UUID, Message]>
-  if (entries.length <= GREENROOM_CACHE_MAX_MESSAGES) {
+  const messageIds: UUID[] = []
+  for (const messageId in messages) {
+    messageIds.push(messageId as UUID)
+  }
+
+  if (messageIds.length <= GREENROOM_CACHE_MAX_MESSAGES) {
     return messages
   }
 
-  entries.sort((left, right) => left[1].createdAt - right[1].createdAt)
-  return Object.fromEntries(
-    entries.slice(Math.max(0, entries.length - GREENROOM_CACHE_RETAIN_MESSAGES))
-  ) as Record<UUID, Message>
+  messageIds.sort((left, right) => messages[left].createdAt - messages[right].createdAt)
+  const retainStart = Math.max(0, messageIds.length - GREENROOM_CACHE_RETAIN_MESSAGES)
+  const next: Record<UUID, Message> = {}
+
+  for (let i = retainStart; i < messageIds.length; i += 1) {
+    const id = messageIds[i]
+    next[id] = messages[id]
+  }
+
+  return next
+}
+
+function isSameGreenroomMessage(existing: Message, next: Message): boolean {
+  return (
+    existing.id === next.id &&
+    existing.roomId === next.roomId &&
+    existing.authorId === next.authorId &&
+    existing.authorUsername === next.authorUsername &&
+    existing.content === next.content &&
+    existing.type === next.type &&
+    existing.isDmOnly === next.isDmOnly &&
+    existing.isOffTheRecord === next.isOffTheRecord &&
+    existing.createdAt === next.createdAt &&
+    existing.editedAt === next.editedAt &&
+    existing.visibleTo === next.visibleTo &&
+    existing.targetIds === next.targetIds
+  )
 }
 
 export interface GreenroomSlice {
@@ -54,17 +81,32 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
 
   // Actions
   addGreenroomMessage: (message) =>
-    set((state) => ({
-      greenroomMessages: pruneGreenroomMessageCache({
-        ...state.greenroomMessages,
-        [message.id]: message,
-      }),
-    })),
+    set((state) => {
+      const existing = state.greenroomMessages[message.id]
+      if (existing && isSameGreenroomMessage(existing, message)) {
+        return state
+      }
+
+      return {
+        greenroomMessages: pruneGreenroomMessageCache({
+          ...state.greenroomMessages,
+          [message.id]: message,
+        }),
+      }
+    }),
 
   updateGreenroomMessage: (messageId, updates) =>
     set((state) => {
       const message = state.greenroomMessages[messageId]
       if (!message) return state
+
+      const updateEntries = Object.entries(updates) as Array<[keyof Message, unknown]>
+      if (updateEntries.length === 0) {
+        return state
+      }
+
+      const hasChanges = updateEntries.some(([key, value]) => message[key] !== value)
+      if (!hasChanges) return state
 
       return {
         greenroomMessages: {
@@ -76,6 +118,10 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
 
   deleteGreenroomMessage: (messageId) =>
     set((state) => {
+      if (!state.greenroomMessages[messageId]) {
+        return state
+      }
+
       const newMessages = { ...state.greenroomMessages }
       delete newMessages[messageId]
       return {
@@ -122,12 +168,19 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
       createdAt: event.timestamp,
     }
 
-    set((state) => ({
-      greenroomMessages: pruneGreenroomMessageCache({
-        ...state.greenroomMessages,
-        [message.id]: message,
-      }),
-    }))
+    set((state) => {
+      const existing = state.greenroomMessages[message.id]
+      if (existing && isSameGreenroomMessage(existing, message)) {
+        return state
+      }
+
+      return {
+        greenroomMessages: pruneGreenroomMessageCache({
+          ...state.greenroomMessages,
+          [message.id]: message,
+        }),
+      }
+    })
   },
 
   handleGreenroomMessageEdited: (event) => {
@@ -136,6 +189,7 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
     set((state) => {
       const message = state.greenroomMessages[payload.messageId]
       if (!message) return state
+      if (message.content === payload.content) return state
 
       return {
         greenroomMessages: {
@@ -154,6 +208,10 @@ export const createGreenroomSlice: StateCreator<GreenroomSlice> = (set) => ({
     const payload = event.payload as { messageId: UUID }
 
     set((state) => {
+      if (!state.greenroomMessages[payload.messageId]) {
+        return state
+      }
+
       const newMessages = { ...state.greenroomMessages }
       delete newMessages[payload.messageId]
       return {

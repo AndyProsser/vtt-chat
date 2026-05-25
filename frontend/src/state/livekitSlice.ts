@@ -32,24 +32,47 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
   livekitLocalInputTracks: {},
 
   upsertLiveKitConnection: (key, snapshot) =>
-    set((state) => ({
-      livekitConnections: {
-        ...state.livekitConnections,
-        [key]: {
-          key,
-          ...snapshot,
-          updatedAt: Date.now(),
+    set((state) => {
+      const existing = state.livekitConnections[key]
+      if (
+        existing &&
+        existing.sessionId === snapshot.sessionId &&
+        existing.roomId === snapshot.roomId &&
+        existing.channel === snapshot.channel &&
+        existing.connectionState === snapshot.connectionState &&
+        existing.isConnected === snapshot.isConnected &&
+        existing.isConnecting === snapshot.isConnecting &&
+        existing.hasLocalPublication === snapshot.hasLocalPublication &&
+        existing.error === snapshot.error
+      ) {
+        return state
+      }
+
+      return {
+        livekitConnections: {
+          ...state.livekitConnections,
+          [key]: {
+            key,
+            ...snapshot,
+            updatedAt: Date.now(),
+          },
         },
-      },
-    })),
+      }
+    }),
 
   setLiveKitLocalInputTrack: (key, track) =>
-    set((state) => ({
-      livekitLocalInputTracks: {
-        ...state.livekitLocalInputTracks,
-        [key]: track,
-      },
-    })),
+    set((state) => {
+      if (state.livekitLocalInputTracks[key] === track) {
+        return state
+      }
+
+      return {
+        livekitLocalInputTracks: {
+          ...state.livekitLocalInputTracks,
+          [key]: track,
+        },
+      }
+    }),
 
   clearLiveKitConnection: (key) =>
     set((state) => {
@@ -73,27 +96,46 @@ export const createLiveKitSlice: StateCreator<LiveKitSlice> = (set) => ({
   clearLiveKitConnectionsForSession: (sessionId) =>
     set((state) => {
       if (!sessionId) {
+        if (
+          Object.keys(state.livekitConnections).length === 0 &&
+          Object.keys(state.livekitLocalInputTracks).length === 0
+        ) {
+          return state
+        }
+
         return {
           livekitConnections: {},
           livekitLocalInputTracks: {},
         }
       }
 
-      const next = Object.fromEntries(
-        Object.entries(state.livekitConnections).filter(
-          ([, entry]) => entry.sessionId !== sessionId
-        )
-      ) as Record<string, LiveKitConnectionSnapshot>
+      let removedAnyConnection = false
+      const nextConnections: Record<string, LiveKitConnectionSnapshot> = {}
+      for (const [key, entry] of Object.entries(state.livekitConnections)) {
+        if (entry.sessionId === sessionId) {
+          removedAnyConnection = true
+          continue
+        }
+        nextConnections[key] = entry
+      }
 
-      const nextTracks = Object.fromEntries(
-        Object.entries(state.livekitLocalInputTracks).filter(([key]) => {
-          const connection = state.livekitConnections[key]
-          return connection?.sessionId !== sessionId
-        })
-      ) as Record<string, MediaStreamTrack | null>
+      let removedAnyTrack = false
+      const nextTracks: Record<string, MediaStreamTrack | null> = {}
+      for (const [key, track] of Object.entries(state.livekitLocalInputTracks)) {
+        const connection = state.livekitConnections[key]
+        if (connection?.sessionId === sessionId) {
+          removedAnyTrack = true
+          continue
+        }
+        nextTracks[key] = track
+      }
+
+      if (!removedAnyConnection && !removedAnyTrack) {
+        return state
+      }
 
       return {
-        livekitConnections: next,
+        livekitConnections: nextConnections,
         livekitLocalInputTracks: nextTracks,
       }
     }),
