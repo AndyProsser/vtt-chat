@@ -4,7 +4,7 @@
  * Messages arrive pre-filtered by the server (visibility-safe).
  */
 
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { MessageType } from '@shared'
@@ -222,6 +222,111 @@ export function MessageList({
 }: MessageListProps) {
   const isDmViewer = currentUserRole === 'DM'
 
+  const preparedMessages = useMemo(
+    () =>
+      messages.map((msg, index) => {
+        const previous = index > 0 ? messages[index - 1] : undefined
+        const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
+        const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
+        const isSessionBookend =
+          isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
+        const sessionBookendState = isSessionBookend ? getSessionBookendState(msg.content) : null
+        const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
+        const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
+          ? CAMPAIGN_BRIEF_PREFIX
+          : SESSION_RECAP_PREFIX
+        const isSessionRecap = isSystem && msg.content.startsWith(recapPrefix)
+        const isSessionSummary = isSystem && msg.content.startsWith(SESSION_SUMMARY_PREFIX)
+        const summaryStats = isSessionSummary ? parseSessionSummary(msg.content) : null
+        const isSelf = !isSystem && msg.authorId === currentUserId
+        const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
+        const authorProfile = participantDirectory?.[msg.authorId]
+        const authorName = isSystem
+          ? 'SYSTEM'
+          : authorProfile?.displayName || msg.authorUsername || 'Unknown'
+        const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
+        const whisperTargetNames =
+          (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) &&
+          Array.isArray(msg.targetIds) &&
+          msg.targetIds.length > 0
+            ? msg.targetIds
+                .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
+                .filter((name) => name.trim().length > 0)
+            : []
+        const whisperRouteText =
+          msg.type === MessageType.DM
+            ? 'DM'
+            : msg.type === MessageType.WHISPER && whisperTargetNames.length === 1
+              ? whisperTargetNames[0]
+              : null
+        const whisperRouteLines =
+          msg.type === MessageType.WHISPER && whisperTargetNames.length > 1
+            ? whisperTargetNames
+            : []
+        const whisperRouteEntries =
+          whisperRouteLines.length > 0
+            ? whisperRouteLines
+            : whisperRouteText
+              ? [whisperRouteText]
+              : []
+        const hasWhisperRoute = whisperRouteEntries.length > 0
+        const isDmWhisper =
+          msg.type === MessageType.DM ||
+          (msg.type === MessageType.WHISPER && Boolean(sessionDmId) && msg.authorId === sessionDmId)
+        const bubbleWhisperClass =
+          (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) && isDmWhisper
+            ? 'session-message-list__message-bubble--whisper-dm'
+            : ''
+        const typeIconClass = `session-message-list__message-type-icon--${variant}`
+        const typeIcon = TYPE_ICON_BY_VARIANT[variant]
+        const isGroupedWithPrevious = Boolean(
+          groupingWindowMs > 0 &&
+          previous &&
+          previous.authorId === msg.authorId &&
+          msg.createdAt - previous.createdAt <= groupingWindowMs
+        )
+        const showRoomShift = Boolean(
+          !isSystem &&
+          roomName &&
+          (!previous || previous.roomId !== msg.roomId || previous.type === MessageType.SYSTEM)
+        )
+        const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
+        const dayLabel = showDaySeparator ? formatDayLabel(msg.createdAt) : null
+        const relativeTime = formatRelativeTime(msg.createdAt)
+        const bookendTime = isSessionBookend ? formatBookendTimestamp(msg.createdAt) : null
+
+        return {
+          msg,
+          variant,
+          isSystem,
+          isSessionBookend,
+          sessionBookendState,
+          isSessionNote,
+          recapPrefix,
+          isSessionRecap,
+          isSessionSummary,
+          summaryStats,
+          isSelf,
+          roomName,
+          authorName,
+          authorAvatarUrl,
+          whisperRouteEntries,
+          hasWhisperRoute,
+          isDmWhisper,
+          bubbleWhisperClass,
+          typeIconClass,
+          typeIcon,
+          isGroupedWithPrevious,
+          showRoomShift,
+          showDaySeparator,
+          dayLabel,
+          relativeTime,
+          bookendTime,
+        }
+      }),
+    [currentUserId, groupingWindowMs, messages, participantDirectory, roomDirectory, sessionDmId]
+  )
+
   if (messages.length === 0) {
     return (
       <TooltipProvider delayDuration={120}>
@@ -258,74 +363,34 @@ export function MessageList({
       >
         {/* Sentinel used by IntersectionObserver to trigger older-history paging. */}
         <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
-        {messages.map((msg, index) => {
-          const previous = index > 0 ? messages[index - 1] : undefined
-          const variant = TYPE_VARIANTS[msg.type] ?? TYPE_VARIANTS[MessageType.OOC]
-          const isSystem = msg.type === MessageType.SYSTEM || msg.authorId === SYSTEM_USER_ID
-          const isSessionBookend =
-            isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
-          const sessionBookendState = isSessionBookend ? getSessionBookendState(msg.content) : null
-          const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
-          const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
-            ? CAMPAIGN_BRIEF_PREFIX
-            : SESSION_RECAP_PREFIX
-          const isSessionRecap = isSystem && msg.content.startsWith(recapPrefix)
-          const isSessionSummary = isSystem && msg.content.startsWith(SESSION_SUMMARY_PREFIX)
-          const isSelf = !isSystem && msg.authorId === currentUserId
-          const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
-          const authorProfile = participantDirectory?.[msg.authorId]
-          const authorName = isSystem
-            ? 'SYSTEM'
-            : authorProfile?.displayName || msg.authorUsername || 'Unknown'
-          const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
-          const whisperTargetNames =
-            (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) &&
-            Array.isArray(msg.targetIds) &&
-            msg.targetIds.length > 0
-              ? msg.targetIds
-                  .map((targetId) => participantDirectory?.[targetId]?.displayName || 'Unknown')
-                  .filter((name) => name.trim().length > 0)
-              : []
-          const whisperRouteText =
-            msg.type === MessageType.DM
-              ? 'DM'
-              : msg.type === MessageType.WHISPER && whisperTargetNames.length === 1
-                ? whisperTargetNames[0]
-                : null
-          const whisperRouteLines =
-            msg.type === MessageType.WHISPER && whisperTargetNames.length > 1
-              ? whisperTargetNames
-              : []
-          const whisperRouteEntries =
-            whisperRouteLines.length > 0
-              ? whisperRouteLines
-              : whisperRouteText
-                ? [whisperRouteText]
-                : []
-          const hasWhisperRoute = whisperRouteEntries.length > 0
-          const isDmWhisper =
-            msg.type === MessageType.DM ||
-            (msg.type === MessageType.WHISPER &&
-              Boolean(sessionDmId) &&
-              msg.authorId === sessionDmId)
-          const bubbleWhisperClass =
-            (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) && isDmWhisper
-              ? 'session-message-list__message-bubble--whisper-dm'
-              : ''
-          const typeIconClass = `session-message-list__message-type-icon--${variant}`
-          const typeIcon = TYPE_ICON_BY_VARIANT[variant]
-          const isGroupedWithPrevious = Boolean(
-            groupingWindowMs > 0 &&
-            previous &&
-            previous.authorId === msg.authorId &&
-            msg.createdAt - previous.createdAt <= groupingWindowMs
-          )
-          const showRoomShift = Boolean(
-            !isSystem &&
-            roomName &&
-            (!previous || previous.roomId !== msg.roomId || previous.type === MessageType.SYSTEM)
-          )
-          const showDaySeparator = !previous || dayKey(previous.createdAt) !== dayKey(msg.createdAt)
+        {preparedMessages.map((prepared) => {
+          const {
+            msg,
+            variant,
+            isSessionBookend,
+            sessionBookendState,
+            isSessionNote,
+            recapPrefix,
+            isSessionRecap,
+            isSessionSummary,
+            summaryStats,
+            isSelf,
+            roomName,
+            authorName,
+            authorAvatarUrl,
+            whisperRouteEntries,
+            hasWhisperRoute,
+            isDmWhisper,
+            bubbleWhisperClass,
+            typeIconClass,
+            typeIcon,
+            isGroupedWithPrevious,
+            showRoomShift,
+            showDaySeparator,
+            dayLabel,
+            relativeTime,
+            bookendTime,
+          } = prepared
 
           if (
             hideIntermissionMarkers &&
@@ -337,7 +402,7 @@ export function MessageList({
           }
 
           if (isSessionSummary) {
-            const stats = parseSessionSummary(msg.content)
+            const stats = summaryStats
             if (!stats) return null
             const durationMs =
               stats.endedAt && stats.startedAt ? stats.endedAt - stats.startedAt : null
@@ -452,7 +517,7 @@ export function MessageList({
                       className="session-message-list__session-marker-time"
                       dateTime={new Date(msg.createdAt).toISOString()}
                     >
-                      {formatBookendTimestamp(msg.createdAt)}
+                      {bookendTime}
                     </time>
                   </div>
                 ) : (
@@ -467,12 +532,10 @@ export function MessageList({
               {showDaySeparator ? (
                 <div
                   className="session-message-list__day-separator"
-                  aria-label={`Messages from ${formatDayLabel(msg.createdAt)}`}
+                  aria-label={`Messages from ${dayLabel}`}
                 >
                   <span className="session-message-list__day-separator-line" aria-hidden="true" />
-                  <span className="session-message-list__day-separator-pill">
-                    {formatDayLabel(msg.createdAt)}
-                  </span>
+                  <span className="session-message-list__day-separator-pill">{dayLabel}</span>
                   <span className="session-message-list__day-separator-line" aria-hidden="true" />
                 </div>
               ) : null}
@@ -555,7 +618,7 @@ export function MessageList({
                             <div className="session-message-list__message-whisper-meta-row--incoming">
                               <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                                 {msg.editedAt ? 'edited · ' : ''}
-                                {formatRelativeTime(msg.createdAt)}
+                                {relativeTime}
                               </div>
                               <div
                                 className={`session-message-list__message-whisper-route session-message-list__message-whisper-route--incoming-list ${isDmWhisper ? 'session-message-list__message-whisper-route--dm' : ''}`}
@@ -612,7 +675,7 @@ export function MessageList({
                               </div>
                               <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                                 {msg.editedAt ? 'edited · ' : ''}
-                                {formatRelativeTime(msg.createdAt)}
+                                {relativeTime}
                               </div>
                             </>
                           )}
@@ -621,7 +684,7 @@ export function MessageList({
                       {!hasWhisperRoute ? (
                         <div className="session-message-list__message-timestamp">
                           {msg.editedAt ? 'edited · ' : ''}
-                          {formatRelativeTime(msg.createdAt)}
+                          {relativeTime}
                         </div>
                       ) : null}
                     </div>
