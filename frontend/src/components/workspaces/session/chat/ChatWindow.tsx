@@ -34,6 +34,7 @@ interface ChatWindowProps {
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -84,6 +85,15 @@ function getStartOfTodayTimestamp(): number {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 }
 
+function isNearBottom(
+  scrollContainer: HTMLDivElement,
+  thresholdPx = AUTO_FOLLOW_BOTTOM_THRESHOLD_PX
+) {
+  const distanceFromBottom =
+    scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight
+  return distanceFromBottom <= thresholdPx
+}
+
 export function ChatWindow({
   apiUrl,
   token,
@@ -108,7 +118,7 @@ export function ChatWindow({
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
   const oldestLoadedTimestampRef = useRef<number | undefined>(undefined)
-  const lastSeenLatestMessageAtRef = useRef<number | undefined>(undefined)
+  const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const initialScrollContextRef = useRef<string | null>(null)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
@@ -391,12 +401,10 @@ export function ChatWindow({
       return
     }
 
-    const distanceFromBottom =
-      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight
-    const isNearBottom = distanceFromBottom <= 24
-    setIsUserPinnedToBottom(isNearBottom)
+    const nearBottom = isNearBottom(scrollContainer)
+    setIsUserPinnedToBottom(nearBottom)
 
-    if (isNearBottom) {
+    if (nearBottom) {
       clearPendingNewMessageCount()
     }
   }, [clearPendingNewMessageCount])
@@ -694,17 +702,18 @@ export function ChatWindow({
 
   const { typingUsers, typingSummary } = typingProjection
 
-  const latestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
-  const earliestVisibleMessageCreatedAt = visibleMessages[0]?.createdAt
+  const latestVisibleMessage = visibleMessages[visibleMessages.length - 1]
+  const latestVisibleMessageKey = latestVisibleMessage
+    ? `${latestVisibleMessage.id}:${latestVisibleMessage.createdAt}`
+    : undefined
 
   useEffect(() => {
-    if (isUserPinnedToBottom && latestVisibleMessageCreatedAt) {
-      lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+    if (isUserPinnedToBottom) {
       window.requestAnimationFrame(() => {
         clearPendingNewMessageCount()
       })
     }
-  }, [clearPendingNewMessageCount, isUserPinnedToBottom, latestVisibleMessageCreatedAt])
+  }, [clearPendingNewMessageCount, isUserPinnedToBottom])
 
   // After initial hydrate (or room/session switch), pin viewport to newest message.
   useEffect(() => {
@@ -718,31 +727,17 @@ export function ChatWindow({
     }
 
     requestAnimationFrame(() => {
-      if (isGreenroomMode && earliestVisibleMessageCreatedAt) {
-        const todayStart = greenroomTodayStartRef.current
-        const newestVisibleMessageCreatedAt = latestVisibleMessageCreatedAt
-
-        if (newestVisibleMessageCreatedAt && newestVisibleMessageCreatedAt < todayStart) {
-          scrollToPosition(0, 'auto')
-        } else {
-          scrollToPosition(0, 'auto')
-        }
-        return
-      }
-
       scrollToLatest('auto')
+      setIsUserPinnedToBottom(true)
     })
     initialScrollContextRef.current = contextKey
     clearPendingNewMessageCount()
-    lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+    lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
   }, [
     clearPendingNewMessageCount,
-    earliestVisibleMessageCreatedAt,
     isLoading,
-    isGreenroomMode,
-    latestVisibleMessageCreatedAt,
+    latestVisibleMessageKey,
     roomId,
-    scrollToPosition,
     scrollToLatest,
     sessionId,
     visibleMessages.length,
@@ -751,35 +746,35 @@ export function ChatWindow({
   // Follow new messages only when user is already pinned to bottom.
   // If user is reading history, keep their position and surface a subtle jump cue.
   useEffect(() => {
-    if (!latestVisibleMessageCreatedAt) {
+    if (!latestVisibleMessageKey) {
       return
     }
 
-    const lastSeen = lastSeenLatestMessageAtRef.current
-    const isNewLatest = !lastSeen || latestVisibleMessageCreatedAt > lastSeen
+    const lastSeen = lastSeenLatestMessageKeyRef.current
+    const isNewLatest = latestVisibleMessageKey !== lastSeen
 
     if (!isNewLatest) {
       return
     }
 
-    if (isUserPinnedToBottom) {
+    const scrollContainer = messageListRef.current
+    const shouldAutoFollow =
+      isUserPinnedToBottom || (scrollContainer ? isNearBottom(scrollContainer) : false)
+
+    if (shouldAutoFollow) {
       scrollToLatest('smooth')
+      setIsUserPinnedToBottom(true)
       window.requestAnimationFrame(() => {
         clearPendingNewMessageCount()
       })
-      lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+      lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
       return
     }
 
     window.requestAnimationFrame(() => {
       setPendingNewMessageCount((count) => count + 1)
     })
-  }, [
-    clearPendingNewMessageCount,
-    isUserPinnedToBottom,
-    latestVisibleMessageCreatedAt,
-    scrollToLatest,
-  ])
+  }, [clearPendingNewMessageCount, isUserPinnedToBottom, latestVisibleMessageKey, scrollToLatest])
 
   const postMessage = useCallback(
     async (content: string, type: MessageType, recipientId?: UUID) => {
@@ -994,7 +989,7 @@ export function ChatWindow({
                   scrollToLatest('smooth')
                   setIsUserPinnedToBottom(true)
                   setPendingNewMessageCount(0)
-                  lastSeenLatestMessageAtRef.current = latestVisibleMessageCreatedAt
+                  lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
                 }}
                 aria-label="Jump to latest message"
               >
