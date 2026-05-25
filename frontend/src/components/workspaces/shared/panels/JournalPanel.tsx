@@ -633,6 +633,7 @@ function JournalBrowser({
     Record<string, number>
   >({})
   const prevEffectiveSessionIdRef = useRef<UUID | null>(null)
+  const lastStatusLoadKeyRef = useRef<string>('')
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
     setJournalStatusBySession((current) => ({
@@ -718,6 +719,20 @@ function JournalBrowser({
 
   useEffect(() => {
     let cancelled = false
+
+    if (recentSessions.length === 0) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if (lastStatusLoadKeyRef.current === recentSessionsStatusKey) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    lastStatusLoadKeyRef.current = recentSessionsStatusKey
 
     const loadStatuses = async () => {
       const entries = await Promise.all(

@@ -22,7 +22,7 @@ import Image from '@tiptap/extension-image'
 import type { Level } from '@tiptap/extension-heading'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
-import { Fragment, useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useState, useCallback, useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
@@ -87,23 +87,26 @@ export function MarkdownEditor({
   const [rawValue, setRawValue] = useState(value)
   const [pendingInsertActionId, setPendingInsertActionId] = useState<string | null>(null)
 
-  const starterKitConfig =
-    variant === 'restricted'
-      ? {
-          // Restricted: disable headings, code, blockquote, horizontal rule
-          heading: false as const,
-          code: false as const,
-          codeBlock: false as const,
-          blockquote: false as const,
-          horizontalRule: false as const,
-        }
-      : {
-          // Full: allow headings except h1 to discourage over-structuring
-          heading: { levels: FULL_HEADING_LEVELS },
-        }
+  const starterKitConfig = useMemo(
+    () =>
+      variant === 'restricted'
+        ? {
+            // Restricted: disable headings, code, blockquote, horizontal rule
+            heading: false as const,
+            code: false as const,
+            codeBlock: false as const,
+            blockquote: false as const,
+            horizontalRule: false as const,
+          }
+        : {
+            // Full: allow headings except h1 to discourage over-structuring
+            heading: { levels: FULL_HEADING_LEVELS },
+          },
+    [variant]
+  )
 
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure(starterKitConfig),
       Image.configure({
         allowBase64: true,
@@ -115,6 +118,11 @@ export function MarkdownEditor({
         transformCopiedText: false,
       }),
     ],
+    [starterKitConfig]
+  )
+
+  const editor = useEditor({
+    extensions,
     content: value,
     editable: !readOnly && mode === 'rich',
     onUpdate: ({ editor: e }) => {
@@ -123,6 +131,15 @@ export function MarkdownEditor({
       onChange?.(md)
     },
   })
+
+  // Defensive destroy: ensure ProseMirror state and plugins are released on unmount.
+  useEffect(() => {
+    return () => {
+      if (editor && !editor.isDestroyed) {
+        editor.destroy()
+      }
+    }
+  }, [editor])
 
   // Keep editor editable flag in sync with readOnly/mode
   useEffect(() => {
